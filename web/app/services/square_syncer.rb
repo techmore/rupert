@@ -62,10 +62,13 @@ class SquareSyncer
         square_id = by_sku[variant.sku.downcase]
         next if square_id.nil?
 
-        SkuLink.upsert({
-          sku: variant.sku, shopifyVariantId: variant.id, squareVariationId: square_id,
-          matchSource: "sku", auto: true, createdAt: Time.current
-        }, unique_by: :shopifyVariantId)
+        link = SkuLink.find_or_initialize_by(shopifyVariantId: variant.id)
+        link.sku = variant.sku
+        link.squareVariationId = square_id
+        link.matchSource = "sku"
+        link.auto = true
+        link.createdAt ||= Time.current
+        link.save!
         links += 1
       end
       links

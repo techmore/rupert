@@ -1,0 +1,26 @@
+# frozen_string_literal: true
+
+# Admin overview of warehouse-sale vendor links and the global bulk tier
+# schedule applied to every vendor by default.
+class WarehouseController < AuthenticatedController
+  def index
+    @global_tiers = WarehouseTier.where(shareId: nil).order(:minQty)
+    @shares = WarehouseShare.order(:name)
+  end
+
+  def update_tiers
+    params[:tiers].to_h.each_value do |attrs|
+      if attrs[:_destroy] == "1"
+        WarehouseTier.where(shareId: nil).find_by(id: attrs[:id])&.destroy
+      elsif attrs[:minQty].present?
+        tier = WarehouseTier.where(shareId: nil).find_by(id: attrs[:id]) || WarehouseTier.new(shareId: nil)
+        tier.minQty = attrs[:minQty]
+        tier.discountPercent = attrs[:discountPercent]
+        tier.save!
+      end
+    end
+    redirect_to warehouse_path, notice: "Global tier schedule updated"
+  rescue ActiveRecord::RecordInvalid => e
+    redirect_to warehouse_path, alert: e.record.errors.full_messages.join(", ")
+  end
+end

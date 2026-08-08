@@ -10,6 +10,6 @@ class InventoryController < AuthenticatedController
         "%#{@q}%", "%#{@q}%"
       )
     end
-    @products = @products.includes(variants: [sku_links: { square_variation: :levels }], variants: :levels)
+    @products = @products.includes(variants: [{ sku_links: { square_variation: :levels } }, :levels])
   end
 end

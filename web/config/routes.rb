@@ -54,6 +54,16 @@ Rails.application.routes.draw do
     post :restore, defaults: { format: :json }
   end
 
+  get "/warehouse", to: "warehouse#index", as: :warehouse
+  post "/warehouse/tiers", to: "warehouse#update_tiers", as: :update_warehouse_tiers
+  resources :warehouse_shares, only: [:create, :show, :update, :destroy] do
+    member do
+      post :update_tiers
+    end
+  end
+
+  get "/w/:token", to: "warehouse_sales#show", as: :warehouse_sale
+
   # Any other routes just render the app
   match "*path" => "home#index", via: [:get, :post]
 end

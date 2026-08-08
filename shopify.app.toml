@@ -1,7 +1,7 @@
 # This file stores configurations for your Shopify app.
 
 client_id = "44770e333ebb5a3f6dacd7a15906f455"
-name = "Herbal Healers Ops"
+name = "Rupert"
 embedded = true
 
 [access_scopes]

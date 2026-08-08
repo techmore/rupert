@@ -46,7 +46,7 @@ class ShopifyClient
       response = http_post(
         "https://#{shop_domain}/admin/api/#{API_VERSION}/graphql.json",
         { query: query, variables: variables },
-        { "Authorization" => "Bearer #{token}" }
+        { "X-Shopify-Access-Token" => token }
       )
       raise Error, "GraphQL failed (#{response.code}): #{response.body.to_s[0, 500]}" unless response.is_a?(Net::HTTPSuccess)
 

@@ -1,7 +1,12 @@
 <div class="space-y-6">
-  <section>
-    <h1 class="font-display text-3xl text-ink">Reconcile</h1>
-    <p class="mt-1 text-sm text-mocha">SKU-level bridge between Shopify variants and Square variations, with live drift from inventory levels.</p>
+  <section class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink">Reconcile</h1>
+      <p class="mt-1 text-sm text-mocha">SKU-level bridge between Shopify variants and Square variations, with live drift from inventory levels.</p>
+    </div>
+    <%= form_tag apply_reconcile_index_path, method: :post, data: { confirm: "Apply the reconciliation plan? This writes inventory adjustments to Shopify and Square." } do %>
+      <%= submit_tag "Apply adjustments", class: "btn-primary", disabled: @summary[:actionable].zero?, data: { disable_with: "Applying…" } %>
+    <% end %>
   </section>
 
   <section class="grid grid-cols-3 gap-4">
@@ -22,7 +27,6 @@
   <div class="card p-4 text-sm text-mocha">
     Applying adjustments writes to Shopify and Square. Set the per-SKU priority policy here; the Sync page runs automatic reconciliation on a schedule, and <code class="font-mono text-xs">bin/rails ops:apply</code> applies the full plan.
   </div>
-
   <div class="card overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
@@ -52,9 +56,13 @@
               <td class="td text-right text-mocha"><%= row.shopify_qty %></td>
               <td class="td text-right text-mocha"><%= row.square_qty %></td>
               <td class="td text-right">
-                <span class="<%= row.drift == 0 ? "font-medium text-taupe" : "font-semibold text-clay" %>">
-                  <%= row.drift == 0 ? "—" : row.drift.positive? ? "+#{row.drift}" : row.drift %>
-                </span>
+                <% if row.drift.nil? %>
+                  <span class="font-medium text-taupe">—</span>
+                <% else %>
+                  <span class="<%= row.drift == 0 ? "font-medium text-taupe" : "font-semibold text-clay" %>">
+                    <%= row.drift == 0 ? "—" : row.drift.positive? ? "+#{row.drift}" : row.drift %>
+                  </span>
+                <% end %>
               </td>
               <td class="td">
                 <%= form_tag policy_reconcile_index_path, method: :post, class: "inline-block" do %>

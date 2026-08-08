@@ -112,7 +112,7 @@ class CatalogSyncer
 
       quantity = attrs[:inventoryQuantity]
       level = InventoryLevel.find_or_initialize_by(
-        source: "shopify", locationId: location.id, shopifyVariantId: variant["id"]
+        source: "shopify", locationId: location["id"], shopifyVariantId: variant["id"]
       )
       journal_movement(level, variant["id"], quantity, source: "shopify",
         reference: "sync", sku: variant["sku"])

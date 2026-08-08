@@ -45,15 +45,14 @@ class PlanApplier
                   reference_id: idempotency_key("hh-sync", row.sku),
                   catalog_object_id: row.square_variation_id,
                   state: "IN_STOCK",
-                  location_id: square_home,
+                  location_id: square_home.externalId,
                   quantity: row.square_home_target.to_s,
                   occurred_at: Time.current.iso8601
                 }
               }],
               ignore_unchanged_counts: true
             })
-            home = Location.find_by(id: square_home)
-            notes << "Square #{home&.name}→#{row.square_home_target} (shared total #{row.target})"
+            notes << "Square #{square_home.name}→#{row.square_home_target} (shared total #{row.target})"
             journal_movement(row, source: "reconcile", square_delta: row.square_delta, reference: "apply")
           rescue StandardError => e
             ok = false
@@ -72,7 +71,7 @@ class PlanApplier
                   reason: "correction",
                   name: "available",
                   referenceDocumentUri: "herbal-healers://inventory/reconciliation",
-                  changes: [{ delta: row.shopify_delta, inventoryItemId: row.inventory_item_id, locationId: shopify_location.id }]
+                  changes: [{ delta: row.shopify_delta, inventoryItemId: row.inventory_item_id, locationId: shopify_location.externalId }]
                 },
                 idempotencyKey: idempotency_key("hh", row.sku)
               })

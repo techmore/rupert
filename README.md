@@ -1,6 +1,6 @@
-# Rupert — Herbal Healers Inventory Ops
+# Rupert
 
-Centralized inventory operations for Herbal Healers: a Shopify + Square sync
+Centralized inventory operations: a Shopify + Square sync
 engine with an Oatmeal-styled web dashboard, backed by a single SQLite
 database. Runs as a Ruby on Rails 7.1 app (based on the
 [Shopify Ruby app template](https://github.com/Shopify/shopify-app-template-ruby))
