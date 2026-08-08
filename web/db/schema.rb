@@ -10,245 +10,295 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_07_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_08_050001) do
   create_table "InventoryLevel", id: :string, force: :cascade do |t|
-    t.string "source", null: false
-    t.string "locationId", null: false
-    t.string "shopifyVariantId"
-    t.string "squareVariationId"
-    t.integer "quantity", default: 0
     t.integer "available", default: 0
+    t.string "locationId", null: false
+    t.integer "quantity", default: 0
+    t.string "shopifyVariantId"
+    t.string "source", null: false
+    t.string "squareVariationId"
+    t.string "tenant_id"
     t.datetime "updatedAt", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.index ["locationId"], name: "index_InventoryLevel_on_locationId"
     t.index ["shopifyVariantId"], name: "index_InventoryLevel_on_shopifyVariantId"
     t.index ["source", "locationId", "shopifyVariantId"], name: "idx_on_source_locationId_shopifyVariantId_9ef5a647f1", unique: true
     t.index ["source", "locationId", "squareVariationId"], name: "idx_on_source_locationId_squareVariationId_4ae41ea9a8", unique: true
+    t.index ["tenant_id"], name: "index_InventoryLevel_on_tenant_id"
   end
 
   create_table "InventoryMovement", id: :string, force: :cascade do |t|
-    t.string "sku"
-    t.string "shopifyVariantId"
-    t.string "squareVariationId"
-    t.string "source", null: false
-    t.string "direction", null: false
-    t.integer "delta", default: 0
-    t.integer "quantityBefore", null: false
-    t.integer "quantityAfter", null: false
-    t.string "reason"
-    t.string "reference"
     t.string "actor"
     t.datetime "createdAt", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.integer "delta", default: 0
+    t.string "direction", null: false
+    t.integer "quantityAfter", null: false
+    t.integer "quantityBefore", null: false
+    t.string "reason"
+    t.string "reference"
+    t.string "shopifyVariantId"
+    t.string "sku"
+    t.string "source", null: false
+    t.string "squareVariationId"
+    t.string "tenant_id"
     t.index ["createdAt"], name: "index_InventoryMovement_on_createdAt"
     t.index ["shopifyVariantId"], name: "index_InventoryMovement_on_shopifyVariantId"
     t.index ["source"], name: "index_InventoryMovement_on_source"
+    t.index ["tenant_id"], name: "index_InventoryMovement_on_tenant_id"
   end
 
   create_table "InventoryPolicy", primary_key: "sku", id: :string, force: :cascade do |t|
-    t.string "priority", default: "lowest"
-    t.integer "min"
     t.integer "max"
+    t.integer "min"
     t.string "note"
+    t.string "priority", default: "lowest"
+    t.string "tenant_id"
     t.datetime "updatedAt", null: false
     t.index ["priority"], name: "index_InventoryPolicy_on_priority"
+    t.index ["tenant_id"], name: "index_InventoryPolicy_on_tenant_id"
   end
 
   create_table "LedgerEntry", id: :string, force: :cascade do |t|
-    t.string "source", null: false
-    t.string "sourceOrderId", null: false
-    t.string "orderName"
-    t.datetime "occurredAt", null: false
     t.string "currency", null: false
     t.integer "grossCents", null: false
-    t.string "status", null: false
     t.integer "lineItems", null: false
+    t.datetime "occurredAt", null: false
+    t.string "orderName"
+    t.string "source", null: false
+    t.string "sourceOrderId", null: false
+    t.string "status", null: false
     t.string "summary"
     t.datetime "syncedAt", null: false
+    t.string "tenant_id"
     t.index ["occurredAt"], name: "index_LedgerEntry_on_occurredAt"
     t.index ["source"], name: "index_LedgerEntry_on_source"
+    t.index ["tenant_id"], name: "index_LedgerEntry_on_tenant_id"
   end
 
   create_table "Location", id: :string, force: :cascade do |t|
-    t.string "source", null: false
-    t.string "externalId", null: false
-    t.string "name", null: false
-    t.string "kind"
-    t.string "timezone"
     t.boolean "active", default: true
+    t.string "externalId", null: false
+    t.string "kind"
+    t.string "name", null: false
+    t.string "source", null: false
     t.datetime "syncedAt", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.string "tenant_id"
+    t.string "timezone"
     t.index ["source", "externalId"], name: "index_Location_on_source_and_externalId", unique: true
     t.index ["source"], name: "index_Location_on_source"
+    t.index ["tenant_id"], name: "index_Location_on_tenant_id"
   end
 
   create_table "ReconcileItem", id: :string, force: :cascade do |t|
-    t.string "runId", null: false
-    t.string "sku", null: false
-    t.string "product"
-    t.string "variant"
-    t.boolean "tracked", default: false
+    t.string "actions"
+    t.integer "drift"
+    t.boolean "ok"
     t.string "priority", default: "lowest"
+    t.string "product"
+    t.string "runId", null: false
+    t.integer "shopifyDelta"
     t.integer "shopifyQty"
+    t.string "sku", null: false
+    t.integer "squareDelta"
     t.integer "squareQty"
     t.integer "target"
-    t.integer "drift"
-    t.integer "shopifyDelta"
-    t.integer "squareDelta"
-    t.boolean "ok"
-    t.string "actions"
+    t.string "tenant_id"
+    t.boolean "tracked", default: false
+    t.string "variant"
     t.index ["runId"], name: "index_ReconcileItem_on_runId"
     t.index ["sku"], name: "index_ReconcileItem_on_sku"
+    t.index ["tenant_id"], name: "index_ReconcileItem_on_tenant_id"
   end
 
   create_table "ReconcileRun", id: :string, force: :cascade do |t|
-    t.string "mode", default: "manual"
-    t.string "status", default: "pending"
-    t.integer "totalRows", default: 0
     t.integer "actionable", default: 0
     t.integer "applied", default: 0
     t.integer "failed", default: 0
-    t.datetime "startedAt", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.datetime "finishedAt"
+    t.string "mode", default: "manual"
+    t.datetime "startedAt", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.string "status", default: "pending"
+    t.string "tenant_id"
+    t.integer "totalRows", default: 0
     t.index ["startedAt"], name: "index_ReconcileRun_on_startedAt"
     t.index ["status"], name: "index_ReconcileRun_on_status"
+    t.index ["tenant_id"], name: "index_ReconcileRun_on_tenant_id"
   end
 
   create_table "ShopifyProduct", id: :string, force: :cascade do |t|
-    t.string "title", null: false
-    t.string "status", default: "ACTIVE"
     t.string "handle"
     t.datetime "publishedAt"
-    t.integer "totalInventory", default: 0
-    t.string "tags"
+    t.string "status", default: "ACTIVE"
     t.datetime "syncedAt", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.string "tags"
+    t.string "tenant_id"
+    t.string "title", null: false
+    t.integer "totalInventory", default: 0
     t.index ["status"], name: "index_ShopifyProduct_on_status"
+    t.index ["tenant_id"], name: "index_ShopifyProduct_on_tenant_id"
     t.index ["title"], name: "index_ShopifyProduct_on_title"
   end
 
   create_table "ShopifyVariant", id: :string, force: :cascade do |t|
-    t.string "productId", null: false
-    t.string "title", null: false
-    t.string "sku"
     t.string "barcode"
-    t.float "price"
     t.float "compareAtPrice"
-    t.integer "inventoryQuantity", default: 0
-    t.boolean "tracked", default: false
     t.string "inventoryItemId"
+    t.integer "inventoryQuantity", default: 0
+    t.float "price"
+    t.string "productId", null: false
+    t.string "sku"
     t.datetime "syncedAt", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.string "tenant_id"
+    t.string "title", null: false
+    t.boolean "tracked", default: false
     t.index ["productId"], name: "index_ShopifyVariant_on_productId"
     t.index ["sku"], name: "index_ShopifyVariant_on_sku"
+    t.index ["tenant_id"], name: "index_ShopifyVariant_on_tenant_id"
     t.index ["tracked"], name: "index_ShopifyVariant_on_tracked"
   end
 
   create_table "SkuLink", id: :string, force: :cascade do |t|
-    t.string "sku", null: false
-    t.string "shopifyVariantId"
-    t.string "squareVariationId"
-    t.string "matchSource", default: "sku"
     t.boolean "auto", default: true
     t.datetime "createdAt", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.string "matchSource", default: "sku"
+    t.string "shopifyVariantId"
+    t.string "sku", null: false
+    t.string "squareVariationId"
+    t.string "tenant_id"
     t.index ["shopifyVariantId", "squareVariationId"], name: "SkuLink_shopifyVariantId_squareVariationId_key", unique: true
-    t.index ["shopifyVariantId"], name: "index_SkuLink_on_shopifyVariantId"
+    t.index ["shopifyVariantId"], name: "index_SkuLink_on_shopifyVariantId", unique: true
     t.index ["sku"], name: "index_SkuLink_on_sku"
+    t.index ["tenant_id"], name: "index_SkuLink_on_tenant_id"
   end
 
   create_table "SquareItem", id: :string, force: :cascade do |t|
     t.string "name", null: false
     t.datetime "syncedAt", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.string "tenant_id"
+    t.index ["tenant_id"], name: "index_SquareItem_on_tenant_id"
   end
 
   create_table "SquareVariation", id: :string, force: :cascade do |t|
     t.string "itemId", null: false
-    t.string "sku"
     t.string "name", null: false
+    t.string "sku"
     t.datetime "syncedAt", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.string "tenant_id"
     t.index ["itemId"], name: "index_SquareVariation_on_itemId"
     t.index ["sku"], name: "index_SquareVariation_on_sku"
+    t.index ["tenant_id"], name: "index_SquareVariation_on_tenant_id"
   end
 
   create_table "StockAlert", id: :string, force: :cascade do |t|
-    t.string "shopifyVariantId"
-    t.string "squareVariationId"
-    t.string "sku"
-    t.integer "quantity", default: 0
-    t.integer "threshold", default: 5
-    t.string "status", default: "open"
-    t.string "note"
     t.datetime "createdAt", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.string "note"
+    t.integer "quantity", default: 0
     t.datetime "resolvedAt"
+    t.string "shopifyVariantId"
+    t.string "sku"
+    t.string "squareVariationId"
+    t.string "status", default: "open"
+    t.string "tenant_id"
+    t.integer "threshold", default: 5
     t.index ["shopifyVariantId"], name: "index_StockAlert_on_shopifyVariantId"
     t.index ["squareVariationId"], name: "index_StockAlert_on_squareVariationId"
     t.index ["status"], name: "index_StockAlert_on_status"
+    t.index ["tenant_id"], name: "index_StockAlert_on_tenant_id"
   end
 
   create_table "SyncRun", id: :string, force: :cascade do |t|
+    t.string "actor", default: "scheduler"
+    t.string "details"
+    t.string "error"
+    t.datetime "finishedAt"
     t.string "mode", null: false
-    t.string "status", null: false
     t.string "source"
     t.datetime "startedAt", default: -> { "CURRENT_TIMESTAMP" }, null: false
-    t.datetime "finishedAt"
-    t.string "error"
-    t.string "details"
-    t.string "actor", default: "scheduler"
+    t.string "status", null: false
+    t.string "tenant_id"
     t.index ["startedAt"], name: "index_SyncRun_on_startedAt"
     t.index ["status"], name: "index_SyncRun_on_status"
+    t.index ["tenant_id"], name: "index_SyncRun_on_tenant_id"
+  end
+
+  create_table "WarehouseShare", id: :string, force: :cascade do |t|
+    t.datetime "createdAt", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.string "name", null: false
+    t.decimal "priceMultiplier", precision: 10, scale: 4, default: "1.0", null: false
+    t.string "status", default: "active", null: false
+    t.string "tenantId"
+    t.string "token", null: false
+    t.boolean "useCustomTiers", default: false, null: false
+    t.index ["tenantId"], name: "index_WarehouseShare_on_tenantId"
+    t.index ["token"], name: "index_WarehouseShare_on_token", unique: true
+  end
+
+  create_table "WarehouseTier", id: :string, force: :cascade do |t|
+    t.datetime "createdAt", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.decimal "discountPercent", precision: 10, scale: 4, null: false
+    t.integer "minQty", null: false
+    t.string "shareId"
+    t.index ["shareId", "minQty"], name: "index_WarehouseTier_on_shareId_and_minQty", unique: true
+    t.index ["shareId"], name: "index_WarehouseTier_on_shareId"
   end
 
   create_table "settings", force: :cascade do |t|
     t.string "key", null: false
-    t.string "value"
+    t.string "tenant_id"
     t.datetime "updated_at"
-    t.index ["key"], name: "index_settings_on_key", unique: true
+    t.string "value"
+    t.index ["key", "tenant_id"], name: "index_settings_on_key_and_tenant_id", unique: true
   end
 
   create_table "shops", force: :cascade do |t|
-    t.string "shopify_domain", null: false
-    t.string "shopify_token", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
     t.string "access_scopes"
+    t.datetime "created_at", null: false
     t.datetime "expires_at"
     t.string "refresh_token"
     t.datetime "refresh_token_expires_at"
+    t.string "shopify_domain", null: false
+    t.string "shopify_token", null: false
+    t.datetime "updated_at", null: false
     t.index ["shopify_domain"], name: "index_shops_on_shopify_domain", unique: true
   end
 
   create_table "solid_queue_blocked_executions", force: :cascade do |t|
-    t.bigint "job_id", null: false
-    t.string "queue_name", null: false
-    t.integer "priority", default: 0, null: false
     t.string "concurrency_key", null: false
-    t.datetime "expires_at", null: false
     t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.bigint "job_id", null: false
+    t.integer "priority", default: 0, null: false
+    t.string "queue_name", null: false
     t.index ["concurrency_key", "priority", "job_id"], name: "index_solid_queue_blocked_executions_for_release"
     t.index ["expires_at", "concurrency_key"], name: "index_solid_queue_blocked_executions_for_maintenance"
     t.index ["job_id"], name: "index_solid_queue_blocked_executions_on_job_id", unique: true
   end
 
   create_table "solid_queue_claimed_executions", force: :cascade do |t|
+    t.datetime "created_at", null: false
     t.bigint "job_id", null: false
     t.bigint "process_id"
-    t.datetime "created_at", null: false
     t.index ["job_id"], name: "index_solid_queue_claimed_executions_on_job_id", unique: true
     t.index ["process_id", "job_id"], name: "index_solid_queue_claimed_executions_on_process_id_and_job_id"
   end
 
   create_table "solid_queue_failed_executions", force: :cascade do |t|
-    t.bigint "job_id", null: false
-    t.text "error"
     t.datetime "created_at", null: false
+    t.text "error"
+    t.bigint "job_id", null: false
     t.index ["job_id"], name: "index_solid_queue_failed_executions_on_job_id", unique: true
   end
 
   create_table "solid_queue_jobs", force: :cascade do |t|
-    t.string "queue_name", null: false
-    t.string "class_name", null: false
-    t.text "arguments"
-    t.integer "priority", default: 0, null: false
     t.string "active_job_id"
-    t.datetime "scheduled_at"
-    t.datetime "finished_at"
+    t.text "arguments"
+    t.string "class_name", null: false
     t.string "concurrency_key"
     t.datetime "created_at", null: false
+    t.datetime "finished_at"
+    t.integer "priority", default: 0, null: false
+    t.string "queue_name", null: false
+    t.datetime "scheduled_at"
     t.datetime "updated_at", null: false
     t.index ["active_job_id"], name: "index_solid_queue_jobs_on_active_job_id"
     t.index ["class_name"], name: "index_solid_queue_jobs_on_class_name"
@@ -258,90 +308,108 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_07_120000) do
   end
 
   create_table "solid_queue_pauses", force: :cascade do |t|
-    t.string "queue_name", null: false
     t.datetime "created_at", null: false
+    t.string "queue_name", null: false
     t.index ["queue_name"], name: "index_solid_queue_pauses_on_queue_name", unique: true
   end
 
   create_table "solid_queue_processes", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "hostname"
     t.string "kind", null: false
     t.datetime "last_heartbeat_at", null: false
-    t.bigint "supervisor_id"
-    t.integer "pid", null: false
-    t.string "hostname"
     t.text "metadata"
-    t.datetime "created_at", null: false
     t.string "name", null: false
+    t.integer "pid", null: false
+    t.bigint "supervisor_id"
     t.index ["last_heartbeat_at"], name: "index_solid_queue_processes_on_last_heartbeat_at"
     t.index ["name", "supervisor_id"], name: "index_solid_queue_processes_on_name_and_supervisor_id", unique: true
     t.index ["supervisor_id"], name: "index_solid_queue_processes_on_supervisor_id"
   end
 
   create_table "solid_queue_ready_executions", force: :cascade do |t|
-    t.bigint "job_id", null: false
-    t.string "queue_name", null: false
-    t.integer "priority", default: 0, null: false
     t.datetime "created_at", null: false
+    t.bigint "job_id", null: false
+    t.integer "priority", default: 0, null: false
+    t.string "queue_name", null: false
     t.index ["job_id"], name: "index_solid_queue_ready_executions_on_job_id", unique: true
     t.index ["priority", "job_id"], name: "index_solid_queue_poll_all"
     t.index ["queue_name", "priority", "job_id"], name: "index_solid_queue_poll_by_queue"
   end
 
   create_table "solid_queue_recurring_executions", force: :cascade do |t|
-    t.bigint "job_id", null: false
-    t.string "task_key", null: false
-    t.datetime "run_at", null: false
     t.datetime "created_at", null: false
+    t.bigint "job_id", null: false
+    t.datetime "run_at", null: false
+    t.string "task_key", null: false
     t.index ["job_id"], name: "index_solid_queue_recurring_executions_on_job_id", unique: true
     t.index ["task_key", "run_at"], name: "index_solid_queue_recurring_executions_on_task_key_and_run_at", unique: true
   end
 
   create_table "solid_queue_recurring_tasks", force: :cascade do |t|
-    t.string "key", null: false
-    t.string "schedule", null: false
-    t.string "command", limit: 2048
-    t.string "class_name"
     t.text "arguments"
-    t.string "queue_name"
-    t.integer "priority", default: 0
-    t.boolean "static", default: true, null: false
-    t.text "description"
+    t.string "class_name"
+    t.string "command", limit: 2048
     t.datetime "created_at", null: false
+    t.text "description"
+    t.string "key", null: false
+    t.integer "priority", default: 0
+    t.string "queue_name"
+    t.string "schedule", null: false
+    t.boolean "static", default: true, null: false
     t.datetime "updated_at", null: false
     t.index ["key"], name: "index_solid_queue_recurring_tasks_on_key", unique: true
     t.index ["static"], name: "index_solid_queue_recurring_tasks_on_static"
   end
 
   create_table "solid_queue_scheduled_executions", force: :cascade do |t|
-    t.bigint "job_id", null: false
-    t.string "queue_name", null: false
-    t.integer "priority", default: 0, null: false
-    t.datetime "scheduled_at", null: false
     t.datetime "created_at", null: false
+    t.bigint "job_id", null: false
+    t.integer "priority", default: 0, null: false
+    t.string "queue_name", null: false
+    t.datetime "scheduled_at", null: false
     t.index ["job_id"], name: "index_solid_queue_scheduled_executions_on_job_id", unique: true
     t.index ["scheduled_at", "priority", "job_id"], name: "index_solid_queue_dispatch_all"
   end
 
   create_table "solid_queue_semaphores", force: :cascade do |t|
-    t.string "key", null: false
-    t.integer "value", default: 1, null: false
-    t.datetime "expires_at", null: false
     t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.string "key", null: false
     t.datetime "updated_at", null: false
+    t.integer "value", default: 1, null: false
     t.index ["expires_at"], name: "index_solid_queue_semaphores_on_expires_at"
     t.index ["key", "value"], name: "index_solid_queue_semaphores_on_key_and_value"
     t.index ["key"], name: "index_solid_queue_semaphores_on_key", unique: true
   end
 
-  create_table "users", force: :cascade do |t|
-    t.bigint "shopify_user_id", null: false
-    t.string "shopify_domain", null: false
-    t.string "shopify_token", null: false
+  create_table "tenants", id: :string, force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.string "plan", default: "free"
+    t.string "shopify_shop_domain"
+    t.string "status", default: "active"
+    t.string "subdomain", null: false
     t.datetime "updated_at", null: false
+    t.index ["subdomain"], name: "index_tenants_on_subdomain", unique: true
+  end
+
+  create_table "users", force: :cascade do |t|
     t.string "access_scopes", default: "", null: false
+    t.datetime "created_at", null: false
+    t.string "email"
     t.datetime "expires_at"
+    t.string "name"
+    t.string "password_digest"
+    t.string "role", default: "admin"
+    t.string "shopify_domain"
+    t.string "shopify_token"
+    t.bigint "shopify_user_id"
+    t.string "tenant_id"
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["shopify_user_id"], name: "index_users_on_shopify_user_id", unique: true
+    t.index ["tenant_id"], name: "index_users_on_tenant_id"
   end
 
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

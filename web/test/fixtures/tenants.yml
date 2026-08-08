@@ -1,0 +1,8 @@
+# frozen_string_literal: true
+
+default_tenant:
+  id: <%= SecureRandom.uuid %>
+  name: Test Shop
+  subdomain: testshop
+  shopify_shop_domain: m11u0i-sb.myshopify.com
+  status: active

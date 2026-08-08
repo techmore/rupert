@@ -1,4 +1,10 @@
+# frozen_string_literal: true
+
 regular_user:
   shopify_domain: 'regular-shop.myshopify.com'
   shopify_token: 'token'
   shopify_user_id: 1
+  email: 'admin@example.com'
+  password_digest: <%= BCrypt::Password.create("password") %>
+  role: admin
+  tenant: default_tenant

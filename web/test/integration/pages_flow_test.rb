@@ -27,6 +27,7 @@ class PagesFlowTest < ActionDispatch::IntegrationTest
       is_embedded: false
     )
     Shop.create!(shopify_domain: "m11u0i-sb.myshopify.com", shopify_token: "test-token")
+    post login_path, params: { email: "admin@example.com", password: "password" }
   end
 
   def get_page(path, params: {})
@@ -36,7 +37,7 @@ class PagesFlowTest < ActionDispatch::IntegrationTest
   test "dashboard renders" do
     get_page "/"
     assert_response :success
-    assert_select "h1", /Inventory, in one place/
+    assert_select "h1", /Good morning/
   end
 
   test "inventory renders" do
