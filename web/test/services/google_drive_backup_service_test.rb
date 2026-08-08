@@ -35,7 +35,7 @@ class GoogleDriveBackupServiceTest < ActiveSupport::TestCase
 
   test "auth_url builds a consent URL with offline access and state" do
     url = GoogleDriveBackupService.auth_url(
-      redirect_uri: "https://x/settings/drive_oauth_callback", state: "abc123"
+      redirect_uri: "https://x/settings/drive_oauth_callback", state: "abc123",
     )
     assert_includes url, "accounts.google.com/o/oauth2/auth"
     assert_includes url, "access_type=offline"

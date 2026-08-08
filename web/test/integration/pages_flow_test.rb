@@ -8,8 +8,10 @@ class PagesFlowTest < ActionDispatch::IntegrationTest
   module TestShopifySession
     def current_shopify_session
       @test_session ||= ShopifyAPI::Auth::Session.new(
-        shop: "m11u0i-sb.myshopify.com", access_token: "test-token",
-        is_online: false, expires: Time.now + 3600
+        shop: "m11u0i-sb.myshopify.com",
+        access_token: "test-token",
+        is_online: false,
+        expires: Time.now + 3600,
       )
     end
   end
@@ -24,7 +26,7 @@ class PagesFlowTest < ActionDispatch::IntegrationTest
       host_name: "localhost",
       scope: "read_products",
       is_private: false,
-      is_embedded: false
+      is_embedded: false,
     )
     Shop.create!(shopify_domain: "m11u0i-sb.myshopify.com", shopify_token: "test-token")
     Current.tenant = tenants(:default_tenant)

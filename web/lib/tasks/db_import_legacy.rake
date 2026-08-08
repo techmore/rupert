@@ -6,26 +6,26 @@ namespace :db do
     legacy_path = Rails.root.join("..", "legacy", "prisma", "dev.sqlite")
 
     unless File.exist?(legacy_path)
-      abort "Legacy database not found at #{legacy_path}. Nothing to import."
+      abort("Legacy database not found at #{legacy_path}. Nothing to import.")
     end
 
     # Prisma stores DateTime columns as epoch milliseconds (integers) while
     # Rails stores them as ISO8601 text — convert on the way in.
     datetime_columns = {
-      "ShopifyProduct" => %w[publishedAt syncedAt],
-      "ShopifyVariant" => %w[syncedAt],
-      "SquareItem" => %w[syncedAt],
-      "SquareVariation" => %w[syncedAt],
-      "SkuLink" => %w[createdAt],
-      "ReconcileRun" => %w[startedAt finishedAt],
+      "ShopifyProduct" => ["publishedAt", "syncedAt"],
+      "ShopifyVariant" => ["syncedAt"],
+      "SquareItem" => ["syncedAt"],
+      "SquareVariation" => ["syncedAt"],
+      "SkuLink" => ["createdAt"],
+      "ReconcileRun" => ["startedAt", "finishedAt"],
       "ReconcileItem" => [],
-      "Location" => %w[syncedAt],
-      "InventoryLevel" => %w[updatedAt],
-      "InventoryMovement" => %w[createdAt],
-      "StockAlert" => %w[createdAt resolvedAt],
-      "SyncRun" => %w[startedAt finishedAt],
-      "InventoryPolicy" => %w[updatedAt],
-      "LedgerEntry" => %w[occurredAt syncedAt]
+      "Location" => ["syncedAt"],
+      "InventoryLevel" => ["updatedAt"],
+      "InventoryMovement" => ["createdAt"],
+      "StockAlert" => ["createdAt", "resolvedAt"],
+      "SyncRun" => ["startedAt", "finishedAt"],
+      "InventoryPolicy" => ["updatedAt"],
+      "LedgerEntry" => ["occurredAt", "syncedAt"],
     }
 
     connection = ActiveRecord::Base.connection
@@ -55,7 +55,7 @@ namespace :db do
           connection.exec_query(
             %(INSERT OR IGNORE INTO "#{table}" (#{quoted_columns}) VALUES (#{values_placeholder})),
             "Import #{table}",
-            values
+            values,
           )
           inserted += 1
         end
@@ -64,6 +64,10 @@ namespace :db do
       puts "Imported #{inserted} rows into #{table} (#{legacy_path})"
     end
   ensure
-    connection&.execute("DETACH DATABASE legacy") rescue nil
+    begin
+      connection&.execute("DETACH DATABASE legacy")
+    rescue
+      nil
+    end
   end
 end

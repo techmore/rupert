@@ -2,10 +2,23 @@
 
 # Aggregates all dashboard statistics in one place.
 class DashboardPresenter
-  attr_reader :product_count, :variant_count, :sku_link_count, :linked_count,
-    :open_alerts, :drifting, :recent_runs, :recent_syncs, :recent_alerts,
-    :ledger_groups, :today_revenue, :today_orders, :today_groups,
-    :yesterday_revenue, :week_revenue, :month_revenue, :stockouts,
+  attr_reader :product_count,
+    :variant_count,
+    :sku_link_count,
+    :linked_count,
+    :open_alerts,
+    :drifting,
+    :recent_runs,
+    :recent_syncs,
+    :recent_alerts,
+    :ledger_groups,
+    :today_revenue,
+    :today_orders,
+    :today_groups,
+    :yesterday_revenue,
+    :week_revenue,
+    :month_revenue,
+    :stockouts,
     :reconcile_summary
 
   def initialize
@@ -39,6 +52,34 @@ class DashboardPresenter
       .pluck(:source, Arel.sql("SUM(\"grossCents\") AS gross"), Arel.sql("COUNT(*) AS count"))
 
     @reconcile_summary = Reconciler.summary(Reconciler.build_rows)
+  end
+
+  # Revenue per day over the last N days, for chartkick line/area charts.
+  def revenue_series(days: 30, source: nil)
+    scope = Core::Order.since(days.days.ago)
+    scope = scope.where(source: source) if source.present?
+    scope.group_by_day(:occurred_at, default_value: 0, range: days.days.ago..Time.current).sum(:gross_cents)
+      .transform_values { |cents| (cents / 100.0).round(2) }
+  end
+
+  # Sales count per day over the last N days.
+  def sales_volume_series(days: 30, source: nil)
+    scope = Core::Order.since(days.days.ago)
+    scope = scope.where(source: source) if source.present?
+    scope.group_by_day(:occurred_at, default_value: 0, range: days.days.ago..Time.current).count
+  end
+
+  # Gross per hour across all days in range — powers the POS daily shape.
+  def hourly_series(days: 30)
+    Core::Order.since(days.days.ago)
+      .group_by_hour_of_day(:occurred_at, range: days.days.ago..Time.current).sum(:gross_cents)
+      .transform_values { |cents| (cents / 100.0).round(2) }
+  end
+
+  # Gross per channel/source over the last N days.
+  def source_breakdown(days: 30)
+    Core::Order.since(days.days.ago).group(:source).sum(:gross_cents)
+      .transform_keys(&:capitalize).transform_values { |cents| cents / 100.0 }
   end
 
   def last_sync

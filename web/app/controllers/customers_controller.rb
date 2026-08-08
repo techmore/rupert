@@ -1,0 +1,58 @@
+# frozen_string_literal: true
+
+class CustomersController < AuthenticatedController
+  before_action :set_customer, only: [:show, :edit, :update]
+
+  def index
+    authorize(:module, :customers_read?)
+
+    @q = Core::Customer.ransack(params[:q])
+    @pagy, @customers = pagy(@q.result.includes(:orders).order(created_at: :desc), items: 25)
+  end
+
+  def show
+    authorize(@customer)
+    @orders = @customer.orders.order(occurred_at: :desc).limit(50)
+  end
+
+  def new
+    authorize(:module, :customers_write?)
+    @customer = Core::Customer.new(source: "manual")
+  end
+
+  def create
+    authorize(:module, :customers_write?)
+    @customer = Core::Customer.new(customer_params)
+    @customer.source = "manual"
+    @customer.external_id = "manual:#{SecureRandom.hex(8)}"
+
+    if @customer.save
+      redirect_to(@customer, notice: "Customer added.")
+    else
+      render(:new, status: :unprocessable_entity)
+    end
+  end
+
+  def edit
+    authorize(@customer)
+  end
+
+  def update
+    authorize(@customer)
+    if @customer.update(customer_params)
+      redirect_to(@customer, notice: "Customer updated.")
+    else
+      render(:edit, status: :unprocessable_entity)
+    end
+  end
+
+  private
+
+  def set_customer
+    @customer = Core::Customer.find(params[:id])
+  end
+
+  def customer_params
+    params.require(:customer).permit(:first_name, :last_name, :email, :phone, :notes)
+  end
+end

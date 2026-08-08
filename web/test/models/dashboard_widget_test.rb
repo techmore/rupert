@@ -11,8 +11,8 @@ class DashboardWidgetTest < ActiveSupport::TestCase
   teardown { Current.tenant = nil }
 
   test "default_order lists all widgets" do
-    assert_equal 7, DashboardWidget.default_order.length
-    assert_equal %w[stats today_channels attention stock_alerts revenue sync_history reconcile_runs],
+    assert_equal 8, DashboardWidget.default_order.length
+    assert_equal ["stats", "today_channels", "attention", "stock_alerts", "revenue", "sync_history", "reconcile_runs", "goals"],
       DashboardWidget.default_order
   end
 
@@ -24,10 +24,10 @@ class DashboardWidgetTest < ActiveSupport::TestCase
 
   test "entries honors saved order and hidden set, appending unknown widgets" do
     entries = DashboardWidget.entries({
-      "widgets" => %w[revenue stats sync_history],
-      "hidden" => ["stats"]
+      "widgets" => ["revenue", "stats", "sync_history"],
+      "hidden" => ["stats"],
     })
-    assert_equal %w[revenue stats sync_history today_channels attention stock_alerts reconcile_runs],
+    assert_equal ["revenue", "stats", "sync_history", "today_channels", "attention", "stock_alerts", "reconcile_runs", "goals"],
       entries.map { |widget, _| widget.key }
     visible = entries.select { |_, v| v }.map { |widget, _| widget.key }
     assert_includes visible, "revenue"
@@ -35,9 +35,9 @@ class DashboardWidgetTest < ActiveSupport::TestCase
   end
 
   test "user serializes dashboard_config to json" do
-    @user.update!(dashboard_config: { "widgets" => %w[stats revenue], "hidden" => ["attention"] })
+    @user.update!(dashboard_config: { "widgets" => ["stats", "revenue"], "hidden" => ["attention"] })
     @user.reload
-    assert_equal({ "widgets" => %w[stats revenue], "hidden" => ["attention"] }, @user.dashboard_config_hash)
+    assert_equal({ "widgets" => ["stats", "revenue"], "hidden" => ["attention"] }, @user.dashboard_config_hash)
   end
 
   test "dashboard_config_hash defaults to empty hash" do

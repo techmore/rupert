@@ -19,8 +19,8 @@ class WarehouseController < AuthenticatedController
         tier.save!
       end
     end
-    redirect_to warehouse_path, notice: "Global tier schedule updated"
+    redirect_to(warehouse_path, notice: "Global tier schedule updated")
   rescue ActiveRecord::RecordInvalid => e
-    redirect_to warehouse_path, alert: e.record.errors.full_messages.join(", ")
+    redirect_to(warehouse_path, alert: e.record.errors.full_messages.join(", "))
   end
 end

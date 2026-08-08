@@ -2,7 +2,7 @@ inherit_gem:
   rubocop-shopify: rubocop.yml
 
 AllCops:
-  TargetRubyVersion: 3.1
+  TargetRubyVersion: 4.0
   Exclude:
     - "db/**/*"
     - "bin/**/*"
@@ -17,3 +17,8 @@ Style/MethodCallWithArgsParentheses:
 Style/ClassAndModuleChildren:
   Exclude:
     - "test/**/*"
+
+# Both `def self.x` and `class << self` are idiomatic; don't force a rewrite
+# across the codebase.
+Style/ClassMethodsDefinitions:
+  Enabled: false

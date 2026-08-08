@@ -27,12 +27,13 @@ class ShopifyClient
             {
               client_id: EnvStore.fetch("SHOPIFY_CLIENT_ID", ""),
               client_secret: EnvStore.fetch("SHOPIFY_CLIENT_SECRET", ""),
-              grant_type: "client_credentials"
-            }
+              grant_type: "client_credentials",
+            },
           )
           unless response.is_a?(Net::HTTPSuccess)
             raise Error, "Token exchange failed (#{response.code}): #{response.body.to_s[0, 500]}"
           end
+
           payload = JSON.parse(response.body)
           raise Error, "Token exchange returned no access_token" if payload["access_token"].blank?
 
@@ -46,7 +47,7 @@ class ShopifyClient
       response = http_post(
         "https://#{shop_domain}/admin/api/#{API_VERSION}/graphql.json",
         { query: query, variables: variables },
-        { "X-Shopify-Access-Token" => token }
+        { "X-Shopify-Access-Token" => token },
       )
       raise Error, "GraphQL failed (#{response.code}): #{response.body.to_s[0, 500]}" unless response.is_a?(Net::HTTPSuccess)
 

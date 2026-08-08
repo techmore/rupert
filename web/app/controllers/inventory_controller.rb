@@ -7,7 +7,8 @@ class InventoryController < AuthenticatedController
     if @q.present?
       @products = @products.where(
         "title LIKE ? OR id IN (SELECT productId FROM \"ShopifyVariant\" WHERE sku LIKE ?)",
-        "%#{@q}%", "%#{@q}%"
+        "%#{@q}%",
+        "%#{@q}%",
       )
     end
     @products = @products.includes(variants: [{ sku_links: { square_variation: :levels } }, :levels])

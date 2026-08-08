@@ -56,25 +56,36 @@ class GoogleDriveBackupService
       path = nil
       begin
         path = BackupService.snapshot_path
-        filename = "rupert-backup-#{Time.current.strftime('%Y%m%d-%H%M%S')}#{File.extname(path)}"
+        filename = "rupert-backup-#{Time.current.strftime("%Y%m%d-%H%M%S")}#{File.extname(path)}"
 
         drive = drive_service
         folder_id = ensure_folder!(drive)
         metadata = Google::Apis::DriveV3::File.new(
-          name: filename, parents: [folder_id], mime_type: "application/octet-stream"
+          name: filename, parents: [folder_id], mime_type: "application/octet-stream",
         )
-        file = drive.create_file(metadata,
-          upload_source: path, content_type: "application/octet-stream")
+        file = drive.create_file(
+          metadata,
+          upload_source: path,
+          content_type: "application/octet-stream",
+        )
         drive.create_permission(file.id, Google::Apis::DriveV3::Permission.new(type: "anyone", role: "reader"))
 
         prune_old!(drive, folder_id)
 
-        log.update!(status: "success", finishedAt: Time.current,
-          fileName: filename, fileSize: File.size(path),
-          driveFileId: file.id, driveUrl: "https://drive.google.com/file/d/#{file.id}/view")
+        log.update!(
+          status: "success",
+          finishedAt: Time.current,
+          fileName: filename,
+          fileSize: File.size(path),
+          driveFileId: file.id,
+          driveUrl: "https://drive.google.com/file/d/#{file.id}/view",
+        )
       rescue StandardError => e
-        log.update!(status: "failed", finishedAt: Time.current,
-          error: e.message.to_s[0, 2000])
+        log.update!(
+          status: "failed",
+          finishedAt: Time.current,
+          error: e.message.to_s[0, 2000],
+        )
         raise
       ensure
         FileUtils.rm_f(path) if path
@@ -94,10 +105,14 @@ class GoogleDriveBackupService
         client_secret_set: EnvStore.fetch("GOOGLE_DRIVE_CLIENT_SECRET", "").present?,
         refresh_token_set: EnvStore.fetch("GOOGLE_DRIVE_REFRESH_TOKEN", "").present?,
         last: last && {
-          status: last.status, startedAt: last.startedAt, finishedAt: last.finishedAt,
-          fileName: last.fileName, driveUrl: last.driveUrl, error: last.error
+          status: last.status,
+          startedAt: last.startedAt,
+          finishedAt: last.finishedAt,
+          fileName: last.fileName,
+          driveUrl: last.driveUrl,
+          error: last.error,
         },
-        latest_drive_url: latest_ok&.driveUrl
+        latest_drive_url: latest_ok&.driveUrl,
       }
     end
 
@@ -130,7 +145,7 @@ class GoogleDriveBackupService
         client_secret: client_secret,
         scope: SCOPE,
         authorization_uri: "https://accounts.google.com/o/oauth2/auth",
-        token_credential_uri: "https://oauth2.googleapis.com/token"
+        token_credential_uri: "https://oauth2.googleapis.com/token",
       )
     end
 
@@ -154,12 +169,12 @@ class GoogleDriveBackupService
       query = "name='#{FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
       results = drive.list_files(q: query, fields: "files(id)", page_size: 1)
       folder = if results.files.any?
-                 results.files.first
-               else
-                 drive.create_file(Google::Apis::DriveV3::File.new(
-                   name: FOLDER_NAME, mime_type: "application/vnd.google-apps.folder"
-                 ))
-               end
+        results.files.first
+      else
+        drive.create_file(Google::Apis::DriveV3::File.new(
+          name: FOLDER_NAME, mime_type: "application/vnd.google-apps.folder",
+        ))
+      end
       EnvStore.set("GOOGLE_DRIVE_FOLDER_ID", folder.id)
       folder.id
     end
@@ -167,7 +182,9 @@ class GoogleDriveBackupService
     def prune_old!(drive, folder_id)
       files = drive.list_files(
         q: "'#{folder_id}' in parents and trashed=false",
-        fields: "files(id,createdTime)", page_size: 100, order_by: "createdTime desc"
+        fields: "files(id,createdTime)",
+        page_size: 100,
+        order_by: "createdTime desc",
       ).files
       files.drop(retention).each { |file| drive.delete_file(file.id) }
     end

@@ -7,29 +7,29 @@ class SetupController < ApplicationController
   skip_before_action :require_login, only: [:new, :create]
 
   def new
-    redirect_to login_path if Tenant.exists?
+    redirect_to(login_path) if Tenant.exists?
   end
 
   def create
-    return redirect_to login_path if Tenant.exists?
+    return redirect_to(login_path) if Tenant.exists?
 
     tenant = Tenant.new(name: params[:tenant_name], subdomain: params[:tenant_subdomain])
     user = tenant.users.build(
       email: params[:user_email].to_s.downcase,
       name: params[:user_name],
       password: params[:user_password],
-      role: "super_admin"
+      role: "super_admin",
     )
 
     if tenant.save
       seed_credentials(tenant)
       session[:user_id] = user.id
-      redirect_to root_url(subdomain: tenant.subdomain), notice: "Welcome! Your workspace is ready."
+      redirect_to(root_url(subdomain: tenant.subdomain), notice: "Welcome! Your workspace is ready.")
     else
       @tenant = tenant
       @user = user
       flash.now[:alert] = "Please fix the errors below."
-      render :new, status: :unprocessable_entity
+      render(:new, status: :unprocessable_entity)
     end
   end
 

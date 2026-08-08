@@ -28,6 +28,36 @@ Rails.application.routes.draw do
 
   get "/dashboard", to: "home#index"
   post "/dashboard/customize", to: "home#customize", as: :customize_dashboard
+
+  # ERP modules (registered in ModuleRegistry)
+  get "/sales", to: "sales#index", as: :sales
+  resources :customers, only: [:index, :show, :new, :create, :edit, :update]
+  namespace :projects do
+    resources :projects, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
+      member { post :transition }
+    end
+    resources :tasks, only: [:create, :update, :destroy] do
+      member { post :transition }
+    end
+  end
+  namespace :goals do
+    resources :goals, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
+      member { post :transition }
+    end
+    resources :kpis, only: [:index, :show, :new, :create, :update, :destroy] do
+      member { post :reading }
+    end
+  end
+  namespace :sales do
+    resources :pos_sessions, only: [:index, :show, :new, :create] do
+      member do
+        post :refresh
+        post :close
+        post :reopen
+      end
+    end
+  end
+
   resources :inventory, only: :index
   resources :reconcile, only: :index do
     collection do

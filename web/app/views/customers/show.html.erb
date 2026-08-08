@@ -1,0 +1,62 @@
+<div class="space-y-6">
+  <section class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink"><%= @customer.name %></h1>
+      <p class="mt-1 text-sm text-mocha">
+        <span class="pill-taupe capitalize"><%= @customer.source %></span>
+        <% if @customer.email.present? %><span class="ml-2"><%= @customer.email %></span><% end %>
+        <% if @customer.phone.present? %><span class="ml-2"><%= @customer.phone %></span><% end %>
+      </p>
+    </div>
+    <% if Current.user.can?("customers.write") %>
+      <%= link_to "Edit", edit_customer_path(@customer), class: "btn-ghost btn-sm" %>
+    <% end %>
+  </section>
+
+  <section class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="stat">
+      <p class="stat-label">Orders</p>
+      <p class="stat-value mt-1"><%= @customer.orders.count %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Lifetime value</p>
+      <p class="stat-value mt-1"><%= number_to_currency(@customer.lifetime_value_cents / 100.0) %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Last order</p>
+      <p class="stat-value mt-1 font-display text-2xl"><%= @orders.first ? l(@orders.first.occurred_at, format: :short) : "—" %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Member since</p>
+      <p class="stat-value mt-1 font-display text-2xl"><%= l(@customer.created_at.to_date, format: :long) %></p>
+    </div>
+  </section>
+
+  <div class="grid gap-4 lg:grid-cols-3">
+    <div class="card card-pad lg:col-span-1">
+      <h2 class="font-display text-lg text-ink">Notes</h2>
+      <p class="mt-2 whitespace-pre-wrap text-sm text-mocha"><%= @customer.notes.presence || "No notes yet." %></p>
+    </div>
+
+    <div class="card card-pad lg:col-span-2">
+      <h2 class="font-display text-lg text-ink">Order history</h2>
+      <div class="mt-3 divide-y divide-fog">
+        <% if @orders.empty? %>
+          <p class="py-3 text-sm text-taupe">No orders yet.</p>
+        <% end %>
+        <% @orders.each do |order| %>
+          <div class="flex items-center justify-between gap-4 py-3">
+            <div class="min-w-0">
+              <p class="truncate text-sm font-medium text-ink"><%= order.order_number.presence || order.source_order_id.first(12) %></p>
+              <p class="text-xs text-taupe"><%= l(order.occurred_at, format: :short) %> · <span class="capitalize"><%= order.channel %></span></p>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="<%= %w[paid fulfilled].include?(order.status) ? "pill-fern" : "pill-clay" %>"><%= order.status %></span>
+              <span class="text-sm font-medium text-ink"><%= number_to_currency(order.gross_cents / 100.0) %></span>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

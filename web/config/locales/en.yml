@@ -3,3 +3,4 @@ en:
     formats:
       short: "%b %d %H:%M"
       long: "%A, %B %d, %Y"
+      time: "%l:%M %p"

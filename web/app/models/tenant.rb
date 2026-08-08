@@ -10,9 +10,12 @@ class Tenant < ApplicationRecord
   before_create :generate_id
 
   validates :name, presence: true
-  validates :subdomain, presence: true, uniqueness: true,
+  validates :subdomain,
+    presence: true,
+    uniqueness: true,
     format: { with: /\A[a-z0-9][a-z0-9-]*[a-z0-9]\z/, message: "must be lowercase letters, numbers, and hyphens" }
-  validates :shopify_shop_domain, allow_blank: true,
+  validates :shopify_shop_domain,
+    allow_blank: true,
     format: { with: /\A[a-z0-9-]+\.myshopify\.com\z/, message: "must look like your-store.myshopify.com" }
 
   def to_param

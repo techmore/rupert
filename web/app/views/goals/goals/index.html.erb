@@ -1,0 +1,39 @@
+<div class="space-y-6">
+  <section class="flex items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink">Goals</h1>
+      <p class="mt-1 text-sm text-mocha">Targets with measurable progress.</p>
+    </div>
+    <% if Current.user.can?("projects.write") %>
+      <%= link_to "New goal", new_goals_goal_path, class: "btn-primary" %>
+    <% end %>
+  </section>
+
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <% if @goals.empty? %>
+      <div class="card card-pad col-span-full text-sm text-taupe">No goals yet — set a target and start tracking.</div>
+    <% end %>
+    <% @goals.each do |goal| %>
+      <%= link_to goal, class: "card card-pad block hover:border-taupe" do %>
+        <div class="flex items-center justify-between gap-2">
+          <h3 class="truncate font-display text-lg text-ink"><%= goal.name %></h3>
+          <span class="<%= goal.achieved? ? "pill-fern" : goal.active? ? "pill-olive" : goal.abandoned? ? "pill-taupe" : "pill-clay" %>"><%= goal.status %></span>
+        </div>
+        <p class="mt-1 text-sm text-mocha"><%= goal.description.presence || "No description." %></p>
+        <div class="mt-3 flex items-baseline justify-between">
+          <p class="font-display text-2xl text-ink"><%= number_with_precision(goal.current_value, precision: 2) %></p>
+          <p class="text-xs text-taupe">target <%= number_with_precision(goal.target_value, precision: 2) %></p>
+        </div>
+        <% if goal.progress_pct %>
+          <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-haze">
+            <div class="h-full rounded-full <%= goal.progress_pct >= 100 ? "bg-fern" : "bg-olive" %>" style="width: <%= goal.progress_pct %>%"></div>
+          </div>
+          <p class="mt-1 text-xs text-taupe"><%= goal.progress_pct %>% complete</p>
+        <% end %>
+        <% if goal.due_on %><p class="mt-2 text-xs text-taupe">Due <%= l(goal.due_on, format: :long) %></p><% end %>
+      <% end %>
+    <% end %>
+  </div>
+
+  <div class="text-xs text-taupe"><%== pagy_nav(@pagy) if @pagy.pages > 1 %></div>
+</div>

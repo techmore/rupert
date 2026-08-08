@@ -1,0 +1,28 @@
+<div class="space-y-6">
+  <section>
+    <h1 class="font-display text-3xl text-ink">Open register</h1>
+    <p class="mt-1 text-sm text-mocha">Start a POS shift for the day.</p>
+  </section>
+  <div class="card card-pad max-w-2xl">
+    <%= form_with model: @session, url: sales_pos_sessions_path, class: "space-y-4" do |f| %>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <%= f.label :name, "Register name", class: "mb-1 block text-xs font-semibold uppercase tracking-wider text-mocha" %>
+          <%= f.text_field :name, placeholder: "Front counter", class: "input" %>
+        </div>
+        <div>
+          <%= f.label :location_id, "Location", class: "mb-1 block text-xs font-semibold uppercase tracking-wider text-mocha" %>
+          <%= f.collection_select :location_id, Location.order(:name), :id, :name, { include_blank: "No location" }, class: "select w-full" %>
+        </div>
+        <div>
+          <%= f.label :opening_cash_cents, "Opening cash (cents)", class: "mb-1 block text-xs font-semibold uppercase tracking-wider text-mocha" %>
+          <%= f.number_field :opening_cash_cents, value: 0, min: 0, class: "input" %>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <%= f.submit "Open register", class: "btn-primary" %>
+        <%= link_to "Cancel", sales_pos_sessions_path, class: "btn-ghost" %>
+      </div>
+    <% end %>
+  </div>
+</div>

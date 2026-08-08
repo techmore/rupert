@@ -10,7 +10,23 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_08_050001) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_08_220002) do
+  # These are extensions that must be enabled in order to support this database
+  enable_extension "pg_catalog.plpgsql"
+
+  create_table "BackupLog", id: :string, force: :cascade do |t|
+    t.string "driveFileId"
+    t.string "driveUrl"
+    t.text "error"
+    t.string "fileName"
+    t.integer "fileSize"
+    t.datetime "finishedAt"
+    t.datetime "startedAt", null: false
+    t.string "status", default: "running", null: false
+    t.string "tenant_id"
+    t.index ["tenant_id", "startedAt"], name: "index_BackupLog_on_tenant_id_and_startedAt"
+  end
+
   create_table "InventoryLevel", id: :string, force: :cascade do |t|
     t.integer "available", default: 0
     t.string "locationId", null: false
@@ -242,6 +258,142 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_08_050001) do
     t.index ["shareId"], name: "index_WarehouseTier_on_shareId"
   end
 
+  create_table "customers", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "email"
+    t.string "external_id", null: false
+    t.string "first_name"
+    t.string "last_name"
+    t.text "notes"
+    t.string "phone"
+    t.string "source", null: false
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "email"], name: "index_customers_on_tenant_id_and_email"
+    t.index ["tenant_id", "external_id", "source"], name: "index_customers_on_tenant_id_and_external_id_and_source", unique: true
+    t.index ["tenant_id", "phone"], name: "index_customers_on_tenant_id_and_phone"
+  end
+
+  create_table "goals", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.decimal "current_value", precision: 12, scale: 2, default: "0.0"
+    t.text "description"
+    t.date "due_on"
+    t.string "name", null: false
+    t.string "status", default: "active", null: false
+    t.decimal "target_value", precision: 12, scale: 2
+    t.string "tenant_id", null: false
+    t.string "unit"
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "status"], name: "index_goals_on_tenant_id_and_status"
+  end
+
+  create_table "kpi_readings", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "kpi_id", null: false
+    t.datetime "measured_at", null: false
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.decimal "value", precision: 12, scale: 2, null: false
+    t.index ["tenant_id", "kpi_id", "measured_at"], name: "index_kpi_readings_on_tenant_id_and_kpi_id_and_measured_at"
+  end
+
+  create_table "kpis", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "direction", default: "up", null: false
+    t.string "name", null: false
+    t.decimal "target_value", precision: 12, scale: 2
+    t.string "tenant_id", null: false
+    t.string "unit"
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "name"], name: "index_kpis_on_tenant_id_and_name"
+  end
+
+  create_table "order_lines", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "line_cents", default: 0
+    t.string "name"
+    t.string "order_id", null: false
+    t.integer "quantity", default: 0
+    t.string "sku"
+    t.string "tenant_id", null: false
+    t.integer "unit_cents", default: 0
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "order_id"], name: "index_order_lines_on_tenant_id_and_order_id"
+    t.index ["tenant_id", "sku"], name: "index_order_lines_on_tenant_id_and_sku"
+  end
+
+  create_table "orders", force: :cascade do |t|
+    t.string "channel"
+    t.datetime "created_at", null: false
+    t.string "currency", default: "USD"
+    t.string "customer_id"
+    t.integer "gross_cents", default: 0
+    t.integer "line_items", default: 0
+    t.string "location_id"
+    t.datetime "occurred_at", null: false
+    t.string "order_number"
+    t.string "source", null: false
+    t.string "source_order_id", null: false
+    t.string "status", null: false
+    t.integer "tax_cents", default: 0
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "customer_id"], name: "index_orders_on_tenant_id_and_customer_id"
+    t.index ["tenant_id", "occurred_at"], name: "index_orders_on_tenant_id_and_occurred_at"
+    t.index ["tenant_id", "source", "source_order_id"], name: "index_orders_on_tenant_id_and_source_and_source_order_id", unique: true
+    t.index ["tenant_id", "status"], name: "index_orders_on_tenant_id_and_status"
+  end
+
+  create_table "payments", force: :cascade do |t|
+    t.integer "amount_cents", default: 0
+    t.datetime "created_at", null: false
+    t.string "method", null: false
+    t.string "order_id", null: false
+    t.datetime "paid_at", null: false
+    t.string "reference"
+    t.string "status", default: "completed"
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "order_id"], name: "index_payments_on_tenant_id_and_order_id"
+    t.index ["tenant_id", "paid_at"], name: "index_payments_on_tenant_id_and_paid_at"
+  end
+
+  create_table "pos_sessions", force: :cascade do |t|
+    t.integer "card_sales_cents", default: 0
+    t.integer "cash_sales_cents", default: 0
+    t.datetime "closed_at"
+    t.integer "counted_cash_cents"
+    t.datetime "created_at", null: false
+    t.integer "expected_cash_cents"
+    t.integer "gift_sales_cents", default: 0
+    t.string "location_id"
+    t.string "name", null: false
+    t.text "notes"
+    t.datetime "opened_at", null: false
+    t.integer "opening_cash_cents", default: 0
+    t.string "status", default: "open", null: false
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.string "user_id"
+    t.integer "variance_cents"
+    t.index ["tenant_id", "opened_at"], name: "index_pos_sessions_on_tenant_id_and_opened_at"
+    t.index ["tenant_id", "status"], name: "index_pos_sessions_on_tenant_id_and_status"
+  end
+
+  create_table "projects", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.date "due_on"
+    t.string "name", null: false
+    t.string "owner_id"
+    t.string "status", default: "planned", null: false
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "owner_id"], name: "index_projects_on_tenant_id_and_owner_id"
+    t.index ["tenant_id", "status"], name: "index_projects_on_tenant_id_and_status"
+  end
+
   create_table "settings", force: :cascade do |t|
     t.string "key", null: false
     t.string "tenant_id"
@@ -383,6 +535,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_08_050001) do
     t.index ["key"], name: "index_solid_queue_semaphores_on_key", unique: true
   end
 
+  create_table "tasks", force: :cascade do |t|
+    t.string "assignee_id"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.date "due_on"
+    t.string "priority", default: "medium"
+    t.string "project_id"
+    t.string "status", default: "todo", null: false
+    t.string "tenant_id", null: false
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "assignee_id"], name: "index_tasks_on_tenant_id_and_assignee_id"
+    t.index ["tenant_id", "project_id"], name: "index_tasks_on_tenant_id_and_project_id"
+    t.index ["tenant_id", "status"], name: "index_tasks_on_tenant_id_and_status"
+  end
+
   create_table "tenants", id: :string, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "name", null: false
@@ -397,6 +566,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_08_050001) do
   create_table "users", force: :cascade do |t|
     t.string "access_scopes", default: "", null: false
     t.datetime "created_at", null: false
+    t.text "dashboard_config"
     t.string "email"
     t.datetime "expires_at"
     t.string "name"
@@ -413,15 +583,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_08_050001) do
   end
 
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
-  add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
-  add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_failed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
-  add_foreign_key "solid_queue_failed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
-  add_foreign_key "solid_queue_ready_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_ready_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
-  add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
-  add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
 end

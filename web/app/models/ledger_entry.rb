@@ -7,7 +7,7 @@ class LedgerEntry < ApplicationRecord
   self.table_name = "LedgerEntry"
   self.primary_key = "id"
 
-  SOURCES = %w[shopify square].freeze
+  SOURCES = ["shopify", "square"].freeze
 
   scope :recent, ->(limit = 200) { order(occurredAt: :desc).limit(limit) }
   scope :since, ->(date) { where('"occurredAt" >= ?', date) }

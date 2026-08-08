@@ -14,7 +14,8 @@ class DashboardWidget
     Widget.new(key: "stock_alerts", label: "Stock alerts · last 14 days", partial: "home/widgets/stock_alerts", position: 40),
     Widget.new(key: "revenue", label: "Revenue · last 30 days", partial: "home/widgets/revenue", position: 50),
     Widget.new(key: "sync_history", label: "Sync history", partial: "home/widgets/sync_history", position: 60),
-    Widget.new(key: "reconcile_runs", label: "Latest reconcile runs", partial: "home/widgets/reconcile_runs", position: 70)
+    Widget.new(key: "reconcile_runs", label: "Latest reconcile runs", partial: "home/widgets/reconcile_runs", position: 70),
+    Widget.new(key: "goals", label: "Goals & KPIs", partial: "home/widgets/goals", position: 75),
   ].freeze
 
   def self.all

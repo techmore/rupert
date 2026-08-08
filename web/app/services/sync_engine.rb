@@ -45,7 +45,7 @@ class SyncEngine
       raise ArgumentError, "No tenant in context" if Current.tenant_id.nil?
 
       guard_running!
-      raise ArgumentError, "Unknown sync source" unless %w[shopify square].include?(source)
+      raise ArgumentError, "Unknown sync source" unless ["shopify", "square"].include?(source)
 
       run = SyncRun.create!(mode: "manual", status: "running", source: source, actor: actor, startedAt: Time.current)
 

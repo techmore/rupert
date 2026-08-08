@@ -33,7 +33,7 @@ class BackupService
     end
 
     def validate!(source_path)
-      raise RestoreError, "Empty backup file" if source_path.nil? || File.zero?(source_path)
+      raise RestoreError, "Empty backup file" if source_path.nil? || File.empty?(source_path)
 
       header = File.binread(source_path, 16).to_s
       valid = header.start_with?("SQLite format 3") || header.start_with?("PGDMP")
@@ -67,7 +67,7 @@ class BackupService
       cmd << config[:database]
       env = { "PGPASSWORD" => config[:password].to_s }
       ok = system(env, *cmd, out: File::NULL, err: File::NULL)
-      raise RestoreError, "pg_dump failed — is PostgreSQL running?" unless ok && File.exist?(path) && !File.zero?(path)
+      raise RestoreError, "pg_dump failed — is PostgreSQL running?" unless ok && File.exist?(path) && !File.empty?(path)
 
       path
     end
@@ -82,9 +82,17 @@ class BackupService
     def postgres_restore!(source_path)
       config = ActiveRecord::Base.connection_db_config.configuration_hash
       env = { "PGPASSWORD" => config[:password].to_s }
-      cmd = ["pg_restore", "--clean", "--if-exists", "--no-owner",
-        "--host=#{config[:host]}", "--port=#{config[:port]}", "--username=#{config[:username]}",
-        "--dbname=#{config[:database]}", source_path]
+      cmd = [
+        "pg_restore",
+        "--clean",
+        "--if-exists",
+        "--no-owner",
+        "--host=#{config[:host]}",
+        "--port=#{config[:port]}",
+        "--username=#{config[:username]}",
+        "--dbname=#{config[:database]}",
+        source_path,
+      ]
       ok = system(env, *cmd, out: File::NULL, err: File::NULL)
       raise RestoreError, "pg_restore failed — the backup may be corrupt" unless ok
 
@@ -95,8 +103,18 @@ class BackupService
 
     def verify_post_restore!
       # Touch each core table so a corrupt import fails here, not later.
-      %w[ShopifyProduct ShopifyVariant SquareItem SquareVariation SkuLink
-         ReconcileRun InventoryLevel StockAlert SyncRun LedgerEntry].each do |table|
+      [
+        "ShopifyProduct",
+        "ShopifyVariant",
+        "SquareItem",
+        "SquareVariation",
+        "SkuLink",
+        "ReconcileRun",
+        "InventoryLevel",
+        "StockAlert",
+        "SyncRun",
+        "LedgerEntry",
+      ].each do |table|
         ActiveRecord::Base.connection.execute("SELECT COUNT(*) FROM \"#{table}\"")
       end
     rescue StandardError => e

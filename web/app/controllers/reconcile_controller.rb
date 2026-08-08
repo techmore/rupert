@@ -14,13 +14,13 @@ class ReconcileController < AuthenticatedController
     end
 
     InventoryPolicy.set!(sku, priority) if sku.present?
-    redirect_to reconcile_index_path, notice: "Priority updated for #{sku}"
+    redirect_to(reconcile_index_path, notice: "Priority updated for #{sku}")
   end
 
   def apply
     @result = PlanApplier.apply!(skus: params[:skus].presence)
-    redirect_to reconcile_index_path, notice: "Applied #{@result[:applied]} adjustment(s)"
+    redirect_to(reconcile_index_path, notice: "Applied #{@result[:applied]} adjustment(s)")
   rescue PlanApplier::SafetyLocked, StandardError => e
-    redirect_to reconcile_index_path, alert: e.message
+    redirect_to(reconcile_index_path, alert: e.message)
   end
 end

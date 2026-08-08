@@ -1,0 +1,33 @@
+<div class="space-y-6">
+  <section class="flex items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink">KPIs</h1>
+      <p class="mt-1 text-sm text-mocha">Key performance indicators with historical readings.</p>
+    </div>
+    <% if Current.user.can?("projects.write") %>
+      <%= link_to "New KPI", new_goals_kpi_path, class: "btn-primary" %>
+    <% end %>
+  </section>
+
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <% if @kpis.empty? %>
+      <div class="card card-pad col-span-full text-sm text-taupe">No KPIs yet — define one and start recording readings.</div>
+    <% end %>
+    <% @kpis.each do |kpi| %>
+      <%= link_to kpi, class: "card card-pad block hover:border-taupe" do %>
+        <div class="flex items-center justify-between gap-2">
+          <h3 class="truncate font-display text-lg text-ink"><%= kpi.name %></h3>
+          <span class="<%= kpi.on_track? ? "pill-fern" : "pill-clay" %>"><%= kpi.on_track? ? "on track" : "off track" %></span>
+        </div>
+        <p class="mt-2 font-display text-3xl text-ink"><%= number_with_precision(kpi.latest_value, precision: 2) %></p>
+        <p class="text-xs text-taupe">
+          target <%= number_with_precision(kpi.target_value, precision: 2) %>
+          <% if kpi.unit %> · <%= kpi.unit %><% end %>
+          · <%= kpi.readings.count %> readings
+        </p>
+      <% end %>
+    <% end %>
+  </div>
+
+  <div class="text-xs text-taupe"><%== pagy_nav(@pagy) if @pagy.pages > 1 %></div>
+</div>

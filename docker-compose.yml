@@ -1,4 +1,20 @@
 services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_DB: rupert_production
+      POSTGRES_USER: rupert
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rupert}
+    volumes:
+      - rupert-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rupert"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   web:
     image: ghcr.io/techmore/rupert:latest
     restart: unless-stopped
@@ -9,9 +25,15 @@ services:
       RAILS_ENV: production
       RAILS_LOG_TO_STDOUT: "1"
       RAILS_SERVE_STATIC_FILES: "1"
+      POSTGRES_HOST: db
+      POSTGRES_USER: rupert
+      POSTGRES_DB: rupert_production
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rupert}
     volumes:
-      - rupert-db:/app/db
       - rupert-storage:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/up"]
       interval: 30s
@@ -26,8 +48,11 @@ services:
     environment:
       RAILS_ENV: production
       RAILS_LOG_TO_STDOUT: "1"
+      POSTGRES_HOST: db
+      POSTGRES_USER: rupert
+      POSTGRES_DB: rupert_production
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rupert}
     volumes:
-      - rupert-db:/app/db
       - rupert-storage:/app/storage
     command: ["bin/jobs"]
     depends_on:
@@ -35,5 +60,5 @@ services:
         condition: service_healthy
 
 volumes:
-  rupert-db:
+  rupert-pg:
   rupert-storage:

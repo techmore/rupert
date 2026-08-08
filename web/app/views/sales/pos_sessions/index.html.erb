@@ -1,0 +1,70 @@
+<div class="space-y-6">
+  <section class="flex items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink">Registers</h1>
+      <p class="mt-1 text-sm text-mocha">POS sessions and cash-drawer reconciliation.</p>
+    </div>
+    <% if Current.user.can?("sales.write") %>
+      <%= link_to "Open register", new_sales_pos_session_path, class: "btn-primary" %>
+    <% end %>
+  </section>
+
+  <% if @open_sessions.any? %>
+    <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <% @open_sessions.each do |s| %>
+        <%= link_to s, class: "card card-pad block hover:border-taupe" do %>
+          <div class="flex items-center justify-between">
+            <h3 class="font-display text-lg text-ink"><%= s.name %></h3>
+            <span class="pill-fern"><span class="dot bg-fern"></span> open</span>
+          </div>
+          <p class="mt-2 text-sm text-mocha">Opened <%= l(s.opened_at, format: :short) %></p>
+          <p class="mt-1 text-sm text-mocha">Sales: <span class="font-semibold text-ink"><%= number_to_currency(s.total_sales_cents / 100.0) %></span></p>
+        <% end %>
+      <% end %>
+    </section>
+  <% end %>
+
+  <div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th class="th">Register</th>
+            <th class="th">Opened</th>
+            <th class="th">Closed</th>
+            <th class="th text-right">Cash sales</th>
+            <th class="th text-right">Total sales</th>
+            <th class="th text-right">Counted</th>
+            <th class="th text-right">Variance</th>
+            <th class="th">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% if @sessions.empty? %>
+            <tr>
+              <td class="td py-8 text-center text-taupe">No registers yet — open one to start the day.</td>
+            </tr>
+          <% end %>
+          <% @sessions.each do |s| %>
+            <tr class="hover:bg-cream">
+              <td class="td font-medium text-ink"><%= link_to s.name, s, class: "hover:text-olive hover:underline" %></td>
+              <td class="td whitespace-nowrap text-mocha"><%= l(s.opened_at, format: :short) %></td>
+              <td class="td whitespace-nowrap text-mocha"><%= s.closed_at ? l(s.closed_at, format: :short) : "—" %></td>
+              <td class="td text-right text-mocha"><%= number_to_currency(s.cash_sales_cents / 100.0) %></td>
+              <td class="td text-right font-medium text-ink"><%= number_to_currency(s.total_sales_cents / 100.0) %></td>
+              <td class="td text-right text-mocha"><%= s.counted_cash_cents ? number_to_currency(s.counted_cash_cents / 100.0) : "—" %></td>
+              <td class="td text-right">
+                <% if s.variance_cents %>
+                  <span class="<%= s.variance_cents.zero? ? "pill-fern" : "pill-clay" %>"><%= number_to_currency(s.variance_cents / 100.0) %></span>
+                <% else %>
+                  <span class="text-taupe">—</span>
+                <% end %>
+              </td>
+              <td class="td"><span class="<%= s.open? ? "pill-fern" : "pill-taupe" %>"><%= s.status %></span></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

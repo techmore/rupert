@@ -25,7 +25,7 @@ class AlertGenerator
         threshold: THRESHOLD,
         status: "open",
         note: quantity <= 0 ? "Out of stock" : "Low stock — below threshold of #{THRESHOLD}",
-        createdAt: Time.current
+        createdAt: Time.current,
       )
     end
   end

@@ -7,7 +7,7 @@ class InventoryPolicy < ApplicationRecord
   self.primary_key = "sku"
   self.record_timestamps = false
 
-  PRIORITIES = %w[lowest shopify square].freeze
+  PRIORITIES = ["lowest", "shopify", "square"].freeze
 
   validates :priority, inclusion: { in: PRIORITIES }
 

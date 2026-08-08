@@ -1,0 +1,73 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+class ModuleNavTest < ActionDispatch::IntegrationTest
+  setup do
+    ShopifyAPI::Context.setup(
+      api_key: "test-key",
+      api_secret_key: "test-secret",
+      api_version: ShopifyAPI::AdminVersions::SUPPORTED_ADMIN_VERSIONS.first,
+      host_name: "localhost",
+      scope: "read_products",
+      is_private: false,
+      is_embedded: false,
+    )
+    Shop.create!(shopify_domain: "m11u0i-sb.myshopify.com", shopify_token: "test-token")
+    Current.tenant = tenants(:default_tenant)
+    EnvStore.set("SHOPIFY_CLIENT_ID", "test-client-id")
+    EnvStore.set("SHOPIFY_CLIENT_SECRET", "test-client-secret")
+    post login_path, params: { email: "admin@example.com", password: "password" }
+  end
+
+  teardown do
+    Current.tenant = nil
+    EnvStore.set("SHOPIFY_CLIENT_ID", nil)
+    EnvStore.set("SHOPIFY_CLIENT_SECRET", nil)
+  end
+
+  test "header shows module areas and the active area is highlighted" do
+    get inventory_index_path
+    assert_response :success
+    ["Overview", "Commerce", "Operations", "System"].each do |name|
+      assert_select "nav[aria-label='Module areas'] a", text: name
+    end
+    assert_select "nav[aria-label='Module areas'] a.bg-olive", text: "Commerce"
+  end
+
+  test "second bar shows the modules of the active area" do
+    get inventory_index_path
+    assert_response :success
+    assert_select "nav[aria-label='Module'] a", text: "Sales"
+    assert_select "nav[aria-label='Module'] a", text: "Customers"
+    assert_select "nav[aria-label='Module'] a.bg-paper", text: "Inventory"
+  end
+
+  test "single-module areas do not render a second bar" do
+    get root_path
+    assert_response :success
+    assert_select "nav[aria-label='Module']", count: 0
+    assert_select "nav[aria-label='Module areas'] a.bg-olive", text: "Overview"
+  end
+
+  test "nav is filtered by role permissions" do
+    reader = User.create!(
+      email: "reader@example.com",
+      password: "password123",
+      role: "reader",
+      tenant: tenants(:default_tenant),
+    )
+    post logout_path
+    post login_path, params: { email: "reader@example.com", password: "password123" }
+    assert_equal reader.id, session[:user_id]
+
+    get ledger_index_path
+    assert_response :success
+    assert_select "nav[aria-label='Module areas'] a", text: "Operations"
+    assert_select "nav[aria-label='Module'] a", text: "Ledger"
+    assert_select "nav[aria-label='Module'] a", text: "Reconcile"
+    assert_select "nav[aria-label='Module'] a", text: "Projects", count: 0
+    assert_select "nav[aria-label='Module'] a", text: "Goals", count: 0
+    assert_select "nav[aria-label='Module'] a", text: "KPIs", count: 0
+  end
+end

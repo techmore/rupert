@@ -5,12 +5,12 @@ class WarehouseSharesController < AuthenticatedController
   def create
     @share = WarehouseShare.new(
       name: params[:name],
-      priceMultiplier: (params[:priceMultiplier].presence || 1.0)
+      priceMultiplier: params[:priceMultiplier].presence || 1.0,
     )
     if @share.save
-      redirect_to warehouse_share_path(@share), notice: "Vendor link created — copy it and send it."
+      redirect_to(warehouse_share_path(@share), notice: "Vendor link created — copy it and send it.")
     else
-      redirect_to warehouse_path, alert: @share.errors.full_messages.join(", ")
+      redirect_to(warehouse_path, alert: @share.errors.full_messages.join(", "))
     end
   end
 
@@ -23,14 +23,14 @@ class WarehouseSharesController < AuthenticatedController
     @share = WarehouseShare.find(params[:id])
     if @share.update(
       name: params[:name],
-      priceMultiplier: (params[:priceMultiplier].presence || @share.priceMultiplier),
-      status: (params[:status].presence || @share.status),
-      useCustomTiers: params[:useCustomTiers] == "1"
+      priceMultiplier: params[:priceMultiplier].presence || @share.priceMultiplier,
+      status: params[:status].presence || @share.status,
+      useCustomTiers: params[:useCustomTiers] == "1",
     )
-      redirect_to warehouse_share_path(@share), notice: "Vendor link updated"
+      redirect_to(warehouse_share_path(@share), notice: "Vendor link updated")
     else
       @custom_tiers = @share.tiers.order(:minQty)
-      render :show, status: :unprocessable_entity
+      render(:show, status: :unprocessable_entity)
     end
   end
 
@@ -46,14 +46,14 @@ class WarehouseSharesController < AuthenticatedController
         tier.save!
       end
     end
-    redirect_to warehouse_share_path(@share), notice: "Bulk tiers updated"
+    redirect_to(warehouse_share_path(@share), notice: "Bulk tiers updated")
   rescue ActiveRecord::RecordInvalid => e
-    redirect_to warehouse_share_path(@share), alert: e.record.errors.full_messages.join(", ")
+    redirect_to(warehouse_share_path(@share), alert: e.record.errors.full_messages.join(", "))
   end
 
   def destroy
     @share = WarehouseShare.find(params[:id])
     @share.destroy
-    redirect_to warehouse_path, notice: "Vendor link deleted"
+    redirect_to(warehouse_path, notice: "Vendor link deleted")
   end
 end

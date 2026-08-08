@@ -46,10 +46,16 @@ class SquareSyncer
       catalog.group_by { |v| v[:itemId] }.each do |item_id, variations|
         SquareItem.upsert({ id: item_id, name: variations.first[:name], syncedAt: Time.current }, unique_by: :id)
         variations.each do |variation|
-          SquareVariation.upsert({
-            id: variation[:variationId], itemId: item_id, sku: variation[:sku],
-            name: variation[:name], syncedAt: Time.current
-          }, unique_by: :id)
+          SquareVariation.upsert(
+            {
+              id: variation[:variationId],
+              itemId: item_id,
+              sku: variation[:sku],
+              name: variation[:name],
+              syncedAt: Time.current,
+            },
+            unique_by: :id,
+          )
         end
       end
     end
@@ -76,10 +82,15 @@ class SquareSyncer
 
     def sync_levels!(locations, catalog, counts, primary)
       location_records = locations.map do |location|
-        upsert_location(source: "square", external_id: location["id"], name: location["name"],
-          kind: location["type"], timezone: location["timezone"])
+        upsert_location(
+          source: "square",
+          external_id: location["id"],
+          name: location["name"],
+          kind: location["type"],
+          timezone: location["timezone"],
+        )
       end
-      primary_record = location_records.find { |l| l.externalId == primary["id"] } || location_records.first
+      location_records.find { |l| l.externalId == primary["id"] } || location_records.first
 
       location_records.each do |location_record|
         by_variation = counts[:counts_by_location][location_record.externalId] || Hash.new(0)
@@ -88,16 +99,22 @@ class SquareSyncer
           next if quantity.nil?
 
           level = InventoryLevel.find_or_initialize_by(
-            source: "square", locationId: location_record.id, squareVariationId: variation[:variationId]
+            source: "square", locationId: location_record.id, squareVariationId: variation[:variationId],
           )
           before = level.quantity || 0
           if before != quantity
             InventoryMovement.create!(
-              sku: variation[:sku], squareVariationId: variation[:variationId],
-              source: "square", direction: "set", delta: quantity - before,
-              quantityBefore: before, quantityAfter: quantity,
-              reason: "Synced from Square", reference: "sync", actor: "system",
-              createdAt: Time.current
+              sku: variation[:sku],
+              squareVariationId: variation[:variationId],
+              source: "square",
+              direction: "set",
+              delta: quantity - before,
+              quantityBefore: before,
+              quantityAfter: quantity,
+              reason: "Synced from Square",
+              reference: "sync",
+              actor: "system",
+              createdAt: Time.current,
             )
           end
           level.quantity = quantity

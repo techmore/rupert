@@ -1,0 +1,112 @@
+<div class="space-y-6">
+  <section class="flex items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink"><%= @session.name %></h1>
+      <p class="mt-1 text-sm text-mocha">
+        Opened <%= l(@session.opened_at, format: :long) %>
+        <% if @session.closed_at %> · closed <%= l(@session.closed_at, format: :long) %><% end %>
+        <% if @session.location %><span class="pill-taupe ml-2"><%= @session.location.name %></span><% end %>
+        <span class="<%= @session.open? ? "pill-fern ml-1" : "pill-taupe ml-1" %>"><%= @session.status %></span>
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <%= form_tag refresh_sales_pos_session_path(@session), method: :post do %>
+        <%= submit_tag "Refresh from orders", class: "btn-ghost btn-sm" %>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="stat">
+      <p class="stat-label">Cash sales</p>
+      <p class="stat-value mt-1"><%= number_to_currency(@session.cash_sales_cents / 100.0) %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Card sales</p>
+      <p class="stat-value mt-1"><%= number_to_currency(@session.card_sales_cents / 100.0) %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Gift card sales</p>
+      <p class="stat-value mt-1"><%= number_to_currency(@session.gift_sales_cents / 100.0) %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Total sales</p>
+      <p class="stat-value mt-1"><%= number_to_currency(@session.total_sales_cents / 100.0) %></p>
+    </div>
+  </section>
+
+  <div class="card card-pad">
+    <div class="flex items-baseline justify-between">
+      <h2 class="font-display text-lg text-ink">Cash drawer</h2>
+      <span class="text-xs text-taupe">opening float <%= number_to_currency(@session.opening_cash_cents / 100.0) %></span>
+    </div>
+    <dl class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+      <div class="rounded-xl bg-haze px-4 py-3">
+        <dt class="text-xs font-medium text-mocha">Expected cash</dt>
+        <dd class="font-display text-2xl text-ink"><%= number_to_currency(@session.expected_cash_cents / 100.0) %></dd>
+      </div>
+      <div class="rounded-xl bg-haze px-4 py-3">
+        <dt class="text-xs font-medium text-mocha">Counted cash</dt>
+        <dd class="font-display text-2xl text-ink"><%= @session.counted_cash_cents ? number_to_currency(@session.counted_cash_cents / 100.0) : "—" %></dd>
+      </div>
+      <div class="rounded-xl bg-haze px-4 py-3">
+        <dt class="text-xs font-medium text-mocha">Variance</dt>
+        <dd class="font-display text-2xl <%= @session.variance_cents&.zero? ? "text-ink" : "text-clay" %>"><%= @session.variance_cents ? number_to_currency(@session.variance_cents / 100.0) : "—" %></dd>
+      </div>
+    </dl>
+
+    <% if @session.open? && Current.user.can?("sales.write") %>
+      <%= form_tag close_sales_pos_session_path(@session), method: :post, class: "mt-6 rounded-xl border border-fog bg-haze/60 p-4" do %>
+        <h3 class="font-display text-base text-ink">Settle register</h3>
+        <div class="mt-3 flex flex-wrap items-end gap-3">
+          <div>
+            <%= label_tag :counted_cents, "Counted cash", class: "mb-1 block text-xs font-semibold uppercase tracking-wider text-mocha" %>
+            <%= number_field_tag :counted_cents, @session.expected_cash_cents, class: "input w-40" %>
+          </div>
+          <div>
+            <%= label_tag :notes, "Notes", class: "mb-1 block text-xs font-semibold uppercase tracking-wider text-mocha" %>
+            <%= text_field_tag :notes, nil, placeholder: "Optional", class: "input w-64" %>
+          </div>
+          <div>
+            <%= submit_tag "Close register", class: "btn-primary", data: { confirm: "Settle and close this register?" } %>
+          </div>
+        </div>
+      <% end %>
+    <% elsif !@session.open? %>
+      <p class="mt-4 text-xs text-taupe"><%= @session.notes.presence || "Closed without notes." %></p>
+    <% end %>
+  </div>
+
+  <div class="card overflow-hidden">
+    <div class="border-b border-fog px-5 py-3">
+      <h2 class="font-display text-lg text-ink">Orders in this session</h2>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th class="th">Time</th>
+            <th class="th">Order</th>
+            <th class="th text-right">Gross</th>
+            <th class="th">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% if @orders.empty? %>
+            <tr>
+              <td class="td py-8 text-center text-taupe">No orders yet in this session.</td>
+            </tr>
+          <% end %>
+          <% @orders.each do |order| %>
+            <tr class="hover:bg-cream">
+              <td class="td whitespace-nowrap text-mocha"><%= l(order.occurred_at, format: :time) %></td>
+              <td class="td font-medium text-ink"><%= order.order_number.presence || order.source_order_id.first(12) %></td>
+              <td class="td text-right font-medium text-ink"><%= number_to_currency(order.gross_cents / 100.0) %></td>
+              <td class="td"><span class="<%= %w[paid fulfilled].include?(order.status) ? "pill-fern" : "pill-clay" %>"><%= order.status %></span></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

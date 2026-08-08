@@ -505,7 +505,7 @@ DEPENDENCIES
   mocha
   noticed
   oj
-  pagy (~> 8.6, ~> 8.0)
+  pagy (~> 8.6)
   paper_trail
   pg (~> 1.5)
   puma (~> 6.0)

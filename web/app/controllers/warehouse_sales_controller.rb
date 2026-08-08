@@ -18,6 +18,6 @@ class WarehouseSalesController < ApplicationController
   private
 
   def render_404
-    render plain: "Not found", status: :not_found
+    render(plain: "Not found", status: :not_found)
   end
 end

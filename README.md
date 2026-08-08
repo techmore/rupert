@@ -26,13 +26,17 @@ Square ───┼── sync engine ──▶ Prisma-style SQLite DB ──▶
 
 ## Local development
 
-Requirements: Ruby 3.2.x (rbenv), Bundler, Node (for the Shopify CLI).
+Requirements: Ruby 4.0.6 (rbenv), Bundler, PostgreSQL 16, Node (for the
+Shopify CLI).
 
 ```bash
 bundle install          # from web/
 cp .env.example .env    # fill in credentials at repo root
+# create the postgres role/db (or set POSTGRES_* env vars):
+#   createuser -s rupert && createdb -O rupert rupert_development
 bin/rails db:create db:migrate   # from web/
 bin/rails db:import_legacy       # one-time: pull data from legacy/prisma/dev.sqlite
+bin/rails db:sqlite_to_postgres  # one-time: migrate production.sqlite3 -> PG
 bin/rails tailwindcss:build
 bin/rails server        # http://localhost:3000
 ```
@@ -57,21 +61,41 @@ production, configurable via `SYNC_MINUTES` / `config/solid_queue.yml`.
 
 ## GUI pages
 
-- **Dashboard** — counts, drift, recent runs, revenue by source
+- **Dashboard** — per-user customizable widgets (key stats, per-channel
+  revenue, attention, stock alerts, sync/reconcile history)
+- **Sales** — daily sales journal in spreadsheet style: an hourly × location
+  pivot plus every sale of the day in arrival order
+- **Customers** — unified CRM view (searchable, Ransack + Pagy)
 - **Inventory** — products/variants with Shopify vs Square quantities
 - **Reconcile** — SKU-level drift plan + per-SKU priority policy
 - **Ledger** — transaction mirror from both platforms
 - **Alerts** — low-stock flags (resolve/ignore)
 - **Sync** — run syncs, view run history and logs
-- **Settings** — `.env` import/export (JSON API included) and SQLite
-  backup/restore:
+- **Settings** — `.env` import/export (JSON API included) and DB backup/restore:
   - `GET /settings/env.json` · masked env keys
   - `POST /settings/env_import` · body `{ "text": "KEY=VALUE\n…" }`
   - `GET /settings/env_export` · full `.env` text
-  - `GET /settings/backup` · consistent SQLite snapshot (VACUUM INTO)
+  - `GET /settings/backup` · consistent snapshot (PostgreSQL `pg_dump`)
   - `POST /settings/restore` · multipart `file` upload
 
 All pages sit behind Shopify OAuth (the app installs into your store).
+
+## ERP architecture
+
+Rupert is a modular monolith growing into a full ERP for small businesses.
+Extensions live under `app/modules/<name>/` and register themselves in
+`app/models/module_registry.rb` (nav + permission gate). The canonical domain
+core lives in `app/modules/core/` (`Customer`, `Order`, `OrderLine`,
+`Payment`) and is fed by the Shopify/Square sync engine through
+`CanonicalOrderImporter` — a clean seam between the source mirrors
+(`ShopifyProduct`, `LedgerEntry`, …) and the unified ERP model.
+
+- Roles: `super_admin`, `admin`, `manager`, `cashier`, `reader` with a
+  permission matrix in `User::ROLE_PERMISSIONS` and Pundit policy objects
+- Dashboards: per-user widget layout saved as JSON on `User#dashboard_config`
+- Sales grid: `SalesController` builds an hourly × location pivot from
+  `Core::Order` (`groupdate`-ready time series)
+- DB: PostgreSQL (`pg` gem). SQLite is kept only for the one-time legacy import.
 
 ## Deploying to a droplet
 

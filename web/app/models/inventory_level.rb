@@ -7,12 +7,18 @@ class InventoryLevel < ApplicationRecord
   self.table_name = "InventoryLevel"
   self.primary_key = "id"
 
-  belongs_to :location, class_name: "Location", foreign_key: "locationId",
+  belongs_to :location,
+    class_name: "Location",
+    foreign_key: "locationId",
     optional: true
-  belongs_to :shopify_variant, class_name: "ShopifyVariant",
-    foreign_key: "shopifyVariantId", optional: true
-  belongs_to :square_variation, class_name: "SquareVariation",
-    foreign_key: "squareVariationId", optional: true
+  belongs_to :shopify_variant,
+    class_name: "ShopifyVariant",
+    foreign_key: "shopifyVariantId",
+    optional: true
+  belongs_to :square_variation,
+    class_name: "SquareVariation",
+    foreign_key: "squareVariationId",
+    optional: true
 
   scope :by_source, ->(source) { where(source: source) }
 

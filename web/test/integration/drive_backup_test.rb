@@ -11,7 +11,7 @@ class DriveBackupTest < ActionDispatch::IntegrationTest
       host_name: "localhost",
       scope: "read_products",
       is_private: false,
-      is_embedded: false
+      is_embedded: false,
     )
     Shop.create!(shopify_domain: "m11u0i-sb.myshopify.com", shopify_token: "test-token")
     post login_path, params: { email: "admin@example.com", password: "password" }
@@ -43,9 +43,13 @@ class DriveBackupTest < ActionDispatch::IntegrationTest
 
   test "drive_backup runs and returns a success link" do
     EnvStore.set("GOOGLE_DRIVE_REFRESH_TOKEN", "refresh-token")
-    log = BackupLog.create!(status: "success", startedAt: Time.current,
-      fileName: "x.dump", driveUrl: "https://drive.google.com/file/d/FILE1/view",
-      tenant_id: Current.tenant_id)
+    log = BackupLog.create!(
+      status: "success",
+      startedAt: Time.current,
+      fileName: "x.dump",
+      driveUrl: "https://drive.google.com/file/d/FILE1/view",
+      tenant_id: Current.tenant_id,
+    )
     GoogleDriveBackupService.stubs(:backup!).returns(log)
 
     post drive_backup_settings_path

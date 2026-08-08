@@ -11,7 +11,7 @@ class DashboardCustomizeTest < ActionDispatch::IntegrationTest
       host_name: "localhost",
       scope: "read_products",
       is_private: false,
-      is_embedded: false
+      is_embedded: false,
     )
     Shop.create!(shopify_domain: "m11u0i-sb.myshopify.com", shopify_token: "test-token")
     Current.tenant = tenants(:default_tenant)
@@ -37,8 +37,10 @@ class DashboardCustomizeTest < ActionDispatch::IntegrationTest
   end
 
   test "customize saves layout and hides widgets" do
-    post customize_dashboard_path, params: { widgets: %w[stats revenue sync_history],
-      hidden: ["sync_history"] }
+    post customize_dashboard_path, params: {
+      widgets: ["stats", "revenue", "sync_history"],
+      hidden: ["sync_history"],
+    }
     assert_response :success
     body = JSON.parse(response.body)
     assert_equal true, body["ok"]
@@ -59,7 +61,7 @@ class DashboardCustomizeTest < ActionDispatch::IntegrationTest
   end
 
   test "reset clears the saved layout" do
-    @user.update!(dashboard_config: { "widgets" => %w[revenue], "hidden" => [] })
+    @user.update!(dashboard_config: { "widgets" => ["revenue"], "hidden" => [] })
     post customize_dashboard_path, params: { reset: true }
     assert_response :success
 

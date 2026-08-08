@@ -10,9 +10,9 @@ class AlertsController < AuthenticatedController
   def update_status
     alert = StockAlert.find(params[:id])
     next_status = params[:status].to_s
-    if %w[resolved ignored].include?(next_status)
+    if ["resolved", "ignored"].include?(next_status)
       alert.update!(status: next_status, resolvedAt: next_status == "resolved" ? Time.current : nil)
     end
-    redirect_to alerts_path(status: alert.status)
+    redirect_to(alerts_path(status: alert.status))
   end
 end

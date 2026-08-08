@@ -1,6 +1,6 @@
 FROM ruby:4.0.6-alpine
 
-RUN apk add --no-cache build-base sqlite-dev git openssl-dev
+RUN apk add --no-cache build-base postgresql-dev git openssl-dev
 
 ENV RAILS_ENV=production \
     RAILS_LOG_TO_STDOUT=1 \

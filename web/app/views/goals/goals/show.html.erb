@@ -1,0 +1,56 @@
+<div class="space-y-6">
+  <section class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink"><%= @goal.name %></h1>
+      <p class="mt-1 text-sm text-mocha">
+        <span class="<%= @goal.achieved? ? "pill-fern" : @goal.active? ? "pill-olive" : @goal.abandoned? ? "pill-taupe" : "pill-clay" %>"><%= @goal.status %></span>
+        <% if @goal.due_on %><span class="ml-2 text-taupe">Due <%= l(@goal.due_on, format: :long) %></span><% end %>
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <% if @goal.may_activate? %><%= button_to "Activate", transition_goals_goal_path(@goal, event: "activate"), method: :post, class: "btn-primary btn-sm" %><% end %>
+      <% if @goal.may_achieve? %><%= button_to "Mark achieved", transition_goals_goal_path(@goal, event: "achieve"), method: :post, class: "btn-ghost btn-sm" %><% end %>
+      <% if @goal.may_abandon? %><%= button_to "Abandon", transition_goals_goal_path(@goal, event: "abandon"), method: :post, class: "btn-ghost btn-sm" %><% end %>
+      <% if Current.user.can?("projects.write") %>
+        <%= link_to "Edit", edit_goals_goal_path(@goal), class: "btn-ghost btn-sm" %>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-2 gap-4 lg:grid-cols-3">
+    <div class="stat">
+      <p class="stat-label">Current</p>
+      <p class="stat-value mt-1"><%= number_with_precision(@goal.current_value, precision: 2) %></p>
+      <% if @goal.unit %><p class="mt-1 text-xs text-taupe"><%= @goal.unit %></p><% end %>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Target</p>
+      <p class="stat-value mt-1"><%= number_with_precision(@goal.target_value, precision: 2) %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Progress</p>
+      <p class="stat-value mt-1"><%= @goal.progress_pct ? "#{@goal.progress_pct}%" : "—" %></p>
+      <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-haze">
+        <div class="h-full rounded-full <%= @goal.progress_pct && @goal.progress_pct >= 100 ? "bg-fern" : "bg-olive" %>" style="width: <%= @goal.progress_pct || 0 %>%"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="card card-pad">
+    <h2 class="font-display text-lg text-ink">Update progress</h2>
+    <p class="mt-1 text-sm text-mocha"><%= @goal.description.presence || "No description." %></p>
+    <% if Current.user.can?("projects.write") %>
+      <%= form_with model: @goal, url: goals_goal_path(@goal), method: :patch, class: "mt-4 flex flex-wrap items-end gap-3" do |f| %>
+        <div>
+          <%= f.label :current_value, "Current value", class: "mb-1 block text-xs font-semibold uppercase tracking-wider text-mocha" %>
+          <%= f.number_field :current_value, step: "0.01", class: "input w-40" %>
+        </div>
+        <div>
+          <%= f.label :target_value, "Target", class: "mb-1 block text-xs font-semibold uppercase tracking-wider text-mocha" %>
+          <%= f.number_field :target_value, step: "0.01", class: "input w-40" %>
+        </div>
+        <%= f.submit "Save", class: "btn-primary btn-sm" %>
+      <% end %>
+    <% end %>
+  </div>
+</div>

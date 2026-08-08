@@ -42,8 +42,13 @@ class CatalogSyncer
       locations = fetch_locations
       sync_locations!(locations)
       counts = sync_products!(data["products"]["nodes"], locations)
-      { products: counts[:products], variants: counts[:variants],
-        locations: locations, orders: data["orders"], shop: data["shop"] }
+      {
+        products: counts[:products],
+        variants: counts[:variants],
+        locations: locations,
+        orders: data["orders"],
+        shop: data["shop"],
+      }
     end
 
     private
@@ -60,8 +65,11 @@ class CatalogSyncer
       else
         nodes.each do |location|
           upsert_location(
-            source: "shopify", external_id: location["id"], name: location["name"],
-            kind: "RETAIL", active: location["isActive"] != false
+            source: "shopify",
+            external_id: location["id"],
+            name: location["name"],
+            kind: "RETAIL",
+            active: location["isActive"] != false,
           )
         end
       end
@@ -82,11 +90,18 @@ class CatalogSyncer
       variant_count = 0
 
       products.each do |product|
-        ShopifyProduct.upsert({
-          id: product["id"], title: product["title"], status: product["status"],
-          handle: product["handle"], publishedAt: parse_time(product["publishedAt"]),
-          totalInventory: product["totalInventory"].to_i, syncedAt: Time.current
-        }, unique_by: :id)
+        ShopifyProduct.upsert(
+          {
+            id: product["id"],
+            title: product["title"],
+            status: product["status"],
+            handle: product["handle"],
+            publishedAt: parse_time(product["publishedAt"]),
+            totalInventory: product["totalInventory"].to_i,
+            syncedAt: Time.current,
+          },
+          unique_by: :id,
+        )
 
         Array(product.dig("variants", "nodes")).each do |variant|
           sync_variant!(product["id"], variant, primary)
@@ -99,12 +114,15 @@ class CatalogSyncer
 
     def sync_variant!(product_id, variant, location)
       attrs = {
-        id: variant["id"], productId: product_id, title: variant["title"], sku: variant["sku"],
-        price: variant["price"].nil? ? nil : variant["price"].to_f,
+        id: variant["id"],
+        productId: product_id,
+        title: variant["title"],
+        sku: variant["sku"],
+        price: variant["price"]&.to_f,
         inventoryQuantity: variant["inventoryQuantity"].to_i,
         tracked: variant.dig("inventoryItem", "tracked") == true,
         inventoryItemId: variant.dig("inventoryItem", "id"),
-        syncedAt: Time.current
+        syncedAt: Time.current,
       }
       ShopifyVariant.upsert(attrs, unique_by: :id)
 
@@ -112,10 +130,16 @@ class CatalogSyncer
 
       quantity = attrs[:inventoryQuantity]
       level = InventoryLevel.find_or_initialize_by(
-        source: "shopify", locationId: location["id"], shopifyVariantId: variant["id"]
+        source: "shopify", locationId: location["id"], shopifyVariantId: variant["id"],
       )
-      journal_movement(level, variant["id"], quantity, source: "shopify",
-        reference: "sync", sku: variant["sku"])
+      journal_movement(
+        level,
+        variant["id"],
+        quantity,
+        source: "shopify",
+        reference: "sync",
+        sku: variant["sku"],
+      )
       level.quantity = quantity
       level.available = quantity
       level.updatedAt = Time.current
@@ -129,10 +153,17 @@ class CatalogSyncer
       return if before == new_quantity
 
       InventoryMovement.create!(
-        sku: sku, shopifyVariantId: variant_id, source: source, direction: "set",
-        delta: new_quantity - before, quantityBefore: before, quantityAfter: new_quantity,
-        reason: "Synced from Shopify", reference: reference, actor: "system",
-        createdAt: Time.current
+        sku: sku,
+        shopifyVariantId: variant_id,
+        source: source,
+        direction: "set",
+        delta: new_quantity - before,
+        quantityBefore: before,
+        quantityAfter: new_quantity,
+        reason: "Synced from Shopify",
+        reference: reference,
+        actor: "system",
+        createdAt: Time.current,
       )
     end
 

@@ -1,22 +1,23 @@
 <div class="min-h-full">
   <header class="sticky top-0 z-20 border-b border-fog bg-oat/90 backdrop-blur">
-    <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-6 py-3.5">
+    <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-6 py-3">
       <%= link_to root_path, class: "flex items-center gap-3" do %>
         <span class="grid h-9 w-9 place-items-center rounded-xl bg-olive font-display text-lg text-cream">R</span>
-        <span class="block font-display text-lg text-ink">Rupert</span>
+        <span class="hidden font-display text-lg text-ink sm:block">Rupert</span>
       <% end %>
 
       <% if Current.user %>
-        <nav class="flex flex-wrap items-center gap-1">
-          <% { root_path => "Dashboard", inventory_index_path => "Inventory", reconcile_index_path => "Reconcile", ledger_index_path => "Ledger", alerts_path => "Alerts", syncs_path => "Sync", settings_path => "Settings" }.each do |path, label| %>
-            <%= link_to label, path, class: (current_page?(path) ? "rounded-full bg-olive px-3.5 py-1.5 text-sm font-medium text-cream" : "rounded-full px-3.5 py-1.5 text-sm font-medium text-mocha hover:bg-haze hover:text-ink") %>
-          <% end %>
-          <% if Current.user.super_admin? %>
-            <%= link_to "Tenants", tenants_path, class: "rounded-full px-3.5 py-1.5 text-sm font-medium text-mocha hover:bg-haze hover:text-ink" %>
+        <nav class="flex flex-wrap items-center gap-1" aria-label="Module areas">
+          <% nav_areas.each do |area| %>
+            <%= link_to area[:name], safe_module_path(area[:modules].first),
+              class: (area[:key] == active_area_key ? "rounded-full bg-olive px-3.5 py-1.5 text-sm font-medium text-cream" : "rounded-full px-3.5 py-1.5 text-sm font-medium text-mocha hover:bg-haze hover:text-ink") %>
           <% end %>
         </nav>
 
         <div class="flex items-center gap-3">
+          <% if Current.user.super_admin? %>
+            <%= link_to "Tenants", tenants_path, class: "rounded-full px-3.5 py-1.5 text-sm font-medium text-mocha hover:bg-haze hover:text-ink" %>
+          <% end %>
           <% if @last_sync %>
             <% synced = @last_sync.success? %>
             <span class="<%= synced ? "pill-fern" : "pill-clay" %>" title="<%= l(@last_sync.startedAt, format: :long) %>">
@@ -30,12 +31,25 @@
             </span>
           <% end %>
 
-          <span class="hidden text-sm text-mocha sm:block"><%= Current.user.email %></span>
+          <span class="hidden text-sm text-mocha lg:block"><%= Current.user.email %></span>
           <%= button_to "Sign out", logout_path, method: :delete, class: "rounded-full border border-fog px-3.5 py-1.5 text-sm font-medium text-mocha hover:bg-haze hover:text-ink" %>
         </div>
       <% end %>
     </div>
   </header>
+
+  <% if Current.user && active_area_modules.length > 1 %>
+    <div class="border-b border-fog bg-cream/70">
+      <div class="mx-auto max-w-6xl overflow-x-auto px-6">
+        <nav class="flex items-center gap-1 py-1.5" aria-label="Module">
+          <% active_area_modules.each do |entry| %>
+            <%= link_to entry.name, safe_module_path(entry),
+              class: (active_module_entry&.key == entry.key ? "rounded-full bg-paper px-3.5 py-1.5 text-sm font-semibold text-olive-deep shadow-sm" : "rounded-full px-3.5 py-1.5 text-sm font-medium text-mocha hover:bg-haze hover:text-ink") %>
+          <% end %>
+        </nav>
+      </div>
+    </div>
+  <% end %>
 
   <main class="mx-auto max-w-6xl px-6 py-8">
     <% if notice %><div class="mb-4 rounded-xl border border-fern/30 bg-fern/10 px-4 py-2.5 text-sm text-fern"><%= notice %></div><% end %>

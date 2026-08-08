@@ -9,7 +9,7 @@ class BackupLog < ApplicationRecord
   self.table_name = "BackupLog"
   self.primary_key = "id"
 
-  STATUSES = %w[running success failed].freeze
+  STATUSES = ["running", "success", "failed"].freeze
 
   validates :status, inclusion: { in: STATUSES }
   validates :startedAt, presence: true

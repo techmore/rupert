@@ -4,15 +4,15 @@
 # before the ERP becomes useful. Once the required keys are set it redirects to
 # the dashboard.
 class OnboardingController < ApplicationController
-  REQUIRED_KEYS = %w[SHOPIFY_CLIENT_ID SHOPIFY_CLIENT_SECRET].freeze
-  OPTIONAL_KEYS = %w[SQUARE_ACCESS_TOKEN].freeze
+  REQUIRED_KEYS = ["SHOPIFY_CLIENT_ID", "SHOPIFY_CLIENT_SECRET"].freeze
+  OPTIONAL_KEYS = ["SQUARE_ACCESS_TOKEN"].freeze
 
   def self.configured?
     REQUIRED_KEYS.all? { |key| EnvStore.fetch(key, "").present? }
   end
 
   def index
-    return redirect_to root_path if configured?
+    return redirect_to(root_path) if configured?
 
     @status = EnvStore.export.each_with_object({}) do |(key, value), out|
       out[key] = value.present?

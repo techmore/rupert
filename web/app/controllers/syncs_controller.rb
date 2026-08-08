@@ -8,18 +8,18 @@ class SyncsController < AuthenticatedController
 
   def create
     SyncJob.perform_later(tenant_id: Current.tenant_id, mode: "manual", actor: Current.user.email)
-    redirect_to syncs_path, notice: "Full sync started"
+    redirect_to(syncs_path, notice: "Full sync started")
   rescue SyncEngine::AlreadyRunning => e
-    redirect_to syncs_path, alert: e.message
+    redirect_to(syncs_path, alert: e.message)
   end
 
   def source
     source = params[:source].to_s
-    if %w[shopify square].include?(source)
+    if ["shopify", "square"].include?(source)
       SyncJob.perform_later(tenant_id: Current.tenant_id, mode: "manual", source: source, actor: Current.user.email)
-      redirect_to syncs_path, notice: "#{source.capitalize} sync started"
+      redirect_to(syncs_path, notice: "#{source.capitalize} sync started")
     else
-      redirect_to syncs_path, alert: "Unknown source"
+      redirect_to(syncs_path, alert: "Unknown source")
     end
   end
 

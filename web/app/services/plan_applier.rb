@@ -31,13 +31,13 @@ class PlanApplier
       square_home = SquareSyncer.primary_location_id
 
       applied = 0
-      results = grouped.values.map { |items| items.first }.map do |row|
+      results = grouped.values.map(&:first).map do |row|
         notes = []
         ok = true
 
         if row.square_delta != 0 && square_home.present?
           begin
-            square_request = SquareClient.request("/inventory/changes/batch-create", method: "POST", body: {
+            SquareClient.request("/inventory/changes/batch-create", method: "POST", body: {
               idempotency_key: idempotency_key("hh-sync", row.sku),
               changes: [{
                 type: "PHYSICAL_COUNT",
@@ -47,10 +47,10 @@ class PlanApplier
                   state: "IN_STOCK",
                   location_id: square_home.externalId,
                   quantity: row.square_home_target.to_s,
-                  occurred_at: Time.current.iso8601
-                }
+                  occurred_at: Time.current.iso8601,
+                },
               }],
-              ignore_unchanged_counts: true
+              ignore_unchanged_counts: true,
             })
             notes << "Square #{square_home.name}→#{row.square_home_target} (shared total #{row.target})"
             journal_movement(row, source: "reconcile", square_delta: row.square_delta, reference: "apply")
@@ -71,9 +71,9 @@ class PlanApplier
                   reason: "correction",
                   name: "available",
                   referenceDocumentUri: "herbal-healers://inventory/reconciliation",
-                  changes: [{ delta: row.shopify_delta, inventoryItemId: row.inventory_item_id, locationId: shopify_location.externalId }]
+                  changes: [{ delta: row.shopify_delta, inventoryItemId: row.inventory_item_id, locationId: shopify_location.externalId }],
                 },
-                idempotencyKey: idempotency_key("hh", row.sku)
+                idempotencyKey: idempotency_key("hh", row.sku),
               })
               user_errors = result.dig("inventoryAdjustQuantities", "userErrors") || []
               raise ShopifyClient::Error, user_errors.map { |item| item["message"] }.join("; ") if user_errors.any?
@@ -102,7 +102,7 @@ class PlanApplier
       reasons << "Shopify must have exactly one active inventory location for this shared-pool setup" if shopify_locations != 1
       square_home = SquareSyncer.primary_location_id
       reasons << "Square home-base location is unavailable" if square_home.nil?
-      blocked = rows.count { |row| row.square_delta && row.square_home_target != nil && row.square_home_target.negative? }
+      blocked = rows.count { |row| row.square_delta && !row.square_home_target.nil? && row.square_home_target.negative? }
       reasons << "#{blocked} corrections would make the Square home-base count negative" if blocked.positive?
 
       raise SafetyLocked, "Inventory writes are safety-locked because the shared-pool preflight did not pass: #{reasons.join("; ")}" if reasons.any?
@@ -121,7 +121,7 @@ class PlanApplier
         reason: "Reconciliation applied",
         reference: reference,
         actor: "system",
-        createdAt: Time.current
+        createdAt: Time.current,
       )
     end
 

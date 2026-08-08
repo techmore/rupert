@@ -26,9 +26,9 @@ class SquareClient
     def request(pathname, method: "GET", body: nil)
       uri = URI("#{base_url}#{pathname}")
       request = case method
-                when "POST" then Net::HTTP::Post.new(uri)
-                else Net::HTTP::Get.new(uri)
-                end
+      when "POST" then Net::HTTP::Post.new(uri)
+      else Net::HTTP::Get.new(uri)
+      end
       request["Authorization"] = "Bearer #{token}"
       request["Content-Type"] = "application/json"
       request["Square-Version"] = SQUARE_VERSION
@@ -38,7 +38,11 @@ class SquareClient
         http.request(request)
       end
 
-      payload = JSON.parse(response.body) rescue {}
+      payload = begin
+        JSON.parse(response.body)
+      rescue
+        {}
+      end
       unless response.is_a?(Net::HTTPSuccess)
         detail = Array(payload["errors"]).map { |e| e["detail"] || "unknown error" }.join("; ")
         detail = "HTTP #{response.code}" if detail.blank?
@@ -70,7 +74,7 @@ class SquareClient
               variationId: variation["id"],
               itemId: object["id"],
               sku: variation.dig("item_variation_data", "sku") || "",
-              name: variation.dig("item_variation_data", "name") || item_name
+              name: variation.dig("item_variation_data", "name") || item_name,
             }
           end
         end
@@ -85,7 +89,7 @@ class SquareClient
       counts_by_location = {}
       catalog_ids.each_slice(100) do |ids|
         payload = request("/inventory/counts/batch-retrieve", method: "POST", body: {
-          location_ids: location_ids, catalog_object_ids: ids, states: ["IN_STOCK"]
+          location_ids: location_ids, catalog_object_ids: ids, states: ["IN_STOCK"],
         })
         Array(payload["counts"]).each do |count|
           next if count["quantity"].nil?
@@ -110,11 +114,11 @@ class SquareClient
           query: {
             filter: {
               state_filter: { states: ["COMPLETED"] },
-              date_time_filter: { created_at: { start_at: since_iso } }
+              date_time_filter: { created_at: { start_at: since_iso } },
             },
-            sort: { sort_field: "UPDATED_AT", sort_order: "DESC" }
+            sort: { sort_field: "UPDATED_AT", sort_order: "DESC" },
           },
-          limit: 200
+          limit: 200,
         }
         body[:cursor] = cursor if cursor
         payload = request("/orders/search", method: "POST", body: body)

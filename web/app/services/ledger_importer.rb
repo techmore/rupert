@@ -3,7 +3,7 @@
 # Port of shopifyLedgerEntries/squareLedgerEntries/upsertLedger from the
 # legacy console — mirrors order money data into the LedgerEntry table.
 class LedgerImporter
-  REVENUE_STATUSES = %w[PAID PARTIALLY_REFUNDED PARTIALLY_PAID COMPLETED].freeze
+  REVENUE_STATUSES = ["PAID", "PARTIALLY_REFUNDED", "PARTIALLY_PAID", "COMPLETED"].freeze
 
   def self.from_shopify_orders!(nodes)
     entries = Array(nodes).map do |order|
@@ -20,10 +20,11 @@ class LedgerImporter
         grossCents: ((money&.dig("amount").to_f || 0) * 100).round,
         status: order["displayFinancialStatus"] || "ANY",
         lineItems: items.sum { |item| item["quantity"].to_i },
-        summary: items.first(3).map { |item| item["title"] }.join(", ")
+        summary: items.first(3).map { |item| item["title"] }.join(", "),
       }
     end
     upsert!(entries)
+    CanonicalOrderImporter.from_shopify!(entries)
   end
 
   def self.from_square_orders!(orders)
@@ -34,17 +35,22 @@ class LedgerImporter
         id: "square:#{order["id"]}",
         source: "square",
         sourceOrderId: order["id"],
-        orderName: "SQ-#{order['id'].to_s.slice(0, 12)}",
-        occurredAt: (Time.zone.parse(order["created_at"]) rescue Time.current),
+        orderName: "SQ-#{order["id"].to_s.slice(0, 12)}",
+        occurredAt: begin
+          Time.zone.parse(order["created_at"])
+        rescue
+          Time.current
+        end,
         syncedAt: Time.current,
         currency: order.dig("total_money", "currency") || "USD",
         grossCents: amount,
         status: order["state"] || "UNKNOWN",
         lineItems: items.sum { |item| item["quantity"].to_i },
-        summary: items.first(3).map { |item| item["name"] || item["catalog_object_name"] || "Item" }.join(", ")
+        summary: items.first(3).map { |item| item["name"] || item["catalog_object_name"] || "Item" }.join(", "),
       }
     end
     upsert!(entries)
+    CanonicalOrderImporter.from_square!(entries)
   end
 
   def self.upsert!(entries)

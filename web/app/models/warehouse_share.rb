@@ -9,7 +9,9 @@ class WarehouseShare < ApplicationRecord
   self.table_name = "WarehouseShare"
   self.primary_key = "id"
 
-  has_many :tiers, class_name: "WarehouseTier", foreign_key: "shareId",
+  has_many :tiers,
+    class_name: "WarehouseTier",
+    foreign_key: "shareId",
     dependent: :destroy
 
   before_create :generate_token

@@ -11,6 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap">
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
     <% if ShopifyApp.configuration.api_key.present? %>
       <%= javascript_include_tag "https://cdn.shopify.com/shopifycloud/app-bridge.js", data: { "api-key": ShopifyApp.configuration.api_key } %>
     <% end %>

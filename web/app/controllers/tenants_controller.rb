@@ -16,18 +16,18 @@ class TenantsController < ApplicationController
     @tenant = Tenant.new(
       name: params[:name],
       subdomain: params[:subdomain],
-      shopify_shop_domain: params[:shopify_shop_domain]
+      shopify_shop_domain: params[:shopify_shop_domain],
     )
     if @tenant.save
-      redirect_to tenants_path, notice: "Tenant #{@tenant.name} created at #{@tenant.subdomain}.#{request.domain}"
+      redirect_to(tenants_path, notice: "Tenant #{@tenant.name} created at #{@tenant.subdomain}.#{request.domain}")
     else
-      render :new, status: :unprocessable_entity
+      render(:new, status: :unprocessable_entity)
     end
   end
 
   private
 
   def require_super_admin
-    redirect_to root_path, alert: "Not authorized" unless Current.user&.super_admin?
+    redirect_to(root_path, alert: "Not authorized") unless Current.user&.super_admin?
   end
 end

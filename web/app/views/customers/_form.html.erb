@@ -1,0 +1,28 @@
+<%= form_with model: customer, class: "space-y-4" do |f| %>
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div>
+      <%= f.label :first_name, "First name", class: "mb-1 block text-xs font-semibold uppercase tracking-wider text-mocha" %>
+      <%= f.text_field :first_name, class: "input" %>
+    </div>
+    <div>
+      <%= f.label :last_name, "Last name", class: "mb-1 block text-xs font-semibold uppercase tracking-wider text-mocha" %>
+      <%= f.text_field :last_name, class: "input" %>
+    </div>
+    <div>
+      <%= f.label :email, "Email", class: "mb-1 block text-xs font-semibold uppercase tracking-wider text-mocha" %>
+      <%= f.email_field :email, class: "input" %>
+    </div>
+    <div>
+      <%= f.label :phone, "Phone", class: "mb-1 block text-xs font-semibold uppercase tracking-wider text-mocha" %>
+      <%= f.telephone_field :phone, class: "input" %>
+    </div>
+  </div>
+  <div>
+    <%= f.label :notes, "Notes", class: "mb-1 block text-xs font-semibold uppercase tracking-wider text-mocha" %>
+    <%= f.text_area :notes, rows: 4, class: "input" %>
+  </div>
+  <div class="flex items-center gap-3">
+    <%= f.submit "Save customer", class: "btn-primary" %>
+    <%= link_to "Cancel", customer.persisted? ? customer_path(customer) : customers_path, class: "btn-ghost" %>
+  </div>
+<% end %>

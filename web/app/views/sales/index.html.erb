@@ -1,0 +1,136 @@
+<div class="space-y-6">
+  <section class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink">Sales</h1>
+      <p class="mt-1 text-sm text-mocha">Daily sales journal — where each sale came in, in the order it happened.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <%= form_tag sales_path, method: :get, class: "flex items-center gap-2" do %>
+        <%= text_field_tag :date, @date.iso8601, type: "date", class: "select" %>
+        <%= submit_tag "Jump to day", class: "btn-ghost btn-sm" %>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="stat">
+      <p class="stat-label"><%= l(@date, format: :long) %> total</p>
+      <p class="stat-value mt-1"><%= number_to_currency(@day_total_cents / 100.0) %></p>
+      <p class="mt-1 text-xs text-taupe"><%= @day_sales.length %> sales</p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Avg sale</p>
+      <p class="stat-value mt-1"><%= number_to_currency((@day_sales.empty? ? 0 : @day_total_cents / @day_sales.length) / 100.0) %></p>
+      <p class="mt-1 text-xs text-taupe">for the day</p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Busiest hour</p>
+      <p class="stat-value mt-1 font-display text-2xl"><%= @hourly.max_by { |r| r[:cells].values.sum { |c| c[:count] } }&.dig(:label) || "—" %></p>
+      <p class="mt-1 text-xs text-taupe">9 AM – 9 PM</p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Total · <%= @window_days %> days</p>
+      <p class="stat-value mt-1"><%= number_to_currency(@total_cents / 100.0) %></p>
+      <p class="mt-1 text-xs text-taupe"><%= @sales.length %> recent sales</p>
+    </div>
+  </section>
+
+  <section class="grid gap-4 lg:grid-cols-2">
+    <div class="card card-pad">
+      <div class="flex items-baseline justify-between">
+        <h2 class="font-display text-xl text-ink">Revenue · last <%= @window_days %> days</h2>
+        <span class="text-xs text-taupe">daily gross</span>
+      </div>
+      <div class="mt-4">
+        <%= area_chart @revenue_series, height: "200px", legend: false, colors: ["#1a393d"], library: { scales: { x: { ticks: { maxTicksLimit: 8 } } } } %>
+      </div>
+    </div>
+
+    <div class="card card-pad">
+      <div class="flex items-baseline justify-between">
+        <h2 class="font-display text-xl text-ink">Sales by hour of day</h2>
+        <span class="text-xs text-taupe">gross · <%= @window_days %> days</span>
+      </div>
+      <div class="mt-4">
+        <%= column_chart @hourly_series, height: "200px", legend: false, colors: ["#1e7b82"], library: { scales: { x: { ticks: { maxTicksLimit: 12 } } } } %>
+      </div>
+    </div>
+  </section>
+
+  <div class="card overflow-hidden">
+    <div class="border-b border-fog px-5 py-3">
+      <h2 class="font-display text-lg text-ink">Hourly × location</h2>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th class="th">Hour</th>
+            <% @hourly.first[:cells].keys.each do |name| %>
+              <th class="th text-right"><%= name %></th>
+            <% end %>
+            <th class="th text-right">Day total</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% @hourly.each do |row| %>
+            <tr class="hover:bg-cream">
+              <td class="td whitespace-nowrap font-medium text-mocha"><%= row[:label] %></td>
+              <% row[:cells].each do |name, cell| %>
+                <td class="td text-right">
+                  <% if cell[:count].positive? %>
+                    <p class="font-semibold text-ink"><%= number_to_currency(cell[:cents] / 100.0) %></p>
+                    <p class="text-xs text-taupe"><%= cell[:count] %> sales</p>
+                  <% else %>
+                    <span class="text-taupe">·</span>
+                  <% end %>
+                </td>
+              <% end %>
+              <td class="td text-right font-semibold text-olive"><%= number_to_currency(row[:cells].values.sum { |c| c[:cents] } / 100.0) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card overflow-hidden">
+    <div class="flex items-center justify-between border-b border-fog px-5 py-3">
+      <h2 class="font-display text-lg text-ink">The day, sale by sale</h2>
+      <span class="text-xs text-taupe"><%= @day_sales.length %> in arrival order</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th class="th">Time</th>
+            <th class="th">Order</th>
+            <th class="th">Where</th>
+            <th class="th">Channel</th>
+            <th class="th text-right">Items</th>
+            <th class="th text-right">Gross</th>
+            <th class="th">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% if @day_sales.empty? %>
+            <tr>
+              <td class="td py-8 text-center text-taupe">No sales recorded on <%= l(@date, format: :long) %>.</td>
+            </tr>
+          <% end %>
+          <% @day_sales.each do |sale| %>
+            <tr class="hover:bg-cream">
+              <td class="td whitespace-nowrap text-mocha"><%= l(sale.occurred_at, format: :time) %></td>
+              <td class="td font-medium text-ink"><%= sale.order_number.presence || sale.source_order_id.first(12) %></td>
+              <td class="td"><span class="pill-taupe"><%= sale.location&.name || "Unknown" %></span></td>
+              <td class="td"><span class="pill-taupe capitalize"><%= sale.channel %></span></td>
+              <td class="td text-right text-mocha"><%= sale.line_items %></td>
+              <td class="td text-right font-medium text-ink"><%= number_to_currency(sale.gross_cents / 100.0) %></td>
+              <td class="td"><span class="<%= %w[paid fulfilled].include?(sale.status) ? "pill-fern" : "pill-clay" %>"><%= sale.status %></span></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

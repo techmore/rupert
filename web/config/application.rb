@@ -15,9 +15,14 @@ Bundler.require(*Rails.groups)
 module ShopifyAppTemplateRuby
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
-    config.load_defaults 8.1
+    config.load_defaults(8.1)
 
     config.assets.prefix = "/api/assets"
+
+    # ERP modules live in app/modules/<name>. The directory is the autoload
+    # root, so app/modules/core/order.rb -> Core::Order. New modules are
+    # picked up automatically.
+    config.autoload_paths << Rails.root.join("app/modules")
 
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
