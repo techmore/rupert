@@ -1,0 +1,43 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+info.txt
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+build/
+dist/
+.turbo/
+
+# Logs + runtime artifacts
+*.log
+*.jsonl
+server-error.log
+server-output.log
+
+# Data snapshots (contain order/inventory data)
+shopify-active-products.json
+shopify-operations-snapshot.json
+square-snapshot.json
+
+# Local database (contains sessions + mirrored data)
+prisma/dev.sqlite
+prisma/dev.sqlite-journal
+
+# Env-local caches
+node_modules/.cache/
+.react-router/
+
+# Vercel / deploy tooling
+.vercel/
+.netlify/
