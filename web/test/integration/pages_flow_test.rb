@@ -27,6 +27,9 @@ class PagesFlowTest < ActionDispatch::IntegrationTest
       is_embedded: false
     )
     Shop.create!(shopify_domain: "m11u0i-sb.myshopify.com", shopify_token: "test-token")
+    Current.tenant = tenants(:default_tenant)
+    EnvStore.set("SHOPIFY_CLIENT_ID", "test-client-id")
+    EnvStore.set("SHOPIFY_CLIENT_SECRET", "test-client-secret")
     post login_path, params: { email: "admin@example.com", password: "password" }
   end
 

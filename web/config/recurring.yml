@@ -8,3 +8,7 @@ production:
     class: SyncSchedulerJob
     queue: default
     schedule: every 30 minutes
+  drive_backups:
+    class: BackupJob
+    queue: default
+    schedule: every 6 hours

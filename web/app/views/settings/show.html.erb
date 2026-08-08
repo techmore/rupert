@@ -41,15 +41,40 @@
   </section>
 
   <section class="card card-pad">
-    <h2 class="font-display text-xl text-ink">API</h2>
-    <p class="mt-2 text-sm text-mocha">The same operations are available as JSON under the authenticated session:</p>
-    <ul class="mt-3 space-y-1.5 font-mono text-xs text-mocha">
-      <li><span class="text-olive">GET</span> /settings/env &nbsp;·&nbsp; masked env keys</li>
-      <li><span class="text-olive">POST</span> /settings/env_import &nbsp;·&nbsp; body: <code>{ "text": "KEY=VALUE\n..." }</code></li>
-      <li><span class="text-olive">GET</span> /settings/env_export &nbsp;·&nbsp; full .env text</li>
-      <li><span class="text-olive">GET</span> /settings/backup &nbsp;·&nbsp; SQLite snapshot download</li>
-      <li><span class="text-olive">POST</span> /settings/restore &nbsp;·&nbsp; multipart <code>file</code></li>
-    </ul>
+    <div class="flex items-baseline justify-between">
+      <h2 class="font-display text-xl text-ink">Google Drive backup</h2>
+      <span id="drive-conn" class="badge"></span>
+    </div>
+    <p class="mt-2 text-xs text-taupe">Automatically snapshot the database to your Google Drive every 6 hours and keep the last <span id="drive-retention">7</span> backups. Each attempt is logged below.</p>
+
+    <div id="drive-setup" class="mt-5 hidden">
+      <p class="text-xs text-mocha">Set these keys on the Environment (.env) card, then connect:</p>
+      <ul class="mt-2 space-y-1 font-mono text-xs text-mocha">
+        <li>GOOGLE_DRIVE_CLIENT_ID · Google Cloud OAuth 2.0 client ID</li>
+        <li>GOOGLE_DRIVE_CLIENT_SECRET · the matching client secret</li>
+        <li>GOOGLE_DRIVE_RETENTION · backups to keep (default 7)</li>
+      </ul>
+      <p class="mt-3 text-xs text-taupe">In the Google Cloud console, add this exact redirect URI to the client's authorized redirects:</p>
+      <code class="mt-1 inline-block rounded-lg bg-haze px-3 py-1.5 font-mono text-xs text-ink"><%= drive_oauth_callback_settings_url %></code>
+    </div>
+
+    <div id="drive-connected" class="mt-5 hidden">
+      <div class="flex flex-wrap items-center gap-3">
+        <%= button_to "Back up now", drive_backup_settings_path, method: :post, class: "btn-primary", data: { turbo: false }, id: "drive-backup-btn" %>
+        <a id="drive-latest-link" href="#" target="_blank" rel="noopener" class="btn-ghost hidden">Open latest backup ↗</a>
+        <%= button_to "Disconnect", drive_disconnect_settings_path, method: :post, class: "btn-ghost btn-sm", data: { turbo: false } %>
+      </div>
+      <p id="drive-backup-result" class="mt-3 text-xs"></p>
+    </div>
+
+    <div id="drive-connect-btn" class="mt-5 hidden">
+      <%= link_to "Connect Google Drive", drive_auth_settings_path, class: "btn-primary", data: { turbo: false } %>
+    </div>
+
+    <div class="mt-6">
+      <h3 class="text-sm font-display text-ink">Recent backups</h3>
+      <div id="drive-logs" class="mt-2 space-y-1.5"></div>
+    </div>
   </section>
 </div>
 
@@ -103,5 +128,88 @@
           if (res.ok) setTimeout(function () { window.location.reload(); }, 1000);
         });
     });
+
+    var connEl = document.getElementById("drive-conn");
+    var setupEl = document.getElementById("drive-setup");
+    var connectedEl = document.getElementById("drive-connected");
+    var connectBtnEl = document.getElementById("drive-connect-btn");
+    var logsEl = document.getElementById("drive-logs");
+    var resultEl = document.getElementById("drive-backup-result");
+
+    function driveBadge(status) {
+      connEl.textContent = status.connected ? "Connected" : (status.configured ? "Not connected" : "Not configured");
+      connEl.className = "badge " + (status.connected ? "bg-fern" : "bg-taupe");
+    }
+
+    function driveRender(s) {
+      driveBadge(s);
+      document.getElementById("drive-retention").textContent = s.retention;
+      setupEl.classList.toggle("hidden", s.configured);
+      connectedEl.classList.toggle("hidden", !s.connected);
+      connectBtnEl.classList.toggle("hidden", !s.configured || s.connected);
+
+      var link = document.getElementById("drive-latest-link");
+      if (s.latest_drive_url) { link.href = s.latest_drive_url; link.classList.remove("hidden"); }
+      else { link.classList.add("hidden"); }
+
+      var latest = s.last;
+      if (latest && latest.status === "success" && latest.driveUrl) {
+        resultEl.textContent = "Last successful backup: " + (latest.fileName || "") + " — " + latest.driveUrl;
+      } else if (latest && latest.status === "failed") {
+        resultEl.textContent = "Last backup failed: " + (latest.error || "unknown error");
+      } else {
+        resultEl.textContent = "";
+      }
+
+      fetch("/settings/drive_logs.json", { headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then(function (r) { return r.json(); })
+        .then(function (rows) {
+          logsEl.innerHTML = "";
+          if (!rows.length) {
+            logsEl.innerHTML = '<p class="text-xs text-taupe">No backups yet.</p>';
+            return;
+          }
+          rows.forEach(function (row) {
+            var el = document.createElement("div");
+            el.className = "flex items-center justify-between gap-3 rounded-xl bg-haze px-4 py-2 text-xs";
+            var label = row.status === "success" ? "bg-fern" : (row.status === "failed" ? "bg-rose" : "bg-butter");
+            el.innerHTML = '<div class="flex items-center gap-2"><span class="dot ' + label + '"></span>' +
+              '<span class="font-mono text-ink">' + (row.fileName || "—") + '</span>' +
+              (row.driveUrl ? '<a href="' + row.driveUrl + '" target="_blank" rel="noopener" class="text-olive hover:underline">open ↗</a>' : "") + '</div>' +
+              '<div class="text-right text-taupe"><span>' + row.finishedLabel + '</span>' +
+              (row.error ? '<p class="text-rose">' + row.error + '</p>' : "") + '</div>';
+            logsEl.appendChild(el);
+          });
+        });
+    }
+
+    function driveRefresh() {
+      fetch("/settings/drive_status.json", { headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then(function (r) { return r.json(); })
+        .then(driveRender)
+        .catch(function () { connEl.textContent = "Status unavailable"; });
+    }
+
+    var backupBtn = document.getElementById("drive-backup-btn");
+    if (backupBtn) {
+      backupBtn.addEventListener("click", function (e) {
+        e.preventDefault();
+        resultEl.textContent = "Backing up…";
+        fetch("/settings/drive_backup.json", { method: "POST", headers: Object.assign({ "X-Requested-With": "XMLHttpRequest" }, csrfHeader) })
+          .then(function (res) { return res.json().then(function (b) { return { ok: res.ok, body: b }; }); })
+          .then(function (res) {
+            if (res.ok) {
+              resultEl.textContent = res.body.status === "success"
+                ? "Backup uploaded. Open it on Google Drive: " + res.body.driveUrl
+                : "Backup failed: " + (res.body.error || "unknown error");
+              driveRefresh();
+            } else {
+              resultEl.textContent = "Error: " + res.body.error;
+            }
+          });
+      });
+    }
+
+    driveRefresh();
   })();
 </script>

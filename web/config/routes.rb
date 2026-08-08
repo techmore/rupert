@@ -52,6 +52,12 @@ Rails.application.routes.draw do
     get :env_export
     get :backup
     post :restore, defaults: { format: :json }
+    get :drive_status, defaults: { format: :json }
+    get :drive_logs, defaults: { format: :json }
+    get :drive_auth
+    get :drive_oauth_callback
+    post :drive_backup, defaults: { format: :json }
+    post :drive_disconnect
   end
 
   get "/warehouse", to: "warehouse#index", as: :warehouse

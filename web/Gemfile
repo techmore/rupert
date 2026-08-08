@@ -64,7 +64,7 @@ gem "signet"
 
 # --- ERP framework gems ---
 # Fast pagination
-gem "pagy", "~> 8.6", "~> 8.0"
+gem "pagy", "~> 8.6"
 # Search / sort / filter for index pages
 gem "ransack"
 # Time-series grouping (group_by_hour/day/week/month)

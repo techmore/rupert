@@ -11,6 +11,8 @@ module EnvStore
     SQUARE_APPLICATION_ID SQUARE_ACCESS_TOKEN SQUARE_ENVIRONMENT SQUARE_LOCATION_ID
     SQUARE_SANDBOX_APPLICATION_ID SQUARE_SANDBOX_ACCESS_TOKEN
     SYNC_MINUTES
+    GOOGLE_DRIVE_CLIENT_ID GOOGLE_DRIVE_CLIENT_SECRET GOOGLE_DRIVE_REFRESH_TOKEN
+    GOOGLE_DRIVE_FOLDER_ID GOOGLE_DRIVE_RETENTION
   ].freeze
 
   # Settings (DB) win over ENV. ENV is only consulted as a global fallback
@@ -30,6 +32,20 @@ module EnvStore
 
   def self.scoped(key)
     Setting.find_by(key: key, tenant_id: Current.tenant_id)
+  end
+
+  # Write a managed key into the tenant settings (nil removes it).
+  def self.set(key, value)
+    raise ArgumentError, "Key is not managed by the settings store" unless MANAGED_KEYS.include?(key)
+
+    if value.nil?
+      scoped(key)&.destroy
+    else
+      setting = Setting.find_or_initialize_by(key: key, tenant_id: Current.tenant_id)
+      setting.value = value.to_s
+      setting.save!
+    end
+    value
   end
 
   def self.import!(text)

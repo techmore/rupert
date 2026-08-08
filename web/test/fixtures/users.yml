@@ -7,4 +7,4 @@ regular_user:
   email: 'admin@example.com'
   password_digest: <%= BCrypt::Password.create("password") %>
   role: admin
-  tenant: default_tenant
+  tenant_id: 'test-tenant-default'
