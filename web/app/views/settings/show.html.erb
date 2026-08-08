@@ -97,6 +97,7 @@
 
     <div class="mt-4 flex flex-wrap items-center gap-3">
       <%= button_to "Generate agent keypair", buzz_generate_settings_path, method: :post, class: "btn-ghost", data: { turbo: false } %>
+      <%= button_to "Publish agent profile", buzz_register_settings_path, method: :post, class: "btn-ghost", disabled: !BuzzAgent.configured?, data: { turbo: false } %>
       <%= button_to "Send test message", buzz_test_settings_path, method: :post, class: "btn-primary", disabled: !BuzzAgent.configured?, data: { turbo: false } %>
     </div>
 
@@ -105,7 +106,7 @@
       <li>BUZZ_RELAY_URL · your relay, e.g. <code>wss://buzz.example.com</code></li>
       <li>BUZZ_CHANNEL · the channel's Nostr event id (kind 40) to post into</li>
     </ul>
-    <p class="mt-3 text-xs text-taupe">Add the npub above as a member of the channel so Rupert can post into it.</p>
+    <p class="mt-3 text-xs text-taupe">To let Rupert into a channel: publish its profile, then add the npub as a member — Buzz only knows identities that have a profile on the relay.</p>
   </section>
 </div>
 

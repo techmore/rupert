@@ -86,4 +86,25 @@ class BuzzAgentTest < ActiveSupport::TestCase
     refute ok
     assert_equal "connection refused", message
   end
+
+  test "register publishes a kind 0 profile event" do
+    fake = Object.new
+    handlers = {}
+    fake.define_singleton_method(:on) { |event, &blk| handlers[event] = blk }
+    fake.define_singleton_method(:open?) { true }
+    sent = nil
+    fake.define_singleton_method(:send) do |data|
+      sent = data
+      payload = JSON.parse(data)
+      handlers[:message]&.call(Struct.new(:data).new(["OK", payload[1]["id"], true, ""].to_json))
+    end
+    fake.define_singleton_method(:close) {}
+
+    WebSocket::Client::Simple.stubs(:connect).returns(fake)
+    ok, _ = BuzzAgent.register!
+    assert ok
+    event = JSON.parse(sent)[1]
+    assert_equal 0, event["kind"]
+    assert_match(/"name":"Rupert"/, event["content"])
+  end
 end

@@ -99,6 +99,7 @@ Rails.application.routes.draw do
     post :drive_backup, defaults: { format: :json }
     post :drive_disconnect
     post :buzz_generate
+    post :buzz_register
     post :buzz_test
   end
 

@@ -125,24 +125,35 @@ class SettingsController < AuthenticatedController
   # POST /settings/drive_disconnect — forget the refresh token
   def drive_disconnect
     GoogleDriveBackupService.disconnect!
-    redirect_to settings_path, notice: "Disconnected from Google Drive."
+    redirect_to(settings_path, notice: "Disconnected from Google Drive.")
   end
 
   # POST /settings/buzz_generate — create (or replace) the Rupert agent keypair
   def buzz_generate
     BuzzAgent.generate_keypair!
-    redirect_to settings_path, notice: "Buzz agent keypair generated — #{BuzzAgent.agent_npub}"
+    redirect_to(settings_path, notice: "Buzz agent keypair generated — #{BuzzAgent.agent_npub}")
   rescue StandardError => e
-    redirect_to settings_path, alert: "Could not generate keypair: #{e.message}"
+    redirect_to(settings_path, alert: "Could not generate keypair: #{e.message}")
+  end
+
+  # POST /settings/buzz_register — publish the agent's kind 0 profile so Buzz
+  # recognizes the identity and it can be added as a channel member.
+  def buzz_register
+    ok, message = BuzzAgent.register!
+    if ok
+      redirect_to settings_path, notice: "Agent profile published to Buzz — #{BuzzAgent.agent_npub}"
+    else
+      redirect_to settings_path, alert: "Could not publish profile: #{message}"
+    end
   end
 
   # POST /settings/buzz_test — publish a test message to Buzz
   def buzz_test
-    ok, message = BuzzAgent.notify("Test message from the Rupert agent (#{Time.current.strftime('%b %e %H:%M')})")
+    ok, message = BuzzAgent.notify("Test message from the Rupert agent (#{Time.current.strftime("%b %e %H:%M")})")
     if ok
-      redirect_to settings_path, notice: "Buzz test sent: #{message}"
+      redirect_to(settings_path, notice: "Buzz test sent: #{message}")
     else
-      redirect_to settings_path, alert: "Buzz test failed: #{message}"
+      redirect_to(settings_path, alert: "Buzz test failed: #{message}")
     end
   end
 end

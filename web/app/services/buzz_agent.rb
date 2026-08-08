@@ -77,6 +77,20 @@ class BuzzAgent
       publish(event)
     end
 
+    # Publishes a kind 0 profile so the relay syncs Rupert into its users table.
+    # Buzz cannot add an identity to a channel until it has seen this event.
+    def register!
+      return [false, "Buzz is not configured (set BUZZ_RELAY_URL and BUZZ_PRIVATE_KEY)"] unless configured?
+
+      profile = {
+        name: "Rupert",
+        display_name: "Rupert",
+        about: "Rupert inventory & ops agent for Herbal Healers",
+        nip05: ""
+      }.to_json
+      publish(build_event(kind: 0, content: profile))
+    end
+
     # Opens a WebSocket to the relay, sends the signed event, and waits for the
     # NIP-01 OK acknowledgement.
     def publish(event)
