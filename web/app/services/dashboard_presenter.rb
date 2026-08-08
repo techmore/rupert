@@ -29,14 +29,14 @@ class DashboardPresenter
     @today_revenue = today_ledger.sum(:grossCents)
     @today_orders = today_ledger.count
     @today_groups = today_ledger.group(:source)
-      .pluck(:source, Arel.sql("SUM(grossCents) AS gross"), Arel.sql("COUNT(*) AS count"))
+      .pluck(:source, Arel.sql("SUM(\"grossCents\") AS gross"), Arel.sql("COUNT(*) AS count"))
 
     @yesterday_revenue = LedgerEntry.where(occurredAt: (today_start - 1.day)...today_start).sum(:grossCents)
     @week_revenue = LedgerEntry.since(7.days.ago).sum(:grossCents)
     @month_revenue = LedgerEntry.since(30.days.ago).sum(:grossCents)
 
     @ledger_groups = LedgerEntry.since(30.days.ago).group(:source)
-      .pluck(:source, Arel.sql("SUM(grossCents) AS gross"), Arel.sql("COUNT(*) AS count"))
+      .pluck(:source, Arel.sql("SUM(\"grossCents\") AS gross"), Arel.sql("COUNT(*) AS count"))
 
     @reconcile_summary = Reconciler.summary(Reconciler.build_rows)
   end

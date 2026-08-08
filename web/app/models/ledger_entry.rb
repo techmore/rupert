@@ -10,7 +10,7 @@ class LedgerEntry < ApplicationRecord
   SOURCES = %w[shopify square].freeze
 
   scope :recent, ->(limit = 200) { order(occurredAt: :desc).limit(limit) }
-  scope :since, ->(date) { where("occurredAt >= ?", date) }
+  scope :since, ->(date) { where('"occurredAt" >= ?', date) }
   scope :by_source, ->(source) { source.present? && source != "all" ? where(source: source) : all }
 
   def self.gross_by_source(where_clause = {})

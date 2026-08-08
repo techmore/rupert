@@ -11,7 +11,7 @@ class LedgerController < AuthenticatedController
 
     @entries = scope.recent(200)
     @groups = LedgerEntry.since(since).by_source(@source)
-      .group(:source).pluck(:source, Arel.sql("SUM(grossCents) AS gross"), Arel.sql("COUNT(*) AS count"))
+      .group(:source).pluck(:source, Arel.sql("SUM(\"grossCents\") AS gross"), Arel.sql("COUNT(*) AS count"))
     @total_cents = @groups.sum { |_, gross, _| gross.to_i }
   end
 end

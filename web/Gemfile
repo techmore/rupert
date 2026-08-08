@@ -58,9 +58,13 @@ gem "tailwindcss-rails"
 # Background jobs for scheduled syncs
 gem "solid_queue"
 
+# Google Drive backups (Settings page)
+gem "google-apis-drive_v3"
+gem "signet"
+
 # --- ERP framework gems ---
 # Fast pagination
-gem "pagy"
+gem "pagy", "~> 8.6", "~> 8.0"
 # Search / sort / filter for index pages
 gem "ransack"
 # Time-series grouping (group_by_hour/day/week/month)
