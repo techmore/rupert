@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_08_220018) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_08_230000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -25,6 +25,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_08_220018) do
     t.string "status", default: "running", null: false
     t.string "tenant_id"
     t.index ["tenant_id", "startedAt"], name: "index_BackupLog_on_tenant_id_and_startedAt"
+  end
+
+  create_table "InventoryCount", id: :string, force: :cascade do |t|
+    t.datetime "appliedAt"
+    t.datetime "approvedAt"
+    t.datetime "countedAt", null: false
+    t.string "createdBy"
+    t.string "locationId"
+    t.string "note"
+    t.string "status", default: "draft", null: false
+    t.string "tenant_id"
+    t.index ["tenant_id", "countedAt"], name: "index_InventoryCount_on_tenant_id_and_countedAt"
+  end
+
+  create_table "InventoryCountItem", id: :string, force: :cascade do |t|
+    t.boolean "applied", default: false, null: false
+    t.string "countId", null: false
+    t.integer "previousQuantity"
+    t.integer "quantity", default: 0, null: false
+    t.string "shopifyVariantId"
+    t.string "sku", null: false
+    t.string "squareVariationId"
+    t.string "tenant_id"
+    t.index ["countId"], name: "index_InventoryCountItem_on_countId"
+    t.index ["tenant_id"], name: "index_InventoryCountItem_on_tenant_id"
   end
 
   create_table "InventoryLevel", id: :string, force: :cascade do |t|

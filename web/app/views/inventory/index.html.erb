@@ -1,7 +1,13 @@
 <div class="space-y-6">
-  <section>
-    <h1 class="font-display text-3xl text-ink">Inventory</h1>
-    <p class="mt-1 text-sm text-mocha">Products mirrored from Shopify, with quantities on both sides.</p>
+  <section class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink">Inventory</h1>
+      <p class="mt-1 text-sm text-mocha">Products mirrored from Shopify, with quantities on both sides.</p>
+    </div>
+    <div class="flex gap-2">
+      <%= link_to "Manual counts", inventory_counts_path, class: "btn-ghost" %>
+      <%= link_to "New count", new_inventory_count_path, class: "btn-primary" %>
+    </div>
   </section>
 
   <%= form_tag inventory_index_path, method: :get, class: "max-w-sm" do %>

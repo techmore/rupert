@@ -1,0 +1,88 @@
+<% count = @count %>
+<div class="max-w-3xl space-y-6">
+  <section>
+    <h1 class="font-display text-3xl text-ink">New manual count</h1>
+    <p class="mt-1 text-sm text-mocha">Record what's physically on hand per SKU. Once submitted and approved, these quantities override the system's totals.</p>
+  </section>
+
+  <%= form_tag inventory_counts_path, method: :post, class: "space-y-6" do %>
+    <div class="card card-pad space-y-4">
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-ink">Date &amp; time counted</label>
+          <%= datetime_field_tag "inventory_count[countedAt]", count.countedAt&.strftime("%Y-%m-%dT%H:%M"), class: "input" %>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-ink">Location <span class="text-taupe">(optional)</span></label>
+          <select name="inventory_count[locationId]" class="input">
+            <option value="">— no specific location —</option>
+            <% @locations.each do |loc| %>
+              <option value="<%= loc.id %>" <%= "selected" if count.locationId == loc.id %>><%= loc.name %></option>
+            <% end %>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium text-ink">Note <span class="text-taupe">(optional)</span></label>
+        <textarea name="inventory_count[note]" rows="2" placeholder="e.g. end-of-week stocktake" class="input"><%= count.note %></textarea>
+      </div>
+    </div>
+
+    <div class="card card-pad">
+      <div class="flex items-baseline justify-between">
+        <h2 class="font-display text-xl text-ink">Counted items</h2>
+        <button type="button" id="add-count-row" class="btn-ghost btn-sm">Add row</button>
+      </div>
+      <div id="count-rows" class="mt-3 space-y-2">
+        <% count.items.each do |item| %>
+          <%= render "item_row", item: item %>
+        <% end %>
+        <%= render "item_row", item: count.items.build if count.items.empty? %>
+      </div>
+      <p class="mt-3 text-xs text-taupe">Type a SKU (autocomplete offers known SKUs) and the counted quantity.</p>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <%= submit_tag "Save draft", class: "btn-primary" %>
+      <%= link_to "Cancel", inventory_counts_path, class: "btn-ghost" %>
+    </div>
+  <% end %>
+
+  <datalist id="known-skus">
+    <% @skus.each do |sku| %>
+      <option value="<%= sku %>"></option>
+    <% end %>
+  </datalist>
+
+  <template id="count-row-template">
+    <div data-row class="flex items-center gap-2">
+      <input type="text" name="items[][sku]" list="known-skus" placeholder="SKU" class="input flex-1 font-mono" autocomplete="off">
+      <input type="number" name="items[][quantity]" min="0" placeholder="Qty" class="input w-24">
+      <button type="button" data-remove-row class="text-xs font-medium text-taupe hover:text-rose">Remove</button>
+    </div>
+  </template>
+</div>
+
+<script>
+  (function () {
+    var rows = document.getElementById("count-rows");
+    var tmpl = document.getElementById("count-row-template");
+
+    document.getElementById("add-count-row").addEventListener("click", function () {
+      var row = tmpl.content.firstElementChild.cloneNode(true);
+      rows.appendChild(row);
+      row.querySelector("input").focus();
+    });
+
+    rows.addEventListener("click", function (e) {
+      if (!e.target.matches("[data-remove-row]")) return;
+      var row = e.target.closest("[data-row]");
+      if (rows.children.length > 1) {
+        row.remove();
+      } else {
+        row.querySelector("input[type=text]").value = "";
+        row.querySelector("input[type=number]").value = "";
+      }
+    });
+  })();
+</script>

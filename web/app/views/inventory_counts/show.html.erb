@@ -1,0 +1,91 @@
+<% count = @count %>
+<div class="space-y-6">
+  <section class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <div class="flex items-center gap-3">
+        <h1 class="font-display text-3xl text-ink">Manual count</h1>
+        <span class="<%= count.draft? ? "pill-taupe" : count.pending? ? "pill-clay" : count.approved? ? "pill-fern" : "pill-rose" %>"><%= count.status %></span>
+      </div>
+      <p class="mt-1 text-sm text-mocha">
+        Counted <%= l(count.countedAt, format: :long) %> · <%= count.location&.name || "no location" %> ·
+        recorded by <%= count.createdBy.presence || "—" %>
+      </p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <% if count.draft? %>
+        <%= link_to "Edit", edit_inventory_count_path(count), class: "btn-ghost" %>
+        <%= button_to "Submit for approval", submit_inventory_count_path(count), method: :post, class: "btn-primary", data: { turbo: false } %>
+        <%= button_to "Delete", inventory_count_path(count), method: :delete, class: "btn-ghost", data: { turbo: false, confirm: "Delete this draft count?" } %>
+      <% elsif count.pending? %>
+        <%= button_to "Approve & apply override", approve_inventory_count_path(count), method: :post, class: "btn-primary", data: { turbo: false, confirm: "Approve this count? Approved quantities override the current inventory totals." } %>
+        <%= button_to "Reject", reject_inventory_count_path(count), method: :post, class: "btn-ghost", data: { turbo: false } %>
+      <% elsif count.rejected? %>
+        <%= button_to "Reopen as draft", reopen_inventory_count_path(count), method: :post, class: "btn-ghost", data: { turbo: false } %>
+      <% end %>
+    </div>
+  </section>
+
+  <% if count.note.present? %>
+    <p class="rounded-xl bg-haze px-4 py-3 text-sm text-mocha"><%= count.note %></p>
+  <% end %>
+
+  <% if count.approved? %>
+    <p class="rounded-xl border border-fern/30 bg-fern/10 px-4 py-3 text-sm text-fern">
+      Approved <%= l(count.approvedAt, format: :long) %> — counted quantities were applied as an override of the
+      computed totals for <%= pluralize(count.applied_items.count, "SKU") %>.
+    </p>
+  <% end %>
+
+  <div class="card overflow-hidden">
+    <div class="card-pad pb-3">
+      <h2 class="font-display text-xl text-ink">Counted items</h2>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th class="th">SKU</th>
+            <th class="th text-right">Counted</th>
+            <th class="th text-right">System</th>
+            <th class="th text-right">Delta</th>
+            <th class="th">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% if count.items.empty? %>
+            <tr>
+              <td class="td py-8 text-center text-taupe">No items recorded.</td>
+            </tr>
+          <% end %>
+          <% count.items.order(:sku).each do |item| %>
+            <tr class="hover:bg-cream">
+              <td class="td font-mono text-xs text-mocha"><%= item.sku %></td>
+              <td class="td text-right font-medium text-ink"><%= item.quantity %></td>
+              <td class="td text-right text-mocha"><%= item.previousQuantity.presence || "—" %></td>
+              <td class="td text-right">
+                <% if item.delta.nil? %>
+                  <span class="text-taupe">—</span>
+                <% else %>
+                  <span class="<%= item.delta.zero? ? "text-taupe" : item.delta.positive? ? "text-fern" : "text-rose" %>">
+                    <%= item.delta.positive? ? "+#{item.delta}" : item.delta %>
+                  </span>
+                <% end %>
+              </td>
+              <td class="td">
+                <% if item.applied? %>
+                  <span class="pill-fern">applied</span>
+                <% elsif count.approved? %>
+                  <span class="pill-taupe">skipped</span>
+                <% elsif item.shopifyVariantId.present? || item.squareVariationId.present? %>
+                  <span class="pill-taupe">linked</span>
+                <% else %>
+                  <span class="pill-rose">unlinked</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

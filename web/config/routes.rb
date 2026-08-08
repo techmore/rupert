@@ -59,6 +59,14 @@ Rails.application.routes.draw do
   end
 
   resources :inventory, only: :index
+  resources :inventory_counts do
+    member do
+      post :submit
+      post :approve
+      post :reject
+      post :reopen
+    end
+  end
   resources :reconcile, only: :index do
     collection do
       post :policy
