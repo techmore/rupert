@@ -1,21 +1,21 @@
 @import "tailwindcss";
 
 @theme {
-  --color-oat: #f5f3ec;
-  --color-cream: #faf8f2;
-  --color-paper: #fffdf9;
-  --color-ink: #242019;
-  --color-mocha: #6f6756;
-  --color-taupe: #a39b87;
-  --color-fog: #e7e2d3;
-  --color-haze: #efece1;
-  --color-olive: #6a702f;
-  --color-olive-deep: #47491d;
-  --color-sage: #a8ac76;
-  --color-clay: #b06a49;
-  --color-butter: #e9c96e;
-  --color-rose: #c26a5e;
-  --color-fern: #7a9461;
+  --color-oat: #e9e4e0;
+  --color-cream: #f8f5f1;
+  --color-paper: #ffffff;
+  --color-ink: #1a393d;
+  --color-mocha: #52504e;
+  --color-taupe: #8a857c;
+  --color-fog: #e3ded8;
+  --color-haze: #f0ece7;
+  --color-olive: #1a393d;
+  --color-olive-deep: #1e7b82;
+  --color-sage: #5c8a78;
+  --color-clay: #7d5449;
+  --color-butter: #e4be58;
+  --color-rose: #b05b4f;
+  --color-fern: #3e6b5e;
 
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     sans-serif;
@@ -42,7 +42,7 @@
 
 @layer components {
   .card {
-    @apply rounded-2xl border border-fog bg-paper shadow-[0_1px_2px_rgba(36,32,25,0.05)];
+    @apply rounded-2xl border border-fog bg-paper shadow-[0_1px_2px_rgba(26,57,61,0.06)];
   }
 
   .card-pad {
@@ -54,7 +54,7 @@
   }
 
   .stat {
-    @apply rounded-2xl border border-fog bg-paper p-5 shadow-[0_1px_2px_rgba(36,32,25,0.05)];
+    @apply rounded-2xl border border-fog bg-paper p-5 shadow-[0_1px_2px_rgba(26,57,61,0.06)];
   }
 
   .stat-label {
