@@ -48,14 +48,65 @@
     <p class="mt-2 text-xs text-taupe">Automatically snapshot the database to your Google Drive every 6 hours and keep the last <span id="drive-retention">7</span> backups. Each attempt is logged below.</p>
 
     <div id="drive-setup" class="mt-5 hidden">
-      <p class="text-xs text-mocha">Set these keys on the Environment (.env) card, then connect:</p>
-      <ul class="mt-2 space-y-1 font-mono text-xs text-mocha">
-        <li>GOOGLE_DRIVE_CLIENT_ID · Google Cloud OAuth 2.0 client ID</li>
-        <li>GOOGLE_DRIVE_CLIENT_SECRET · the matching client secret</li>
-        <li>GOOGLE_DRIVE_RETENTION · backups to keep (default 7)</li>
-      </ul>
-      <p class="mt-3 text-xs text-taupe">In the Google Cloud console, add this exact redirect URI to the client's authorized redirects:</p>
-      <code class="mt-1 inline-block rounded-lg bg-haze px-3 py-1.5 font-mono text-xs text-ink"><%= drive_oauth_callback_settings_url %></code>
+      <p class="text-xs font-medium text-ink">Easy setup — about 5 minutes, one time:</p>
+      <ol class="mt-3 space-y-3 text-xs text-mocha">
+        <li class="flex flex-wrap items-start gap-2">
+          <span class="font-semibold text-olive">1.</span>
+          <span>
+            Open Google Cloud in a new tab:
+            <a href="https://console.cloud.google.com/" target="_blank" rel="noopener" class="font-semibold text-olive hover:underline">console.cloud.google.com ↗</a>
+            <br>Sign in, then create a project (or pick an existing one) using the project dropdown at the top.
+          </span>
+        </li>
+        <li class="flex flex-wrap items-start gap-2">
+          <span class="font-semibold text-olive">2.</span>
+          <span>
+            Enable the Google Drive API:
+            <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" rel="noopener" class="font-semibold text-olive hover:underline">Enable Drive API ↗</a>
+            <br>Click the blue <b>Enable</b> button.
+          </span>
+        </li>
+        <li class="flex flex-wrap items-start gap-2">
+          <span class="font-semibold text-olive">3.</span>
+          <span>
+            Set up the OAuth consent screen:
+            <a href="https://console.cloud.google.com/apis/credentials/consent" target="_blank" rel="noopener" class="font-semibold text-olive hover:underline">Consent screen ↗</a>
+            <br>Choose <b>External</b> → Create. Add your business name + email, save. (You can skip the scopes and test users steps.)
+          </span>
+        </li>
+        <li class="flex flex-wrap items-start gap-2">
+          <span class="font-semibold text-olive">4.</span>
+          <span>
+            Create the OAuth client:
+            <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener" class="font-semibold text-olive hover:underline">Credentials ↗</a>
+            <br>Click <b>Create Credentials</b> → <b>OAuth client ID</b> → application type <b>Web application</b>.
+          </span>
+        </li>
+        <li class="flex flex-wrap items-start gap-2">
+          <span class="font-semibold text-olive">5.</span>
+          <span>
+            Add this exact <b>Authorized redirect URI</b> (click to copy):
+            <br>
+            <code class="mt-1 inline-block cursor-pointer select-all rounded-lg bg-haze px-3 py-1.5 font-mono text-xs text-ink" onclick="navigator.clipboard.writeText('<%= drive_oauth_callback_settings_url %>')"><%= drive_oauth_callback_settings_url %></code>
+            <br>Click <b>Create</b>. Google shows you a <b>Client ID</b> and <b>Client Secret</b> — copy both.
+          </span>
+        </li>
+        <li class="flex flex-wrap items-start gap-2">
+          <span class="font-semibold text-olive">6.</span>
+          <span>
+            Paste them into the <b>Environment (.env)</b> card above and hit <b>Import</b>:
+            <br>
+            <code class="mt-1 inline-block rounded-lg bg-haze px-3 py-1.5 font-mono text-xs">GOOGLE_DRIVE_CLIENT_ID=your-client-id</code>
+            <br>
+            <code class="mt-1 inline-block rounded-lg bg-haze px-3 py-1.5 font-mono text-xs">GOOGLE_DRIVE_CLIENT_SECRET=your-client-secret</code>
+            <br>Optional: <code class="rounded bg-haze px-1.5 py-0.5 font-mono">GOOGLE_DRIVE_RETENTION=7</code> to change how many backups to keep.
+          </span>
+        </li>
+        <li class="flex flex-wrap items-start gap-2">
+          <span class="font-semibold text-olive">7.</span>
+          <span>Come back here and click <b>Connect Google Drive</b> below. Done!</span>
+        </li>
+      </ol>
     </div>
 
     <div id="drive-connected" class="mt-5 hidden">
