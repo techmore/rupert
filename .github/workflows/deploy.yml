@@ -40,7 +40,8 @@ jobs:
             mkdir -p /opt/rupert
             cd /opt/rupert
             curl -fsSL -o docker-compose.yml https://raw.githubusercontent.com/techmore/rupert/main/docker-compose.yml
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             [ -f .env ] || echo "NOTE: create /opt/rupert/.env (see .env.example) before first deploy" >&2
-            docker compose pull web jobs || true
+            docker compose pull web jobs
             docker compose up -d --remove-orphans
             docker image prune -f

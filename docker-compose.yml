@@ -31,7 +31,8 @@ services:
       - rupert-storage:/app/storage
     command: ["bin/jobs"]
     depends_on:
-      - web
+      web:
+        condition: service_healthy
 
 volumes:
   rupert-db:
