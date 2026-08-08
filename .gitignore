@@ -1,29 +1,26 @@
+# Dependencies
+**/node_modules
+
 # Secrets — never commit
 .env
 .env.*
 !.env.example
-info.txt
 
 # OS / editor
 .DS_Store
 Thumbs.db
 *.swp
 
-# Dependencies
-node_modules/
-.pnp
-.pnp.js
-
 # Build output
 build/
 dist/
+legacy/build/
+legacy/node_modules/
 .turbo/
 
 # Logs + runtime artifacts
 *.log
 *.jsonl
-server-error.log
-server-output.log
 
 # Data snapshots (contain order/inventory data)
 shopify-active-products.json
@@ -31,13 +28,15 @@ shopify-operations-snapshot.json
 square-snapshot.json
 
 # Local database (contains sessions + mirrored data)
-prisma/dev.sqlite
-prisma/dev.sqlite-journal
+legacy/prisma/dev.sqlite
+legacy/prisma/dev.sqlite-journal
+web/storage/*.sqlite*
+web/db/*.sqlite*
 
-# Env-local caches
-node_modules/.cache/
+# Ignore shopify files created during app dev
+.shopify/*
+.shopify.lock
+
+# Rails generated types
 .react-router/
-
-# Vercel / deploy tooling
-.vercel/
-.netlify/
+node_modules/.cache/

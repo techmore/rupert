@@ -1,0 +1,14 @@
+**/node_modules
+web/log/*
+web/tmp/*
+web/storage/*
+web/db/*.sqlite3
+web/config/master.key
+web/.env
+.git
+.github
+legacy/
+.gitignore
+Dockerfile
+docker-compose.yml
+.DS_Store

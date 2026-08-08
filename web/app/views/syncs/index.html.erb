@@ -1,0 +1,85 @@
+<div class="space-y-6">
+  <section class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink">Sync</h1>
+      <p class="mt-1 text-sm text-mocha">Every pull from Shopify and Square is recorded here. Syncs run on a schedule and can be triggered manually.</p>
+    </div>
+    <div class="flex gap-2">
+      <%= form_tag syncs_path, method: :post, class: "inline" do %>
+        <%= submit_tag "Sync everything", class: "btn-primary" %>
+      <% end %>
+      <%= form_tag source_syncs_path, method: :post, class: "inline" do %>
+        <%= hidden_field_tag :source, "square" %>
+        <%= submit_tag "Square only", class: "btn-ghost btn-sm" %>
+      <% end %>
+      <%= form_tag source_syncs_path, method: :post, class: "inline" do %>
+        <%= hidden_field_tag :source, "shopify" %>
+        <%= submit_tag "Shopify only", class: "btn-ghost btn-sm" %>
+      <% end %>
+    </div>
+  </section>
+
+  <% if SyncEngine.running? %>
+    <div class="rounded-xl border border-butter/40 bg-butter/10 px-4 py-3 text-sm text-ink">
+      A sync is currently running — this page will show it once complete.
+    </div>
+  <% end %>
+
+  <section class="grid gap-4 lg:grid-cols-2">
+    <div class="card overflow-hidden">
+      <div class="card-pad pb-3">
+        <h2 class="font-display text-xl text-ink">Sync runs</h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="border-b border-fog bg-haze/60">
+            <tr>
+              <th class="th">Started</th>
+              <th class="th">Mode</th>
+              <th class="th">Source</th>
+              <th class="th">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-fog">
+            <% if @runs.empty? %>
+              <tr>
+                <td class="td py-8 text-center text-taupe">No syncs recorded yet.</td>
+              </tr>
+            <% end %>
+            <% @runs.each do |run| %>
+              <tr class="hover:bg-cream">
+                <td class="td whitespace-nowrap text-mocha"><%= l(run.startedAt, format: :short) %></td>
+                <td class="td text-mocha"><%= run.mode %></td>
+                <td class="td text-mocha"><%= run.source.presence || "—" %></td>
+                <td class="td">
+                  <span class="<%= run.success? ? "pill-fern" : run.failed? ? "pill-rose" : "pill-taupe" %>"><%= run.status %></span>
+                  <% if run.error.present? %>
+                    <p class="mt-1 max-w-[260px] text-xs text-rose"><%= run.error.truncate(120) %></p>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card card-pad">
+      <h2 class="font-display text-xl text-ink">Recent log entries</h2>
+      <ul class="mt-4 space-y-2.5">
+        <% if @logs.empty? %>
+          <li class="py-3 text-sm text-taupe">No log file yet — it appears after a sync runs.</li>
+        <% end %>
+        <% @logs.each do |log| %>
+          <li class="flex gap-3">
+            <span class="<%= log["level"] == "success" ? "pill-fern" : log["level"] == "error" ? "pill-rose" : "pill-taupe" %> shrink-0"><%= log["level"] %></span>
+            <div class="min-w-0">
+              <p class="text-sm text-ink"><%= log["message"] %></p>
+              <p class="text-xs text-taupe"><%= l(Time.zone.parse(log["at"]), format: :short) rescue "" %></p>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  </section>
+</div>

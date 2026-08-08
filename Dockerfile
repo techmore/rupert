@@ -1,18 +1,24 @@
-FROM node:20-alpine
-RUN apk add --no-cache openssl
+FROM ruby:3.2-alpine
 
-EXPOSE 3000
+RUN apk add --no-cache build-base sqlite-dev git openssl-dev
+
+ENV RAILS_ENV=production \
+    RAILS_LOG_TO_STDOUT=1 \
+    RAILS_SERVE_STATIC_FILES=1
 
 WORKDIR /app
 
-ENV NODE_ENV=production
+COPY web/Gemfile web/Gemfile.lock ./
+RUN bundle install --jobs 4 --retry 3
 
-COPY package.json package-lock.json* ./
+COPY web .
+RUN bin/rails tailwindcss:build && bin/rails assets:precompile
 
-RUN npm ci --omit=dev && npm cache clean --force
+COPY entrypoint.sh /usr/bin/
+RUN chmod +x /usr/bin/entrypoint.sh
 
-COPY . .
+EXPOSE 3000
 
-RUN npm run build
+ENTRYPOINT ["entrypoint.sh"]
 
-CMD ["npm", "run", "docker-start"]
+CMD ["bin/rails", "server", "-b", "0.0.0.0"]

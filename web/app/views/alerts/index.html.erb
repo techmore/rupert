@@ -1,0 +1,70 @@
+<div class="space-y-6">
+  <section>
+    <h1 class="font-display text-3xl text-ink">Alerts</h1>
+    <p class="mt-1 text-sm text-mocha">Low-stock flags raised from inventory levels.</p>
+  </section>
+
+  <nav class="flex flex-wrap gap-1">
+    <% ["open", "resolved", "ignored", "all"].each do |tab| %>
+      <%= link_to "#{tab} #{@counts[tab] ? "(#{@counts[tab]})" : ""}", alerts_path(status: tab),
+            class: (@status == tab ? "rounded-full bg-olive px-3.5 py-1.5 text-sm font-medium text-cream" : "rounded-full px-3.5 py-1.5 text-sm font-medium text-mocha hover:bg-haze hover:text-ink") %>
+    <% end %>
+  </nav>
+
+  <div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th class="th">SKU</th>
+            <th class="th">Product</th>
+            <th class="th text-right">Qty / threshold</th>
+            <th class="th">Raised</th>
+            <th class="th">Status</th>
+            <th class="th text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% if @alerts.empty? %>
+            <tr>
+              <td class="td py-8 text-center text-taupe">No alerts here.</td>
+            </tr>
+          <% end %>
+          <% @alerts.each do |alert| %>
+            <tr class="hover:bg-cream">
+              <td class="td font-mono text-xs text-mocha"><%= alert.sku.presence || "—" %></td>
+              <td class="td">
+                <p class="font-medium text-ink"><%= alert.product_name.presence || "—" %></p>
+                <p class="text-xs text-taupe"><%= alert.variant_name %></p>
+              </td>
+              <td class="td text-right">
+                <span class="<%= alert.quantity <= 0 ? "font-semibold text-rose" : "font-semibold text-clay" %>"><%= alert.quantity %></span>
+                <span class="text-taupe"> / <%= alert.threshold %></span>
+              </td>
+              <td class="td whitespace-nowrap text-mocha"><%= l(alert.createdAt, format: :short) %></td>
+              <td class="td">
+                <span class="<%= alert.status == "open" ? "pill-clay" : alert.status == "resolved" ? "pill-fern" : "pill-taupe" %>"><%= alert.status %></span>
+              </td>
+              <td class="td text-right">
+                <% if alert.status == "open" %>
+                  <div class="flex justify-end gap-1.5">
+                    <%= form_tag update_status_alerts_path, method: :post, class: "inline" do %>
+                      <%= hidden_field_tag :id, alert.id %>
+                      <%= button_tag "Resolve", name: "status", value: "resolved", class: "btn-ghost btn-sm" %>
+                    <% end %>
+                    <%= form_tag update_status_alerts_path, method: :post, class: "inline" do %>
+                      <%= hidden_field_tag :id, alert.id %>
+                      <%= button_tag "Ignore", name: "status", value: "ignored", class: "btn-ghost btn-sm" %>
+                    <% end %>
+                  </div>
+                <% else %>
+                  <span class="text-xs text-taupe"><%= alert.resolvedAt ? l(alert.resolvedAt, format: :short) : "—" %></span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

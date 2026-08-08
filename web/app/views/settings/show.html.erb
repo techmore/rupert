@@ -1,0 +1,107 @@
+<div class="space-y-8">
+  <section>
+    <h1 class="font-display text-3xl text-ink">Settings</h1>
+    <p class="mt-1 text-sm text-mocha">Environment variables and database backup/restore. Environment keys apply to the sync engine immediately; boot-time keys (Shopify API key/secret, database) come from the droplet env.</p>
+  </section>
+
+  <section class="grid gap-4 lg:grid-cols-2">
+    <div class="card card-pad">
+      <div class="flex items-baseline justify-between">
+        <h2 class="font-display text-xl text-ink">Environment (.env)</h2>
+        <%= link_to "Export .env", env_export_settings_path, class: "btn-ghost btn-sm", data: { turbo: false } %>
+      </div>
+      <p class="mt-2 text-xs text-taupe">Import a .env file (or paste its contents) to update managed keys. Values are stored encrypted in the database and override the droplet env.</p>
+
+      <div id="env-list" class="mt-4 space-y-2"></div>
+
+      <form id="env-import-form" class="mt-5 space-y-3">
+        <textarea name="text" rows="8" placeholder="KEY=VALUE&#10;# comments are ignored&#10;SQUARE_ACCESS_TOKEN=..." class="input !rounded-2xl font-mono text-xs"></textarea>
+        <label class="flex items-center gap-2 text-xs text-mocha">
+          or upload a file
+          <input type="file" name="file" accept=".env,text/plain" class="text-xs">
+        </label>
+        <button type="submit" class="btn-primary">Import into settings</button>
+        <span id="env-result" class="text-xs"></span>
+      </form>
+    </div>
+
+    <div class="card card-pad">
+      <h2 class="font-display text-xl text-ink">Database backup</h2>
+      <p class="mt-2 text-xs text-taupe">Download a consistent snapshot of the SQLite database, or restore from a previous backup. Restoring replaces all current data.</p>
+
+      <div class="mt-5 flex flex-wrap gap-2">
+        <%= link_to "Download backup", backup_settings_path, class: "btn-primary", data: { turbo: false } %>
+        <label class="btn-ghost cursor-pointer">
+          Restore from file
+          <input type="file" id="restore-file" accept=".sqlite3,.sqlite,.db,application/octet-stream" class="hidden" data-url="<%= restore_settings_path %>">
+        </label>
+      </div>
+      <p id="restore-result" class="mt-3 text-xs"></p>
+    </div>
+  </section>
+
+  <section class="card card-pad">
+    <h2 class="font-display text-xl text-ink">API</h2>
+    <p class="mt-2 text-sm text-mocha">The same operations are available as JSON under the authenticated session:</p>
+    <ul class="mt-3 space-y-1.5 font-mono text-xs text-mocha">
+      <li><span class="text-olive">GET</span> /settings/env &nbsp;·&nbsp; masked env keys</li>
+      <li><span class="text-olive">POST</span> /settings/env_import &nbsp;·&nbsp; body: <code>{ "text": "KEY=VALUE\n..." }</code></li>
+      <li><span class="text-olive">GET</span> /settings/env_export &nbsp;·&nbsp; full .env text</li>
+      <li><span class="text-olive">GET</span> /settings/backup &nbsp;·&nbsp; SQLite snapshot download</li>
+      <li><span class="text-olive">POST</span> /settings/restore &nbsp;·&nbsp; multipart <code>file</code></li>
+    </ul>
+  </section>
+</div>
+
+<script>
+  (function () {
+    var list = document.getElementById("env-list");
+    var result = document.getElementById("env-result");
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    var csrfHeader = csrf ? { "X-CSRF-Token": csrf.content } : {};
+
+    fetch("/settings/env.json", { headers: { "X-Requested-With": "XMLHttpRequest" } })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        data.keys.forEach(function (item) {
+          var row = document.createElement("div");
+          row.className = "flex items-center justify-between gap-4 rounded-xl bg-haze px-4 py-2.5 text-sm";
+          row.innerHTML = '<div><p class="font-mono text-xs text-ink">' + item.key + '</p>' +
+            '<p class="text-[11px] text-taupe">' + item.source + (item.set ? " · " + item.masked : " · not set") + '</p></div>' +
+            '<span class="' + (item.set ? "dot bg-fern" : "dot bg-taupe") + '"></span>';
+          list.appendChild(row);
+        });
+      });
+
+    document.getElementById("env-import-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      result.textContent = "Importing…";
+      var form = new FormData(this);
+      fetch("/settings/env_import", { method: "POST", body: form, headers: Object.assign({ "X-Requested-With": "XMLHttpRequest" }, csrfHeader) })
+        .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+        .then(function (res) {
+          if (res.ok) {
+            result.textContent = "Imported " + res.body.imported.length + " key(s).";
+            setTimeout(function () { window.location.reload(); }, 800);
+          } else {
+            result.textContent = "Error: " + res.body.error;
+          }
+        });
+    });
+
+    document.getElementById("restore-file").addEventListener("change", function (e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      var r = document.getElementById("restore-result");
+      r.textContent = "Restoring…";
+      var form = new FormData();
+      form.append("file", file);
+      fetch(e.target.dataset.url, { method: "POST", body: form, headers: Object.assign({ "X-Requested-With": "XMLHttpRequest" }, csrfHeader) })
+        .then(function (res) { return res.json().then(function (b) { return { ok: res.ok, body: b }; }); })
+        .then(function (res) {
+          r.textContent = res.ok ? "Restored. Reloading…" : "Error: " + res.body.error;
+          if (res.ok) setTimeout(function () { window.location.reload(); }, 1000);
+        });
+    });
+  })();
+</script>

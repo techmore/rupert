@@ -1,0 +1,11 @@
+production:
+  recurring_tasks:
+    inventory_sync:
+      class: SyncJob
+      args:
+        - mode: automatic
+          actor: scheduler
+      schedule: "every 15 minutes"
+  queues:
+    - [default, 2]
+  concurrency: 1

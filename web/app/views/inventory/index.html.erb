@@ -1,0 +1,63 @@
+<div class="space-y-6">
+  <section>
+    <h1 class="font-display text-3xl text-ink">Inventory</h1>
+    <p class="mt-1 text-sm text-mocha">Products mirrored from Shopify, with quantities on both sides.</p>
+  </section>
+
+  <%= form_tag inventory_index_path, method: :get, class: "max-w-sm" do %>
+    <input type="search" name="q" value="<%= @q %>" placeholder="Search products or SKUs…" class="input" autocomplete="off">
+  <% end %>
+
+  <div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th class="th">Product / Variant</th>
+            <th class="th">SKU</th>
+            <th class="th text-right">Price</th>
+            <th class="th text-right">Shopify</th>
+            <th class="th text-right">Square</th>
+            <th class="th text-right">Drift</th>
+            <th class="th">Linked</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% if @products.empty? %>
+            <tr>
+              <td class="td py-8 text-center text-taupe"><%= @q.present? ? "Nothing matches that search." : "No products mirrored yet — run a sync." %></td>
+            </tr>
+          <% end %>
+          <% @products.each do |product| %>
+            <% product.variants.order(title: :asc).each do |variant| %>
+              <% shopify_qty = variant.levels.sum(:quantity) %>
+              <% link = variant.sku_links.linked.first %>
+              <% square_qty = link ? link.square_variation.levels.sum(:quantity) : nil %>
+              <% drift = square_qty != nil ? square_qty - shopify_qty : nil %>
+              <tr class="hover:bg-cream">
+                <td class="td">
+                  <p class="font-medium text-ink"><%= variant.title %></p>
+                  <p class="text-xs text-taupe"><%= product.title %></p>
+                </td>
+                <td class="td font-mono text-xs text-mocha"><%= variant.sku.presence || "—" %></td>
+                <td class="td text-right font-medium text-ink"><%= number_to_currency(variant.price) %></td>
+                <td class="td text-right text-mocha"><%= shopify_qty %></td>
+                <td class="td text-right text-mocha"><%= square_qty || "—" %></td>
+                <td class="td text-right">
+                  <span class="<%= drift == 0 ? "font-medium text-taupe" : "font-semibold text-clay" %>">
+                    <%= drift == 0 ? "—" : drift.positive? ? "+#{drift}" : drift %>
+                  </span>
+                </td>
+                <td class="td"><%= link ? content_tag(:span, "linked", class: "pill-fern") : content_tag(:span, "unlinked", class: "pill-taupe") %></td>
+              </tr>
+            <% end %>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <% if @products.length >= 40 %>
+    <p class="text-xs text-taupe">Showing the first 40 products — refine your search to narrow down.</p>
+  <% end %>
+</div>

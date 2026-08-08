@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Herbal Healers — Inventory Ops</title>
+    <meta name="color-scheme" content="light">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap">
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <% if ShopifyApp.configuration.api_key.present? %>
+      <%= javascript_include_tag "https://cdn.shopify.com/shopifycloud/app-bridge.js", data: { "api-key": ShopifyApp.configuration.api_key } %>
+    <% end %>
+  </head>
+  <body class="min-h-full">
+    <%= render "layouts/shell" %>
+  </body>
+</html>
