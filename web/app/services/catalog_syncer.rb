@@ -11,6 +11,7 @@ class CatalogSyncer
       products(first: 250, query: "status:active", sortKey: TITLE) {
         nodes {
           id title status handle publishedAt totalInventory
+          featuredImage { url altText }
           resourcePublicationsCount { count }
           resourcePublications(first: 20) { nodes { isPublished publishDate publication { id name } } }
           variants(first: 100) { nodes { id title sku price inventoryQuantity inventoryItem { id tracked } } }
@@ -31,6 +32,17 @@ class CatalogSyncer
     query Locations { locations(first: 10) { nodes { id name isActive } } }
   GRAPHQL
 
+  # Minimal query to backfill featured images without re-pulling the whole
+  # catalog. `first: 250` per page; cursor pagination for large catalogs.
+  IMAGE_BACKFILL_QUERY = <<~GRAPHQL
+    query Images($cursor: String) {
+      products(first: 250, query: "status:active", sortKey: TITLE, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes { id featuredImage { url } }
+      }
+    }
+  GRAPHQL
+
   THRESHOLD = 5
 
   class << self
@@ -49,6 +61,29 @@ class CatalogSyncer
         orders: data["orders"],
         shop: data["shop"],
       }
+    end
+
+    # Backfill featuredImageUrl for every active product (used when images
+    # were added after a catalog was already mirrored). Returns rows updated.
+    def backfill_images!
+      count = 0
+      cursor = nil
+      loop do
+        data = ShopifyClient.graphql(IMAGE_BACKFILL_QUERY, { cursor: cursor })
+        nodes = data.dig("products", "nodes") || []
+        nodes.each do |node|
+          url = node.dig("featuredImage", "url")
+          next if url.blank?
+
+          updated = ShopifyProduct.where(id: node["id"]).update_all(featuredImageUrl: url)
+          count += updated
+        end
+        page = data.dig("products", "pageInfo") || {}
+        break unless page["hasNextPage"] && page["endCursor"]
+
+        cursor = page["endCursor"]
+      end
+      count
     end
 
     private
@@ -98,6 +133,7 @@ class CatalogSyncer
             handle: product["handle"],
             publishedAt: parse_time(product["publishedAt"]),
             totalInventory: product["totalInventory"].to_i,
+            featuredImageUrl: product.dig("featuredImage", "url"),
             syncedAt: Time.current,
           },
           unique_by: :id,

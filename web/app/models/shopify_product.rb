@@ -18,4 +18,13 @@ class ShopifyProduct < ApplicationRecord
 
     where(title: q).or(where("title LIKE ?", "%#{q}%"))
   }
+
+  # Shopify CDN URLs accept &width= / &height= to request resized renditions.
+  # Returns a compact thumbnail URL when a featured image exists.
+  def thumbnail_url(width: 96, height: 96)
+    return if featuredImageUrl.blank?
+
+    separator = featuredImageUrl.include?("?") ? "&" : "?"
+    "#{featuredImageUrl}#{separator}width=#{width}&height=#{height}"
+  end
 end

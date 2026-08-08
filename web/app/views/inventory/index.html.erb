@@ -36,8 +36,17 @@
               <% drift = square_qty != nil ? square_qty - shopify_qty : nil %>
               <tr class="hover:bg-cream">
                 <td class="td">
-                  <p class="font-medium text-ink"><%= variant.title %></p>
-                  <p class="text-xs text-taupe"><%= product.title %></p>
+                  <div class="flex items-center gap-3">
+                    <% if (thumb = product.thumbnail_url) %>
+                      <%= image_tag thumb, alt: product.title, loading: "lazy", class: "h-10 w-10 shrink-0 rounded-lg border border-fog bg-haze object-cover" %>
+                    <% else %>
+                      <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-fog bg-haze font-display text-base text-taupe"><%= product.title.first.upcase %></span>
+                    <% end %>
+                    <div class="min-w-0">
+                      <p class="truncate font-medium text-ink"><%= variant.title %></p>
+                      <p class="truncate text-xs text-taupe"><%= product.title %></p>
+                    </div>
+                  </div>
                 </td>
                 <td class="td font-mono text-xs text-mocha"><%= variant.sku.presence || "—" %></td>
                 <td class="td text-right font-medium text-ink"><%= number_to_currency(variant.price) %></td>
