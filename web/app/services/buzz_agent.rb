@@ -91,17 +91,33 @@ class BuzzAgent
       publish(build_event(kind: 0, content: profile))
     end
 
-    # Opens a WebSocket to the relay, sends the signed event, and waits for the
+    # Opens a WebSocket to the relay, authenticates (NIP-42) against the
+    # challenge Buzz sends on connect, publishes the event, and waits for the
     # NIP-01 OK acknowledgement.
     def publish(event)
       require "websocket-client-simple"
 
       ack = nil
-      ws = WebSocket::Client::Simple.connect(relay_url)
+      authed = false
+      sent_event = false
+      relay = relay_url
+      ws = WebSocket::Client::Simple.connect(relay)
+
       ws.on(:message) do |msg|
         begin
           data = JSON.parse(msg.data.to_s)
-          ack = data if data.is_a?(Array) && data[0] == "OK"
+          case data[0]
+          when "AUTH"
+            unless authed
+              authed = true
+              # This block is evaluated with `self` = the WebSocket client, so
+              # call the class method explicitly rather than by message send.
+              ws.send(["AUTH", BuzzAgent.build_auth_event(data[1], relay: relay).to_h].to_json)
+              ws.send(["EVENT", event.to_h].to_json) if sent_event
+            end
+          when "OK"
+            ack = data
+          end
         rescue StandardError
           nil
         end
@@ -109,8 +125,15 @@ class BuzzAgent
       ws.on(:error) { |e| ack ||= ["ERROR", e.message.to_s[0, 200]] }
 
       Timeout.timeout(8) { sleep 0.05 until ws.open? || ack }
-      raise "could not connect to #{relay_url}" if ack.nil? && !ws.open?
+      raise "could not connect to #{relay}" if ack.nil? && !ws.open?
 
+      # Buzz sends its NIP-42 challenge immediately on connect — wait for it
+      # (with a short grace period for relays that don't challenge) so the first
+      # EVENT is published as an authenticated session.
+      deadline = Time.current + 1.0
+      sleep 0.05 until authed || Time.current > deadline
+
+      sent_event = true
       ws.send(["EVENT", event.to_h].to_json)
       Timeout.timeout(8) { sleep 0.05 until ack }
 
@@ -124,6 +147,16 @@ class BuzzAgent
       rescue StandardError
         nil
       end
+    end
+
+    # NIP-42 auth response: a signed kind 22242 event echoing the challenge.
+    # `relay` must be captured on the calling thread — CurrentAttributes are
+    # thread-local, and the WebSocket handler runs on a different thread.
+    def build_auth_event(challenge, relay: relay_url)
+      event = Nostr::Event.new(pubkey: public_key, kind: 22242, content: "",
+        tags: [["relay", relay], ["challenge", challenge.to_s]])
+      event.sign(private_key)
+      event
     end
   end
 end

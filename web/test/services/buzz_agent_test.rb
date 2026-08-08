@@ -107,4 +107,38 @@ class BuzzAgentTest < ActiveSupport::TestCase
     assert_equal 0, event["kind"]
     assert_match(/"name":"Rupert"/, event["content"])
   end
+
+  test "publish answers a NIP-42 auth challenge before the event" do
+    fake = Object.new
+    handlers = {}
+    sent = []
+    fake.define_singleton_method(:on) { |event, &blk| handlers[event] = blk }
+    fake.define_singleton_method(:open?) { true }
+    fake.define_singleton_method(:send) do |data|
+      sent << data
+      payload = JSON.parse(data)
+      if payload[0] == "AUTH"
+        handlers[:message]&.call(Struct.new(:data).new(["OK", "event-id", true, ""].to_json))
+      else
+        handlers[:message]&.call(Struct.new(:data).new(["AUTH", "challenge-xyz"].to_json))
+      end
+    end
+    fake.define_singleton_method(:close) {}
+
+    WebSocket::Client::Simple.stubs(:connect).returns(fake)
+    ok, _ = BuzzAgent.publish(BuzzAgent.build_event(content: "hi"))
+    assert ok
+    auth = sent.find { |m| JSON.parse(m)[0] == "AUTH" }
+    auth_event = JSON.parse(auth)[1]
+    assert_equal 22242, auth_event["kind"]
+    assert_includes auth_event["tags"], ["challenge", "challenge-xyz"]
+  end
+
+  test "build_auth_event signs a valid NIP-42 event with challenge tag" do
+    event = BuzzAgent.build_auth_event("challenge-xyz")
+    assert_equal 22242, event.kind
+    assert_includes event.tags, ["relay", "wss://relay.test"]
+    assert_includes event.tags, ["challenge", "challenge-xyz"]
+    assert event.verify_signature
+  end
 end
