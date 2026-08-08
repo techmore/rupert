@@ -1,0 +1,18 @@
+<div class="card card-pad">
+  <div class="flex items-baseline justify-between">
+    <h2 class="font-display text-xl text-ink">Today · per channel</h2>
+    <span class="text-xs text-taupe">gross revenue</span>
+  </div>
+  <dl class="mt-4 grid grid-cols-2 gap-4">
+    <% presenter.today_groups.each do |source, gross, count| %>
+      <div class="rounded-xl bg-haze px-4 py-3">
+        <dt class="text-xs font-medium capitalize text-mocha"><%= source %></dt>
+        <dd class="font-display text-2xl text-ink"><%= number_to_currency(gross.to_i / 100.0) %></dd>
+        <dd class="text-xs text-taupe"><%= count %> orders</dd>
+      </div>
+    <% end %>
+    <% if presenter.today_groups.empty? %>
+      <p class="text-sm text-taupe">No sales recorded yet today.</p>
+    <% end %>
+  </dl>
+</div>

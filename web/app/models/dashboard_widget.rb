@@ -1,0 +1,41 @@
+# frozen_string_literal: true
+
+# Registry of dashboard widgets. Each widget renders a partial under
+# app/views/home/widgets/ and can be shown, hidden, and reordered per user.
+# The per-user configuration is stored as JSON on the User record
+# (dashboard_config: { "widgets" => [keys in order], "hidden" => [keys] }).
+class DashboardWidget
+  Widget = Struct.new(:key, :label, :partial, :position, keyword_init: true)
+
+  WIDGETS = [
+    Widget.new(key: "stats", label: "Key stats", partial: "home/widgets/stats", position: 10),
+    Widget.new(key: "today_channels", label: "Today per channel", partial: "home/widgets/today_channels", position: 20),
+    Widget.new(key: "attention", label: "Needs attention", partial: "home/widgets/attention", position: 30),
+    Widget.new(key: "stock_alerts", label: "Stock alerts · last 14 days", partial: "home/widgets/stock_alerts", position: 40),
+    Widget.new(key: "revenue", label: "Revenue · last 30 days", partial: "home/widgets/revenue", position: 50),
+    Widget.new(key: "sync_history", label: "Sync history", partial: "home/widgets/sync_history", position: 60),
+    Widget.new(key: "reconcile_runs", label: "Latest reconcile runs", partial: "home/widgets/reconcile_runs", position: 70)
+  ].freeze
+
+  def self.all
+    WIDGETS.sort_by(&:position)
+  end
+
+  def self.find(key)
+    all.find { |widget| widget.key == key.to_s }
+  end
+
+  def self.default_order
+    all.map(&:key)
+  end
+
+  # Returns an array of [Widget, visible] pairs honoring a saved config hash.
+  # Any registered widget missing from the config is appended in default order.
+  def self.entries(config = {})
+    order = Array(config["widgets"]).presence || default_order
+    hidden = Array(config["hidden"])
+    ordered = order.filter_map { |key| find(key) }
+    ordered.concat(all.reject { |widget| order.include?(widget.key) })
+    ordered.map { |widget| [widget, !hidden.include?(widget.key)] }
+  end
+end

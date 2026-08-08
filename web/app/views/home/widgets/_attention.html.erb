@@ -1,0 +1,17 @@
+<div class="card card-pad">
+  <h2 class="font-display text-xl text-ink">Needs attention</h2>
+  <ul class="mt-4 divide-y divide-fog">
+    <% attention_items(presenter).each do |item| %>
+      <li class="flex items-center justify-between gap-4 py-3">
+        <div class="min-w-0">
+          <p class="truncate text-sm font-medium text-ink"><%= item[:label] %></p>
+          <p class="text-xs text-taupe"><%= item[:note] %></p>
+        </div>
+        <span class="<%= item[:pill] %> shrink-0"><%= item[:value] %></span>
+      </li>
+    <% end %>
+    <% if attention_items(presenter).empty? %>
+      <li class="py-3 text-sm text-taupe">All quiet — nothing needs attention.</li>
+    <% end %>
+  </ul>
+</div>

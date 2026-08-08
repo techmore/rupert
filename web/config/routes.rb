@@ -27,6 +27,7 @@ Rails.application.routes.draw do
   mount ShopifyApp::Engine, at: "/api"
 
   get "/dashboard", to: "home#index"
+  post "/dashboard/customize", to: "home#customize", as: :customize_dashboard
   resources :inventory, only: :index
   resources :reconcile, only: :index do
     collection do

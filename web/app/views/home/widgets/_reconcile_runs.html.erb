@@ -1,0 +1,23 @@
+<div class="card card-pad">
+  <div class="flex items-baseline justify-between">
+    <h2 class="font-display text-xl text-ink">Latest reconcile runs</h2>
+    <%= link_to "Reconcile", reconcile_index_path, class: "text-xs font-semibold text-olive hover:underline" %>
+  </div>
+  <ul class="mt-4 divide-y divide-fog">
+    <% if presenter.recent_runs.empty? %>
+      <li class="py-3 text-sm text-taupe">No runs yet.</li>
+    <% end %>
+    <% presenter.recent_runs.each do |run| %>
+      <li class="flex items-center justify-between gap-4 py-3">
+        <div class="min-w-0">
+          <p class="truncate text-sm font-medium text-ink"><%= run.mode %> run</p>
+          <p class="text-xs text-taupe"><%= l(run.startedAt, format: :short) %></p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="<%= run.status == "applied" ? "pill-fern" : run.status == "failed" ? "pill-rose" : "pill-taupe" %>"><%= run.status %></span>
+          <span class="text-xs text-mocha"><%= run.applied %>/<%= run.actionable %></span>
+        </div>
+      </li>
+    <% end %>
+  </ul>
+</div>
