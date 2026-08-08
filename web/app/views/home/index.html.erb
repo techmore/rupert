@@ -1,6 +1,6 @@
 <% presenter = DashboardPresenter.new %>
 <% widgets = @widgets || DashboardWidget.entries({}) %>
-<div class="space-y-8">
+<div class="space-y-8" data-controller="live-sync">
   <section class="flex flex-wrap items-end justify-between gap-4">
     <div>
       <p class="eyebrow mb-2 text-olive"><%= l(Time.current, format: :long) %></p>
@@ -14,16 +14,11 @@
           <%= submit_tag "Sync now", class: "btn-primary", data: { disable_with: "Syncing…" } %>
         <% end %>
       </div>
-      <% if (last_sync = presenter.last_sync) %>
-        <p class="text-xs text-taupe">
-          Last <%= last_sync.success? ? "synced" : "sync" %> <%= time_ago_in_words(last_sync.startedAt) %> ago
-          <span class="<%= last_sync.success? ? "pill-fern" : "pill-rose" %>"><%= last_sync.status %></span>
-        </p>
-      <% else %>
-        <p class="text-xs text-taupe">No syncs yet — hit Sync now.</p>
-      <% end %>
+      <%= render "shared/last_sync", sync: presenter.last_sync %>
     </div>
   </section>
+
+  <%= render "syncs/banner" %>
 
   <section id="dashboard-customizer" class="card card-pad hidden">
     <div class="flex items-baseline justify-between">

@@ -76,6 +76,7 @@ Rails.application.routes.draw do
       post :source
     end
   end
+  get "/live/sync_status", to: "live#sync_status"
 
   resource :settings, only: :show do
     get :env, defaults: { format: :json }

@@ -3,3 +3,6 @@
 // ./bin/rails generate stimulus controllerName
 
 import { application } from "./application"
+import LiveSyncController from "./live_sync_controller"
+
+application.register("live-sync", LiveSyncController)
