@@ -60,9 +60,13 @@ class InventoryCountsController < AuthenticatedController
     @count = InventoryCount.find(params[:id])
     @count.snapshot_previous!
     @count.submit!
-    redirect_to(inventory_count_path(@count), notice: "Count submitted for approval.")
+    BuzzNotifyJob.perform_later(
+      "Manual count submitted for approval · #{@count.items.count} items · total qty #{@count.total_quantity}",
+      tags: [["t", "inventory"]]
+    )
+    redirect_to inventory_count_path(@count), notice: "Count submitted for approval."
   rescue AASM::InvalidTransition
-    redirect_to(inventory_count_path(@count), alert: "Only draft counts can be submitted.")
+    redirect_to inventory_count_path(@count), alert: "Only draft counts can be submitted."
   end
 
   def approve

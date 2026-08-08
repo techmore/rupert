@@ -98,6 +98,8 @@ Rails.application.routes.draw do
     get :drive_oauth_callback
     post :drive_backup, defaults: { format: :json }
     post :drive_disconnect
+    post :buzz_generate
+    post :buzz_test
   end
 
   get "/warehouse", to: "warehouse#index", as: :warehouse

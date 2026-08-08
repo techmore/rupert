@@ -22,6 +22,9 @@ module EnvStore
     "GOOGLE_DRIVE_REFRESH_TOKEN",
     "GOOGLE_DRIVE_FOLDER_ID",
     "GOOGLE_DRIVE_RETENTION",
+    "BUZZ_RELAY_URL",
+    "BUZZ_PRIVATE_KEY",
+    "BUZZ_CHANNEL",
   ].freeze
 
   # Settings (DB) win over ENV. ENV is only consulted as a global fallback

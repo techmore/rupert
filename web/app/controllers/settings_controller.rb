@@ -125,6 +125,24 @@ class SettingsController < AuthenticatedController
   # POST /settings/drive_disconnect — forget the refresh token
   def drive_disconnect
     GoogleDriveBackupService.disconnect!
-    redirect_to(settings_path, notice: "Disconnected from Google Drive.")
+    redirect_to settings_path, notice: "Disconnected from Google Drive."
+  end
+
+  # POST /settings/buzz_generate — create (or replace) the Rupert agent keypair
+  def buzz_generate
+    BuzzAgent.generate_keypair!
+    redirect_to settings_path, notice: "Buzz agent keypair generated — #{BuzzAgent.agent_npub}"
+  rescue StandardError => e
+    redirect_to settings_path, alert: "Could not generate keypair: #{e.message}"
+  end
+
+  # POST /settings/buzz_test — publish a test message to Buzz
+  def buzz_test
+    ok, message = BuzzAgent.notify("Test message from the Rupert agent (#{Time.current.strftime('%b %e %H:%M')})")
+    if ok
+      redirect_to settings_path, notice: "Buzz test sent: #{message}"
+    else
+      redirect_to settings_path, alert: "Buzz test failed: #{message}"
+    end
   end
 end

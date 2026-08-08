@@ -62,6 +62,10 @@ gem "solid_queue"
 gem "google-apis-drive_v3"
 gem "signet"
 
+# Buzz (Nostr) agent integration — Rupert publishes signed events to the relay
+gem "nostr"
+gem "websocket-client-simple"
+
 # --- ERP framework gems ---
 # Fast pagination
 gem "pagy", "~> 8.6"

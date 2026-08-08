@@ -14,12 +14,29 @@ class SyncJob < ApplicationJob
 
     Current.tenant = tenant
 
-    if source.present?
-      SyncEngine.run_source!(source, actor: actor, tenant: tenant)
-    else
-      SyncEngine.run!(mode: mode, actor: actor, tenant: tenant)
-    end
+    run = if source.present?
+            SyncEngine.run_source!(source, actor: actor, tenant: tenant)
+          else
+            SyncEngine.run!(mode: mode, actor: actor, tenant: tenant)
+          end
+
+    BuzzNotifyJob.perform_later(sync_message(run))
+  rescue StandardError => e
+    BuzzNotifyJob.perform_later("Sync failed: #{e.message.to_s[0, 300]}")
+    raise
   ensure
     Current.tenant = nil
+  end
+
+  private
+
+  def sync_message(run)
+    drift = nil
+    if run.details.present?
+      details = run.details.is_a?(String) ? (JSON.parse(run.details) rescue nil) : run.details
+      drift = details&.dig("reconcile", "drift_count")
+    end
+    status = run.success? ? "Sync complete" : "Sync #{run.status}"
+    "#{status} · #{run.source || 'all sources'} · #{run.mode} · drift #{drift.nil? ? 'n/a' : drift}"
   end
 end
