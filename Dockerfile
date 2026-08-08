@@ -1,4 +1,4 @@
-FROM ruby:3.2-alpine
+FROM ruby:4.0.6-alpine
 
 RUN apk add --no-cache build-base sqlite-dev git openssl-dev
 
