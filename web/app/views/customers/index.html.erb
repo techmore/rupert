@@ -44,7 +44,7 @@
           <% end %>
           <% @customers.each do |customer| %>
             <tr class="hover:bg-cream">
-              <td class="td font-medium text-ink"><%= link_to customer.name, customer, class: "hover:text-olive hover:underline" %></td>
+              <td class="td font-medium text-ink"><%= link_to customer.name, customer_path(customer), class: "hover:text-olive hover:underline" %></td>
               <td class="td text-mocha"><%= customer.email.presence || "—" %></td>
               <td class="td text-mocha"><%= customer.phone.presence || "—" %></td>
               <td class="td"><span class="pill-taupe capitalize"><%= customer.source %></span></td>

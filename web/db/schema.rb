@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_08_230000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_08_230001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -339,7 +339,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_08_230000) do
     t.datetime "created_at", null: false
     t.integer "line_cents", default: 0
     t.string "name"
-    t.string "order_id", null: false
+    t.bigint "order_id", null: false
     t.integer "quantity", default: 0
     t.string "sku"
     t.string "tenant_id", null: false
@@ -353,7 +353,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_08_230000) do
     t.string "channel"
     t.datetime "created_at", null: false
     t.string "currency", default: "USD"
-    t.string "customer_id"
+    t.bigint "customer_id"
     t.integer "gross_cents", default: 0
     t.integer "line_items", default: 0
     t.string "location_id"
@@ -375,7 +375,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_08_230000) do
     t.integer "amount_cents", default: 0
     t.datetime "created_at", null: false
     t.string "method", null: false
-    t.string "order_id", null: false
+    t.bigint "order_id", null: false
     t.datetime "paid_at", null: false
     t.string "reference"
     t.string "status", default: "completed"

@@ -3,7 +3,6 @@
 module Projects
   class Project < ApplicationRecord
     include TenantScoped
-    include UuidId
     include AASM
 
     self.table_name = "projects"

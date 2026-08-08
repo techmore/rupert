@@ -6,7 +6,6 @@ module Core
   # reports have one unified view of a person.
   class Customer < ApplicationRecord
     include TenantScoped
-    include UuidId
 
     self.table_name = "customers"
 

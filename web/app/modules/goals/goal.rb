@@ -3,7 +3,6 @@
 module Goals
   class Goal < ApplicationRecord
     include TenantScoped
-    include UuidId
     include AASM
 
     self.table_name = "goals"

@@ -1,33 +1,71 @@
 # frozen_string_literal: true
 
-# Maps the Shopify/Square ledger feeds into the canonical Core::Order stream.
-# Idempotent: upserts on (tenant_id, source, source_order_id).
+# Maps the Shopify/Square raw payloads into the canonical Core::Order stream
+# (orders + order_lines + payments + customers). Idempotent: upserts on
+# (tenant_id, source, source_order_id) and replaces line items/payments per
+# order on each sync so the canonical store stays in lock-step with the feeds.
 #
-# Also provides a one-time backfill from the existing LedgerEntry mirror so the
-# canonical order history starts populated.
+# Also provides a one-time backfill from the existing LedgerEntry mirror for
+# orders that predate the canonical store.
 class CanonicalOrderImporter
   class << self
-    def from_shopify!(entries)
-      entries.each do |entry|
+    def from_shopify!(nodes)
+      Array(nodes).each do |node|
+        next if node.blank?
+
+        customer = upsert_customer!(
+          source: "shopify",
+          external_id: node.dig("customer", "id"),
+          email: node.dig("customer", "email"),
+          first_name: node.dig("customer", "firstName"),
+          last_name: node.dig("customer", "lastName"),
+          phone: node.dig("customer", "phone"),
+        )
+
         Core::Order.upsert(
-          order_attrs(entry, channel: "online"),
+          order_attrs(node, source: "shopify", channel: "online", customer_id: customer&.id),
           unique_by: [:tenant_id, :source, :source_order_id],
         )
+        order = Core::Order.find_by(
+          tenant_id: Current.tenant_id,
+          source: "shopify",
+          source_order_id: node["id"],
+        )
+        replace_order_lines!(order, node["lineItems"])
+        replace_payments!(order, shopify_payments(node))
       end
-      entries.length
+      Array(nodes).length
     end
 
-    def from_square!(entries)
-      entries.each do |entry|
+    def from_square!(orders)
+      Array(orders).each do |node|
+        next if node.blank?
+
+        customer = upsert_customer!(
+          source: "square",
+          external_id: node["customer_id"].presence || node["id"],
+          email: nil,
+          first_name: nil,
+          last_name: nil,
+        )
+
         Core::Order.upsert(
-          order_attrs(entry, channel: "pos"),
+          order_attrs(node, source: "square", channel: "pos", customer_id: customer&.id),
           unique_by: [:tenant_id, :source, :source_order_id],
         )
+        order = Core::Order.find_by(
+          tenant_id: Current.tenant_id,
+          source: "square",
+          source_order_id: node["id"],
+        )
+        replace_order_lines!(order, node["line_items"])
+        replace_payments!(order, square_payments(node))
       end
-      entries.length
+      Array(orders).length
     end
 
-    # One-time: hydrate canonical orders from every ledger entry already mirrored.
+    # One-time: hydrate canonical orders from every ledger entry already
+    # mirrored (order-level only; line/payment detail is unavailable).
     def backfill_from_ledger!
       count = 0
       LedgerEntry.find_in_batches do |batch|
@@ -54,19 +92,138 @@ class CanonicalOrderImporter
 
     private
 
-    def order_attrs(entry = nil, channel: nil, **kw)
-      data = entry || kw
+    def upsert_customer!(source:, external_id:, email:, first_name:, last_name:, phone: nil)
+      return if external_id.blank?
+
+      Core::Customer.upsert(
+        {
+          tenant_id: Current.tenant_id,
+          source: source,
+          external_id: external_id,
+          email: email,
+          first_name: first_name,
+          last_name: last_name,
+          phone: phone,
+          created_at: Time.current,
+          updated_at: Time.current,
+        },
+        unique_by: [:tenant_id, :source, :external_id],
+      )
+      Core::Customer.find_by(tenant_id: Current.tenant_id, source: source, external_id: external_id)
+    end
+
+    # Replaces all line items for an order with the current payload, keeping
+    # the canonical order_lines table in lock-step with the feed.
+    def replace_order_lines!(order, line_items)
+      nodes = if line_items.is_a?(Hash)
+        Array(line_items["nodes"])
+      else
+        Array(line_items)
+      end
+
+      order.order_lines.delete_all
+      nodes.each do |item|
+        next if item.blank?
+
+        order.order_lines.create!(
+          tenant_id: Current.tenant_id,
+          sku: item["sku"].presence || item["variation_name"],
+          name: item["title"].presence || item["name"] || "Item",
+          quantity: item["quantity"].to_i,
+          unit_cents: money_cents(item.dig("originalUnitPriceSet", "shopMoney")) ||
+            money_cents(item.dig("base_price_money")) || 0,
+          line_cents: money_cents(item.dig("originalTotalSet", "shopMoney")) ||
+            money_cents(item.dig("total_money")) || 0,
+        )
+      end
+    end
+
+    def replace_payments!(order, payments)
+      order.payments.delete_all
+      payments.each do |payment|
+        order.payments.create!(
+          tenant_id: Current.tenant_id,
+          method: payment[:method],
+          amount_cents: payment[:amount_cents],
+          status: "completed",
+          reference: payment[:reference],
+          paid_at: payment[:paid_at] || Time.current,
+        )
+      end
+    end
+
+    # Shopify returns a paymentGatewayNames array, not itemized tenders; infer
+    # a single tender from the order total for tender-type reporting.
+    def shopify_payments(node)
+      gross = (node.dig("currentTotalPriceSet", "shopMoney", "amount").to_f * 100).round
+      return [] if gross.zero?
+
+      gateways = Array(node["paymentGatewayNames"])
+      method = if gateways.any? { |g| g.to_s.downcase.include?("gift") }
+        "gift_card"
+      elsif gateways.any? { |g| g.to_s.downcase.include?("cash") }
+        "cash"
+      else
+        "card"
+      end
+      [{
+        method: method,
+        amount_cents: gross,
+        reference: node["name"],
+        paid_at: parse_time(node["createdAt"]),
+      }]
+    end
+
+    # Square orders carry an itemized `tenders` array.
+    def square_payments(node)
+      tenders = Array(node["tenders"])
+      return [] if tenders.empty?
+
+      tenders.map do |tender|
+        {
+          method: map_square_tender(tender["type"]),
+          amount_cents: (tender.dig("amount_money", "amount").to_i || 0).abs,
+          reference: tender["id"],
+          paid_at: parse_time(tender["created_at"]),
+        }
+      end
+    end
+
+    def map_square_tender(type)
+      case type.to_s.upcase
+      when "CASH" then "cash"
+      when "GIFT_CARD" then "gift_card"
+      when "CARD", "SQUARE_ACCOUNT", "CASH_APP_PAY", "BUY_NOW_PAY_LATER" then "card"
+      else "other"
+      end
+    end
+
+    def order_attrs(data = nil, channel: nil, customer_id: nil, source: nil, **kw)
+      data = kw if data.nil?
+      gross_cents = money_cents(data.dig("currentTotalPriceSet", "shopMoney")) ||
+        money_cents(data.dig("total_money")) || (data[:grossCents] || data["grossCents"]).to_i
+      tax_cents = money_cents(data.dig("currentTotalTaxSet", "shopMoney")) ||
+        money_cents(data.dig("total_tax_money")) || 0
+
       {
         tenant_id: Current.tenant_id,
-        source: data[:source] || data["source"],
-        source_order_id: data[:sourceOrderId] || data["sourceOrderId"],
-        order_number: data[:orderName] || data["orderName"],
+        source: source || data[:source] || data["source"] || "square",
+        source_order_id: data[:sourceOrderId] || data["sourceOrderId"] || data["id"],
+        order_number: data[:orderName] || data["orderName"] || data["name"] ||
+          "SQ-#{data["id"].to_s.slice(0, 12)}",
         channel: channel || data[:channel] || data["channel"],
-        occurred_at: data[:occurredAt] || data["occurredAt"],
-        gross_cents: (data[:grossCents] || data["grossCents"]).to_i,
-        status: normalize_status(data[:status] || data["status"]),
-        line_items: (data[:lineItems] || data["lineItems"]).to_i,
-        currency: data[:currency] || data["currency"] || "USD",
+        customer_id: customer_id,
+        location_id: data["location_id"] || data[:locationId] || data["locationId"],
+        occurred_at: parse_time(data["createdAt"] || data["created_at"]) ||
+          (data[:occurredAt] || data["occurredAt"]) || Time.current,
+        gross_cents: gross_cents,
+        tax_cents: tax_cents,
+        status: normalize_status(data["displayFinancialStatus"] || data["state"] ||
+          data[:status] || data["status"]),
+        line_items: data["lineItems"]&.dig("nodes")&.length ||
+          data["line_items"]&.length || (data[:lineItems] || data["lineItems"]).to_i,
+        currency: data.dig("currentTotalPriceSet", "shopMoney", "currencyCode") ||
+          data.dig("total_money", "currency") || data[:currency] || data["currency"] || "USD",
         created_at: Time.current,
         updated_at: Time.current,
       }
@@ -81,6 +238,18 @@ class CanonicalOrderImporter
       when "ANY" then "placed"
       else "placed"
       end
+    end
+
+    def money_cents(hash)
+      return if hash.blank?
+
+      (hash["amount"].to_f * 100).round
+    end
+
+    def parse_time(value)
+      value.present? ? Time.zone.parse(value) : nil
+    rescue ArgumentError
+      nil
     end
   end
 end

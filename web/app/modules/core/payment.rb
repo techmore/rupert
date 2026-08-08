@@ -4,7 +4,6 @@ module Core
   # Payment tender applied to an order (card, cash, gift card, etc.).
   class Payment < ApplicationRecord
     include TenantScoped
-    include UuidId
 
     self.table_name = "payments"
 

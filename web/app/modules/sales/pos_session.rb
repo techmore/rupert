@@ -6,7 +6,6 @@ module Sales
   # counted amount is what's physically in the drawer; variance is the diff.
   class PosSession < ApplicationRecord
     include TenantScoped
-    include UuidId
     include AASM
 
     self.table_name = "pos_sessions"

@@ -20,9 +20,17 @@ class CatalogSyncer
       orders(first: 100, query: $orderQuery, sortKey: CREATED_AT, reverse: true) {
         pageInfo { hasNextPage }
         nodes {
-          id name createdAt displayFinancialStatus
+          id name createdAt displayFinancialStatus paymentGatewayNames
           currentTotalPriceSet { shopMoney { amount currencyCode } }
-          lineItems(first: 100) { nodes { title variantTitle sku quantity } }
+          currentTotalTaxSet { shopMoney { amount currencyCode } }
+          customer { id email firstName lastName phone }
+          lineItems(first: 100) {
+            nodes {
+              title variantTitle sku quantity
+              originalUnitPriceSet { shopMoney { amount currencyCode } }
+              originalTotalSet { shopMoney { amount currencyCode } }
+            }
+          }
         }
       }
     }

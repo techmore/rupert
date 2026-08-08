@@ -4,7 +4,6 @@ module Core
   # Line item on a canonical order.
   class OrderLine < ApplicationRecord
     include TenantScoped
-    include UuidId
 
     self.table_name = "order_lines"
 

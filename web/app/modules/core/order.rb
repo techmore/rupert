@@ -6,7 +6,6 @@ module Core
   # is the idempotency key.
   class Order < ApplicationRecord
     include TenantScoped
-    include UuidId
     include AASM
 
     self.table_name = "orders"

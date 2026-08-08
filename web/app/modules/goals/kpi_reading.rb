@@ -3,7 +3,6 @@
 module Goals
   class KpiReading < ApplicationRecord
     include TenantScoped
-    include UuidId
 
     self.table_name = "kpi_readings"
 

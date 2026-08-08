@@ -9,20 +9,64 @@ class CanonicalOrderImporterTest < ActiveSupport::TestCase
 
   teardown { Current.tenant = nil }
 
-  test "from_shopify! creates canonical orders" do
-    entries = [
-      {
-        source: "shopify",
-        sourceOrderId: "gid://shopify/Order/123",
-        orderName: "#1001",
-        occurredAt: Time.current,
-        grossCents: 2500,
-        status: "PAID",
-        lineItems: 2,
+  def shopify_order(id: "gid://shopify/Order/123", name: "#1001", customer: { "id" => "gid://shopify/Customer/9", "email" => "a@b.com", "firstName" => "Ada", "lastName" => "Lovelace" })
+    {
+      "id" => id,
+      "name" => name,
+      "createdAt" => Time.current.iso8601,
+      "displayFinancialStatus" => "PAID",
+      "paymentGatewayNames" => ["Shopify Payments"],
+      "currentTotalPriceSet" => { "shopMoney" => { "amount" => "25.00", "currencyCode" => "USD" } },
+      "currentTotalTaxSet" => { "shopMoney" => { "amount" => "2.00", "currencyCode" => "USD" } },
+      "customer" => customer,
+      "lineItems" => {
+        "nodes" => [
+          {
+            "title" => "CBD Oil",
+            "variantTitle" => "500mg",
+            "sku" => "OIL-500",
+            "quantity" => 2,
+            "originalUnitPriceSet" => { "shopMoney" => { "amount" => "10.00" } },
+            "originalTotalSet" => { "shopMoney" => { "amount" => "20.00" } },
+          },
+          {
+            "title" => "Gummies",
+            "variantTitle" => "30ct",
+            "sku" => "GUM-30",
+            "quantity" => 1,
+            "originalUnitPriceSet" => { "shopMoney" => { "amount" => "5.00" } },
+            "originalTotalSet" => { "shopMoney" => { "amount" => "5.00" } },
+          },
+        ],
       },
-    ]
+    }
+  end
 
-    count = CanonicalOrderImporter.from_shopify!(entries)
+  def square_order(id: "sq-abc", customer_id: "cust-1")
+    {
+      "id" => id,
+      "state" => "COMPLETED",
+      "created_at" => Time.current.iso8601,
+      "location_id" => "L_MAIN",
+      "customer_id" => customer_id,
+      "total_money" => { "amount" => 1200, "currency" => "USD" },
+      "total_tax_money" => { "amount" => 100, "currency" => "USD" },
+      "line_items" => [
+        {
+          "name" => "CBD Cream",
+          "quantity" => "1",
+          "base_price_money" => { "amount" => 1000 },
+          "total_money" => { "amount" => 1000 },
+        },
+      ],
+      "tenders" => [
+        { "id" => "t-1", "type" => "CASH", "amount_money" => { "amount" => 1200 }, "created_at" => Time.current.iso8601 },
+      ],
+    }
+  end
+
+  test "from_shopify! creates canonical order with lines, payment, customer, and tax" do
+    count = CanonicalOrderImporter.from_shopify!([shopify_order])
     assert_equal 1, count
 
     order = Core::Order.find_by(source: "shopify", source_order_id: "gid://shopify/Order/123")
@@ -30,39 +74,62 @@ class CanonicalOrderImporterTest < ActiveSupport::TestCase
     assert_equal "online", order.channel
     assert_equal "paid", order.status
     assert_equal 2500, order.gross_cents
+    assert_equal 200, order.tax_cents
+
+    assert_equal 2, order.order_lines.count
+    oil = order.order_lines.find_by(sku: "OIL-500")
+    assert oil
+    assert_equal 2, oil.quantity
+    assert_equal 2000, oil.line_cents
+
+    assert_equal 1, order.payments.count
+    assert_equal "card", order.payments.first.method
+    assert_equal 2500, order.payments.first.amount_cents
+
+    assert order.customer_id.present?
+    customer = Core::Customer.find_by(external_id: "gid://shopify/Customer/9")
+    assert customer
+    assert_equal "Ada", customer.first_name
+    assert_equal "a@b.com", customer.email
   end
 
-  test "from_square! creates canonical orders" do
-    entries = [
-      {
-        source: "square",
-        sourceOrderId: "sq-abc",
-        orderName: "SQ-abc",
-        occurredAt: Time.current,
-        grossCents: 1200,
-        status: "COMPLETED",
-        lineItems: 1,
-      },
-    ]
-
-    CanonicalOrderImporter.from_square!(entries)
+  test "from_square! creates canonical order with location, tenders, and customer" do
+    CanonicalOrderImporter.from_square!([square_order])
     order = Core::Order.find_by(source: "square", source_order_id: "sq-abc")
     assert order
     assert_equal "pos", order.channel
     assert_equal "paid", order.status
+    assert_equal "L_MAIN", order.location_id
+
+    assert_equal 1, order.order_lines.count
+    assert_equal "CBD Cream", order.order_lines.first.name
+
+    assert_equal 1, order.payments.count
+    assert_equal "cash", order.payments.first.method
+    assert_equal 1200, order.payments.first.amount_cents
+
+    customer = Core::Customer.find_by(external_id: "cust-1", source: "square")
+    assert customer
+    assert_equal customer.id, order.customer_id
   end
 
-  test "is idempotent for the same source order" do
-    entry = {
-      source: "shopify",
-      sourceOrderId: "gid://shopify/Order/dup",
-      occurredAt: Time.current,
-      grossCents: 900,
-      status: "PAID",
-      lineItems: 1,
-    }
-    2.times { CanonicalOrderImporter.from_shopify!([entry]) }
-    assert_equal 1, Core::Order.where(source: "shopify", source_order_id: "gid://shopify/Order/dup").count
+  test "is idempotent for the same source order and replaces lines" do
+    2.times { CanonicalOrderImporter.from_shopify!([shopify_order]) }
+    order = Core::Order.find_by(source: "shopify", source_order_id: "gid://shopify/Order/123")
+    assert_equal 1, Core::Order.where(source: "shopify", source_order_id: "gid://shopify/Order/123").count
+    assert_equal 2, order.order_lines.count
+    assert_equal 1, order.payments.count
+  end
+
+  test "square gift card and card tenders map to methods" do
+    order = square_order
+    order["tenders"] = [
+      { "id" => "t1", "type" => "GIFT_CARD", "amount_money" => { "amount" => 500 }, "created_at" => Time.current.iso8601 },
+      { "id" => "t2", "type" => "CARD", "amount_money" => { "amount" => 700 }, "created_at" => Time.current.iso8601 },
+    ]
+    CanonicalOrderImporter.from_square!([order])
+    payments = Core::Order.find_by(source_order_id: "sq-abc").payments
+    assert_equal ["card", "gift_card"], payments.map(&:method).sort
   end
 
   test "backfill_from_ledger! hydrates from existing ledger entries" do

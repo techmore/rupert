@@ -24,7 +24,7 @@ class LedgerImporter
       }
     end
     upsert!(entries)
-    CanonicalOrderImporter.from_shopify!(entries)
+    CanonicalOrderImporter.from_shopify!(nodes)
   end
 
   def self.from_square_orders!(orders)
@@ -50,7 +50,7 @@ class LedgerImporter
       }
     end
     upsert!(entries)
-    CanonicalOrderImporter.from_square!(entries)
+    CanonicalOrderImporter.from_square!(orders)
   end
 
   def self.upsert!(entries)
