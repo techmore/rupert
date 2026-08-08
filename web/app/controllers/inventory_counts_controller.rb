@@ -8,7 +8,7 @@ class InventoryCountsController < AuthenticatedController
   end
 
   def show
-    @count = InventoryCount.find(params[:id])
+    @count = InventoryCount.includes(items: { shopify_variant: :product }).find(params[:id])
   end
 
   def new
@@ -37,7 +37,7 @@ class InventoryCountsController < AuthenticatedController
   end
 
   def edit
-    @count = InventoryCount.find(params[:id])
+    @count = InventoryCount.includes(items: { shopify_variant: :product }).find(params[:id])
     @locations = Location.order(name: :asc).limit(200)
     @skus = SkuLink.order(:sku).limit(500).pluck(:sku)
   end

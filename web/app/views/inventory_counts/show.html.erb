@@ -44,7 +44,7 @@
       <table class="w-full text-sm">
         <thead class="border-b border-fog bg-haze/60">
           <tr>
-            <th class="th">SKU</th>
+            <th class="th">Item</th>
             <th class="th text-right">Counted</th>
             <th class="th text-right">System</th>
             <th class="th text-right">Delta</th>
@@ -59,7 +59,19 @@
           <% end %>
           <% count.items.order(:sku).each do |item| %>
             <tr class="hover:bg-cream">
-              <td class="td font-mono text-xs text-mocha"><%= item.sku %></td>
+              <td class="td">
+                <div class="flex items-center gap-3">
+                  <% if item.inventory_thumbnail %>
+                    <%= image_tag item.inventory_thumbnail, alt: item.sku, loading: "lazy", class: "h-10 w-10 shrink-0 rounded-lg border border-fog bg-haze object-cover" %>
+                  <% else %>
+                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-fog bg-haze font-display text-base text-taupe"><%= item.sku.first.upcase %></span>
+                  <% end %>
+                  <div class="min-w-0">
+                    <p class="truncate font-medium text-ink"><%= item.inventory_title.presence || item.sku %></p>
+                    <p class="font-mono text-xs text-taupe"><%= item.sku %></p>
+                  </div>
+                </div>
+              </td>
               <td class="td text-right font-medium text-ink"><%= item.quantity %></td>
               <td class="td text-right text-mocha"><%= item.previousQuantity.presence || "—" %></td>
               <td class="td text-right">

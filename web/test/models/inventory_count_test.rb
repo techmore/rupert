@@ -96,4 +96,12 @@ class InventoryCountTest < ActiveSupport::TestCase
     refute @count.apply_override!
     assert_nil @count.appliedAt
   end
+
+  test "resolves product title and thumbnail for the count sheet" do
+    @product.update!(featuredImageUrl: "https://cdn.shopify.com/s/files/1/x/widget.jpg")
+    @count.snapshot_previous!
+    @item.reload
+    assert_equal "Widget - Small", @item.inventory_title
+    assert_includes @item.inventory_thumbnail, "https://cdn.shopify.com/s/files/1/x/widget.jpg"
+  end
 end

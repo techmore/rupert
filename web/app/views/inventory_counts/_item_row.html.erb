@@ -1,4 +1,7 @@
 <div data-row class="flex items-center gap-2">
+  <% if item.inventory_thumbnail %>
+    <%= image_tag item.inventory_thumbnail, alt: item.sku, loading: "lazy", class: "h-8 w-8 shrink-0 rounded-md border border-fog bg-haze object-cover" %>
+  <% end %>
   <input type="text" name="items[][sku]" value="<%= item.sku %>" list="known-skus" placeholder="SKU" class="input flex-1 font-mono" autocomplete="off">
   <input type="number" name="items[][quantity]" value="<%= item.quantity.to_i.positive? ? item.quantity : "" %>" min="0" placeholder="Qty" class="input w-24">
   <button type="button" data-remove-row class="text-xs font-medium text-taupe hover:text-rose">Remove</button>
