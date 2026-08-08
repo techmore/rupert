@@ -51,36 +51,36 @@ class CanonicalOrderImporter
       end
       count
     end
-  end
 
-  private
+    private
 
-  def order_attrs(entry = nil, channel: nil, **kw)
-    data = entry || kw
-    {
-      tenant_id: Current.tenant_id,
-      source: data[:source] || data["source"],
-      source_order_id: data[:sourceOrderId] || data["sourceOrderId"],
-      order_number: data[:orderName] || data["orderName"],
-      channel: channel || data[:channel] || data["channel"],
-      occurred_at: data[:occurredAt] || data["occurredAt"],
-      gross_cents: (data[:grossCents] || data["grossCents"]).to_i,
-      status: normalize_status(data[:status] || data["status"]),
-      line_items: (data[:lineItems] || data["lineItems"]).to_i,
-      currency: data[:currency] || data["currency"] || "USD",
-      created_at: Time.current,
-      updated_at: Time.current,
-    }
-  end
+    def order_attrs(entry = nil, channel: nil, **kw)
+      data = entry || kw
+      {
+        tenant_id: Current.tenant_id,
+        source: data[:source] || data["source"],
+        source_order_id: data[:sourceOrderId] || data["sourceOrderId"],
+        order_number: data[:orderName] || data["orderName"],
+        channel: channel || data[:channel] || data["channel"],
+        occurred_at: data[:occurredAt] || data["occurredAt"],
+        gross_cents: (data[:grossCents] || data["grossCents"]).to_i,
+        status: normalize_status(data[:status] || data["status"]),
+        line_items: (data[:lineItems] || data["lineItems"]).to_i,
+        currency: data[:currency] || data["currency"] || "USD",
+        created_at: Time.current,
+        updated_at: Time.current,
+      }
+    end
 
-  # Map display statuses from either platform into our aasm state names.
-  def normalize_status(raw)
-    case raw.to_s.upcase
-    when "PAID", "COMPLETED", "CLOSED" then "paid"
-    when "PARTIALLY_REFUNDED", "REFUNDED", "CANCELED", "CANCELLED" then "refunded"
-    when "OPEN", "PLACED", "PARTIALLY_PAID" then "placed"
-    when "ANY" then "placed"
-    else "placed"
+    # Map display statuses from either platform into our aasm state names.
+    def normalize_status(raw)
+      case raw.to_s.upcase
+      when "PAID", "COMPLETED", "CLOSED" then "paid"
+      when "PARTIALLY_REFUNDED", "REFUNDED", "CANCELED", "CANCELLED" then "refunded"
+      when "OPEN", "PLACED", "PARTIALLY_PAID" then "placed"
+      when "ANY" then "placed"
+      else "placed"
+      end
     end
   end
 end

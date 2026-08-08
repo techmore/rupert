@@ -10,7 +10,7 @@ class GoogleDriveBackupServiceTest < ActiveSupport::TestCase
     EnvStore.set("GOOGLE_DRIVE_REFRESH_TOKEN", "refresh-token")
     EnvStore.set("GOOGLE_DRIVE_FOLDER_ID", nil)
 
-    @snapshot = Rails.root.join("tmp", "backups", "test-snapshot.dump")
+    @snapshot = Rails.root.join("tmp", "backups", "test-snapshot-#{SecureRandom.hex(8)}.dump")
     FileUtils.mkdir_p(@snapshot.dirname)
     File.write(@snapshot, "PGDMP test backup")
     BackupService.stubs(:snapshot_path).returns(@snapshot)
