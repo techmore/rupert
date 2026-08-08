@@ -14,6 +14,8 @@ class ModulePolicy < ApplicationPolicy
     :inventory_write,
     :reconcile_read,
     :reconcile_write,
+    :reports_read,
+    :reports_write,
     :ledger_read,
     :ledger_write,
     :projects_read,

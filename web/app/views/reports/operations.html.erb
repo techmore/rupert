@@ -1,0 +1,89 @@
+<%= render "reports/layout", title: "Operations report", subtitle: "Sync health, reconciliation, and POS cash reconciliation." do %>
+  <section class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="stat">
+      <p class="stat-label">Sync success rate</p>
+      <p class="stat-value mt-1"><%= number_to_percentage(@sync_rate, precision: 1) %></p>
+      <p class="mt-1 text-xs text-taupe"><%= @sync_success %> / <%= @sync_total %> runs</p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Failed syncs</p>
+      <p class="stat-value mt-1 text-rose"><%= @sync_failed %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Reconcile runs</p>
+      <p class="stat-value mt-1"><%= @reconcile_total %></p>
+      <p class="mt-1 text-xs text-taupe"><%= @reconcile_success %> applied</p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">POS cash variance</p>
+      <p class="stat-value mt-1 <%= @pos_variance_total.zero? ? "" : "text-clay" %>"><%= number_to_currency(@pos_variance_total) %></p>
+      <p class="mt-1 text-xs text-taupe"><%= @pos_open %> register open</p>
+    </div>
+  </section>
+
+  <div class="grid gap-4 lg:grid-cols-2">
+    <div class="card card-pad">
+      <h2 class="font-display text-lg text-ink">Recent sync runs</h2>
+      <div class="mt-2 divide-y divide-fog">
+        <% SyncRun.order(startedAt: :desc).limit(10).each do |run| %>
+          <div class="flex items-center justify-between py-2">
+            <span class="text-sm text-mocha"><%= run.source || run.mode %> · <%= l(run.startedAt, format: :short) %></span>
+            <span class="<%= run.success? ? "pill-fern" : run.failed? ? "pill-rose" : "pill-taupe" %>"><%= run.status %></span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="card card-pad">
+      <h2 class="font-display text-lg text-ink">Recent POS sessions</h2>
+      <div class="mt-2 divide-y divide-fog">
+        <% @pos_sessions.each do |session| %>
+          <div class="flex items-center justify-between py-2">
+            <span class="text-sm text-mocha"><%= session.name %> · <%= l(session.opened_at, format: :short) %></span>
+            <span class="text-xs text-taupe">
+              variance <%= number_to_currency(session.variance_cents.to_i / 100.0) %>
+            </span>
+          </div>
+        <% end %>
+        <% if @pos_sessions.empty? %>
+          <p class="py-3 text-sm text-taupe">No POS sessions yet.</p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="card overflow-hidden">
+    <div class="border-b border-fog px-5 py-3">
+      <h2 class="font-display text-lg text-ink">Reconcile runs</h2>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th class="th">Started</th>
+            <th class="th">Mode</th>
+            <th class="th">Status</th>
+            <th class="th text-right">Rows</th>
+            <th class="th text-right">Applied</th>
+            <th class="th text-right">Failed</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% @reconcile_runs.each do |run| %>
+            <tr class="hover:bg-cream">
+              <td class="td whitespace-nowrap text-mocha"><%= l(run.startedAt, format: :short) %></td>
+              <td class="td text-mocha"><%= run.mode %></td>
+              <td class="td"><span class="<%= run.status == "applied" ? "pill-fern" : run.status == "failed" ? "pill-rose" : "pill-taupe" %>"><%= run.status %></span></td>
+              <td class="td text-right text-mocha"><%= run.totalRows %></td>
+              <td class="td text-right text-mocha"><%= run.applied %></td>
+              <td class="td text-right text-mocha"><%= run.failed %></td>
+            </tr>
+          <% end %>
+          <% if @reconcile_runs.empty? %>
+            <tr><td class="td py-8 text-center text-taupe">No reconcile runs yet.</td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% end %>

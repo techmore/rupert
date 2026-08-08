@@ -73,6 +73,14 @@ Rails.application.routes.draw do
       post :apply
     end
   end
+  resources :reports, only: [:index] do
+    collection do
+      get :sales
+      get :financial
+      get :inventory
+      get :operations
+    end
+  end
   resources :ledger, only: :index
   resources :alerts, only: :index do
     collection do

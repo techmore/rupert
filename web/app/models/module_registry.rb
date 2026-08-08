@@ -18,6 +18,7 @@ class ModuleRegistry
     Entry.new(key: "customers", name: "Customers", path: -> { customers_path }, permission: "customers.read", position: 30),
     Entry.new(key: "inventory", name: "Inventory", path: -> { inventory_index_path }, permission: "inventory.read", position: 40),
     Entry.new(key: "reconcile", name: "Reconcile", path: -> { reconcile_index_path }, permission: "reconcile.read", position: 50),
+    Entry.new(key: "reports", name: "Reports", path: -> { reports_path }, permission: "reports.read", position: 55),
     Entry.new(key: "ledger", name: "Ledger", path: -> { ledger_index_path }, permission: "ledger.read", position: 60),
     Entry.new(key: "projects", name: "Projects", path: -> { projects_projects_path }, permission: "projects.read", position: 70),
     Entry.new(key: "goals", name: "Goals", path: -> { goals_goals_path }, permission: "projects.read", position: 75),
@@ -46,7 +47,7 @@ class ModuleRegistry
     AREAS = [
       { key: "overview", name: "Overview", modules: ["dashboard"] },
       { key: "commerce", name: "Commerce", modules: ["sales", "customers", "inventory"] },
-      { key: "operations", name: "Operations", modules: ["reconcile", "ledger", "projects", "goals", "kpis"] },
+      { key: "operations", name: "Operations", modules: ["reports", "reconcile", "ledger", "projects", "goals", "kpis"] },
       { key: "system", name: "System", modules: ["alerts", "sync", "settings"] },
     ].freeze
 

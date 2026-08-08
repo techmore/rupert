@@ -1,0 +1,63 @@
+<%= render "reports/layout", title: "Inventory report", subtitle: "Stock valuation, movement, and low-stock pipeline." do %>
+  <section class="grid grid-cols-2 gap-4 lg:grid-cols-5">
+    <div class="stat">
+      <p class="stat-label">Stock value (retail)</p>
+      <p class="stat-value mt-1"><%= number_to_currency(@valuation) %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Variants</p>
+      <p class="stat-value mt-1"><%= @variants %></p>
+      <p class="mt-1 text-xs text-taupe"><%= @tracked %> tracked</p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Movements · 30d</p>
+      <p class="stat-value mt-1"><%= @movements_30d %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Low stock</p>
+      <p class="stat-value mt-1 text-clay"><%= @low_stock %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Out of stock</p>
+      <p class="stat-value mt-1 text-rose"><%= @out_of_stock %></p>
+    </div>
+  </section>
+
+  <div class="card card-pad">
+    <h2 class="font-display text-lg text-ink">Inventory movements · last 30 days</h2>
+    <div class="mt-3"><%= column_chart @movement_trend, height: "220px", colors: ["#1e7b82"], legend: false %></div>
+  </div>
+
+  <div class="card overflow-hidden">
+    <div class="border-b border-fog px-5 py-3">
+      <h2 class="font-display text-lg text-ink">Low stock · on hand ≤ 5</h2>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th class="th">SKU</th>
+            <th class="th">Product</th>
+            <th class="th">Variant</th>
+            <th class="th text-right">On hand</th>
+            <th class="th text-right">Price</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% @low_stock_items.each do |row| %>
+            <tr class="hover:bg-cream">
+              <td class="td font-mono text-xs text-mocha"><%= row[:sku].presence || "—" %></td>
+              <td class="td font-medium text-ink"><%= row[:product] %></td>
+              <td class="td text-mocha"><%= row[:variant] %></td>
+              <td class="td text-right <%= row[:qty].zero? ? "font-semibold text-rose" : "font-semibold text-clay" %>"><%= row[:qty] %></td>
+              <td class="td text-right text-mocha"><%= number_to_currency(row[:price]) %></td>
+            </tr>
+          <% end %>
+          <% if @low_stock_items.empty? %>
+            <tr><td class="td py-8 text-center text-taupe">No low-stock items — all good.</td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% end %>
