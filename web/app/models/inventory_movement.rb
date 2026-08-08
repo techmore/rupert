@@ -2,6 +2,7 @@
 
 class InventoryMovement < ApplicationRecord
   include HasCuid
+  include TenantScoped
 
   self.table_name = "InventoryMovement"
   self.primary_key = "id"

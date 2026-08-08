@@ -2,6 +2,7 @@
 
 class ShopifyVariant < ApplicationRecord
   include HasCuid
+  include TenantScoped
 
   self.table_name = "ShopifyVariant"
   self.primary_key = "id"

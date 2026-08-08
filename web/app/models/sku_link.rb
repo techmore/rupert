@@ -2,6 +2,7 @@
 
 class SkuLink < ApplicationRecord
   include HasCuid
+  include TenantScoped
 
   self.table_name = "SkuLink"
   self.primary_key = "id"

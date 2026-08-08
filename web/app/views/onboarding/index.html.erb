@@ -1,0 +1,45 @@
+<% content_for :title, "Connect your accounts" %>
+<div class="mx-auto max-w-xl">
+  <div class="mb-6">
+    <h1 class="font-display text-3xl text-ink">Connect your accounts</h1>
+    <p class="mt-1 text-sm text-mocha">Before the sync engine can run, link your Shopify and Square credentials. You can edit these anytime from Settings.</p>
+  </div>
+
+  <div class="space-y-4">
+    <div class="card card-pad">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="font-semibold text-ink">Shopify</h2>
+          <p class="text-sm text-mocha">Custom app client ID + secret for <%= EnvStore.fetch("SHOPIFY_SHOP_DOMAIN", "your store") %></p>
+        </div>
+        <span class="<%= @required["SHOPIFY_CLIENT_ID"] && @required["SHOPIFY_CLIENT_SECRET"] ? "pill-fern" : "pill-clay" %>">
+          <span class="dot <%= @required["SHOPIFY_CLIENT_ID"] && @required["SHOPIFY_CLIENT_SECRET"] ? "bg-fern" : "bg-clay" %>"></span>
+          <%= @required["SHOPIFY_CLIENT_ID"] && @required["SHOPIFY_CLIENT_SECRET"] ? "Connected" : "Needed" %>
+        </span>
+      </div>
+    </div>
+
+    <div class="card card-pad">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="font-semibold text-ink">Square</h2>
+          <p class="text-sm text-mocha">Optional — enables Square catalog + order sync</p>
+        </div>
+        <span class="<%= @optional["SQUARE_ACCESS_TOKEN"] ? "pill-fern" : "pill-taupe" %>">
+          <span class="dot <%= @optional["SQUARE_ACCESS_TOKEN"] ? "bg-fern" : "bg-taupe" %>"></span>
+          <%= @optional["SQUARE_ACCESS_TOKEN"] ? "Connected" : "Optional" %>
+        </span>
+      </div>
+    </div>
+
+    <div class="card card-pad">
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <h2 class="font-semibold text-ink">Enter your API keys</h2>
+          <p class="text-sm text-mocha">Paste a <code class="rounded bg-haze px-1.5 py-0.5 text-xs">KEY=VALUE</code> block or upload an .env file.</p>
+        </div>
+        <%= link_to "Open Settings", settings_path, class: "btn-primary" %>
+      </div>
+    </div>
+  </div>
+</div>

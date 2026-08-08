@@ -2,6 +2,7 @@
 
 class InventoryLevel < ApplicationRecord
   include HasCuid
+  include TenantScoped
 
   self.table_name = "InventoryLevel"
   self.primary_key = "id"

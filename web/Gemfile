@@ -46,6 +46,9 @@ gem "bootsnap", require: false
 # Load .env from the repo root into ENV at boot
 gem "dotenv-rails"
 
+# Password authentication for admins/tenants
+gem "bcrypt", "~> 3.1.7"
+
 # Tailwind CSS (v3 via tailwindcss-rails) for the Oatmeal-themed UI
 gem "tailwindcss-rails"
 

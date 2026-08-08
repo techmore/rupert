@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class ShopifyProduct < ApplicationRecord
+  include TenantScoped
+
   self.table_name = "ShopifyProduct"
   self.primary_key = "id"
 

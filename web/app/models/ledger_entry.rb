@@ -2,6 +2,7 @@
 
 class LedgerEntry < ApplicationRecord
   include HasCuid
+  include TenantScoped
 
   self.table_name = "LedgerEntry"
   self.primary_key = "id"

@@ -1,9 +1,13 @@
 # frozen_string_literal: true
 
 class User < ActiveRecord::Base
-  include ShopifyApp::UserSessionStorage
+  has_secure_password
 
-  def api_version
-    ShopifyApp.configuration.api_version
-  end
+  belongs_to :tenant, optional: true
+
+  validates :email, presence: true, uniqueness: true,
+    format: { with: URI::MailTo::EMAIL_REGEXP }
+  validates :password, length: { minimum: 8 }, allow_nil: true
+
+  enum :role, { admin: "admin", super_admin: "super_admin" }, default: :admin
 end

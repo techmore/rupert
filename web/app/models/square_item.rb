@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class SquareItem < ApplicationRecord
+  include TenantScoped
+
   self.table_name = "SquareItem"
   self.primary_key = "id"
 

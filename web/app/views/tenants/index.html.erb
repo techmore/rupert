@@ -1,0 +1,31 @@
+<% content_for :title, "Tenants" %>
+<div class="mb-6 flex items-center justify-between">
+  <div>
+    <h1 class="font-display text-3xl text-ink">Tenants</h1>
+    <p class="mt-1 text-sm text-mocha">Workspaces on this instance</p>
+  </div>
+  <%= link_to "New tenant", new_tenant_path, class: "btn-primary" %>
+</div>
+
+<div class="card overflow-hidden">
+  <table class="w-full">
+    <thead class="border-b border-fog bg-haze/50">
+      <tr>
+        <th class="th">Name</th>
+        <th class="th">Subdomain</th>
+        <th class="th">Status</th>
+        <th class="th">Plan</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-fog">
+      <% @tenants.each do |tenant| %>
+        <tr>
+          <td class="td font-medium text-ink"><%= tenant.name %></td>
+          <td class="td text-sm text-mocha"><%= link_to "#{tenant.subdomain}.#{request.domain}", root_url(subdomain: tenant.subdomain, only_path: false), class: "text-olive hover:underline" %></td>
+          <td class="td"><span class="<%= tenant.status == "active" ? "pill-fern" : "pill-taupe" %>"><span class="dot <%= tenant.status == "active" ? "bg-fern" : "bg-taupe" %>"></span><%= tenant.status %></span></td>
+          <td class="td text-sm text-mocha"><%= tenant.plan %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

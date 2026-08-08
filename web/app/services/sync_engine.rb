@@ -1,13 +1,17 @@
 # frozen_string_literal: true
 
-# Orchestrates sync runs against both platforms, mirroring everything into
-# the database and recording each run in the SyncRun table. Guarded so only
-# one sync runs at a time (DB-level, survives restarts).
+# Orchestrates sync runs against both platforms for a single tenant, mirroring
+# everything into the database and recording each run in the SyncRun table.
+# Guarded so only one sync runs per tenant at a time (DB-level, survives
+# restarts).
 class SyncEngine
   class AlreadyRunning < StandardError; end
 
   class << self
-    def run!(mode: "manual", actor: "user")
+    def run!(mode: "manual", actor: "user", tenant: nil)
+      Current.tenant = tenant if tenant
+      raise ArgumentError, "No tenant in context" if Current.tenant_id.nil?
+
       guard_running!
       run = SyncRun.create!(mode: mode, status: "running", source: "all", actor: actor, startedAt: Time.current)
 
@@ -36,7 +40,10 @@ class SyncEngine
       end
     end
 
-    def run_source!(source, actor: "user")
+    def run_source!(source, actor: "user", tenant: nil)
+      Current.tenant = tenant if tenant
+      raise ArgumentError, "No tenant in context" if Current.tenant_id.nil?
+
       guard_running!
       raise ArgumentError, "Unknown sync source" unless %w[shopify square].include?(source)
 

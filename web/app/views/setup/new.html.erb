@@ -1,0 +1,49 @@
+<% content_for :title, "Set up your workspace" %>
+<div class="mx-auto max-w-md pt-10">
+  <div class="card card-pad">
+    <div class="mb-6 text-center">
+      <span class="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-olive font-display text-xl text-cream">H</span>
+      <h1 class="font-display text-2xl text-ink">Set up your workspace</h1>
+      <p class="mt-1 text-sm text-mocha">First run — create the admin account and your first tenant.</p>
+    </div>
+
+    <%= form_with url: setup_path, method: :post, class: "space-y-5" do |f| %>
+      <div>
+        <h2 class="mb-2 text-sm font-semibold text-ink">Your account</h2>
+        <div class="space-y-4 rounded-xl border border-fog bg-cream p-4">
+          <div>
+            <%= f.label :user_name, "Your name", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+            <%= f.text_field :user_name, required: true, autofocus: true, class: "input" %>
+          </div>
+          <div>
+            <%= f.label :user_email, "Email", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+            <%= f.email_field :user_email, autocomplete: "email", required: true, class: "input" %>
+          </div>
+          <div>
+            <%= f.label :user_password, "Password (min 8 characters)", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+            <%= f.password_field :user_password, autocomplete: "new-password", required: true, minlength: 8, class: "input" %>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h2 class="mb-2 text-sm font-semibold text-ink">Your first tenant</h2>
+        <div class="space-y-4 rounded-xl border border-fog bg-cream p-4">
+          <div>
+            <%= f.label :tenant_name, "Business name", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+            <%= f.text_field :tenant_name, required: true, class: "input" %>
+          </div>
+          <div>
+            <%= f.label :tenant_subdomain, "Subdomain", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+            <div class="flex items-center gap-2">
+              <%= f.text_field :tenant_subdomain, required: true, pattern: "[a-z0-9][a-z0-9-]*[a-z0-9]", placeholder: "my-business", class: "input" %>
+              <span class="whitespace-nowrap text-sm text-taupe">.<%= request.domain %></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%= f.submit "Create workspace", class: "btn-primary w-full justify-center" %>
+    <% end %>
+  </div>
+</div>

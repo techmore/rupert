@@ -11,8 +11,7 @@ class ShopifyClient
   TOKEN_TTL = 10 * 60 # seconds
 
   @mutex = Mutex.new
-  @token = nil
-  @token_at = nil
+  @tokens = {} # tenant_id => { token:, at: }
 
   class << self
     def shop_domain
@@ -21,7 +20,8 @@ class ShopifyClient
 
     def token(force: false)
       @mutex.synchronize do
-        if force || @token.nil? || @token_at.nil? || Time.now - @token_at > TOKEN_TTL
+        cached = @tokens[Current.tenant_id]
+        if force || cached.nil? || Time.now - cached[:at] > TOKEN_TTL
           response = http_post(
             "https://#{shop_domain}/admin/oauth/access_token",
             {
@@ -36,10 +36,9 @@ class ShopifyClient
           payload = JSON.parse(response.body)
           raise Error, "Token exchange returned no access_token" if payload["access_token"].blank?
 
-          @token = payload["access_token"]
-          @token_at = Time.now
+          @tokens[Current.tenant_id] = { token: payload["access_token"], at: Time.now }
         end
-        @token
+        @tokens[Current.tenant_id][:token]
       end
     end
 

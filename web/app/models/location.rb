@@ -2,6 +2,7 @@
 
 class Location < ApplicationRecord
   include HasCuid
+  include TenantScoped
 
   self.table_name = "Location"
   self.primary_key = "id"

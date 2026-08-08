@@ -2,6 +2,7 @@
 
 class StockAlert < ApplicationRecord
   include HasCuid
+  include TenantScoped
 
   self.table_name = "StockAlert"
   self.primary_key = "id"

@@ -2,6 +2,7 @@
 
 class SyncRun < ApplicationRecord
   include HasCuid
+  include TenantScoped
 
   self.table_name = "SyncRun"
   self.primary_key = "id"

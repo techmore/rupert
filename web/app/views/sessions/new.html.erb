@@ -1,0 +1,22 @@
+<% content_for :title, "Sign in" %>
+<div class="mx-auto max-w-sm pt-10">
+  <div class="card card-pad">
+    <div class="mb-6 text-center">
+      <span class="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-olive font-display text-xl text-cream">H</span>
+      <h1 class="font-display text-2xl text-ink"><%= Current.tenant&.name || "Herbal Healers" %></h1>
+      <p class="mt-1 text-sm text-mocha">Sign in to your inventory ops workspace</p>
+    </div>
+
+    <%= form_with url: login_path, method: :post, class: "space-y-4" do |f| %>
+      <div>
+        <%= f.label :email, "Email", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+        <%= f.email_field :email, autocomplete: "email", required: true, autofocus: true, class: "input" %>
+      </div>
+      <div>
+        <%= f.label :password, "Password", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+        <%= f.password_field :password, autocomplete: "current-password", required: true, class: "input" %>
+      </div>
+      <%= f.submit "Sign in", class: "btn-primary w-full justify-center" %>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,30 @@
+<% content_for :title, "New tenant" %>
+<div class="mx-auto max-w-md">
+  <h1 class="mb-5 font-display text-3xl text-ink">New tenant</h1>
+
+  <%= form_with url: tenants_path, method: :post, class: "card card-pad space-y-4" do |f| %>
+    <% if @tenant&.errors&.any? %>
+      <div class="rounded-xl border border-rose/30 bg-rose/10 px-4 py-2.5 text-sm text-rose">
+        <%= @tenant.errors.full_messages.join(", ") %>
+      </div>
+    <% end %>
+
+    <div>
+      <%= f.label :name, "Business name", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.text_field :name, required: true, class: "input" %>
+    </div>
+    <div>
+      <%= f.label :subdomain, "Subdomain", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <div class="flex items-center gap-2">
+        <%= f.text_field :subdomain, required: true, pattern: "[a-z0-9][a-z0-9-]*[a-z0-9]", placeholder: "my-business", class: "input" %>
+        <span class="whitespace-nowrap text-sm text-taupe">.<%= request.domain %></span>
+      </div>
+    </div>
+    <div>
+      <%= f.label :shopify_shop_domain, "Shopify store (optional)", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.text_field :shopify_shop_domain, placeholder: "my-store.myshopify.com", class: "input" %>
+    </div>
+
+    <%= f.submit "Create tenant", class: "btn-primary w-full justify-center" %>
+  <% end %>
+</div>

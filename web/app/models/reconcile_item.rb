@@ -2,6 +2,7 @@
 
 class ReconcileItem < ApplicationRecord
   include HasCuid
+  include TenantScoped
 
   self.table_name = "ReconcileItem"
   self.primary_key = "id"

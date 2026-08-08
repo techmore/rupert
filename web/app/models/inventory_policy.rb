@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class InventoryPolicy < ApplicationRecord
+  include TenantScoped
+
   self.table_name = "InventoryPolicy"
   self.primary_key = "sku"
   self.record_timestamps = false

@@ -3,6 +3,17 @@
 Rails.application.routes.draw do
   root to: "home#index"
 
+  get "/login", to: "sessions#new", as: :login
+  post "/login", to: "sessions#create"
+  delete "/logout", to: "sessions#destroy", as: :logout
+
+  get "/setup", to: "setup#new", as: :setup
+  post "/setup", to: "setup#create"
+
+  get "/onboarding", to: "onboarding#index", as: :onboarding
+
+  resources :tenants, only: [:index, :new, :create]
+
   scope path: :api, format: :json do
     namespace :webhooks do
       post "/app_uninstalled", to: "app_uninstalled#receive"

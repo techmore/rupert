@@ -13,12 +13,23 @@ module EnvStore
     SYNC_MINUTES
   ].freeze
 
+  # Settings (DB) win over ENV. ENV is only consulted as a global fallback
+  # when no tenant is in context (platform/setup), so tenant credentials never
+  # bleed across tenants.
   def self.fetch(key, default = nil)
-    Setting.find_by(key: key)&.value.presence || ENV.fetch(key, default)
+    setting = scoped(key)
+    return setting.value if setting
+    return ENV.fetch(key, default) if Current.tenant_id.nil?
+
+    default
   end
 
   def self.value(key)
-    Setting.find_by(key: key)&.value
+    scoped(key)&.value
+  end
+
+  def self.scoped(key)
+    Setting.find_by(key: key, tenant_id: Current.tenant_id)
   end
 
   def self.import!(text)
@@ -26,7 +37,7 @@ module EnvStore
     parsed.each do |key, value|
       next unless MANAGED_KEYS.include?(key)
 
-      setting = Setting.find_or_initialize_by(key: key)
+      setting = Setting.find_or_initialize_by(key: key, tenant_id: Current.tenant_id)
       setting.value = value
       setting.save!
     end
@@ -43,7 +54,7 @@ module EnvStore
   end
 
   def self.settings_map
-    Setting.all.to_h { |setting| [setting.key, setting.value] }
+    Setting.where(tenant_id: Current.tenant_id).to_h { |setting| [setting.key, setting.value] }
   end
 
   def self.mask(value)
