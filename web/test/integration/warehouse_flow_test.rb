@@ -39,7 +39,7 @@ class WarehouseFlowTest < ActionDispatch::IntegrationTest
   end
 
   def get_page(path)
-    get path, params: { shop: "m11u0i-sb.myshopify.com", embedded: "1", host: "test-host" }
+    get(path, params: { shop: "m11u0i-sb.myshopify.com", embedded: "1", host: "test-host" })
   end
 
   test "create a vendor link and manage it" do
@@ -59,7 +59,7 @@ class WarehouseFlowTest < ActionDispatch::IntegrationTest
     assert share.token.present?
 
     assert_select "h1", /GreenLeaf Distributors/
-    assert_select "code", /\/w\//
+    assert_select "code", %r{/w/}
   end
 
   test "vendor share admin page renders with tiers" do

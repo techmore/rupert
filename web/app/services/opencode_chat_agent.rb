@@ -46,7 +46,7 @@ class OpencodeChatAgent
   def filters(since)
     [
       { kinds: [9], "#h": [@channel], since: since },
-      { kinds: [1], "#p": [@pubkey], since: since }
+      { kinds: [1], "#p": [@pubkey], since: since },
     ]
   end
 
@@ -193,7 +193,7 @@ class OpencodeChatAgent
 
   def push_context(event)
     author = author_label(event)
-    @context << "#{author}: #{event["content"].to_s}"
+    @context << "#{author}: #{event["content"]}"
     @context = @context.last(CONTEXT_WINDOW)
   end
 
@@ -222,10 +222,10 @@ class OpencodeChatAgent
     snapshot = ops_snapshot
     history = @context.last(CONTEXT_WINDOW).join("\n")
     instruction = if mentioned
-                    "The user addressed you directly. Reply to them helpfully and concisely."
-                  else
-                    "You were not addressed. If a response from you genuinely adds value to this conversation, reply helpfully and concisely. Otherwise reply with exactly: SKIP"
-                  end
+      "The user addressed you directly. Reply to them helpfully and concisely."
+    else
+      "You were not addressed. If a response from you genuinely adds value to this conversation, reply helpfully and concisely. Otherwise reply with exactly: SKIP"
+    end
 
     prompt = <<~PROMPT
       You are @rupert, the team's AI agent in a business chat for a Shopify + Square inventory/ERP company (the system is "Rupert"). You are powered by opencode + deepseek-v4.
@@ -307,8 +307,8 @@ class OpencodeChatAgent
     if e_tags.any?
       tags << ["e", e_tags.first[1], @relay, "root"]
       tags << ["e", event["id"], @relay, "reply"] if event["id"]
-    else
-      tags << ["e", event["id"], @relay, "root"] if event["id"]
+    elsif event["id"]
+      tags << ["e", event["id"], @relay, "root"]
     end
     tags
   end
