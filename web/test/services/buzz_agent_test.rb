@@ -24,8 +24,8 @@ class BuzzAgentTest < ActiveSupport::TestCase
 
   test "build_event signs a valid channel message with the channel tag" do
     event = BuzzAgent.build_event(content: "hello", channel: "channel-id-123")
-    assert_equal 42, event.kind
-    assert_includes event.tags, ["e", "channel-id-123"]
+    assert_equal 9, event.kind
+    assert_includes event.tags, ["h", "channel-id-123"]
     assert event.verify_signature
     assert_equal BuzzAgent.public_key.to_s, event.pubkey.to_s
   end

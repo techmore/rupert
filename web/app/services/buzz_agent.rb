@@ -57,13 +57,13 @@ class BuzzAgent
       pair
     end
 
-    # Builds and signs an event. Kind 42 (channel message) when a channel is
-    # given, otherwise a kind 1 text note.
+    # Builds and signs an event. Kind 9 (NIP-29 group chat, tagged with the
+    # channel's `h` id) when a channel is given, otherwise a kind 1 text note.
     def build_event(content:, kind: nil, channel: nil, tags: [])
-      kind ||= channel.present? ? 42 : 1
-      e_tag = channel.present? ? [["e", channel]] : []
+      kind ||= channel.present? ? 9 : 1
+      h_tag = channel.present? ? [["h", channel]] : []
       event = Nostr::Event.new(pubkey: public_key, kind: kind,
-        content: content.to_s, tags: e_tag + Array(tags))
+        content: content.to_s, tags: h_tag + Array(tags))
       event.sign(private_key)
       event
     end
