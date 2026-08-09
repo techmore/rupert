@@ -85,7 +85,7 @@ class BuzzAgent
       profile = {
         name: "Rupert",
         display_name: "Rupert",
-        about: "Rupert inventory & ops agent for Herbal Healers",
+        about: "Rupert — the team's AI agent (powered by opencode + deepseek-v4). Inventory & ops for the techmore store.",
         nip05: ""
       }.to_json
       publish(build_event(kind: 0, content: profile))
@@ -105,6 +105,12 @@ class BuzzAgent
 
       ws.on(:message) do |msg|
         begin
+          if msg.respond_to?(:type) && msg.type == :ping
+            ws.send(msg.data.to_s, type: :pong)
+            next
+          end
+          next if msg.respond_to?(:type) && msg.type != :text
+
           data = JSON.parse(msg.data.to_s)
           case data[0]
           when "AUTH"

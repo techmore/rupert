@@ -15,10 +15,10 @@ class SyncJob < ApplicationJob
     Current.tenant = tenant
 
     run = if source.present?
-            SyncEngine.run_source!(source, actor: actor, tenant: tenant)
-          else
-            SyncEngine.run!(mode: mode, actor: actor, tenant: tenant)
-          end
+      SyncEngine.run_source!(source, actor: actor, tenant: tenant)
+    else
+      SyncEngine.run!(mode: mode, actor: actor, tenant: tenant)
+    end
 
     BuzzNotifyJob.perform_later(sync_message(run))
   rescue StandardError => e
@@ -33,10 +33,18 @@ class SyncJob < ApplicationJob
   def sync_message(run)
     drift = nil
     if run.details.present?
-      details = run.details.is_a?(String) ? (JSON.parse(run.details) rescue nil) : run.details
+      details = if run.details.is_a?(String)
+        begin
+          JSON.parse(run.details)
+        rescue
+          nil
+        end
+      else
+        run.details
+      end
       drift = details&.dig("reconcile", "drift_count")
     end
     status = run.success? ? "Sync complete" : "Sync #{run.status}"
-    "#{status} · #{run.source || 'all sources'} · #{run.mode} · drift #{drift.nil? ? 'n/a' : drift}"
+    "#{status} · #{run.source || "all sources"} · #{run.mode} · drift #{drift.nil? ? "n/a" : drift}"
   end
 end
