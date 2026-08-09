@@ -5,9 +5,13 @@
 class SalesAnnouncementJob < ApplicationJob
   queue_as :default
 
-  def perform
+  def perform(tenant_id)
+    tenant = Tenant.find(tenant_id)
+    Current.tenant = tenant
     SalesAnnouncer.announce!
   rescue StandardError
     nil
+  ensure
+    Current.tenant = nil
   end
 end
