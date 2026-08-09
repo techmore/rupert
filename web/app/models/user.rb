@@ -47,6 +47,7 @@ class User < ActiveRecord::Base
       "sync.read",
       "sync.write",
       "settings.read",
+      "system.read",
     ],
     "manager" => [
       "dashboard.read",

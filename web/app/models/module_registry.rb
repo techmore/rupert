@@ -25,6 +25,7 @@ class ModuleRegistry
     Entry.new(key: "kpis", name: "KPIs", path: -> { goals_kpis_path }, permission: "projects.read", position: 78),
     Entry.new(key: "alerts", name: "Alerts", path: -> { alerts_path }, permission: "alerts.read", position: 80),
     Entry.new(key: "sync", name: "Sync", path: -> { syncs_path }, permission: "sync.read", position: 90),
+    Entry.new(key: "system", name: "System", path: -> { system_path }, permission: "system.read", position: 95),
     Entry.new(key: "settings", name: "Settings", path: -> { settings_path }, permission: "settings.read", position: 100),
   ].freeze
 
@@ -48,7 +49,7 @@ class ModuleRegistry
       { key: "overview", name: "Overview", modules: ["dashboard"] },
       { key: "commerce", name: "Commerce", modules: ["sales", "customers", "inventory"] },
       { key: "operations", name: "Operations", modules: ["reports", "reconcile", "ledger", "projects", "goals", "kpis"] },
-      { key: "system", name: "System", modules: ["alerts", "sync", "settings"] },
+      { key: "system", name: "System", modules: ["system", "alerts", "sync", "settings"] },
     ].freeze
 
     def area_key_for(module_key)

@@ -92,6 +92,7 @@ Rails.application.routes.draw do
       post :source
     end
   end
+  get "/system", to: "system#index", as: :system
   get "/live/sync_status", to: "live#sync_status"
 
   resource :settings, only: :show do

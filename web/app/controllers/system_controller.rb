@@ -1,0 +1,20 @@
+# frozen_string_literal: true
+
+# System health page (admin only): server resources, database metrics, query
+# issues, and the background job queue at a glance.
+class SystemController < AuthenticatedController
+  before_action :require_system_access
+
+  def index
+    @system = SystemPresenter.new
+    render("system/index")
+  end
+
+  private
+
+  def require_system_access
+    return if Current.user&.can?("system.read")
+
+    redirect_to(root_path, alert: "You don't have permission to view system health.")
+  end
+end
