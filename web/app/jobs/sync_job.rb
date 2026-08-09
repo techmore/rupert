@@ -21,6 +21,7 @@ class SyncJob < ApplicationJob
           end
 
     BuzzNotifyJob.perform_later(sync_message(run))
+    SalesAnnouncementJob.perform_later
   rescue StandardError => e
     BuzzNotifyJob.perform_later("Sync failed: #{e.message.to_s[0, 300]}")
     raise

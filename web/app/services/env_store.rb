@@ -25,6 +25,7 @@ module EnvStore
     "BUZZ_RELAY_URL",
     "BUZZ_PRIVATE_KEY",
     "BUZZ_CHANNEL",
+    "BUZZ_ANNOUNCEMENTS_CHANNEL",
     "OPCODE_BUZZ_PRIVATE_KEY",
   ].freeze
 
