@@ -32,7 +32,7 @@ class ModuleNavTest < ActionDispatch::IntegrationTest
     ["Overview", "Commerce", "Operations", "System"].each do |name|
       assert_select "nav[aria-label='Module areas'] a", text: name
     end
-    assert_select "nav[aria-label='Module areas'] a.bg-olive", text: "Commerce"
+    assert_select "nav[aria-label='Module areas'] a.nav-pill-active", text: "Commerce"
   end
 
   test "second bar shows the modules of the active area" do
@@ -40,14 +40,15 @@ class ModuleNavTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "nav[aria-label='Module'] a", text: "Sales"
     assert_select "nav[aria-label='Module'] a", text: "Customers"
-    assert_select "nav[aria-label='Module'] a.bg-paper", text: "Inventory"
+    assert_select "nav[aria-label='Module'] a", text: "Registers"
+    assert_select "nav[aria-label='Module'] a.nav-pill-active-sm", text: "Inventory"
   end
 
   test "single-module areas do not render a second bar" do
     get root_path
     assert_response :success
     assert_select "nav[aria-label='Module']", count: 0
-    assert_select "nav[aria-label='Module areas'] a.bg-olive", text: "Overview"
+    assert_select "nav[aria-label='Module areas'] a.nav-pill-active", text: "Overview"
   end
 
   test "nav is filtered by role permissions" do

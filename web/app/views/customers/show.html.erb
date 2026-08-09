@@ -1,3 +1,4 @@
+<% content_for :title, @customer.name %>
 <div class="space-y-6">
   <section class="flex flex-wrap items-end justify-between gap-4">
     <div>
@@ -24,11 +25,11 @@
     </div>
     <div class="stat">
       <p class="stat-label">Last order</p>
-      <p class="stat-value mt-1 font-display text-2xl"><%= @orders.first ? l(@orders.first.occurred_at, format: :short) : "—" %></p>
+      <p class="stat-value-sm mt-1"><%= @orders.first ? l(@orders.first.occurred_at, format: :short) : "—" %></p>
     </div>
     <div class="stat">
       <p class="stat-label">Member since</p>
-      <p class="stat-value mt-1 font-display text-2xl"><%= l(@customer.created_at.to_date, format: :long) %></p>
+      <p class="stat-value-sm mt-1"><%= l(@customer.created_at.to_date, format: :long) %></p>
     </div>
   </section>
 
@@ -47,7 +48,7 @@
         <% @orders.each do |order| %>
           <div class="flex items-center justify-between gap-4 py-3">
             <div class="min-w-0">
-              <p class="truncate text-sm font-medium text-ink"><%= order.order_number.presence || order.source_order_id.first(12) %></p>
+              <p class="truncate text-sm font-medium text-ink"><%= link_to order.display_number, order_path(order), class: "hover:text-olive hover:underline" %></p>
               <p class="text-xs text-taupe"><%= l(order.occurred_at, format: :short) %> · <span class="capitalize"><%= order.channel %></span></p>
             </div>
             <div class="flex items-center gap-3">

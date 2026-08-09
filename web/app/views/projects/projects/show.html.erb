@@ -1,3 +1,4 @@
+<% content_for :title, "Project" %>
 <div class="space-y-6">
   <section class="flex flex-wrap items-end justify-between gap-4">
     <div>
@@ -12,7 +13,7 @@
       <% if @project.may_start? %><%= button_to "Start", transition_projects_project_path(@project, event: "start"), method: :post, class: "btn-primary btn-sm" %><% end %>
       <% if @project.may_hold? %><%= button_to "Hold", transition_projects_project_path(@project, event: "hold"), method: :post, class: "btn-ghost btn-sm" %><% end %>
       <% if @project.may_complete? %><%= button_to "Complete", transition_projects_project_path(@project, event: "complete"), method: :post, class: "btn-ghost btn-sm" %><% end %>
-      <% if @project.may_archive? %><%= button_to "Archive", transition_projects_project_path(@project, event: "archive"), method: :post, class: "btn-ghost btn-sm" %><% end %>
+      <% if @project.may_archive? %><%= button_to "Archive", transition_projects_project_path(@project, event: "archive"), method: :post, class: "btn-ghost btn-sm", data: { confirm: "Archive this project? It stays visible but is no longer active." } %><% end %>
       <% if Current.user.can?("projects.write") %>
         <%= link_to "Edit", edit_projects_project_path(@project), class: "btn-ghost btn-sm" %>
       <% end %>

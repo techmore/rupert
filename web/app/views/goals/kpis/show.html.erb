@@ -1,3 +1,4 @@
+<% content_for :title, "KPI" %>
 <div class="space-y-6">
   <section class="flex items-end justify-between gap-4">
     <div>
@@ -30,7 +31,7 @@
   <div class="card card-pad">
     <h2 class="font-display text-lg text-ink">Trend · last 30 days</h2>
     <div class="mt-4">
-      <%= line_chart @kpi.series, height: "220px", legend: false, colors: ["#1a393d"] %>
+      <%= line_chart @kpi.series, height: "220px", legend: false, colors: chart_color(:ink) %>
     </div>
   </div>
 
@@ -52,7 +53,7 @@
     <div class="mt-4 overflow-x-auto">
       <table class="w-full text-sm">
         <thead class="border-b border-fog bg-haze/60">
-          <tr><th class="th">Time</th><th class="th text-right">Value</th></tr>
+          <tr><th scope="col" class="th">Time</th><th scope="col" class="th text-right">Value</th></tr>
         </thead>
         <tbody class="divide-y divide-fog">
           <% @kpi.readings.order(measured_at: :desc).limit(30).each do |r| %>

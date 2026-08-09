@@ -1,3 +1,4 @@
+<% content_for :title, "Sales" %>
 <div class="space-y-6">
   <section class="flex flex-wrap items-end justify-between gap-4">
     <div>
@@ -25,7 +26,7 @@
     </div>
     <div class="stat">
       <p class="stat-label">Busiest hour</p>
-      <p class="stat-value mt-1 font-display text-2xl"><%= @hourly.max_by { |r| r[:cells].values.sum { |c| c[:count] } }&.dig(:label) || "—" %></p>
+      <p class="stat-value-sm mt-1"><%= @hourly.max_by { |r| r[:cells].values.sum { |c| c[:count] } }&.dig(:label) || "—" %></p>
       <p class="mt-1 text-xs text-taupe">9 AM – 9 PM</p>
     </div>
     <div class="stat">
@@ -42,7 +43,7 @@
         <span class="text-xs text-taupe">daily gross</span>
       </div>
       <div class="mt-4">
-        <%= area_chart @revenue_series, height: "200px", legend: false, colors: ["#1a393d"], library: { scales: { x: { ticks: { maxTicksLimit: 8 } } } } %>
+        <%= area_chart @revenue_series, height: "200px", legend: false, colors: chart_color(:ink), library: { scales: { x: { ticks: { maxTicksLimit: 8 } } } } %>
       </div>
     </div>
 
@@ -52,7 +53,7 @@
         <span class="text-xs text-taupe">gross · <%= @window_days %> days</span>
       </div>
       <div class="mt-4">
-        <%= column_chart @hourly_series, height: "200px", legend: false, colors: ["#1e7b82"], library: { scales: { x: { ticks: { maxTicksLimit: 12 } } } } %>
+        <%= column_chart @hourly_series, height: "200px", legend: false, colors: chart_color(:olive_deep), library: { scales: { x: { ticks: { maxTicksLimit: 12 } } } } %>
       </div>
     </div>
   </section>
@@ -65,11 +66,11 @@
       <table class="w-full text-sm">
         <thead class="border-b border-fog bg-haze/60">
           <tr>
-            <th class="th">Hour</th>
+            <th scope="col" class="th">Hour</th>
             <% @hourly.first[:cells].keys.each do |name| %>
-              <th class="th text-right"><%= name %></th>
+              <th scope="col" class="th text-right"><%= name %></th>
             <% end %>
-            <th class="th text-right">Day total</th>
+            <th scope="col" class="th text-right">Day total</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-fog">
@@ -103,13 +104,14 @@
       <table class="w-full text-sm">
         <thead class="border-b border-fog bg-haze/60">
           <tr>
-            <th class="th">Time</th>
-            <th class="th">Order</th>
-            <th class="th">Where</th>
-            <th class="th">Channel</th>
-            <th class="th text-right">Items</th>
-            <th class="th text-right">Gross</th>
-            <th class="th">Status</th>
+            <th scope="col" class="th">Time</th>
+            <th scope="col" class="th">Order</th>
+            <th scope="col" class="th">Where</th>
+            <th scope="col" class="th">Channel</th>
+            <th scope="col" class="th text-right">Items</th>
+            <th scope="col" class="th text-right">Gross</th>
+            <th scope="col" class="th">Status</th>
+            <th scope="col" class="th">Tracking</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-fog">
@@ -121,12 +123,21 @@
           <% @day_sales.each do |sale| %>
             <tr class="hover:bg-cream">
               <td class="td whitespace-nowrap text-mocha"><%= l(sale.occurred_at, format: :time) %></td>
-              <td class="td font-medium text-ink"><%= sale.order_number.presence || sale.source_order_id.first(12) %></td>
+              <td class="td font-medium text-ink"><%= link_to sale.display_number, order_path(sale), class: "hover:text-olive hover:underline" %></td>
               <td class="td"><span class="pill-taupe"><%= sale.location&.name || "Unknown" %></span></td>
               <td class="td"><span class="pill-taupe capitalize"><%= sale.channel %></span></td>
               <td class="td text-right text-mocha"><%= sale.line_items %></td>
               <td class="td text-right font-medium text-ink"><%= number_to_currency(sale.gross_cents / 100.0) %></td>
               <td class="td"><span class="<%= %w[paid fulfilled].include?(sale.status) ? "pill-fern" : "pill-clay" %>"><%= sale.status %></span></td>
+              <td class="td">
+                <% if sale.fulfillments.with_tracking.any? %>
+                  <span class="pill-olive"><span class="dot bg-olive-deep"></span> tracked</span>
+                <% elsif sale.status == "fulfilled" %>
+                  <span class="pill-taupe">no #</span>
+                <% else %>
+                  <span class="text-taupe">—</span>
+                <% end %>
+              </td>
             </tr>
           <% end %>
         </tbody>

@@ -1,3 +1,4 @@
+<% content_for :title, "System" %>
 <div class="space-y-6">
   <section class="flex flex-wrap items-end justify-between gap-4">
     <div>
@@ -144,7 +145,7 @@
       <% else %>
         <table class="mt-2 w-full text-sm">
           <thead class="border-b border-fog bg-haze/60">
-            <tr><th class="th">Table</th><th class="th text-right">Dead tuples</th><th class="th text-right">% dead</th></tr>
+            <tr><th scope="col" class="th">Table</th><th scope="col" class="th text-right">Dead tuples</th><th scope="col" class="th text-right">% dead</th></tr>
           </thead>
           <tbody class="divide-y divide-fog">
             <% @system.bloat_tables.each do |t| %>
@@ -164,9 +165,12 @@
       <h2 class="font-display text-lg text-ink">Largest tables</h2>
       <table class="mt-2 w-full text-sm">
         <thead class="border-b border-fog bg-haze/60">
-          <tr><th class="th">Table</th><th class="th text-right">Size</th><th class="th text-right">Rows</th></tr>
+          <tr><th scope="col" class="th">Table</th><th scope="col" class="th text-right">Size</th><th scope="col" class="th text-right">Rows</th></tr>
         </thead>
         <tbody class="divide-y divide-fog">
+          <% if @system.big_tables.empty? %>
+            <tr><td colspan="3" class="td py-8 text-center text-taupe">No tables reported yet.</td></tr>
+          <% end %>
           <% @system.big_tables.each do |t| %>
             <tr>
               <td class="td font-mono text-xs text-ink"><%= t["table"] %></td>

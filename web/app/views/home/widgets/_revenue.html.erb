@@ -4,7 +4,7 @@
     <span class="text-xs text-taupe">daily gross</span>
   </div>
   <div class="mt-4">
-    <%= area_chart presenter.revenue_series, height: "220px", legend: false, colors: ["#1a393d"], library: { scales: { x: { ticks: { maxTicksLimit: 8 } } } } %>
+    <%= area_chart presenter.revenue_series, height: "220px", legend: false, colors: chart_color(:ink), library: { scales: { x: { ticks: { maxTicksLimit: 8 } } } } %>
   </div>
   <dl class="mt-4 grid grid-cols-2 gap-4">
     <% presenter.ledger_groups.each do |source, gross, count| %>
