@@ -2,6 +2,13 @@
 
 # Admin CRUD for secret warehouse-sale links shared with vendors.
 class WarehouseSharesController < AuthenticatedController
+  before_action :set_share, only: [:show, :update, :update_tiers, :destroy]
+
+  # The share's #to_param is its secret token, so all :id params arrive as tokens.
+  def set_share
+    @share = WarehouseShare.find_by!(token: params[:id])
+  end
+
   def create
     @share = WarehouseShare.new(
       name: params[:name],
@@ -15,12 +22,10 @@ class WarehouseSharesController < AuthenticatedController
   end
 
   def show
-    @share = WarehouseShare.find(params[:id])
     @custom_tiers = @share.tiers.order(:minQty)
   end
 
   def update
-    @share = WarehouseShare.find(params[:id])
     if @share.update(
       name: params[:name],
       priceMultiplier: params[:priceMultiplier].presence || @share.priceMultiplier,
@@ -35,8 +40,7 @@ class WarehouseSharesController < AuthenticatedController
   end
 
   def update_tiers
-    @share = WarehouseShare.find(params[:id])
-    params[:tiers].to_h.each_value do |attrs|
+    params.to_unsafe_hash.fetch("tiers", {}).each_value do |attrs|
       if attrs[:_destroy] == "1"
         @share.tiers.find_by(id: attrs[:id])&.destroy
       elsif attrs[:minQty].present?
@@ -52,7 +56,6 @@ class WarehouseSharesController < AuthenticatedController
   end
 
   def destroy
-    @share = WarehouseShare.find(params[:id])
     @share.destroy
     redirect_to(warehouse_path, notice: "Vendor link deleted")
   end

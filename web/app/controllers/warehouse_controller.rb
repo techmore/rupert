@@ -9,7 +9,7 @@ class WarehouseController < AuthenticatedController
   end
 
   def update_tiers
-    params[:tiers].to_h.each_value do |attrs|
+    params.to_unsafe_hash.fetch("tiers", {}).each_value do |attrs|
       if attrs[:_destroy] == "1"
         WarehouseTier.where(shareId: nil).find_by(id: attrs[:id])&.destroy
       elsif attrs[:minQty].present?

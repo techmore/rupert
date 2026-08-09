@@ -28,9 +28,9 @@
           <p class="text-sm text-taupe">No tiers yet — add one below (e.g. 10+ units = 5% off).</p>
         <% end %>
         <div class="flex items-center gap-2">
-          <%= number_field_tag "new_tier[minQty]", nil, min: 1, class: "input w-24", placeholder: "Min qty" %>
+          <%= number_field_tag "tiers[new][minQty]", nil, min: 1, class: "input w-24", placeholder: "Min qty" %>
           <span class="text-sm text-taupe">+ units</span>
-          <%= number_field_tag "new_tier[discountPercent]", nil, min: 0, max: 99, step: "0.5", class: "input w-24", placeholder: "% off" %>
+          <%= number_field_tag "tiers[new][discountPercent]", nil, min: 0, max: 99, step: "0.5", class: "input w-24", placeholder: "% off" %>
           <span class="text-sm text-taupe">% off</span>
         </div>
         <%= submit_tag "Save global tiers", class: "btn-primary" %>
@@ -66,11 +66,11 @@
         <table class="w-full text-sm">
           <thead class="border-b border-fog bg-haze/60">
             <tr>
-              <th class="th">Vendor</th>
-              <th class="th text-right">Multiplier</th>
-              <th class="th">Status</th>
-              <th class="th">Link</th>
-              <th class="th"></th>
+              <th scope="col" class="th">Vendor</th>
+              <th scope="col" class="th text-right">Multiplier</th>
+              <th scope="col" class="th">Status</th>
+              <th scope="col" class="th">Link</th>
+              <th scope="col" class="th"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-fog">
