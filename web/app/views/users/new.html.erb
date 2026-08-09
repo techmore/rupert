@@ -1,0 +1,11 @@
+<% content_for :title, "Add employee" %>
+<div class="space-y-6">
+  <section>
+    <h1 class="font-display text-3xl text-ink">Add employee</h1>
+    <p class="mt-1 text-sm text-mocha">Create a sign-in for a team member and pick their starting role.</p>
+  </section>
+
+  <div class="card card-pad max-w-xl">
+    <%= render "form", user: @user %>
+  </div>
+</div>

@@ -1,0 +1,28 @@
+<%= form_with model: user, url: (user.persisted? ? user_path(user) : users_path), class: "mt-6 space-y-4" do |f| %>
+  <div>
+    <%= f.label :name, "Full name", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+    <%= f.text_field :name, class: "input", placeholder: "e.g. Jamie Rivera", autocomplete: "off" %>
+  </div>
+
+  <div>
+    <%= f.label :email, "Email", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+    <%= f.email_field :email, class: "input", placeholder: "name@herbalhealerscbd.com", autocomplete: "off" %>
+  </div>
+
+  <div>
+    <%= f.label :role, "Role", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+    <%= f.select :role, @roles, {}, class: "select w-full" %>
+    <p class="mt-1 text-xs text-taupe">Roles are tuned in the <a href="<%= permissions_path %>" class="text-olive hover:underline">Permissions</a> screen.</p>
+  </div>
+
+  <div>
+    <%= f.label :password, user.persisted? ? "New password (leave blank to keep current)" : "Password", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+    <%= f.password_field :password, class: "input", autocomplete: "new-password" %>
+    <p class="mt-1 text-xs text-taupe">At least 8 characters.</p>
+  </div>
+
+  <div class="flex items-center gap-3 pt-2">
+    <%= f.submit user.persisted? ? "Save changes" : "Add employee", class: "btn-primary" %>
+    <%= link_to "Cancel", users_path, class: "btn-ghost" %>
+  </div>
+<% end %>

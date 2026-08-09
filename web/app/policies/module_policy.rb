@@ -26,6 +26,8 @@ class ModulePolicy < ApplicationPolicy
     :sync_write,
     :settings_read,
     :system_read,
+    :users_read,
+    :users_write,
   ].each do |perm|
     define_method("#{perm}?") { module?(perm.to_s.tr("_", ".")) }
   end
