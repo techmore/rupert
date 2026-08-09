@@ -1,88 +1,136 @@
 # frozen_string_literal: true
 
-# Aggregates all dashboard statistics in one place.
+# Aggregates all dashboard statistics in one place. Expensive computations are
+# cached in DataCache (version-keyed, invalidated on sync / manual mutations);
+# cheap counters and the always-live "recent" lists stay fresh per request.
 class DashboardPresenter
   attr_reader :product_count,
     :variant_count,
     :sku_link_count,
-    :linked_count,
     :open_alerts,
-    :drifting,
+    :stockouts,
     :recent_runs,
     :recent_syncs,
-    :recent_alerts,
-    :ledger_groups,
-    :today_revenue,
-    :today_orders,
-    :today_groups,
-    :yesterday_revenue,
-    :week_revenue,
-    :month_revenue,
-    :stockouts,
-    :reconcile_summary
+    :recent_alerts
 
   def initialize
-    linked_links = SkuLink.linked.includes(shopify_variant: :levels, square_variation: :levels)
-
     @product_count = ShopifyProduct.count
     @variant_count = ShopifyVariant.count
     @sku_link_count = SkuLink.count
-    @linked_count = linked_links.length
-    @drifting = linked_links.count do |link|
-      InventoryLevel.total_for_variant(link.shopifyVariantId) != InventoryLevel.total_for_variation(link.squareVariationId)
-    end
     @open_alerts = StockAlert.open.count
     @stockouts = StockAlert.open.where("quantity <= 0").count
     @recent_runs = ReconcileRun.recent(5)
     @recent_syncs = SyncRun.recent(5)
     @recent_alerts = StockAlert.open.order(createdAt: :desc).limit(5)
+  end
 
-    today_start = Time.current.beginning_of_day
-    today_ledger = LedgerEntry.since(today_start)
-    @today_revenue = today_ledger.sum(:grossCents)
-    @today_orders = today_ledger.count
-    @today_groups = today_ledger.group(:source)
-      .pluck(:source, Arel.sql("SUM(\"grossCents\") AS gross"), Arel.sql("COUNT(*) AS count"))
+  # --- Cached (version-keyed, invalidated on sync/mutations) ---
 
-    @yesterday_revenue = LedgerEntry.where(occurredAt: (today_start - 1.day)...today_start).sum(:grossCents)
-    @week_revenue = LedgerEntry.since(7.days.ago).sum(:grossCents)
-    @month_revenue = LedgerEntry.since(30.days.ago).sum(:grossCents)
+  def linked_count
+    @linked_count ||= DataCache.fetch("dashboard/linked_count") { SkuLink.linked.count }
+  end
 
-    @ledger_groups = LedgerEntry.since(30.days.ago).group(:source)
-      .pluck(:source, Arel.sql("SUM(\"grossCents\") AS gross"), Arel.sql("COUNT(*) AS count"))
+  def drifting
+    @drifting ||= DataCache.fetch("dashboard/drifting") do
+      SkuLink.linked.includes(shopify_variant: :levels, square_variation: :levels).count do |link|
+        InventoryLevel.total_for_variant(link.shopifyVariantId) != InventoryLevel.total_for_variation(link.squareVariationId)
+      end
+    end
+  end
 
-    @reconcile_summary = Reconciler.summary(Reconciler.build_rows)
+  def reconcile_summary
+    @reconcile_summary ||= DataCache.fetch("dashboard/reconcile_summary") do
+      Reconciler.summary(Reconciler.build_rows)
+    end
+  end
+
+  def today_revenue
+    @today_revenue ||= DataCache.fetch("dashboard/today_revenue") { today_ledger.sum(:grossCents) }
+  end
+
+  def today_orders
+    @today_orders ||= DataCache.fetch("dashboard/today_orders") { today_ledger.count }
+  end
+
+  def today_groups
+    @today_groups ||= DataCache.fetch("dashboard/today_groups") do
+      today_ledger.group(:source)
+        .pluck(:source, Arel.sql("SUM(\"grossCents\") AS gross"), Arel.sql("COUNT(*) AS count"))
+    end
+  end
+
+  def yesterday_revenue
+    @yesterday_revenue ||= DataCache.fetch("dashboard/yesterday_revenue") do
+      LedgerEntry.where(occurredAt: (today_start - 1.day)...today_start).sum(:grossCents)
+    end
+  end
+
+  def week_revenue
+    @week_revenue ||= DataCache.fetch("dashboard/week_revenue") { LedgerEntry.since(7.days.ago).sum(:grossCents) }
+  end
+
+  def month_revenue
+    @month_revenue ||= DataCache.fetch("dashboard/month_revenue") { LedgerEntry.since(30.days.ago).sum(:grossCents) }
+  end
+
+  def ledger_groups
+    @ledger_groups ||= DataCache.fetch("dashboard/ledger_groups") do
+      LedgerEntry.since(30.days.ago).group(:source)
+        .pluck(:source, Arel.sql("SUM(\"grossCents\") AS gross"), Arel.sql("COUNT(*) AS count"))
+    end
   end
 
   # Revenue per day over the last N days, for chartkick line/area charts.
   def revenue_series(days: 30, source: nil)
-    scope = Core::Order.since(days.days.ago)
-    scope = scope.where(source: source) if source.present?
-    scope.group_by_day(:occurred_at, default_value: 0, range: days.days.ago..Time.current).sum(:gross_cents)
-      .transform_values { |cents| (cents / 100.0).round(2) }
+    key = "dashboard/revenue_series/#{days}/#{source || "all"}"
+    DataCache.fetch(key, ttl: 10.minutes) do
+      scope = Core::Order.since(days.days.ago)
+      scope = scope.where(source: source) if source.present?
+      scope.group_by_day(:occurred_at, default_value: 0, range: days.days.ago..Time.current).sum(:gross_cents)
+        .transform_values { |cents| (cents / 100.0).round(2) }
+    end
   end
 
   # Sales count per day over the last N days.
   def sales_volume_series(days: 30, source: nil)
-    scope = Core::Order.since(days.days.ago)
-    scope = scope.where(source: source) if source.present?
-    scope.group_by_day(:occurred_at, default_value: 0, range: days.days.ago..Time.current).count
+    key = "dashboard/sales_volume/#{days}/#{source || "all"}"
+    DataCache.fetch(key, ttl: 10.minutes) do
+      scope = Core::Order.since(days.days.ago)
+      scope = scope.where(source: source) if source.present?
+      scope.group_by_day(:occurred_at, default_value: 0, range: days.days.ago..Time.current).count
+    end
   end
 
   # Gross per hour across all days in range — powers the POS daily shape.
   def hourly_series(days: 30)
-    Core::Order.since(days.days.ago)
-      .group_by_hour_of_day(:occurred_at, range: days.days.ago..Time.current).sum(:gross_cents)
-      .transform_values { |cents| (cents / 100.0).round(2) }
+    key = "dashboard/hourly_series/#{days}"
+    DataCache.fetch(key, ttl: 10.minutes) do
+      Core::Order.since(days.days.ago)
+        .group_by_hour_of_day(:occurred_at, range: days.days.ago..Time.current).sum(:gross_cents)
+        .transform_values { |cents| (cents / 100.0).round(2) }
+    end
   end
 
   # Gross per channel/source over the last N days.
   def source_breakdown(days: 30)
-    Core::Order.since(days.days.ago).group(:source).sum(:gross_cents)
-      .transform_keys(&:capitalize).transform_values { |cents| cents / 100.0 }
+    key = "dashboard/source_breakdown/#{days}"
+    DataCache.fetch(key, ttl: 10.minutes) do
+      Core::Order.since(days.days.ago).group(:source).sum(:gross_cents)
+        .transform_keys(&:capitalize).transform_values { |cents| cents / 100.0 }
+    end
   end
 
   def last_sync
     @last_sync ||= SyncRun.order(startedAt: :desc).first
+  end
+
+  private
+
+  def today_start
+    Time.current.beginning_of_day
+  end
+
+  def today_ledger
+    @today_ledger ||= LedgerEntry.since(today_start)
   end
 end

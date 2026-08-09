@@ -62,11 +62,11 @@ class InventoryCountsController < AuthenticatedController
     @count.submit!
     BuzzNotifyJob.perform_later(
       "Manual count submitted for approval · #{@count.items.count} items · total qty #{@count.total_quantity}",
-      tags: [["t", "inventory"]]
+      tags: [["t", "inventory"]],
     )
-    redirect_to inventory_count_path(@count), notice: "Count submitted for approval."
+    redirect_to(inventory_count_path(@count), notice: "Count submitted for approval.")
   rescue AASM::InvalidTransition
-    redirect_to inventory_count_path(@count), alert: "Only draft counts can be submitted."
+    redirect_to(inventory_count_path(@count), alert: "Only draft counts can be submitted.")
   end
 
   def approve
@@ -76,6 +76,7 @@ class InventoryCountsController < AuthenticatedController
       @count.apply_override!(actor: Current.user.email)
       @count.update!(approvedAt: Time.current)
     end
+    DataCache.bump!
     redirect_to(inventory_count_path(@count), notice: "Count approved — inventory totals overridden.")
   rescue AASM::InvalidTransition
     redirect_to(inventory_count_path(@count), alert: "Only pending counts can be approved.")

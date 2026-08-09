@@ -33,6 +33,7 @@ class SyncEngine
         summary[:reconcile] = Reconciler.summary(rows)
 
         run.update!(status: "success", finishedAt: Time.current, details: summary.to_json)
+        DataCache.bump!
         run
       rescue StandardError => e
         run.update!(status: "failed", error: e.message.to_s[0, 2000], finishedAt: Time.current)
@@ -60,6 +61,7 @@ class SyncEngine
           LedgerImporter.from_shopify_orders!(shopify.dig(:orders, "nodes"))
         end
         run.update!(status: "success", finishedAt: Time.current, details: { source: source }.to_json)
+        DataCache.bump!
         run
       rescue StandardError => e
         run.update!(status: "failed", error: e.message.to_s[0, 2000], finishedAt: Time.current)

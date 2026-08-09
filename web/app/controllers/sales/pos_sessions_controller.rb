@@ -41,6 +41,7 @@ module Sales
     def refresh
       authorize(@session)
       @session.refresh_from_orders!
+      DataCache.bump!
       redirect_to(@session, notice: "Tender totals refreshed from orders.")
     end
 
@@ -48,6 +49,7 @@ module Sales
       authorize(@session)
       counted = params[:counted_cents].to_i
       @session.settle!(counted_cents: counted, notes: params[:notes])
+      DataCache.bump!
       redirect_to(@session, notice: "Register settled and closed.")
     end
 
