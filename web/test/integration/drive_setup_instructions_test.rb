@@ -1,9 +1,18 @@
+# frozen_string_literal: true
+
 require "test_helper"
 
 class DriveSetupInstructionsTest < ActionDispatch::IntegrationTest
   setup do
-    ShopifyAPI::Context.setup(api_key: "test-key", api_secret_key: "test-secret",
-      api_version: "2024-10", host_name: "localhost", scope: "read_products", is_private: false, is_embedded: false)
+    ShopifyAPI::Context.setup(
+      api_key: "test-key",
+      api_secret_key: "test-secret",
+      api_version: "2024-10",
+      host_name: "localhost",
+      scope: "read_products",
+      is_private: false,
+      is_embedded: false,
+    )
     Shop.create!(shopify_domain: "m11u0i-sb.myshopify.com", shopify_token: "test-token")
     Current.tenant = tenants(:default_tenant)
     post login_path, params: { email: "admin@example.com", password: "password" }
