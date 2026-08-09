@@ -7,8 +7,8 @@
 # On first run with no watermark, it simply establishes a baseline at the
 # newest existing order so historical sales are never re-announced in bulk.
 class SalesAnnouncer
-  WATERMARK_KEY = "sales_announcer_watermark"
-  REVENUE_STATUSES = ["PAID", "COMPLETED"].freeze
+  WATERMARK_KEY = 'sales_announcer_watermark'
+  REVENUE_STATUSES = %w[PAID COMPLETED].freeze
 
   class << self
     def announce!(channel: nil)
@@ -37,7 +37,7 @@ class SalesAnnouncer
   private
 
   def announcements_channel
-    EnvStore.fetch("BUZZ_ANNOUNCEMENTS_CHANNEL", "").presence || BuzzAgent.channel_id
+    EnvStore.fetch('BUZZ_ANNOUNCEMENTS_CHANNEL', '').presence || BuzzAgent.channel_id
   end
 
   def baseline_not_established?
@@ -64,12 +64,15 @@ class SalesAnnouncer
   end
 
   def format_message(entries)
+    total = entries.length
+    total_cents = entries.sum(&:grossCents)
     lines = entries.map do |entry|
-      amount = format("$%.2f", entry.grossCents.to_f / 100.0)
-      items = entry.summary.presence || "Sale"
-      "#{entry.source} · #{items} — #{amount}"
+      amount = format('$%.2f', entry.grossCents.to_f / 100.0)
+      items = entry.summary.presence || 'Sale'
+      "  • #{items} — #{amount}"
     end
-    "New sales:\n#{lines.join("\n")}"
+    total_amt = format('$%.2f', total_cents.to_f / 100.0)
+    "#{total} independent sale(s), #{total_amt} total:\n#{lines.join("\n")}"
   end
 
   def watermark
