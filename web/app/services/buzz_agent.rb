@@ -128,9 +128,9 @@ class BuzzAgent
       raise "could not connect to #{relay}" if ack.nil? && !ws.open?
 
       # Buzz sends its NIP-42 challenge immediately on connect — wait for it
-      # (with a short grace period for relays that don't challenge) so the first
+      # (with a generous fallback for relays that don't challenge) so the first
       # EVENT is published as an authenticated session.
-      deadline = Time.current + 1.0
+      deadline = Time.current + 5.0
       sleep 0.05 until authed || Time.current > deadline
 
       sent_event = true

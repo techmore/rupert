@@ -25,6 +25,7 @@ module EnvStore
     "BUZZ_RELAY_URL",
     "BUZZ_PRIVATE_KEY",
     "BUZZ_CHANNEL",
+    "OPCODE_BUZZ_PRIVATE_KEY",
   ].freeze
 
   # Settings (DB) win over ENV. ENV is only consulted as a global fallback
