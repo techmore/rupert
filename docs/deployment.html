@@ -4,88 +4,75 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Deployment — Rupert</title>
-  <style>
-    :root{--oat:#e9e4e0;--cream:#f5f5f5;--paper:#fff;--ink:#1a393d;--mocha:#52504e;--taupe:#8a857c;--fog:#eae8e6;--haze:#f0ece7;--olive-deep:#108184;--clay:#7d5449;--sage:#6b7464}
-    *{box-sizing:border-box}
-    body{margin:0;font-family:"Barlow Semi Condensed",ui-sans-serif,system-ui,sans-serif;background:var(--oat);color:var(--ink);-webkit-font-smoothing:antialiased}
-    .wrap{max-width:56rem;margin:0 auto;padding:0 1.5rem}
-    header.site{border-bottom:1px solid var(--fog);background:var(--oat)}
-    header.site .wrap{display:flex;align-items:center;justify-content:space-between;padding-top:1rem;padding-bottom:1rem}
-    .brand{display:flex;align-items:center;gap:.75rem;text-decoration:none;color:var(--ink)}
-    .brand .mark{display:grid;place-items:center;width:2.25rem;height:2.25rem;border-radius:.75rem;background:var(--ink);color:var(--cream);font-family:Georgia,serif;font-size:1.15rem}
-    .brand strong{font-size:1.1rem}
-    nav a{color:var(--mocha);text-decoration:none;font-weight:600;font-size:.95rem;margin-left:1.25rem}
-    nav a:hover{color:var(--ink);text-decoration:underline}
-    main{padding:2.5rem 0 4rem}
-    h1{font-family:Georgia,"Times New Roman",serif;font-size:2.2rem;margin:0 0 .5rem}
-    .lede{color:var(--mocha);max-width:46rem;line-height:1.55;margin:0 0 2rem}
-    section{background:var(--paper);border:1px solid var(--fog);border-radius:1rem;padding:1.5rem 1.75rem;margin-bottom:1.25rem}
-    section h2{font-family:Georgia,serif;font-size:1.35rem;margin:0 0 .6rem}
-    p,li{color:var(--mocha);line-height:1.6}
-    li{margin-bottom:.35rem}
-    code{background:var(--haze);border-radius:.3rem;padding:.1rem .35rem;font-size:.88em}
-    pre{background:var(--ink);color:var(--cream);border-radius:.75rem;padding:1.1rem;overflow-x:auto;font-size:.85rem;line-height:1.5}
-    pre code{background:none;padding:0}
-    a{color:var(--olive-deep)}
-    footer{border-top:1px solid var(--fog);padding:1.5rem 0 2.5rem;color:var(--taupe);font-size:.9rem}
-  </style>
+  <meta name="description" content="Deploy Rupert to a DigitalOcean droplet with Docker, straight from a push to main.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Cardo:ital,wght@0,400;0,700;1,400&display=swap">
+  <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-  <header class="site">
-    <div class="wrap">
-      <a class="brand" href="/rupert/"><span class="mark">R</span><strong>Rupert</strong></a>
-      <nav>
-        <a href="index.html">Home</a>
-        <a href="modules.html">Modules</a>
-        <a href="architecture.html">Architecture</a>
-        <a href="getting-started.html">Getting started</a>
-        <a href="operations.html">Operations</a>
-      </nav>
-    </div>
-  </header>
 
-  <main class="wrap">
-    <h1>Deployment</h1>
-    <p class="lede">Rupert deploys to a DigitalOcean droplet via Docker, straight from a push to <code>main</code>.</p>
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="/rupert/"><span class="mark">R</span><strong>Rupert</strong></a>
+    <nav class="desktop">
+      <a href="index.html">Home</a>
+      <a href="modules.html">Modules</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="getting-started.html">Getting started</a>
+      <a href="operations.html">Operations</a>
+    </nav>
+  </div>
+</header>
 
-    <section>
-      <h2>How deploys work</h2>
-      <p>The <code>deploy.yml</code> workflow runs on every push to <code>main</code>: it builds the Docker image, pushes it to GitHub Container Registry, then SSHes into the droplet to <code>docker compose up -d</code>. The PostgreSQL database lives in a Docker volume and survives deploys.</p>
-    </section>
+<main class="page wrap">
+  <h1>Deployment</h1>
+  <p class="lede">Rupert deploys to a DigitalOcean droplet via Docker, straight from a push to <code>main</code>.</p>
 
-    <section>
-      <h2>First-time droplet setup</h2>
-      <ol>
-        <li>Create a droplet with Docker (e.g. Ubuntu + the Docker image).</li>
-        <li>Add GitHub secrets to the repo:
-          <ul>
-            <li><code>GHCR_TOKEN</code> — PAT with <code>packages:write</code></li>
-            <li><code>DROPLET_HOST</code>, <code>DROPLET_USER</code>, <code>DROPLET_SSH_KEY</code></li>
-          </ul>
-        </li>
-        <li>On the droplet, create <code>/opt/rupert/.env</code> (copy from <code>.env.example</code>):
-          <ul>
-            <li><code>SHOPIFY_API_KEY</code> / <code>SHOPIFY_API_SECRET</code> / <code>HOST</code> (public HTTPS URL)</li>
-            <li><code>SQUARE_ACCESS_TOKEN</code> (+ optional <code>SQUARE_LOCATION_ID</code>)</li>
-            <li><code>SECRET_KEY_BASE</code> (<code>bin/rails secret</code>)</li>
-            <li><code>RAILS_ENCRYPTION_PRIMARY_KEY</code> / <code>DETERMINISTIC_KEY</code> / <code>KEY_DERIVATION_SALT</code> (<code>bin/rails db:encryption:init</code>) — keep these stable; encrypted settings are unreadable if they change</li>
-          </ul>
-        </li>
-        <li>Push to <code>main</code> — the workflow deploys automatically.</li>
-      </ol>
-    </section>
+  <section>
+    <h2>How deploys work</h2>
+    <p>The <code>deploy.yml</code> workflow runs on every push to <code>main</code>: it builds the Docker image, pushes it to GitHub Container Registry, then SSHes into the droplet to <code>docker compose up -d</code>. The PostgreSQL database lives in a Docker volume and survives deploys.</p>
+  </section>
 
-    <section>
-      <h2>Backups</h2>
-      <p>Use the Settings page's <strong>Database backup</strong> (download a snapshot) or a volume snapshot. Google Drive backups can also be enabled for automatic snapshots every 6 hours.</p>
-    </section>
+  <section>
+    <h2>First-time droplet setup</h2>
+    <ol>
+      <li>Create a droplet with Docker (e.g. Ubuntu + the Docker image).</li>
+      <li>Add GitHub secrets to the repo:
+        <ul>
+          <li><code>GHCR_TOKEN</code> — PAT with <code>packages:write</code></li>
+          <li><code>DROPLET_HOST</code>, <code>DROPLET_USER</code>, <code>DROPLET_SSH_KEY</code></li>
+        </ul>
+      </li>
+      <li>On the droplet, create <code>/opt/rupert/.env</code> (copy from <code>.env.example</code>):
+        <ul>
+          <li><code>SHOPIFY_API_KEY</code> / <code>SHOPIFY_API_SECRET</code> / <code>HOST</code> (public HTTPS URL)</li>
+          <li><code>SQUARE_ACCESS_TOKEN</code> (+ optional <code>SQUARE_LOCATION_ID</code>)</li>
+          <li><code>SECRET_KEY_BASE</code> (<code>bin/rails secret</code>)</li>
+          <li><code>RAILS_ENCRYPTION_PRIMARY_KEY</code> / <code>DETERMINISTIC_KEY</code> / <code>KEY_DERIVATION_SALT</code> (<code>bin/rails db:encryption:init</code>) — keep these stable; encrypted settings are unreadable if they change</li>
+        </ul>
+      </li>
+      <li>Push to <code>main</code> — the workflow deploys automatically.</li>
+    </ol>
+  </section>
 
-    <section>
-      <h2>GitHub Pages</h2>
-      <p>This documentation site is served from the <code>docs/</code> folder on <code>main</code> via GitHub Pages. Edit any page and push — Pages redeploys automatically.</p>
-    </section>
-  </main>
+  <section>
+    <h2>Backups</h2>
+    <p>Use the Settings page's <strong>Database backup</strong> (download a snapshot) or a volume snapshot. Google Drive backups can also be enabled for automatic snapshots every 6 hours.</p>
+  </section>
 
-  <footer class="wrap">Rupert · <a href="https://github.com/techmore/rupert">github.com/techmore/rupert</a></footer>
+  <section>
+    <h2>Continuous integration</h2>
+    <p>CI runs in the official <code>ruby:4.0</code> container against a PostgreSQL service: RuboCop, migrations, Tailwind build, asset precompile, and the full test suite. Every push to <code>main</code> or a pull request triggers it.</p>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Rupert · open source ERP for Shopify + Square</span>
+    <span><a href="https://github.com/techmore/rupert">github.com/techmore/rupert</a></span>
+  </div>
+</footer>
+
 </body>
 </html>

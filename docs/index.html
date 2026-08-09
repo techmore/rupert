@@ -3,128 +3,185 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Rupert — ERP for Shopify + Square</title>
-  <meta name="description" content="Rupert is a modular ERP for small commerce businesses that syncs Shopify and Square into one dashboard: sales, inventory, reconcile, ledger, orders, invoicing, and fulfillment.">
-  <style>
-    :root {
-      --oat: #e9e4e0; --cream: #f5f5f5; --paper: #fff;
-      --ink: #1a393d; --mocha: #52504e; --taupe: #8a857c;
-      --fog: #eae8e6; --haze: #f0ece7; --olive-deep: #108184;
-      --clay: #7d5449; --sage: #6b7464;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; font-family: "Barlow Semi Condensed", ui-sans-serif, system-ui, sans-serif;
-      background: var(--oat); color: var(--ink); -webkit-font-smoothing: antialiased;
-    }
-    .wrap { max-width: 56rem; margin: 0 auto; padding: 0 1.5rem; }
-    header.site { border-bottom: 1px solid var(--fog); background: var(--oat); }
-    header.site .wrap { display: flex; align-items: center; justify-content: space-between; padding-top: 1rem; padding-bottom: 1rem; }
-    .brand { display: flex; align-items: center; gap: .75rem; text-decoration: none; color: var(--ink); }
-    .brand .mark { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: .75rem; background: var(--ink); color: var(--cream); font-family: Georgia, serif; font-size: 1.15rem; }
-    .brand strong { font-size: 1.1rem; }
-    nav a { color: var(--mocha); text-decoration: none; font-weight: 600; font-size: .95rem; margin-left: 1.25rem; }
-    nav a:hover { color: var(--ink); text-decoration: underline; }
-    main { padding: 3rem 0 4rem; }
-    h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(2rem, 6vw, 3rem); line-height: 1.1; margin: 0 0 .75rem; }
-    .lede { font-size: 1.2rem; color: var(--mocha); max-width: 46rem; line-height: 1.55; }
-    .badges { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.5rem 0 2.5rem; }
-    .badge { border-radius: 999px; padding: .3rem .85rem; font-size: .85rem; font-weight: 600; }
-    .b-olive { background: rgba(26,57,61,.1); color: var(--ink); border: 1px solid rgba(26,57,61,.3); }
-    .b-teal { background: rgba(16,129,132,.1); color: var(--olive-deep); border: 1px solid rgba(16,129,132,.3); }
-    .b-clay { background: rgba(125,84,73,.1); color: var(--clay); border: 1px solid rgba(125,84,73,.3); }
-    .b-sage { background: rgba(107,116,100,.14); color: var(--sage); border: 1px solid rgba(107,116,100,.3); }
-    section { background: var(--paper); border: 1px solid var(--fog); border-radius: 1rem; padding: 1.75rem; margin-bottom: 1.5rem; box-shadow: 0 1px 2px rgba(26,57,61,.06); }
-    section h2 { font-family: Georgia, serif; font-size: 1.5rem; margin: 0 0 .5rem; }
-    section h3 { font-size: 1.05rem; margin: 1.25rem 0 .4rem; color: var(--ink); }
-    p, li { color: var(--mocha); line-height: 1.6; }
-    a { color: var(--olive-deep); }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .75rem; margin-top: 1rem; }
-    .card { background: var(--haze); border: 1px solid var(--fog); border-radius: .75rem; padding: 1rem; }
-    .card strong { display: block; color: var(--ink); margin-bottom: .25rem; }
-    .card span { font-size: .9rem; color: var(--mocha); }
-    code { background: var(--haze); border-radius: .35rem; padding: .15rem .4rem; font-size: .88em; }
-    pre { background: var(--ink); color: var(--cream); border-radius: .75rem; padding: 1.1rem; overflow-x: auto; font-size: .88rem; line-height: 1.5; }
-    pre code { background: none; padding: 0; }
-    footer { border-top: 1px solid var(--fog); padding: 1.5rem 0 2.5rem; color: var(--taupe); font-size: .9rem; }
-    .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: 1rem 0; }
-    .flow span { background: var(--haze); border: 1px solid var(--fog); border-radius: .5rem; padding: .4rem .7rem; font-size: .85rem; font-weight: 600; color: var(--ink); }
-    .flow i { color: var(--taupe); font-style: normal; }
-  </style>
+  <title>Rupert — The back office for Shopify + Square</title>
+  <meta name="description" content="Rupert is a modular ERP for small commerce businesses: sales, inventory, reconciliation, ledger, orders, invoices, and fulfillment — synced from Shopify and Square into one dashboard.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Cardo:ital,wght@0,400;0,700;1,400&display=swap">
+  <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-  <header class="site">
-    <div class="wrap">
-      <a class="brand" href="/rupert/">
-        <span class="mark">R</span>
-        <strong>Rupert</strong>
-      </a>
-      <nav>
-        <a href="modules.html">Modules</a>
-        <a href="architecture.html">Architecture</a>
-        <a href="getting-started.html">Getting started</a>
-        <a href="operations.html">Operations</a>
-        <a href="deployment.html">Deployment</a>
-      </nav>
+
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="/rupert/"><span class="mark">R</span><strong>Rupert</strong></a>
+    <nav class="desktop">
+      <a href="modules.html">Modules</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="getting-started.html">Getting started</a>
+      <a href="operations.html">Operations</a>
+      <a href="deployment.html">Deployment</a>
+    </nav>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Open source · Shopify + Square ERP</p>
+    <h1>The back office for your shop,<br>finally in one place.</h1>
+    <p class="lede">Rupert syncs Shopify and Square into a single database and gives your team one dashboard for sales, inventory, reconciliation, the ledger, orders, invoices, and shipping — with permissions for everyone who touches it.</p>
+
+    <div class="actions">
+      <a class="btn btn-primary" href="getting-started.html">Run it locally</a>
+      <a class="btn btn-ghost" href="https://github.com/techmore/rupert">View on GitHub</a>
     </div>
-  </header>
 
-  <main class="wrap">
-    <h1>Your shop's operations, in one place.</h1>
-    <p class="lede">Rupert is a modular ERP for small commerce businesses. It syncs Shopify and Square into a single database and gives the back office one dashboard for sales, inventory, reconciliation, the ledger, orders, invoices, and shipping — plus a searchable customer CRM.</p>
-
-    <div class="badges">
+    <div class="badge-row">
       <span class="badge b-olive">Rails 8.1</span>
       <span class="badge b-teal">Shopify + Square sync</span>
       <span class="badge b-clay">Modular monolith</span>
-      <span class="badge b-sage">Tailwind UI</span>
+      <span class="badge b-sage">Team &amp; roles built in</span>
     </div>
+  </div>
+</div>
 
+<section class="block">
+  <div class="wrap">
     <div class="flow">
-      <span>Shopify</span><i>→</i>
-      <span>Square POS</span><i>→</i>
-      <span>Sync engine (Solid Queue)</span><i>→</i>
-      <span>PostgreSQL</span><i>→</i>
-      <span>Rupert dashboard</span>
+      <span class="node">Shopify</span><i>→</i>
+      <span class="node">Square POS</span><i>→</i>
+      <span class="node hl">Sync engine</span><i>→</i>
+      <span class="node">PostgreSQL</span><i>→</i>
+      <span class="node hl">Rupert</span>
+    </div>
+  </div>
+</section>
+
+<section class="block alt">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">What's inside</p>
+      <h2>One dashboard for the whole operation</h2>
+      <p>Five areas, each a set of modules that register themselves in a central registry — so features are easy to find, easy to permission, and easy to extend.</p>
     </div>
 
-    <section>
-      <h2>What's inside</h2>
-      <p>The app is organized into four areas, each a set of modules that register themselves in a central registry.</p>
-      <div class="grid">
-        <div class="card"><strong>Overview</strong><span>Customizable dashboard with sales, stock, and attention widgets.</span></div>
-        <div class="card"><strong>Commerce</strong><span>Sales journal, customers, inventory, and POS registers.</span></div>
-        <div class="card"><strong>Operations</strong><span>Reports, reconcile, ledger, projects, goals, and KPIs.</span></div>
-        <div class="card"><strong>Team</strong><span>Employee directory and a role × permission matrix.</span></div>
-        <div class="card"><strong>System</strong><span>Sync health, alerts, settings, backups, and the Buzz agent.</span></div>
+    <div class="grid grid-3">
+      <a class="card" href="modules.html">
+        <div class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 3 5-6"/></svg></div>
+        <h3>Overview</h3>
+        <p>A dashboard that's yours — reorder and hide widgets for key stats, per-channel revenue, attention items, and stock alerts.</p>
+        <span class="tag">Dashboard</span>
+      </a>
+      <a class="card" href="modules.html">
+        <div class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></div>
+        <h3>Commerce</h3>
+        <p>Daily sales journal, registers, a searchable customer CRM, and inventory that tracks drift against Square.</p>
+        <span class="tag">Sales · Customers · Inventory</span>
+      </a>
+      <a class="card" href="modules.html">
+        <div class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></div>
+        <h3>Operations</h3>
+        <p>Reports with CSV export, SKU-level reconciliation, the full ledger, and lightweight projects, goals, and KPIs.</p>
+        <span class="tag">Reports · Reconcile · Ledger</span>
+      </a>
+      <a class="card" href="modules.html">
+        <div class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <h3>Team</h3>
+        <p>An employee directory with a role × permission matrix and per-person overrides, so everyone sees only what they need.</p>
+        <span class="tag">Employees · Permissions</span>
+      </a>
+      <a class="card" href="modules.html">
+        <div class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+        <h3>System</h3>
+        <p>Sync health, alerts, settings, database backups, and the team's Buzz agent — all under one roof.</p>
+        <span class="tag">Sync · Alerts · Settings</span>
+      </a>
+      <a class="card" href="modules.html">
+        <div class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg></div>
+        <h3>Orders &amp; shipping</h3>
+        <p>Open any order for a printable invoice or packing slip, record carrier tracking, and run the fulfillment pipeline.</p>
+        <span class="tag">Invoices · Packing slips · Tracking</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="block">
+  <div class="wrap">
+    <div class="grid grid-2" style="align-items:center; gap:2.5rem;">
+      <div>
+        <p class="eyebrow">Built for the back office</p>
+        <h2>Print it, ship it, count it</h2>
+        <p class="lede" style="margin:1rem 0 0;">The jobs your team actually does, day to day — done faster.</p>
+        <ul class="checks">
+          <li>Print an invoice or packing slip for any order with one click.</li>
+          <li>Record carrier tracking and mark orders in transition, shipped, arrived, or completed.</li>
+          <li>Reconcile Shopify vs Square at the SKU level and apply a clean adjustment plan.</li>
+          <li>Run manual inventory counts with submit / approve / reject.</li>
+          <li>Keep roles tight — cashier, manager, admin, reader — with per-person exceptions.</li>
+        </ul>
       </div>
-      <p style="margin-top:1rem"><a href="modules.html">Browse the full module list →</a></p>
-    </section>
+      <div class="code-card">
+        <div class="bar"><span class="r"></span><span class="y"></span><span class="g"></span></div>
+        <pre><code># sync everything
+bin/rails ops:sync
 
-    <section>
-      <h2>Recent additions</h2>
-      <ul>
-        <li><strong>Order detail + printing</strong> — open any order to view a full invoice or packing slip and print either.</li>
-        <li><strong>Fulfillment tracking</strong> — sync shipping addresses and tracking numbers, and mark orders in transition / shipped / arrived / completed.</li>
-        <li><strong>Employees &amp; permissions</strong> — a team directory with role-based access and per-person overrides.</li>
-        <li><strong>Warehouse sales</strong> — secret vendor links with tiered pricing and a public storefront.</li>
-      </ul>
-    </section>
+# print an order
+open /orders/#1001
 
-    <section>
-      <h2>Quick start</h2>
-      <pre><code># Ruby 4.0.6 + PostgreSQL 16 required
-bundle install            # from web/
-cp .env.example .env      # fill in credentials at repo root
-bin/rails db:create db:migrate
-bin/rails tailwindcss:build
-bin/rails server          # http://localhost:3000</code></pre>
-      <p><a href="getting-started.html">Full setup guide →</a></p>
-    </section>
-  </main>
+# mark it shipped
+ship! #1001 → UPS 1Z999…
 
-  <footer class="wrap">
-    Rupert · open source ERP for Shopify + Square merchants · <a href="https://github.com/techmore/rupert">github.com/techmore/rupert</a>
-  </footer>
+# stay on top of stock
+alerts → resolve or ignore</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block alt">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Why Rupert</p>
+      <h2>Small shop ERP without the enterprise tax</h2>
+    </div>
+    <div class="grid grid-3">
+      <div class="card">
+        <div class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+        <h3>Everything in sync</h3>
+        <p>Shopify and Square land in one canonical store, idempotently, every 15 minutes.</p>
+      </div>
+      <div class="card">
+        <div class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4H4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg></div>
+        <h3>Self-hosted</h3>
+        <p>Deploys to a droplet with Docker. Your data, your database, your backups.</p>
+      </div>
+      <div class="card">
+        <div class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <h3>Permissions that fit</h3>
+        <p>Role-based access with a per-tenant matrix and per-person overrides.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block">
+  <div class="wrap" style="text-align:center;">
+    <h2>Take it for a spin</h2>
+    <p class="lede" style="margin:0.8rem auto 1.8rem;">Requirements: Ruby 4.0.6, PostgreSQL 16. You're two commands from a dashboard.</p>
+    <div class="actions" style="justify-content:center;">
+      <a class="btn btn-primary" href="getting-started.html">Getting started guide</a>
+      <a class="btn btn-ghost" href="deployment.html">Deploy to a droplet</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>Rupert · open source ERP for Shopify + Square</span>
+    <span><a href="https://github.com/techmore/rupert">github.com/techmore/rupert</a></span>
+  </div>
+</footer>
+
 </body>
 </html>
