@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Rupert — ERP for Shopify + Square</title>
+  <meta name="description" content="Rupert is a modular ERP for small commerce businesses that syncs Shopify and Square into one dashboard: sales, inventory, reconcile, ledger, orders, invoicing, and fulfillment.">
+  <style>
+    :root {
+      --oat: #e9e4e0; --cream: #f5f5f5; --paper: #fff;
+      --ink: #1a393d; --mocha: #52504e; --taupe: #8a857c;
+      --fog: #eae8e6; --haze: #f0ece7; --olive-deep: #108184;
+      --clay: #7d5449; --sage: #6b7464;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Barlow Semi Condensed", ui-sans-serif, system-ui, sans-serif;
+      background: var(--oat); color: var(--ink); -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 56rem; margin: 0 auto; padding: 0 1.5rem; }
+    header.site { border-bottom: 1px solid var(--fog); background: var(--oat); }
+    header.site .wrap { display: flex; align-items: center; justify-content: space-between; padding-top: 1rem; padding-bottom: 1rem; }
+    .brand { display: flex; align-items: center; gap: .75rem; text-decoration: none; color: var(--ink); }
+    .brand .mark { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: .75rem; background: var(--ink); color: var(--cream); font-family: Georgia, serif; font-size: 1.15rem; }
+    .brand strong { font-size: 1.1rem; }
+    nav a { color: var(--mocha); text-decoration: none; font-weight: 600; font-size: .95rem; margin-left: 1.25rem; }
+    nav a:hover { color: var(--ink); text-decoration: underline; }
+    main { padding: 3rem 0 4rem; }
+    h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(2rem, 6vw, 3rem); line-height: 1.1; margin: 0 0 .75rem; }
+    .lede { font-size: 1.2rem; color: var(--mocha); max-width: 46rem; line-height: 1.55; }
+    .badges { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.5rem 0 2.5rem; }
+    .badge { border-radius: 999px; padding: .3rem .85rem; font-size: .85rem; font-weight: 600; }
+    .b-olive { background: rgba(26,57,61,.1); color: var(--ink); border: 1px solid rgba(26,57,61,.3); }
+    .b-teal { background: rgba(16,129,132,.1); color: var(--olive-deep); border: 1px solid rgba(16,129,132,.3); }
+    .b-clay { background: rgba(125,84,73,.1); color: var(--clay); border: 1px solid rgba(125,84,73,.3); }
+    .b-sage { background: rgba(107,116,100,.14); color: var(--sage); border: 1px solid rgba(107,116,100,.3); }
+    section { background: var(--paper); border: 1px solid var(--fog); border-radius: 1rem; padding: 1.75rem; margin-bottom: 1.5rem; box-shadow: 0 1px 2px rgba(26,57,61,.06); }
+    section h2 { font-family: Georgia, serif; font-size: 1.5rem; margin: 0 0 .5rem; }
+    section h3 { font-size: 1.05rem; margin: 1.25rem 0 .4rem; color: var(--ink); }
+    p, li { color: var(--mocha); line-height: 1.6; }
+    a { color: var(--olive-deep); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .75rem; margin-top: 1rem; }
+    .card { background: var(--haze); border: 1px solid var(--fog); border-radius: .75rem; padding: 1rem; }
+    .card strong { display: block; color: var(--ink); margin-bottom: .25rem; }
+    .card span { font-size: .9rem; color: var(--mocha); }
+    code { background: var(--haze); border-radius: .35rem; padding: .15rem .4rem; font-size: .88em; }
+    pre { background: var(--ink); color: var(--cream); border-radius: .75rem; padding: 1.1rem; overflow-x: auto; font-size: .88rem; line-height: 1.5; }
+    pre code { background: none; padding: 0; }
+    footer { border-top: 1px solid var(--fog); padding: 1.5rem 0 2.5rem; color: var(--taupe); font-size: .9rem; }
+    .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: 1rem 0; }
+    .flow span { background: var(--haze); border: 1px solid var(--fog); border-radius: .5rem; padding: .4rem .7rem; font-size: .85rem; font-weight: 600; color: var(--ink); }
+    .flow i { color: var(--taupe); font-style: normal; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <div class="wrap">
+      <a class="brand" href="/rupert/">
+        <span class="mark">R</span>
+        <strong>Rupert</strong>
+      </a>
+      <nav>
+        <a href="modules.html">Modules</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="operations.html">Operations</a>
+        <a href="deployment.html">Deployment</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <h1>Your shop's operations, in one place.</h1>
+    <p class="lede">Rupert is a modular ERP for small commerce businesses. It syncs Shopify and Square into a single database and gives the back office one dashboard for sales, inventory, reconciliation, the ledger, orders, invoices, and shipping — plus a searchable customer CRM.</p>
+
+    <div class="badges">
+      <span class="badge b-olive">Rails 8.1</span>
+      <span class="badge b-teal">Shopify + Square sync</span>
+      <span class="badge b-clay">Modular monolith</span>
+      <span class="badge b-sage">Tailwind UI</span>
+    </div>
+
+    <div class="flow">
+      <span>Shopify</span><i>→</i>
+      <span>Square POS</span><i>→</i>
+      <span>Sync engine (Solid Queue)</span><i>→</i>
+      <span>PostgreSQL</span><i>→</i>
+      <span>Rupert dashboard</span>
+    </div>
+
+    <section>
+      <h2>What's inside</h2>
+      <p>The app is organized into four areas, each a set of modules that register themselves in a central registry.</p>
+      <div class="grid">
+        <div class="card"><strong>Overview</strong><span>Customizable dashboard with sales, stock, and attention widgets.</span></div>
+        <div class="card"><strong>Commerce</strong><span>Sales journal, customers, inventory, and POS registers.</span></div>
+        <div class="card"><strong>Operations</strong><span>Reports, reconcile, ledger, projects, goals, and KPIs.</span></div>
+        <div class="card"><strong>Team</strong><span>Employee directory and a role × permission matrix.</span></div>
+        <div class="card"><strong>System</strong><span>Sync health, alerts, settings, backups, and the Buzz agent.</span></div>
+      </div>
+      <p style="margin-top:1rem"><a href="modules.html">Browse the full module list →</a></p>
+    </section>
+
+    <section>
+      <h2>Recent additions</h2>
+      <ul>
+        <li><strong>Order detail + printing</strong> — open any order to view a full invoice or packing slip and print either.</li>
+        <li><strong>Fulfillment tracking</strong> — sync shipping addresses and tracking numbers, and mark orders in transition / shipped / arrived / completed.</li>
+        <li><strong>Employees &amp; permissions</strong> — a team directory with role-based access and per-person overrides.</li>
+        <li><strong>Warehouse sales</strong> — secret vendor links with tiered pricing and a public storefront.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Quick start</h2>
+      <pre><code># Ruby 4.0.6 + PostgreSQL 16 required
+bundle install            # from web/
+cp .env.example .env      # fill in credentials at repo root
+bin/rails db:create db:migrate
+bin/rails tailwindcss:build
+bin/rails server          # http://localhost:3000</code></pre>
+      <p><a href="getting-started.html">Full setup guide →</a></p>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    Rupert · open source ERP for Shopify + Square merchants · <a href="https://github.com/techmore/rupert">github.com/techmore/rupert</a>
+  </footer>
+</body>
+</html>

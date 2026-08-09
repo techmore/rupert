@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Getting started — Rupert</title>
+  <style>
+    :root{--oat:#e9e4e0;--cream:#f5f5f5;--paper:#fff;--ink:#1a393d;--mocha:#52504e;--taupe:#8a857c;--fog:#eae8e6;--haze:#f0ece7;--olive-deep:#108184;--clay:#7d5449;--sage:#6b7464}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:"Barlow Semi Condensed",ui-sans-serif,system-ui,sans-serif;background:var(--oat);color:var(--ink);-webkit-font-smoothing:antialiased}
+    .wrap{max-width:56rem;margin:0 auto;padding:0 1.5rem}
+    header.site{border-bottom:1px solid var(--fog);background:var(--oat)}
+    header.site .wrap{display:flex;align-items:center;justify-content:space-between;padding-top:1rem;padding-bottom:1rem}
+    .brand{display:flex;align-items:center;gap:.75rem;text-decoration:none;color:var(--ink)}
+    .brand .mark{display:grid;place-items:center;width:2.25rem;height:2.25rem;border-radius:.75rem;background:var(--ink);color:var(--cream);font-family:Georgia,serif;font-size:1.15rem}
+    .brand strong{font-size:1.1rem}
+    nav a{color:var(--mocha);text-decoration:none;font-weight:600;font-size:.95rem;margin-left:1.25rem}
+    nav a:hover{color:var(--ink);text-decoration:underline}
+    main{padding:2.5rem 0 4rem}
+    h1{font-family:Georgia,"Times New Roman",serif;font-size:2.2rem;margin:0 0 .5rem}
+    .lede{color:var(--mocha);max-width:46rem;line-height:1.55;margin:0 0 2rem}
+    section{background:var(--paper);border:1px solid var(--fog);border-radius:1rem;padding:1.5rem 1.75rem;margin-bottom:1.25rem}
+    section h2{font-family:Georgia,serif;font-size:1.35rem;margin:0 0 .6rem}
+    p,li{color:var(--mocha);line-height:1.6}
+    li{margin-bottom:.35rem}
+    code{background:var(--haze);border-radius:.3rem;padding:.1rem .35rem;font-size:.88em}
+    pre{background:var(--ink);color:var(--cream);border-radius:.75rem;padding:1.1rem;overflow-x:auto;font-size:.85rem;line-height:1.5}
+    pre code{background:none;padding:0}
+    a{color:var(--olive-deep)}
+    footer{border-top:1px solid var(--fog);padding:1.5rem 0 2.5rem;color:var(--taupe);font-size:.9rem}
+  </style>
+</head>
+<body>
+  <header class="site">
+    <div class="wrap">
+      <a class="brand" href="/rupert/"><span class="mark">R</span><strong>Rupert</strong></a>
+      <nav>
+        <a href="index.html">Home</a>
+        <a href="modules.html">Modules</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="operations.html">Operations</a>
+        <a href="deployment.html">Deployment</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <h1>Getting started</h1>
+    <p class="lede">Run Rupert locally with Ruby, PostgreSQL, and the Shopify/SQLite tooling it needs.</p>
+
+    <section>
+      <h2>Requirements</h2>
+      <ul>
+        <li>Ruby 4.0.6 (via rbenv — see <code>.ruby-version</code>)</li>
+        <li>Bundler</li>
+        <li>PostgreSQL 16</li>
+        <li>Node (for the Shopify CLI, if developing the app install)</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Set up</h2>
+      <pre><code># 1. Install gems (from web/)
+bundle install
+
+# 2. Copy the env template and fill in credentials
+cp .env.example .env
+
+# 3. Create the postgres role + db (or set POSTGRES_* env vars)
+createuser -s rupert
+createdb -O rupert rupert_development
+
+# 4. Prepare the database
+bin/rails db:create db:migrate
+
+# 5. Build the Tailwind CSS
+bin/rails tailwindcss:build
+
+# 6. Run the server
+bin/rails server          # http://localhost:3000</code></pre>
+    </section>
+
+    <section>
+      <h2>Environment variables</h2>
+      <p>The <code>.env</code> at the repo root is loaded at boot (Dotenv) and holds the sync-engine credentials:</p>
+      <ul>
+        <li><code>SHOPIFY_CLIENT_ID</code> / <code>SHOPIFY_CLIENT_SECRET</code> — Shopify sync credentials</li>
+        <li><code>SQUARE_ACCESS_TOKEN</code> (+ optional <code>SQUARE_LOCATION_ID</code>, <code>SQUARE_ENVIRONMENT</code>)</li>
+        <li><code>SYNC_MINUTES</code> — how often scheduled syncs run</li>
+        <li><code>GOOGLE_DRIVE_*</code> — automated database backups</li>
+        <li><code>BUZZ_*</code> — the Nostr relay + keys for the team agent</li>
+      </ul>
+      <p>When developing through the Shopify CLI, the OAuth pair (<code>SHOPIFY_API_KEY</code>/<code>SHOPIFY_API_SECRET</code>) comes from <code>shopify app info --web-env</code>.</p>
+    </section>
+
+    <section>
+      <h2>One-time data migration</h2>
+      <pre><code># Pull historical data from the legacy SQLite mirror into PostgreSQL
+bin/rails db:import_legacy</code></pre>
+    </section>
+
+    <section>
+      <h2>Run the tests</h2>
+      <pre><code>bin/rails test                # full suite (integration + unit)</code></pre>
+    </section>
+  </main>
+
+  <footer class="wrap">Rupert · <a href="https://github.com/techmore/rupert">github.com/techmore/rupert</a></footer>
+</body>
+</html>

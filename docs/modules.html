@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Modules — Rupert</title>
+  <style>
+    :root{--oat:#e9e4e0;--cream:#f5f5f5;--paper:#fff;--ink:#1a393d;--mocha:#52504e;--taupe:#8a857c;--fog:#eae8e6;--haze:#f0ece7;--olive-deep:#108184;--clay:#7d5449;--sage:#6b7464}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:"Barlow Semi Condensed",ui-sans-serif,system-ui,sans-serif;background:var(--oat);color:var(--ink);-webkit-font-smoothing:antialiased}
+    .wrap{max-width:56rem;margin:0 auto;padding:0 1.5rem}
+    header.site{border-bottom:1px solid var(--fog);background:var(--oat)}
+    header.site .wrap{display:flex;align-items:center;justify-content:space-between;padding-top:1rem;padding-bottom:1rem}
+    .brand{display:flex;align-items:center;gap:.75rem;text-decoration:none;color:var(--ink)}
+    .brand .mark{display:grid;place-items:center;width:2.25rem;height:2.25rem;border-radius:.75rem;background:var(--ink);color:var(--cream);font-family:Georgia,serif;font-size:1.15rem}
+    .brand strong{font-size:1.1rem}
+    nav a{color:var(--mocha);text-decoration:none;font-weight:600;font-size:.95rem;margin-left:1.25rem}
+    nav a:hover{color:var(--ink);text-decoration:underline}
+    main{padding:2.5rem 0 4rem}
+    h1{font-family:Georgia,"Times New Roman",serif;font-size:2.2rem;margin:0 0 .5rem}
+    .lede{color:var(--mocha);max-width:46rem;line-height:1.55;margin:0 0 2rem}
+    .area{border-top:1px solid var(--fog);padding:1.25rem 0 .5rem}
+    .area h2{font-family:Georgia,serif;font-size:1.3rem;margin:0 0 .4rem}
+    .area>p{color:var(--taupe);margin:0 0 1rem;font-size:.95rem}
+    .card{background:var(--paper);border:1px solid var(--fog);border-radius:.75rem;padding:1rem 1.25rem;margin-bottom:.75rem}
+    .card h3{margin:0 0 .25rem;font-size:1.05rem;color:var(--ink)}
+    .card p{margin:.3rem 0;color:var(--mocha);font-size:.95rem;line-height:1.55}
+    .card code{background:var(--haze);border-radius:.3rem;padding:.1rem .35rem;font-size:.85em}
+    a{color:var(--olive-deep)}
+    footer{border-top:1px solid var(--fog);padding:1.5rem 0 2.5rem;color:var(--taupe);font-size:.9rem}
+  </style>
+</head>
+<body>
+  <header class="site">
+    <div class="wrap">
+      <a class="brand" href="/rupert/"><span class="mark">R</span><strong>Rupert</strong></a>
+      <nav>
+        <a href="index.html">Home</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="operations.html">Operations</a>
+        <a href="deployment.html">Deployment</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <h1>ERP modules</h1>
+    <p class="lede">Every module registers in <code>app/models/module_registry.rb</code>, which drives the nav and the permission gate. Modules can be shipped, hidden, or permission-limited per role.</p>
+
+    <div class="area">
+      <h2>Overview</h2>
+      <div class="card"><h3>Dashboard</h3><p>Per-user customizable widget layout: key sales stats, per-channel revenue, attention items, stock alerts, and sync / reconcile / goal history. Widgets can be reordered and toggled.</p></div>
+    </div>
+
+    <div class="area">
+      <h2>Commerce</h2>
+      <div class="card"><h3>Sales</h3><p>Daily sales journal in spreadsheet style — an hourly × location pivot plus every sale of the day in arrival order, with a tracking indicator per order.</p></div>
+      <div class="card"><h3>Registers</h3><p>POS cash-drawer sessions: open a register, see sales per tender, and settle with a physical cash count at end of day.</p></div>
+      <div class="card"><h3>Customers</h3><p>Unified CRM across channels with Ransack search, pagination, and lifetime value. Add, edit, and view each customer's order history.</p></div>
+      <div class="card"><h3>Inventory</h3><p>Products and variants mirrored from Shopify with quantities on both sides, drift vs Square, and SKU linkage status.</p></div>
+      <div class="card"><h3>Inventory counts</h3><p>Manual count sheets with a prepared-blank workflow, then submit / approve / reject / reopen.</p></div>
+      <div class="card"><h3>Orders</h3><p>Detail page per order with a printable invoice and packing slip, shipping address, line items, payments, and fulfillment tracking.</p></div>
+    </div>
+
+    <div class="area">
+      <h2>Operations</h2>
+      <div class="card"><h3>Reports</h3><p>Sales, financial (P&amp;L), inventory, and operations reports with 7/30/90/365-day windows and CSV export.</p></div>
+      <div class="card"><h3>Reconcile</h3><p>SKU-level drift between Shopify and Square with a generated adjustment plan and per-SKU priority policy.</p></div>
+      <div class="card"><h3>Ledger</h3><p>Central transaction stream across both platforms, filterable by window and source.</p></div>
+      <div class="card"><h3>Projects</h3><p>Simple project + task tracking with status transitions (start, hold, complete, archive).</p></div>
+      <div class="card"><h3>Goals &amp; KPIs</h3><p>Goals with activate / achieve / abandon, each with key performance indicators and reading history.</p></div>
+    </div>
+
+    <div class="area">
+      <h2>Team</h2>
+      <div class="card"><h3>Employees</h3><p>Directory of who can sign in, with role assignment, activate / deactivate, and removal.</p></div>
+      <div class="card"><h3>Permissions</h3><p>A role × permission matrix (23 permissions) with save and reset-to-defaults, plus per-person overrides on each employee's edit page.</p></div>
+    </div>
+
+    <div class="area">
+      <h2>System</h2>
+      <div class="card"><h3>Alerts</h3><p>Low-stock and attention flags that can be resolved or ignored per row.</p></div>
+      <div class="card"><h3>Sync</h3><p>Run full, Shopify-only, or Square-only syncs; review run history and the log tail.</p></div>
+      <div class="card"><h3>System health</h3><p>Server load, memory, swap, disk, database, and slow-query monitoring.</p></div>
+      <div class="card"><h3>Settings</h3><p>Env import/export, database backup/restore, Google Drive backup, the Buzz agent, and office feature flags.</p></div>
+      <div class="card"><h3>Warehouse</h3><p>Secret vendor links with price multipliers and bulk tiers, plus a public token-gated storefront for each vendor.</p></div>
+    </div>
+  </main>
+
+  <footer class="wrap">Rupert · <a href="https://github.com/techmore/rupert">github.com/techmore/rupert</a></footer>
+</body>
+</html>
