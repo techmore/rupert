@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_08_230001) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_09_040000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -300,6 +300,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_08_230001) do
     t.index ["tenant_id", "phone"], name: "index_customers_on_tenant_id_and_phone"
   end
 
+  create_table "fulfillments", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "fulfilled_at"
+    t.bigint "order_id", null: false
+    t.string "source", default: "manual", null: false
+    t.string "source_fulfillment_id"
+    t.string "status", default: "pending", null: false
+    t.string "tenant_id", null: false
+    t.string "tracking_company"
+    t.string "tracking_number"
+    t.string "tracking_url"
+    t.datetime "updated_at", null: false
+    t.index ["order_id"], name: "index_fulfillments_on_order_id"
+    t.index ["source", "source_fulfillment_id"], name: "index_fulfillments_on_source_and_source_fulfillment_id", unique: true
+    t.index ["tenant_id", "order_id"], name: "index_fulfillments_on_tenant_id_and_order_id"
+  end
+
   create_table "goals", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.decimal "current_value", precision: 12, scale: 2, default: "0.0"
@@ -354,11 +371,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_08_230001) do
     t.datetime "created_at", null: false
     t.string "currency", default: "USD"
     t.bigint "customer_id"
+    t.string "fulfillment_status", default: "pending", null: false
     t.integer "gross_cents", default: 0
     t.integer "line_items", default: 0
     t.string "location_id"
     t.datetime "occurred_at", null: false
     t.string "order_number"
+    t.string "shipping_address1"
+    t.string "shipping_address2"
+    t.string "shipping_city"
+    t.string "shipping_country"
+    t.string "shipping_name"
+    t.string "shipping_phone"
+    t.string "shipping_province"
+    t.string "shipping_zip"
     t.string "source", null: false
     t.string "source_order_id", null: false
     t.string "status", null: false
@@ -418,6 +444,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_08_230001) do
     t.datetime "updated_at", null: false
     t.index ["tenant_id", "owner_id"], name: "index_projects_on_tenant_id_and_owner_id"
     t.index ["tenant_id", "status"], name: "index_projects_on_tenant_id_and_status"
+  end
+
+  create_table "role_permissions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.boolean "enabled", default: true, null: false
+    t.string "permission", null: false
+    t.string "role", null: false
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "role", "permission"], name: "index_role_permissions_on_tenant_id_and_role_and_permission", unique: true
+    t.index ["tenant_id", "role"], name: "index_role_permissions_on_tenant_id_and_role"
   end
 
   create_table "settings", force: :cascade do |t|
@@ -589,8 +626,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_08_230001) do
     t.index ["subdomain"], name: "index_tenants_on_subdomain", unique: true
   end
 
+  create_table "user_permissions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.boolean "enabled", default: true, null: false
+    t.string "permission", null: false
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["tenant_id", "user_id", "permission"], name: "index_user_permissions_on_tenant_id_and_user_id_and_permission", unique: true
+    t.index ["tenant_id", "user_id"], name: "index_user_permissions_on_tenant_id_and_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "access_scopes", default: "", null: false
+    t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
     t.text "dashboard_config"
     t.string "email"

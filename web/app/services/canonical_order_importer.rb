@@ -33,6 +33,7 @@ class CanonicalOrderImporter
         )
         replace_order_lines!(order, node["lineItems"])
         replace_payments!(order, shopify_payments(node))
+        replace_fulfillments!(order, node.dig("fulfillments", "nodes"))
       end
       Array(nodes).length
     end
@@ -138,6 +139,41 @@ class CanonicalOrderImporter
       end
     end
 
+    # Mirrors Shopify fulfillments (with carrier tracking) for an order. Newer
+    # fulfillments are upserted; the order's `fulfilled` status is derived from
+    # whether any fulfillment exists, keeping the canonical store in lock-step.
+    def replace_fulfillments!(order, fulfillments)
+      nodes = Array(fulfillments)
+      return if nodes.empty? && order.fulfillments.none?
+
+      nodes.each do |node|
+        next if node.blank?
+
+        tracking = node.dig("trackingInfo") || {}
+        Core::Fulfillment.upsert(
+          {
+            tenant_id: Current.tenant_id,
+            order_id: order.id,
+            source: "shopify",
+            source_fulfillment_id: node["id"],
+            status: normalize_fulfillment_status(node["status"]),
+            tracking_company: tracking["company"],
+            tracking_number: tracking["number"],
+            tracking_url: tracking["url"],
+            fulfilled_at: parse_time(node["createdAt"]) || node["updatedAt"].presence && parse_time(node["updatedAt"]),
+            created_at: Time.current,
+            updated_at: Time.current,
+          },
+          unique_by: [:source, :source_fulfillment_id],
+        )
+      end
+      order.fulfillments.reload
+      if order.fulfillments.any? && order.may_fulfill?
+        order.fulfill!
+        order.update_columns(updated_at: Time.current)
+      end
+    end
+
     def replace_payments!(order, payments)
       order.payments.delete_all
       payments.each do |payment|
@@ -224,9 +260,31 @@ class CanonicalOrderImporter
           data["line_items"]&.length || (data[:lineItems] || data["lineItems"]).to_i,
         currency: data.dig("currentTotalPriceSet", "shopMoney", "currencyCode") ||
           data.dig("total_money", "currency") || data[:currency] || data["currency"] || "USD",
+        shipping_name: address_attr(data, "name"),
+        shipping_address1: address_attr(data, "address1"),
+        shipping_address2: address_attr(data, "address2"),
+        shipping_city: address_attr(data, "city"),
+        shipping_province: address_attr(data, "province"),
+        shipping_zip: address_attr(data, "zip"),
+        shipping_country: address_attr(data, "country"),
+        shipping_phone: address_attr(data, "phone"),
         created_at: Time.current,
         updated_at: Time.current,
       }
+    end
+
+    def address_attr(data, key)
+      value = data.dig("shippingAddress", key) || data.dig("shipping_address", key)
+      value.presence
+    end
+
+    def normalize_fulfillment_status(raw)
+      case raw.to_s.downcase
+      when "fulfilled", "delivered" then "fulfilled"
+      when "in_transit", "out_for_delivery" then "in_transit"
+      when "attempted_delivery", "failure" then "delivered"
+      else "pending"
+      end
     end
 
     # Map display statuses from either platform into our aasm state names.

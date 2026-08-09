@@ -1,0 +1,193 @@
+<% content_for :title, "Order #{@order.display_number}" %>
+<div class="space-y-6 print:hidden">
+  <section class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink">Order <%= @order.display_number %></h1>
+      <p class="mt-1 text-sm text-mocha">
+        <%= l(@order.occurred_at, format: :long) %> · <span class="capitalize"><%= @order.source %></span>
+        <span class="ml-2"><span class="<%= @order.status == "fulfilled" ? "pill-fern" : @order.status == "paid" ? "pill-olive" : "pill-taupe" %>"><%= @order.status %></span></span>
+        <% if @order.fulfillment_status && @order.fulfillment_status != "pending" %>
+          <span class="ml-2"><span class="pill-clay"><%= @order.fulfillment_status %></span></span>
+        <% end %>
+      </p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <% if @doc == "invoice" %>
+        <button type="button" onclick="window.print()" class="btn-primary">Print invoice</button>
+        <%= link_to "Packing slip", order_path(@order, doc: "packing_slip"), class: "btn-ghost btn-sm" %>
+      <% else %>
+        <button type="button" onclick="window.print()" class="btn-primary">Print packing slip</button>
+        <%= link_to "Invoice", order_path(@order), class: "btn-ghost btn-sm" %>
+      <% end %>
+      <%= link_to "Back to sales", sales_path, class: "btn-ghost btn-sm" %>
+    </div>
+  </section>
+</div>
+
+<% if FeatureFlag.enabled?(:fulfillment_workflow) %>
+  <div class="print:hidden">
+    <section class="card card-pad mt-6">
+      <h2 class="font-display text-xl text-ink">Fulfillment status</h2>
+      <p class="mt-1 text-sm text-mocha">Current: <span class="font-semibold capitalize text-ink"><%= @order.fulfillment_status %></span></p>
+      <div class="mt-3 flex flex-wrap items-center gap-2">
+        <% Core::Order::FULFILLMENT_STATUSES.each do |status| %>
+          <% active = @order.fulfillment_status == status %>
+          <%= button_to status.humanize, update_fulfillment_status_order_path(@order), method: :post, params: { status: status }, class: active ? "btn-primary btn-sm" : "btn-ghost btn-sm", disabled: active %>
+        <% end %>
+      </div>
+    </section>
+  </div>
+<% end %>
+
+<div class="print:hidden">
+  <% if @order.fulfillments.any? %>
+    <section class="card card-pad mt-6">
+      <h2 class="font-display text-xl text-ink">Shipments &amp; tracking</h2>
+      <div class="mt-3 space-y-3">
+        <% @fulfillments.each do |f| %>
+          <div class="flex flex-wrap items-center gap-3 rounded-xl bg-haze px-4 py-3">
+            <span class="<%= f.tracking? ? "pill-fern" : "pill-taupe" %>"><%= f.status_label %></span>
+            <span class="text-sm font-medium text-ink"><%= f.tracking_company.presence || "—" %></span>
+            <% if f.tracking? %>
+              <a href="<%= f.tracking_url %>" target="_blank" rel="noopener" class="font-mono text-sm text-olive hover:underline"><%= f.tracking_number %></a>
+            <% else %>
+              <span class="text-sm text-taupe">no tracking number</span>
+            <% end %>
+            <% if f.fulfilled_at %><span class="text-xs text-taupe"><%= l(f.fulfilled_at, format: :short) %></span><% end %>
+          </div>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+
+  <% if Current.user.can?("sales.write") %>
+    <section class="card card-pad mt-6">
+      <h2 class="font-display text-xl text-ink">Add shipment</h2>
+      <p class="mt-1 text-sm text-mocha">Record a shipped package and its carrier tracking number.</p>
+      <%= form_tag add_tracking_order_path(@order), method: :post, class: "mt-4 flex flex-wrap items-end gap-3" do %>
+        <div>
+          <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="tracking_company">Carrier</label>
+          <select id="tracking_company" name="tracking_company" class="select">
+            <option value="">—</option>
+            <option>UPS</option>
+            <option>FedEx</option>
+            <option>USPS</option>
+            <option>DHL</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="flex-1">
+          <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="tracking_number">Tracking number</label>
+          <input type="text" id="tracking_number" name="tracking_number" class="input" placeholder="1Z999AA10123456784">
+        </div>
+        <%= submit_tag "Add tracking", class: "btn-primary" %>
+      <% end %>
+    </section>
+  <% end %>
+</div>
+
+<section class="card overflow-hidden mt-6">
+  <div class="card-pad border-b border-fog">
+    <div class="flex flex-wrap items-start justify-between gap-6">
+      <div>
+        <p class="eyebrow text-olive"><%= @doc == "invoice" ? "Invoice" : "Packing slip" %></p>
+        <h2 class="mt-1 font-display text-3xl text-ink">Order <%= @order.display_number %></h2>
+        <p class="mt-1 text-sm text-mocha"><%= l(@order.occurred_at, format: :long) %></p>
+      </div>
+      <div class="text-right">
+        <p class="font-display text-lg text-ink"><%= Current.tenant&.name || "Herbal Healers" %></p>
+        <p class="text-xs text-taupe"><%= @order.channel %> · <span class="capitalize"><%= @order.source %></span></p>
+        <% if @doc == "packing_slip" && @order.fulfillments.with_tracking.any? %>
+          <p class="mt-1 text-xs text-mocha">Tracking: <%= @order.fulfillments.with_tracking.map(&:tracking_number).join(", ") %></p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid gap-6 p-5 sm:grid-cols-2">
+    <div>
+      <p class="eyebrow text-mocha">Bill to</p>
+      <% if @order.customer %>
+        <p class="mt-2 text-sm font-medium text-ink"><%= @order.customer.name %></p>
+        <% if @order.customer.email.present? %><p class="text-sm text-mocha"><%= @order.customer.email %></p><% end %>
+        <% if @order.customer.phone.present? %><p class="text-sm text-mocha"><%= @order.customer.phone %></p><% end %>
+      <% else %>
+        <p class="mt-2 text-sm text-taupe">No customer on file</p>
+      <% end %>
+    </div>
+    <div>
+      <p class="eyebrow text-mocha">Ship to</p>
+      <% if (addr = @order.shipping_address) %>
+        <p class="mt-2 text-sm font-medium text-ink"><%= addr[:name] %></p>
+        <p class="text-sm text-mocha"><%= addr[:line1] %><% if addr[:line2].present? %>, <%= addr[:line2] %><% end %></p>
+        <p class="text-sm text-mocha"><%= [addr[:city], addr[:province], addr[:zip]].select(&:present?).join(", ") %></p>
+        <p class="text-sm text-mocha"><%= addr[:country] %></p>
+      <% else %>
+        <p class="mt-2 text-sm text-taupe">No shipping address on file</p>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="border-b border-fog bg-haze/60">
+        <tr>
+          <th scope="col" class="th">Item</th>
+          <th scope="col" class="th">SKU</th>
+          <th scope="col" class="th text-right">Qty</th>
+          <% if @doc == "invoice" %>
+            <th scope="col" class="th text-right">Unit</th>
+            <th scope="col" class="th text-right">Amount</th>
+          <% end %>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-fog">
+        <% if @order.order_lines.empty? %>
+          <tr><td colspan="<%= @doc == "invoice" ? 5 : 3 %>" class="td py-8 text-center text-taupe">No line items recorded.</td></tr>
+        <% end %>
+        <% @order.order_lines.each do |line| %>
+          <tr>
+            <td class="td font-medium text-ink"><%= line.name %></td>
+            <td class="td font-mono text-xs text-mocha"><%= line.sku.presence || "—" %></td>
+            <td class="td text-right text-mocha"><%= line.quantity %></td>
+            <% if @doc == "invoice" %>
+              <td class="td text-right text-mocha"><%= number_to_currency(line.unit_cents / 100.0) %></td>
+              <td class="td text-right font-medium text-ink"><%= number_to_currency(line.line_cents / 100.0) %></td>
+            <% end %>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if @doc == "invoice" %>
+    <div class="border-t border-fog px-5 py-4">
+      <dl class="ml-auto max-w-xs space-y-1 text-sm">
+        <div class="flex justify-between">
+          <dt class="text-mocha">Subtotal</dt>
+          <dd class="font-medium text-ink"><%= number_to_currency(@order.sub_total_cents / 100.0) %></dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-mocha">Tax</dt>
+          <dd class="font-medium text-ink"><%= number_to_currency(@order.tax_cents / 100.0) %></dd>
+        </div>
+        <div class="flex justify-between border-t border-fog pt-1">
+          <dt class="font-semibold text-ink">Total</dt>
+          <dd class="font-semibold text-ink"><%= number_to_currency(@order.gross_cents / 100.0) %></dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-mocha">Paid</dt>
+          <dd class="font-medium text-fern"><%= number_to_currency(@order.total_paid_cents / 100.0) %></dd>
+        </div>
+        <% if @order.balance_due_cents.positive? %>
+          <div class="flex justify-between">
+            <dt class="text-mocha">Balance due</dt>
+            <dd class="font-semibold text-clay"><%= number_to_currency(@order.balance_due_cents / 100.0) %></dd>
+          </div>
+        <% end %>
+      </dl>
+    </div>
+  <% else %>
+    <div class="border-t border-fog px-5 py-3 text-xs text-taupe">Packing slip — quantities only.</div>
+  <% end %>
+</section>
