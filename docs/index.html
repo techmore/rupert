@@ -41,6 +41,7 @@
       <span class="badge b-teal">Shopify + Square sync</span>
       <span class="badge b-brown">Modular monolith</span>
       <span class="badge b-clay">Team &amp; roles built in</span>
+      <span class="badge b-olive" id="release-badge">Latest: v0.1.0</span>
     </div>
   </div>
 </div>
@@ -182,6 +183,20 @@ alerts → resolve or ignore</code></pre>
     <span><a href="https://github.com/techmore/rupert">github.com/techmore/rupert</a></span>
   </div>
 </footer>
+
+<script>
+  // Show the latest release tag from the GitHub API on the hero badge.
+  (function () {
+    var badge = document.getElementById("release-badge");
+    if (!badge) return;
+    fetch("https://api.github.com/repos/techmore/rupert/releases/latest", { headers: { Accept: "application/vnd.github+json" } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (data && data.tag_name) badge.textContent = "Latest: " + data.tag_name;
+      })
+      .catch(function () { /* keep the default v0.1.0 */ });
+  })();
+</script>
 
 </body>
 </html>

@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "tag" ]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            version=$(cat VERSION)
+            echo "version=$version" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Extract release notes
+        id: notes
+        run: |
+          prev=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+          if [ -z "$prev" ]; then
+            echo "Initial release." > /tmp/notes.md
+          else
+            git log --oneline --no-decorate "${prev}..HEAD" > /tmp/notes.md
+          fi
+          echo "notes=$(cat /tmp/notes.md)" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ steps.version.outputs.version }}"
+          name: "v${{ steps.version.outputs.version }}"
+          body: |
+            ${{ steps.notes.outputs.notes }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
