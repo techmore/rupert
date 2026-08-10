@@ -1,3 +1,4 @@
+<% content_for :title, "Dashboard" %>
 <% presenter = DashboardPresenter.new %>
 <% widgets = @widgets || DashboardWidget.entries({}) %>
 <div class="space-y-8" data-controller="live-sync">
@@ -30,8 +31,8 @@
       <% widgets.each do |widget, visible| %>
         <li data-editor-key="<%= widget.key %>" class="flex items-center gap-3 rounded-xl bg-haze px-4 py-2.5">
           <span class="flex flex-col text-[10px] leading-tight text-taupe">
-            <button type="button" data-move="<%= widget.key %>" data-dir="up" class="hover:text-ink" title="Move up">▲</button>
-            <button type="button" data-move="<%= widget.key %>" data-dir="down" class="hover:text-ink" title="Move down">▼</button>
+            <button type="button" data-move="<%= widget.key %>" data-dir="up" class="hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive" title="Move <%= widget.label %> up" aria-label="Move <%= widget.label %> up">▲</button>
+            <button type="button" data-move="<%= widget.key %>" data-dir="down" class="hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive" title="Move <%= widget.label %> down" aria-label="Move <%= widget.label %> down">▼</button>
           </span>
           <label class="flex flex-1 items-center gap-2.5 text-sm text-ink">
             <input type="checkbox" data-visible="<%= widget.key %>" <%= visible ? "checked" : "" %> class="accent-olive">

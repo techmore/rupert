@@ -18,6 +18,12 @@ module NostrPublisher
 
     ws.on(:message) do |m|
       begin
+        if m.respond_to?(:type) && m.type == :ping
+          ws.send(m.data.to_s, type: :pong)
+          next
+        end
+        next if m.respond_to?(:type) && m.type != :text
+
         data = JSON.parse(m.data.to_s)
         case data[0]
         when "AUTH"
@@ -47,7 +53,22 @@ module NostrPublisher
 
     sent_event = true
     ws.send(["EVENT", event.to_h].to_json)
-    Timeout.timeout(8) { sleep 0.05 until ack }
+    begin
+      Timeout.timeout(8) { sleep 0.05 until ack }
+    rescue Timeout::Error
+      nil
+    end
+
+    # If the first attempt was rejected (e.g. a late AUTH challenge raced our
+    # send), the handler re-sends the EVENT after authenticating — wait briefly
+    # for that acknowledgement before giving up.
+    if ack && ack[2] != true
+      begin
+        Timeout.timeout(4) { sleep 0.05 until ack && ack[2] == true }
+      rescue Timeout::Error
+        nil
+      end
+    end
 
     ok = ack && ack[2] == true
     ok ? [true, ack[3].presence || "OK"] : [false, (ack && ack[3]).presence || "no acknowledgement from relay"]

@@ -1,0 +1,40 @@
+# frozen_string_literal: true
+
+# Role × permission matrix. Per-tenant overrides in role_permissions replace
+# the built-in defaults for a role; an empty set means "use built-ins". Reset
+# clears the overrides so a role falls back to the defaults.
+class PermissionsController < AuthenticatedController
+  before_action :authorize_permissions
+
+  def show
+    @roles = User.roles.keys
+    @catalog = User.permission_catalog
+    @overrides = RolePermission.where(tenant_id: Current.tenant_id)
+      .index_by { |rp| [rp.role, rp.permission] }
+    @builtin = User::ROLE_PERMISSIONS
+  end
+
+  def save
+    params[:roles].to_unsafe_h.each do |role, perms|
+      enabled = perms.is_a?(Hash) ? perms.keys : Array(perms)
+      RolePermission.where(tenant_id: Current.tenant_id, role: role).delete_all
+      enabled.each do |permission|
+        next unless User.all_permissions.include?(permission)
+
+        RolePermission.create!(tenant_id: Current.tenant_id, role: role, permission: permission, enabled: true)
+      end
+    end
+    redirect_to(permissions_path, notice: "Permissions saved.")
+  end
+
+  def reset
+    RolePermission.where(tenant_id: Current.tenant_id).delete_all
+    redirect_to(permissions_path, notice: "Permissions reset to defaults.")
+  end
+
+  private
+
+  def authorize_permissions
+    authorize(:module, :users_write?)
+  end
+end

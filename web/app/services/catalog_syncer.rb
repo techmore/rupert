@@ -24,6 +24,15 @@ class CatalogSyncer
           currentTotalPriceSet { shopMoney { amount currencyCode } }
           currentTotalTaxSet { shopMoney { amount currencyCode } }
           customer { id email firstName lastName phone }
+          shippingAddress {
+            address1 address2 city country province zip phone
+          }
+          fulfillments(first: 20) {
+            nodes {
+              id status createdAt updatedAt
+              trackingInfo { company number url }
+            }
+          }
           lineItems(first: 100) {
             nodes {
               title variantTitle sku quantity

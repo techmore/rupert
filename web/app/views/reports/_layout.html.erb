@@ -1,3 +1,4 @@
+<% content_for :title, title %>
 <div class="space-y-6">
   <section class="flex flex-wrap items-end justify-between gap-4">
     <div>
@@ -7,7 +8,7 @@
     <div class="flex flex-wrap items-center gap-2">
       <div class="flex items-center gap-1 rounded-full border border-fog bg-paper p-1">
         <% { "sales" => "Sales", "financial" => "Financial", "inventory" => "Inventory", "operations" => "Operations" }.each do |key, label| %>
-          <%= link_to label, send("#{key}_reports_path", days: @days), class: (params[:action] == key ? "rounded-full bg-olive px-3.5 py-1.5 text-sm font-medium text-cream" : "rounded-full px-3.5 py-1.5 text-sm font-medium text-mocha hover:bg-haze hover:text-ink") %>
+          <%= link_to label, send("#{key}_reports_path", days: @days), class: "nav-pill #{params[:action] == key ? "nav-pill-active" : "nav-pill-idle"}", aria: { current: (params[:action] == key ? "page" : nil) } %>
         <% end %>
       </div>
       <%= form_tag url_for(action: params[:action]), method: :get, class: "flex items-center gap-1" do %>

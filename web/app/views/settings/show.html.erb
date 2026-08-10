@@ -1,3 +1,4 @@
+<% content_for :title, "Settings" %>
 <div class="space-y-8">
   <section>
     <h1 class="font-display text-3xl text-ink">Settings</h1>
@@ -37,6 +38,22 @@
         </label>
       </div>
       <p id="restore-result" class="mt-3 text-xs"></p>
+    </div>
+  </section>
+
+  <section class="card card-pad">
+    <h2 class="font-display text-xl text-ink">Office features</h2>
+    <p class="mt-2 text-xs text-taupe">Optional workflows for the shipping desk. Off by default.</p>
+
+    <div class="mt-4 flex items-center justify-between rounded-xl bg-haze px-4 py-3">
+      <div>
+        <p class="text-sm font-medium text-ink">Order fulfillment status</p>
+        <p class="text-xs text-taupe">Mark orders in transition, shipped, arrived, or completed from the order page.</p>
+      </div>
+      <%= form_tag fulfillment_workflow_settings_path, method: :post do %>
+        <%= hidden_field_tag :enabled, FeatureFlag.enabled?(:fulfillment_workflow) ? "0" : "1" %>
+        <%= submit_tag FeatureFlag.enabled?(:fulfillment_workflow) ? "Enabled" : "Disabled", class: FeatureFlag.enabled?(:fulfillment_workflow) ? "btn-primary btn-sm" : "btn-ghost btn-sm" %>
+      <% end %>
     </div>
   </section>
 

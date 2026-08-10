@@ -128,6 +128,13 @@ class SettingsController < AuthenticatedController
     redirect_to(settings_path, notice: "Disconnected from Google Drive.")
   end
 
+  # POST /settings/fulfillment_workflow — enable/disable the office fulfillment
+  # status workflow on orders.
+  def fulfillment_workflow
+    FeatureFlag.set(:fulfillment_workflow, params[:enabled] == "1")
+    redirect_to(settings_path, notice: "Fulfillment workflow #{params[:enabled] == "1" ? "enabled" : "disabled"}.")
+  end
+
   # POST /settings/buzz_generate — create (or replace) the Rupert agent keypair
   def buzz_generate
     BuzzAgent.generate_keypair!

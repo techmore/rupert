@@ -4,6 +4,7 @@ class User < ActiveRecord::Base
   has_secure_password
 
   belongs_to :tenant, optional: true
+  has_many :user_permissions, dependent: :destroy
 
   serialize :dashboard_config, coder: JSON
 
@@ -12,6 +13,9 @@ class User < ActiveRecord::Base
     uniqueness: true,
     format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :password, length: { minimum: 8 }, allow_nil: true
+
+  scope :active, -> { where(active: true) }
+  scope :ordered, -> { order(:name, :email) }
 
   enum :role,
     {
@@ -48,6 +52,8 @@ class User < ActiveRecord::Base
       "sync.write",
       "settings.read",
       "system.read",
+      "users.read",
+      "users.write",
     ],
     "manager" => [
       "dashboard.read",
@@ -86,13 +92,77 @@ class User < ActiveRecord::Base
   }.freeze
 
   def can?(permission)
-    perms = ROLE_PERMISSIONS.fetch(role, [])
+    perms = effective_permissions
     perms.include?("*") || perms.include?(permission.to_s)
+  end
+
+  def active?
+    active != false
+  end
+
+  # Permissions in effect for this user. Resolution order, highest to lowest:
+  #   1. per-employee overrides (user_permissions)   — exact list for that person
+  #   2. per-role overrides (role_permissions)       — replaces built-ins for role
+  #   3. built-in ROLE_PERMISSIONS matrix
+  def effective_permissions
+    return ["*"] if super_admin?
+
+    person = user_permissions
+    return person.select(&:enabled?).map(&:permission) if person.any?
+
+    overrides = RolePermission.where(tenant_id: tenant_id, role: role)
+    return ROLE_PERMISSIONS.fetch(role, []) if overrides.empty?
+
+    overrides.select(&:enabled?).map(&:permission)
+  end
+
+  # True when this user has any per-employee permission overrides.
+  def permission_overrides?
+    user_permissions.any?
+  end
+
+  # Replace this user's per-employee permission overrides with the given list.
+  # An empty list removes all overrides (falls back to role permissions).
+  def update_permission_overrides!(permissions)
+    user_permissions.delete_all
+    permissions.to_a.each do |permission|
+      next unless User.all_permissions.include?(permission)
+
+      user_permissions.create!(permission: permission, tenant_id: tenant_id, enabled: true)
+    end
+  end
+
+  def display_name
+    name.presence || email.to_s.split("@").first.to_s.titleize
   end
 
   # Dashboard widget configuration as a hash (see DashboardWidget).
   def dashboard_config_hash
     value = dashboard_config
     value.is_a?(Hash) ? value : {}
+  end
+
+  # Permission catalog grouped by module area, used by the Permissions screen
+  # and to keep the role matrix in one place.
+  def self.permission_catalog
+    [
+      { area: "Overview", permissions: ["dashboard.read"] },
+      {
+        area: "Commerce",
+        permissions: ["sales.read", "sales.write", "customers.read", "customers.write", "inventory.read", "inventory.write"],
+      },
+      {
+        area: "Operations",
+        permissions: ["reconcile.read", "reconcile.write", "reports.read", "reports.write", "ledger.read", "ledger.write", "projects.read", "projects.write"],
+      },
+      {
+        area: "System",
+        permissions: ["alerts.read", "alerts.write", "sync.read", "sync.write", "settings.read", "system.read", "users.read", "users.write"],
+      },
+    ]
+  end
+
+  def self.all_permissions
+    permission_catalog.flat_map { |group| group[:permissions] }
   end
 end

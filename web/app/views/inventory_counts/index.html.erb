@@ -1,3 +1,4 @@
+<% content_for :title, "Inventory counts" %>
 <div class="space-y-6">
   <section class="flex flex-wrap items-end justify-between gap-4">
     <div>
@@ -19,13 +20,13 @@
       <table class="w-full text-sm">
         <thead class="border-b border-fog bg-haze/60">
           <tr>
-            <th class="th">Counted at</th>
-            <th class="th">Status</th>
-            <th class="th">Items</th>
-            <th class="th text-right">Total qty</th>
-            <th class="th">Location</th>
-            <th class="th">By</th>
-            <th class="th"></th>
+            <th scope="col" class="th">Counted at</th>
+            <th scope="col" class="th">Status</th>
+            <th scope="col" class="th">Items</th>
+            <th scope="col" class="th text-right">Total qty</th>
+            <th scope="col" class="th">Location</th>
+            <th scope="col" class="th">By</th>
+            <th scope="col" class="th"></th>
           </tr>
         </thead>
         <tbody class="divide-y divide-fog">

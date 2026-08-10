@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Architecture — Rupert</title>
+  <meta name="description" content="How Rupert works under the hood: the sync pipeline, modular monolith, background jobs, and permission layers.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Cardo:ital,wght@0,400;0,700;1,400&display=swap">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="/rupert/"><span class="mark">R</span><strong>Rupert</strong></a>
+    <nav class="desktop">
+      <a href="index.html">Home</a>
+      <a href="modules.html">Modules</a>
+      <a href="getting-started.html">Getting started</a>
+      <a href="operations.html">Operations</a>
+      <a href="deployment.html">Deployment</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page wrap">
+  <h1>Architecture</h1>
+  <p class="lede">Rupert is a modular Rails monolith. Platform data flows in through a sync engine, lands in source mirrors, and is then lifted into a canonical domain core that the whole ERP reads from.</p>
+
+  <section>
+    <h2>The sync pipeline</h2>
+    <pre><code>Shopify / Square
+   │  (GraphQL / REST)
+   ▼
+SyncEngine.run! ─▶ CatalogSyncer ─▶ ShopifyProduct, ShopifyVariant, Location
+   │               LedgerImporter ─▶ LedgerEntry
+   │               SquareSyncer  ─▶ SquareItem, SquareVariation
+   │               AlertGenerator ─▶ StockAlert
+   │               Reconciler    ─▶ ReconcileRun / ReconcileItem
+   ▼
+CanonicalOrderImporter ─▶ Core::Order, Core::OrderLine, Core::Payment,
+                          Core::Customer, Core::Fulfillment
+   ▼
+DataCache.bump!   (invalidate dashboard / report caches)</code></pre>
+    <p style="margin-top:1rem;">The importer is idempotent — it upserts on <code>(tenant_id, source, source_order_id)</code> and replaces line items, payments, and fulfillments each run, so the canonical store stays in lock-step with the feeds.</p>
+  </section>
+
+  <section>
+    <h2>Modular monolith</h2>
+    <p>Extensions live under <code>app/modules/&lt;name&gt;/</code> and register themselves in <code>app/models/module_registry.rb</code>, which drives both navigation and the permission gate. The canonical domain core lives in <code>app/modules/core/</code> and is the single source of truth for the ERP.</p>
+  </section>
+
+  <section>
+    <h2>Background jobs</h2>
+    <p>Syncs and their follow-up work run through Solid Queue. A sync enqueues post-sync work (notifications, sales announcements) that is fire-and-forget, so a slow worker can never block the sync run itself.</p>
+    <ul>
+      <li><code>SyncSchedulerJob</code> — kicks off a sync for every active tenant (every 15 minutes in production)</li>
+      <li><code>SyncJob</code> — runs the engine, then enqueues notifications</li>
+      <li><code>BuzzNotifyJob</code> — posts to the team's Buzz / Nostr channel</li>
+      <li><code>BackupJob</code> — scheduled database snapshots to Google Drive</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Permissions</h2>
+    <p>Access is role-based with three resolution layers, checked through <code>User#can?</code> and Pundit policy objects:</p>
+    <ol>
+      <li><strong>Per-employee overrides</strong> (<code>user_permissions</code>) — exact grants for one person</li>
+      <li><strong>Per-role overrides</strong> (<code>role_permissions</code>) — replaces the built-ins for a role</li>
+      <li><strong>Built-in matrix</strong> (<code>User::ROLE_PERMISSIONS</code>) — the frozen defaults</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Key directories</h2>
+    <pre><code>web/app/modules/core/      canonical domain (Order, Customer, Payment, Fulfillment)
+web/app/modules/&lt;module&gt;/  per-feature controllers + views + policies
+web/app/services/          sync engine, importers, presenters, platform clients
+web/app/models/            module registry, users, settings, feature flags
+web/app/views/             Tailwind UI (design tokens in app/assets/tailwind/application.css)</code></pre>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Rupert · open source ERP for Shopify + Square</span>
+    <span><a href="https://github.com/techmore/rupert">github.com/techmore/rupert</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -11,13 +11,18 @@
   <table class="w-full">
     <thead class="border-b border-fog bg-haze/50">
       <tr>
-        <th class="th">Name</th>
-        <th class="th">Subdomain</th>
-        <th class="th">Status</th>
-        <th class="th">Plan</th>
+        <th scope="col" class="th">Name</th>
+        <th scope="col" class="th">Subdomain</th>
+        <th scope="col" class="th">Status</th>
+        <th scope="col" class="th">Plan</th>
       </tr>
     </thead>
     <tbody class="divide-y divide-fog">
+      <% if @tenants.empty? %>
+        <tr>
+          <td colspan="4" class="td py-10 text-center text-taupe">No tenants yet — create the first workspace to get started.</td>
+        </tr>
+      <% end %>
       <% @tenants.each do |tenant| %>
         <tr>
           <td class="td font-medium text-ink"><%= tenant.name %></td>

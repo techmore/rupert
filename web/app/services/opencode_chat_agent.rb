@@ -3,13 +3,17 @@
 require "json"
 require "timeout"
 
-# An independent opencode-powered agent in the Buzz channel. It holds its own
-# Nostr identity (OPCODE_BUZZ_PRIVATE_KEY), subscribes to the channel, and when
-# it's mentioned ("@opencode") it asks the installed opencode CLI
-# (deepseek-v4-flash via the OpenCode Go API) to reply, then posts the answer.
-# Runs as its own process under systemd (bin/opencode_agent).
+# The @rupert agent in the Buzz channel, powered by the opencode CLI
+# (deepseek-v4-flash via the OpenCode Go API). It uses Rupert's own Nostr
+# identity, continuously monitors the channel, keeps a rolling conversation
+# context, and replies to mentions — or proactively when it judges it can add
+# value. Runs as its own process under systemd (bin/opencode_agent).
 class OpencodeChatAgent
-  NAME = "opencode"
+  NAME = "rupert"
+  CONTEXT_WINDOW = 24
+  PROACTIVE_MIN_INTERVAL = 45 # seconds between unsolicited replies
+  KEEPALIVE_INTERVAL = 15 # seconds between client WS pings
+  PONG_TIMEOUT = 45 # reconnect if no inbound relay frame in this many seconds
   STATE_FILE = Rails.root.join("tmp", "opencode_agent_state.json")
 
   class << self
@@ -20,6 +24,8 @@ class OpencodeChatAgent
 
   def run!
     setup!
+    @queue = Queue.new
+    Thread.new { worker_loop }
     loop do
       begin
         listen_once
@@ -33,18 +39,39 @@ class OpencodeChatAgent
   # --- Handler-facing methods (invoked from the WS callback with an explicit
   # receiver, so they must be public). ---
 
+  def enqueue(event)
+    @queue << event
+  end
+
   def filters(since)
-    [{ kinds: [9], "#h": [@channel], since: since }]
+    [
+      { kinds: [9], "#h": [@channel], since: since },
+      { kinds: [1], "#p": [@pubkey], since: since },
+    ]
   end
 
   def process_event(event)
+    id = event["id"]
+    return if @seen_ids&.include?(id)
     return if event["pubkey"] == @pubkey
+
+    (@seen_ids ||= []) << id
+    @seen_ids = @seen_ids.last(200)
 
     Current.tenant = @tenant
     content = event["content"].to_s
-    return unless content.downcase.include?("@#{NAME}")
+    return if content.blank?
 
-    reply = generate_reply(content)
+    push_context(event)
+    return if trivial?(content)
+
+    mentioned = content.downcase.include?("@#{NAME}") ||
+      Array(event["tags"]).any? { |tag| tag[0] == "p" && tag[1] == @pubkey }
+    return unless mentioned || proactive_ok?
+
+    reply = generate_reply(content, author: author_label(event), mentioned: mentioned)
+    return if reply.blank? || skip?(reply)
+
     publish_reply(reply, event)
   rescue StandardError => e
     Rails.logger.error "[OpencodeAgent] process_event: #{e.class}: #{e.message}"
@@ -52,20 +79,31 @@ class OpencodeChatAgent
 
   private
 
+  def worker_loop
+    loop do
+      event = @queue.pop
+      process_event(event)
+    rescue StandardError => e
+      Rails.logger.error "[OpencodeAgent] worker: #{e.class}: #{e.message}"
+    end
+  end
+
   def setup!
     @tenant = Tenant.find_by(status: "active") || Tenant.first
     raise "No tenant found" if @tenant.nil?
 
     Current.tenant = @tenant
-    key_hex = EnvStore.fetch("OPCODE_BUZZ_PRIVATE_KEY", "").to_s.strip
+    key_hex = EnvStore.fetch("BUZZ_PRIVATE_KEY", "").to_s.strip
     @relay = EnvStore.fetch("BUZZ_RELAY_URL", "").to_s.strip
     @channel = EnvStore.fetch("BUZZ_CHANNEL", "").to_s.strip
-    raise "Opencode agent not configured (key/relay/channel)" if key_hex.blank? || @relay.blank? || @channel.blank?
+    raise "Rupert agent not configured (key/relay/channel)" if key_hex.blank? || @relay.blank? || @channel.blank?
 
     @priv = Nostr::PrivateKey.new(key_hex)
     @pub = Nostr::PublicKey.new(Nostr::Keygen.new.extract_public_key(@priv))
     @pubkey = @pub.to_s
-    Rails.logger.info "[OpencodeAgent] listening as #{@pubkey[0, 12]} on #{@relay} channel #{@channel}"
+    @context = []
+    @last_post_at = nil
+    Rails.logger.info "[OpencodeAgent] @#{NAME} listening as #{@pubkey[0, 12]} on #{@relay} channel #{@channel}"
   end
 
   def listen_once
@@ -74,35 +112,74 @@ class OpencodeChatAgent
     since = state_since
     authed = false
     agent = self
+    # Capture in locals: the callback runs with `self` = the WebSocket client.
+    relay = @relay
+    priv = @priv
+    pub = @pub
+    last_inbound = Time.now
     ws = WebSocket::Client::Simple.connect(@relay)
 
     ws.on(:message) do |m|
       begin
+        # Any inbound frame proves the relay is still talking to us.
+        last_inbound = Time.now if m.respond_to?(:type)
+        # Answer the relay's keepalive pings so it doesn't drop an idle socket.
+        if m.respond_to?(:type) && m.type == :ping
+          ws.send(m.data.to_s, type: :pong)
+          next
+        end
+        next if m.respond_to?(:type) && m.type != :text
+
         data = JSON.parse(m.data.to_s)
         case data[0]
         when "AUTH"
           next if authed
 
           authed = true
-          auth = NostrPublisher.build_auth_event(@relay, data[1], @priv, @pub)
+          auth = NostrPublisher.build_auth_event(relay, data[1], priv, pub)
           ws.send(["AUTH", auth.to_h].to_json)
-          ws.send(["REQ", "opencode", *agent.filters(since)].to_json)
+          ws.send(["REQ", "rupert", *agent.filters(since)].to_json)
+          Rails.logger.info "[OpencodeAgent] subscribed since=#{since}"
         when "EVENT"
-          agent.process_event(data[2])
+          agent.enqueue(data[2])
+        when "EOSE"
+          Rails.logger.info "[OpencodeAgent] EOSE received"
+        when "NOTICE"
+          Rails.logger.warn "[OpencodeAgent] relay NOTICE: #{data[1].to_s[0, 200]}"
         end
       rescue StandardError => e
-        Rails.logger.error "[OpencodeAgent] handler: #{e.class}: #{e.message}"
+        Rails.logger.error "[OpencodeAgent] handler: #{e.class}: #{e.message} @ #{e.backtrace&.first}"
       end
     end
     ws.on(:error) { |e| Rails.logger.warn "[OpencodeAgent] ws error: #{e.message}" }
 
     Timeout.timeout(10) { sleep 0.1 until ws.open? }
     sleep 1
-    ws.send(["REQ", "opencode", *agent.filters(since)].to_json) unless authed
+    unless authed
+      ws.send(["REQ", "rupert", *agent.filters(since)].to_json)
+      Rails.logger.info "[OpencodeAgent] sent fallback REQ (no auth challenge)"
+    end
 
+    # websocket-client-simple never notices a relay closing an idle connection
+    # (its reader thread loops silently on EOF), so `open?` stays true and this
+    # would block forever. Periodically ping the relay; drop out — letting the
+    # outer loop reconnect — when it stops talking or the socket is dead.
     loop do
-      sleep 2
+      sleep KEEPALIVE_INTERVAL
       break unless ws.open?
+
+      if Time.now - last_inbound > PONG_TIMEOUT
+        Rails.logger.warn "[OpencodeAgent] no relay traffic for #{PONG_TIMEOUT}s — reconnecting"
+        break
+      end
+
+      begin
+        ws.send("", type: :ping)
+      rescue StandardError => e
+        Rails.logger.warn "[OpencodeAgent] keepalive write failed: #{e.class}: #{e.message}"
+        break
+      end
+      break if ws.closed?
     end
   rescue Timeout::Error
     nil
@@ -114,40 +191,126 @@ class OpencodeChatAgent
     end
   end
 
-  def generate_reply(content)
-    prompt = <<~PROMPT
-      You are "Opencode", an AI assistant who lives in the business chat of a
-      company running an inventory/ERP system called Rupert (Shopify + Square
-      sync, manual counts, stock alerts). You have general knowledge but no live
-      access to their data unless you can actually derive it from the message.
-      A user sent this message directed at you:
+  def push_context(event)
+    author = author_label(event)
+    @context << "#{author}: #{event["content"]}"
+    @context = @context.last(CONTEXT_WINDOW)
+  end
 
+  def author_label(event)
+    return "you" if event["pubkey"] == @pubkey
+
+    @author_names ||= {}
+    @author_names[event["pubkey"]] ||= begin
+      short = event["pubkey"].to_s[0, 8]
+      short
+    end
+  end
+
+  def trivial?(content)
+    text = content.strip
+    return true if text.length < 3
+
+    text.match?(/\A(ok|okay|ty|thanks|thank you|thx|\+1|👍|👌|sounds good|lol|done|k)\b\z/i)
+  end
+
+  def proactive_ok?
+    @last_post_at.nil? || Time.now - @last_post_at >= PROACTIVE_MIN_INTERVAL
+  end
+
+  def generate_reply(content, author:, mentioned:)
+    snapshot = ops_snapshot
+    history = @context.last(CONTEXT_WINDOW).join("\n")
+    instruction = if mentioned
+      "The user addressed you directly. Reply to them helpfully and concisely."
+    else
+      "You were not addressed. If a response from you genuinely adds value to this conversation, reply helpfully and concisely. Otherwise reply with exactly: SKIP"
+    end
+
+    prompt = <<~PROMPT
+      You are @rupert, the team's AI agent in a business chat for a Shopify + Square inventory/ERP company (the system is "Rupert"). You are powered by opencode + deepseek-v4.
+      You have some live context about the business:
+      #{snapshot}
+
+      Recent channel conversation:
+      #{history}
+
+      Latest message from #{author}:
       "#{content}"
 
-      Reply helpfully and concisely (1-4 sentences), in character as a capable
-      teammate. Do not claim access you don't have; if you can't know, say so
-      and suggest the person ping @rupert for app data.
+      #{instruction}
+      Be concise (1-4 sentences), friendly, and accurate. Do not claim live access you don't have; if you can't know something, say so.
+      IMPORTANT: This is a text-only chat. Do not use tools, do not run commands, do not explore the filesystem. Reply with only your message text.
     PROMPT
-    output = IO.popen(["opencode", "run", prompt], err: [:child, :out], &:read)
-    output.to_s.strip
+    output = Timeout.timeout(90) do
+      IO.popen(
+        ["opencode", "run", "--format", "json", "--dir", "/tmp/opencode", prompt],
+        err: [:child, :out], &:read
+      )
+    end
+    extract_text(output)
+  rescue Timeout::Error
+    Rails.logger.error "[OpencodeAgent] opencode run timed out"
+    nil
   rescue StandardError => e
     Rails.logger.error "[OpencodeAgent] opencode run failed: #{e.message}"
-    "Sorry — I hit an error generating a reply. Try again in a moment."
+    "Sorry — I hit an error thinking about that. Try again in a moment."
+  end
+
+  # Pulls the model's text parts out of opencode's JSON event stream, ignoring
+  # banners and tool output.
+  def extract_text(raw)
+    parts = raw.to_s.lines.filter_map do |line|
+      d = JSON.parse(line)
+      part = d["part"]
+      part["text"] if part && part["type"] == "text"
+    rescue JSON::ParserError
+      nil
+    end
+    parts.join(" ").strip
+  end
+
+  def ops_snapshot
+    last = SyncRun.order(startedAt: :desc).first
+    pending = InventoryCount.by_status("pending").count
+    alerts = StockAlert.open.count
+    low = StockAlert.open.where("quantity <= 0").count
+    sync = last ? "#{last.status} sync #{time_ago(last.startedAt)} (#{last.source || "all"})" : "no syncs yet"
+    "Last sync: #{sync} | #{pending} pending manual counts | #{alerts} open alerts (#{low} at zero)"
+  end
+
+  def time_ago(time)
+    time ? ActionController::Base.helpers.time_ago_in_words(time) + " ago" : "—"
+  end
+
+  def skip?(reply)
+    reply.strip.upcase.start_with?("SKIP")
   end
 
   def publish_reply(reply, event)
-    return if reply.blank?
-
-    tags = []
-    tags << ["e", event["id"], @relay, "reply"] if event["id"]
-    tags << ["p", event["pubkey"]] if event["pubkey"]
-    tags << ["h", @channel]
-
     event = NostrPublisher.build_event(private_key: @priv, public_key: @pub,
-      kind: 9, content: reply, tags: tags)
+      kind: 9, content: reply, tags: reply_tags(event))
     ok, msg = NostrPublisher.publish(relay: @relay, private_key: @priv, public_key: @pub, event: event)
+    @last_post_at = Time.now
     Rails.logger.info "[OpencodeAgent] replied to #{event.id.to_s[0, 12]}: #{msg}"
     advance_state(event.created_at)
+  end
+
+  # NIP-10 thread tags. Buzz is strict about thread ancestry: a reply to a root
+  # message references it as "root"; a reply within a thread references the
+  # existing root plus the message being answered.
+  def reply_tags(event)
+    tags = [["h", @channel]]
+    tags << ["p", event["pubkey"]] if event["pubkey"]
+
+    e_tags = Array(event["tags"]).select { |tag| tag[0] == "e" }
+    if e_tags.any?
+      tags << ["e", e_tags.first[1], @relay, "root"]
+      tags << ["e", event["id"], @relay, "reply"] if event["id"]
+    elsif event["id"]
+      tags << ["e", event["id"], @relay, "root"]
+    end
+    tags
   end
 
   def state_since

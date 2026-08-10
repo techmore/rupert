@@ -1,3 +1,5 @@
+inherit_from: .rubocop_todo.yml
+
 inherit_gem:
   rubocop-shopify: rubocop.yml
 
@@ -8,11 +10,6 @@ AllCops:
     - "bin/**/*"
     - "test/tmp/**/*"
     - "vendor/bundle/**/*"
-
-Style/MethodCallWithArgsParentheses:
-  Exclude:
-    - "**/Gemfile"
-    - "test/**/*"
 
 Style/ClassAndModuleChildren:
   Exclude:

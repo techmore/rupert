@@ -1,0 +1,64 @@
+<% content_for :title, "Edit #{@user.display_name}" %>
+<div class="space-y-6">
+  <section>
+    <h1 class="font-display text-3xl text-ink">Edit <%= @user.display_name %></h1>
+    <p class="mt-1 text-sm text-mocha"><%= @user.email %> · <span class="capitalize"><%= @user.role %></span> role</p>
+  </section>
+
+  <div class="card card-pad max-w-xl">
+    <%= render "form", user: @user %>
+  </div>
+
+  <% unless @user.super_admin? %>
+    <section class="card card-pad">
+      <div class="flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <h2 class="font-display text-xl text-ink">Per-person permissions</h2>
+          <p class="mt-1 text-sm text-mocha">Optional exceptions just for <%= @user.display_name %>. Leave empty to use their role's permissions (see the <a href="<%= permissions_path %>" class="text-olive hover:underline">Permissions</a> screen).</p>
+        </div>
+        <% if @user.permission_overrides? %>
+          <span class="pill-clay">overrides active</span>
+        <% else %>
+          <span class="pill-taupe">using role defaults</span>
+        <% end %>
+      </div>
+
+      <%= form_tag update_permissions_user_path(@user), method: :post, class: "mt-4" do %>
+        <div class="overflow-x-auto rounded-xl border border-fog">
+          <table class="w-full text-sm">
+            <thead class="border-b border-fog bg-haze/60">
+              <tr>
+                <th scope="col" class="th">Area / permission</th>
+                <th scope="col" class="th w-24 text-center">Grant</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-fog">
+              <% @catalog.each do |group| %>
+                <tr class="bg-haze/40">
+                  <td colspan="2" class="px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-mocha"><%= group[:area] %></td>
+                </tr>
+                <% group[:permissions].each do |permission| %>
+                  <% checked = @user.user_permissions.find_by(permission: permission)&.enabled? %>
+                  <tr class="hover:bg-cream">
+                    <td class="td">
+                      <p class="font-medium text-ink"><%= permission.split(".").last.titleize %></p>
+                      <p class="font-mono text-[10px] text-taupe"><%= permission %></p>
+                    </td>
+                    <td class="td text-center">
+                      <input type="checkbox" name="permissions[<%= permission %>]" value="1" <%= checked ? "checked" : "" %> class="accent-olive">
+                    </td>
+                  </tr>
+                <% end %>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mt-4 flex items-center gap-3">
+          <%= submit_tag "Save permissions", class: "btn-primary" %>
+          <span class="text-xs text-taupe">Unchecking everything returns <%= @user.display_name %> to role defaults.</span>
+        </div>
+      <% end %>
+    </section>
+  <% end %>
+</div>

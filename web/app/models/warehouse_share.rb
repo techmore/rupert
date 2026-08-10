@@ -9,12 +9,21 @@ class WarehouseShare < ApplicationRecord
   self.table_name = "WarehouseShare"
   self.primary_key = "id"
 
+  # The legacy schema uses camelCase columns while Rails conventions (and the
+  # TenantScoped concern) rely on snake_case attribute names.
+  alias_attribute :tenant_id, :tenantId
+  alias_attribute :use_custom_tiers, :useCustomTiers
+
+  # TenantScoped's belongs_to :tenant assumes a tenant_id column; the physical
+  # column here is tenantId, so re-declare with the explicit foreign key.
+  belongs_to :tenant, optional: true, foreign_key: :tenantId
+
   has_many :tiers,
     class_name: "WarehouseTier",
     foreign_key: "shareId",
     dependent: :destroy
 
-  before_create :generate_token
+  before_validation :generate_token, on: :create
 
   validates :name, presence: true
   validates :token, presence: true, uniqueness: true

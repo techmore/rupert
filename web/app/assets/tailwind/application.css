@@ -2,24 +2,24 @@
 
 @theme {
   --color-oat: #e9e4e0;
-  --color-cream: #f8f5f1;
+  --color-cream: #f5f5f5;
   --color-paper: #ffffff;
   --color-ink: #1a393d;
   --color-mocha: #52504e;
   --color-taupe: #8a857c;
-  --color-fog: #e3ded8;
+  --color-fog: #eae8e6;
   --color-haze: #f0ece7;
   --color-olive: #1a393d;
-  --color-olive-deep: #1e7b82;
-  --color-sage: #5c8a78;
+  --color-olive-deep: #108184;
+  --color-sage: #6b7464;
   --color-clay: #7d5449;
   --color-butter: #e4be58;
   --color-rose: #b05b4f;
   --color-fern: #3e6b5e;
 
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-    sans-serif;
-  --font-display: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --font-sans: "Barlow Semi Condensed", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+  --font-display: "Cardo", Georgia, "Times New Roman", serif;
 }
 
 @layer base {
@@ -65,6 +65,10 @@
     @apply font-display text-4xl text-ink;
   }
 
+  .stat-value-sm {
+    @apply font-display text-2xl text-ink;
+  }
+
   .th {
     @apply px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-taupe;
   }
@@ -77,20 +81,24 @@
     @apply w-full rounded-full border border-fog bg-paper px-4 py-2 text-sm text-ink placeholder:text-taupe focus:border-olive focus:outline-none focus:ring-2 focus:ring-olive/20;
   }
 
+  .search {
+    @apply rounded-full border border-fog bg-paper px-4 py-2 text-sm text-ink placeholder:text-taupe focus:border-olive focus:outline-none focus:ring-2 focus:ring-olive/20;
+  }
+
   .select {
-    @apply rounded-full border border-fog bg-paper px-3 py-1.5 text-xs font-medium text-ink focus:border-olive focus:outline-none;
+    @apply rounded-full border border-fog bg-paper px-3 py-1.5 text-xs font-medium text-ink focus:border-olive focus:outline-none focus:ring-2 focus:ring-olive/20;
   }
 
   .btn {
-    @apply inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive focus-visible:ring-offset-2 focus-visible:ring-offset-oat;
   }
 
   .btn-primary {
-    @apply inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50 bg-olive text-cream hover:bg-olive-deep;
+    @apply inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50 bg-olive text-cream hover:bg-olive-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive focus-visible:ring-offset-2 focus-visible:ring-offset-oat;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50 border border-fog bg-paper text-ink hover:border-taupe;
+    @apply inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50 border border-fog bg-paper text-ink hover:border-taupe focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive focus-visible:ring-offset-2 focus-visible:ring-offset-oat;
   }
 
   .btn-sm {
@@ -123,5 +131,49 @@
 
   .dot {
     @apply inline-block h-1.5 w-1.5 rounded-full;
+  }
+
+  .nav-pill {
+    @apply inline-flex items-center rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive focus-visible:ring-offset-2 focus-visible:ring-offset-oat;
+  }
+
+  .nav-pill-active {
+    @apply bg-olive text-cream;
+  }
+
+  .nav-pill-idle {
+    @apply text-mocha hover:bg-haze hover:text-ink;
+  }
+
+  .nav-pill-active-sm {
+    @apply bg-paper text-olive-deep shadow-sm;
+  }
+
+  .nav-pill-idle-sm {
+    @apply text-mocha hover:bg-haze hover:text-ink;
+  }
+}
+
+@media print {
+  @page {
+    margin: 1.2cm;
+  }
+
+  body {
+    background: #fff !important;
+  }
+
+  .card {
+    box-shadow: none !important;
+    border-color: #e5e5e5 !important;
+  }
+
+  /* Hide the app chrome and on-screen actions when printing an invoice. */
+  header,
+  nav,
+  .print\:hidden,
+  .btn,
+  button {
+    display: none !important;
   }
 }

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Modules — Rupert</title>
+  <meta name="description" content="Every ERP module in Rupert: Overview, Commerce, Operations, Team, and System.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Cardo:ital,wght@0,400;0,700;1,400&display=swap">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="/rupert/"><span class="mark">R</span><strong>Rupert</strong></a>
+    <nav class="desktop">
+      <a href="index.html">Home</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="getting-started.html">Getting started</a>
+      <a href="operations.html">Operations</a>
+      <a href="deployment.html">Deployment</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page wrap">
+  <h1>ERP modules</h1>
+  <p class="lede">Every module registers in <code>app/models/module_registry.rb</code>, which drives the navigation and the permission gate. Features ship in five areas.</p>
+
+  <section>
+    <h2>Overview</h2>
+    <p><strong>Dashboard</strong> — a per-user customizable widget layout: key sales stats, per-channel revenue, attention items, stock alerts, and sync / reconcile / goal history. Widgets can be reordered and hidden.</p>
+  </section>
+
+  <section>
+    <h2>Commerce</h2>
+    <ul>
+      <li><strong>Sales</strong> — daily sales journal in spreadsheet style: an hourly × location pivot plus every sale of the day in arrival order, with a tracking indicator per order.</li>
+      <li><strong>Registers</strong> — POS cash-drawer sessions: open a register, see sales per tender, and settle with a physical cash count at end of day.</li>
+      <li><strong>Customers</strong> — unified CRM across channels with Ransack search, pagination, and lifetime value. Add, edit, and view each customer's order history.</li>
+      <li><strong>Inventory</strong> — products and variants mirrored from Shopify with quantities on both sides, drift vs Square, and SKU linkage status.</li>
+      <li><strong>Inventory counts</strong> — manual count sheets with a prepared-blank workflow, then submit / approve / reject / reopen.</li>
+      <li><strong>Orders</strong> — detail page per order with a printable invoice and packing slip, shipping address, line items, payments, and fulfillment tracking.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Operations</h2>
+    <ul>
+      <li><strong>Reports</strong> — sales, financial (P&amp;L), inventory, and operations reports with 7/30/90/365-day windows and CSV export.</li>
+      <li><strong>Reconcile</strong> — SKU-level drift between Shopify and Square with a generated adjustment plan and per-SKU priority policy.</li>
+      <li><strong>Ledger</strong> — the central transaction stream across both platforms, filterable by window and source.</li>
+      <li><strong>Projects</strong> — simple project + task tracking with status transitions (start, hold, complete, archive).</li>
+      <li><strong>Goals &amp; KPIs</strong> — goals with activate / achieve / abandon, each with key performance indicators and reading history.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Team</h2>
+    <ul>
+      <li><strong>Employees</strong> — directory of who can sign in, with role assignment, activate / deactivate, and removal.</li>
+      <li><strong>Permissions</strong> — a role × permission matrix (23 permissions) with save and reset-to-defaults, plus per-person overrides on each employee's edit page.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>System</h2>
+    <ul>
+      <li><strong>Alerts</strong> — low-stock and attention flags that can be resolved or ignored per row.</li>
+      <li><strong>Sync</strong> — run full, Shopify-only, or Square-only syncs; review run history and the log tail.</li>
+      <li><strong>System health</strong> — server load, memory, swap, disk, database, and slow-query monitoring.</li>
+      <li><strong>Settings</strong> — env import/export, database backup/restore, Google Drive backup, the Buzz agent, and office feature flags.</li>
+      <li><strong>Warehouse</strong> — secret vendor links with price multipliers and bulk tiers, plus a public token-gated storefront for each vendor.</li>
+    </ul>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Rupert · open source ERP for Shopify + Square</span>
+    <span><a href="https://github.com/techmore/rupert">github.com/techmore/rupert</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

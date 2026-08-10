@@ -21,22 +21,22 @@
   <div class="grid gap-4 lg:grid-cols-2">
     <div class="card card-pad">
       <h2 class="font-display text-lg text-ink">Revenue · daily</h2>
-      <div class="mt-3"><%= area_chart @revenue_daily, height: "220px", colors: ["#1a393d"], legend: false %></div>
+      <div class="mt-3"><%= area_chart @revenue_daily, height: "220px", colors: chart_color(:ink), legend: false %></div>
     </div>
     <div class="card card-pad">
       <h2 class="font-display text-lg text-ink">Revenue · weekly</h2>
-      <div class="mt-3"><%= column_chart @revenue_weekly, height: "220px", colors: ["#1e7b82"], legend: false %></div>
+      <div class="mt-3"><%= column_chart @revenue_weekly, height: "220px", colors: chart_color(:olive_deep), legend: false %></div>
     </div>
   </div>
 
   <div class="grid gap-4 lg:grid-cols-3">
     <div class="card card-pad">
       <h2 class="font-display text-lg text-ink">By source</h2>
-      <div class="mt-3"><%= pie_chart @by_source, height: "220px", colors: ["#1a393d", "#7d5449"] %></div>
+      <div class="mt-3"><%= pie_chart @by_source, height: "220px", colors: chart_color(:ink, :clay) %></div>
     </div>
     <div class="card card-pad">
       <h2 class="font-display text-lg text-ink">By channel</h2>
-      <div class="mt-3"><%= pie_chart @by_channel, height: "220px", colors: ["#1e7b82", "#e4be58"] %></div>
+      <div class="mt-3"><%= pie_chart @by_channel, height: "220px", colors: chart_color(:olive_deep, :butter) %></div>
     </div>
     <div class="card card-pad">
       <h2 class="font-display text-lg text-ink">By location</h2>
@@ -44,7 +44,7 @@
         <% if @by_location.empty? %>
           <p class="text-sm text-taupe">No location data — synced orders don't carry a location yet.</p>
         <% else %>
-          <%= bar_chart @by_location, height: "220px", colors: ["#7d5449"], legend: false %>
+          <%= bar_chart @by_location, height: "220px", colors: chart_color(:clay), legend: false %>
         <% end %>
       </div>
     </div>
@@ -58,10 +58,10 @@
       <table class="w-full text-sm">
         <thead class="border-b border-fog bg-haze/60">
           <tr>
-            <th class="th">#</th>
-            <th class="th">Product</th>
-            <th class="th">SKU</th>
-            <th class="th text-right">Revenue</th>
+            <th scope="col" class="th">#</th>
+            <th scope="col" class="th">Product</th>
+            <th scope="col" class="th">SKU</th>
+            <th scope="col" class="th text-right">Revenue</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-fog">

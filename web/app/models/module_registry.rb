@@ -15,6 +15,7 @@ class ModuleRegistry
   ENTRIES = [
     Entry.new(key: "dashboard", name: "Dashboard", path: -> { root_path }, permission: nil, position: 10),
     Entry.new(key: "sales", name: "Sales", path: -> { sales_path }, permission: "sales.read", position: 20),
+    Entry.new(key: "registers", name: "Registers", path: -> { sales_pos_sessions_path }, permission: "sales.read", position: 25),
     Entry.new(key: "customers", name: "Customers", path: -> { customers_path }, permission: "customers.read", position: 30),
     Entry.new(key: "inventory", name: "Inventory", path: -> { inventory_index_path }, permission: "inventory.read", position: 40),
     Entry.new(key: "reconcile", name: "Reconcile", path: -> { reconcile_index_path }, permission: "reconcile.read", position: 50),
@@ -27,6 +28,8 @@ class ModuleRegistry
     Entry.new(key: "sync", name: "Sync", path: -> { syncs_path }, permission: "sync.read", position: 90),
     Entry.new(key: "system", name: "System", path: -> { system_path }, permission: "system.read", position: 95),
     Entry.new(key: "settings", name: "Settings", path: -> { settings_path }, permission: "settings.read", position: 100),
+    Entry.new(key: "employees", name: "Employees", path: -> { users_path }, permission: "users.read", position: 85),
+    Entry.new(key: "permissions", name: "Permissions", path: -> { permissions_path }, permission: "users.read", position: 86),
   ].freeze
 
   class << self
@@ -47,8 +50,9 @@ class ModuleRegistry
     # entry keys that belong to the area, in display order.
     AREAS = [
       { key: "overview", name: "Overview", modules: ["dashboard"] },
-      { key: "commerce", name: "Commerce", modules: ["sales", "customers", "inventory"] },
+      { key: "commerce", name: "Commerce", modules: ["sales", "registers", "customers", "inventory"] },
       { key: "operations", name: "Operations", modules: ["reports", "reconcile", "ledger", "projects", "goals", "kpis"] },
+      { key: "team", name: "Team", modules: ["employees", "permissions"] },
       { key: "system", name: "System", modules: ["system", "alerts", "sync", "settings"] },
     ].freeze
 

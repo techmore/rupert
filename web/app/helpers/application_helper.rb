@@ -42,6 +42,22 @@ module ApplicationHelper
     nav_areas.find { |area| area[:key] == active_area_key }&.dig(:modules) || []
   end
 
+  # Chart palette derived from the Tailwind @theme tokens in
+  # app/assets/tailwind/application.css. Keep the two in sync.
+  CHART_COLORS = {
+    ink: "#1a393d",
+    olive_deep: "#108184",
+    clay: "#7d5449",
+    butter: "#e4be58",
+    rose: "#b05b4f",
+    sage: "#6b7464",
+    fern: "#3e6b5e",
+  }.freeze
+
+  def chart_color(*keys)
+    keys.map { |key| CHART_COLORS.fetch(key) }
+  end
+
   def vs_yesterday(today_cents, yesterday_cents)
     return "vs yesterday" if today_cents.nil? || yesterday_cents.nil? || yesterday_cents.zero?
 

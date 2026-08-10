@@ -1,3 +1,4 @@
+<% content_for :title, "Goal" %>
 <div class="space-y-6">
   <section class="flex flex-wrap items-end justify-between gap-4">
     <div>
@@ -10,7 +11,7 @@
     <div class="flex items-center gap-2">
       <% if @goal.may_activate? %><%= button_to "Activate", transition_goals_goal_path(@goal, event: "activate"), method: :post, class: "btn-primary btn-sm" %><% end %>
       <% if @goal.may_achieve? %><%= button_to "Mark achieved", transition_goals_goal_path(@goal, event: "achieve"), method: :post, class: "btn-ghost btn-sm" %><% end %>
-      <% if @goal.may_abandon? %><%= button_to "Abandon", transition_goals_goal_path(@goal, event: "abandon"), method: :post, class: "btn-ghost btn-sm" %><% end %>
+      <% if @goal.may_abandon? %><%= button_to "Abandon", transition_goals_goal_path(@goal, event: "abandon"), method: :post, class: "btn-ghost btn-sm", data: { confirm: "Abandon this goal? Its progress is kept but it will no longer be tracked." } %><% end %>
       <% if Current.user.can?("projects.write") %>
         <%= link_to "Edit", edit_goals_goal_path(@goal), class: "btn-ghost btn-sm" %>
       <% end %>

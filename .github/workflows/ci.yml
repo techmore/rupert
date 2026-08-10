@@ -3,6 +3,11 @@ name: CI
 jobs:
   CI:
     runs-on: ubuntu-latest
+    # The app requires Ruby ~> 4.0, which the ruby/setup-ruby action does not
+    # provide on GitHub-hosted runners (max 3.5). Run inside the official
+    # ruby:4.0 image instead.
+    container:
+      image: ruby:4.0
     env:
       SHOPIFY_API_KEY: test-api-key
       SHOPIFY_API_SECRET: test-secret-key
@@ -10,7 +15,8 @@ jobs:
       HOST: app-host-name.io
       BUNDLE_GEMFILE: ${{ github.workspace }}/web/Gemfile
       RAILS_ENV: test
-      POSTGRES_HOST: localhost
+      # Container jobs reach service containers by their label, not localhost.
+      POSTGRES_HOST: postgres
       POSTGRES_USER: rupert
       POSTGRES_PASSWORD: rupert
       POSTGRES_DB: rupert_test
@@ -21,18 +27,11 @@ jobs:
           POSTGRES_USER: rupert
           POSTGRES_PASSWORD: rupert
           POSTGRES_DB: rupert_test
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd "pg_isready -U rupert"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    strategy:
-      fail-fast: false
-      matrix:
-        ruby-version:
-          - "4.0"
     defaults:
       run:
         working-directory: ./web
@@ -44,11 +43,8 @@ jobs:
       - name: Find any lock file
         run: if test -f ../yarn.lock || test -f ../pnpm-lock.yaml || test -f ../package-lock.json; then echo "Please don't commit lock files" && exit 1; fi
 
-      - name: Set up Ruby ${{ matrix.ruby-version }}
-        uses: ruby/setup-ruby@829114fc20da43a41d27359103ec7a63020954d4 # v1.255.0
-        with:
-          ruby-version: ${{ matrix.ruby-version }}
-          bundler-cache: true
+      - name: Install dependencies
+        run: bundle install
 
       - name: Run RuboCop
         run: bundle exec rubocop --parallel -c ./rubocop.yml

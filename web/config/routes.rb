@@ -14,6 +14,18 @@ Rails.application.routes.draw do
 
   resources :tenants, only: [:index, :new, :create]
 
+  resources :users, only: [:index, :new, :create, :edit, :update, :destroy] do
+    member do
+      post :deactivate
+      post :activate
+      post :update_permissions
+    end
+  end
+  resource :permissions, only: :show do
+    post :save
+    post :reset
+  end
+
   scope path: :api, format: :json do
     namespace :webhooks do
       post "/app_uninstalled", to: "app_uninstalled#receive"
@@ -31,6 +43,12 @@ Rails.application.routes.draw do
 
   # ERP modules (registered in ModuleRegistry)
   get "/sales", to: "sales#index", as: :sales
+  resources :orders, only: [:show] do
+    member do
+      post :add_tracking
+      post :update_fulfillment_status
+    end
+  end
   resources :customers, only: [:index, :show, :new, :create, :edit, :update]
   namespace :projects do
     resources :projects, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
@@ -96,6 +114,7 @@ Rails.application.routes.draw do
   get "/live/sync_status", to: "live#sync_status"
 
   resource :settings, only: :show do
+    post :fulfillment_workflow
     get :env, defaults: { format: :json }
     post :env_import, defaults: { format: :json }
     get :env_export

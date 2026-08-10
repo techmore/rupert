@@ -8,6 +8,8 @@ require "timeout"
 # (bin/buzz_listener); reconnects automatically and never exits fatally.
 class BuzzListener
   STATE_FILE = Rails.root.join("tmp", "buzz_listener_state.json")
+  KEEPALIVE_INTERVAL = 15 # seconds between client WS pings
+  PONG_TIMEOUT = 45 # reconnect if no inbound relay frame in this many seconds
 
   class << self
     def run!
@@ -82,10 +84,20 @@ class BuzzListener
     since = state_since
     authed = false
     listener = self
+    last_inbound = Time.now
     ws = WebSocket::Client::Simple.connect(relay)
 
     ws.on(:message) do |m|
       begin
+        # Any inbound frame proves the relay is still talking to us.
+        last_inbound = Time.now if m.respond_to?(:type)
+        # Answer the relay's keepalive pings so it doesn't drop an idle socket.
+        if m.respond_to?(:type) && m.type == :ping
+          ws.send(m.data.to_s, type: :pong)
+          next
+        end
+        next if m.respond_to?(:type) && m.type != :text
+
         data = JSON.parse(m.data.to_s)
         case data[0]
         when "AUTH"
@@ -107,9 +119,26 @@ class BuzzListener
     sleep 1
     ws.send(["REQ", "rupert", *listener.filters(since)].to_json) unless authed
 
+    # websocket-client-simple never notices a relay closing an idle connection
+    # (its reader thread loops silently on EOF), so `open?` stays true and this
+    # would block forever. Periodically ping the relay; drop out — letting the
+    # outer loop reconnect — when it stops talking or the socket is dead.
     loop do
-      sleep 2
+      sleep KEEPALIVE_INTERVAL
       break unless ws.open?
+
+      if Time.now - last_inbound > PONG_TIMEOUT
+        Rails.logger.warn "[BuzzListener] no relay traffic for #{PONG_TIMEOUT}s — reconnecting"
+        break
+      end
+
+      begin
+        ws.send("", type: :ping)
+      rescue StandardError => e
+        Rails.logger.warn "[BuzzListener] keepalive write failed: #{e.class}: #{e.message}"
+        break
+      end
+      break if ws.closed?
     end
   rescue Timeout::Error
     nil
