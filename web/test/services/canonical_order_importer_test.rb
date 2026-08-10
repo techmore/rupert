@@ -113,6 +113,47 @@ class CanonicalOrderImporterTest < ActiveSupport::TestCase
     assert_equal customer.id, order.customer_id
   end
 
+  test "from_shopify! imports fulfillments returned as a plain array (new query shape)" do
+    order = shopify_order
+    order["fulfillments"] = [
+      {
+        "id" => "gid://shopify/Fulfillment/42",
+        "status" => "fulfilled",
+        "createdAt" => Time.current.iso8601,
+        "trackingInfo" => [
+          { "company" => "USPS", "number" => "940011189922", "url" => "https://tools.usps.com/track" },
+        ],
+      },
+    ]
+
+    CanonicalOrderImporter.from_shopify!([order])
+    record = Core::Order.find_by(source: "shopify", source_order_id: order["id"])
+    assert_equal 1, record.fulfillments.count
+    fulfillment = record.fulfillments.first
+    assert_equal "fulfilled", fulfillment.status
+    assert_equal "USPS", fulfillment.tracking_company
+    assert_equal "940011189922", fulfillment.tracking_number
+  end
+
+  test "from_shopify! also accepts fulfillments wrapped in a connection (legacy shape)" do
+    order = shopify_order
+    order["fulfillments"] = {
+      "nodes" => [
+        {
+          "id" => "gid://shopify/Fulfillment/7",
+          "status" => "in_transit",
+          "createdAt" => Time.current.iso8601,
+          "trackingInfo" => { "company" => "FedEx", "number" => "1234", "url" => "https://fedex.com" },
+        },
+      ],
+    }
+
+    CanonicalOrderImporter.from_shopify!([order])
+    record = Core::Order.find_by(source: "shopify", source_order_id: order["id"])
+    assert_equal 1, record.fulfillments.count
+    assert_equal "FedEx", record.fulfillments.first.tracking_company
+  end
+
   test "is idempotent for the same source order and replaces lines" do
     2.times { CanonicalOrderImporter.from_shopify!([shopify_order]) }
     order = Core::Order.find_by(source: "shopify", source_order_id: "gid://shopify/Order/123")
@@ -130,6 +171,19 @@ class CanonicalOrderImporterTest < ActiveSupport::TestCase
     CanonicalOrderImporter.from_square!([order])
     payments = Core::Order.find_by(source_order_id: "sq-abc").payments
     assert_equal ["card", "gift_card"], payments.map(&:method).sort
+  end
+
+  test "square skips zero-amount tenders instead of failing payment validation" do
+    order = square_order
+    order["tenders"] = [
+      { "id" => "t-zero", "type" => "OTHER", "amount_money" => { "amount" => 0 }, "created_at" => Time.current.iso8601 },
+      { "id" => "t-cash", "type" => "CASH", "amount_money" => { "amount" => 1200 }, "created_at" => Time.current.iso8601 },
+    ]
+    CanonicalOrderImporter.from_square!([order])
+    payments = Core::Order.find_by(source_order_id: "sq-abc").payments
+    assert_equal 1, payments.count
+    assert_equal "cash", payments.first.method
+    assert_equal 1200, payments.first.amount_cents
   end
 
   test "backfill_from_ledger! hydrates from existing ledger entries" do

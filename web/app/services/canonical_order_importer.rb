@@ -33,7 +33,9 @@ class CanonicalOrderImporter
         )
         replace_order_lines!(order, node["lineItems"])
         replace_payments!(order, shopify_payments(node))
-        replace_fulfillments!(order, node.dig("fulfillments", "nodes"))
+        fulfillments = node["fulfillments"]
+        fulfillments = fulfillments["nodes"] if fulfillments.is_a?(Hash)
+        replace_fulfillments!(order, fulfillments)
       end
       Array(nodes).length
     end
@@ -149,7 +151,9 @@ class CanonicalOrderImporter
       nodes.each do |node|
         next if node.blank?
 
-        tracking = node.dig("trackingInfo") || {}
+        tracking_info = node["trackingInfo"]
+        tracking = tracking_info.is_a?(Array) ? tracking_info.first : tracking_info
+        tracking ||= {}
         Core::Fulfillment.upsert(
           {
             tenant_id: Current.tenant_id,
@@ -215,12 +219,15 @@ class CanonicalOrderImporter
       tenders = Array(node["tenders"])
       return [] if tenders.empty?
 
-      tenders.map do |tender|
+      tenders.filter_map do |tender|
+        amount = (tender.dig("amount_money", "amount").to_i || 0).abs
+        next if amount.zero?
+
         {
           method: map_square_tender(tender["type"]),
-          amount_cents: (tender.dig("amount_money", "amount").to_i || 0).abs,
+          amount_cents: amount,
           reference: tender["id"],
-          paid_at: parse_time(tender["created_at"]),
+          paid_at: parse_time(tender["created_at"]) || parse_time(node["created_at"]),
         }
       end
     end
