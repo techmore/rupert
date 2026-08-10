@@ -8,6 +8,7 @@ class OrdersController < AuthenticatedController
   def show
     authorize(:module, :sales_read?)
     @fulfillments = @order.fulfillments.order(created_at: :desc)
+    @refunds = @order.refunds.order(refunded_at: :desc)
     @doc = params[:doc].to_s == "packing_slip" ? "packing_slip" : "invoice"
   end
 
@@ -24,9 +25,31 @@ class OrdersController < AuthenticatedController
     )
     fulfillment.save!
     @order.fulfill! if @order.may_fulfill?
+    ActivityLogger.log(
+      "tracking_added",
+      subject: @order,
+      details: "#{fulfillment.tracking_company} #{fulfillment.tracking_number}".strip,
+    )
     redirect_to(order_path(@order), notice: "Tracking added — order marked fulfilled.")
   rescue ActiveRecord::RecordInvalid => e
     redirect_to(order_path(@order), alert: e.record.errors.full_messages.join(", "))
+  end
+
+  # Process a refund (partial or full). Recorded against the order; a full
+  # refund transitions the financial status to refunded.
+  def refund
+    authorize(:module, :sales_write?)
+    refund = @order.record_refund!(
+      amount_cents: params[:amount_cents].to_i,
+      method: params[:method].presence || "card",
+      reason: params[:reason].presence,
+      reference: params[:reference].presence,
+    )
+    cents = params[:amount_cents].to_i
+    ActivityLogger.log("refund_recorded", subject: @order, details: "$#{format("%.2f", cents / 100.0)} · #{refund.method}")
+    redirect_to(order_path(@order), notice: "Refund of $#{format("%.2f", cents / 100.0)} recorded.")
+  rescue ArgumentError, ActiveRecord::RecordInvalid => e
+    redirect_to(order_path(@order), alert: e.message)
   end
 
   # Office fulfillment pipeline (feature flag off by default): move the order
@@ -43,6 +66,7 @@ class OrdersController < AuthenticatedController
     end
 
     if @order.advance_fulfillment_status!(status)
+      ActivityLogger.log("fulfillment_status", subject: @order, details: "marked #{status}")
       redirect_to(order_path(@order), notice: "Order marked #{status}.")
     else
       redirect_to(order_path(@order), alert: "Can't move from #{@order.fulfillment_status} to #{status}.")

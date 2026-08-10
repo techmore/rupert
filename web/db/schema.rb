@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_09_040000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_09_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -284,6 +284,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_040000) do
     t.index ["shareId"], name: "index_WarehouseTier_on_shareId"
   end
 
+  create_table "activity_logs", force: :cascade do |t|
+    t.string "action", null: false
+    t.string "actor_name"
+    t.datetime "created_at", null: false
+    t.text "details"
+    t.string "subject_id"
+    t.string "subject_label"
+    t.string "subject_type"
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id"
+    t.index ["tenant_id", "created_at"], name: "index_activity_logs_on_tenant_id_and_created_at"
+    t.index ["tenant_id", "subject_type", "subject_id"], name: "idx_on_tenant_id_subject_type_subject_id_034734a708"
+  end
+
   create_table "customers", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "email"
@@ -298,6 +313,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_040000) do
     t.index ["tenant_id", "email"], name: "index_customers_on_tenant_id_and_email"
     t.index ["tenant_id", "external_id", "source"], name: "index_customers_on_tenant_id_and_external_id_and_source", unique: true
     t.index ["tenant_id", "phone"], name: "index_customers_on_tenant_id_and_phone"
+  end
+
+  create_table "expenses", force: :cascade do |t|
+    t.integer "amount_cents", default: 0, null: false
+    t.string "category", default: "other", null: false
+    t.datetime "created_at", null: false
+    t.datetime "discarded_at"
+    t.date "incurred_on", null: false
+    t.string "method", default: "card"
+    t.text "notes"
+    t.string "payee"
+    t.string "reference"
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "vendor_id"
+    t.index ["discarded_at"], name: "index_expenses_on_discarded_at"
+    t.index ["tenant_id", "category"], name: "index_expenses_on_tenant_id_and_category"
+    t.index ["tenant_id", "incurred_on"], name: "index_expenses_on_tenant_id_and_incurred_on"
   end
 
   create_table "fulfillments", force: :cascade do |t|
@@ -444,6 +477,51 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_040000) do
     t.datetime "updated_at", null: false
     t.index ["tenant_id", "owner_id"], name: "index_projects_on_tenant_id_and_owner_id"
     t.index ["tenant_id", "status"], name: "index_projects_on_tenant_id_and_status"
+  end
+
+  create_table "purchase_order_lines", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.bigint "purchase_order_id", null: false
+    t.integer "quantity", default: 1, null: false
+    t.integer "received_quantity", default: 0, null: false
+    t.string "sku"
+    t.string "tenant_id", null: false
+    t.integer "unit_cost_cents", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "purchase_order_id"], name: "index_purchase_order_lines_on_tenant_id_and_purchase_order_id"
+    t.index ["tenant_id", "sku"], name: "index_purchase_order_lines_on_tenant_id_and_sku"
+  end
+
+  create_table "purchase_orders", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.date "expected_date"
+    t.text "notes"
+    t.string "order_number", null: false
+    t.date "received_date"
+    t.string "status", default: "draft", null: false
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "vendor_id", null: false
+    t.index ["tenant_id", "order_number"], name: "index_purchase_orders_on_tenant_id_and_order_number", unique: true
+    t.index ["tenant_id", "status"], name: "index_purchase_orders_on_tenant_id_and_status"
+    t.index ["tenant_id", "vendor_id"], name: "index_purchase_orders_on_tenant_id_and_vendor_id"
+  end
+
+  create_table "refunds", force: :cascade do |t|
+    t.integer "amount_cents", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "discarded_at"
+    t.string "method", default: "card", null: false
+    t.bigint "order_id", null: false
+    t.string "reason"
+    t.string "reference"
+    t.datetime "refunded_at", null: false
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["discarded_at"], name: "index_refunds_on_discarded_at"
+    t.index ["tenant_id", "order_id"], name: "index_refunds_on_tenant_id_and_order_id"
+    t.index ["tenant_id", "refunded_at"], name: "index_refunds_on_tenant_id_and_refunded_at"
   end
 
   create_table "role_permissions", force: :cascade do |t|
@@ -655,6 +733,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_040000) do
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["shopify_user_id"], name: "index_users_on_shopify_user_id", unique: true
     t.index ["tenant_id"], name: "index_users_on_tenant_id"
+  end
+
+  create_table "vendor_payments", force: :cascade do |t|
+    t.integer "amount_cents", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "discarded_at"
+    t.string "method", default: "check"
+    t.text "notes"
+    t.date "paid_on", null: false
+    t.string "reference"
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "vendor_id", null: false
+    t.index ["discarded_at"], name: "index_vendor_payments_on_discarded_at"
+    t.index ["tenant_id", "paid_on"], name: "index_vendor_payments_on_tenant_id_and_paid_on"
+    t.index ["tenant_id", "vendor_id"], name: "index_vendor_payments_on_tenant_id_and_vendor_id"
+  end
+
+  create_table "vendors", force: :cascade do |t|
+    t.text "address"
+    t.string "contact_name"
+    t.datetime "created_at", null: false
+    t.string "email"
+    t.string "name", null: false
+    t.text "notes"
+    t.string "payment_terms", default: "net30"
+    t.string "phone"
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "name"], name: "index_vendors_on_tenant_id_and_name", unique: true
   end
 
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

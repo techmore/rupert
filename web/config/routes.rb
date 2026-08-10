@@ -38,15 +38,18 @@ Rails.application.routes.draw do
 
   mount ShopifyApp::Engine, at: "/api"
 
+  get "/search", to: "search#index", as: :search
   get "/dashboard", to: "home#index"
   post "/dashboard/customize", to: "home#customize", as: :customize_dashboard
 
   # ERP modules (registered in ModuleRegistry)
   get "/sales", to: "sales#index", as: :sales
+  get "/sales/print", to: "sales#print", as: :sales_print
   resources :orders, only: [:show] do
     member do
       post :add_tracking
       post :update_fulfillment_status
+      post :refund
     end
   end
   resources :customers, only: [:index, :show, :new, :create, :edit, :update]
@@ -77,6 +80,34 @@ Rails.application.routes.draw do
   end
 
   resources :inventory, only: :index
+  resources :locations
+  namespace :finance do
+    get "/accounts", to: "accounts#show", as: :accounts
+    resources :expenses, only: [:index, :new, :create, :edit, :update, :destroy] do
+      member { post :restore }
+    end
+    resources :vendor_payments, only: [:index, :new, :create, :destroy] do
+      member { post :restore }
+    end
+  end
+  namespace :purchasing do
+    resources :vendors
+    resources :purchase_orders, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
+      member do
+        post :place_order
+        post :receive
+        post :cancel
+        post :add_line
+        post :remove_line
+      end
+    end
+  end
+  resources :shopify_variants, only: [:show] do
+    member do
+      post :link
+      post :unlink
+    end
+  end
   resources :inventory_counts do
     member do
       post :submit
@@ -103,6 +134,7 @@ Rails.application.routes.draw do
   resources :alerts, only: :index do
     collection do
       post :update_status
+      post :bulk_update
     end
   end
   resources :syncs, only: [:index, :create] do
@@ -111,9 +143,11 @@ Rails.application.routes.draw do
     end
   end
   get "/system", to: "system#index", as: :system
+  get "/activity", to: "activity#index", as: :activity
   get "/live/sync_status", to: "live#sync_status"
 
   resource :settings, only: :show do
+    post :tenant
     post :fulfillment_workflow
     get :env, defaults: { format: :json }
     post :env_import, defaults: { format: :json }

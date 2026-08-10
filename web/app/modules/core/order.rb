@@ -17,6 +17,7 @@ module Core
     has_many :order_lines, class_name: "Core::OrderLine", foreign_key: :order_id, dependent: :destroy
     has_many :payments, class_name: "Core::Payment", foreign_key: :order_id, dependent: :destroy
     has_many :fulfillments, class_name: "Core::Fulfillment", foreign_key: :order_id, dependent: :destroy
+    has_many :refunds, class_name: "Core::Refund", foreign_key: :order_id, dependent: :destroy
 
     validates :source, presence: true
     validates :source_order_id, presence: true
@@ -74,8 +75,41 @@ module Core
       payments.completed.sum(:amount_cents)
     end
 
+    def total_refunded_cents
+      refunds.sum(:amount_cents)
+    end
+
+    def refundable_cents
+      [total_paid_cents - total_refunded_cents, 0].max
+    end
+
     def balance_due_cents
-      gross_cents - total_paid_cents
+      [gross_cents - total_paid_cents, 0].max
+    end
+
+    def refunded?
+      total_refunded_cents.positive?
+    end
+
+    def fully_refunded?
+      refundable_cents.zero? && total_refunded_cents.positive?
+    end
+
+    # Record a refund (partial or full). When the refunded total reaches the
+    # paid total, the order transitions to the refunded financial status.
+    def record_refund!(amount_cents:, method: "card", reason: nil, reference: nil, refunded_at: Time.current)
+      raise ArgumentError, "amount must be positive" unless amount_cents.to_i.positive?
+      raise ArgumentError, "refund exceeds paid total" if amount_cents.to_i > refundable_cents
+
+      refund = refunds.create!(
+        amount_cents: amount_cents.to_i,
+        method: method,
+        reason: reason,
+        reference: reference,
+        refunded_at: refunded_at,
+      )
+      refund! if fully_refunded? && may_refund?
+      refund
     end
 
     def shipping_address

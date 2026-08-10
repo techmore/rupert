@@ -60,6 +60,7 @@ class OrderFlowTest < ActionDispatch::IntegrationTest
     @order.mark_paid!
     @order.save!
     @order.order_lines.create!(tenant_id: @tenant.id, sku: "TEA-50", name: "Honey Sticks", quantity: 2, unit_cents: 1400, line_cents: 2800)
+    @order.payments.create!(tenant_id: @tenant.id, method: "card", amount_cents: 3000, status: "completed", paid_at: Time.current)
   end
 
   teardown do
@@ -143,6 +144,60 @@ class OrderFlowTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert_response :success
     assert_equal "pending", @order.reload.fulfillment_status
+  end
+
+  test "order page shows refund summary and partial refund keeps order paid" do
+    get_page(order_path(@order))
+    assert_response(:success)
+    assert_select "h2", /Refunds/
+    assert_select "p", /refundable \$30\.00/
+
+    post refund_order_path(@order), params: {
+      amount_cents: "1000",
+      method: "card",
+      reason: "One item returned",
+      shop: "m11u0i-sb.myshopify.com",
+      embedded: "1",
+    }
+    follow_redirect!
+    assert_response(:success)
+
+    @order.reload
+    assert_equal 1000, @order.total_refunded_cents
+    assert_equal 2000, @order.refundable_cents
+    assert_equal "paid", @order.status # partial refund keeps it paid
+    assert_equal "One item returned", @order.refunds.first.reason
+  end
+
+  test "full refund transitions the order to refunded" do
+    post refund_order_path(@order), params: {
+      amount_cents: "3000",
+      method: "cash",
+      shop: "m11u0i-sb.myshopify.com",
+      embedded: "1",
+    }
+    follow_redirect!
+    assert_response(:success)
+
+    @order.reload
+    assert_equal 3000, @order.total_refunded_cents
+    assert_equal "refunded", @order.status
+    assert @order.fully_refunded?
+  end
+
+  test "over-refund is rejected" do
+    post refund_order_path(@order), params: {
+      amount_cents: "5000",
+      method: "card",
+      shop: "m11u0i-sb.myshopify.com",
+      embedded: "1",
+    }
+    follow_redirect!
+    assert_response(:success)
+
+    @order.reload
+    assert_equal 0, @order.total_refunded_cents
+    assert_equal "paid", @order.status
   end
 
   test "adding tracking marks the order fulfilled" do
