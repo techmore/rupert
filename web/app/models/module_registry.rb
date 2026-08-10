@@ -35,8 +35,9 @@ class ModuleRegistry
     Entry.new(key: "vendors", name: "Vendors", path: -> { purchasing_vendors_path }, permission: "purchasing.read", position: 45),
     Entry.new(key: "purchase_orders", name: "Purchase orders", path: -> { purchasing_purchase_orders_path }, permission: "purchasing.read", position: 46),
     Entry.new(key: "accounts", name: "Accounts", path: -> { finance_accounts_path }, permission: "finance.read", position: 47),
-    Entry.new(key: "expenses", name: "Expenses", path: -> { finance_expenses_path }, permission: "finance.read", position: 48),
-    Entry.new(key: "payments", name: "Payments", path: -> { finance_vendor_payments_path }, permission: "finance.read", position: 49),
+    Entry.new(key: "chart_of_accounts", name: "Chart of accounts", path: -> { finance_chart_of_accounts_path }, permission: "finance.read", position: 48),
+    Entry.new(key: "expenses", name: "Expenses", path: -> { finance_expenses_path }, permission: "finance.read", position: 49),
+    Entry.new(key: "payments", name: "Payments", path: -> { finance_vendor_payments_path }, permission: "finance.read", position: 50),
   ].freeze
 
   class << self
@@ -60,7 +61,7 @@ class ModuleRegistry
       { key: "commerce", name: "Commerce", modules: ["sales", "registers", "customers", "inventory", "locations"] },
       { key: "operations", name: "Operations", modules: ["reports", "reconcile", "ledger", "projects", "goals", "kpis"] },
       { key: "purchasing", name: "Purchasing", modules: ["vendors", "purchase_orders"] },
-      { key: "finance", name: "Finance", modules: ["accounts", "expenses", "payments"] },
+      { key: "finance", name: "Finance", modules: ["accounts", "chart_of_accounts", "expenses", "payments"] },
       { key: "team", name: "Team", modules: ["employees", "permissions"] },
       { key: "system", name: "System", modules: ["system", "alerts", "activity", "sync", "settings"] },
     ].freeze

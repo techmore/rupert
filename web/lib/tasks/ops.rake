@@ -31,6 +31,13 @@ namespace :ops do
     puts "#{args[:source]} sync completed"
   end
 
+  desc "Seed the standard chart of accounts for the active tenant (idempotent)"
+  task chart_of_accounts: :environment do
+    load_tenant!
+    count = Finance::ChartOfAccounts.seed!
+    puts "Chart of accounts seeded (#{count} accounts)"
+  end
+
   desc "Print the reconciliation plan summary"
   task reconcile: :environment do
     load_tenant!

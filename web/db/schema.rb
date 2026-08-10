@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_09_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -282,6 +282,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_090000) do
     t.string "shareId"
     t.index ["shareId", "minQty"], name: "index_WarehouseTier_on_shareId_and_minQty", unique: true
     t.index ["shareId"], name: "index_WarehouseTier_on_shareId"
+  end
+
+  create_table "accounts", force: :cascade do |t|
+    t.string "account_type", null: false
+    t.boolean "active", default: true, null: false
+    t.string "code", null: false
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "name", null: false
+    t.string "normal_balance", null: false
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "account_type"], name: "index_accounts_on_tenant_id_and_account_type"
+    t.index ["tenant_id", "code"], name: "index_accounts_on_tenant_id_and_code", unique: true
   end
 
   create_table "activity_logs", force: :cascade do |t|

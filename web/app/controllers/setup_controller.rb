@@ -23,6 +23,9 @@ class SetupController < ApplicationController
 
     if tenant.save
       seed_credentials(tenant)
+      Current.tenant = tenant
+      Finance::ChartOfAccounts.seed!
+      Current.tenant = nil
       session[:user_id] = user.id
       redirect_to(root_url(subdomain: tenant.subdomain), notice: "Welcome! Your workspace is ready.")
     else

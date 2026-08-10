@@ -1,0 +1,45 @@
+<%= form_with model: @account, url: (@account.persisted? ? finance_chart_of_account_path(@account) : finance_chart_of_accounts_path), class: "mt-6 space-y-4" do |f| %>
+  <% if @account.errors.any? %>
+    <div role="alert" class="rounded-xl border border-rose/30 bg-rose/10 px-4 py-2.5 text-sm text-rose">
+      <%= @account.errors.full_messages.to_sentence %>
+    </div>
+  <% end %>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div>
+      <%= f.label :code, "Code", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.text_field :code, class: "input", placeholder: "e.g. 1100", autocomplete: "off" %>
+      <p class="mt-1 text-xs text-taupe">A unique number for the account, e.g. 1100 for a checking account.</p>
+    </div>
+    <div>
+      <%= f.label :name, "Name", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.text_field :name, class: "input", placeholder: "e.g. Checking account", autocomplete: "off" %>
+    </div>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div>
+      <%= f.label :account_type, "Type", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.select :account_type, Finance::Account::TYPES.map { |t| [Finance::Account::TYPE_LABELS.fetch(t), t] }, {}, class: "select w-full" %>
+    </div>
+    <div>
+      <%= f.label :normal_balance, "Normal balance", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.select :normal_balance, [["Debit", "debit"], ["Credit", "credit"]], {}, class: "select w-full" %>
+      <p class="mt-1 text-xs text-taupe">Defaults from the type: assets/expenses are debit, liabilities/equity/revenue are credit.</p>
+    </div>
+  </div>
+
+  <div>
+    <%= f.label :description, "Description (optional)", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+    <%= f.text_area :description, rows: 2, class: "input !rounded-2xl", placeholder: "What this account tracks" %>
+  </div>
+
+  <label class="flex items-center gap-1.5 text-sm text-mocha">
+    <%= f.check_box :active, class: "checkbox" %> Active
+  </label>
+
+  <div class="flex items-center gap-3 pt-2">
+    <%= f.submit @account.persisted? ? "Save changes" : "Add account", class: "btn-primary" %>
+    <%= link_to "Cancel", finance_chart_of_accounts_path, class: "btn-ghost" %>
+  </div>
+<% end %>

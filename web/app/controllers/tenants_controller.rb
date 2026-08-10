@@ -19,6 +19,9 @@ class TenantsController < ApplicationController
       shopify_shop_domain: params[:shopify_shop_domain],
     )
     if @tenant.save
+      Current.tenant = @tenant
+      Finance::ChartOfAccounts.seed!
+      Current.tenant = nil
       redirect_to(tenants_path, notice: "Tenant #{@tenant.name} created at #{@tenant.subdomain}.#{request.domain}")
     else
       render(:new, status: :unprocessable_entity)

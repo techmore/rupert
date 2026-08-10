@@ -65,7 +65,7 @@ Rails.application.routes.draw do
     resources :goals, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
       member { post :transition }
     end
-    resources :kpis, only: [:index, :show, :new, :create, :update, :destroy] do
+    resources :kpis, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
       member { post :reading }
     end
   end
@@ -83,6 +83,12 @@ Rails.application.routes.draw do
   resources :locations
   namespace :finance do
     get "/accounts", to: "accounts#show", as: :accounts
+    resources :chart_of_accounts, only: [:index, :new, :create, :edit, :update] do
+      member do
+        post :archive
+        post :restore
+      end
+    end
     resources :expenses, only: [:index, :new, :create, :edit, :update, :destroy] do
       member { post :restore }
     end
