@@ -1,0 +1,30 @@
+<%= form_with model: location, class: "mt-6 space-y-4" do |f| %>
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div>
+      <%= f.label :name, "Name", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.text_field :name, class: "input", placeholder: "e.g. Downtown Store", autocomplete: "off" %>
+    </div>
+    <div>
+      <%= f.label :kind, "Kind", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.select :kind, ["RETAIL", "VIRTUAL", "WAREHOUSE", "POPUP"], { include_blank: "—" }, class: "select w-full" %>
+    </div>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div>
+      <%= f.label :timezone, "Timezone", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.text_field :timezone, class: "input", placeholder: "e.g. America/New_York", autocomplete: "off" %>
+    </div>
+    <div class="flex items-end pb-2">
+      <label class="flex items-center gap-2 text-sm text-mocha">
+        <%= f.check_box :active, class: "accent-olive" %>
+        Active
+      </label>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-3 pt-2">
+    <%= f.submit location.persisted? ? "Save changes" : "Add location", class: "btn-primary" %>
+    <%= link_to "Cancel", locations_path, class: "btn-ghost" %>
+  </div>
+<% end %>

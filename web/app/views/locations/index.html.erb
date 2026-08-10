@@ -1,0 +1,62 @@
+<% content_for :title, "Locations" %>
+<div class="space-y-6">
+  <section class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink">Locations</h1>
+      <p class="mt-1 text-sm text-mocha">Where stock lives — Shopify and Square locations plus any manual ones.</p>
+    </div>
+    <% if Current.user.can?("inventory.write") %>
+      <%= link_to "Add location", new_location_path, class: "btn-primary" %>
+    <% end %>
+  </section>
+
+  <section class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="stat">
+      <p class="stat-label">Locations</p>
+      <p class="stat-value mt-1"><%= @locations.count %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Total units on hand</p>
+      <p class="stat-value mt-1"><%= @total_units %></p>
+    </div>
+    <% @per_source.each do |source, count| %>
+      <div class="stat">
+        <p class="stat-label capitalize"><%= source %></p>
+        <p class="stat-value mt-1"><%= count %></p>
+        <p class="mt-1 text-xs text-taupe">location(s)</p>
+      </div>
+    <% end %>
+  </section>
+
+  <div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th scope="col" class="th">Name</th>
+            <th scope="col" class="th">Source</th>
+            <th scope="col" class="th">Kind</th>
+            <th scope="col" class="th text-right">Units</th>
+            <th scope="col" class="th">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% if @locations.empty? %>
+            <tr><td colspan="5" class="td py-8 text-center text-taupe">No locations yet.</td></tr>
+          <% end %>
+          <% @locations.each do |location| %>
+            <tr class="hover:bg-cream">
+              <td class="td font-medium text-ink"><%= link_to location.name, location, class: "hover:text-olive hover:underline" %></td>
+              <td class="td"><span class="pill-taupe capitalize"><%= location.source %></span></td>
+              <td class="td text-mocha capitalize"><%= location.kind.presence || "—" %></td>
+              <td class="td text-right text-mocha"><%= InventoryLevel.where(locationId: location.id).sum(:quantity) %></td>
+              <td class="td">
+                <% if location.active %><span class="pill-fern">active</span><% else %><span class="pill-taupe">inactive</span><% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
