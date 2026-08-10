@@ -6,14 +6,17 @@
 class SquareSyncer
   class << self
     # Returns { items:, variations:, levels:, links:, orders:, locations: }
-    def sync!
+    def sync!(since: nil)
       locations = SquareClient.locations
       primary = pick_primary_location(locations)
       raise SquareClient::Error, "Square: no active location found" if primary.nil?
 
       catalog = SquareClient.catalog
       counts = SquareClient.inventory_counts(locations.map { |l| l["id"] }, catalog.map { |v| v[:variationId] })
-      orders = SquareClient.orders(locations.map { |l| l["id"] }, (Time.current - 30.days).iso8601)
+      orders = SquareClient.orders(
+        locations.map { |l| l["id"] },
+        since || (Time.current - history_lookback).iso8601,
+      )
 
       sync_locations!(locations, catalog, counts, primary)
       { items: 0, variations: 0, levels: 0, links: 0, orders: orders, locations: locations }
@@ -21,6 +24,13 @@ class SquareSyncer
 
     def configured?
       SquareClient.configured?
+    end
+
+    # How far back to look for orders. Configurable via SYNC_HISTORY_DAYS
+    # (defaults to 30 days to match the original behavior).
+    def history_lookback
+      days = EnvStore.fetch("SYNC_HISTORY_DAYS", "").to_i
+      days.positive? ? days.days : 30.days
     end
 
     def primary_location_id

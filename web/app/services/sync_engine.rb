@@ -10,7 +10,7 @@ class SyncEngine
   STALE_RUN_AFTER = 45.minutes
 
   class << self
-    def run!(mode: "manual", actor: "user", tenant: nil)
+    def run!(mode: "manual", actor: "user", tenant: nil, history_days: nil)
       Current.tenant = tenant if tenant
       raise ArgumentError, "No tenant in context" if Current.tenant_id.nil?
 
@@ -19,12 +19,12 @@ class SyncEngine
 
       begin
         summary = {}
-        shopify = CatalogSyncer.sync!
+        shopify = CatalogSyncer.sync!(since: backfill_since(history_days))
         summary[:shopify] = { products: shopify[:products], variants: shopify[:variants] }
         LedgerImporter.from_shopify_orders!(shopify.dig(:orders, "nodes"))
 
         if SquareClient.configured?
-          square = SquareSyncer.sync!
+          square = SquareSyncer.sync!(since: backfill_since(history_days))
           summary[:square] = { locations: square[:locations].length, orders: square[:orders].length }
           LedgerImporter.from_square_orders!(square[:orders])
         end
@@ -76,6 +76,12 @@ class SyncEngine
     end
 
     private
+
+    def backfill_since(history_days)
+      return nil if history_days.nil?
+
+      (Time.current - history_days.days).strftime("%Y-%m-%d")
+    end
 
     def guard_running!
       recover_stale_runs!

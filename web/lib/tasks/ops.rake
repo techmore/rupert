@@ -16,6 +16,14 @@ namespace :ops do
     puts "Sync completed"
   end
 
+  desc "Backfill order history: ops:backfill[DAYS] (defaults to SYNC_HISTORY_DAYS or 3650)"
+  task :backfill, [:days] => :environment do |_, args|
+    load_tenant!
+    days = (args[:days] || ENV["SYNC_HISTORY_DAYS"] || "3650").to_i
+    SyncEngine.run!(mode: "backfill", actor: "rake", history_days: days)
+    puts "Backfill completed (#{days} days)"
+  end
+
   desc "Run a single-source sync: ops:sync_source[shopify|square]"
   task :sync_source, [:source] => :environment do |_, args|
     load_tenant!

@@ -105,9 +105,10 @@ class SquareClient
       { counts: counts, counts_by_location: counts_by_location }
     end
 
-    def orders(location_ids, since_iso)
+    def orders(location_ids, since_iso, max: nil)
       orders = []
       cursor = nil
+      max ||= 100_000
       loop do
         body = {
           location_ids: location_ids.first(10),
@@ -124,7 +125,7 @@ class SquareClient
         payload = request("/orders/search", method: "POST", body: body)
         orders.concat(payload["orders"] || [])
         cursor = payload["cursor"]
-        break if cursor.blank? || orders.length >= 1000
+        break if cursor.blank? || orders.length >= max
       end
       orders
     end

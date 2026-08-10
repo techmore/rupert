@@ -5,7 +5,7 @@
 # the database, journaling quantity changes as movements.
 class CatalogSyncer
   OPERATIONS_QUERY = <<~GRAPHQL
-    query Ops($orderQuery: String!) {
+    query Ops($orderQuery: String!, $orderCursor: String) {
       shop { name myshopifyDomain currencyCode }
       publications(first: 30) { nodes { id name autoPublish } }
       products(first: 250, query: "status:active", sortKey: TITLE) {
@@ -17,8 +17,8 @@ class CatalogSyncer
           variants(first: 100) { nodes { id title sku price inventoryQuantity inventoryItem { id tracked } } }
         }
       }
-      orders(first: 100, query: $orderQuery, sortKey: CREATED_AT, reverse: true) {
-        pageInfo { hasNextPage }
+      orders(first: 100, query: $orderQuery, sortKey: CREATED_AT, reverse: true, after: $orderCursor) {
+        pageInfo { hasNextPage endCursor }
         nodes {
           id name createdAt displayFinancialStatus paymentGatewayNames
           currentTotalPriceSet { shopMoney { amount currencyCode } }
@@ -27,11 +27,9 @@ class CatalogSyncer
           shippingAddress {
             address1 address2 city country province zip phone
           }
-          fulfillments(first: 20) {
-            nodes {
-              id status createdAt updatedAt
-              trackingInfo { company number url }
-            }
+          fulfillments {
+            id status createdAt updatedAt
+            trackingInfo { company number url }
           }
           lineItems(first: 100) {
             nodes {
@@ -49,6 +47,36 @@ class CatalogSyncer
     query Locations { locations(first: 10) { nodes { id name isActive } } }
   GRAPHQL
 
+  # Paginates every order matching the query, so the sync captures the full
+  # history window rather than the first page.
+  ORDERS_QUERY = <<~GRAPHQL
+    query Orders($orderQuery: String!, $orderCursor: String) {
+      orders(first: 100, query: $orderQuery, sortKey: CREATED_AT, reverse: true, after: $orderCursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id name createdAt displayFinancialStatus paymentGatewayNames
+          currentTotalPriceSet { shopMoney { amount currencyCode } }
+          currentTotalTaxSet { shopMoney { amount currencyCode } }
+          customer { id email firstName lastName phone }
+          shippingAddress {
+            address1 address2 city country province zip phone
+          }
+          fulfillments {
+            id status createdAt updatedAt
+            trackingInfo { company number url }
+          }
+          lineItems(first: 100) {
+            nodes {
+              title variantTitle sku quantity
+              originalUnitPriceSet { shopMoney { amount currencyCode } }
+              originalTotalSet { shopMoney { amount currencyCode } }
+            }
+          }
+        }
+      }
+    }
+  GRAPHQL
+
   # Minimal query to backfill featured images without re-pulling the whole
   # catalog. `first: 250` per page; cursor pagination for large catalogs.
   IMAGE_BACKFILL_QUERY = <<~GRAPHQL
@@ -64,18 +92,17 @@ class CatalogSyncer
 
   class << self
     # Returns { products:, variants:, locations:, orders:, shop: }
-    def sync!
-      since = (Time.current - 30.days).strftime("%Y-%m-%d")
-      data = ShopifyClient.graphql(OPERATIONS_QUERY, { orderQuery: "created_at:>=#{since}" })
-
+    def sync!(since: nil)
+      since ||= (Time.current - history_lookback).strftime("%Y-%m-%d")
       locations = fetch_locations
       sync_locations!(locations)
+      data = ShopifyClient.graphql(OPERATIONS_QUERY, { orderQuery: "created_at:>=#{since}" })
       counts = sync_products!(data["products"]["nodes"], locations)
       {
         products: counts[:products],
         variants: counts[:variants],
         locations: locations,
-        orders: data["orders"],
+        orders: paginate_orders(since),
         shop: data["shop"],
       }
     end
@@ -104,6 +131,30 @@ class CatalogSyncer
     end
 
     private
+
+    # How far back to look for orders. Configurable via the SYNC_HISTORY_DAYS
+    # setting (defaults to 30 days to match the original behavior).
+    def history_lookback
+      days = EnvStore.fetch("SYNC_HISTORY_DAYS", "").to_i
+      days.positive? ? days.days : 30.days
+    end
+
+    # Fetches every order in the window, following the cursor until exhausted.
+    # Returns the raw GraphQL "orders" object ({ nodes:, pageInfo: }).
+    def paginate_orders(since)
+      nodes = []
+      cursor = nil
+      loop do
+        data = ShopifyClient.graphql(ORDERS_QUERY, { orderQuery: "created_at:>=#{since}", orderCursor: cursor })
+        page = data["orders"]
+        nodes.concat(page["nodes"] || [])
+        info = page["pageInfo"] || {}
+        break unless info["hasNextPage"] && info["endCursor"]
+
+        cursor = info["endCursor"]
+      end
+      { "nodes" => nodes, "pageInfo" => { "hasNextPage" => false, "endCursor" => cursor } }
+    end
 
     def fetch_locations
       ShopifyClient.graphql(LOCATIONS_QUERY, {})["locations"]["nodes"]
