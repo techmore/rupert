@@ -19,6 +19,11 @@
           <% if Current.user.super_admin? %>
             <%= link_to "Tenants", tenants_path, class: "nav-pill nav-pill-idle" %>
           <% end %>
+          <button type="button" onclick="window.dispatchEvent(new Event('rupert:open-search'))" class="nav-pill nav-pill-idle" aria-label="Search" title="Search — press /">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <span class="hidden sm:inline">Search</span>
+            <kbd class="hidden rounded bg-haze px-1.5 font-mono text-[10px] text-taupe md:inline">/</kbd>
+          </button>
           <% if @last_sync %>
             <% synced = @last_sync.success? %>
             <span class="<%= synced ? "pill-fern" : "pill-clay" %>" title="<%= l(@last_sync.startedAt, format: :long) %>">
@@ -59,3 +64,18 @@
     <%= yield %>
   </main>
 </div>
+
+<% if Current.user %>
+  <div data-controller="search" data-action="rupert:open-search@window->search#open" class="fixed inset-0 z-50 hidden items-start justify-center px-4 pt-[12vh]">
+    <div class="fixed inset-0 bg-ink/30" data-action="click->search#close"></div>
+    <div class="relative w-full max-w-xl overflow-hidden rounded-2xl border border-fog bg-paper shadow-2xl" role="dialog" aria-label="Search">
+      <div class="flex items-center gap-2 border-b border-fog px-4 py-3">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-taupe" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="search" data-search-target="input" data-action="input->search#search keydown->search#keydown" placeholder="Search orders, customers, SKUs…" class="w-full bg-transparent text-sm text-ink outline-none placeholder:text-taupe" autocomplete="off" aria-label="Search">
+        <button type="button" data-action="search#close" class="rounded-full bg-haze px-2 py-0.5 text-xs text-taupe hover:text-ink" aria-label="Close">esc</button>
+      </div>
+      <div data-search-target="results" class="max-h-[50vh] overflow-y-auto py-1"></div>
+      <div data-search-target="empty" class="hidden px-4 py-6 text-center text-sm text-taupe">No matches — try an order number, customer, or SKU.</div>
+    </div>
+  </div>
+<% end %>
