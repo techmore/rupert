@@ -42,6 +42,28 @@
   </section>
 
   <section class="card card-pad">
+    <h2 class="font-display text-xl text-ink">Business settings</h2>
+    <p class="mt-2 text-xs text-taupe">Shown on printed invoices and used by stock alerts.</p>
+    <%= form_tag tenant_settings_path, method: :post, class: "mt-4 grid gap-4 sm:grid-cols-3" do %>
+      <div>
+        <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="business_name">Business name</label>
+        <input type="text" id="business_name" name="business_name" value="<%= TenantSettings.business_name %>" class="input">
+      </div>
+      <div>
+        <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="invoice_prefix">Invoice prefix</label>
+        <input type="text" id="invoice_prefix" name="invoice_prefix" value="<%= TenantSettings.invoice_prefix %>" class="input">
+      </div>
+      <div>
+        <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="low_stock_threshold">Low-stock threshold</label>
+        <input type="number" id="low_stock_threshold" name="low_stock_threshold" value="<%= TenantSettings.low_stock_threshold %>" min="0" class="input">
+      </div>
+      <div class="sm:col-span-3">
+        <%= submit_tag "Save business settings", class: "btn-primary" %>
+      </div>
+    <% end %>
+  </section>
+
+  <section class="card card-pad">
     <h2 class="font-display text-xl text-ink">Office features</h2>
     <p class="mt-2 text-xs text-taupe">Optional workflows for the shipping desk. Off by default.</p>
 

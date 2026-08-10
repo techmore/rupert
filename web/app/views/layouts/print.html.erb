@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Print — Rupert</title>
+    <meta name="color-scheme" content="light">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+    <style>
+      @media print {
+        @page { margin: 1.2cm; }
+        .slip { page-break-after: always; }
+        .slip:last-child { page-break-after: auto; }
+        body { background: #fff !important; }
+      }
+      @media screen {
+        body { background: var(--color-oat); padding: 2rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="hidden print:flex items-center justify-between gap-4 border-b border-black/20 pb-3 mb-6">
+      <h1 class="font-display text-2xl text-ink">Print</h1>
+      <button type="button" onclick="window.print()" class="btn-primary">Print</button>
+    </div>
+    <div class="space-y-4 print:space-y-0">
+      <%= yield %>
+    </div>
+  </body>
+</html>

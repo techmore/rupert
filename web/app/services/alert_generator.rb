@@ -3,6 +3,7 @@
 # Port of seedAlerts from the legacy script — opens low/out-of-stock alerts
 # for tracked variants, without duplicating open alerts per variant.
 class AlertGenerator
+  # Backwards-compatible default when no tenant context / settings are set.
   THRESHOLD = 5
 
   class << self
@@ -13,7 +14,8 @@ class AlertGenerator
     end
 
     def sync_variant!(variant_id, sku, quantity)
-      return if quantity > THRESHOLD
+      threshold = threshold_for_current_tenant
+      return if quantity > threshold
 
       existing = StockAlert.find_by(shopifyVariantId: variant_id, status: "open")
       return if existing
@@ -22,11 +24,17 @@ class AlertGenerator
         shopifyVariantId: variant_id,
         sku: sku,
         quantity: quantity,
-        threshold: THRESHOLD,
+        threshold: threshold,
         status: "open",
-        note: quantity <= 0 ? "Out of stock" : "Low stock — below threshold of #{THRESHOLD}",
+        note: quantity <= 0 ? "Out of stock" : "Low stock — below threshold of #{threshold}",
         createdAt: Time.current,
       )
+    end
+
+    def threshold_for_current_tenant
+      return THRESHOLD if Current.tenant_id.blank?
+
+      TenantSettings.low_stock_threshold_int
     end
   end
 end

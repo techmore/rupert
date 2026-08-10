@@ -11,8 +11,7 @@ class SalesController < AuthenticatedController
     rescue
       Time.current.to_date
     end
-    @window_days = params[:window].to_i.clamp(1, 365)
-    @window_days = 30 if @window_days.zero?
+    @window_days = params[:window].present? ? params[:window].to_i.clamp(1, 365) : 30
 
     since = Time.current - @window_days.days
     @sales = Core::Order.since(since).by_source(params[:source])
@@ -27,6 +26,18 @@ class SalesController < AuthenticatedController
     @revenue_series = DashboardPresenter.new.revenue_series(days: @window_days, source: @source == "all" ? nil : @source)
     @hourly_series = DashboardPresenter.new.hourly_series(days: @window_days)
     @source_breakdown = DashboardPresenter.new.source_breakdown(days: @window_days)
+  end
+
+  # Batch print view: every order on a day as a packing slip (or invoice),
+  # laid out one per page for the shipping desk.
+  def print
+    authorize(:module, :sales_read?)
+    @date = params[:date].present? ? Date.parse(params[:date]) : Time.current.to_date
+    @doc = params[:doc].to_s == "invoice" ? "invoice" : "packing_slip"
+    @orders = Core::Order.on_day(@date).includes(:customer, :order_lines, :fulfillments).order(occurred_at: :asc)
+    render(layout: "print")
+  rescue ArgumentError
+    redirect_to(sales_path, alert: "Invalid date.")
   end
 
   private

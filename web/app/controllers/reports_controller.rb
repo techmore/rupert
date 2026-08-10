@@ -24,9 +24,9 @@ class ReportsController < AuthenticatedController
 
     payload = DataCache.fetch("reports/sales/#{@days}", ttl: 10.minutes) do
       {
-        revenue_daily: Core::Order.since(since).group_by_day(:occurred_at, range: since..Time.current)
+        revenue_daily: Core::Order.since(since).group_by_day(:occurred_at, range: since..@range_end)
           .sum(:gross_cents).transform_values { |c| (c / 100.0).round(2) },
-        revenue_weekly: Core::Order.since(since).group_by_week(:occurred_at, range: since..Time.current)
+        revenue_weekly: Core::Order.since(since).group_by_week(:occurred_at, range: since..@range_end)
           .sum(:gross_cents).transform_values { |c| (c / 100.0).round(2) },
         by_source: Core::Order.since(since).group(:source).sum(:gross_cents)
           .transform_keys { |k| k.to_s.capitalize }.transform_values { |c| c / 100.0 },
@@ -39,7 +39,7 @@ class ReportsController < AuthenticatedController
         total_orders: Core::Order.since(since).where(status: ["paid", "fulfilled"]).count,
         total_revenue: Core::Order.since(since).where(status: ["paid", "fulfilled"]).sum(:gross_cents) / 100.0,
         top_products: Core::OrderLine.joins(:order)
-          .where(orders: { occurred_at: since..Time.current })
+          .where(orders: { occurred_at: since..@range_end })
           .group(:name, :sku).sum(:line_cents)
           .sort_by { |_, cents| -cents }.first(10)
           .map { |(name, sku), cents| { name: name, sku: sku, revenue: (cents / 100.0).round(2) } },
@@ -67,17 +67,20 @@ class ReportsController < AuthenticatedController
 
     payload = DataCache.fetch("reports/financial/#{@days}", ttl: 10.minutes) do
       revenue_cents = orders.sum(:gross_cents)
+      refund_cents = Core::Refund.joins(:order)
+        .where(orders: { occurred_at: since..@range_end })
+        .sum("refunds.amount_cents")
       {
         revenue_cents: revenue_cents,
         tax_cents: orders.sum(:tax_cents),
-        refund_cents: Core::Order.since(since).where(status: "refunded").sum(:gross_cents),
+        refund_cents: refund_cents,
         net_cents: revenue_cents,
         avg_order_cents: orders.count.zero? ? 0 : (revenue_cents / orders.count),
         tenders: Core::Payment.joins(:order)
-          .where(orders: { occurred_at: since..Time.current }, payments: { status: "completed" })
+          .where(orders: { occurred_at: since..@range_end }, payments: { status: "completed" })
           .group("payments.method").sum("payments.amount_cents")
           .transform_values { |c| c / 100.0 },
-        daily_net: orders.group_by_day(:occurred_at, range: since..Time.current)
+        daily_net: orders.group_by_day(:occurred_at, range: since..@range_end)
           .sum(:gross_cents).transform_values { |c| (c / 100.0).round(2) },
       }
     end
@@ -97,19 +100,20 @@ class ReportsController < AuthenticatedController
   end
 
   def inventory
-    payload = DataCache.fetch("reports/inventory/#{@days}", ttl: 10.minutes) do
+    threshold = TenantSettings.low_stock_threshold_int
+    payload = DataCache.fetch("reports/inventory/#{@days}/#{threshold}", ttl: 10.minutes) do
       {
         valuation: ShopifyVariant.includes(:product).where.not(price: nil)
           .sum { |v| v.price.to_f * v.inventoryQuantity.to_i },
         variants: ShopifyVariant.count,
         tracked: ShopifyVariant.where(tracked: true).count,
-        low_stock: ShopifyVariant.where("\"inventoryQuantity\" > 0 AND \"inventoryQuantity\" <= ?", 5).count,
+        low_stock: ShopifyVariant.where("\"inventoryQuantity\" > 0 AND \"inventoryQuantity\" <= ?", threshold).count,
         out_of_stock: ShopifyVariant.where("\"inventoryQuantity\" <= 0").count,
         movements_30d: InventoryMovement.where("\"createdAt\" >= ?", 30.days.ago).count,
         movement_trend: InventoryMovement.where("\"createdAt\" >= ?", 30.days.ago)
           .group_by_day(:createdAt, range: 30.days.ago..Time.current).count,
         low_stock_items: ShopifyVariant.includes(:product)
-          .where("\"inventoryQuantity\" <= ?", 5).order(:inventoryQuantity).limit(50)
+          .where("\"inventoryQuantity\" <= ?", threshold).order(:inventoryQuantity).limit(50)
           .map { |v| { sku: v.sku, product: v.product&.title, variant: v.title, qty: v.inventoryQuantity, price: v.price } },
       }
     end
@@ -155,6 +159,16 @@ class ReportsController < AuthenticatedController
   def set_range
     @days = window_days
     @range = @days.days.ago
+    @range_end = Time.current
+    if params[:from].present? || params[:to].present?
+      from = parse_date(params[:from]) || @days.days.ago.to_date
+      to = parse_date(params[:to]) || Date.today
+      from, to = to, from if from > to
+      @days = (to - from).to_i.clamp(1, 3650)
+      @range = from.beginning_of_day
+      @to_date = to
+      @range_end = to.end_of_day
+    end
   end
 
   def window_days
@@ -162,11 +176,17 @@ class ReportsController < AuthenticatedController
     days.zero? ? 30 : days.clamp(7, 365)
   end
 
+  def parse_date(value)
+    Date.parse(value)
+  rescue ArgumentError, TypeError
+    nil
+  end
+
   # --- CSV builders ---
 
   def sales_csv
     rows = [["Day", "Revenue (USD)", "Orders"]]
-    Core::Order.since(@range).group_by_day(:occurred_at, range: @range..Time.current)
+    Core::Order.since(@range).group_by_day(:occurred_at, range: @range..@range_end)
       .sum(:gross_cents).each do |day, cents|
       rows << [day.iso8601, (cents / 100.0).round(2), Core::Order.where(occurred_at: day.beginning_of_day..day.end_of_day).count]
     end

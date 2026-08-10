@@ -11,11 +11,15 @@
           <%= link_to label, send("#{key}_reports_path", days: @days), class: "nav-pill #{params[:action] == key ? "nav-pill-active" : "nav-pill-idle"}", aria: { current: (params[:action] == key ? "page" : nil) } %>
         <% end %>
       </div>
-      <%= form_tag url_for(action: params[:action]), method: :get, class: "flex items-center gap-1" do %>
+      <%= form_tag url_for(action: params[:action]), method: :get, class: "flex flex-wrap items-center gap-2" do %>
         <%= select_tag :days, options_for_select([["7 days", 7], ["30 days", 30], ["90 days", 90], ["1 year", 365]], @days), class: "select" %>
+        <span class="text-xs text-taupe">or</span>
+        <%= text_field_tag :from, @to_date ? (@range.to_date.iso8601) : "", type: "date", class: "select", title: "Start date" %>
+        <span class="text-xs text-taupe">→</span>
+        <%= text_field_tag :to, @to_date&.iso8601, type: "date", class: "select", title: "End date" %>
         <%= submit_tag "Refresh", class: "btn-ghost btn-sm" %>
       <% end %>
-      <%= link_to "CSV", url_for(action: params[:action], format: :csv, days: @days), class: "btn-ghost btn-sm" %>
+      <%= link_to "CSV", url_for(action: params[:action], format: :csv, days: @days, from: @to_date ? @range.to_date.iso8601 : nil, to: @to_date&.iso8601), class: "btn-ghost btn-sm" %>
     </div>
   </section>
   <%= yield %>

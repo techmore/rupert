@@ -10,6 +10,10 @@
         <%= text_field_tag :date, @date.iso8601, type: "date", class: "select" %>
         <%= submit_tag "Jump to day", class: "btn-ghost btn-sm" %>
       <% end %>
+      <div class="flex items-center gap-1 rounded-full border border-fog bg-paper p-1">
+        <%= link_to "Print", sales_print_path(date: @date), class: "nav-pill nav-pill-idle-sm", title: "Batch print this day's packing slips" %>
+        <%= link_to "Invoices", sales_print_path(date: @date, doc: "invoice"), class: "nav-pill nav-pill-idle-sm", title: "Batch print this day's invoices" %>
+      </div>
     </div>
   </section>
 

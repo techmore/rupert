@@ -128,6 +128,17 @@ class SettingsController < AuthenticatedController
     redirect_to(settings_path, notice: "Disconnected from Google Drive.")
   end
 
+  # POST /settings/tenant — update business settings (name, invoice prefix,
+  # low-stock threshold).
+  def tenant
+    TenantSettings.set(:business_name, params[:business_name]) if params[:business_name].present?
+    TenantSettings.set(:invoice_prefix, params[:invoice_prefix]) if params[:invoice_prefix].present?
+    if params[:low_stock_threshold].present?
+      TenantSettings.set(:low_stock_threshold, params[:low_stock_threshold].to_i)
+    end
+    redirect_to(settings_path, notice: "Business settings saved.")
+  end
+
   # POST /settings/fulfillment_workflow — enable/disable the office fulfillment
   # status workflow on orders.
   def fulfillment_workflow
