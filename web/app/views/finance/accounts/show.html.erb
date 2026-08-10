@@ -1,0 +1,93 @@
+<% content_for :title, "Accounts" %>
+<div class="space-y-6">
+  <section>
+    <h1 class="font-display text-3xl text-ink">Accounts</h1>
+    <p class="mt-1 text-sm text-mocha">Payables — what the shop owes vendors — and receivables — what customers owe the shop.</p>
+  </section>
+
+  <section class="grid grid-cols-2 gap-4 lg:grid-cols-2">
+    <div class="stat">
+      <p class="stat-label">Accounts payable</p>
+      <p class="stat-value mt-1 <%= @payables_total.positive? ? "text-clay" : "text-ink" %>"><%= number_to_currency(@payables_total / 100.0) %></p>
+      <p class="mt-1 text-xs text-taupe"><%= @payables.sum { |r| r[:owed_cents].positive? ? 1 : 0 } %> vendor(s) with balances</p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Accounts receivable</p>
+      <p class="stat-value mt-1 <%= @receivables_total.positive? ? "text-clay" : "text-ink" %>"><%= number_to_currency(@receivables_total / 100.0) %></p>
+      <p class="mt-1 text-xs text-taupe"><%= @receivables.length %> customer(s) with balances</p>
+    </div>
+  </section>
+
+  <div class="grid gap-4 lg:grid-cols-2">
+    <div class="card overflow-hidden">
+      <div class="border-b border-fog px-5 py-3">
+        <h2 class="font-display text-lg text-ink">Payables</h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="border-b border-fog bg-haze/60">
+            <tr>
+              <th scope="col" class="th">Vendor</th>
+              <th scope="col" class="th text-right">Received</th>
+              <th scope="col" class="th text-right">Paid</th>
+              <th scope="col" class="th text-right">Owed</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-fog">
+            <% if @payables.empty? %>
+              <tr><td colspan="4" class="td py-8 text-center text-taupe">No vendor balances.</td></tr>
+            <% end %>
+            <% @payables.each do |row| %>
+              <tr class="hover:bg-cream">
+                <td class="td font-medium text-ink"><%= link_to row[:vendor].name, row[:vendor], class: "hover:text-olive hover:underline" %></td>
+                <td class="td text-right text-mocha"><%= number_to_currency(row[:owed_cents].to_i / 100.0) %></td>
+                <td class="td text-right text-mocha"><%= number_to_currency(row[:paid_cents] / 100.0) %></td>
+                <td class="td text-right">
+                  <% if row[:balance_cents].positive? %>
+                    <span class="font-semibold text-clay"><%= number_to_currency(row[:balance_cents].to_i / 100.0) %></span>
+                  <% else %>
+                    <span class="text-fern">paid</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      <% if Current.user.can?("finance.write") %>
+        <div class="border-t border-fog px-5 py-3">
+          <%= link_to "Record payment", new_finance_vendor_payment_path, class: "text-xs font-semibold text-olive hover:underline" %>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="card overflow-hidden">
+      <div class="border-b border-fog px-5 py-3">
+        <h2 class="font-display text-lg text-ink">Receivables</h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="border-b border-fog bg-haze/60">
+            <tr>
+              <th scope="col" class="th">Customer</th>
+              <th scope="col" class="th text-right">Orders</th>
+              <th scope="col" class="th text-right">Balance</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-fog">
+            <% if @receivables.empty? %>
+              <tr><td colspan="3" class="td py-8 text-center text-taupe">No customer balances.</td></tr>
+            <% end %>
+            <% @receivables.each do |customer| %>
+              <tr class="hover:bg-cream">
+                <td class="td font-medium text-ink"><%= customer.name %></td>
+                <td class="td text-right text-mocha"><%= customer.order_count %></td>
+                <td class="td text-right font-semibold text-clay"><%= number_to_currency(customer.balance_cents.to_i / 100.0) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

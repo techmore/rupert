@@ -1,0 +1,79 @@
+<% content_for :title, "Expenses" %>
+<div class="space-y-6">
+  <section class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink">Expenses</h1>
+      <p class="mt-1 text-sm text-mocha">Money out across the last <%= @range_days %> days.</p>
+    </div>
+    <div class="flex gap-2">
+      <%= link_to "Export CSV", finance_expenses_path(category: @category, days: @range_days, format: :csv), class: "btn-ghost btn-sm", data: { turbo: false } %>
+      <% if Current.user.can?("finance.write") %>
+        <%= link_to "Record expense", new_finance_expense_path, class: "btn-primary" %>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="stat">
+      <p class="stat-label">Total</p>
+      <p class="stat-value mt-1"><%= number_to_currency(@total_cents / 100.0) %></p>
+      <p class="mt-1 text-xs text-taupe"><%= @expenses.length %> entries</p>
+    </div>
+    <% @by_category.first(3).each do |category, cents| %>
+      <div class="stat">
+        <p class="stat-label"><%= category.tr("_", " ").titleize %></p>
+        <p class="stat-value mt-1"><%= number_to_currency(cents / 100.0) %></p>
+      </div>
+    <% end %>
+  </section>
+
+  <%= form_tag finance_expenses_path, method: :get, class: "flex flex-wrap items-center gap-3" do %>
+    <%= select_tag :category, options_for_select([["All categories", "all"]] + Finance::Expense::CATEGORIES.map { |c| [c.tr("_", " ").titleize, c] }, @category), class: "select" %>
+    <%= select_tag :days, options_for_select([["Last 30 days", 30], ["Last 90 days", 90], ["Last year", 365]], @range_days), class: "select" %>
+    <label class="flex items-center gap-1.5 text-sm text-mocha">
+      <%= check_box_tag :include_deleted, "1", @include_deleted %> show deleted
+    </label>
+    <%= submit_tag "Filter", class: "btn-ghost btn-sm" %>
+  <% end %>
+
+  <div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th scope="col" class="th">Date</th>
+            <th scope="col" class="th">Payee</th>
+            <th scope="col" class="th">Category</th>
+            <th scope="col" class="th">Method</th>
+            <th scope="col" class="th text-right">Amount</th>
+            <th scope="col" class="th"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% if @expenses.empty? %>
+            <tr><td colspan="6" class="td py-8 text-center text-taupe">No expenses in this range.</td></tr>
+          <% end %>
+          <% @expenses.each do |expense| %>
+            <tr class="hover:bg-cream <%= expense.discarded? ? "opacity-50" : "" %>">
+              <td class="td whitespace-nowrap text-mocha"><%= l(expense.incurred_on, format: :short) %></td>
+              <td class="td font-medium text-ink"><%= expense.payee.presence || expense.vendor&.name || "—" %></td>
+              <td class="td"><span class="pill-taupe"><%= expense.category_label %></span></td>
+              <td class="td text-mocha capitalize"><%= expense.method %></td>
+              <td class="td text-right font-medium text-ink"><%= number_to_currency(expense.amount_cents / 100.0) %></td>
+              <td class="td text-right">
+                <% if Current.user.can?("finance.write") %>
+                  <% if expense.discarded? %>
+                    <%= button_to "Restore", restore_finance_expense_path(expense), method: :post, class: "text-xs font-semibold text-fern hover:underline" %>
+                  <% else %>
+                    <%= link_to "Edit", edit_finance_expense_path(expense), class: "text-xs font-semibold text-olive hover:underline" %>
+                    <%= button_to "Delete", finance_expense_path(expense), method: :delete, class: "ml-2 text-xs font-semibold text-rose hover:underline", data: { confirm: "Delete this expense?" } %>
+                  <% end %>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

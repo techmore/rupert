@@ -1,0 +1,55 @@
+<%= form_with model: expense, url: (expense.persisted? ? finance_expense_path(expense) : finance_expenses_path), class: "mt-6 space-y-4" do |f| %>
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div>
+      <%= f.label :payee, "Payee", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.text_field :payee, class: "input", placeholder: "Who was paid", autocomplete: "off" %>
+    </div>
+    <div>
+      <%= f.label :vendor_id, "Vendor (optional)", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.collection_select :vendor_id, @vendors, :id, :name, { include_blank: "—" }, class: "select w-full" %>
+    </div>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div>
+      <%= f.label :category, "Category", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.select :category, Finance::Expense::CATEGORIES.map { |c| [c.tr("_", " ").titleize, c] }, {}, class: "select w-full" %>
+    </div>
+    <div>
+      <%= f.label :amount, "Amount", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <div class="flex items-center gap-1">
+        <span class="text-sm text-mocha">$</span>
+        <%= f.number_field :amount, step: "0.01", min: "0.01", value: expense.amount_cents.to_i.positive? ? number_with_precision(expense.amount_cents / 100.0, precision: 2) : nil, class: "input" %>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div>
+      <%= f.label :incurred_on, "Date", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.date_field :incurred_on, class: "select w-full" %>
+    </div>
+    <div>
+      <%= f.label :method, "Method", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.select :method, Finance::Expense::METHODS, {}, class: "select w-full" %>
+    </div>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div>
+      <%= f.label :reference, "Reference", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.text_field :reference, class: "input", autocomplete: "off" %>
+    </div>
+    <div></div>
+  </div>
+
+  <div>
+    <%= f.label :notes, "Notes", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+    <%= f.text_area :notes, rows: 2, class: "input !rounded-2xl" %>
+  </div>
+
+  <div class="flex items-center gap-3 pt-2">
+    <%= f.submit expense.persisted? ? "Save changes" : "Record expense", class: "btn-primary" %>
+    <%= link_to "Cancel", finance_expenses_path, class: "btn-ghost" %>
+  </div>
+<% end %>

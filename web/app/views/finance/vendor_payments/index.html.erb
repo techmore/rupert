@@ -1,0 +1,66 @@
+<% content_for :title, "Payments to vendors" %>
+<div class="space-y-6">
+  <section class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink">Payments to vendors</h1>
+      <p class="mt-1 text-sm text-mocha">Money out against vendor purchase orders (accounts payable), last <%= @range_days %> days.</p>
+    </div>
+    <% if Current.user.can?("finance.write") %>
+      <%= link_to "Record payment", new_finance_vendor_payment_path, class: "btn-primary" %>
+    <% end %>
+  </section>
+
+  <section class="grid grid-cols-2 gap-4 lg:grid-cols-3">
+    <div class="stat">
+      <p class="stat-label">Paid out</p>
+      <p class="stat-value mt-1"><%= number_to_currency(@total_cents / 100.0) %></p>
+      <p class="mt-1 text-xs text-taupe"><%= @payments.length %> payments</p>
+    </div>
+  </section>
+
+  <%= form_tag finance_vendor_payments_path, method: :get, class: "flex flex-wrap items-center gap-3" do %>
+    <%= select_tag :days, options_for_select([["Last 30 days", 30], ["Last 90 days", 90], ["Last year", 365]], @range_days), class: "select" %>
+    <label class="flex items-center gap-1.5 text-sm text-mocha">
+      <%= check_box_tag :include_deleted, "1", @include_deleted %> show deleted
+    </label>
+    <%= submit_tag "Filter", class: "btn-ghost btn-sm" %>
+  <% end %>
+
+  <div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th scope="col" class="th">Date</th>
+            <th scope="col" class="th">Vendor</th>
+            <th scope="col" class="th">Method</th>
+            <th scope="col" class="th text-right">Amount</th>
+            <th scope="col" class="th"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% if @payments.empty? %>
+            <tr><td colspan="5" class="td py-8 text-center text-taupe">No payments in this range.</td></tr>
+          <% end %>
+          <% @payments.each do |payment| %>
+            <tr class="hover:bg-cream <%= payment.discarded? ? "opacity-50" : "" %>">
+              <td class="td whitespace-nowrap text-mocha"><%= l(payment.paid_on, format: :short) %></td>
+              <td class="td font-medium text-ink"><%= link_to payment.vendor.name, payment.vendor, class: "hover:text-olive hover:underline" %></td>
+              <td class="td text-mocha capitalize"><%= payment.method %></td>
+              <td class="td text-right font-medium text-ink"><%= number_to_currency(payment.amount_cents / 100.0) %></td>
+              <td class="td text-right">
+                <% if Current.user.can?("finance.write") %>
+                  <% if payment.discarded? %>
+                    <%= button_to "Restore", restore_finance_vendor_payment_path(payment), method: :post, class: "text-xs font-semibold text-fern hover:underline" %>
+                  <% else %>
+                    <%= button_to "Delete", finance_vendor_payment_path(payment), method: :delete, class: "text-xs font-semibold text-rose hover:underline", data: { confirm: "Delete this payment?" } %>
+                  <% end %>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

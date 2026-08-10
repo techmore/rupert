@@ -1,0 +1,46 @@
+<% content_for :title, "Record payment" %>
+<div class="space-y-6">
+  <section>
+    <h1 class="font-display text-3xl text-ink">Record payment</h1>
+    <p class="mt-1 text-sm text-mocha">A payment to a vendor reduces their accounts-payable balance.</p>
+  </section>
+  <div class="card card-pad max-w-xl">
+    <%= form_with model: @payment, url: finance_vendor_payments_path, class: "mt-6 space-y-4" do |f| %>
+      <div>
+        <%= f.label :vendor_id, "Vendor", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+        <%= f.collection_select :vendor_id, @vendors, :id, :name, {}, class: "select w-full" %>
+      </div>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <%= f.label :amount, "Amount", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+          <div class="flex items-center gap-1">
+            <span class="text-sm text-mocha">$</span>
+            <%= f.number_field :amount, step: "0.01", min: "0.01", class: "input" %>
+          </div>
+        </div>
+        <div>
+          <%= f.label :paid_on, "Date", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+          <%= f.date_field :paid_on, class: "select w-full" %>
+        </div>
+      </div>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <%= f.label :method, "Method", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+          <%= f.select :method, Finance::VendorPayment::METHODS, {}, class: "select w-full" %>
+        </div>
+        <div>
+          <%= f.label :reference, "Reference", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+          <%= f.text_field :reference, class: "input", autocomplete: "off" %>
+        </div>
+      </div>
+      <div>
+        <%= f.label :notes, "Notes", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+        <%= f.text_area :notes, rows: 2, class: "input !rounded-2xl" %>
+      </div>
+      <div class="flex items-center gap-3 pt-2">
+        <%= f.submit "Record payment", class: "btn-primary" %>
+        <%= link_to "Cancel", finance_vendor_payments_path, class: "btn-ghost" %>
+      </div>
+    <% end %>
+  </div>
+</div>
