@@ -50,7 +50,7 @@
                       <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-fog bg-haze font-display text-base text-taupe"><%= product.title.first.upcase %></span>
                     <% end %>
                     <div class="min-w-0">
-                      <p class="truncate font-medium text-ink"><%= variant.title %></p>
+                      <p class="truncate font-medium text-ink"><%= link_to variant.title, shopify_variant_path(variant), class: "hover:text-olive hover:underline" %></p>
                       <p class="truncate text-xs text-taupe"><%= product.title %></p>
                     </div>
                   </div>

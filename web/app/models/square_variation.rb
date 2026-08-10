@@ -26,4 +26,8 @@ class SquareVariation < ApplicationRecord
 
     where(sku: q).or(where("sku LIKE ?", "%#{q}%")).or(where("name LIKE ?", "%#{q}%"))
   }
+
+  def name_with_sku
+    sku.present? ? "#{name} (#{sku})" : name
+  end
 end

@@ -1,0 +1,125 @@
+<% content_for :title, @variant.title %>
+<div class="space-y-6">
+  <section class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink"><%= @variant.title %></h1>
+      <p class="mt-1 text-sm text-mocha">
+        <%= @product&.title %> · <span class="font-mono text-xs text-taupe"><%= @variant.sku.presence || "no SKU" %></span>
+        <% if @variant.tracked %><span class="ml-2 pill-fern">tracked</span><% end %>
+      </p>
+    </div>
+    <div class="flex gap-2">
+      <%= link_to "Inventory", inventory_index_path, class: "btn-ghost btn-sm" %>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="stat">
+      <p class="stat-label">Shopify</p>
+      <p class="stat-value mt-1"><%= @variant.inventoryQuantity %></p>
+      <p class="mt-1 text-xs text-taupe">on hand (Shopify)</p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Square</p>
+      <p class="stat-value mt-1">
+        <%= @link ? @link.square_variation&.levels&.sum(:quantity) || "—" : "—" %>
+      </p>
+      <p class="mt-1 text-xs text-taupe"><%= @link ? "via linked variation" : "not linked" %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Price</p>
+      <p class="stat-value mt-1"><%= number_to_currency(@variant.price) %></p>
+      <p class="mt-1 text-xs text-taupe">retail</p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Link</p>
+      <p class="stat-value-sm mt-1">
+        <% if @link %>
+          <span class="pill-fern">linked</span>
+        <% else %>
+          <span class="pill-taupe">unlinked</span>
+        <% end %>
+      </p>
+      <p class="mt-1 text-xs text-taupe"><%= @link ? @link.square_variation&.name : "no Square match" %></p>
+    </div>
+  </section>
+
+  <div class="grid gap-4 lg:grid-cols-2">
+    <section class="card card-pad">
+      <h2 class="font-display text-lg text-ink">Square link</h2>
+      <% if @link&.square_variation %>
+        <div class="mt-2 flex items-center justify-between rounded-xl bg-haze px-4 py-3">
+          <div>
+            <p class="text-sm font-medium text-ink"><%= @link.square_variation.name %></p>
+            <p class="text-xs text-taupe"><%= @link.square_variation.sku.presence || "no SKU" %> · linked <%= @link.matchSource %></p>
+          </div>
+          <% if Current.user.can?("inventory.write") %>
+            <%= button_to "Unlink", unlink_shopify_variant_path(@variant), method: :post, class: "btn-ghost btn-sm", data: { confirm: "Break this link? The next sync may re-link it by SKU." } %>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="mt-2 text-sm text-taupe">No Square variation linked to this variant yet.</p>
+      <% end %>
+
+      <% if Current.user.can?("inventory.write") && @square_variations.any? %>
+        <p class="mt-4 text-xs font-semibold uppercase tracking-wide text-mocha">Link to a Square variation</p>
+        <%= form_tag link_shopify_variant_path(@variant), method: :post, class: "mt-2 flex items-center gap-2" do %>
+          <%= select_tag :square_variation_id, options_from_collection_for_select(@square_variations, :id, :name_with_sku), class: "select flex-1" %>
+          <%= submit_tag "Link", class: "btn-primary btn-sm" %>
+        <% end %>
+      <% end %>
+    </section>
+
+    <section class="card card-pad">
+      <h2 class="font-display text-lg text-ink">Levels</h2>
+      <div class="mt-2 space-y-2">
+        <% if @shopify_levels.empty? %>
+          <p class="text-sm text-taupe">No inventory levels recorded.</p>
+        <% end %>
+        <% @shopify_levels.each do |level| %>
+          <div class="flex items-center justify-between rounded-xl bg-haze px-4 py-2.5 text-sm">
+            <span class="text-mocha"><%= level.location&.name || "Unknown location" %></span>
+            <span class="font-medium text-ink"><%= level.quantity %> <span class="text-xs text-taupe">available <%= level.available %></span></span>
+          </div>
+        <% end %>
+      </div>
+    </section>
+  </div>
+
+  <div class="grid gap-4 lg:grid-cols-2">
+    <section class="card card-pad">
+      <h2 class="font-display text-lg text-ink">Movements</h2>
+      <% if @movements.empty? %>
+        <p class="mt-2 text-sm text-taupe">No quantity movements recorded.</p>
+      <% else %>
+        <ul class="mt-2 divide-y divide-fog">
+          <% @movements.each do |m| %>
+            <li class="flex items-center justify-between py-2 text-sm">
+              <div class="min-w-0">
+                <p class="truncate text-ink"><%= m.reason.presence || m.reference %></p>
+                <p class="text-xs text-taupe"><%= l(m.createdAt, format: :short) %></p>
+              </div>
+              <span class="font-mono text-xs <%= m.delta.negative? ? "text-clay" : "text-fern" %>"><%= m.delta >= 0 ? "+#{m.delta}" : m.delta %></span>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+    </section>
+
+    <section class="card card-pad">
+      <h2 class="font-display text-lg text-ink">Alerts</h2>
+      <% if @alerts.empty? %>
+        <p class="mt-2 text-sm text-taupe">No stock alerts for this variant.</p>
+      <% else %>
+        <ul class="mt-2 divide-y divide-fog">
+          <% @alerts.each do |a| %>
+            <li class="flex items-center justify-between py-2 text-sm">
+              <span class="text-ink"><%= a.quantity %> on hand</span>
+              <span class="text-xs text-taupe"><%= a.createdAt.strftime("%b %e") %></span>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+    </section>
+  </div>
+</div>
