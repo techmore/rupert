@@ -7,6 +7,8 @@
 class SyncEngine
   class AlreadyRunning < StandardError; end
 
+  STALE_RUN_AFTER = 45.minutes
+
   class << self
     def run!(mode: "manual", actor: "user", tenant: nil)
       Current.tenant = tenant if tenant
@@ -76,7 +78,17 @@ class SyncEngine
     private
 
     def guard_running!
+      recover_stale_runs!
       raise AlreadyRunning, "A sync is already running" if running?
+    end
+
+    def recover_stale_runs!
+      cutoff = STALE_RUN_AFTER.ago
+      SyncRun.where(status: "running").where('"startedAt" < ?', cutoff).update_all(
+        status: "failed",
+        finishedAt: Time.current,
+        error: "Automatically recovered stale sync after #{STALE_RUN_AFTER.inspect}",
+      )
     end
   end
 end

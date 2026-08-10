@@ -3,6 +3,8 @@
 class SyncJob < ApplicationJob
   queue_as :default
 
+  retry_on ActiveRecord::PreparedStatementCacheExpired, wait: 5.seconds, attempts: 2
+
   def perform(payload = {})
     mode = payload["mode"] || payload[:mode] || "manual"
     source = payload["source"] || payload[:source]

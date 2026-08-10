@@ -5,12 +5,13 @@
 class SalesAnnouncementJob < ApplicationJob
   queue_as :default
 
+  retry_on StandardError, wait: :polynomially_longer, attempts: 5
+  discard_on ActiveRecord::RecordNotFound
+
   def perform(tenant_id)
     tenant = Tenant.find(tenant_id)
     Current.tenant = tenant
     SalesAnnouncer.announce!
-  rescue StandardError
-    nil
   ensure
     Current.tenant = nil
   end

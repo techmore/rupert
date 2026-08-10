@@ -69,12 +69,12 @@ class SalesAnnouncementJobTest < ActiveSupport::TestCase
     other.destroy
   end
 
-  test "job no-ops and clears tenant when the tenant is gone" do
+  test "job discards and clears tenant when the tenant is gone" do
     missing = Tenant.create!(name: "Gone", subdomain: "goneco")
     missing.destroy
 
     BuzzAgent.stubs(:configured?).returns(true)
-    assert_nil SalesAnnouncementJob.perform_now(missing.id)
+    assert_nothing_raised { SalesAnnouncementJob.perform_now(missing.id) }
     assert_nil Current.tenant
   end
 end
