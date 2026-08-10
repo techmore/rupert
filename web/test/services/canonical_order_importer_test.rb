@@ -113,6 +113,15 @@ class CanonicalOrderImporterTest < ActiveSupport::TestCase
     assert_equal customer.id, order.customer_id
   end
 
+  test "from_square! stores money in cents without inflating (amounts are already cents)" do
+    CanonicalOrderImporter.from_square!([square_order])
+    order = Core::Order.find_by(source: "square", source_order_id: "sq-abc")
+    assert_equal 1200, order.gross_cents
+    assert_equal 100, order.tax_cents
+    assert_equal 1000, order.order_lines.first.unit_cents
+    assert_equal 1000, order.order_lines.first.line_cents
+  end
+
   test "from_shopify! imports fulfillments returned as a plain array (new query shape)" do
     order = shopify_order
     order["fulfillments"] = [

@@ -305,10 +305,14 @@ class CanonicalOrderImporter
       end
     end
 
+    # Converts a platform money payload into cents. Shopify money amounts are
+    # dollar strings ("63.60") needing *100; Square money amounts are already
+    # integer cents and pass through unchanged.
     def money_cents(hash)
       return if hash.blank?
 
-      (hash["amount"].to_f * 100).round
+      amount = hash["amount"]
+      amount.is_a?(Numeric) ? amount.to_i : (amount.to_f * 100).round
     end
 
     def parse_time(value)
