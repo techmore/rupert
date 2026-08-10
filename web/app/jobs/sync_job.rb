@@ -3,6 +3,8 @@
 class SyncJob < ApplicationJob
   queue_as :default
 
+  retry_on ActiveRecord::PreparedStatementCacheExpired, wait: 5.seconds, attempts: 2
+
   def perform(payload = {})
     mode = payload["mode"] || payload[:mode] || "manual"
     source = payload["source"] || payload[:source]
@@ -21,6 +23,7 @@ class SyncJob < ApplicationJob
     end
 
     BuzzNotifyJob.perform_later(sync_message(run))
+    SalesAnnouncementJob.perform_later(tenant_id)
   rescue StandardError => e
     BuzzNotifyJob.perform_later("Sync failed: #{e.message.to_s[0, 300]}")
     raise
