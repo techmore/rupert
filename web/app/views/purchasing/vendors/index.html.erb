@@ -1,0 +1,51 @@
+<% content_for :title, "Vendors" %>
+<div class="space-y-6">
+  <section class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink">Vendors</h1>
+      <p class="mt-1 text-sm text-mocha">Who the shop buys from, with their purchase-order history.</p>
+    </div>
+    <% if Current.user.can?("purchasing.write") %>
+      <%= link_to "Add vendor", new_purchasing_vendor_path, class: "btn-primary" %>
+    <% end %>
+  </section>
+
+  <%= form_tag purchasing_vendors_path, method: :get, class: "max-w-sm" do %>
+    <input type="search" name="q" value="<%= @q %>" placeholder="Search vendors…" class="search w-full" autocomplete="off">
+  <% end %>
+
+  <div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th scope="col" class="th">Vendor</th>
+            <th scope="col" class="th">Contact</th>
+            <th scope="col" class="th">Email</th>
+            <th scope="col" class="th">Terms</th>
+            <th scope="col" class="th text-right">Orders</th>
+            <th scope="col" class="th text-right">Open PO</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% if @vendors.empty? %>
+            <tr><td colspan="6" class="td py-8 text-center text-taupe"><%= @q.present? ? "Nothing matches that search." : "No vendors yet — add the first one." %></td></tr>
+          <% end %>
+          <% @vendors.each do |vendor| %>
+            <tr class="hover:bg-cream">
+              <td class="td font-medium text-ink"><%= link_to vendor.name, vendor, class: "hover:text-olive hover:underline" %></td>
+              <td class="td text-mocha"><%= vendor.contact_name.presence || "—" %></td>
+              <td class="td text-mocha"><%= vendor.email.presence || "—" %></td>
+              <td class="td"><span class="pill-taupe"><%= vendor.payment_terms.presence || "—" %></span></td>
+              <td class="td text-right text-mocha"><%= vendor.purchase_orders.count %></td>
+              <td class="td text-right">
+                <% open = vendor.purchase_orders.where(status: ["draft", "ordered"]).count %>
+                <% if open.positive? %><span class="pill-clay"><%= open %> open</span><% else %><span class="text-taupe">—</span><% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

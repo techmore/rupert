@@ -1,0 +1,140 @@
+<% content_for :title, @purchase_order.order_number %>
+<div class="space-y-6">
+  <section class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink"><%= @purchase_order.order_number %></h1>
+      <p class="mt-1 text-sm text-mocha">
+        <%= link_to @purchase_order.vendor.name, @purchase_order.vendor, class: "text-olive hover:underline" %>
+        · <span class="<%= @purchase_order.status == "received" ? "pill-fern" : @purchase_order.status == "ordered" ? "pill-olive" : @purchase_order.status == "cancelled" ? "pill-rose" : "pill-taupe" %>"><%= @purchase_order.status %></span>
+      </p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <% if @purchase_order.draft? && Current.user.can?("purchasing.write") %>
+        <%= button_to "Place order", place_order_purchasing_purchase_order_path(@purchase_order), method: :post, class: "btn-primary btn-sm", data: { confirm: "Place this order with the vendor?" } %>
+        <%= link_to "Edit", edit_purchasing_purchase_order_path(@purchase_order), class: "btn-ghost btn-sm" %>
+        <%= button_to "Delete", @purchase_order, method: :delete, class: "btn-ghost btn-sm", data: { confirm: "Delete this draft?" } %>
+      <% elsif @purchase_order.status == "ordered" %>
+        <%= button_to "Cancel order", cancel_purchasing_purchase_order_path(@purchase_order), method: :post, class: "btn-ghost btn-sm", data: { confirm: "Cancel this order?" } %>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="stat">
+      <p class="stat-label">Ordered</p>
+      <p class="stat-value mt-1"><%= number_to_currency(@purchase_order.total_cents / 100.0) %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Received</p>
+      <p class="stat-value mt-1"><%= number_to_currency(@purchase_order.received_cents / 100.0) %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Owed to vendor</p>
+      <p class="stat-value mt-1 <%= @purchase_order.pending_cents.positive? ? "text-clay" : "text-ink" %>"><%= number_to_currency(@purchase_order.pending_cents / 100.0) %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Expected</p>
+      <p class="stat-value-sm mt-1"><%= @purchase_order.expected_date ? l(@purchase_order.expected_date, format: :long) : "—" %></p>
+    </div>
+  </section>
+
+  <div class="card overflow-hidden">
+    <div class="border-b border-fog px-5 py-3">
+      <h2 class="font-display text-lg text-ink">Lines</h2>
+    </div>
+
+    <% if @purchase_order.draft? && Current.user.can?("purchasing.write") %>
+      <div class="border-b border-fog bg-haze/40 px-5 py-3">
+        <p class="text-xs text-taupe">Add lines to this draft, then place the order.</p>
+        <%= form_tag add_line_purchasing_purchase_order_path(@purchase_order), method: :post, class: "mt-2 flex flex-wrap items-end gap-2" do %>
+          <div>
+            <label class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-mocha" for="line_name">Item</label>
+            <input type="text" id="line_name" name="name" class="input" placeholder="e.g. Honey Sticks 50g" required>
+          </div>
+          <div>
+            <label class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-mocha" for="line_sku">SKU</label>
+            <input type="text" id="line_sku" name="sku" class="input w-32" placeholder="TEA-50">
+          </div>
+          <div>
+            <label class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-mocha" for="line_qty">Qty</label>
+            <input type="number" id="line_qty" name="quantity" value="1" min="1" class="input w-20">
+          </div>
+          <div>
+            <label class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-mocha" for="line_cost">Unit cost</label>
+            <div class="flex items-center gap-1">
+              <span class="text-sm text-mocha">$</span>
+              <input type="number" id="line_cost" name="unit_cost" step="0.01" min="0" class="input w-24">
+            </div>
+          </div>
+          <%= submit_tag "Add line", class: "btn-primary btn-sm" %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th scope="col" class="th">Item</th>
+            <th scope="col" class="th">SKU</th>
+            <th scope="col" class="th text-right">Qty</th>
+            <th scope="col" class="th text-right">Unit cost</th>
+            <th scope="col" class="th text-right">Total</th>
+            <th scope="col" class="th text-right">Received</th>
+            <% if @purchase_order.draft? && Current.user.can?("purchasing.write") %><th scope="col" class="th"></th><% end %>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% if @lines.empty? %>
+            <tr><td colspan="<%= @purchase_order.draft? ? 7 : 6 %>" class="td py-8 text-center text-taupe">No lines yet.</td></tr>
+          <% end %>
+          <% @lines.each do |line| %>
+            <tr class="hover:bg-cream">
+              <td class="td font-medium text-ink"><%= line.name %></td>
+              <td class="td font-mono text-xs text-mocha"><%= line.sku.presence || "—" %></td>
+              <td class="td text-right text-mocha"><%= line.quantity %></td>
+              <td class="td text-right text-mocha"><%= number_to_currency(line.unit_cost_cents / 100.0) %></td>
+              <td class="td text-right font-medium text-ink"><%= number_to_currency(line.line_cents / 100.0) %></td>
+              <td class="td text-right">
+                <% if line.received_quantity.positive? %>
+                  <span class="<%= line.received_quantity >= line.quantity ? "text-fern" : "text-clay" %>"><%= line.received_quantity %> / <%= line.quantity %></span>
+                <% else %>
+                  <span class="text-taupe">—</span>
+                <% end %>
+              </td>
+              <% if @purchase_order.draft? && Current.user.can?("purchasing.write") %>
+                <td class="td text-right">
+                  <%= button_to "Remove", remove_line_purchasing_purchase_order_path(@purchase_order, line_id: line.id), method: :post, class: "text-xs font-semibold text-rose hover:underline" %>
+                </td>
+              <% end %>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if @purchase_order.status == "ordered" && Current.user.can?("purchasing.write") && @lines.any? %>
+      <div class="border-t border-fog px-5 py-4">
+        <h3 class="text-sm font-semibold text-ink">Receive goods</h3>
+        <p class="text-xs text-taupe">Enter what arrived for each line.</p>
+        <%= form_tag receive_purchasing_purchase_order_path(@purchase_order), method: :post, class: "mt-3 space-y-2" do %>
+          <% @lines.each do |line| %>
+            <div class="flex flex-wrap items-center gap-3">
+              <span class="min-w-0 flex-1 truncate text-sm text-ink"><%= line.name %></span>
+              <span class="text-xs text-taupe">ordered <%= line.quantity %></span>
+              <input type="number" name="received[<%= line.id %>]" value="<%= line.received_quantity %>" min="0" max="<%= line.quantity %>" class="input w-24">
+            </div>
+          <% end %>
+          <%= submit_tag "Save received", class: "btn-primary" %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @purchase_order.notes.present? %>
+    <section class="card card-pad">
+      <h2 class="font-display text-lg text-ink">Notes</h2>
+      <p class="mt-1 whitespace-pre-wrap text-sm text-mocha"><%= @purchase_order.notes %></p>
+    </section>
+  <% end %>
+</div>

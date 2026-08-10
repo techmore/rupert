@@ -18,6 +18,7 @@ class ModuleRegistry
     Entry.new(key: "registers", name: "Registers", path: -> { sales_pos_sessions_path }, permission: "sales.read", position: 25),
     Entry.new(key: "customers", name: "Customers", path: -> { customers_path }, permission: "customers.read", position: 30),
     Entry.new(key: "inventory", name: "Inventory", path: -> { inventory_index_path }, permission: "inventory.read", position: 40),
+    Entry.new(key: "locations", name: "Locations", path: -> { locations_path }, permission: "inventory.read", position: 42),
     Entry.new(key: "reconcile", name: "Reconcile", path: -> { reconcile_index_path }, permission: "reconcile.read", position: 50),
     Entry.new(key: "reports", name: "Reports", path: -> { reports_path }, permission: "reports.read", position: 55),
     Entry.new(key: "ledger", name: "Ledger", path: -> { ledger_index_path }, permission: "ledger.read", position: 60),
@@ -25,11 +26,17 @@ class ModuleRegistry
     Entry.new(key: "goals", name: "Goals", path: -> { goals_goals_path }, permission: "projects.read", position: 75),
     Entry.new(key: "kpis", name: "KPIs", path: -> { goals_kpis_path }, permission: "projects.read", position: 78),
     Entry.new(key: "alerts", name: "Alerts", path: -> { alerts_path }, permission: "alerts.read", position: 80),
+    Entry.new(key: "activity", name: "Activity", path: -> { activity_path }, permission: "settings.read", position: 82),
     Entry.new(key: "sync", name: "Sync", path: -> { syncs_path }, permission: "sync.read", position: 90),
     Entry.new(key: "system", name: "System", path: -> { system_path }, permission: "system.read", position: 95),
     Entry.new(key: "settings", name: "Settings", path: -> { settings_path }, permission: "settings.read", position: 100),
     Entry.new(key: "employees", name: "Employees", path: -> { users_path }, permission: "users.read", position: 85),
     Entry.new(key: "permissions", name: "Permissions", path: -> { permissions_path }, permission: "users.read", position: 86),
+    Entry.new(key: "vendors", name: "Vendors", path: -> { purchasing_vendors_path }, permission: "purchasing.read", position: 45),
+    Entry.new(key: "purchase_orders", name: "Purchase orders", path: -> { purchasing_purchase_orders_path }, permission: "purchasing.read", position: 46),
+    Entry.new(key: "accounts", name: "Accounts", path: -> { finance_accounts_path }, permission: "finance.read", position: 47),
+    Entry.new(key: "expenses", name: "Expenses", path: -> { finance_expenses_path }, permission: "finance.read", position: 48),
+    Entry.new(key: "payments", name: "Payments", path: -> { finance_vendor_payments_path }, permission: "finance.read", position: 49),
   ].freeze
 
   class << self
@@ -50,10 +57,12 @@ class ModuleRegistry
     # entry keys that belong to the area, in display order.
     AREAS = [
       { key: "overview", name: "Overview", modules: ["dashboard"] },
-      { key: "commerce", name: "Commerce", modules: ["sales", "registers", "customers", "inventory"] },
+      { key: "commerce", name: "Commerce", modules: ["sales", "registers", "customers", "inventory", "locations"] },
       { key: "operations", name: "Operations", modules: ["reports", "reconcile", "ledger", "projects", "goals", "kpis"] },
+      { key: "purchasing", name: "Purchasing", modules: ["vendors", "purchase_orders"] },
+      { key: "finance", name: "Finance", modules: ["accounts", "expenses", "payments"] },
       { key: "team", name: "Team", modules: ["employees", "permissions"] },
-      { key: "system", name: "System", modules: ["system", "alerts", "sync", "settings"] },
+      { key: "system", name: "System", modules: ["system", "alerts", "activity", "sync", "settings"] },
     ].freeze
 
     def area_key_for(module_key)

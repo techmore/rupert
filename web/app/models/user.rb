@@ -54,6 +54,10 @@ class User < ActiveRecord::Base
       "system.read",
       "users.read",
       "users.write",
+      "purchasing.read",
+      "purchasing.write",
+      "finance.read",
+      "finance.write",
     ],
     "manager" => [
       "dashboard.read",
@@ -157,7 +161,7 @@ class User < ActiveRecord::Base
       },
       {
         area: "System",
-        permissions: ["alerts.read", "alerts.write", "sync.read", "sync.write", "settings.read", "system.read", "users.read", "users.write"],
+        permissions: ["alerts.read", "alerts.write", "sync.read", "sync.write", "settings.read", "system.read", "users.read", "users.write", "purchasing.read", "purchasing.write", "finance.read", "finance.write"],
       },
     ]
   end
