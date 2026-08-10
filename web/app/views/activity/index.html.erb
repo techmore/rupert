@@ -1,0 +1,44 @@
+<% content_for :title, "Activity" %>
+<div class="space-y-6">
+  <section>
+    <h1 class="font-display text-3xl text-ink">Activity</h1>
+    <p class="mt-1 text-sm text-mocha">Audit trail — who did what, and when. The last <%= @activities.length %> actions.</p>
+  </section>
+
+  <div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th scope="col" class="th">When</th>
+            <th scope="col" class="th">Who</th>
+            <th scope="col" class="th">Action</th>
+            <th scope="col" class="th">Subject</th>
+            <th scope="col" class="th">Details</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% if @activities.empty? %>
+            <tr><td colspan="5" class="td py-8 text-center text-taupe">No activity recorded yet.</td></tr>
+          <% end %>
+          <% @activities.each do |a| %>
+            <tr class="hover:bg-cream">
+              <td class="td whitespace-nowrap text-mocha"><%= l(a.created_at, format: :short) %></td>
+              <td class="td font-medium text-ink"><%= a.actor_name %></td>
+              <td class="td"><span class="pill-taupe"><%= a.action.tr("_", " ") %></span></td>
+              <td class="td text-mocha">
+                <% if a.subject_type %>
+                  <span class="text-xs text-taupe"><%= a.subject_type.demodulize.underscore %></span>
+                  <% if a.subject_label %><span class="ml-1 font-medium text-ink"><%= a.subject_label %></span><% end %>
+                <% else %>
+                  <span class="text-taupe">—</span>
+                <% end %>
+              </td>
+              <td class="td max-w-[280px] truncate text-xs text-taupe"><%= a.details.presence || "—" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

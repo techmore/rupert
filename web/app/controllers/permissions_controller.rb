@@ -24,11 +24,13 @@ class PermissionsController < AuthenticatedController
         RolePermission.create!(tenant_id: Current.tenant_id, role: role, permission: permission, enabled: true)
       end
     end
+    ActivityLogger.log("role_permissions_saved", details: "role overrides updated")
     redirect_to(permissions_path, notice: "Permissions saved.")
   end
 
   def reset
     RolePermission.where(tenant_id: Current.tenant_id).delete_all
+    ActivityLogger.log("role_permissions_reset", details: "cleared to defaults")
     redirect_to(permissions_path, notice: "Permissions reset to defaults.")
   end
 

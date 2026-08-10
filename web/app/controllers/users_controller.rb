@@ -19,6 +19,7 @@ class UsersController < AuthenticatedController
   def create
     @user = User.new(user_params.merge(tenant_id: Current.tenant_id))
     if @user.save
+      ActivityLogger.log("employee_added", subject: @user, details: @user.role)
       redirect_to(users_path, notice: "#{@user.display_name} added.")
     else
       @roles = User.roles.keys
@@ -37,11 +38,13 @@ class UsersController < AuthenticatedController
     raw = params[:permissions]
     permissions = raw.is_a?(ActionController::Parameters) ? raw.to_unsafe_h.keys : []
     @user.update_permission_overrides!(permissions)
+    ActivityLogger.log("employee_permissions", subject: @user, details: permissions.join(", "))
     redirect_to(edit_user_path(@user), notice: "Permissions updated for #{@user.display_name}.")
   end
 
   def update
     if @user.update(user_params)
+      ActivityLogger.log("employee_updated", subject: @user, details: @user.role)
       redirect_to(users_path, notice: "#{@user.display_name} updated.")
     else
       @roles = User.roles.keys
@@ -53,6 +56,7 @@ class UsersController < AuthenticatedController
     return redirect_to(users_path, alert: "You can't remove your own account.") if @user == Current.user
 
     @user.destroy
+    ActivityLogger.log("employee_removed", subject: @user)
     redirect_to(users_path, notice: "#{@user.display_name} removed.")
   end
 
@@ -60,11 +64,13 @@ class UsersController < AuthenticatedController
     return redirect_to(users_path, alert: "You can't deactivate your own account.") if @user == Current.user
 
     @user.update!(active: false)
+    ActivityLogger.log("employee_deactivated", subject: @user)
     redirect_to(users_path, notice: "#{@user.display_name} deactivated.")
   end
 
   def activate
     @user.update!(active: true)
+    ActivityLogger.log("employee_reactivated", subject: @user)
     redirect_to(users_path, notice: "#{@user.display_name} reactivated.")
   end
 
