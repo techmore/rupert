@@ -3,8 +3,7 @@
 class LedgerController < AuthenticatedController
   def index
     @source = params[:source].presence || "all"
-    @window_days = params[:window].to_i.clamp(1, 365)
-    @window_days = 30 if @window_days.zero?
+    @window_days = params[:window].present? ? params[:window].to_i.clamp(1, 365) : 30
 
     since = Time.current - @window_days.days
     scope = LedgerEntry.since(since).by_source(@source)
