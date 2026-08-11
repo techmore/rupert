@@ -92,6 +92,29 @@ class SearchFlowTest < ActionDispatch::IntegrationTest
     assert_select "kbd", "/"
   end
 
+  test "search returns employees for users with hr.read" do
+    People::Employee.create!(tenant_id: @tenant.id, first_name: "Casey", last_name: "Adams", employee_number: "E-SRCH", email: "casey@example.com")
+
+    get search_path, params: { q: "casey", shop: "m11u0i-sb.myshopify.com", embedded: "1" }
+    assert_response :success
+    json = JSON.parse(response.body)
+    employee = json.find { |r| r["type"] == "employee" }
+    assert_equal "Casey Adams", employee["label"]
+    assert_match %r{^/people/employees/\d+}, employee["path"]
+  end
+
+  test "employees are hidden from users without hr.read" do
+    People::Employee.create!(tenant_id: @tenant.id, first_name: "Casey", last_name: "Adams", employee_number: "E-SRCH")
+    User.create!(email: "cashier@example.com", password: "password123", role: "cashier", tenant_id: @tenant.id)
+    post logout_path
+    post login_path, params: { email: "cashier@example.com", password: "password123" }
+
+    get search_path, params: { q: "casey", shop: "m11u0i-sb.myshopify.com", embedded: "1" }
+    assert_response :success
+    json = JSON.parse(response.body)
+    refute json.any? { |r| r["type"] == "employee" }
+  end
+
   test "search is tenant-scoped" do
     other = Tenant.create!(name: "Other", subdomain: "other")
     User.create!(email: "other@example.com", password: "password123", role: "admin", tenant_id: other.id)

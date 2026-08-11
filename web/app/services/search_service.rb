@@ -14,6 +14,7 @@ class SearchService
       results.concat(search_orders(term))
       results.concat(search_customers(term))
       results.concat(search_variants(term))
+      results.concat(search_employees(term))
       results.first(limit)
     end
 
@@ -64,6 +65,23 @@ class SearchService
             label: variant.sku.presence || variant.title,
             sub_label: "#{variant.product&.title} · #{number(variant.price.to_f)}",
             path: Rails.application.routes.url_helpers.shopify_variant_path(variant),
+          )
+        end
+    end
+
+    def search_employees(term)
+      return [] unless Current.user&.can?("hr.read")
+
+      People::Employee.where(tenant_id: Current.tenant_id)
+        .where("first_name ILIKE :q OR last_name ILIKE :q OR employee_number ILIKE :q OR email ILIKE :q", q: "%#{term}%")
+        .order(:last_name)
+        .limit(5)
+        .map do |employee|
+          Result.new(
+            type: "employee",
+            label: employee.name,
+            sub_label: employee.department&.name.presence || employee.position&.name.presence || employee.status.tr("_", " "),
+            path: Rails.application.routes.url_helpers.people_employee_path(employee),
           )
         end
     end

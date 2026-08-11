@@ -16,6 +16,7 @@ class DashboardWidget
     Widget.new(key: "sync_history", label: "Sync history", partial: "home/widgets/sync_history", position: 60),
     Widget.new(key: "reconcile_runs", label: "Latest reconcile runs", partial: "home/widgets/reconcile_runs", position: 70),
     Widget.new(key: "goals", label: "Goals & KPIs", partial: "home/widgets/goals", position: 75),
+    Widget.new(key: "people", label: "People", partial: "home/widgets/people", position: 80),
   ].freeze
 
   def self.all
