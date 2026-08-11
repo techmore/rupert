@@ -169,6 +169,64 @@
 
   <section class="card card-pad">
     <div class="flex items-baseline justify-between">
+      <h2 class="font-display text-xl text-ink">Google sign-in</h2>
+      <span class="<%= GoogleOauthService.configured? ? "pill-fern" : "pill-taupe" %>"><%= GoogleOauthService.configured? ? "Configured" : "Not configured" %></span>
+    </div>
+    <p class="mt-2 text-xs text-taupe">Let your team sign in with their Google account. Only email domains you allow below can get in — everyone else is rejected at the door. New people on an allowed domain get a reader account automatically.</p>
+
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl bg-haze px-4 py-3">
+        <p class="text-xs font-medium text-mocha">OAuth redirect URI (register this in Google Cloud)</p>
+        <code class="mt-1 inline-block cursor-pointer select-all rounded-lg bg-cream px-3 py-1.5 font-mono text-xs text-ink" onclick="navigator.clipboard.writeText('<%= google_callback_url %>')"><%= google_callback_url %></code>
+      </div>
+      <div class="rounded-xl bg-haze px-4 py-3">
+        <p class="text-xs font-medium text-mocha">Allowlist</p>
+        <p class="mt-1 text-sm text-ink"><%= OauthAllowedDomain.count.zero? ? "No domains allowed yet" : pluralize(OauthAllowedDomain.count, "allowed domain") %> · <%= OauthAllowedDomain.allowed?(Current.user.email) ? "you're on it" : "you're not on it" %></p>
+      </div>
+    </div>
+
+    <%= form_tag oauth_credentials_settings_path, method: :post, class: "mt-4 grid gap-4 sm:grid-cols-2" do %>
+      <div>
+        <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="client_id">Client ID</label>
+        <input type="text" id="client_id" name="client_id" value="<%= EnvStore.fetch("GOOGLE_OAUTH_CLIENT_ID", "") %>" class="input">
+      </div>
+      <div>
+        <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="client_secret">Client secret</label>
+        <input type="password" id="client_secret" name="client_secret" value="<%= EnvStore.fetch("GOOGLE_OAUTH_CLIENT_SECRET", "") %>" class="input">
+      </div>
+      <div class="sm:col-span-2">
+        <%= submit_tag "Save Google credentials", class: "btn-primary" %>
+      </div>
+    <% end %>
+
+    <div class="mt-6">
+      <h3 class="text-sm font-display text-ink">Allowed email domains</h3>
+      <p class="mt-1 text-xs text-taupe">Add a domain like <code class="font-mono">herbalhealers.com</code>. Anyone with a Google account at that domain can sign in.</p>
+
+      <div class="mt-3 flex flex-wrap gap-2">
+        <% OauthAllowedDomain.order(:domain).each do |allowed| %>
+          <span class="inline-flex items-center gap-2 rounded-full bg-haze px-3 py-1.5 text-xs text-ink">
+            <span class="font-mono">@<%= allowed.domain %></span>
+            <%= button_to "×", oauth_domains_settings_path, method: :delete, params: { domain: allowed.domain }, class: "text-taupe hover:text-rose", title: "Remove #{allowed.domain}", aria: { label: "Remove #{allowed.domain}" } %>
+          </span>
+        <% end %>
+        <% if OauthAllowedDomain.none? %>
+          <span class="rounded-full bg-haze px-3 py-1.5 text-xs text-taupe">No domains allowed yet.</span>
+        <% end %>
+      </div>
+
+      <%= form_tag oauth_domains_settings_path, method: :post, class: "mt-3 flex items-end gap-2" do %>
+        <div class="flex-1">
+          <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="new_domain">New domain</label>
+          <input type="text" id="new_domain" name="domain" placeholder="example.com" class="input">
+        </div>
+        <%= submit_tag "Allow domain", class: "btn-primary btn-sm" %>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="card card-pad">
+    <div class="flex items-baseline justify-between">
       <h2 class="font-display text-xl text-ink">Buzz agent</h2>
       <span class="<%= BuzzAgent.configured? ? "pill-fern" : "pill-taupe" %>"><%= BuzzAgent.configured? ? "Configured" : "Not configured" %></span>
     </div>

@@ -7,6 +7,9 @@ Rails.application.routes.draw do
   post "/login", to: "sessions#create"
   delete "/logout", to: "sessions#destroy", as: :logout
 
+  get "/auth/google", to: "oauth#authorize", as: :google_auth
+  get "/auth/google/callback", to: "oauth#callback", as: :google_callback
+
   get "/setup", to: "setup#new", as: :setup
   post "/setup", to: "setup#create"
 
@@ -190,6 +193,9 @@ Rails.application.routes.draw do
   resource :settings, only: :show do
     post :tenant
     post :fulfillment_workflow
+    post :oauth_credentials
+    post :oauth_domains
+    delete :oauth_domains, to: "settings#oauth_remove_domain"
     get :env, defaults: { format: :json }
     post :env_import, defaults: { format: :json }
     get :env_export

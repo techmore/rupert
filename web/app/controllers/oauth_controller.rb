@@ -1,0 +1,68 @@
+# frozen_string_literal: true
+
+# Google sign-in for the login page. Reaches Google before the user is
+# authenticated, so it must skip the usual require_login gate.
+#
+# Flow:
+#   GET /auth/google              → redirect to Google's consent screen
+#   GET /auth/google/callback     → exchange code, verify domain, sign in
+#
+# Domain enforcement: the user's email domain must be in OauthAllowedDomain.
+# Unknown domains are rejected; known domains with an existing Rupert account
+# sign in, and known domains without one get a reader account auto-provisioned.
+class OauthController < ApplicationController
+  skip_before_action :require_login, only: [:authorize, :callback]
+
+  def authorize
+    state = SecureRandom.hex(24)
+    session[:oauth_state] = state
+    redirect_to(
+      GoogleOauthService.auth_url(redirect_uri: google_callback_url, state: state),
+      allow_other_host: true,
+    )
+  rescue GoogleOauthService::NotConfiguredError => e
+    redirect_to(login_path, alert: e.message)
+  end
+
+  def callback
+    if params[:error].present?
+      return redirect_to(login_path, alert: "Google sign-in was declined.")
+    end
+    if session[:oauth_state].blank? || session[:oauth_state] != params[:state]
+      return redirect_to(login_path, alert: "Google sign-in failed the state check. Try again.")
+    end
+
+    info = GoogleOauthService.exchange_code!(params[:code], redirect_uri: google_callback_url)
+    session.delete(:oauth_state)
+
+    email = info["email"].to_s.downcase
+    unless OauthAllowedDomain.allowed?(email)
+      return redirect_to(login_path, alert: "Your Google account (#{email}) isn't on an allowed domain. Ask an admin to allow #{email.split("@").last}.")
+    end
+
+    user = find_or_create_user!(email, info)
+    reset_session # prevent session fixation
+    session[:user_id] = user.id
+    redirect_to(root_path, notice: "Signed in with Google.")
+  rescue GoogleOauthService::NotConfiguredError, GoogleOauthService::ExchangeError => e
+    session.delete(:oauth_state)
+    redirect_to(login_path, alert: e.message)
+  end
+
+  private
+
+  def find_or_create_user!(email, info)
+    user = User.find_by(email: email)
+    return user if user
+
+    tenant = Current.tenant || Tenant.first
+    user = tenant.users.new(
+      email: email,
+      name: info["name"].presence || email.split("@").first.titleize,
+      role: "reader",
+    )
+    user.save!
+    ActivityLogger.log("employee_added", subject: user, details: "via Google sign-in")
+    user
+  end
+end

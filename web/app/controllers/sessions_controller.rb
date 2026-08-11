@@ -5,6 +5,7 @@ class SessionsController < ApplicationController
 
   def new
     redirect_to(root_path) if Current.user
+    @google_configured = GoogleOauthService.configured?
   end
 
   def create

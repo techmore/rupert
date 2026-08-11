@@ -132,6 +132,33 @@ class SettingsController < AuthenticatedController
     redirect_to(settings_path, notice: "Disconnected from Google Drive.")
   end
 
+  # POST /settings/oauth_credentials — save Google sign-in client id/secret
+  def oauth_credentials
+    EnvStore.set("GOOGLE_OAUTH_CLIENT_ID", params[:client_id].to_s.strip) if params.key?(:client_id)
+    EnvStore.set("GOOGLE_OAUTH_CLIENT_SECRET", params[:client_secret].to_s.strip) if params.key?(:client_secret)
+    redirect_to(settings_path, notice: "Google sign-in credentials saved.")
+  end
+
+  # POST /settings/oauth_domains — allow a new email domain to sign in
+  def oauth_domains
+    domain = OauthAllowedDomain.new(domain: params[:domain])
+    if domain.save
+      redirect_to(settings_path, notice: "Allowed #{domain.domain} to sign in with Google.")
+    else
+      redirect_to(settings_path, alert: domain.errors.full_messages.to_sentence)
+    end
+  end
+
+  # DELETE /settings/oauth_domains — revoke a domain from Google sign-in
+  def oauth_remove_domain
+    domain = OauthAllowedDomain.find_by(domain: params[:domain].to_s.downcase.strip.sub(/\A@/, ""))
+    if domain&.destroy
+      redirect_to(settings_path, notice: "Removed #{domain.domain} from Google sign-in.")
+    else
+      redirect_to(settings_path, alert: "Domain not found.")
+    end
+  end
+
   # POST /settings/tenant — update business settings (name, invoice prefix,
   # low-stock threshold).
   def tenant
