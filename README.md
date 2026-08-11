@@ -71,12 +71,21 @@ production, configurable via `SYNC_MINUTES` / `config/solid_queue.yml`.
 - **Ledger** — transaction mirror from both platforms
 - **Alerts** — low-stock flags (resolve/ignore)
 - **Sync** — run syncs, view run history and logs
+- **SwipeSimple** — import sales from a SwipeSimple CSV export (no public API) into the canonical sales stream
+- **Connections** — plain-language guide to every service's keys: what's set, where to find each, and how to renew
 - **Settings** — `.env` import/export (JSON API included) and DB backup/restore:
   - `GET /settings/env.json` · masked env keys
   - `POST /settings/env_import` · body `{ "text": "KEY=VALUE\n…" }`
   - `GET /settings/env_export` · full `.env` text
   - `GET /settings/backup` · consistent snapshot (PostgreSQL `pg_dump`)
   - `POST /settings/restore` · multipart `file` upload
+- **Team / People (HR)** — full employee lifecycle:
+  - **Employees** · HR records with department, position, and status lifecycle
+  - **Departments** · org chart (manager, headcount)
+  - **Positions** · job titles and pay grades
+  - **Timesheets** · weekly hours with submit / approve / reject workflow
+  - **Leave & PTO** · requests, approvals, and annual balances
+  - **Payroll** · pay runs built from approved timesheets and pay rates
 
 All pages sit behind Shopify OAuth (the app installs into your store).
 
@@ -88,13 +97,17 @@ Extensions live under `app/modules/<name>/` and register themselves in
 core lives in `app/modules/core/` (`Customer`, `Order`, `OrderLine`,
 `Payment`) and is fed by the Shopify/Square sync engine through
 `CanonicalOrderImporter` — a clean seam between the source mirrors
-(`ShopifyProduct`, `LedgerEntry`, …) and the unified ERP model.
+(`ShopifyProduct`, `LedgerEntry`, …) and the unified ERP model. A third,
+manual source (`SwipesimpleImporter`) feeds CSV exports through the same seam.
 
 - Roles: `super_admin`, `admin`, `manager`, `cashier`, `reader` with a
   permission matrix in `User::ROLE_PERMISSIONS` and Pundit policy objects
 - Dashboards: per-user widget layout saved as JSON on `User#dashboard_config`
 - Sales grid: `SalesController` builds an hourly × location pivot from
   `Core::Order` (`groupdate`-ready time series)
+- HR: `app/modules/people/` (employees, departments, positions, timesheets,
+  leave & PTO, payroll) with `PayrollCalculator` turning approved timesheets
+  into payslips
 - DB: PostgreSQL (`pg` gem). SQLite is kept only for the one-time legacy import.
 
 ## Deploying to a droplet

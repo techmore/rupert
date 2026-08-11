@@ -27,7 +27,7 @@
 
 <main class="page wrap">
   <h1>ERP modules</h1>
-  <p class="lede">Every module registers in <code>app/models/module_registry.rb</code>, which drives the navigation and the permission gate. Features ship in five areas.</p>
+  <p class="lede">Every module registers in <code>app/models/module_registry.rb</code>, which drives the navigation and the permission gate. Features ship in seven areas.</p>
 
   <section>
     <h2>Overview</h2>
@@ -58,10 +58,35 @@
   </section>
 
   <section>
-    <h2>Team</h2>
+    <h2>Purchasing</h2>
     <ul>
-      <li><strong>Employees</strong> — directory of who can sign in, with role assignment, activate / deactivate, and removal.</li>
-      <li><strong>Permissions</strong> — a role × permission matrix (23 permissions) with save and reset-to-defaults, plus per-person overrides on each employee's edit page.</li>
+      <li><strong>Vendors</strong> — supplier directory with payment terms and purchase-order history.</li>
+      <li><strong>Purchase orders</strong> — draft → placed → received lifecycle, partial receiving, and what's owed to the vendor.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Finance</h2>
+    <ul>
+      <li><strong>Chart of accounts</strong> — the account tree (assets, liabilities, equity, revenue, expenses) with archive / restore.</li>
+      <li><strong>Accounts</strong> — balance sheet and P&amp;L overview built from the chart of accounts and sales.</li>
+      <li><strong>Expenses</strong> — a money-out register with categories and soft delete.</li>
+      <li><strong>Payments (AP)</strong> — vendor payments recorded against what's owed.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Team</h2>
+    <p>The full People (HR) module set covers the employee lifecycle from directory to payroll:</p>
+    <ul>
+      <li><strong>Employees</strong> — HR records: contact details, department &amp; position, employment type, and a status lifecycle (active / on leave / terminated / rehire) with emergency contacts.</li>
+      <li><strong>Departments</strong> — the org chart: name, code, manager, and headcount per team.</li>
+      <li><strong>Positions</strong> — job titles and pay grades, optionally tied to a department.</li>
+      <li><strong>Timesheets</strong> — weekly hours per employee with per-day entries (regular / overtime / PTO), moving draft → submitted → approved / rejected / reopened.</li>
+      <li><strong>Leave &amp; PTO</strong> — time-off requests (vacation / sick / personal / unpaid) with approve / deny / cancel and annual balance tracking.</li>
+      <li><strong>Payroll</strong> — pay runs built from approved timesheets and current pay rates (hourly + salary), finalized and paid, with per-employee payslips (gross / deductions / net).</li>
+      <li><strong>Accounts</strong> — login accounts (who can sign in) and role assignment.</li>
+      <li><strong>Permissions</strong> — a role × permission matrix with save and reset-to-defaults, plus per-person overrides on each account.</li>
     </ul>
   </section>
 
@@ -70,7 +95,9 @@
     <ul>
       <li><strong>Alerts</strong> — low-stock and attention flags that can be resolved or ignored per row.</li>
       <li><strong>Sync</strong> — run full, Shopify-only, or Square-only syncs; review run history and the log tail.</li>
+      <li><strong>SwipeSimple import</strong> — import sales from a SwipeSimple CSV export (it has no public API) into the canonical sales stream, idempotently.</li>
       <li><strong>System health</strong> — server load, memory, swap, disk, database, and slow-query monitoring.</li>
+      <li><strong>Connections</strong> — a plain-language guide to every service's keys: what's configured, where to find each key, and how to renew it.</li>
       <li><strong>Settings</strong> — env import/export, database backup/restore, Google Drive backup, the Buzz agent, and office feature flags.</li>
       <li><strong>Warehouse</strong> — secret vendor links with price multipliers and bulk tiers, plus a public token-gated storefront for each vendor.</li>
     </ul>
