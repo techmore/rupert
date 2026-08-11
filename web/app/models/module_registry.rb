@@ -23,6 +23,7 @@ class ModuleRegistry
     Entry.new(key: "reports", name: "Reports", path: -> { reports_path }, permission: "reports.read", position: 55),
     Entry.new(key: "ledger", name: "Ledger", path: -> { ledger_index_path }, permission: "ledger.read", position: 60),
     Entry.new(key: "projects", name: "Projects", path: -> { projects_projects_path }, permission: "projects.read", position: 70),
+    Entry.new(key: "tasks", name: "Tasks", path: -> { projects_tasks_path }, permission: "projects.read", position: 71),
     Entry.new(key: "goals", name: "Goals", path: -> { goals_goals_path }, permission: "projects.read", position: 75),
     Entry.new(key: "kpis", name: "KPIs", path: -> { goals_kpis_path }, permission: "projects.read", position: 78),
     Entry.new(key: "alerts", name: "Alerts", path: -> { alerts_path }, permission: "alerts.read", position: 80),
@@ -66,7 +67,7 @@ class ModuleRegistry
     AREAS = [
       { key: "overview", name: "Overview", modules: ["dashboard"] },
       { key: "commerce", name: "Commerce", modules: ["sales", "registers", "customers", "inventory", "locations"] },
-      { key: "operations", name: "Operations", modules: ["reports", "reconcile", "ledger", "projects", "goals", "kpis"] },
+      { key: "operations", name: "Operations", modules: ["reports", "reconcile", "ledger", "projects", "tasks", "goals", "kpis"] },
       { key: "purchasing", name: "Purchasing", modules: ["vendors", "purchase_orders"] },
       { key: "finance", name: "Finance", modules: ["accounts", "chart_of_accounts", "expenses", "payments"] },
       { key: "team", name: "Team", modules: ["employees", "departments", "positions", "timesheets", "leave", "payroll", "accounts", "permissions"] },

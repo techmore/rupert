@@ -2,7 +2,17 @@
 
 module Projects
   class TasksController < AuthenticatedController
-    before_action :set_task, only: [:show, :update, :destroy, :transition]
+    before_action :set_task, only: [:update, :destroy, :transition]
+
+    # All tasks across projects, newest first, filterable by status.
+    def index
+      authorize(:module, :projects_read?)
+      tasks = Projects::Task.includes(:project).order(updated_at: :desc)
+      tasks = tasks.where(status: params[:status]) if params[:status].in?(Projects::Task.aasm.states.map(&:name).map(&:to_s))
+      @pagy, @tasks = pagy(tasks, items: 30)
+      @open_count = Projects::Task.open.count
+      @done_count = Projects::Task.completed.count
+    end
 
     def create
       authorize(:module, :projects_write?)

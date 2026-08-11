@@ -57,7 +57,7 @@ Rails.application.routes.draw do
     resources :projects, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
       member { post :transition }
     end
-    resources :tasks, only: [:create, :update, :destroy] do
+    resources :tasks, only: [:index, :create, :update, :destroy] do
       member { post :transition }
     end
   end
