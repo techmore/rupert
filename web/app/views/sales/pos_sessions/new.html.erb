@@ -12,7 +12,7 @@
         </div>
         <div>
           <%= f.label :location_id, "Location", class: "mb-1 block text-xs font-semibold uppercase tracking-wider text-mocha" %>
-          <%= f.collection_select :location_id, Location.order(:name), :id, :name, { include_blank: "No location" }, class: "select w-full" %>
+          <%= f.collection_select :location_id, Location.order(:name), :externalId, :name, { include_blank: "No location" }, class: "select w-full" %>
         </div>
         <div>
           <%= f.label :opening_cash_cents, "Opening cash (cents)", class: "mb-1 block text-xs font-semibold uppercase tracking-wider text-mocha" %>

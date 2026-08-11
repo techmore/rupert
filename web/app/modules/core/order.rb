@@ -13,7 +13,7 @@ module Core
     CHANNELS = ["online", "pos", "manual"].freeze
 
     belongs_to :customer, class_name: "Core::Customer", optional: true
-    belongs_to :location, class_name: "Location", foreign_key: :location_id, optional: true
+    belongs_to :location, class_name: "Location", foreign_key: :location_id, primary_key: :externalId, optional: true
     has_many :order_lines, class_name: "Core::OrderLine", foreign_key: :order_id, dependent: :destroy
     has_many :payments, class_name: "Core::Payment", foreign_key: :order_id, dependent: :destroy
     has_many :fulfillments, class_name: "Core::Fulfillment", foreign_key: :order_id, dependent: :destroy

@@ -45,13 +45,13 @@ class SalesController < AuthenticatedController
   # rows: hour (9..21), columns: location name -> gross cents + count
   def hourly_pivot(date)
     rows = (9..21).map { |h| { hour: h, label: Time.zone.parse("#{h}:00").strftime("%-I %p"), cells: {} } }
-    orders = Core::Order.on_day(date)
-      .where("EXTRACT(HOUR FROM occurred_at) BETWEEN 9 AND 21")
-      .includes(:location)
+    orders = Core::Order.on_day(date).includes(:location)
 
     by_hour = orders.group_by { |o| o.occurred_at.hour }
     by_hour.each do |hour, bucket|
       row = rows.find { |r| r[:hour] == hour }
+      next unless row
+
       bucket.group_by { |o| o.location&.name || "Unknown" }.each do |name, group|
         row[:cells][name] = { cents: group.sum(&:gross_cents), count: group.size }
       end

@@ -41,7 +41,7 @@ class ErpPagesFlowTest < ActionDispatch::IntegrationTest
       line_items: 2,
       occurred_at: Time.current,
       tenant_id: @tenant.id,
-      location_id: @loc.id,
+      location_id: @loc.externalId,
     )
     order.mark_paid!
     order.save!
@@ -146,7 +146,7 @@ class ErpPagesFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
 
     post sales_pos_sessions_path, params: {
-      pos_session: { name: "Front", location_id: @loc.id, opening_cash_cents: 10000 },
+      pos_session: { name: "Front", location_id: @loc.externalId, opening_cash_cents: 10000 },
       shop: "m11u0i-sb.myshopify.com",
       embedded: "1",
     }

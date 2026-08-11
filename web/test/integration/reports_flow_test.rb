@@ -29,7 +29,7 @@ class ReportsFlowTest < ActionDispatch::IntegrationTest
       tax_cents: 200,
       occurred_at: Time.current,
       tenant_id: @tenant.id,
-      location_id: @loc.id,
+      location_id: @loc.externalId,
     )
     order.mark_paid!
     order.save!

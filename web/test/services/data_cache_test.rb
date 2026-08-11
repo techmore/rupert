@@ -40,6 +40,21 @@ class DataCacheTest < ActiveSupport::TestCase
     assert_equal before + 1, DataCache.version
   end
 
+  test "bump persists and keeps incrementing on repeated bumps" do
+    first = DataCache.version
+    DataCache.bump!
+    DataCache.bump!
+    assert_equal first + 2, DataCache.version
+    DataCache.bump!
+    assert_equal first + 3, DataCache.version
+  end
+
+  test "setting upsert updates an existing row's value" do
+    Setting.find_or_create_for("upsert/probe", Current.tenant_id) { |s| s.value = "one" }
+    Setting.find_or_create_for("upsert/probe", Current.tenant_id) { |s| s.value = "two" }
+    assert_equal "two", Setting.find_by(key: "upsert/probe", tenant_id: Current.tenant_id).value
+  end
+
   test "keys are tenant-scoped" do
     other = Tenant.create!(name: "Other", subdomain: "other")
     Current.tenant = other
