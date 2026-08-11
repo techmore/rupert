@@ -25,13 +25,23 @@ class ModulePolicy < ApplicationPolicy
     :sync_read,
     :sync_write,
     :settings_read,
+    :settings_write,
     :system_read,
+    :system_write,
     :users_read,
     :users_write,
     :purchasing_read,
     :purchasing_write,
     :finance_read,
     :finance_write,
+    :hr_read,
+    :hr_write,
+    :timesheets_read,
+    :timesheets_write,
+    :leave_read,
+    :leave_write,
+    :payroll_read,
+    :payroll_write,
   ].each do |perm|
     define_method("#{perm}?") { module?(perm.to_s.tr("_", ".")) }
   end

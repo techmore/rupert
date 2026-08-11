@@ -1,0 +1,94 @@
+<%= form_with model: employee, url: (employee.persisted? ? people_employee_path(employee) : people_employees_path), class: "mt-6 space-y-4" do |f| %>
+  <div class="grid gap-4 sm:grid-cols-3">
+    <div>
+      <%= f.label :first_name, "First name", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.text_field :first_name, class: "input", autocomplete: "off", required: true %>
+    </div>
+    <div>
+      <%= f.label :last_name, "Last name", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.text_field :last_name, class: "input", autocomplete: "off", required: true %>
+    </div>
+    <div>
+      <%= f.label :employee_number, "Employee #", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.text_field :employee_number, class: "input", autocomplete: "off", placeholder: "E2026-001" %>
+    </div>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div>
+      <%= f.label :legal_name, "Legal name", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.text_field :legal_name, class: "input", autocomplete: "off" %>
+    </div>
+    <div>
+      <%= f.label :user_id, "Login account", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.select :user_id, @users.map { |u| [u.display_name, u.id] }, { include_blank: "No login account" }, class: "select w-full" %>
+    </div>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-3">
+    <div>
+      <%= f.label :department_id, "Department", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.select :department_id, @departments.map { |d| [d.name, d.id] }, { include_blank: "—" }, class: "select w-full" %>
+    </div>
+    <div>
+      <%= f.label :position_id, "Position", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.select :position_id, @positions.map { |p| [p.name, p.id] }, { include_blank: "—" }, class: "select w-full" %>
+    </div>
+    <div>
+      <%= f.label :employment_type, "Employment type", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.select :employment_type, People::Employee::EMPLOYMENT_TYPES.map { |t| [t.tr("_", " ").titleize, t] }, {}, class: "select w-full" %>
+    </div>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-3">
+    <div>
+      <%= f.label :email, "Email", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.email_field :email, class: "input", autocomplete: "off" %>
+    </div>
+    <div>
+      <%= f.label :phone, "Phone", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.telephone_field :phone, class: "input", autocomplete: "off" %>
+    </div>
+    <div>
+      <%= f.label :date_of_birth, "Date of birth", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.date_field :date_of_birth, class: "input" %>
+    </div>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div>
+      <%= f.label :hire_date, "Hire date", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.date_field :hire_date, class: "input" %>
+    </div>
+    <div>
+      <%= f.label :termination_date, "Termination date", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.date_field :termination_date, class: "input" %>
+    </div>
+  </div>
+
+  <div>
+    <%= f.label :address, "Address", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+    <%= f.text_area :address, rows: 2, class: "input !rounded-2xl" %>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div>
+      <%= f.label :emergency_contact_name, "Emergency contact", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.text_field :emergency_contact_name, class: "input", autocomplete: "off" %>
+    </div>
+    <div>
+      <%= f.label :emergency_contact_phone, "Emergency contact phone", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.telephone_field :emergency_contact_phone, class: "input", autocomplete: "off" %>
+    </div>
+  </div>
+
+  <div>
+    <%= f.label :notes, "Notes", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+    <%= f.text_area :notes, rows: 2, class: "input !rounded-2xl" %>
+  </div>
+
+  <div class="flex items-center gap-3 pt-2">
+    <%= f.submit employee.persisted? ? "Save changes" : "Add employee", class: "btn-primary" %>
+    <%= link_to "Cancel", employee.persisted? ? people_employee_path(employee) : people_employees_path, class: "btn-ghost" %>
+  </div>
+<% end %>

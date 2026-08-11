@@ -1,0 +1,74 @@
+<% content_for :title, "Payroll" %>
+<div class="space-y-6">
+  <section class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink">Payroll</h1>
+      <p class="mt-1 text-sm text-mocha">Pay runs built from approved timesheets, finalized and paid.</p>
+    </div>
+    <% if Current.user.can?("payroll.write") %>
+      <%= link_to "New pay run", new_people_pay_run_path, class: "btn-primary" %>
+    <% end %>
+  </section>
+
+  <section class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="stat">
+      <p class="stat-label">Gross · <%= @year %></p>
+      <p class="stat-value mt-1"><%= number_to_currency(@annual_gross / 100.0) %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Draft runs</p>
+      <p class="stat-value mt-1"><%= People::PayRun.where(status: "draft").count %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Finalized</p>
+      <p class="stat-value mt-1"><%= People::PayRun.where(status: "finalized").count %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Paid</p>
+      <p class="stat-value mt-1"><%= People::PayRun.where(status: "paid").count %></p>
+    </div>
+  </section>
+
+  <%= form_tag people_pay_runs_path, method: :get, class: "flex flex-wrap gap-2" do %>
+    <select name="status" class="select w-auto" onchange="this.form.submit()">
+      <option value="all" <%= @status == "all" ? "selected" : "" %>>All statuses</option>
+      <% People::PayRun.aasm.states.map(&:name).each do |status| %>
+        <option value="<%= status %>" <%= @status == status.to_s ? "selected" : "" %>><%= status.to_s.titleize %></option>
+      <% end %>
+    </select>
+  <% end %>
+
+  <div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th scope="col" class="th">Pay run</th>
+            <th scope="col" class="th">Period</th>
+            <th scope="col" class="th text-right">Payslips</th>
+            <th scope="col" class="th text-right">Gross</th>
+            <th scope="col" class="th text-right">Net</th>
+            <th scope="col" class="th">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% if @pay_runs.empty? %>
+            <tr><td colspan="6" class="td py-8 text-center text-taupe">No pay runs yet.</td></tr>
+          <% end %>
+          <% @pay_runs.each do |pay_run| %>
+            <tr class="hover:bg-cream">
+              <td class="td font-medium text-ink"><%= link_to pay_run.name, people_pay_run_path(pay_run), class: "hover:text-olive hover:underline" %></td>
+              <td class="td text-mocha"><%= pay_run.period_label %></td>
+              <td class="td text-right text-mocha"><%= pay_run.payslips.count %></td>
+              <td class="td text-right text-mocha"><%= number_to_currency(pay_run.total_gross_cents / 100.0) %></td>
+              <td class="td text-right font-medium text-ink"><%= number_to_currency(pay_run.total_net_cents / 100.0) %></td>
+              <td class="td">
+                <span class="<%= pay_run.paid? ? "pill-fern" : pay_run.finalized? ? "pill-olive" : "pill-taupe" %>"><%= pay_run.status %></span>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

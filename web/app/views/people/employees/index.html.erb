@@ -1,0 +1,83 @@
+<% content_for :title, "Employees" %>
+<div class="space-y-6">
+  <section class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink">Employees</h1>
+      <p class="mt-1 text-sm text-mocha">The team directory with their department, position, and employment status.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <%= link_to "Departments", people_departments_path, class: "btn-ghost btn-sm" %>
+      <%= link_to "Positions", people_positions_path, class: "btn-ghost btn-sm" %>
+      <% if Current.user.can?("hr.write") %>
+        <%= link_to "Add employee", new_people_employee_path, class: "btn-primary" %>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="stat">
+      <p class="stat-label">Active</p>
+      <p class="stat-value mt-1"><%= People::Employee.active.count %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Awaiting timesheets</p>
+      <p class="stat-value mt-1"><%= @awaiting_timesheets %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Leave pending</p>
+      <p class="stat-value mt-1"><%= @pending_leave %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Departments</p>
+      <p class="stat-value mt-1"><%= People::Department.count %></p>
+    </div>
+  </section>
+
+  <%= form_tag people_employees_path, method: :get, class: "flex flex-wrap gap-2" do %>
+    <input type="search" name="q" value="<%= params[:q] %>" placeholder="Search name, employee #, email…" class="search w-full sm:max-w-xs" autocomplete="off">
+    <select name="status" class="select w-auto" onchange="this.form.submit()">
+      <option value="all" <%= @status == "all" ? "selected" : "" %>>All statuses</option>
+      <% People::Employee.aasm.states.map(&:name).each do |status| %>
+        <option value="<%= status %>" <%= @status == status.to_s ? "selected" : "" %>><%= status.to_s.titleize %></option>
+      <% end %>
+    </select>
+  <% end %>
+
+  <div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th scope="col" class="th">Employee</th>
+            <th scope="col" class="th">Department</th>
+            <th scope="col" class="th">Position</th>
+            <th scope="col" class="th">Hired</th>
+            <th scope="col" class="th">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% if @employees.empty? %>
+            <tr><td colspan="5" class="td py-8 text-center text-taupe"><%= @q.present? ? "Nothing matches that search." : "No employees yet — add the first one." %></td></tr>
+          <% end %>
+          <% @employees.each do |employee| %>
+            <tr class="hover:bg-cream">
+              <td class="td">
+                <p class="font-medium text-ink"><%= link_to employee.name, people_employee_path(employee), class: "hover:text-olive hover:underline" %></p>
+                <p class="text-xs text-taupe"><%= employee.employee_number.presence || employee.email %></p>
+              </td>
+              <td class="td text-mocha"><%= employee.department&.name || "—" %></td>
+              <td class="td text-mocha"><%= employee.position&.name || "—" %></td>
+              <td class="td text-mocha"><%= employee.hire_date ? l(employee.hire_date, format: :short) : "—" %></td>
+              <td class="td">
+                <span class="<%= employee.active? ? "pill-fern" : employee.on_leave? ? "pill-olive" : "pill-rose" %>">
+                  <span class="dot <%= employee.active? ? "bg-fern" : employee.on_leave? ? "bg-olive" : "bg-rose" %>"></span>
+                  <%= employee.status.tr("_", " ") %>
+                </span>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

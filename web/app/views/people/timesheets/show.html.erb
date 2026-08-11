@@ -1,0 +1,108 @@
+<% content_for :title, "Timesheet" %>
+<div class="space-y-6">
+  <section class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink"><%= @timesheet.period_label %></h1>
+      <p class="mt-1 text-sm text-mocha">
+        <%= link_to @timesheet.employee.name, people_employee_path(@timesheet.employee), class: "text-olive hover:underline" %>
+        <span class="text-taupe">·</span>
+        <span class="<%= @timesheet.approved? ? "pill-fern" : @timesheet.submitted? ? "pill-olive" : @timesheet.rejected? ? "pill-rose" : "pill-taupe" %>"><%= @timesheet.status %></span>
+        <% if @timesheet.reviewer %><span class="text-taupe">· reviewed by <%= @timesheet.reviewer.display_name %></span><% end %>
+      </p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <% if Current.user.can?("timesheets.write") %>
+        <% if @timesheet.draft? %>
+          <%= button_to "Submit for review", submit_people_timesheet_path(@timesheet), method: :post, class: "btn-primary btn-sm", data: { confirm: "Submit this timesheet?" } %>
+          <%= link_to "Edit", edit_people_timesheet_path(@timesheet), class: "btn-ghost btn-sm" %>
+          <%= button_to "Delete", people_timesheet_path(@timesheet), method: :delete, class: "btn-ghost btn-sm", data: { confirm: "Delete this draft?" } %>
+        <% elsif @timesheet.submitted? %>
+          <%= button_to "Approve", approve_people_timesheet_path(@timesheet), method: :post, class: "btn-primary btn-sm" %>
+          <%= button_to "Reject", reject_people_timesheet_path(@timesheet), method: :post, class: "btn-ghost btn-sm", data: { confirm: "Reject this timesheet?" } %>
+        <% elsif @timesheet.approved? || @timesheet.rejected? %>
+          <%= button_to "Reopen", reopen_people_timesheet_path(@timesheet), method: :post, class: "btn-ghost btn-sm" %>
+        <% end %>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-3 gap-4">
+    <div class="stat">
+      <p class="stat-label">Total hours</p>
+      <p class="stat-value mt-1"><%= number_with_precision(@timesheet.total_hours, precision: 1) %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Regular</p>
+      <p class="stat-value mt-1"><%= number_with_precision(@timesheet.regular_hours, precision: 1) %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Overtime</p>
+      <p class="stat-value mt-1"><%= number_with_precision(@timesheet.overtime_hours, precision: 1) %></p>
+    </div>
+  </section>
+
+  <div class="card overflow-hidden">
+    <div class="border-b border-fog px-5 py-3">
+      <h2 class="font-display text-lg text-ink">Entries</h2>
+    </div>
+
+    <% if @timesheet.draft? && Current.user.can?("timesheets.write") %>
+      <div class="border-b border-fog bg-haze/40 px-5 py-3">
+        <p class="text-xs text-taupe">Add a day's hours to this draft.</p>
+        <%= form_with model: [@timesheet, @entry], url: add_entry_people_timesheet_path(@timesheet), method: :post, class: "mt-2 flex flex-wrap items-end gap-2" do |f| %>
+          <div>
+            <%= f.label :worked_on, "Date", class: "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-mocha" %>
+            <%= f.date_field :worked_on, class: "input" %>
+          </div>
+          <div>
+            <%= f.label :hours, "Hours", class: "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-mocha" %>
+            <%= f.number_field :hours, step: 0.25, min: 0.25, max: 24, value: 8, class: "input w-24" %>
+          </div>
+          <div>
+            <%= f.label :work_type, "Type", class: "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-mocha" %>
+            <%= f.select :work_type, People::TimesheetEntry::WORK_TYPES.map { |t| [t.titleize, t] }, {}, class: "select w-auto" %>
+          </div>
+          <%= f.submit "Add entry", class: "btn-primary btn-sm" %>
+        <% end %>
+        <% if @entry.errors.any? %>
+          <p class="mt-2 text-xs text-rose"><%= @entry.errors.full_messages.to_sentence %></p>
+        <% end %>
+      </div>
+    <% end %>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th scope="col" class="th">Date</th>
+            <th scope="col" class="th">Type</th>
+            <th scope="col" class="th text-right">Hours</th>
+            <% if @timesheet.draft? && Current.user.can?("timesheets.write") %><th scope="col" class="th"></th><% end %>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% if @timesheet.entries.empty? %>
+            <tr><td colspan="<%= @timesheet.draft? ? 4 : 3 %>" class="td py-8 text-center text-taupe">No entries yet.</td></tr>
+          <% end %>
+          <% @timesheet.entries.ordered.each do |entry| %>
+            <tr class="hover:bg-cream">
+              <td class="td text-mocha"><%= l(entry.worked_on, format: :long) %></td>
+              <td class="td"><span class="pill-taupe capitalize"><%= entry.work_type %></span></td>
+              <td class="td text-right font-medium text-ink"><%= number_with_precision(entry.hours, precision: 2) %></td>
+              <% if @timesheet.draft? && Current.user.can?("timesheets.write") %>
+                <td class="td text-right"><%= button_to "Remove", remove_entry_people_timesheet_path(@timesheet, entry_id: entry.id), method: :post, class: "text-xs font-semibold text-rose hover:underline" %></td>
+              <% end %>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <% if @timesheet.notes.present? %>
+    <section class="card card-pad">
+      <h2 class="font-display text-lg text-ink">Notes</h2>
+      <p class="mt-1 whitespace-pre-wrap text-sm text-mocha"><%= @timesheet.notes %></p>
+    </section>
+  <% end %>
+</div>

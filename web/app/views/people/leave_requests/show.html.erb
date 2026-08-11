@@ -1,0 +1,51 @@
+<% content_for :title, "Leave request" %>
+<div class="space-y-6">
+  <section class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink capitalize"><%= @leave_request.leave_type %> leave</h1>
+      <p class="mt-1 text-sm text-mocha">
+        <%= link_to @leave_request.employee.name, people_employee_path(@leave_request.employee), class: "text-olive hover:underline" %>
+        <span class="text-taupe">·</span>
+        <span class="<%= @leave_request.approved? ? "pill-fern" : @leave_request.denied? ? "pill-rose" : @leave_request.cancelled? ? "pill-taupe" : "pill-olive" %>"><%= @leave_request.status %></span>
+        <% if @leave_request.reviewer %><span class="text-taupe">· reviewed by <%= @leave_request.reviewer.display_name %></span><% end %>
+      </p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <% if Current.user.can?("leave.write") %>
+        <% if @leave_request.requested? %>
+          <%= button_to "Approve", approve_people_leave_request_path(@leave_request), method: :post, class: "btn-primary btn-sm", data: { confirm: "Approve this leave?" } %>
+          <%= button_to "Deny", deny_people_leave_request_path(@leave_request), method: :post, class: "btn-ghost btn-sm" %>
+          <%= button_to "Cancel request", cancel_people_leave_request_path(@leave_request), method: :post, class: "btn-ghost btn-sm", data: { confirm: "Cancel this request?" } %>
+        <% elsif @leave_request.approved? %>
+          <%= button_to "Cancel approval", cancel_people_leave_request_path(@leave_request), method: :post, class: "btn-ghost btn-sm", data: { confirm: "Cancel this approved leave and give the hours back?" } %>
+        <% end %>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="stat">
+      <p class="stat-label">From</p>
+      <p class="stat-value-sm mt-1"><%= l(@leave_request.starts_on, format: :long) %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">To</p>
+      <p class="stat-value-sm mt-1"><%= l(@leave_request.ends_on, format: :long) %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Length</p>
+      <p class="stat-value mt-1"><%= @leave_request.duration_label %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Balance remaining</p>
+      <p class="stat-value-sm mt-1"><%= number_with_precision(@balance.remaining_hours, precision: 1) %>h <%= @leave_request.leave_type.titleize %> <%= @leave_request.starts_on.year %></p>
+    </div>
+  </section>
+
+  <% if @leave_request.reason.present? %>
+    <section class="card card-pad">
+      <h2 class="font-display text-lg text-ink">Reason</h2>
+      <p class="mt-1 whitespace-pre-wrap text-sm text-mocha"><%= @leave_request.reason %></p>
+    </section>
+  <% end %>
+</div>

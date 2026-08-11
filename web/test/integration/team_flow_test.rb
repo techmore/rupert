@@ -48,14 +48,19 @@ class TeamFlowTest < ActionDispatch::IntegrationTest
     get(path, params: { shop: "m11u0i-sb.myshopify.com", embedded: "1", host: "test-host" })
   end
 
-  test "employees index lists the team" do
+  test "employee accounts index lists the team" do
     get_page users_path
     assert_response :success
-    assert_select "h1", /Employees/
+    assert_select "h1", /Employee accounts/
     assert_select "td", /Boss/
   end
 
   test "create an employee and assign a role" do
+    User.create!(email: "root@example.com", password: "password123", role: "super_admin", tenant_id: @tenant.id, name: "Root")
+    host! "testco.example.com"  # super_admin resolves the tenant via subdomain
+    post logout_path
+    post login_path, params: { email: "root@example.com", password: "password123" }
+
     get_page new_user_path
     assert_response :success
 
@@ -71,6 +76,24 @@ class TeamFlowTest < ActionDispatch::IntegrationTest
     assert_equal "cashier", employee.role
     assert employee.active?
     assert_select "td", /Jamie Rivera/
+  end
+
+  test "a non-super-admin cannot escalate to super_admin" do
+    admin = User.create!(email: "mid@example.com", password: "password123", role: "admin", tenant_id: @tenant.id, name: "Mid")
+    post logout_path
+    post login_path, params: { email: "mid@example.com", password: "password123" }
+
+    post users_path, params: {
+      user: { name: "Sneaky", email: "sneaky@example.com", role: "super_admin", password: "password123" },
+      shop: "m11u0i-sb.myshopify.com",
+      embedded: "1",
+    }
+    follow_redirect!
+    assert_response :success
+
+    employee = User.find_by!(email: "sneaky@example.com")
+    assert_equal "admin", employee.role  # role param stripped; default applies
+    refute employee.super_admin?
   end
 
   test "deactivated employee cannot sign in" do

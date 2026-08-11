@@ -1,13 +1,13 @@
-<% content_for :title, "Employees" %>
+<% content_for :title, "Accounts" %>
 <div class="space-y-6">
   <section class="flex flex-wrap items-end justify-between gap-4">
     <div>
-      <h1 class="font-display text-3xl text-ink">Employees</h1>
-      <p class="mt-1 text-sm text-mocha">People who can sign in to Rupert, with their role and access.</p>
+      <h1 class="font-display text-3xl text-ink">Employee accounts</h1>
+      <p class="mt-1 text-sm text-mocha">Login accounts for Rupert and their access level. HR records live under Employees.</p>
     </div>
     <div class="flex gap-2">
       <%= link_to "Permissions", permissions_path, class: "btn-ghost" %>
-      <%= link_to "Add employee", new_user_path, class: "btn-primary" %>
+      <%= link_to "Add account", new_user_path, class: "btn-primary" %>
     </div>
   </section>
 
@@ -25,7 +25,7 @@
         </thead>
         <tbody class="divide-y divide-fog">
           <% if @users.empty? %>
-            <tr><td colspan="5" class="td py-8 text-center text-taupe">No employees yet — add the first one.</td></tr>
+            <tr><td colspan="5" class="td py-8 text-center text-taupe">No accounts yet — add the first one.</td></tr>
           <% end %>
           <% @users.each do |user| %>
             <tr class="hover:bg-cream">

@@ -1,0 +1,45 @@
+<% content_for :title, "New leave request" %>
+<div class="space-y-6">
+  <section>
+    <h1 class="font-display text-3xl text-ink">New leave request</h1>
+    <p class="mt-1 text-sm text-mocha">Request time off for an employee.</p>
+  </section>
+
+  <%= form_with model: @leave_request, url: people_leave_requests_path, class: "mt-6 space-y-4" do |f| %>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <%= f.label :employee_id, "Employee", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+        <%= f.select :employee_id, @employees.map { |e| [e.name, e.id] }, { include_blank: "Select employee…" }, class: "select w-full", required: true %>
+      </div>
+      <div>
+        <%= f.label :leave_type, "Type", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+        <%= f.select :leave_type, People::LeaveRequest::LEAVE_TYPES.map { |t| [t.titleize, t] }, {}, class: "select w-full" %>
+      </div>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-3">
+      <div>
+        <%= f.label :starts_on, "Starts", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+        <%= f.date_field :starts_on, class: "input" %>
+      </div>
+      <div>
+        <%= f.label :ends_on, "Ends", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+        <%= f.date_field :ends_on, class: "input" %>
+      </div>
+      <div>
+        <%= f.label :hours, "Hours (optional)", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+        <%= f.number_field :hours, step: 0.5, min: 0, class: "input" %>
+      </div>
+    </div>
+
+    <div>
+      <%= f.label :reason, "Reason", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.text_area :reason, rows: 2, class: "input !rounded-2xl" %>
+    </div>
+
+    <div class="flex items-center gap-3 pt-2">
+      <%= f.submit "Create request", class: "btn-primary" %>
+      <%= link_to "Cancel", people_leave_requests_path, class: "btn-ghost" %>
+    </div>
+  <% end %>
+</div>

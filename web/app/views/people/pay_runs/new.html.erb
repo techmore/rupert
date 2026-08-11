@@ -1,0 +1,35 @@
+<% content_for :title, "New pay run" %>
+<div class="space-y-6">
+  <section>
+    <h1 class="font-display text-3xl text-ink">New pay run</h1>
+    <p class="mt-1 text-sm text-mocha">Payslips are generated from approved timesheets in the period.</p>
+  </section>
+
+  <%= form_with model: @pay_run, url: people_pay_runs_path, class: "mt-6 space-y-4" do |f| %>
+    <div>
+      <%= f.label :name, "Pay run name", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.text_field :name, class: "input", autocomplete: "off", placeholder: "e.g. Pay #{Date.current.strftime("%B")} #{Date.current.day.ordinalize}" %>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <%= f.label :period_start, "Period starts", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+        <%= f.date_field :period_start, class: "input" %>
+      </div>
+      <div>
+        <%= f.label :period_end, "Period ends", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+        <%= f.date_field :period_end, class: "input" %>
+      </div>
+    </div>
+
+    <div>
+      <%= f.label :notes, "Notes", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
+      <%= f.text_area :notes, rows: 2, class: "input !rounded-2xl" %>
+    </div>
+
+    <div class="flex items-center gap-3 pt-2">
+      <%= f.submit "Create pay run", class: "btn-primary" %>
+      <%= link_to "Cancel", people_pay_runs_path, class: "btn-ghost" %>
+    </div>
+  <% end %>
+</div>

@@ -1,0 +1,99 @@
+<% content_for :title, "Leave & PTO" %>
+<div class="space-y-6">
+  <section class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink">Leave & PTO</h1>
+      <p class="mt-1 text-sm text-mocha">Time-off requests, approvals, and annual balances.</p>
+    </div>
+    <% if Current.user.can?("leave.write") %>
+      <%= link_to "New request", new_people_leave_request_path, class: "btn-primary" %>
+    <% end %>
+  </section>
+
+  <section class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="stat">
+      <p class="stat-label">Pending requests</p>
+      <p class="stat-value mt-1"><%= People::LeaveRequest.pending.count %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Approved</p>
+      <p class="stat-value mt-1"><%= People::LeaveRequest.where(status: "approved").count %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Denied</p>
+      <p class="stat-value mt-1"><%= People::LeaveRequest.where(status: "denied").count %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Vacation given · <%= Date.current.year %></p>
+      <p class="stat-value-sm mt-1"><%= number_with_precision(@balances.sum { |b| b.leave_type == "vacation" ? b.accrued_hours : 0 }, precision: 1) %>h</p>
+    </div>
+  </section>
+
+  <div class="card overflow-hidden">
+    <div class="border-b border-fog px-5 py-3">
+      <h2 class="font-display text-lg text-ink">Requests</h2>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th scope="col" class="th">Employee</th>
+            <th scope="col" class="th">Type</th>
+            <th scope="col" class="th">Dates</th>
+            <th scope="col" class="th text-right">Length</th>
+            <th scope="col" class="th">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% if @requests.empty? %>
+            <tr><td colspan="5" class="td py-8 text-center text-taupe">No leave requests yet.</td></tr>
+          <% end %>
+          <% @requests.each do |request| %>
+            <tr class="hover:bg-cream">
+              <td class="td font-medium text-ink"><%= link_to request.employee&.name, people_employee_path(request.employee), class: "hover:text-olive hover:underline" %></td>
+              <td class="td"><span class="pill-taupe capitalize"><%= request.leave_type %></span></td>
+              <td class="td text-mocha"><%= link_to "#{l(request.starts_on, format: :short)} – #{l(request.ends_on, format: :short)}", people_leave_request_path(request), class: "text-olive hover:underline" %></td>
+              <td class="td text-right text-mocha"><%= request.duration_label %></td>
+              <td class="td">
+                <span class="<%= request.approved? ? "pill-fern" : request.denied? ? "pill-rose" : request.cancelled? ? "pill-taupe" : "pill-olive" %>"><%= request.status %></span>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card overflow-hidden">
+    <div class="border-b border-fog px-5 py-3">
+      <h2 class="font-display text-lg text-ink">Balances · <%= Date.current.year %></h2>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th scope="col" class="th">Employee</th>
+            <th scope="col" class="th">Type</th>
+            <th scope="col" class="th text-right">Accrued</th>
+            <th scope="col" class="th text-right">Used</th>
+            <th scope="col" class="th text-right">Remaining</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% if @balances.empty? %>
+            <tr><td colspan="5" class="td py-6 text-center text-taupe">No balances on record for this year.</td></tr>
+          <% end %>
+          <% @balances.each do |balance| %>
+            <tr class="hover:bg-cream">
+              <td class="td font-medium text-ink"><%= balance.employee&.name %></td>
+              <td class="td"><span class="pill-taupe capitalize"><%= balance.leave_type %></span></td>
+              <td class="td text-right text-mocha"><%= number_with_precision(balance.accrued_hours, precision: 1) %></td>
+              <td class="td text-right text-mocha"><%= number_with_precision(balance.used_hours, precision: 1) %></td>
+              <td class="td text-right font-medium text-ink"><%= number_with_precision(balance.remaining_hours, precision: 1) %>h</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

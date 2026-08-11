@@ -108,6 +108,39 @@ Rails.application.routes.draw do
       end
     end
   end
+  namespace :people do
+    resources :employees, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
+      member { post :transition }
+    end
+    resources :departments, only: [:index, :new, :create, :edit, :update]
+    resources :positions, only: [:index, :new, :create, :edit, :update]
+    resources :timesheets, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
+      member do
+        post :submit
+        post :approve
+        post :reject
+        post :reopen
+        post :add_entry
+        post :remove_entry
+      end
+    end
+    resources :leave_requests, only: [:index, :show, :new, :create, :destroy] do
+      member do
+        post :approve
+        post :deny
+        post :cancel
+      end
+    end
+    resources :pay_runs, only: [:index, :show, :new, :create] do
+      member do
+        post :finalize
+        post :pay
+        post :generate_payslips
+        post :add_payslip
+        post :remove_payslip
+      end
+    end
+  end
   resources :shopify_variants, only: [:show] do
     member do
       post :link
@@ -146,9 +179,11 @@ Rails.application.routes.draw do
   resources :syncs, only: [:index, :create] do
     collection do
       post :source
+      post :import_swipesimple
     end
   end
   get "/system", to: "system#index", as: :system
+  get "/connections", to: "connections#index", as: :connections
   get "/activity", to: "activity#index", as: :activity
   get "/live/sync_status", to: "live#sync_status"
 

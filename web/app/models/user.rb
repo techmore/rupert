@@ -51,13 +51,23 @@ class User < ActiveRecord::Base
       "sync.read",
       "sync.write",
       "settings.read",
+      "settings.write",
       "system.read",
+      "system.write",
       "users.read",
       "users.write",
       "purchasing.read",
       "purchasing.write",
       "finance.read",
       "finance.write",
+      "hr.read",
+      "hr.write",
+      "timesheets.read",
+      "timesheets.write",
+      "leave.read",
+      "leave.write",
+      "payroll.read",
+      "payroll.write",
     ],
     "manager" => [
       "dashboard.read",
@@ -74,6 +84,12 @@ class User < ActiveRecord::Base
       "alerts.read",
       "alerts.write",
       "sync.read",
+      "hr.read",
+      "timesheets.read",
+      "timesheets.write",
+      "leave.read",
+      "leave.write",
+      "payroll.read",
     ],
     "cashier" => [
       "dashboard.read",
@@ -92,6 +108,10 @@ class User < ActiveRecord::Base
       "reports.read",
       "ledger.read",
       "alerts.read",
+      "hr.read",
+      "timesheets.read",
+      "leave.read",
+      "payroll.read",
     ],
   }.freeze
 
@@ -161,7 +181,11 @@ class User < ActiveRecord::Base
       },
       {
         area: "System",
-        permissions: ["alerts.read", "alerts.write", "sync.read", "sync.write", "settings.read", "system.read", "users.read", "users.write", "purchasing.read", "purchasing.write", "finance.read", "finance.write"],
+        permissions: ["alerts.read", "alerts.write", "sync.read", "sync.write", "settings.read", "settings.write", "system.read", "system.write", "purchasing.read", "purchasing.write", "finance.read", "finance.write"],
+      },
+      {
+        area: "Team",
+        permissions: ["users.read", "users.write", "hr.read", "hr.write", "timesheets.read", "timesheets.write", "leave.read", "leave.write", "payroll.read", "payroll.write"],
       },
     ]
   end

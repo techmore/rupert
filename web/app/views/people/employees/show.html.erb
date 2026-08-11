@@ -1,0 +1,166 @@
+<% content_for :title, @employee.name %>
+<div class="space-y-6">
+  <section class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink"><%= @employee.name %></h1>
+      <p class="mt-1 text-sm text-mocha">
+        <%= @employee.position&.name || "No position" %>
+        <% if @employee.department %><span class="text-taupe">·</span> <%= @employee.department.name %><% end %>
+        <span class="text-taupe">·</span>
+        <span class="<%= @employee.active? ? "pill-fern" : @employee.on_leave? ? "pill-olive" : "pill-rose" %>">
+          <span class="dot <%= @employee.active? ? "bg-fern" : @employee.on_leave? ? "bg-olive" : "bg-rose" %>"></span>
+          <%= @employee.status.tr("_", " ") %>
+        </span>
+      </p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <% if Current.user.can?("hr.write") %>
+        <% if @employee.may_place_on_leave? %>
+          <%= button_to "Place on leave", transition_people_employee_path(@employee, event: "place_on_leave"), method: :post, class: "btn-ghost btn-sm", data: { confirm: "Put #{@employee.name} on leave?" } %>
+        <% end %>
+        <% if @employee.may_return_to_work? %>
+          <%= button_to "Return to work", transition_people_employee_path(@employee, event: "return_to_work"), method: :post, class: "btn-ghost btn-sm" %>
+        <% end %>
+        <% if @employee.may_terminate? %>
+          <%= button_to "Terminate", transition_people_employee_path(@employee, event: "terminate"), method: :post, class: "btn-ghost btn-sm", data: { confirm: "Terminate #{@employee.name}?" } %>
+        <% end %>
+        <% if @employee.may_rehire? %>
+          <%= button_to "Rehire", transition_people_employee_path(@employee, event: "rehire"), method: :post, class: "btn-ghost btn-sm" %>
+        <% end %>
+        <%= link_to "Edit", edit_people_employee_path(@employee), class: "btn-ghost btn-sm" %>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="stat">
+      <p class="stat-label">Hired</p>
+      <p class="stat-value-sm mt-1"><%= @employee.hire_date ? l(@employee.hire_date, format: :long) : "—" %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Pay</p>
+      <p class="stat-value-sm mt-1"><%= @employee.current_pay_rate&.label || "—" %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Employment</p>
+      <p class="stat-value-sm mt-1 capitalize"><%= @employee.employment_type.tr("_", " ") %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">PTO remaining</p>
+      <p class="stat-value-sm mt-1"><%= number_with_precision(@employee.leave_balance("vacation", Date.current.year).remaining_hours, precision: 1) %>h</p>
+    </div>
+  </section>
+
+  <div class="grid gap-6 lg:grid-cols-2">
+    <section class="card card-pad">
+      <h2 class="font-display text-lg text-ink">Details</h2>
+      <dl class="mt-3 space-y-2 text-sm">
+        <div class="flex justify-between gap-4"><dt class="text-mocha">Legal name</dt><dd class="font-medium text-ink"><%= @employee.legal_name.presence || "—" %></dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-mocha">Email</dt><dd class="font-medium text-ink"><%= @employee.email.presence || "—" %></dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-mocha">Phone</dt><dd class="font-medium text-ink"><%= @employee.phone.presence || "—" %></dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-mocha">Employee #</dt><dd class="font-medium text-ink"><%= @employee.employee_number.presence || "—" %></dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-mocha">Login account</dt><dd class="font-medium text-ink"><%= @employee.user&.email.presence || "—" %></dd></div>
+      </dl>
+      <% if @employee.address.present? %>
+        <h3 class="mt-4 text-sm font-semibold text-ink">Address</h3>
+        <p class="mt-1 whitespace-pre-wrap text-sm text-mocha"><%= @employee.address %></p>
+      <% end %>
+      <% if @employee.emergency_contact_name.present? %>
+        <h3 class="mt-4 text-sm font-semibold text-ink">Emergency contact</h3>
+        <p class="mt-1 text-sm text-mocha"><%= @employee.emergency_contact_name %> · <%= @employee.emergency_contact_phone.presence || "—" %></p>
+      <% end %>
+      <% if @employee.notes.present? %>
+        <h3 class="mt-4 text-sm font-semibold text-ink">Notes</h3>
+        <p class="mt-1 whitespace-pre-wrap text-sm text-mocha"><%= @employee.notes %></p>
+      <% end %>
+    </section>
+
+    <section class="card card-pad">
+      <h2 class="font-display text-lg text-ink">Leave balances · <%= Date.current.year %></h2>
+      <% if @leave_balances.empty? %>
+        <p class="mt-2 text-sm text-taupe">No balances yet — balances appear once leave is requested or set up.</p>
+      <% end %>
+      <div class="mt-3 space-y-2">
+        <% @leave_balances.each do |balance| %>
+          <div class="flex items-center justify-between gap-3 text-sm">
+            <span class="font-medium text-ink capitalize"><%= balance.leave_type %></span>
+            <span class="text-mocha"><%= number_with_precision(balance.remaining_hours, precision: 1) %>h of <%= number_with_precision(balance.accrued_hours, precision: 1) %>h</span>
+          </div>
+        <% end %>
+      </div>
+
+      <h2 class="mt-6 font-display text-lg text-ink">Pay rates</h2>
+      <% if @pay_rates.empty? %>
+        <p class="mt-2 text-sm text-taupe">No pay rates on file.</p>
+      <% end %>
+      <ul class="mt-3 space-y-1 text-sm text-mocha">
+        <% @pay_rates.each do |rate| %>
+          <li class="flex items-center justify-between gap-3">
+            <span><%= rate.label %></span>
+            <span class="text-xs text-taupe"><%= l(rate.effective_on, format: :short) %><%= rate.ended_on ? " – #{l(rate.ended_on, format: :short)}" : " – present" %></span>
+          </li>
+        <% end %>
+      </ul>
+    </section>
+  </div>
+
+  <div class="card overflow-hidden">
+    <div class="border-b border-fog px-5 py-3">
+      <h2 class="font-display text-lg text-ink">Recent timesheets</h2>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th scope="col" class="th">Period</th>
+            <th scope="col" class="th text-right">Hours</th>
+            <th scope="col" class="th">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% if @timesheets.empty? %>
+            <tr><td colspan="3" class="td py-6 text-center text-taupe">No timesheets yet.</td></tr>
+          <% end %>
+          <% @timesheets.each do |timesheet| %>
+            <tr class="hover:bg-cream">
+              <td class="td"><%= link_to timesheet.period_label, people_timesheet_path(timesheet), class: "font-medium text-olive hover:underline" %></td>
+              <td class="td text-right text-mocha"><%= number_with_precision(timesheet.total_hours, precision: 1) %></td>
+              <td class="td"><span class="pill-taupe capitalize"><%= timesheet.status %></span></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card overflow-hidden">
+    <div class="border-b border-fog px-5 py-3">
+      <h2 class="font-display text-lg text-ink">Recent pay</h2>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th scope="col" class="th">Pay run</th>
+            <th scope="col" class="th text-right">Hours</th>
+            <th scope="col" class="th text-right">Gross</th>
+            <th scope="col" class="th text-right">Net</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% if @payslips.empty? %>
+            <tr><td colspan="4" class="td py-6 text-center text-taupe">No payslips yet.</td></tr>
+          <% end %>
+          <% @payslips.each do |slip| %>
+            <tr class="hover:bg-cream">
+              <td class="td"><%= link_to slip.pay_run.name, people_pay_run_path(slip.pay_run), class: "font-medium text-olive hover:underline" %></td>
+              <td class="td text-right text-mocha"><%= number_with_precision(slip.hours, precision: 1) %></td>
+              <td class="td text-right text-mocha"><%= number_to_currency(slip.gross_cents / 100.0) %></td>
+              <td class="td text-right font-medium text-ink"><%= number_to_currency(slip.net_cents / 100.0) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

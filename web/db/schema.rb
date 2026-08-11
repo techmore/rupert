@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_10_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -329,6 +329,46 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.index ["tenant_id", "phone"], name: "index_customers_on_tenant_id_and_phone"
   end
 
+  create_table "departments", force: :cascade do |t|
+    t.string "code"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.bigint "manager_id"
+    t.string "name", null: false
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "name"], name: "index_departments_on_tenant_id_and_name", unique: true
+  end
+
+  create_table "employees", force: :cascade do |t|
+    t.text "address"
+    t.datetime "created_at", null: false
+    t.date "date_of_birth"
+    t.bigint "department_id"
+    t.string "email"
+    t.string "emergency_contact_name"
+    t.string "emergency_contact_phone"
+    t.string "employee_number"
+    t.string "employment_type", default: "full_time"
+    t.string "first_name", null: false
+    t.date "hire_date"
+    t.string "last_name", null: false
+    t.string "legal_name"
+    t.text "notes"
+    t.string "phone"
+    t.bigint "position_id"
+    t.string "status", default: "active", null: false
+    t.string "tenant_id", null: false
+    t.date "termination_date"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id"
+    t.index ["tenant_id", "department_id"], name: "index_employees_on_tenant_id_and_department_id"
+    t.index ["tenant_id", "employee_number"], name: "index_employees_on_tenant_id_and_employee_number", unique: true
+    t.index ["tenant_id", "position_id"], name: "index_employees_on_tenant_id_and_position_id"
+    t.index ["tenant_id", "status"], name: "index_employees_on_tenant_id_and_status"
+    t.index ["tenant_id", "user_id"], name: "index_employees_on_tenant_id_and_user_id"
+  end
+
   create_table "expenses", force: :cascade do |t|
     t.integer "amount_cents", default: 0, null: false
     t.string "category", default: "other", null: false
@@ -399,6 +439,35 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.index ["tenant_id", "name"], name: "index_kpis_on_tenant_id_and_name"
   end
 
+  create_table "leave_balances", force: :cascade do |t|
+    t.decimal "accrued_hours", precision: 6, scale: 2, default: "0.0", null: false
+    t.datetime "created_at", null: false
+    t.bigint "employee_id", null: false
+    t.string "leave_type", null: false
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.decimal "used_hours", precision: 6, scale: 2, default: "0.0", null: false
+    t.integer "year", null: false
+    t.index ["tenant_id", "employee_id", "leave_type", "year"], name: "idx_on_tenant_id_employee_id_leave_type_year_960082e46c", unique: true
+  end
+
+  create_table "leave_requests", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "employee_id", null: false
+    t.date "ends_on", null: false
+    t.decimal "hours", precision: 6, scale: 2
+    t.string "leave_type", null: false
+    t.text "reason"
+    t.datetime "reviewed_at"
+    t.bigint "reviewed_by"
+    t.date "starts_on", null: false
+    t.string "status", default: "requested", null: false
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "employee_id", "status"], name: "index_leave_requests_on_tenant_id_and_employee_id_and_status"
+    t.index ["tenant_id", "status"], name: "index_leave_requests_on_tenant_id_and_status"
+  end
+
   create_table "order_lines", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "line_cents", default: 0
@@ -444,6 +513,37 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.index ["tenant_id", "status"], name: "index_orders_on_tenant_id_and_status"
   end
 
+  create_table "pay_rates", force: :cascade do |t|
+    t.integer "annual_salary_cents", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.date "effective_on", null: false
+    t.bigint "employee_id", null: false
+    t.date "ended_on"
+    t.integer "hourly_rate_cents", default: 0, null: false
+    t.string "pay_frequency", default: "biweekly", null: false
+    t.string "pay_type", default: "hourly", null: false
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "effective_on"], name: "index_pay_rates_on_tenant_id_and_effective_on"
+    t.index ["tenant_id", "employee_id"], name: "index_pay_rates_on_tenant_id_and_employee_id"
+  end
+
+  create_table "pay_runs", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.text "notes"
+    t.date "paid_on"
+    t.date "period_end", null: false
+    t.date "period_start", null: false
+    t.string "status", default: "draft", null: false
+    t.string "tenant_id", null: false
+    t.integer "total_gross_cents", default: 0, null: false
+    t.integer "total_net_cents", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "period_start"], name: "index_pay_runs_on_tenant_id_and_period_start"
+    t.index ["tenant_id", "status"], name: "index_pay_runs_on_tenant_id_and_status"
+  end
+
   create_table "payments", force: :cascade do |t|
     t.integer "amount_cents", default: 0
     t.datetime "created_at", null: false
@@ -456,6 +556,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.datetime "updated_at", null: false
     t.index ["tenant_id", "order_id"], name: "index_payments_on_tenant_id_and_order_id"
     t.index ["tenant_id", "paid_at"], name: "index_payments_on_tenant_id_and_paid_at"
+  end
+
+  create_table "payslips", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "deductions_cents", default: 0, null: false
+    t.bigint "employee_id", null: false
+    t.integer "gross_cents", default: 0, null: false
+    t.decimal "hours", precision: 6, scale: 2, default: "0.0", null: false
+    t.integer "net_cents", default: 0, null: false
+    t.text "notes"
+    t.bigint "pay_rate_id"
+    t.bigint "pay_run_id", null: false
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "employee_id"], name: "index_payslips_on_tenant_id_and_employee_id"
+    t.index ["tenant_id", "pay_run_id"], name: "index_payslips_on_tenant_id_and_pay_run_id"
   end
 
   create_table "pos_sessions", force: :cascade do |t|
@@ -478,6 +594,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.integer "variance_cents"
     t.index ["tenant_id", "opened_at"], name: "index_pos_sessions_on_tenant_id_and_opened_at"
     t.index ["tenant_id", "status"], name: "index_pos_sessions_on_tenant_id_and_status"
+  end
+
+  create_table "positions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "department_id"
+    t.text "description"
+    t.string "name", null: false
+    t.string "pay_grade"
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "department_id"], name: "index_positions_on_tenant_id_and_department_id"
+    t.index ["tenant_id", "name"], name: "index_positions_on_tenant_id_and_name"
   end
 
   create_table "projects", force: :cascade do |t|
@@ -718,6 +846,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.index ["subdomain"], name: "index_tenants_on_subdomain", unique: true
   end
 
+  create_table "timesheet_entries", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.decimal "hours", precision: 6, scale: 2, default: "0.0", null: false
+    t.string "tenant_id", null: false
+    t.bigint "timesheet_id", null: false
+    t.datetime "updated_at", null: false
+    t.string "work_type", default: "regular", null: false
+    t.date "worked_on", null: false
+    t.index ["tenant_id", "timesheet_id"], name: "index_timesheet_entries_on_tenant_id_and_timesheet_id"
+  end
+
+  create_table "timesheets", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "employee_id", null: false
+    t.text "notes"
+    t.date "period_end", null: false
+    t.date "period_start", null: false
+    t.datetime "reviewed_at"
+    t.bigint "reviewed_by"
+    t.string "status", default: "draft", null: false
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "employee_id", "period_start"], name: "index_timesheets_on_tenant_id_and_employee_id_and_period_start", unique: true
+    t.index ["tenant_id", "status"], name: "index_timesheets_on_tenant_id_and_status"
+  end
+
   create_table "user_permissions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.boolean "enabled", default: true, null: false
@@ -779,6 +933,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.index ["tenant_id", "name"], name: "index_vendors_on_tenant_id_and_name", unique: true
   end
 
+  add_foreign_key "departments", "employees", column: "manager_id"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_failed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
