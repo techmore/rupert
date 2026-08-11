@@ -29,12 +29,16 @@ module Goals
       end
     end
 
+    def edit
+      authorize(@goal)
+    end
+
     def update
       authorize(@goal)
       if @goal.update(goal_params)
         redirect_to(@goal, notice: "Goal updated.")
       else
-        render(:show, status: :unprocessable_entity)
+        render(:edit, status: :unprocessable_entity)
       end
     end
 

@@ -97,19 +97,25 @@ module Core
 
     # Record a refund (partial or full). When the refunded total reaches the
     # paid total, the order transitions to the refunded financial status.
+    # Locked inside a transaction so concurrent refund requests can't over-refund.
     def record_refund!(amount_cents:, method: "card", reason: nil, reference: nil, refunded_at: Time.current)
       raise ArgumentError, "amount must be positive" unless amount_cents.to_i.positive?
-      raise ArgumentError, "refund exceeds paid total" if amount_cents.to_i > refundable_cents
 
-      refund = refunds.create!(
-        amount_cents: amount_cents.to_i,
-        method: method,
-        reason: reason,
-        reference: reference,
-        refunded_at: refunded_at,
-      )
-      refund! if fully_refunded? && may_refund?
-      refund
+      transaction do
+        with_lock do
+          raise ArgumentError, "refund exceeds paid total" if amount_cents.to_i > refundable_cents
+
+          refund = refunds.create!(
+            amount_cents: amount_cents.to_i,
+            method: method,
+            reason: reason,
+            reference: reference,
+            refunded_at: refunded_at,
+          )
+          refund! if fully_refunded? && may_refund?
+          refund
+        end
+      end
     end
 
     def shipping_address

@@ -20,9 +20,9 @@ class TenantSettings
     def set(key, value)
       raise ArgumentError, "unknown setting #{key}" unless DEFAULTS.key?(key.to_sym)
 
-      setting = Setting.find_or_initialize_by(key: "tenant_#{key}", tenant_id: Current.tenant_id)
-      setting.value = value.to_s
-      setting.save!
+      Setting.find_or_create_for("tenant_#{key}", Current.tenant_id) do |setting|
+        setting.value = value.to_s
+      end
     end
 
     def low_stock_threshold_int

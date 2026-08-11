@@ -70,7 +70,7 @@
               <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="refund_amount">Amount</label>
               <div class="flex items-center gap-1">
                 <span class="text-sm text-mocha">$</span>
-                <input type="number" id="refund_amount" name="amount_cents" step="0.01" min="0.01" max="<%= number_with_precision(@order.refundable_cents / 100.0, precision: 2) %>" value="<%= number_with_precision(@order.refundable_cents / 100.0, precision: 2) %>" class="input w-32">
+                <input type="number" id="refund_amount" name="amount" step="0.01" min="0.01" max="<%= number_with_precision(@order.refundable_cents / 100.0, precision: 2) %>" value="<%= number_with_precision(@order.refundable_cents / 100.0, precision: 2) %>" class="input w-32">
               </div>
             </div>
             <div>

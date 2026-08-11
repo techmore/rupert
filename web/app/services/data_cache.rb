@@ -27,9 +27,8 @@ module DataCache
     # after a successful sync, inventory count approval, or POS settle.
     def bump!
       new_version = version + 1
-      Setting.find_or_initialize_by(key: VERSION_KEY, tenant_id: Current.tenant_id).tap do |setting|
+      Setting.find_or_create_for(VERSION_KEY, Current.tenant_id) do |setting|
         setting.value = new_version.to_s
-        setting.save!
       end
       Rails.cache.delete(version_cache_key)
       new_version

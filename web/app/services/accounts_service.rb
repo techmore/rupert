@@ -13,7 +13,7 @@ class AccountsService
           "vendors.id",
           "vendors.name",
           "COALESCE(SUM(CASE WHEN purchase_orders.status = 'received' THEN
-             (SELECT COALESCE(SUM(purchase_order_lines.quantity * purchase_order_lines.unit_cost_cents), 0)
+             (SELECT COALESCE(SUM(purchase_order_lines.received_quantity * purchase_order_lines.unit_cost_cents), 0)
               FROM purchase_order_lines
               WHERE purchase_order_lines.purchase_order_id = purchase_orders.id) ELSE 0 END), 0) AS owed_cents",
           "COALESCE(SUM(CASE WHEN purchase_orders.status = 'ordered' THEN
@@ -63,8 +63,7 @@ class AccountsService
     end
 
     def receivable_total_cents
-      Core::Order.where(status: ["paid", "fulfilled"]).sum("gross_cents") -
-        Core::Payment.where(status: "completed").sum(:amount_cents)
+      receivable_by_customer.sum { |row| row.balance_cents.to_i }
     end
   end
 end

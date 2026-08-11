@@ -29,12 +29,16 @@ module Goals
       end
     end
 
+    def edit
+      authorize(@kpi)
+    end
+
     def update
       authorize(@kpi)
       if @kpi.update(kpi_params)
         redirect_to(@kpi, notice: "KPI updated.")
       else
-        render(:show, status: :unprocessable_entity)
+        render(:edit, status: :unprocessable_entity)
       end
     end
 

@@ -10,6 +10,7 @@ class LocationsController < AuthenticatedController
     @locations = Location.where(tenant_id: Current.tenant_id).order(:name)
     @total_units = InventoryLevel.where(tenant_id: Current.tenant_id).sum(:quantity)
     @per_source = Location.where(tenant_id: Current.tenant_id).group(:source).count
+    @units_by_location = InventoryLevel.where(tenant_id: Current.tenant_id).group(:locationId).sum(:quantity)
   end
 
   def show

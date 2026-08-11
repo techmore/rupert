@@ -10,6 +10,7 @@ class SessionsController < ApplicationController
   def create
     user = User.find_by(email: params[:email].to_s.downcase)
     if user&.active? && user.authenticate(params[:password])
+      reset_session # prevent session fixation
       session[:user_id] = user.id
       redirect_to(root_path, notice: "Signed in")
     else

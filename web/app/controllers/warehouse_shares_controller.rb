@@ -2,6 +2,8 @@
 
 # Admin CRUD for secret warehouse-sale links shared with vendors.
 class WarehouseSharesController < AuthenticatedController
+  before_action :authorize_write, only: [:create, :update, :update_tiers, :destroy]
+  before_action :authorize_read, only: :show
   before_action :set_share, only: [:show, :update, :update_tiers, :destroy]
 
   # The share's #to_param is its secret token, so all :id params arrive as tokens.
@@ -58,5 +60,15 @@ class WarehouseSharesController < AuthenticatedController
   def destroy
     @share.destroy
     redirect_to(warehouse_path, notice: "Vendor link deleted")
+  end
+
+  private
+
+  def authorize_read
+    authorize(:module, :settings_read?)
+  end
+
+  def authorize_write
+    authorize(:module, :settings_write?)
   end
 end

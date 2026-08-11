@@ -20,7 +20,7 @@ class SalesController < AuthenticatedController
     @sales = @sales.recent(500)
 
     @hourly = hourly_pivot(@date)
-    @day_sales = Core::Order.on_day(@date).by_source(params[:source]).order(occurred_at: :asc)
+    @day_sales = Core::Order.on_day(@date).by_source(params[:source]).includes(:fulfillments).order(occurred_at: :asc)
     @day_total_cents = @day_sales.sum(:gross_cents)
     @locations = Location.order(:name).pluck(:name, :id)
     @revenue_series = DashboardPresenter.new.revenue_series(days: @window_days, source: @source == "all" ? nil : @source)

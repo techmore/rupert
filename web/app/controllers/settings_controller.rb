@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 class SettingsController < AuthenticatedController
+  before_action :authorize_read, only: [:show, :env, :env_export, :drive_status, :drive_logs, :backup]
+  before_action :authorize_write, except: [:show, :env, :env_export, :drive_status, :drive_logs, :backup]
+  before_action :authorize_super_admin, only: [:backup, :restore]
+
   def show; end
 
   # GET /settings/env.json — masked view of managed env keys
@@ -173,5 +177,19 @@ class SettingsController < AuthenticatedController
     else
       redirect_to(settings_path, alert: "Buzz test failed: #{message}")
     end
+  end
+
+  private
+
+  def authorize_read
+    authorize(:module, :settings_read?)
+  end
+
+  def authorize_write
+    authorize(:module, :settings_write?)
+  end
+
+  def authorize_super_admin
+    redirect_to(settings_path, alert: "Only the super admin can do that.") unless Current.user.super_admin?
   end
 end

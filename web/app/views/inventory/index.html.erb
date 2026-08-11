@@ -36,10 +36,11 @@
             </tr>
           <% end %>
           <% @products.each do |product| %>
-            <% product.variants.order(title: :asc).each do |variant| %>
-              <% shopify_qty = variant.levels.sum(:quantity) %>
-              <% link = variant.sku_links.linked.first %>
-              <% square_qty = link ? link.square_variation.levels.sum(:quantity) : nil %>
+            <% product.variants.sort_by(&:title).each do |variant| %>
+              <% info = @variant_qtys.fetch(variant.id, {}) %>
+              <% shopify_qty = info[:shopify_qty] || 0 %>
+              <% link = info[:link] %>
+              <% square_qty = info[:square_qty] %>
               <% drift = square_qty != nil ? square_qty - shopify_qty : nil %>
               <tr class="hover:bg-cream">
                 <td class="td">

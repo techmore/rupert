@@ -3,8 +3,10 @@
 # Employee directory + role assignment. Super-admin only: employees can manage
 # their team but never their own role or access.
 class UsersController < AuthenticatedController
-  before_action :authorize_users
+  before_action :authorize_read, only: [:index, :edit]
+  before_action :authorize_write, except: [:index, :edit]
   before_action :set_user, only: [:edit, :update, :destroy, :deactivate, :activate, :update_permissions]
+  before_action :guard_super_admin, only: [:update, :destroy, :deactivate, :update_permissions]
 
   def index
     @users = User.where(tenant_id: Current.tenant_id).ordered
@@ -76,7 +78,11 @@ class UsersController < AuthenticatedController
 
   private
 
-  def authorize_users
+  def authorize_read
+    authorize(:module, :users_read?)
+  end
+
+  def authorize_write
     authorize(:module, :users_write?)
   end
 
@@ -84,7 +90,16 @@ class UsersController < AuthenticatedController
     @user = User.find_by!(tenant_id: Current.tenant_id, id: params[:id])
   end
 
+  # Non-super-admins can't modify or deactivate a super admin account.
+  def guard_super_admin
+    return if Current.user.super_admin?
+
+    redirect_to(users_path, alert: "Only the super admin can modify a super admin account.") if @user.super_admin?
+  end
+
   def user_params
-    params.require(:user).permit(:name, :email, :role, :password, :active)
+    permitted = [:name, :email, :password, :active]
+    permitted << :role if Current.user.super_admin?
+    params.require(:user).permit(*permitted)
   end
 end

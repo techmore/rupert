@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 class AlertsController < AuthenticatedController
+  before_action :authorize_read, only: :index
+  before_action :authorize_write, only: [:update_status, :bulk_update]
+
   def index
     @status = params[:status].presence || "open"
     @alerts = StockAlert.by_status(@status).order(createdAt: :desc).limit(100)
@@ -27,5 +30,15 @@ class AlertsController < AuthenticatedController
       flash[:notice] = "Updated #{ids.length} alert(s)."
     end
     redirect_to(alerts_path(status: params[:tab].presence || "open"))
+  end
+
+  private
+
+  def authorize_read
+    authorize(:module, :alerts_read?)
+  end
+
+  def authorize_write
+    authorize(:module, :alerts_write?)
   end
 end

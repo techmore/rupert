@@ -19,7 +19,7 @@ class OrdersController < AuthenticatedController
       tenant_id: Current.tenant_id,
       tracking_company: params[:tracking_company].presence,
       tracking_number: params[:tracking_number].presence,
-      tracking_url: params[:tracking_url].presence,
+      tracking_url: safe_tracking_url(params[:tracking_url].presence),
       fulfilled_at: Time.current,
       status: "fulfilled",
     )
@@ -36,16 +36,17 @@ class OrdersController < AuthenticatedController
   end
 
   # Process a refund (partial or full). Recorded against the order; a full
-  # refund transitions the financial status to refunded.
+  # refund transitions the financial status to refunded. The form sends dollars
+  # in `amount`; convert to cents here.
   def refund
     authorize(:module, :sales_write?)
+    cents = (params[:amount].to_f * 100).round
     refund = @order.record_refund!(
-      amount_cents: params[:amount_cents].to_i,
+      amount_cents: cents,
       method: params[:method].presence || "card",
       reason: params[:reason].presence,
       reference: params[:reference].presence,
     )
-    cents = params[:amount_cents].to_i
     ActivityLogger.log("refund_recorded", subject: @order, details: "$#{format("%.2f", cents / 100.0)} · #{refund.method}")
     redirect_to(order_path(@order), notice: "Refund of $#{format("%.2f", cents / 100.0)} recorded.")
   rescue ArgumentError, ActiveRecord::RecordInvalid => e
@@ -74,6 +75,19 @@ class OrdersController < AuthenticatedController
   end
 
   private
+
+  # Allow only http(s) tracking URLs (plus scheme-relative), never javascript:
+  # or data: URIs that could be injected into the order page.
+  def safe_tracking_url(url)
+    return if url.blank?
+
+    uri = URI.parse(url)
+    return url if ["http", "https"].include?(uri.scheme)
+
+    nil
+  rescue URI::InvalidURIError
+    nil
+  end
 
   def set_order
     @order = Core::Order.find_by!(tenant_id: Current.tenant_id, id: params[:id])

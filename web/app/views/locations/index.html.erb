@@ -49,7 +49,7 @@
               <td class="td font-medium text-ink"><%= link_to location.name, location, class: "hover:text-olive hover:underline" %></td>
               <td class="td"><span class="pill-taupe capitalize"><%= location.source %></span></td>
               <td class="td text-mocha capitalize"><%= location.kind.presence || "—" %></td>
-              <td class="td text-right text-mocha"><%= InventoryLevel.where(locationId: location.id).sum(:quantity) %></td>
+              <td class="td text-right text-mocha"><%= @units_by_location.fetch(location.id, 0) %></td>
               <td class="td">
                 <% if location.active %><span class="pill-fern">active</span><% else %><span class="pill-taupe">inactive</span><% end %>
               </td>

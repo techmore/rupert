@@ -26,9 +26,10 @@
           </button>
           <% if @last_sync %>
             <% synced = @last_sync.success? %>
-            <span class="<%= synced ? "pill-fern" : "pill-clay" %>" title="<%= l(@last_sync.startedAt, format: :long) %>">
+            <span class="<%= synced ? "pill-fern" : "pill-clay" %>" title="<%= l(@last_sync.startedAt, format: :short) %>">
               <span class="dot <%= synced ? "bg-fern" : "bg-clay" %>"></span>
               <%= synced ? "Synced" : "Needs sync" %>
+              <time datetime="<%= @last_sync.startedAt.iso8601 %>"><%= time_ago_in_words(@last_sync.startedAt) %> ago</time>
             </span>
           <% else %>
             <span class="pill-taupe">

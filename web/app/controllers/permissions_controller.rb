@@ -4,7 +4,8 @@
 # the built-in defaults for a role; an empty set means "use built-ins". Reset
 # clears the overrides so a role falls back to the defaults.
 class PermissionsController < AuthenticatedController
-  before_action :authorize_permissions
+  before_action :authorize_read, only: :show
+  before_action :authorize_write, only: [:save, :reset]
 
   def show
     @roles = User.roles.keys
@@ -36,7 +37,11 @@ class PermissionsController < AuthenticatedController
 
   private
 
-  def authorize_permissions
+  def authorize_read
+    authorize(:module, :users_read?)
+  end
+
+  def authorize_write
     authorize(:module, :users_write?)
   end
 end

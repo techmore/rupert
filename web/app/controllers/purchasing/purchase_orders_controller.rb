@@ -73,15 +73,20 @@ module Purchasing
     # once everything has arrived.
     def receive
       authorize(:module, :purchasing_write?)
-      params[:received].to_unsafe_h.each do |line_id, qty|
-        line = @purchase_order.lines.find_by(id: line_id)
-        next if line.nil?
+      received = params[:received].presence || {}
+      ActiveRecord::Base.transaction do
+        received.to_unsafe_h.each do |line_id, qty|
+          line = @purchase_order.lines.find_by(id: line_id)
+          next if line.nil?
 
-        line.update!(received_quantity: qty.to_i.clamp(0, line.quantity))
+          line.update!(received_quantity: qty.to_i.clamp(0, line.quantity))
+        end
+        @purchase_order.mark_received! if @purchase_order.fully_received? && @purchase_order.may_mark_received?
       end
-      @purchase_order.mark_received! if @purchase_order.fully_received? && @purchase_order.may_mark_received?
       ActivityLogger.log("po_received", subject: @purchase_order)
       redirect_to(@purchase_order, notice: "Received quantities updated.")
+    rescue ActiveRecord::RecordInvalid => e
+      redirect_to(@purchase_order, alert: e.record.errors.full_messages.join(", "))
     end
 
     def cancel

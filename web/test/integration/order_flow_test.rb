@@ -153,7 +153,7 @@ class OrderFlowTest < ActionDispatch::IntegrationTest
     assert_select "p", /refundable \$30\.00/
 
     post refund_order_path(@order), params: {
-      amount_cents: "1000",
+      amount: "10.00",
       method: "card",
       reason: "One item returned",
       shop: "m11u0i-sb.myshopify.com",
@@ -171,7 +171,7 @@ class OrderFlowTest < ActionDispatch::IntegrationTest
 
   test "full refund transitions the order to refunded" do
     post refund_order_path(@order), params: {
-      amount_cents: "3000",
+      amount: "30.00",
       method: "cash",
       shop: "m11u0i-sb.myshopify.com",
       embedded: "1",
@@ -187,7 +187,7 @@ class OrderFlowTest < ActionDispatch::IntegrationTest
 
   test "over-refund is rejected" do
     post refund_order_path(@order), params: {
-      amount_cents: "5000",
+      amount: "50.00",
       method: "card",
       shop: "m11u0i-sb.myshopify.com",
       embedded: "1",

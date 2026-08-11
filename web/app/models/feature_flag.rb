@@ -15,9 +15,9 @@ class FeatureFlag
 
     def set(flag, enabled)
       key = FLAGS.fetch(flag.to_sym)
-      setting = Setting.find_or_initialize_by(key: key, tenant_id: Current.tenant_id)
-      setting.value = enabled ? "1" : "0"
-      setting.save!
+      Setting.find_or_create_for(key, Current.tenant_id) do |setting|
+        setting.value = enabled ? "1" : "0"
+      end
     end
 
     def enabled_value(flag)

@@ -103,8 +103,8 @@ class ReportsController < AuthenticatedController
     threshold = TenantSettings.low_stock_threshold_int
     payload = DataCache.fetch("reports/inventory/#{@days}/#{threshold}", ttl: 10.minutes) do
       {
-        valuation: ShopifyVariant.includes(:product).where.not(price: nil)
-          .sum { |v| v.price.to_f * v.inventoryQuantity.to_i },
+        valuation: ShopifyVariant.where.not(price: nil).where.not(inventoryQuantity: nil)
+          .sum(Arel.sql("price * \"inventoryQuantity\"")),
         variants: ShopifyVariant.count,
         tracked: ShopifyVariant.where(tracked: true).count,
         low_stock: ShopifyVariant.where("\"inventoryQuantity\" > 0 AND \"inventoryQuantity\" <= ?", threshold).count,

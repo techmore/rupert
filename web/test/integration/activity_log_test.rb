@@ -58,7 +58,7 @@ class ActivityLogTest < ActionDispatch::IntegrationTest
     order.payments.create!(tenant_id: @tenant.id, method: "card", amount_cents: 2000, status: "completed", paid_at: Time.current)
 
     post refund_order_path(order), params: {
-      amount_cents: "2000", method: "cash", shop: "m11u0i-sb.myshopify.com", embedded: "1",
+      amount: "20.00", method: "cash", shop: "m11u0i-sb.myshopify.com", embedded: "1",
     }
     follow_redirect!
 
