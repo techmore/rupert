@@ -75,6 +75,22 @@ class SyncEngine
       SyncRun.where(status: "running").exists?
     end
 
+    # One-way import of a SwipeSimple CSV export (SwipeSimple has no public
+    # API). Idempotent, synchronous, and recorded as a sync run.
+    def import_swipesimple_csv!(csv_text_or_path, actor: "user", tenant: nil)
+      Current.tenant = tenant if tenant
+      raise ArgumentError, "No tenant in context" if Current.tenant_id.nil?
+
+      run = SyncRun.create!(mode: "csv", status: "running", source: "swipesimple", actor: actor, startedAt: Time.current)
+      summary = SwipesimpleImporter.import!(csv_text_or_path)
+      run.update!(status: "success", finishedAt: Time.current, details: summary.to_h.to_json)
+      DataCache.bump!
+      summary
+    rescue StandardError => e
+      run&.update!(status: "failed", error: e.message.to_s[0, 2000], finishedAt: Time.current)
+      raise
+    end
+
     private
 
     def backfill_since(history_days)
