@@ -28,7 +28,7 @@ class InventoryNegativeBannerFlowTest < ActionDispatch::IntegrationTest
   test "inventory hides the banner when nothing is negative" do
     get inventory_index_path
     assert_response :success
-    assert_not_includes response.body, "negative counts"
+    assert_not_includes response.body, "Inventory went negative"
   end
 
   test "an admin can fix a negative item" do

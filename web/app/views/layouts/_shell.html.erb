@@ -80,6 +80,9 @@
   <% end %>
 
   <main class="mx-auto max-w-6xl px-6 py-8">
+    <% if (guide = PageGuides.for_path(request.path)) %>
+      <%= render "shared/page_guide", guide: guide %>
+    <% end %>
     <% if notice %><div role="status" class="mb-4 rounded-xl border border-fern/30 bg-fern/10 px-4 py-2.5 text-sm text-fern"><%= notice %></div><% end %>
     <% if alert %><div role="alert" class="mb-4 rounded-xl border border-rose/30 bg-rose/10 px-4 py-2.5 text-sm text-rose"><%= alert %></div><% end %>
     <%= yield %>
