@@ -64,4 +64,21 @@ class AccessLogFlowTest < ActionDispatch::IntegrationTest
     get access_logs_path
     assert_redirected_to(root_path)
   end
+
+  test "too many failed attempts from one IP triggers rate limiting" do
+    (LoginThrottle::IP_FAILURES + 1).times do
+      post login_path, params: { email: @admin.email, password: "wrong" }
+      assert_response :unprocessable_entity
+    end
+
+    post login_path, params: { email: @admin.email, password: "wrong" }
+    assert_response :unprocessable_entity
+    assert_includes response.body, "Too many failed sign-in attempts"
+    assert_equal "rate limited", AccessLog.unscoped.order(:id).last.detail
+
+    # Even a correct password is refused while throttled.
+    post login_path, params: { email: @admin.email, password: "password123" }
+    assert_response :unprocessable_entity
+    assert_includes response.body, "Too many failed sign-in attempts"
+  end
 end

@@ -9,6 +9,20 @@ class SessionsController < ApplicationController
   end
 
   def create
+    if LoginThrottle.blocked?(ip: request.remote_ip, email: params[:email])
+      minutes = LoginThrottle.lockout_minutes(ip: request.remote_ip, email: params[:email])
+      AccessLogger.record(
+        source: "password",
+        status: "failure",
+        request: request,
+        email: params[:email],
+        domain: params[:email].to_s.split("@").last,
+        detail: "rate limited",
+      )
+      flash.now[:alert] = "Too many failed sign-in attempts. Try again in #{minutes} minute#{minutes == 1 ? "" : "s"}."
+      return render(:new, status: :unprocessable_entity)
+    end
+
     user = User.find_by(email: params[:email].to_s.downcase)
     if user&.active? && user.authenticate(params[:password])
       reset_session # prevent session fixation
