@@ -227,6 +227,18 @@
 
   <section class="card card-pad">
     <div class="flex items-baseline justify-between">
+      <h2 class="font-display text-xl text-ink">Size families</h2>
+      <span class="<%= SizeFamily.any? ? "pill-fern" : "pill-taupe" %>"><%= pluralize(SizeFamily.count, "family") %></span>
+    </div>
+    <p class="mt-2 text-xs text-taupe">Group a base-gram product's sizes (e.g. 3.5g, 7g, 14g, 28g) under a root gram bank. Every 15-minute sync derives each size's quantity from the root and (with your approval) writes it to Square instead of trusting realtime counts.</p>
+    <div class="mt-4 flex flex-wrap items-center gap-2">
+      <%= link_to "Manage size families", size_families_path, class: "btn-primary" %>
+      <%= link_to "Pending changes", size_families_path, class: "btn-ghost" %>
+    </div>
+  </section>
+
+  <section class="card card-pad">
+    <div class="flex items-baseline justify-between">
       <h2 class="font-display text-xl text-ink">Buzz agent</h2>
       <span class="<%= BuzzAgent.configured? ? "pill-fern" : "pill-taupe" %>"><%= BuzzAgent.configured? ? "Configured" : "Not configured" %></span>
     </div>

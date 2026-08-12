@@ -15,6 +15,14 @@
     <input type="search" name="q" value="<%= @q %>" placeholder="Search products or SKUs…" class="search w-full" autocomplete="off">
   <% end %>
 
+  <% size_items = @products.sum { |product| product.variants.count { |v| @variant_qtys[v.id]&.dig(:size) } } %>
+  <% if size_items.positive? %>
+    <div class="rounded-xl border border-olive/20 bg-olive/5 px-4 py-2.5 text-sm text-ink">
+      <span class="font-semibold"><%= pluralize(size_items, "size-derived variant") %></span> on this page is reconciled from its gram root (e.g. 3.5g / 7g / 14g / 28g) rather than Square realtime — see
+      <%= link_to "Sizes", size_families_path, class: "font-semibold text-olive hover:underline" %>.
+    </div>
+  <% end %>
+
   <div class="card overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
@@ -53,6 +61,20 @@
                     <div class="min-w-0">
                       <p class="truncate font-medium text-ink"><%= link_to variant.title, shopify_variant_path(variant), class: "hover:text-olive hover:underline" %></p>
                       <p class="truncate text-xs text-taupe"><%= product.title %></p>
+                      <% if (size = info[:size]) %>
+                        <span class="mt-1 inline-flex flex-wrap items-center gap-1.5">
+                          <span class="pill-olive">size <%= size[:grams] %>g</span>
+                          <% if size[:root].nil? %>
+                            <span class="pill-taupe">no root set</span>
+                          <% elsif size[:pending] %>
+                            <span class="pill-rose">pending → <%= size[:pending].target_quantity %></span>
+                          <% elsif size[:target] == square_qty %>
+                            <span class="pill-fern">in sync · <%= size[:target] %></span>
+                          <% else %>
+                            <span class="pill-taupe">target <%= size[:target] %> · root <%= number_with_precision(size[:root], precision: 1) %>g</span>
+                          <% end %>
+                        </span>
+                      <% end %>
                     </div>
                   </div>
                 </td>

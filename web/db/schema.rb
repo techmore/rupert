@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_10_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_12_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -468,6 +468,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_130000) do
     t.index ["tenant_id", "status"], name: "index_leave_requests_on_tenant_id_and_status"
   end
 
+  create_table "oauth_allowed_domains", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "domain", null: false
+    t.datetime "updated_at", null: false
+    t.index ["domain"], name: "index_oauth_allowed_domains_on_domain", unique: true
+  end
+
   create_table "order_lines", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "line_cents", default: 0
@@ -695,6 +702,50 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_130000) do
     t.string "shopify_token", null: false
     t.datetime "updated_at", null: false
     t.index ["shopify_domain"], name: "index_shops_on_shopify_domain", unique: true
+  end
+
+  create_table "size_changes", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "error"
+    t.bigint "family_id", null: false
+    t.decimal "grams", precision: 12, scale: 3
+    t.string "mode"
+    t.decimal "root_grams", precision: 12, scale: 3
+    t.string "sku", null: false
+    t.string "square_variation_id"
+    t.string "status", default: "pending", null: false
+    t.integer "target_quantity"
+    t.string "tenant_id"
+    t.datetime "updated_at", null: false
+    t.index ["family_id", "sku"], name: "index_size_changes_on_family_id_and_sku", unique: true
+    t.index ["family_id"], name: "index_size_changes_on_family_id"
+    t.index ["tenant_id"], name: "index_size_changes_on_tenant_id"
+  end
+
+  create_table "size_families", force: :cascade do |t|
+    t.decimal "base_grams", precision: 12, scale: 3
+    t.datetime "created_at", null: false
+    t.string "mode", default: "approval", null: false
+    t.string "name", null: false
+    t.string "root_sku"
+    t.datetime "sales_watermark"
+    t.string "tenant_id"
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id"], name: "index_size_families_on_tenant_id"
+  end
+
+  create_table "size_family_members", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "family_id", null: false
+    t.decimal "grams", precision: 12, scale: 3, null: false
+    t.string "shopify_variant_id"
+    t.string "sku", null: false
+    t.string "square_variation_id"
+    t.string "tenant_id"
+    t.datetime "updated_at", null: false
+    t.index ["family_id", "sku"], name: "index_size_family_members_on_family_id_and_sku", unique: true
+    t.index ["family_id"], name: "index_size_family_members_on_family_id"
+    t.index ["tenant_id"], name: "index_size_family_members_on_tenant_id"
   end
 
   create_table "solid_queue_blocked_executions", force: :cascade do |t|

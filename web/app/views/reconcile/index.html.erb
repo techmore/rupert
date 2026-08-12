@@ -25,8 +25,131 @@
     </div>
   </section>
 
+  <% if @size_groups.any? %>
+    <section>
+      <div class="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h2 class="font-display text-2xl text-ink">Size families</h2>
+          <p class="mt-1 text-sm text-mocha">Each root product with the sizes derived from its gram bank. Sizes reconcile on the <a href="<%= size_families_path %>" class="font-semibold text-olive hover:underline">Sizes</a> page, not here.</p>
+        </div>
+        <a href="<%= size_families_path %>" class="btn-ghost btn-sm">Manage on Sizes</a>
+      </div>
+
+      <% @size_groups.each do |group| %>
+        <div class="card mt-4">
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-fog bg-haze/40 px-5 py-3">
+            <div class="flex items-center gap-3">
+              <div>
+                <h3 class="font-display text-lg text-ink"><%= group[:family].name %></h3>
+                <p class="text-xs text-taupe"><%= group[:family].auto? ? "auto-apply" : "approval-only" %> · root grams <span class="font-semibold text-ink"><%= group[:root] ? number_with_precision(group[:root], precision: 1) : "—" %></span></p>
+              </div>
+              <span class="<%= group[:family].auto? ? "pill-fern" : "pill-taupe" %>"><%= group[:family].auto? ? "AUTO" : "APPROVAL" %></span>
+            </div>
+            <% if group[:pending_count].positive? %>
+              <span class="pill-rose"><%= group[:pending_count] %> pending</span>
+            <% end %>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="border-b border-fog bg-haze/60">
+                <tr>
+                  <th scope="col" class="th">Derives from</th>
+                  <th scope="col" class="th">SKU</th>
+                  <th scope="col" class="th text-right">Size</th>
+                  <th scope="col" class="th text-right">Current</th>
+                  <th scope="col" class="th text-right">Target</th>
+                  <th scope="col" class="th text-right">Status</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-fog">
+                <% if group[:root_item] %>
+                  <tr class="bg-haze/40">
+                    <td class="td font-semibold text-ink">Root</td>
+                    <td class="td font-mono text-xs text-ink"><%= group[:root_item][:sku] %></td>
+                    <td class="td text-right text-mocha">1g</td>
+                    <td class="td text-right font-semibold text-ink"><%= group[:root_item][:current] || "—" %></td>
+                    <td class="td text-right text-taupe">—</td>
+                    <td class="td text-right"><span class="pill-olive">root</span></td>
+                  </tr>
+                <% end %>
+                <% group[:members].each do |m| %>
+                  <tr>
+                    <td class="td text-taupe"><%= group[:family].name %></td>
+                    <td class="td font-mono text-xs text-ink"><%= m[:member].sku %></td>
+                    <td class="td text-right font-medium text-ink"><%= m[:member].grams %>g</td>
+                    <td class="td text-right text-mocha"><%= m[:current].nil? ? "—" : m[:current] %></td>
+                    <td class="td text-right font-semibold text-olive"><%= m[:target].nil? ? "—" : m[:target] %></td>
+                    <td class="td text-right">
+                      <% if m[:pending] %>
+                        <span class="pill-rose">pending → <%= m[:pending].target_quantity %></span>
+                      <% elsif m[:target] && m[:target] == m[:current] %>
+                        <span class="pill-fern">in sync</span>
+                      <% elsif m[:target].nil? %>
+                        <span class="pill-taupe">no root</span>
+                      <% else %>
+                        <span class="pill-taupe">derives on sync</span>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% end %>
+    </section>
+  <% end %>
+
+  <% pending_sizes = SizeChange.pending %>
+  <% if pending_sizes.any? %>
+    <div class="card overflow-hidden">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-fog bg-haze/60 px-4 py-3">
+        <div>
+          <h2 class="font-display text-lg text-ink">Pending size changes (<%= pending_sizes.count %>)</h2>
+          <p class="text-xs text-taupe">Derived sizes from your size families awaiting approval before writing to Square.</p>
+        </div>
+        <%= link_to "Review all", size_families_path, class: "btn-ghost btn-sm" %>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="border-b border-fog bg-haze/60">
+            <tr>
+              <th scope="col" class="th">Family</th>
+              <th scope="col" class="th">SKU</th>
+              <th scope="col" class="th text-right">Grams</th>
+              <th scope="col" class="th text-right">Root</th>
+              <th scope="col" class="th text-right">Target</th>
+              <th scope="col" class="th text-right"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-fog">
+            <% pending_sizes.order(:sku).each do |change| %>
+              <tr class="hover:bg-cream">
+                <td class="td text-mocha"><%= change.family.name %></td>
+                <td class="td font-mono text-xs text-ink"><%= change.sku %></td>
+                <td class="td text-right text-mocha"><%= change.grams %></td>
+                <td class="td text-right text-mocha"><%= number_with_precision(change.root_grams, precision: 1) %></td>
+                <td class="td text-right font-semibold text-olive"><%= change.target_quantity %></td>
+                <td class="td text-right">
+                  <%= button_to "Approve", approve_size_family_path(change.family, change_id: change.id), method: :post, class: "btn-primary btn-sm", data: { confirm: "Write #{change.sku} to #{change.target_quantity} on Square?" } %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% end %>
+
   <div class="card p-4 text-sm text-mocha">
     Applying adjustments writes to Shopify and Square. Set the per-SKU priority policy here; the Sync page runs automatic reconciliation on a schedule, and <code class="font-mono text-xs">bin/rails ops:apply</code> applies the full plan.
+    <% if @summary[:derived].positive? %>
+      <span class="mt-2 block rounded-xl bg-haze px-3 py-2 text-xs text-mocha">
+        <span class="font-semibold text-ink"><%= @summary[:derived] %> size-derived SKUs</span> are reconciled by their gram root on the
+        <%= link_to "Sizes page", size_families_path, class: "font-semibold text-olive hover:underline" %> — they're excluded here so the two systems don't fight.
+      </span>
+    <% end %>
   </div>
   <div class="card overflow-hidden">
     <div class="overflow-x-auto">
@@ -48,8 +171,11 @@
             </tr>
           <% end %>
           <% @rows.each do |row| %>
-            <tr class="hover:bg-cream">
-              <td class="td font-mono text-xs text-mocha"><%= row.sku %></td>
+            <tr class="hover:bg-cream <%= row.derived ? "opacity-60" : "" %>">
+              <td class="td font-mono text-xs text-mocha">
+                <%= row.sku %>
+                <% if row.derived %><span class="ml-1 align-middle"><span class="pill-olive">size</span></span><% end %>
+              </td>
               <td class="td">
                 <p class="font-medium text-ink"><%= row.product %></p>
                 <p class="text-xs text-taupe"><%= row.variant %></p>
@@ -66,10 +192,14 @@
                 <% end %>
               </td>
               <td class="td">
-                <%= form_tag policy_reconcile_index_path, method: :post, class: "inline-block" do %>
-                  <%= hidden_field_tag :sku, row.sku %>
-                  <%= select_tag :priority, options_for_select(Reconciler::PRIORITIES, row.priority),
-                        class: "select", onchange: "this.form.submit()" %>
+                <% if row.derived %>
+                  <span class="text-xs text-taupe">via <a href="<%= size_families_path %>" class="text-olive hover:underline">Sizes</a></span>
+                <% else %>
+                  <%= form_tag policy_reconcile_index_path, method: :post, class: "inline-block" do %>
+                    <%= hidden_field_tag :sku, row.sku %>
+                    <%= select_tag :priority, options_for_select(Reconciler::PRIORITIES, row.priority),
+                          class: "select", onchange: "this.form.submit()" %>
+                  <% end %>
                 <% end %>
               </td>
             </tr>

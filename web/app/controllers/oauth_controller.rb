@@ -60,6 +60,7 @@ class OauthController < ApplicationController
       email: email,
       name: info["name"].presence || email.split("@").first.titleize,
       role: "reader",
+      password: SecureRandom.hex(24),
     )
     user.save!
     ActivityLogger.log("employee_added", subject: user, details: "via Google sign-in")

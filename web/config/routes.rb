@@ -212,6 +212,21 @@ Rails.application.routes.draw do
     post :buzz_test
   end
 
+  resources :size_families, only: [:index, :new, :create, :edit, :update, :destroy] do
+    collection do
+      post :derive_all
+      post :approve_all
+    end
+    member do
+      post :derive
+      post :set_root
+      post :approve_all
+      post :add_member
+      post :remove_member
+      post :approve
+    end
+  end
+
   get "/warehouse", to: "warehouse#index", as: :warehouse
   post "/warehouse/tiers", to: "warehouse#update_tiers", as: :update_warehouse_tiers
   resources :warehouse_shares, only: [:create, :show, :update, :destroy] do

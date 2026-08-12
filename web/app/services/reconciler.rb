@@ -23,6 +23,7 @@ class Reconciler
     :square_delta,
     :square_home_target,
     :square_variation_id,
+    :derived,
     keyword_init: true,
   )
 
@@ -31,6 +32,7 @@ class Reconciler
       policies = InventoryPolicy.all.to_h { |p| [p.sku.downcase, p.priority] }
       home_location_id = SquareSyncer.primary_location_id
       links = SkuLink.linked.index_by(&:shopifyVariantId)
+      size_skus = SizeFamilyMember.pluck(:sku).map { |s| s.to_s.downcase }.to_set
 
       rows = []
       ShopifyVariant.includes(:product).where.not(sku: [nil, ""]).where(tracked: true).find_each do |variant|
@@ -74,6 +76,7 @@ class Reconciler
           square_delta: !target.nil? && !square_qty.nil? ? target - square_qty : nil,
           square_home_target: !target.nil? && !square_qty.nil? && !square_home_qty.nil? ? square_home_qty + (target - square_qty) : nil,
           square_variation_id: square_variation_id,
+          derived: size_skus.include?(sku.downcase),
         )
       end
       rows
@@ -83,14 +86,14 @@ class Reconciler
       rows.select do |row|
         sku_match = skus.blank? || skus.any? { |sku| sku.to_s.downcase == row.sku.downcase }
         sku_match && !row.target.nil? && row.tracked && row.square_variation_id.present? &&
-          (row.shopify_delta != 0 || row.square_delta != 0)
+          !row.derived && (row.shopify_delta != 0 || row.square_delta != 0)
       end
     end
 
     def summary(rows)
       blocked = rows.count { |row| row.square_delta && !row.square_home_target.nil? && row.square_home_target.negative? }
-      drift_count = rows.count { |row| !row.target.nil? && row.drift != 0 && row.tracked && row.square_variation_id.present? }
-      { total: rows.length, drift_count: drift_count, actionable: actionable_rows(rows).length, blocked_adjustments: blocked }
+      drift_count = rows.count { |row| !row.target.nil? && row.drift != 0 && row.tracked && row.square_variation_id.present? && !row.derived }
+      { total: rows.length, drift_count: drift_count, actionable: actionable_rows(rows).length, blocked_adjustments: blocked, derived: rows.count(&:derived) }
     end
 
     def record_run!(rows, mode:)

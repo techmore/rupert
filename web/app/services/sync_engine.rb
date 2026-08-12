@@ -34,6 +34,10 @@ class SyncEngine
         Reconciler.record_run!(rows, mode: mode)
         summary[:reconcile] = Reconciler.summary(rows)
 
+        if SquareClient.configured?
+          summary[:sizes] = SizeDeriver.process_all!
+        end
+
         run.update!(status: "success", finishedAt: Time.current, details: summary.to_json)
         DataCache.bump!
         run

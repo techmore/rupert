@@ -19,7 +19,9 @@ class ModuleRegistry
     Entry.new(key: "customers", name: "Customers", path: -> { customers_path }, permission: "customers.read", position: 30),
     Entry.new(key: "inventory", name: "Inventory", path: -> { inventory_index_path }, permission: "inventory.read", position: 40),
     Entry.new(key: "locations", name: "Locations", path: -> { locations_path }, permission: "inventory.read", position: 42),
+    Entry.new(key: "warehouse", name: "Warehouse", path: -> { warehouse_path }, permission: "settings.read", position: 43),
     Entry.new(key: "reconcile", name: "Reconcile", path: -> { reconcile_index_path }, permission: "reconcile.read", position: 50),
+    Entry.new(key: "sizes", name: "Sizes", path: -> { size_families_path }, permission: "reconcile.read", position: 51),
     Entry.new(key: "reports", name: "Reports", path: -> { reports_path }, permission: "reports.read", position: 55),
     Entry.new(key: "ledger", name: "Ledger", path: -> { ledger_index_path }, permission: "ledger.read", position: 60),
     Entry.new(key: "projects", name: "Projects", path: -> { projects_projects_path }, permission: "projects.read", position: 70),
@@ -66,8 +68,8 @@ class ModuleRegistry
     # entry keys that belong to the area, in display order.
     AREAS = [
       { key: "overview", name: "Overview", modules: ["dashboard"] },
-      { key: "commerce", name: "Commerce", modules: ["sales", "registers", "customers", "inventory", "locations"] },
-      { key: "operations", name: "Operations", modules: ["reports", "reconcile", "ledger", "projects", "tasks", "goals", "kpis"] },
+      { key: "commerce", name: "Commerce", modules: ["sales", "registers", "customers", "inventory", "locations", "warehouse"] },
+      { key: "operations", name: "Operations", modules: ["reports", "reconcile", "sizes", "ledger", "projects", "tasks", "goals", "kpis"] },
       { key: "purchasing", name: "Purchasing", modules: ["vendors", "purchase_orders"] },
       { key: "finance", name: "Finance", modules: ["accounts", "chart_of_accounts", "expenses", "payments"] },
       { key: "team", name: "Team", modules: ["employees", "departments", "positions", "timesheets", "leave", "payroll", "accounts", "permissions"] },
