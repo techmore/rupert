@@ -44,7 +44,7 @@
     <div class="stat">
       <p class="stat-label">Total · <%= @window_days %> days</p>
       <p class="stat-value mt-1"><%= number_to_currency(@total_cents / 100.0) %></p>
-      <p class="mt-1 text-xs text-taupe"><%= @sales.length %> recent sales</p>
+      <p class="mt-1 text-xs text-taupe"><%= @sales_count %> recent sales</p>
     </div>
   </section>
 
@@ -146,7 +146,7 @@
               <td class="td text-right font-medium text-ink"><%= number_to_currency(sale.gross_cents / 100.0) %></td>
               <td class="td"><span class="<%= %w[paid fulfilled].include?(sale.status) ? "pill-fern" : "pill-clay" %>"><%= sale.status %></span></td>
               <td class="td">
-                <% if sale.fulfillments.with_tracking.any? %>
+                <% if sale.fulfillments.any? { |f| f.tracking_number.present? } %>
                   <span class="pill-olive"><span class="dot bg-olive-deep"></span> tracked</span>
                 <% elsif sale.status == "fulfilled" %>
                   <span class="pill-taupe">no #</span>

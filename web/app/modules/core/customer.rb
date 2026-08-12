@@ -13,6 +13,10 @@ module Core
 
     has_many :orders, class_name: "Core::Order", foreign_key: :customer_id
 
+    def self.policy_class
+      CustomerPolicy
+    end
+
     validates :external_id, presence: true
     validates :source, inclusion: { in: SOURCES }
 

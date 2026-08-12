@@ -18,9 +18,9 @@ class SalesController < AuthenticatedController
     source_scope = @source == "all" ? nil : @source
     @sources = Core::Order.since(since).distinct.pluck(:source).sort
 
-    @sales = Core::Order.since(since).by_source(source_scope)
-    @total_cents = @sales.sum(:gross_cents)
-    @sales = @sales.recent(500)
+    sales_scope = Core::Order.since(since).by_source(source_scope)
+    @total_cents = sales_scope.sum(:gross_cents)
+    @sales_count = sales_scope.count
 
     @hourly = hourly_pivot(@date, source_scope)
     @day_sales = Core::Order.on_day(@date).by_source(source_scope).includes(:fulfillments, :location).order(occurred_at: :asc)
