@@ -193,6 +193,7 @@ Rails.application.routes.draw do
   get "/system", to: "system#index", as: :system
   get "/connections", to: "connections#index", as: :connections
   get "/activity", to: "activity#index", as: :activity
+  resources :access_logs, only: :index
   get "/live/sync_status", to: "live#sync_status"
 
   resource :settings, only: :show do

@@ -1,0 +1,69 @@
+<% content_for :title, "Access log" %>
+<div class="space-y-6">
+  <section class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl text-ink">Access log</h1>
+      <p class="mt-1 text-sm text-mocha">Who signed in (or tried to), from which IP, when, and whether it worked. Written on every login, Google sign-in, and sign-out.</p>
+    </div>
+  </section>
+
+  <%= form_tag access_logs_path, method: :get, class: "flex flex-wrap items-end gap-2" do %>
+    <div class="w-64">
+      <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="q">Email</label>
+      <input type="search" id="q" name="q" value="<%= params[:q] %>" placeholder="someone@example.com" class="input">
+    </div>
+    <div>
+      <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="status">Status</label>
+      <%= select_tag :status, options_for_select([["All statuses", ""], ["Success", "success"], ["Failure", "failure"]], params[:status]), class: "select" %>
+    </div>
+    <div>
+      <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="source">Method</label>
+      <%= select_tag :source, options_for_select([["All methods", ""], ["Password", "password"], ["Google", "google"], ["Sign out", "logout"]], params[:source]), class: "select" %>
+    </div>
+    <%= submit_tag "Filter", class: "btn-primary" %>
+    <%= link_to "Clear", access_logs_path, class: "btn-ghost" %>
+  <% end %>
+
+  <div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-fog bg-haze/60">
+          <tr>
+            <th scope="col" class="th">When</th>
+            <th scope="col" class="th">Person</th>
+            <th scope="col" class="th">Method</th>
+            <th scope="col" class="th">Status</th>
+            <th scope="col" class="th">IP address</th>
+            <th scope="col" class="th">Detail</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-fog">
+          <% if @logs.empty? %>
+            <tr>
+              <td class="td py-8 text-center text-taupe" colspan="6">No access events yet — they start recording on the next login.</td>
+            </tr>
+          <% end %>
+          <% @logs.each do |log| %>
+            <tr class="hover:bg-cream">
+              <td class="td whitespace-nowrap text-mocha"><%= l(log.created_at, format: :long) %></td>
+              <td class="td">
+                <p class="font-medium text-ink"><%= log.user ? log.user.display_name : (log.email.presence || "—") %></p>
+                <% if log.email && log.email != log.user&.email %><p class="text-xs text-taupe"><%= log.email %></p><% end %>
+              </td>
+              <td class="td"><span class="pill-<%= log.source == "logout" ? "taupe" : "olive" %>"><%= log.source || "—" %></span></td>
+              <td class="td">
+                <span class="<%= log.status == "success" ? "pill-fern" : "pill-clay" %>"><%= log.status || "—" %></span>
+              </td>
+              <td class="td font-mono text-xs text-mocha"><%= log.ip || "—" %></td>
+              <td class="td text-xs text-taupe"><%= log.detail.presence || "—" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <% if @pagy.pages > 1 %>
+    <div class="text-xs text-taupe"><%== pagy_nav(@pagy) %></div>
+  <% end %>
+</div>

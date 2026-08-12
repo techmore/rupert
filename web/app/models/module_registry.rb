@@ -30,6 +30,7 @@ class ModuleRegistry
     Entry.new(key: "kpis", name: "KPIs", path: -> { goals_kpis_path }, permission: "projects.read", position: 78),
     Entry.new(key: "alerts", name: "Alerts", path: -> { alerts_path }, permission: "alerts.read", position: 80),
     Entry.new(key: "activity", name: "Activity", path: -> { activity_path }, permission: "settings.read", position: 82),
+    Entry.new(key: "access_log", name: "Access log", path: -> { access_logs_path }, permission: "settings.read", position: 81),
     Entry.new(key: "sync", name: "Sync", path: -> { syncs_path }, permission: "sync.read", position: 90),
     Entry.new(key: "system", name: "System", path: -> { system_path }, permission: "system.read", position: 95),
     Entry.new(key: "connections", name: "Connections", path: -> { connections_path }, permission: "settings.read", position: 94),
@@ -73,7 +74,7 @@ class ModuleRegistry
       { key: "purchasing", name: "Purchasing", modules: ["vendors", "purchase_orders"] },
       { key: "finance", name: "Finance", modules: ["accounts", "chart_of_accounts", "expenses", "payments"] },
       { key: "team", name: "Team", modules: ["employees", "departments", "positions", "timesheets", "leave", "payroll", "accounts", "permissions"] },
-      { key: "system", name: "System", modules: ["system", "connections", "alerts", "activity", "sync", "settings"] },
+      { key: "system", name: "System", modules: ["system", "connections", "alerts", "activity", "access_log", "sync", "settings"] },
     ].freeze
 
     def area_key_for(module_key)

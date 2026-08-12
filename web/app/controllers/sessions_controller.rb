@@ -13,14 +13,23 @@ class SessionsController < ApplicationController
     if user&.active? && user.authenticate(params[:password])
       reset_session # prevent session fixation
       session[:user_id] = user.id
+      AccessLogger.record(source: "password", status: "success", request: request, user: user)
       redirect_to(root_path, notice: "Signed in")
     else
+      AccessLogger.record(
+        source: "password",
+        status: "failure",
+        request: request,
+        email: params[:email],
+        detail: user ? "invalid password" : "unknown email",
+      )
       flash.now[:alert] = "Invalid email or password"
       render(:new, status: :unprocessable_entity)
     end
   end
 
   def destroy
+    AccessLogger.record(source: "logout", status: "success", request: request, user: Current.user)
     session.delete(:user_id)
     Current.user = nil
     redirect_to(login_path, notice: "Signed out")
