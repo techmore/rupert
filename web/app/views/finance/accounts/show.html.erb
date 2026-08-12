@@ -1,4 +1,5 @@
 <% content_for :title, "Accounts" %>
+<% cached_fragment("finance/accounts") do %>
 <div class="space-y-6">
   <section>
     <h1 class="font-display text-3xl text-ink">Accounts</h1>
@@ -78,11 +79,11 @@
             <% if @receivables.empty? %>
               <tr><td colspan="3" class="td py-8 text-center text-taupe">No customer balances.</td></tr>
             <% end %>
-            <% @receivables.each do |customer| %>
+            <% @receivables.each do |row| %>
               <tr class="hover:bg-cream">
-                <td class="td font-medium text-ink"><%= customer.name %></td>
-                <td class="td text-right text-mocha"><%= customer.order_count %></td>
-                <td class="td text-right font-semibold text-clay"><%= number_to_currency(customer.balance_cents.to_i / 100.0) %></td>
+                <td class="td font-medium text-ink"><%= row[:customer].name %></td>
+                <td class="td text-right text-mocha"><%= row[:order_count] %></td>
+                <td class="td text-right font-semibold text-clay"><%= number_to_currency(row[:balance_cents] / 100.0) %></td>
               </tr>
             <% end %>
           </tbody>
@@ -91,3 +92,4 @@
     </div>
   </div>
 </div>
+<% end %>

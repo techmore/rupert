@@ -6,7 +6,7 @@ class AlertsController < AuthenticatedController
 
   def index
     @status = params[:status].presence || "open"
-    @alerts = StockAlert.by_status(@status).order(createdAt: :desc).limit(100)
+    @alerts = StockAlert.by_status(@status).order(createdAt: :desc).limit(50)
     @counts = StockAlert.group(:status).count
   end
 

@@ -6,7 +6,7 @@ class SystemController < AuthenticatedController
   before_action :require_system_access
 
   def index
-    @system = SystemPresenter.new
+    @system = Rails.cache.fetch("system/health/#{Current.tenant_id}", expires_in: 60) { SystemPresenter.new }
     render("system/index")
   end
 

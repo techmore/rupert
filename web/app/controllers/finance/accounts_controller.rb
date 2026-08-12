@@ -6,10 +6,11 @@ module Finance
   class AccountsController < AuthenticatedController
     def show
       authorize(:module, :finance_read?)
-      @payables = AccountsService.payable_by_vendor
+      @payables = DataCache.fetch("finance/payables") { AccountsService.payable_by_vendor }
       @payables_total = @payables.sum { |row| row[:balance_cents] }
-      @receivables = AccountsService.receivable_by_customer.limit(100)
-      @receivables_total = AccountsService.receivable_total_cents
+      @receivables = DataCache.fetch("finance/receivables") { AccountsService.receivable_by_customer }
+      @receivables_total = @receivables.sum { |r| r[:balance_cents] }
+      @receivables = @receivables.first(100)
     end
   end
 end

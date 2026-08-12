@@ -95,6 +95,7 @@
     </div>
   <% end %>
 
+  <% cached_fragment("inventory/table", q: @q) do %>
   <div class="card overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
@@ -171,6 +172,7 @@
       </table>
     </div>
   </div>
+  <% end %>
 
   <% if @products.length >= 40 %>
     <p class="text-xs text-taupe">Showing the first 40 products — refine your search to narrow down.</p>

@@ -124,20 +124,30 @@ class User < ActiveRecord::Base
     active != false
   end
 
+  # Clear the memoized permission list on reload so fresh data always applies.
+  def reload(*args)
+    @effective_permissions = nil
+    super
+  end
+
   # Permissions in effect for this user. Resolution order, highest to lowest:
   #   1. per-employee overrides (user_permissions)   — exact list for that person
   #   2. per-role overrides (role_permissions)       — replaces built-ins for role
   #   3. built-in ROLE_PERMISSIONS matrix
   def effective_permissions
-    return ["*"] if super_admin?
+    @effective_permissions ||= begin
+      return ["*"] if super_admin?
 
-    person = user_permissions
-    return person.select(&:enabled?).map(&:permission) if person.any?
+      person = user_permissions
+      if person.any?
+        person.select(&:enabled?).map(&:permission)
+      else
+        overrides = RolePermission.where(tenant_id: tenant_id, role: role)
+        return ROLE_PERMISSIONS.fetch(role, []) if overrides.empty?
 
-    overrides = RolePermission.where(tenant_id: tenant_id, role: role)
-    return ROLE_PERMISSIONS.fetch(role, []) if overrides.empty?
-
-    overrides.select(&:enabled?).map(&:permission)
+        overrides.select(&:enabled?).map(&:permission)
+      end
+    end
   end
 
   # True when this user has any per-employee permission overrides.

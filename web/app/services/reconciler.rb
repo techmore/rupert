@@ -34,6 +34,13 @@ class Reconciler
       links = SkuLink.linked.index_by(&:shopifyVariantId)
       size_skus = SizeFamilyMember.pluck(:sku).map { |s| s.to_s.downcase }.to_set
 
+      square_totals = InventoryLevel.where(source: "square").group(:squareVariationId).sum(:quantity)
+      home_totals = if home_location_id
+        InventoryLevel.where(source: "square", locationId: home_location_id).group(:squareVariationId).sum(:quantity)
+      else
+        {}
+      end
+
       rows = []
       ShopifyVariant.includes(:product).where.not(sku: [nil, ""]).where(tracked: true).find_each do |variant|
         sku = variant.sku.to_s.strip
@@ -46,14 +53,8 @@ class Reconciler
         square_qty = nil
         square_home_qty = nil
         if square_variation_id.present?
-          square_qty = InventoryLevel.total_for_variation(square_variation_id)
-          square_home_qty = if home_location_id
-            InventoryLevel.where(
-              source: "square",
-              locationId: home_location_id,
-              squareVariationId: square_variation_id,
-            ).sum(:quantity)
-          end
+          square_qty = square_totals.fetch(square_variation_id, 0)
+          square_home_qty = home_totals.fetch(square_variation_id, 0)
         end
 
         priority = policies[sku.downcase] || "lowest"

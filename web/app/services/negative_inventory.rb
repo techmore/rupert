@@ -9,12 +9,12 @@ class NegativeInventory
 
   class << self
     def summary(limit: 50)
-      square = negative_levels("square", limit: limit)
-      shopify = negative_levels("shopify", limit: limit)
+      square = negative_levels("square")
+      shopify = negative_levels("shopify")
       {
-        total: negative_levels("square", limit: nil).length + negative_levels("shopify", limit: nil).length,
-        square: square,
-        shopify: shopify,
+        total: square.length + shopify.length,
+        square: square.first(limit),
+        shopify: shopify.first(limit),
       }
     end
 
@@ -34,10 +34,12 @@ class NegativeInventory
 
     private
 
-    def negative_levels(source, limit: 50)
-      scope = InventoryLevel.where(source: source).where("quantity < 0").order(:quantity)
-      scope = scope.limit(limit) if limit
-      scope.map do |level|
+    def negative_levels(source)
+      InventoryLevel.where(source: source)
+        .where("quantity < 0")
+        .order(:quantity)
+        .includes(:square_variation, :shopify_variant, :location)
+        .map do |level|
         if source == "square"
           variation = level.square_variation
           sku = variation&.sku

@@ -48,13 +48,15 @@
     </div>
   </section>
 
-  <div id="dashboard-widgets" class="space-y-8">
-    <% widgets.each do |widget, visible| %>
-      <section data-widget-key="<%= widget.key %>" <%= visible ? "" : "hidden" %>>
-        <%= render widget.partial, presenter: presenter %>
-      </section>
-    <% end %>
-  </div>
+  <% cached_fragment("dashboard/widgets", user_id: Current.user.id) do %>
+    <div id="dashboard-widgets" class="space-y-8">
+      <% widgets.each do |widget, visible| %>
+        <section data-widget-key="<%= widget.key %>" <%= visible ? "" : "hidden" %>>
+          <%= render widget.partial, presenter: presenter %>
+        </section>
+      <% end %>
+    </div>
+  <% end %>
 </div>
 
 <script>

@@ -48,6 +48,7 @@
     </div>
   </section>
 
+  <% cached_fragment("sales/charts", date: @date, window: @window_days, source: @source) do %>
   <section class="grid gap-4 lg:grid-cols-2">
     <div class="card card-pad">
       <div class="flex items-baseline justify-between">
@@ -69,7 +70,9 @@
       </div>
     </div>
   </section>
+  <% end %>
 
+  <% cached_fragment("sales/hourly", date: @date, source: @source) do %>
   <div class="card overflow-hidden">
     <div class="border-b border-fog px-5 py-3">
       <h2 class="font-display text-lg text-ink">Hourly × location</h2>
@@ -106,6 +109,7 @@
       </table>
     </div>
   </div>
+  <% end %>
 
   <div class="card overflow-hidden">
     <div class="flex items-center justify-between border-b border-fog px-5 py-3">

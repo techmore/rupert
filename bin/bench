@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# Page-load benchmark. Logs in over HTTPS, then measures each page over
+# localhost:3000 (no TLS per request) with the session cookie sent explicitly,
+# RUNS requests per page reusing one connection. Prints median ms + http status.
+set -euo pipefail
+
+PUB="https://herbalhealers.cybersecuritypilot.org"
+LOC="http://localhost:3000"
+HOST="herbalhealers.cybersecuritypilot.org"
+EMAIL="${BENCH_EMAIL:-bench@example.com}"
+PASS="${BENCH_PASS:-BenchPass123!}"
+RUNS="${BENCH_RUNS:-5}"
+JAR=$(mktemp)
+LOGIN=$(mktemp)
+OUT=$(mktemp)
+trap 'rm -f "$JAR" "$LOGIN" "$OUT"' EXIT
+
+PAGES=(
+  "/"
+  "/sales"
+  "/inventory"
+  "/reconcile"
+  "/size_families"
+  "/warehouse"
+  "/customers"
+  "/reports"
+  "/ledger"
+  "/alerts"
+  "/syncs"
+  "/activity"
+  "/access_logs"
+  "/settings"
+  "/system"
+  "/connections"
+  "/people/employees"
+  "/people/timesheets"
+  "/people/leave_requests"
+  "/finance/accounts"
+  "/purchasing/vendors"
+  "/locations"
+  "/sales/pos_sessions"
+  "/inventory_counts"
+  "/projects/projects"
+  "/goals/goals"
+  "/users"
+  "/permissions"
+  "/orders/829"
+  "/customers/24"
+  "/goals/kpis"
+  "/projects/tasks"
+  "/finance/chart_of_accounts"
+  "/finance/expenses"
+  "/purchasing/purchase_orders"
+)
+PAGES=($(printf '%s\n' "${PAGES[@]}" | awk '!seen[$0]++'))
+
+# Login over HTTPS so the Secure cookie is stored.
+curl -s -c "$JAR" "$PUB/login" -o "$LOGIN"
+TOKEN=$(grep -o 'name="authenticity_token" value="[^"]*"' "$LOGIN" | sed 's/.*value="//;s/"//')
+curl -s -b "$JAR" -c "$JAR" -X POST "$PUB/login" \
+  --data-urlencode "authenticity_token=$TOKEN" \
+  --data-urlencode "email=$EMAIL" \
+  --data-urlencode "password=$PASS" -o /dev/null
+SESS=$(awk '$6=="_rupert_session" {print $7}' "$JAR")
+if [ -z "$SESS" ]; then echo "login failed"; exit 1; fi
+
+printf "%-28s %8s %6s\n" "path" "median_ms" "http"
+for p in "${PAGES[@]}"; do
+  : > "$OUT"
+  for _ in $(seq 1 "$RUNS"); do
+    curl -s -o /dev/null -w '%{http_code} %{time_total}\n' \
+      -H "Host: $HOST" -H "X-Forwarded-Proto: https" -H "Cookie: _rupert_session=$SESS" \
+      "$LOC$p" >> "$OUT"
+  done
+  python3 - "$p" "$OUT" <<'EOF'
+import sys
+path, fn = sys.argv[1], sys.argv[2]
+rows = [ln.split() for ln in open(fn) if ln.strip()]
+codes = {r[0] for r in rows}
+vals = sorted(float(r[1]) * 1000 for r in rows)
+n = len(vals)
+med = vals[n // 2] if n % 2 else (vals[n // 2 - 1] + vals[n // 2]) / 2
+code = codes.pop() if len(codes) == 1 else "+".join(sorted(codes))
+print(f"{path:<28} {med:8.1f} {code:>6}")
+EOF
+done

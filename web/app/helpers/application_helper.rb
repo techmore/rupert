@@ -93,4 +93,11 @@ module ApplicationHelper
 
     items
   end
+
+  # Fragment cache keyed on the tenant's data version so the fragment is served
+  # until the next sync/mutation invalidates it. Only wrap content with no
+  # per-session forms (CSRF tokens can't be cached).
+  def cached_fragment(name, **params)
+    cache(["page", Current.tenant_id, name, DataCache.version, params].compact) { yield }
+  end
 end

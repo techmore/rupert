@@ -49,7 +49,7 @@
               <td class="td text-mocha"><%= customer.email.presence || "—" %></td>
               <td class="td text-mocha"><%= customer.phone.presence || "—" %></td>
               <td class="td"><span class="pill-taupe capitalize"><%= customer.source %></span></td>
-              <td class="td text-right text-mocha"><%= customer.orders.count %></td>
+              <td class="td text-right text-mocha"><%= customer.orders.size %></td>
               <td class="td text-right font-medium text-ink"><%= number_to_currency(customer.lifetime_value_cents / 100.0) %></td>
             </tr>
           <% end %>

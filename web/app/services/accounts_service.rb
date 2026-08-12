@@ -40,9 +40,11 @@ class AccountsService
       payable_by_vendor.sum { |r| r[:balance_cents] }
     end
 
-    # Per-customer AR: what's still unpaid across their orders.
+    # Per-customer AR: what's still unpaid across their orders. Two grouped
+    # queries (gross per customer, paid per customer) — no per-order correlated
+    # subqueries.
     def receivable_by_customer
-      Core::Customer.left_joins(:orders)
+      rows = Core::Customer.joins(:orders)
         .where(orders: { status: ["paid", "fulfilled"] })
         .group("customers.id", "customers.first_name", "customers.last_name", "customers.email", "customers.phone")
         .select(
@@ -51,19 +53,32 @@ class AccountsService
           "customers.last_name",
           "customers.email",
           "customers.phone",
-          "COALESCE(SUM(orders.gross_cents - COALESCE(
-             (SELECT SUM(payments.amount_cents) FROM payments
-              WHERE payments.order_id = orders.id AND payments.status = 'completed'), 0)), 0) AS balance_cents",
+          "SUM(orders.gross_cents) AS gross_cents",
           "COUNT(orders.id) AS order_count",
         )
-        .having("COALESCE(SUM(orders.gross_cents - COALESCE(
-             (SELECT SUM(payments.amount_cents) FROM payments
-              WHERE payments.order_id = orders.id AND payments.status = 'completed'), 0)), 0) > 0")
-        .order("balance_cents DESC")
+
+      paid_by_customer = Core::Payment.where(status: "completed")
+        .joins(:order)
+        .where(orders: { status: ["paid", "fulfilled"] })
+        .group("orders.customer_id")
+        .sum(:amount_cents)
+
+      rows.filter_map do |row|
+        paid = paid_by_customer.fetch(row.id, 0)
+        balance = row.gross_cents.to_i - paid
+        next if balance <= 0
+
+        {
+          customer: row,
+          balance_cents: balance,
+          paid_cents: paid,
+          order_count: row.order_count,
+        }
+      end.sort_by { |r| -r[:balance_cents] }
     end
 
     def receivable_total_cents
-      receivable_by_customer.sum { |row| row.balance_cents.to_i }
+      receivable_by_customer.sum { |r| r[:balance_cents] }
     end
   end
 end

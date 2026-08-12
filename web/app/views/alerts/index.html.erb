@@ -67,9 +67,6 @@
                       <%= form_tag update_status_alerts_path, method: :post, class: "inline" do %>
                         <%= hidden_field_tag :id, alert.id %>
                         <%= button_tag "Resolve", name: "status", value: "resolved", class: "btn-ghost btn-sm" %>
-                      <% end %>
-                      <%= form_tag update_status_alerts_path, method: :post, class: "inline" do %>
-                        <%= hidden_field_tag :id, alert.id %>
                         <%= button_tag "Ignore", name: "status", value: "ignored", class: "btn-ghost btn-sm" %>
                       <% end %>
                     </div>
