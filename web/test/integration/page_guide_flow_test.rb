@@ -26,7 +26,9 @@ class PageGuideFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "pages without a guide don't show one" do
-    get locations_path
+    order = Core::Order.create!(source: "shopify", source_order_id: "x1", occurred_at: Time.current,
+      order_number: "X1", gross_cents: 1000, tenant_id: @tenant.id)
+    get order_path(order)
     assert_response :success
     assert_not_includes response.body, "How to use this page"
   end

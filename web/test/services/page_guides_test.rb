@@ -12,6 +12,13 @@ class PageGuidesTest < ActiveSupport::TestCase
     assert_equal "finance", PageGuides.for_path("/finance/accounts").key
     assert_equal "users", PageGuides.for_path("/users").key
     assert_equal "inventory", PageGuides.for_path("/inventory").key
+    assert_equal "registers", PageGuides.for_path("/sales/pos_sessions").key
+    assert_equal "employees", PageGuides.for_path("/people/employees").key
+    assert_equal "leave", PageGuides.for_path("/people/leave_requests").key
+    assert_equal "projects", PageGuides.for_path("/projects/projects").key
+    assert_equal "kpis", PageGuides.for_path("/goals/kpis").key
+    assert_nil PageGuides.for_path("/orders/123")
+    assert_nil PageGuides.for_path("/login")
   end
 
   test "every guide has sections and tips" do

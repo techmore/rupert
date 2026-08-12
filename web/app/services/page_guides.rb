@@ -264,6 +264,109 @@ class PageGuides
         "Reference the version here when reporting an issue.",
       ],
     ),
+    "registers" => Guide.new(
+      key: "registers", title: "Registers",
+      summary: "Open and close POS register sessions — the cash drawer lifecycle for the storefloor.",
+      sections: [
+        { heading: "What you're seeing", body: "Each register session with its open/closed state. Opening a session starts the drawer; closing it reconciles what's in it and locks it for review." },
+      ],
+      tips: [
+        "Close a register at the end of a shift so cash can be verified against sales.",
+        "Reopen only to correct a mistaken close, then close again.",
+      ],
+    ),
+    "locations" => Guide.new(
+      key: "locations", title: "Locations",
+      summary: "Where stock lives — Shopify and Square locations plus any manual ones.",
+      sections: [
+        { heading: "What you're seeing", body: "Each location with its source (shopify/square/manual), kind, unit count, and status. Inventory levels are tracked per location." },
+      ],
+      tips: [
+        "Keep one 'home' location authoritative for Square counts — reconciliation targets it.",
+        "Rename a location here without touching Shopify/Square; the external ID stays linked.",
+      ],
+    ),
+    "inventory_counts" => Guide.new(
+      key: "inventory_counts", title: "Inventory counts",
+      summary: "Physical count sheets — record what's actually on the shelf and push it back as the truth.",
+      sections: [
+        { heading: "What you're seeing", body: "Count sheets in draft/submitted/approved states. A count records what you physically have per SKU; approving it becomes the authoritative inventory." },
+      ],
+      tips: [
+        "Run a count before trusting the mirror after a big discrepancy.",
+        "Counting the root item of a size family resets its gram bank — do that before deriving sizes.",
+      ],
+    ),
+    "projects" => Guide.new(
+      key: "projects", title: "Projects",
+      summary: "Track initiatives end to end — owners, phases, and current status.",
+      sections: [
+        { heading: "What you're seeing", body: "Projects with their stage and task counts. Open a project to see its tasks and move work through your workflow." },
+      ],
+      tips: [
+        "Move projects through statuses as work completes so the pipeline stays honest.",
+      ],
+    ),
+    "tasks" => Guide.new(
+      key: "tasks", title: "Tasks",
+      summary: "Every task across all projects in one list — the team's to-do board.",
+      sections: [
+        { heading: "What you're seeing", body: "All tasks with their project and status, so nothing is buried inside a project you're not looking at." },
+      ],
+      tips: [
+        "Use this list as the daily stand-up — sort by project or status to see what's open.",
+      ],
+    ),
+    "goals" => Guide.new(
+      key: "goals", title: "Goals",
+      summary: "Business goals you set and track progress against.",
+      sections: [
+        { heading: "What you're seeing", body: "Goals with targets and current progress, updated as KPIs move." },
+      ],
+      tips: [
+        "Attach a KPI to each goal so progress updates automatically.",
+      ],
+    ),
+    "kpis" => Guide.new(
+      key: "kpis", title: "KPIs",
+      summary: "The measures that tell you whether goals are being met.",
+      sections: [
+        { heading: "What you're seeing", body: "KPI definitions and their readings over time, linked to the goals they serve." },
+      ],
+      tips: [
+        "Record readings on a cadence — a KPI without recent readings is just a number.",
+      ],
+    ),
+    "departments" => Guide.new(
+      key: "departments", title: "Departments",
+      summary: "Your org structure — the teams people belong to.",
+      sections: [
+        { heading: "What you're seeing", body: "Departments that employees belong to. They drive reporting and who sees what in the team area." },
+      ],
+      tips: [
+        "Keep this small and stable; move people between departments, not the departments around them.",
+      ],
+    ),
+    "positions" => Guide.new(
+      key: "positions", title: "Positions",
+      summary: "The roles people fill — cashier, manager, etc. — independent of login permissions.",
+      sections: [
+        { heading: "What you're seeing", body: "Position titles you can assign to employees. Positions describe the job; login permissions control system access." },
+      ],
+      tips: [
+        "Assign a position to every employee so the directory and reports read cleanly.",
+      ],
+    ),
+    "leave" => Guide.new(
+      key: "leave", title: "Leave & PTO",
+      summary: "Time-off requests from the team, approved or denied.",
+      sections: [
+        { heading: "What you're seeing", body: "Leave requests with their status. Approving or denying them keeps the schedule and payroll accurate." },
+      ],
+      tips: [
+        "Respond to requests promptly so the team isn't guessing about coverage.",
+      ],
+    ),
   }.freeze
 
   # Path prefix -> guide key, most-specific first. Matched by the shell so help
@@ -271,6 +374,18 @@ class PageGuides
   PATH_MAP = [
     ["/size_families", "sizes"],
     ["/access_logs", "access_log"],
+    ["/sales/pos_sessions", "registers"],
+    ["/inventory_counts", "inventory_counts"],
+    ["/people/employees", "employees"],
+    ["/people/timesheets", "timesheets"],
+    ["/people/pay_runs", "payroll"],
+    ["/people/leave_requests", "leave"],
+    ["/people/departments", "departments"],
+    ["/people/positions", "positions"],
+    ["/projects/projects", "projects"],
+    ["/projects/tasks", "tasks"],
+    ["/goals/goals", "goals"],
+    ["/goals/kpis", "kpis"],
     ["/finance", "finance"],
     ["/purchasing", "purchasing"],
     ["/sales", "sales"],
@@ -281,8 +396,6 @@ class PageGuides
     ["/syncs", "sync"],
     ["/settings", "settings"],
     ["/employees", "employees"],
-    ["/timesheets", "timesheets"],
-    ["/pay_runs", "payroll"],
     ["/users", "users"],
     ["/permissions", "permissions"],
     ["/reports", "reports"],
