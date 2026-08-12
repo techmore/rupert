@@ -15,6 +15,78 @@
     <input type="search" name="q" value="<%= @q %>" placeholder="Search products or SKUs…" class="search w-full" autocomplete="off">
   <% end %>
 
+  <% if @negative[:total].positive? %>
+    <details class="group rounded-xl border border-clay/40 bg-clay/5 px-4 py-3">
+      <summary class="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden [&::-webkit-details-marker]:content-none">
+        <span class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink">
+          <span class="pill-clay"><%= @negative[:total] %> negative counts</span>
+          <span class="text-clay">Inventory went negative — likely oversold items or non-inventory SKUs (like shipping insurance) being tracked. Review and correct below.</span>
+        </span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-clay transition-transform group-open:rotate-180" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </summary>
+
+      <div class="mt-3 space-y-4">
+        <% if @negative[:square].any? %>
+          <div>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h3 class="text-sm font-semibold text-ink">Square · <%= @negative[:square].length %> shown</h3>
+              <% if Current.user.can?("reconcile.write") %>
+                <%= button_to "Fix all Square", fix_all_negative_inventory_index_path, method: :post, class: "btn-ghost btn-sm", data: { confirm: "Write physical count 0 to Square for every negative item?" } %>
+              <% end %>
+            </div>
+            <div class="mt-2 max-h-64 overflow-y-auto rounded-lg border border-fog bg-paper">
+              <table class="w-full text-sm">
+                <tbody class="divide-y divide-fog">
+                  <% @negative[:square].each do |item| %>
+                    <tr>
+                      <td class="td font-mono text-xs text-mocha"><%= item.sku.presence || "—" %></td>
+                      <td class="td"><%= item.name || "—" %></td>
+                      <td class="td text-xs text-taupe"><%= item.location %></td>
+                      <td class="td text-right font-semibold text-rose"><%= item.quantity %></td>
+                      <td class="td text-right">
+                        <% if Current.user.can?("reconcile.write") %>
+                          <%= button_to "Set to 0", fix_negative_inventory_index_path, method: :post, params: { source: "square", id: item.id }, class: "btn-ghost btn-sm", data: { confirm: "Zero #{item.sku || "this item"} on Square?" } %>
+                        <% end %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        <% end %>
+
+        <% if @negative[:shopify].any? %>
+          <div>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h3 class="text-sm font-semibold text-ink">Shopify · <%= @negative[:shopify].length %> shown</h3>
+            </div>
+            <div class="mt-2 max-h-64 overflow-y-auto rounded-lg border border-fog bg-paper">
+              <table class="w-full text-sm">
+                <tbody class="divide-y divide-fog">
+                  <% @negative[:shopify].each do |item| %>
+                    <tr>
+                      <td class="td font-mono text-xs text-mocha"><%= item.sku.presence || "—" %></td>
+                      <td class="td"><%= item.name || "—" %></td>
+                      <td class="td text-xs text-taupe"><%= item.location %></td>
+                      <td class="td text-right font-semibold text-rose"><%= item.quantity %></td>
+                      <td class="td text-right">
+                        <% if Current.user.can?("reconcile.write") %>
+                          <%= button_to "Untrack & zero", fix_negative_inventory_index_path, method: :post, params: { source: "shopify", id: item.id }, class: "btn-ghost btn-sm", data: { confirm: "Untrack #{item.sku || "this item"} and zero its mirrored count?" } %>
+                        <% end %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+            <p class="mt-1 text-xs text-taupe">These are usually shipping-insurance SKUs. Untracking stops them being reconciled; disable tracking in Shopify for a permanent fix.</p>
+          </div>
+        <% end %>
+      </div>
+    </details>
+  <% end %>
+
   <% size_items = @products.sum { |product| product.variants.count { |v| @variant_qtys[v.id]&.dig(:size) } } %>
   <% if size_items.positive? %>
     <div class="rounded-xl border border-olive/20 bg-olive/5 px-4 py-2.5 text-sm text-ink">

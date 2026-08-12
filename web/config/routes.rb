@@ -82,7 +82,12 @@ Rails.application.routes.draw do
     end
   end
 
-  resources :inventory, only: :index
+  resources :inventory, only: :index do
+    collection do
+      post :fix_negative
+      post :fix_all_negative
+    end
+  end
   resources :locations
   namespace :finance do
     get "/accounts", to: "accounts#show", as: :accounts

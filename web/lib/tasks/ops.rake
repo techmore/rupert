@@ -54,4 +54,22 @@ namespace :ops do
       puts "#{row[:sku]}: #{row[:ok] ? "ok" : "FAILED"} target=#{row[:target]} #{row[:actions].join("; ")}"
     end
   end
+
+  desc "Dry-run: print the plan for SKUs shared across products (no changes made)"
+  task sku_remediation_plan: :environment do
+    load_tenant!
+    plans = SkuRemediationPlanner.plan
+    if plans.empty?
+      puts "No shared SKUs found — nothing to plan."
+      next
+    end
+
+    puts "Shared SKUs -> proposed unique SKUs (apply requires updating Shopify + Square + re-linking):"
+    plans.group_by(&:sku).each do |sku, group|
+      puts "\n#{sku} (#{group.length} variants):"
+      group.each do |plan|
+        puts "  #{plan.product.ljust(48)} #{plan.variant_id}  qty=#{plan.current_qty}  ->  #{plan.proposed_sku}"
+      end
+    end
+  end
 end

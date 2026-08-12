@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 class InventoryController < AuthenticatedController
-  before_action :authorize_read
+  before_action :authorize_read, only: :index
+  before_action :authorize_fix, only: [:fix_negative, :fix_all_negative]
 
   def index
     @q = params[:q].to_s.strip
@@ -15,12 +16,39 @@ class InventoryController < AuthenticatedController
     end
     @products = @products.includes(variants: [{ sku_links: { square_variation: :levels } }, :levels])
     @variant_qtys = variant_quantity_map(@products)
+    @negative = NegativeInventory.summary
+  end
+
+  # POST /inventory/fix_negative — zero one negative variation/variant.
+  def fix_negative
+    source = params[:source].to_s
+    id = params[:id].to_s
+    return redirect_to(inventory_index_path, alert: "Missing item") if id.blank?
+
+    if NegativeInventory.fix!(source: source, id: id)
+      redirect_to(inventory_index_path, notice: "Corrected negative #{source} inventory.")
+    else
+      redirect_to(inventory_index_path, alert: "Could not correct that item — check the logs.")
+    end
+  end
+
+  # POST /inventory/fix_all_negative — zero every negative level.
+  def fix_all_negative
+    results = NegativeInventory.fix_all!
+    redirect_to(
+      inventory_index_path,
+      notice: "Corrected #{results[:square]} Square and #{results[:shopify]} Shopify items (#{results[:failed]} failed).",
+    )
   end
 
   private
 
   def authorize_read
     authorize(:module, :inventory_read?)
+  end
+
+  def authorize_fix
+    authorize(:module, :reconcile_write?)
   end
 
   # Precompute per-variant quantities and the linked Square quantity so the
