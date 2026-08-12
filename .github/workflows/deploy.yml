@@ -21,6 +21,7 @@ jobs:
             export PATH=/root/.rbenv/shims:/root/.rbenv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
             cd /root/rupert
             git pull --ff-only origin main
+            chown -R rupert:rupert web
             cd web
             bundle install --quiet
             bin/rails tailwindcss:build
