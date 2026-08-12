@@ -59,6 +59,8 @@ class SizeDeriverTest < ActiveSupport::TestCase
   test "approval mode records pending changes only when a target differs" do
     @family.update!(base_grams: 100, sales_watermark: Time.current)
     SquareClient.stubs(:configured?).returns(false)
+    SquareVariation.create!(id: "v35", itemId: "i1", sku: "thash35", name: "3.5 Grams", tenant_id: Current.tenant_id)
+    SquareVariation.create!(id: "v7", itemId: "i1", sku: "thash7", name: "7 Grams", tenant_id: Current.tenant_id)
     @m35.update!(square_variation_id: "v35")
     @m7.update!(square_variation_id: "v7")
     InventoryLevel.create!(source: "square", locationId: "L1", squareVariationId: "v35", quantity: 28, tenant_id: Current.tenant_id)

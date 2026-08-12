@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_12_030000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_12_040000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -1001,7 +1001,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_030000) do
     t.index ["tenant_id", "name"], name: "index_vendors_on_tenant_id_and_name", unique: true
   end
 
+  add_foreign_key "InventoryLevel", "ShopifyVariant", column: "shopifyVariantId", on_delete: :nullify
+  add_foreign_key "InventoryLevel", "SquareVariation", column: "squareVariationId", on_delete: :nullify
+  add_foreign_key "ReconcileItem", "ReconcileRun", column: "runId", on_delete: :cascade
+  add_foreign_key "SkuLink", "ShopifyVariant", column: "shopifyVariantId", on_delete: :nullify
+  add_foreign_key "SkuLink", "SquareVariation", column: "squareVariationId", on_delete: :nullify
   add_foreign_key "departments", "employees", column: "manager_id"
+  add_foreign_key "fulfillments", "orders", on_delete: :cascade
+  add_foreign_key "order_lines", "orders", on_delete: :cascade
+  add_foreign_key "payments", "orders", on_delete: :cascade
+  add_foreign_key "refunds", "orders", on_delete: :cascade
+  add_foreign_key "size_changes", "size_families", column: "family_id", on_delete: :cascade
+  add_foreign_key "size_family_members", "size_families", column: "family_id", on_delete: :cascade
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_failed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
