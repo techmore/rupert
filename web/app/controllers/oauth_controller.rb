@@ -16,6 +16,7 @@ class OauthController < ApplicationController
   def authorize
     state = SecureRandom.hex(24)
     session[:oauth_state] = state
+    AccessLogger.record(source: "google", status: "attempt", request: request, detail: "Google sign-in started")
     redirect_to(
       GoogleOauthService.auth_url(redirect_uri: google_callback_url, state: state),
       allow_other_host: true,
@@ -26,6 +27,7 @@ class OauthController < ApplicationController
   end
 
   def callback
+    info = nil
     if params[:error].present?
       AccessLogger.record(source: "google", status: "failure", request: request, detail: "consent declined")
       return redirect_to(login_path, alert: "Google sign-in was declined.")
@@ -57,8 +59,12 @@ class OauthController < ApplicationController
     redirect_to(root_path, notice: "Signed in with Google.")
   rescue GoogleOauthService::NotConfiguredError, GoogleOauthService::ExchangeError => e
     session.delete(:oauth_state)
-    AccessLogger.record(source: "google", status: "failure", request: request, detail: e.message.to_s[0, 200])
+    AccessLogger.record(source: "google", status: "failure", request: request, email: info&.dig("email"), detail: e.message.to_s[0, 200])
     redirect_to(login_path, alert: e.message)
+  rescue StandardError => e
+    session.delete(:oauth_state)
+    AccessLogger.record(source: "google", status: "failure", request: request, email: info&.dig("email"), detail: "#{e.class}: #{e.message.to_s[0, 160]}")
+    raise
   end
 
   private

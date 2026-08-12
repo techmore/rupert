@@ -102,11 +102,12 @@ class DashboardPresenter
   end
 
   # Gross per hour across all days in range — powers the POS daily shape.
-  def hourly_series(days: 30)
-    key = "dashboard/hourly_series/#{days}"
+  def hourly_series(days: 30, source: nil)
+    key = "dashboard/hourly_series/#{days}/#{source || "all"}"
     DataCache.fetch(key, ttl: 10.minutes) do
-      Core::Order.since(days.days.ago)
-        .group_by_hour_of_day(:occurred_at, range: days.days.ago..Time.current).sum(:gross_cents)
+      scope = Core::Order.since(days.days.ago)
+      scope = scope.where(source: source) if source.present?
+      scope.group_by_hour_of_day(:occurred_at, range: days.days.ago..Time.current).sum(:gross_cents)
         .transform_values { |cents| (cents / 100.0).round(2) }
     end
   end

@@ -14,17 +14,20 @@ class SalesController < AuthenticatedController
     @window_days = params[:window].present? ? params[:window].to_i.clamp(1, 365) : 30
 
     since = Time.current - @window_days.days
-    @sales = Core::Order.since(since).by_source(params[:source])
     @source = params[:source].presence || "all"
+    source_scope = @source == "all" ? nil : @source
+    @sources = Core::Order.since(since).distinct.pluck(:source).sort
+
+    @sales = Core::Order.since(since).by_source(source_scope)
     @total_cents = @sales.sum(:gross_cents)
     @sales = @sales.recent(500)
 
-    @hourly = hourly_pivot(@date)
-    @day_sales = Core::Order.on_day(@date).by_source(params[:source]).includes(:fulfillments).order(occurred_at: :asc)
+    @hourly = hourly_pivot(@date, source_scope)
+    @day_sales = Core::Order.on_day(@date).by_source(source_scope).includes(:fulfillments).order(occurred_at: :asc)
     @day_total_cents = @day_sales.sum(:gross_cents)
     @locations = Location.order(:name).pluck(:name, :id)
-    @revenue_series = DashboardPresenter.new.revenue_series(days: @window_days, source: @source == "all" ? nil : @source)
-    @hourly_series = DashboardPresenter.new.hourly_series(days: @window_days)
+    @revenue_series = DashboardPresenter.new.revenue_series(days: @window_days, source: source_scope)
+    @hourly_series = DashboardPresenter.new.hourly_series(days: @window_days, source: source_scope)
     @source_breakdown = DashboardPresenter.new.source_breakdown(days: @window_days)
   end
 
@@ -43,9 +46,9 @@ class SalesController < AuthenticatedController
   private
 
   # rows: hour (9..21), columns: location name -> gross cents + count
-  def hourly_pivot(date)
+  def hourly_pivot(date, source = nil)
     rows = (9..21).map { |h| { hour: h, label: Time.zone.parse("#{h}:00").strftime("%-I %p"), cells: {} } }
-    orders = Core::Order.on_day(date).includes(:location)
+    orders = Core::Order.on_day(date).by_source(source).includes(:location)
 
     by_hour = orders.group_by { |o| o.occurred_at.hour }
     by_hour.each do |hour, bucket|

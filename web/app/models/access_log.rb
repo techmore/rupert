@@ -9,7 +9,7 @@ class AccessLog < ApplicationRecord
   belongs_to :user, optional: true
 
   SOURCES = ["password", "google", "logout"].freeze
-  STATUSES = ["success", "failure"].freeze
+  STATUSES = ["success", "failure", "attempt"].freeze
 
   validates :source, inclusion: { in: SOURCES }, allow_nil: true
   validates :status, inclusion: { in: STATUSES }, allow_nil: true

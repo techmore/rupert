@@ -52,7 +52,8 @@
               </td>
               <td class="td"><span class="pill-<%= log.source == "logout" ? "taupe" : "olive" %>"><%= log.source || "—" %></span></td>
               <td class="td">
-                <span class="<%= log.status == "success" ? "pill-fern" : "pill-clay" %>"><%= log.status || "—" %></span>
+                <% pill = log.status == "success" ? "pill-fern" : log.status == "failure" ? "pill-clay" : "pill-taupe" %>
+                <span class="<%= pill %>"><%= log.status || "—" %></span>
               </td>
               <td class="td font-mono text-xs text-mocha"><%= log.ip || "—" %></td>
               <td class="td text-xs text-taupe"><%= log.detail.presence || "—" %></td>

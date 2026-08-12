@@ -65,9 +65,23 @@ class OauthFlowTest < ActionDispatch::IntegrationTest
     assert_nil User.find_by(email: "someone@evil.com")
   end
 
+  test "authorize records a Google attempt in the access log" do
+    GoogleOauthService.stubs(:auth_url).returns("https://accounts.google.com/o/oauth2/auth?dummy=1")
+    get google_auth_path
+    assert_redirected_to("https://accounts.google.com/o/oauth2/auth?dummy=1")
+    log = AccessLog.order(:id).last
+    assert_equal "google", log.source
+    assert_equal "attempt", log.status
+    assert_equal "127.0.0.1", log.ip
+  end
+
   test "callback rejects a mismatched state" do
     GoogleOauthService.expects(:exchange_code!).never
     get google_callback_path, params: { code: "code123", state: "wrong-state" }
     assert_redirected_to(login_path)
+    log = AccessLog.order(:id).last
+    assert_equal "google", log.source
+    assert_equal "failure", log.status
+    assert_includes log.detail, "state check"
   end
 end
