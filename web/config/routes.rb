@@ -237,6 +237,8 @@ Rails.application.routes.draw do
 
   get "/w/:token", to: "warehouse_sales#show", as: :warehouse_sale
 
+  get "/up", to: proc { [200, { "content-type" => "text/plain" }, ["OK"]] }
+
   # Any other routes just render the app
   match "*path" => "home#index", via: [:get, :post]
 end
