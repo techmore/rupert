@@ -4,11 +4,12 @@
 # logging hiccup can't break login.
 class AccessLogger
   class << self
-    def record(source:, status:, request:, email: nil, user: nil, detail: nil)
+    def record(source:, status:, request:, email: nil, user: nil, detail: nil, domain: nil)
       AccessLog.create!(
         tenant_id: Current.tenant_id || user&.tenant_id,
         user_id: user&.id,
         email: email.presence || user&.email,
+        domain: domain,
         source: source,
         status: status,
         ip: request.remote_ip,

@@ -27,9 +27,11 @@ class AccessLogFlowTest < ActionDispatch::IntegrationTest
     assert_equal "failure", logs.first.status
     assert_equal "password", logs.first.source
     assert_equal @admin.email, logs.first.email
+    assert_equal "example.com", logs.first.domain
     assert_equal "127.0.0.1", logs.first.ip
     assert_equal "success", logs.last.status
     assert_equal @admin.id, logs.last.user_id
+    assert_equal "example.com", logs.last.domain
   end
 
   test "sign out is logged" do

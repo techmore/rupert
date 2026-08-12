@@ -28,12 +28,13 @@ class OauthController < ApplicationController
 
   def callback
     info = nil
+    tested_domain = params[:hd].presence
     if params[:error].present?
-      AccessLogger.record(source: "google", status: "failure", request: request, detail: "consent declined")
+      AccessLogger.record(source: "google", status: "failure", request: request, domain: tested_domain, detail: "consent declined")
       return redirect_to(login_path, alert: "Google sign-in was declined.")
     end
     if session[:oauth_state].blank? || session[:oauth_state] != params[:state]
-      AccessLogger.record(source: "google", status: "failure", request: request, detail: "state check failed")
+      AccessLogger.record(source: "google", status: "failure", request: request, domain: tested_domain, detail: "state check failed")
       return redirect_to(login_path, alert: "Google sign-in failed the state check. Try again.")
     end
 
@@ -41,12 +42,14 @@ class OauthController < ApplicationController
     session.delete(:oauth_state)
 
     email = info["email"].to_s.downcase
+    tested_domain ||= email.split("@").last
     unless OauthAllowedDomain.allowed?(email)
       AccessLogger.record(
         source: "google",
         status: "failure",
         request: request,
         email: email,
+        domain: tested_domain,
         detail: "domain not allowed",
       )
       return redirect_to(login_path, alert: "Your Google account (#{email}) isn't on an allowed domain. Ask an admin to allow #{email.split("@").last}.")
@@ -55,15 +58,15 @@ class OauthController < ApplicationController
     user = find_or_create_user!(email, info)
     reset_session # prevent session fixation
     session[:user_id] = user.id
-    AccessLogger.record(source: "google", status: "success", request: request, user: user, email: email)
+    AccessLogger.record(source: "google", status: "success", request: request, user: user, email: email, domain: tested_domain)
     redirect_to(root_path, notice: "Signed in with Google.")
   rescue GoogleOauthService::NotConfiguredError, GoogleOauthService::ExchangeError => e
     session.delete(:oauth_state)
-    AccessLogger.record(source: "google", status: "failure", request: request, email: info&.dig("email"), detail: e.message.to_s[0, 200])
+    AccessLogger.record(source: "google", status: "failure", request: request, email: info&.dig("email"), domain: tested_domain || info&.dig("email")&.split("@")&.last, detail: e.message.to_s[0, 200])
     redirect_to(login_path, alert: e.message)
   rescue StandardError => e
     session.delete(:oauth_state)
-    AccessLogger.record(source: "google", status: "failure", request: request, email: info&.dig("email"), detail: "#{e.class}: #{e.message.to_s[0, 160]}")
+    AccessLogger.record(source: "google", status: "failure", request: request, email: info&.dig("email"), domain: tested_domain || info&.dig("email")&.split("@")&.last, detail: "#{e.class}: #{e.message.to_s[0, 160]}")
     raise
   end
 

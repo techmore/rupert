@@ -13,7 +13,8 @@ class SessionsController < ApplicationController
     if user&.active? && user.authenticate(params[:password])
       reset_session # prevent session fixation
       session[:user_id] = user.id
-      AccessLogger.record(source: "password", status: "success", request: request, user: user)
+      AccessLogger.record(source: "password", status: "success", request: request, user: user,
+        domain: user.email.to_s.split("@").last)
       redirect_to(root_path, notice: "Signed in")
     else
       AccessLogger.record(
@@ -21,6 +22,7 @@ class SessionsController < ApplicationController
         status: "failure",
         request: request,
         email: params[:email],
+        domain: params[:email].to_s.split("@").last,
         detail: user ? "invalid password" : "unknown email",
       )
       flash.now[:alert] = "Invalid email or password"

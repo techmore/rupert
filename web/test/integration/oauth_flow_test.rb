@@ -77,11 +77,12 @@ class OauthFlowTest < ActionDispatch::IntegrationTest
 
   test "callback rejects a mismatched state" do
     GoogleOauthService.expects(:exchange_code!).never
-    get google_callback_path, params: { code: "code123", state: "wrong-state" }
+    get google_callback_path, params: { code: "code123", state: "wrong-state", hd: "evilcorp.com" }
     assert_redirected_to(login_path)
-    log = AccessLog.order(:id).last
+    log = AccessLog.unscoped.order(:id).last
     assert_equal "google", log.source
     assert_equal "failure", log.status
+    assert_equal "evilcorp.com", log.domain
     assert_includes log.detail, "state check"
   end
 end

@@ -31,6 +31,7 @@
           <tr>
             <th scope="col" class="th">When</th>
             <th scope="col" class="th">Person</th>
+            <th scope="col" class="th">Domain</th>
             <th scope="col" class="th">Method</th>
             <th scope="col" class="th">Status</th>
             <th scope="col" class="th">IP address</th>
@@ -40,16 +41,17 @@
         <tbody class="divide-y divide-fog">
           <% if @logs.empty? %>
             <tr>
-              <td class="td py-8 text-center text-taupe" colspan="6">No access events yet — they start recording on the next login.</td>
+              <td class="td py-8 text-center text-taupe" colspan="7">No access events yet — they start recording on the next login.</td>
             </tr>
           <% end %>
           <% @logs.each do |log| %>
             <tr class="hover:bg-cream">
-              <td class="td whitespace-nowrap text-mocha"><%= l(log.created_at, format: :long) %></td>
+              <td class="td whitespace-nowrap font-medium text-ink"><%= l(log.created_at, format: :datetime) %></td>
               <td class="td">
                 <p class="font-medium text-ink"><%= log.user ? log.user.display_name : (log.email.presence || "—") %></p>
                 <% if log.email && log.email != log.user&.email %><p class="text-xs text-taupe"><%= log.email %></p><% end %>
               </td>
+              <td class="td font-mono text-xs text-mocha"><%= log.domain.presence || "—" %></td>
               <td class="td"><span class="pill-<%= log.source == "logout" ? "taupe" : "olive" %>"><%= log.source || "—" %></span></td>
               <td class="td">
                 <% pill = log.status == "success" ? "pill-fern" : log.status == "failure" ? "pill-clay" : "pill-taupe" %>
