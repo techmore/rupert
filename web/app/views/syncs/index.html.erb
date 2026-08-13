@@ -11,7 +11,7 @@
       <% end %>
       <%= form_tag source_syncs_path, method: :post, class: "inline" do %>
         <%= hidden_field_tag :source, "square" %>
-        <%= submit_tag "Square only", class: "btn-ghost btn-sm" %>
+        <%= submit_tag "Square only", class: "btn-ghost btn-sm", disabled: PlatformPushGuard.frozen?("square") %>
       <% end %>
       <%= form_tag source_syncs_path, method: :post, class: "inline" do %>
         <%= hidden_field_tag :source, "shopify" %>

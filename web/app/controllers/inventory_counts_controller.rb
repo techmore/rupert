@@ -123,19 +123,21 @@ class InventoryCountsController < AuthenticatedController
   # actually on hand) and submit the whole sheet at once. Includes SKUs that
   # aren't yet linked to Square so the sheet is complete.
   def prepared_sheet_items
-    rows = []
-    SkuLink.includes(shopify_variant: :product).order(:sku).find_each do |link|
+    links = SkuLink.includes(shopify_variant: :product).order(:sku).to_a
+    totals = InventoryLevel.where(shopifyVariantId: links.map(&:shopifyVariantId).compact)
+      .group(:shopifyVariantId).sum(:quantity)
+
+    links.filter_map do |link|
       variant = link.shopify_variant
       next if variant.nil?
 
-      rows << InventoryCountItem.new(
+      InventoryCountItem.new(
         sku: link.sku,
         shopifyVariantId: link.shopifyVariantId,
         squareVariationId: link.squareVariationId,
-        quantity: InventoryLevel.total_for_variant(link.shopifyVariantId),
+        quantity: totals[link.shopifyVariantId].to_i,
       )
     end
-    rows
   end
 
   def build_items(count)

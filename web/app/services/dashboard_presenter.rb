@@ -32,8 +32,13 @@ class DashboardPresenter
 
   def drifting
     @drifting ||= DataCache.fetch("dashboard/drifting") do
-      SkuLink.linked.includes(shopify_variant: :levels, square_variation: :levels).count do |link|
-        InventoryLevel.total_for_variant(link.shopifyVariantId) != InventoryLevel.total_for_variation(link.squareVariationId)
+      ids = SkuLink.linked.pluck(:shopifyVariantId, :squareVariationId)
+      shopify_totals = InventoryLevel.where(shopifyVariantId: ids.map(&:first))
+        .group(:shopifyVariantId).sum(:quantity)
+      square_totals = InventoryLevel.where(squareVariationId: ids.map(&:second))
+        .group(:squareVariationId).sum(:quantity)
+      ids.count do |shopify_id, square_id|
+        shopify_totals[shopify_id].to_i != square_totals[square_id].to_i
       end
     end
   end

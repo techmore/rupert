@@ -41,17 +41,30 @@ class SyncEngineTest < ActiveSupport::TestCase
     end
   end
 
-  test "a Square sync (read-only mirror) still runs while Square is frozen" do
+  test "a Square-only sync is blocked while Square is frozen" do
     assert PlatformPushGuard.frozen?("square")
 
     SquareClient.stubs(:configured?).returns(true)
-    SquareSyncer.stubs(:sync!).returns({ items: [], variations: [], levels: [], links: [], orders: [], locations: [] })
-    LedgerImporter.stubs(:from_square_orders!).returns(nil)
+    error = assert_raises(PlatformPushGuard::FrozenError) do
+      SyncEngine.run_source!("square", actor: "user")
+    end
+    assert_includes error.message, "FROZEN"
+  end
 
-    run = SyncEngine.run_source!("square", actor: "user")
+  test "a full sync skips Square and records it while Square is frozen" do
+    assert PlatformPushGuard.frozen?("square")
+
+    SquareClient.stubs(:configured?).returns(true)
+    SquareSyncer.stubs(:sync!).never
+    ShopifyClient.stubs(:graphql).returns({ "shop" => {}, "products" => { "nodes" => [] }, "locations" => { "nodes" => [] }, "orders" => { "nodes" => [] } })
+    SquareSyncer.stubs(:primary_location_id).returns(nil)
+
+    run = SyncEngine.run!(mode: "manual", actor: "user")
 
     assert_predicate run, :success?
-    assert_equal "square", run.source
+    details = JSON.parse(run.details)
+    assert_equal "skipped", details.dig("square", "status")
+    assert_includes details.dig("square", "reason"), "frozen"
   end
 
   test "a frozen Square still blocks outbound writes" do
@@ -63,6 +76,7 @@ class SyncEngineTest < ActiveSupport::TestCase
   end
 
   test "Current.sync_run is set for the duration of a sync and reset after" do
+    PlatformPushGuard.unfreeze!("square", actor: "tester@example.com")
     SquareClient.stubs(:configured?).returns(true)
     SquareSyncer.stubs(:sync!).returns({ items: [], variations: [], levels: [], links: [], orders: [], locations: [] })
     captured = nil

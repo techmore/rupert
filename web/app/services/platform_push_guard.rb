@@ -6,10 +6,9 @@
 # by default two — and windows expire automatically after PUSH_GUARD_WINDOW_MINUTES.
 #
 # A platform can additionally be *frozen* (maintenance/update mode), which
-# hard-blocks all writes to it even inside an open approval window. Syncs are
-# read-only mirrors (platform -> local DB) and keep running while frozen.
-# Square defaults to frozen while its platform update is in progress until
-# someone explicitly unfreezes it.
+# hard-blocks all traffic to it — writes even inside an open approval window,
+# and its syncs too (see SyncEngine). Square defaults to frozen while its
+# platform update is in progress until someone explicitly unfreezes it.
 #
 # State is stored per tenant as JSON blobs in Setting rows:
 #   push_guard_shopify / push_guard_square

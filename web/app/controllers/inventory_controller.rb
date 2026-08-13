@@ -125,9 +125,10 @@ class InventoryController < AuthenticatedController
   # sku => size-family membership (root grams, derived target, pending change).
   def size_family_map
     map = {}
-    SizeFamily.includes(:members).find_each do |family|
+    SizeFamily.includes(:members, :size_changes).find_each do |family|
       root = family.base_grams&.to_f
-      pending = family.size_changes.pending.index_by { |change| change.sku.downcase }
+      pending = family.size_changes.select { |change| change.status == "pending" }
+        .index_by { |change| change.sku.downcase }
       family.members.each do |member|
         map[member.sku.downcase] = {
           family_id: family.id,

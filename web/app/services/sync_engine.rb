@@ -26,14 +26,14 @@ class SyncEngine
         summary[:shopify] = { products: shopify[:products], variants: shopify[:variants] }
         LedgerImporter.from_shopify_orders!(shopify.dig(:orders, "nodes"))
 
-        # Square syncs are read-only mirrors (Square -> local DB) and always run
-        # when configured; the freeze only blocks *writes* to Square.
-        if SquareClient.configured?
+        # Square is frozen during its platform update: no traffic at all (reads
+        # or writes) until it is explicitly unfrozen.
+        if SquareClient.configured? && !square_frozen
           square = SquareSyncer.sync!(since: backfill_since(history_days))
           summary[:square] = { locations: square[:locations].length, orders: square[:orders].length }
           LedgerImporter.from_square_orders!(square[:orders])
-        else
-          summary[:square] = { status: "skipped", reason: "Square is not configured" }
+        elsif SquareClient.configured?
+          summary[:square] = { status: "skipped", reason: "Square is frozen by the push guard (platform update in progress)" }
         end
 
         AlertGenerator.sync!
@@ -42,8 +42,6 @@ class SyncEngine
         summary[:reconcile] = Reconciler.summary(rows)
 
         if SquareClient.configured? && !square_frozen
-          # Size derives can auto-apply targets to Square (writes), so they stay
-          # paused while Square is frozen — only the read-only mirror above runs.
           summary[:sizes] = SizeDeriver.process_all!
         end
 
@@ -69,9 +67,8 @@ class SyncEngine
       begin
         if source == "square"
           raise SquareClient::Error, "SQUARE_ACCESS_TOKEN is not set" unless SquareClient.configured?
+          raise PlatformPushGuard::FrozenError, PlatformPushGuard.frozen_message("square") if PlatformPushGuard.frozen?("square")
 
-          # A Square sync is a read-only mirror and runs even while Square is
-          # frozen (the freeze only blocks outbound writes).
           square = SquareSyncer.sync!
           LedgerImporter.from_square_orders!(square[:orders])
         else

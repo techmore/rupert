@@ -24,6 +24,10 @@ class SyncsController < AuthenticatedController
   def source
     source = params[:source].to_s
     if ["shopify", "square"].include?(source)
+      if source == "square" && PlatformPushGuard.frozen?("square")
+        return redirect_to(syncs_path, alert: PlatformPushGuard.frozen_message("square"))
+      end
+
       SyncJob.perform_later(tenant_id: Current.tenant_id, mode: "manual", source: source, actor: Current.user.email)
       redirect_to(syncs_path, notice: "#{source.capitalize} sync started")
     else

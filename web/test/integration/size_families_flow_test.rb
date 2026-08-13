@@ -50,6 +50,27 @@ class SizeFamiliesFlowTest < ActionDispatch::IntegrationTest
     assert_equal 2, family.size_changes.where(status: "applied").count
   end
 
+  test "collection approve_all applies pending sizes across families (no 404)" do
+    first = SizeFamily.create!(name: "First", mode: "approval", tenant_id: @tenant.id)
+    second = SizeFamily.create!(name: "Second", mode: "approval", tenant_id: @tenant.id)
+    [first, second].each do |family|
+      SquareVariation.create!(id: "v-#{family.id}", itemId: "item-#{family.id}",
+        sku: "sku-#{family.id}", name: family.name, tenant_id: @tenant.id)
+      SizeChange.create!(family_id: family.id, sku: "sku-#{family.id}", grams: 3.5,
+        root_grams: 10, target_quantity: 2, square_variation_id: "v-#{family.id}",
+        tenant_id: @tenant.id, status: "pending")
+    end
+    home = Location.create!(source: "square", externalId: "HOME", name: "Home")
+    SquareSyncer.stubs(:primary_location_id).returns(home)
+    SquareClient.stubs(:request).returns({})
+
+    post approve_all_size_families_path
+
+    assert_redirected_to(size_families_path)
+    assert_equal 0, SizeChange.pending.count
+    assert_equal 2, SizeChange.where(status: "applied").count
+  end
+
   test "manual root override resets the sales watermark" do
     family = SizeFamily.create!(name: "Override", mode: "approval", tenant_id: @tenant.id)
     family.update!(sales_watermark: 2.days.ago)

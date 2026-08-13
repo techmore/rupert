@@ -34,3 +34,31 @@ published loop is The production error sweep).
   - `undefined method 'order_attrs'` → fixed in Phase A importer refactor.
   - Pre-Postgres `SQLite3`/`SkuLink` errors → historical, pre-migration.
   - One-time `GraphQL 401` → transient token; no recurrence in the last 3 runs.
+
+## Maintainability Audit Loop
+
+Saved 2026-08-13. One-sentence explanation: on request, reads the whole repo as
+a Rails expert for maintainability — structure, duplication, conventions,
+complexity, updatability — and returns evidence-cited, ranked findings without
+changing code.
+
+Prompt:
+> Read the repo (web/ plus legacy/ reference) read-only as a Rails expert.
+> Assess how the code is broken up: structure/layering, duplicated or drifted
+> patterns, convention consistency, complexity hotspots, N+1s, dead code, and
+> how hard it is to update safely. For every claim cite file:line; show at
+> least two occurrences before calling something repeated. Deliver findings
+> ranked by impact/effort with a recommended order of attack. Do not modify
+> code or the database; stop when the scoped surface is reviewed. Ask before
+> any destructive, irreversible, or production change.
+
+Source: unpublished design (project-internal; created from the 2026-08-13 audit).
+
+### Change log
+
+- 2026-08-13 (run 1): baseline findings — retire legacy/ second sync engine;
+  snake_case the 19 camelCase tables; single SquareInventoryWriter +
+  InventoryMovement.journal!; split Settings/Reports controllers; fix the
+  size-families collection approve_all 404; kill three N+1 hotspots; test
+  bootstrap helper.
+

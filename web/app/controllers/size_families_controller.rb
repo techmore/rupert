@@ -145,7 +145,9 @@ class SizeFamiliesController < AuthenticatedController
   private
 
   def set_family
-    @family = SizeFamily.find(params[:id])
+    # Collection routes (e.g. approve_all) carry no :id — the action handles a
+    # nil @family (all families). Member routes always pass :id.
+    @family = SizeFamily.find(params[:id]) if params[:id].present?
   end
 
   def family_params
