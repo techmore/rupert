@@ -46,6 +46,15 @@ class ConnectionsGuide
       renewal_note: "Generate a fresh agent keypair any time from the Settings page. Republish the profile so the relay recognizes the new npub, then re-add it to the channel.",
     ),
     Service.new(
+      key: "authorize_net",
+      name: "Authorize.net",
+      description: "Card payments on warehouse-sale vendor links.",
+      keys: ["AUTHORIZE_NET_LOGIN_ID", "AUTHORIZE_NET_TRANSACTION_KEY", "AUTHORIZE_NET_CLIENT_KEY", "AUTHORIZE_NET_SANDBOX"],
+      find_url: "https://account.authorize.net/",
+      find_hint: "Merchant Interface → Account → API Credentials & Keys. The client key is what the checkout page embeds for Accept.js.",
+      renewal_note: "Rotate the transaction key any time from the Merchant Interface. Keep AUTHORIZE_NET_SANDBOX=1 until you're ready to take real charges.",
+    ),
+    Service.new(
       key: "sync",
       name: "Sync schedule",
       description: "How often syncs run and how much history they pull. No secrets.",

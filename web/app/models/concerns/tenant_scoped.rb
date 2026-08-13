@@ -10,5 +10,16 @@ module TenantScoped
     belongs_to :tenant, optional: true
 
     default_scope { where(tenant_id: Current.tenant_id) }
+
+    # Attribution on write is enforced here rather than by each controller
+    # remembering to set tenant_id. Explicit values (background jobs, fixtures,
+    # cross-tenant imports) are never overridden.
+    before_validation :assign_tenant, on: :create
+  end
+
+  private
+
+  def assign_tenant
+    self.tenant_id = Current.tenant_id if tenant_id.blank?
   end
 end

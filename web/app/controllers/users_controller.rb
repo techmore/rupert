@@ -6,7 +6,7 @@ class UsersController < AuthenticatedController
   before_action :authorize_read, only: [:index, :edit]
   before_action :authorize_write, except: [:index, :edit]
   before_action :set_user, only: [:edit, :update, :destroy, :deactivate, :activate, :update_permissions]
-  before_action :guard_super_admin, only: [:update, :destroy, :deactivate, :update_permissions]
+  before_action :guard_super_admin, only: [:update, :destroy, :deactivate, :activate, :update_permissions]
 
   def index
     @users = User.where(tenant_id: Current.tenant_id).ordered

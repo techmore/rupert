@@ -58,7 +58,7 @@ class ModuleNavTest < ActionDispatch::IntegrationTest
       role: "reader",
       tenant: tenants(:default_tenant),
     )
-    post logout_path
+    delete logout_path
     post login_path, params: { email: "reader@example.com", password: "password123" }
     assert_equal reader.id, session[:user_id]
 
@@ -70,5 +70,28 @@ class ModuleNavTest < ActionDispatch::IntegrationTest
     assert_select "nav[aria-label='Module'] a", text: "Projects", count: 0
     assert_select "nav[aria-label='Module'] a", text: "Goals", count: 0
     assert_select "nav[aria-label='Module'] a", text: "KPIs", count: 0
+  end
+
+  test "Team tab links to the tenant member list" do
+    get users_path
+    assert_response :success
+    team = assert_select("nav[aria-label='Module areas'] a", text: "Team")
+    assert_equal(users_path, team.first["href"])
+    assert_select "nav[aria-label='Module'] a", text: "Accounts"
+    assert_select "nav[aria-label='Module'] a.nav-pill-active-sm", text: "Accounts"
+    assert_select "nav[aria-label='Module'] a", text: "Accounts", count: 1
+  end
+
+  test "Finance Accounts module doesn't leak into the Team nav" do
+    get finance_accounts_path
+    assert_response :success
+    assert_select "nav[aria-label='Module areas'] a", text: "Finance"
+    assert_select "nav[aria-label='Module'] a", text: "Accounts", count: 1
+    assert_select "nav[aria-label='Module'] a.nav-pill-active-sm", text: "Accounts"
+
+    get users_path
+    assert_response :success
+    assert_select "nav[aria-label='Module'] a", text: "Accounts", count: 1
+    assert_select "nav[aria-label='Module'] a", text: "Employees"
   end
 end

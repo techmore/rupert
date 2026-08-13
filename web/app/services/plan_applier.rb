@@ -38,11 +38,11 @@ class PlanApplier
         if row.square_delta != 0 && square_home.present?
           begin
             SquareClient.request("/inventory/changes/batch-create", method: "POST", body: {
-              idempotency_key: idempotency_key("hh-sync", row.sku),
+              idempotency_key: idempotency_key("hh-sync", row.sku, row.square_home_target),
               changes: [{
                 type: "PHYSICAL_COUNT",
                 physical_count: {
-                  reference_id: idempotency_key("hh-sync", row.sku),
+                  reference_id: idempotency_key("hh-sync", row.sku, row.square_home_target),
                   catalog_object_id: row.square_variation_id,
                   state: "IN_STOCK",
                   location_id: square_home.externalId,
@@ -73,7 +73,7 @@ class PlanApplier
                   referenceDocumentUri: "herbal-healers://inventory/reconciliation",
                   changes: [{ delta: row.shopify_delta, inventoryItemId: row.inventory_item_id, locationId: shopify_location.externalId }],
                 },
-                idempotencyKey: idempotency_key("hh", row.sku),
+                idempotencyKey: idempotency_key("hh", row.sku, row.shopify_delta),
               })
               user_errors = result.dig("inventoryAdjustQuantities", "userErrors") || []
               raise ShopifyClient::Error, user_errors.map { |item| item["message"] }.join("; ") if user_errors.any?
@@ -91,10 +91,35 @@ class PlanApplier
         { sku: row.sku, ok: ok, target: row.target, actions: notes }
       end
 
+      record_apply(results)
+
       { applied: applied, results: results }
     end
 
     private
+
+    # Update the most recent pending run's telemetry so the reports page shows
+    # what was actually applied. Pure accounting on local rows — this never
+    # triggers a run or an external write on its own.
+    def record_apply(results)
+      run = ReconcileRun.where(status: "pending").order(startedAt: :desc).first
+      return unless run
+
+      results.each do |result|
+        run.items.where(sku: result[:sku]).update_all(
+          ok: result[:ok],
+          actions: Array(result[:actions]).join(", "),
+        )
+      end
+
+      ok = run.items.where(ok: true).count
+      failed = run.items.where(ok: false).count
+      run.update!(
+        applied: ok,
+        failed: failed,
+        status: run.items.where(ok: nil).none? ? "applied" : "pending",
+      )
+    end
 
     def preflight!(rows)
       reasons = []
@@ -125,10 +150,10 @@ class PlanApplier
       )
     end
 
-    def idempotency_key(prefix, sku)
+    def idempotency_key(prefix, sku, target)
       slug = sku.gsub(/[^a-z0-9]/i, "").slice(0, 40)
       slug = "item" if slug.blank?
-      "#{prefix}-#{slug}-#{Time.now.to_i}"
+      "#{prefix}-#{slug}-#{target}"
     end
   end
 end

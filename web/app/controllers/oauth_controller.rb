@@ -7,10 +7,13 @@
 #   GET /auth/google              → redirect to Google's consent screen
 #   GET /auth/google/callback     → exchange code, verify domain, sign in
 #
-# Domain enforcement: the user's email domain must be in OauthAllowedDomain.
-# Unknown domains are rejected; known domains with an existing Rupert account
-# sign in, and known domains without one get a reader account auto-provisioned.
+# Domain enforcement: the user's email domain must be in the tenant's
+# OauthAllowedDomain list. Unknown domains are rejected; known domains with an
+# existing Rupert account sign in, and known domains without one get a reader
+# account auto-provisioned.
 class OauthController < ApplicationController
+  class AccountInAnotherTenant < StandardError; end
+
   skip_before_action :require_login, only: [:authorize, :callback]
 
   def authorize
@@ -43,7 +46,8 @@ class OauthController < ApplicationController
 
     email = info["email"].to_s.downcase
     tested_domain ||= email.split("@").last
-    unless OauthAllowedDomain.allowed?(email)
+    tenant = resolve_tenant
+    unless tenant && OauthAllowedDomain.allowed?(email, tenant: tenant)
       AccessLogger.record(
         source: "google",
         status: "failure",
@@ -55,7 +59,19 @@ class OauthController < ApplicationController
       return redirect_to(login_path, alert: "Your Google account (#{email}) isn't on an allowed domain. Ask an admin to allow #{email.split("@").last}.")
     end
 
-    user = find_or_create_user!(email, info)
+    user = find_or_create_user!(email, info, tenant)
+    unless user&.active?
+      AccessLogger.record(
+        source: "google",
+        status: "failure",
+        request: request,
+        email: email,
+        domain: tested_domain,
+        detail: "deactivated account",
+      )
+      return redirect_to(login_path, alert: "This account has been deactivated. Contact an admin.")
+    end
+
     reset_session # prevent session fixation
     session[:user_id] = user.id
     AccessLogger.record(source: "google", status: "success", request: request, user: user, email: email, domain: tested_domain)
@@ -64,6 +80,10 @@ class OauthController < ApplicationController
     session.delete(:oauth_state)
     AccessLogger.record(source: "google", status: "failure", request: request, email: info&.dig("email"), domain: tested_domain || info&.dig("email")&.split("@")&.last, detail: e.message.to_s[0, 200])
     redirect_to(login_path, alert: e.message)
+  rescue AccountInAnotherTenant => e
+    session.delete(:oauth_state)
+    AccessLogger.record(source: "google", status: "failure", request: request, email: e.message, domain: e.message.to_s.split("@").last, detail: "account belongs to another tenant")
+    redirect_to(login_path, alert: "This Google account already belongs to another workspace. Ask the workspace admin to invite you.")
   rescue StandardError => e
     session.delete(:oauth_state)
     AccessLogger.record(source: "google", status: "failure", request: request, email: info&.dig("email"), domain: tested_domain || info&.dig("email")&.split("@")&.last, detail: "#{e.class}: #{e.message.to_s[0, 160]}")
@@ -72,11 +92,23 @@ class OauthController < ApplicationController
 
   private
 
-  def find_or_create_user!(email, info)
-    user = User.find_by(email: email)
+  # The tenant a Google sign-in belongs to. On a subdomain this is the store;
+  # on the root domain a lone tenant (single-store install) is assumed.
+  def resolve_tenant
+    return Current.tenant if Current.tenant
+    return Tenant.first if Tenant.count == 1
+
+    nil
+  end
+
+  # A user's account is tenant-scoped: resolve to the account in the subdomain's
+  # tenant, never a same-email account belonging to another tenant.
+  def find_or_create_user!(email, info, tenant)
+    user = User.find_by(email: email, tenant_id: tenant.id)
     return user if user
 
-    tenant = Current.tenant || Tenant.first
+    raise AccountInAnotherTenant, email if User.exists?(email: email)
+
     user = tenant.users.new(
       email: email,
       name: info["name"].presence || email.split("@").first.titleize,

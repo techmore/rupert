@@ -14,22 +14,22 @@ class PageGuideFlowTest < ActionDispatch::IntegrationTest
     Current.tenant = nil
   end
 
-  test "module pages render the how-to guide" do
+  test "module pages render the info icon" do
     get inventory_index_path
     assert_response :success
-    assert_includes response.body, "How to use this page"
-    assert_includes response.body, "Drift"
+    assert_includes response.body, "page-guide-icon"
+    assert_not_includes response.body, "How to use this page"
 
     get sales_path
-    assert_includes response.body, "How to use this page"
-    assert_includes response.body, "source toggle"
+    assert_includes response.body, "page-guide-icon"
+    assert_not_includes response.body, "How to use this page"
   end
 
-  test "pages without a guide don't show one" do
+  test "pages without a guide don't show an icon" do
     order = Core::Order.create!(source: "shopify", source_order_id: "x1", occurred_at: Time.current,
       order_number: "X1", gross_cents: 1000, tenant_id: @tenant.id)
     get order_path(order)
     assert_response :success
-    assert_not_includes response.body, "How to use this page"
+    assert_not_includes response.body, "page-guide-icon"
   end
 end

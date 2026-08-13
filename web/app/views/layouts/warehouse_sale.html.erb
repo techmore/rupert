@@ -12,9 +12,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Cardo:ital,wght@0,400;0,700;1,400&display=swap">
     <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
   </head>
   <body class="min-h-full">
     <main class="mx-auto max-w-5xl px-6 py-10">
+      <% if notice %><div role="status" class="mb-4 rounded-xl border border-fern/30 bg-fern/10 px-4 py-2.5 text-sm text-fern"><%= notice %></div><% end %>
+      <% if alert %><div role="alert" class="mb-4 rounded-xl border border-rose/30 bg-rose/10 px-4 py-2.5 text-sm text-rose"><%= alert %></div><% end %>
       <%= yield %>
     </main>
   </body>

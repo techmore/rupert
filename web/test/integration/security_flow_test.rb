@@ -51,8 +51,43 @@ class SecurityFlowTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "super-secret-token"
   end
 
+  test "an admin with settings access cannot export environment secrets" do
+    admin = User.create!(email: "admin2@example.com", password: "password123", role: "admin",
+      tenant_id: @tenant.id, name: "Admin")
+    Setting.create!(key: "SHOPIFY_CLIENT_SECRET", tenant_id: @tenant.id, value: "super-secret-token")
+
+    delete logout_path
+    post login_path, params: { email: "admin2@example.com", password: "password123" }
+    get env_export_settings_path, params: { shop: "m11u0i-sb.myshopify.com", embedded: "1" }
+    assert_redirected_to(settings_path)
+    assert_not_includes response.body, "super-secret-token"
+  end
+
+  test "a super admin can export environment secrets" do
+    super_admin = User.create!(email: "boss@example.com", password: "password123", role: "super_admin",
+      tenant_id: @tenant.id, name: "Boss")
+    Setting.create!(key: "SHOPIFY_CLIENT_SECRET", tenant_id: @tenant.id, value: "super-secret-token")
+
+    delete logout_path
+    host! "#{@tenant.subdomain}.example.com"
+    post login_path, params: { email: "boss@example.com", password: "password123" }
+    get env_export_settings_path, params: { shop: "m11u0i-sb.myshopify.com", embedded: "1" }
+    assert_response :success
+    assert_includes response.body, "super-secret-token"
+  end
+
   test "a reader cannot download the database backup" do
     get_page backup_settings_path
+    assert_redirected_to(root_path)
+  end
+
+  test "a reader cannot trigger a Google Drive backup" do
+    EnvStore.set("GOOGLE_DRIVE_CLIENT_ID", "client-id")
+    EnvStore.set("GOOGLE_DRIVE_CLIENT_SECRET", "client-secret")
+    EnvStore.set("GOOGLE_DRIVE_REFRESH_TOKEN", "refresh-token")
+    GoogleDriveBackupService.expects(:backup!).never
+
+    post drive_backup_settings_path
     assert_redirected_to(root_path)
   end
 

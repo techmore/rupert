@@ -51,11 +51,11 @@ class GoogleDriveBackupServiceTest < ActiveSupport::TestCase
     end
   end
 
-  test "backup! uploads a snapshot, shares it, and records a success log" do
+  test "backup! uploads a snapshot without a public link and records a success log" do
     drive = Object.new
     created = Struct.new(:id).new("FILE1")
     drive.stubs(:create_file).returns(created)
-    drive.stubs(:create_permission).returns(true)
+    drive.stubs(:create_permission).raises("public permission must not be created")
     drive.stubs(:list_files).returns(Struct.new(:files).new([]))
 
     GoogleDriveBackupService.stubs(:drive_service).returns(drive)

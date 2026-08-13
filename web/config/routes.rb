@@ -243,6 +243,16 @@ Rails.application.routes.draw do
 
   get "/w/:token", to: "warehouse_sales#show", as: :warehouse_sale
 
+  get "/w/:token/cart", to: "warehouse_carts#show", as: :warehouse_cart
+  post "/w/:token/cart/items", to: "warehouse_carts#add_item", as: :warehouse_cart_add_item
+  patch "/w/:token/cart/items/:item_id", to: "warehouse_carts#update_item", as: :warehouse_cart_item
+  delete "/w/:token/cart/items/:item_id", to: "warehouse_carts#remove_item", as: :warehouse_cart_remove_item
+
+  get "/w/:token/checkout", to: "warehouse_checkouts#show", as: :warehouse_checkout
+  post "/w/:token/checkout", to: "warehouse_checkouts#create", as: :warehouse_checkout_submit
+
+  get "/w/:token/orders/:order_number", to: "warehouse_orders#show", as: :warehouse_order
+
   get "/up", to: proc { [200, { "content-type" => "text/plain" }, ["OK"]] }
 
   # Any other routes just render the app

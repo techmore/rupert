@@ -158,8 +158,6 @@ class CatalogSyncer
 
     def fetch_locations
       ShopifyClient.graphql(LOCATIONS_QUERY, {})["locations"]["nodes"]
-    rescue StandardError
-      []
     end
 
     def sync_locations!(nodes)

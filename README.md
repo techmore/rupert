@@ -112,21 +112,29 @@ manual source (`SwipesimpleImporter`) feeds CSV exports through the same seam.
 
 ## Deploying to a droplet
 
-1. Create a droplet with Docker (e.g. Ubuntu + Docker image).
+The active deploy path is git-pull + systemd (the Docker files are a
+fallback/alternative and are not what the workflow uses).
+
+1. Provision a droplet (Ubuntu) with Ruby 4.0 (rbenv), PostgreSQL, and systemd.
 2. Add GitHub secrets to this repo:
-   - `GHCR_TOKEN` — PAT with `packages:write`
    - `DROPLET_HOST`, `DROPLET_USER`, `DROPLET_SSH_KEY`
-3. On the droplet, create `/opt/rupert/.env` (copy from `.env.example`):
+3. On the droplet, create `/root/rupert/.env` (copy from `.env.example`):
    - `SHOPIFY_API_KEY` / `SHOPIFY_API_SECRET` / `HOST` (public HTTPS URL)
    - `SQUARE_ACCESS_TOKEN` (+ optional `SQUARE_LOCATION_ID`)
    - `SECRET_KEY_BASE` (`bin/rails secret`)
    - `RAILS_ENCRYPTION_PRIMARY_KEY` / `DETERMINISTIC_KEY` / `KEY_DERIVATION_SALT`
      (`bin/rails db:encryption:init`) — keep these stable, encrypted
      settings will be unreadable if they change
-4. Push to `main` — the workflow builds the image to GHCR and SSHes into the
-   droplet to `docker compose up -d`. The SQLite database lives in a Docker
-   volume (`rupert-db`) and survives deploys; use the Settings page or a
-   volume snapshot for backups.
+   - `POSTGRES_PASSWORD` — a real, random password. The app **refuses to boot
+     in production** without it (no "rupert" default), and the same value must
+     match the local PostgreSQL role.
+4. Install the versioned systemd units from `deploy/`:
+   `rupert-web.service`, `rupert-jobs.service`, and the nightly
+   `rupert-backup.timer`/`rupert-backup.service`.
+5. Push to `main` — the workflow SSHes into the droplet to `git pull`,
+   install gems, migrate, and restart the services. Nightly backups land in
+   `/var/backups/rupert` (DB dump + encrypted `settings` dump + `.env`); also
+   keep the Google Drive backup enabled as an off-box copy.
 
 ## Data model
 

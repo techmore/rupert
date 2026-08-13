@@ -7,6 +7,9 @@ require "fileutils"
 class BackupService
   class RestoreError < StandardError; end
 
+  # Reject absurd uploads before they reach the database.
+  MAX_RESTORE_SIZE = 200.megabytes
+
   class << self
     def database_path
       ActiveRecord::Base.connection_db_config.database
@@ -34,10 +37,17 @@ class BackupService
 
     def validate!(source_path)
       raise RestoreError, "Empty backup file" if source_path.nil? || File.empty?(source_path)
+      raise RestoreError, "Backup is larger than #{MAX_RESTORE_SIZE / 1.megabyte} MB" if File.size(source_path) > MAX_RESTORE_SIZE
 
       header = File.binread(source_path, 16).to_s
       valid = header.start_with?("SQLite format 3") || header.start_with?("PGDMP")
       raise RestoreError, "Not a SQLite or PostgreSQL backup file" unless valid
+
+      # A spoofed "PGDMP" header is trivial; make sure the archive is actually
+      # restorable before anything is touched.
+      if header.start_with?("PGDMP") && !pg_restore_list_ok?(source_path)
+        raise RestoreError, "PostgreSQL backup is corrupt or not a valid archive"
+      end
     end
 
     def postgres?
@@ -72,21 +82,21 @@ class BackupService
       path
     end
 
-    def sqlite_restore!(source_path)
-      ActiveRecord::Base.connection_pool.disconnect!
-      FileUtils.cp(source_path, database_path)
-      ActiveRecord::Base.establish_connection
-      verify_post_restore!
-    end
-
+    # Restore is staged and reversible: the current database is snapshotted
+    # first, the upload is pre-validated, and pg_restore runs in a single
+    # transaction so a failure rolls back to the untouched original.
     def postgres_restore!(source_path)
       config = ActiveRecord::Base.connection_db_config.configuration_hash
       env = { "PGPASSWORD" => config[:password].to_s }
+
+      rollback = pg_dump_snapshot!(config, env, suffix: "pre-restore")
+
       cmd = [
         "pg_restore",
         "--clean",
         "--if-exists",
         "--no-owner",
+        "--single-transaction",
         "--host=#{config[:host]}",
         "--port=#{config[:port]}",
         "--username=#{config[:username]}",
@@ -94,11 +104,73 @@ class BackupService
         source_path,
       ]
       ok = system(env, *cmd, out: File::NULL, err: File::NULL)
-      raise RestoreError, "pg_restore failed — the backup may be corrupt" unless ok
+      unless ok
+        restore_rollback!(rollback, config, env)
+        raise RestoreError, "pg_restore failed — the backup may be corrupt (previous data restored from snapshot)"
+      end
 
       ActiveRecord::Base.connection_pool.disconnect!
       ActiveRecord::Base.establish_connection
       verify_post_restore!
+    end
+
+    def sqlite_restore!(source_path)
+      original = database_path
+      staging = "#{original}.restore-#{Process.pid}"
+      rollback = "#{original}.pre-restore"
+      FileUtils.cp(original, rollback)
+      FileUtils.cp(source_path, staging)
+      begin
+        ActiveRecord::Base.connection_pool.disconnect!
+        FileUtils.cp(staging, original)
+        ActiveRecord::Base.establish_connection
+        verify_post_restore!
+      rescue StandardError
+        ActiveRecord::Base.connection_pool.disconnect!
+        FileUtils.cp(rollback, original)
+        ActiveRecord::Base.establish_connection
+        raise
+      ensure
+        FileUtils.rm_f(staging)
+        FileUtils.rm_f(rollback)
+      end
+    end
+
+    def pg_restore_list_ok?(source_path)
+      config = ActiveRecord::Base.connection_db_config.configuration_hash
+      env = { "PGPASSWORD" => config[:password].to_s }
+      system(env, "pg_restore", "--list", source_path, out: File::NULL, err: File::NULL)
+    end
+
+    def pg_dump_snapshot!(config, env, suffix:)
+      dir = Rails.root.join("tmp", "backups")
+      FileUtils.mkdir_p(dir)
+      path = dir.join("rupert-#{suffix}-#{Time.now.to_i}.dump")
+      cmd = ["pg_dump", "--format=custom", "--no-owner", "--file=#{path}"]
+      cmd << "--host=#{config[:host]}" if config[:host].present?
+      cmd << "--port=#{config[:port]}" if config[:port].present?
+      cmd << "--username=#{config[:username]}" if config[:username].present?
+      cmd << config[:database]
+      ok = system(env, *cmd, out: File::NULL, err: File::NULL)
+      ok && File.exist?(path) && !File.empty?(path) ? path : nil
+    end
+
+    def restore_rollback!(path, config, env)
+      return if path.nil? || !File.exist?(path)
+
+      cmd = [
+        "pg_restore",
+        "--clean",
+        "--if-exists",
+        "--no-owner",
+        "--single-transaction",
+        "--host=#{config[:host]}",
+        "--port=#{config[:port]}",
+        "--username=#{config[:username]}",
+        "--dbname=#{config[:database]}",
+        path.to_s,
+      ]
+      system(env, *cmd, out: File::NULL, err: File::NULL)
     end
 
     def verify_post_restore!

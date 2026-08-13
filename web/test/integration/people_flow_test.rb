@@ -225,7 +225,7 @@ class PeopleFlowTest < ActionDispatch::IntegrationTest
 
   test "a cashier cannot reach HR or payroll pages" do
     User.create!(email: "cashier@example.com", password: "password123", role: "cashier", tenant_id: @tenant.id, name: "Cashier")
-    post logout_path
+    delete logout_path
     post login_path, params: { email: "cashier@example.com", password: "password123" }
 
     get_page people_employees_path
@@ -255,7 +255,7 @@ class PeopleFlowTest < ActionDispatch::IntegrationTest
     EnvStore.set("SHOPIFY_CLIENT_ID", "client-id")
     EnvStore.set("SHOPIFY_CLIENT_SECRET", "client-secret")
     User.create!(email: "cashier2@example.com", password: "password123", role: "cashier", tenant_id: @tenant.id, name: "Cashier")
-    post logout_path
+    delete logout_path
     post login_path, params: { email: "cashier2@example.com", password: "password123" }
 
     get_page root_path

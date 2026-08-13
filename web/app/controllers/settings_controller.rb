@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 class SettingsController < AuthenticatedController
-  before_action :authorize_read, only: [:show, :env, :env_export, :drive_status, :drive_logs, :backup]
-  before_action :authorize_write, except: [:show, :env, :env_export, :drive_status, :drive_logs, :backup]
-  before_action :authorize_super_admin, only: [:backup, :restore]
+  before_action :authorize_read, only: [:show, :env, :drive_status, :drive_logs, :backup]
+  before_action :authorize_write, except: [:show, :env, :drive_status, :drive_logs, :backup]
+  before_action :authorize_super_admin, only: [:backup, :restore, :drive_backup, :env_export]
 
   def show; end
 
@@ -141,7 +141,7 @@ class SettingsController < AuthenticatedController
 
   # POST /settings/oauth_domains — allow a new email domain to sign in
   def oauth_domains
-    domain = OauthAllowedDomain.new(domain: params[:domain])
+    domain = OauthAllowedDomain.new(domain: params[:domain], tenant_id: Current.tenant_id)
     if domain.save
       redirect_to(settings_path, notice: "Allowed #{domain.domain} to sign in with Google.")
     else
@@ -151,7 +151,8 @@ class SettingsController < AuthenticatedController
 
   # DELETE /settings/oauth_domains — revoke a domain from Google sign-in
   def oauth_remove_domain
-    domain = OauthAllowedDomain.find_by(domain: params[:domain].to_s.downcase.strip.sub(/\A@/, ""))
+    domain = OauthAllowedDomain.find_by(tenant_id: Current.tenant_id,
+      domain: params[:domain].to_s.downcase.strip.sub(/\A@/, ""))
     if domain&.destroy
       redirect_to(settings_path, notice: "Removed #{domain.domain} from Google sign-in.")
     else

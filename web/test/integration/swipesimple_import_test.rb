@@ -118,7 +118,7 @@ class SwipesimpleImportTest < ActionDispatch::IntegrationTest
 
   test "a reader cannot upload a SwipeSimple import" do
     User.create!(email: "reader2@example.com", password: "password123", role: "reader", tenant_id: @tenant.id, name: "Reader")
-    post logout_path
+    delete logout_path
     post login_path, params: { email: "reader2@example.com", password: "password123" }
 
     post import_swipesimple_syncs_path, params: {

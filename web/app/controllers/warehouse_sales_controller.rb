@@ -4,20 +4,14 @@
 # control — the page is intentionally not linked anywhere in the app.
 class WarehouseSalesController < ApplicationController
   layout "warehouse_sale"
+  include WarehousePortal
+
   skip_before_action :require_login
   skip_before_action :load_last_sync
+  before_action :load_share
 
   def show
-    @share = WarehouseShare.unscoped.includes(:tiers).find_by(token: params[:token])
-    return render_404 unless @share&.active?
-
-    Current.tenant = @share.tenant
+    @cart = current_cart
     @products = ShopifyProduct.includes(variants: :levels).order(:title)
-  end
-
-  private
-
-  def render_404
-    render(plain: "Not found", status: :not_found)
   end
 end

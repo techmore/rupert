@@ -7,6 +7,11 @@
       Vendor pricing applies — list price × <%= number_with_precision(@share.priceMultiplier, precision: 2) %>,
       with extra discounts on bulk quantities.
     </p>
+    <div class="mt-4">
+      <%= link_to warehouse_cart_path(@share.token), class: "btn-primary" do %>
+        View cart (<%= @cart.item_count %>)
+      <% end %>
+    </div>
   </header>
 
   <section class="card card-pad">
@@ -77,6 +82,14 @@
             <p class="text-xs text-taupe">available</p>
             <p class="text-sm font-medium <%= qty.positive? ? "text-ink" : "text-rose" %>"><%= qty %></p>
           </div>
+
+          <% if list.present? && qty.positive? %>
+            <%= form_tag warehouse_cart_add_item_path(@share.token), method: :post, class: "mt-3 flex items-center gap-2 border-t border-fog pt-3" do %>
+              <%= hidden_field_tag "variant_id", variant.id %>
+              <%= number_field_tag "quantity", 1, min: 1, max: [qty, WarehouseCartItem::MAX_QUANTITY].min, class: "input w-20" %>
+              <%= submit_tag "Add to cart", class: "btn-primary btn-sm flex-1" %>
+            <% end %>
+          <% end %>
         </article>
       <% end %>
     <% end %>

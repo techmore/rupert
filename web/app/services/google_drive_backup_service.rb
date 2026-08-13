@@ -6,9 +6,9 @@ require "fileutils"
 
 # Google Drive backup for the Settings page. Uses OAuth2 (user-consent) so the
 # app writes into the owner's Drive without sharing credentials with tenants.
-# Backups are a consistent DB snapshot (pg_dump / VACUUM INTO), uploaded with a
-# public link, pruned to the retention window, and every attempt is recorded in
-# the BackupLog table for verification.
+# Backups are a consistent DB snapshot (pg_dump / VACUUM INTO), uploaded to the
+# owner's Drive with no external sharing, pruned to the retention window, and
+# every attempt is recorded in the BackupLog table for verification.
 class GoogleDriveBackupService
   class NotConfiguredError < StandardError; end
   class NotConnectedError < StandardError; end
@@ -68,7 +68,6 @@ class GoogleDriveBackupService
           upload_source: path,
           content_type: "application/octet-stream",
         )
-        drive.create_permission(file.id, Google::Apis::DriveV3::Permission.new(type: "anyone", role: "reader"))
 
         prune_old!(drive, folder_id)
 

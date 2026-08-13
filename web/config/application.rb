@@ -4,9 +4,11 @@ require_relative "boot"
 
 require "rails/all"
 
-# Load the repo-root .env (credentials for the sync engine live there).
+# Load the repo-root .env (credentials for the sync engine live there). Skipped
+# in the test environment so real credentials on the dev box never leak into
+# tests/CI logs — tests provide their own values.
 require "dotenv"
-Dotenv.load(File.expand_path("../../.env", __dir__))
+Dotenv.load(File.expand_path("../../.env", __dir__)) unless ENV["RAILS_ENV"] == "test"
 
 # Require the gems listed in Gemfile, including any gems
 # you've limited to :test, :development, or :production.

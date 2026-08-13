@@ -7,15 +7,16 @@
 class SyncEngine
   class AlreadyRunning < StandardError; end
 
-  STALE_RUN_AFTER = 45.minutes
+  # Generous enough to cover backfills that legitimately run for a while; the
+  # per-tenant unique index (not this window) is what stops overlapping syncs.
+  STALE_RUN_AFTER = 3.hours
 
   class << self
     def run!(mode: "manual", actor: "user", tenant: nil, history_days: nil)
       Current.tenant = tenant if tenant
       raise ArgumentError, "No tenant in context" if Current.tenant_id.nil?
 
-      guard_running!
-      run = SyncRun.create!(mode: mode, status: "running", source: "all", actor: actor, startedAt: Time.current)
+      run = create_run!(mode: mode, source: "all", actor: actor)
 
       begin
         summary = {}
@@ -50,11 +51,9 @@ class SyncEngine
     def run_source!(source, actor: "user", tenant: nil)
       Current.tenant = tenant if tenant
       raise ArgumentError, "No tenant in context" if Current.tenant_id.nil?
-
-      guard_running!
       raise ArgumentError, "Unknown sync source" unless ["shopify", "square"].include?(source)
 
-      run = SyncRun.create!(mode: "manual", status: "running", source: source, actor: actor, startedAt: Time.current)
+      run = create_run!(mode: "manual", source: source, actor: actor)
 
       begin
         if source == "square"
@@ -76,7 +75,7 @@ class SyncEngine
     end
 
     def running?
-      SyncRun.where(status: "running").exists?
+      SyncRun.unscoped.where(tenant_id: Current.tenant_id, status: "running").exists?
     end
 
     # One-way import of a SwipeSimple CSV export (SwipeSimple has no public
@@ -103,14 +102,24 @@ class SyncEngine
       (Time.current - history_days.days).strftime("%Y-%m-%d")
     end
 
-    def guard_running!
+    # The running-run guard is enforced by a per-tenant partial unique index:
+    # the insert itself is the lock. A race is caught as RecordNotUnique and
+    # retried after stale runs are cleared, so two threads can never sync the
+    # same tenant concurrently.
+    def create_run!(mode:, source:, actor:)
+      run = SyncRun.new(mode: mode, status: "running", source: source, actor: actor, startedAt: Time.current)
+      run.save!
+      run
+    rescue ActiveRecord::RecordNotUnique
       recover_stale_runs!
       raise AlreadyRunning, "A sync is already running" if running?
+
+      retry
     end
 
     def recover_stale_runs!
       cutoff = STALE_RUN_AFTER.ago
-      SyncRun.where(status: "running").where('"startedAt" < ?', cutoff).update_all(
+      SyncRun.unscoped.where(tenant_id: Current.tenant_id, status: "running").where('"startedAt" < ?', cutoff).update_all(
         status: "failed",
         finishedAt: Time.current,
         error: "Automatically recovered stale sync after #{STALE_RUN_AFTER.inspect}",

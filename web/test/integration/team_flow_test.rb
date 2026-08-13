@@ -58,7 +58,7 @@ class TeamFlowTest < ActionDispatch::IntegrationTest
   test "create an employee and assign a role" do
     User.create!(email: "root@example.com", password: "password123", role: "super_admin", tenant_id: @tenant.id, name: "Root")
     host! "testco.example.com"  # super_admin resolves the tenant via subdomain
-    post logout_path
+    delete logout_path
     post login_path, params: { email: "root@example.com", password: "password123" }
 
     get_page new_user_path
@@ -80,7 +80,7 @@ class TeamFlowTest < ActionDispatch::IntegrationTest
 
   test "a non-super-admin cannot escalate to super_admin" do
     admin = User.create!(email: "mid@example.com", password: "password123", role: "admin", tenant_id: @tenant.id, name: "Mid")
-    post logout_path
+    delete logout_path
     post login_path, params: { email: "mid@example.com", password: "password123" }
 
     post users_path, params: {

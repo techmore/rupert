@@ -24,3 +24,6 @@ test:
 production:
   <<: *default
   database: <%= ENV.fetch("POSTGRES_DB", "rupert_production") %>
+  # The well-known "rupert" default must never run in production. Set
+  # POSTGRES_PASSWORD in the droplet .env or the app refuses to boot.
+  password: <%= ENV.fetch("POSTGRES_PASSWORD") { raise "POSTGRES_PASSWORD must be set in the production environment" } %>

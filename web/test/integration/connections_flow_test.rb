@@ -91,7 +91,7 @@ class ConnectionsFlowTest < ActionDispatch::IntegrationTest
 
   test "a cashier cannot view connections" do
     User.create!(email: "conn-cashier@example.com", password: "password123", role: "cashier", tenant_id: @tenant.id, name: "Cashier")
-    post logout_path
+    delete logout_path
     post login_path, params: { email: "conn-cashier@example.com", password: "password123" }
 
     get_page connections_path

@@ -12,7 +12,7 @@ class OnboardingController < ApplicationController
   end
 
   def index
-    return redirect_to(root_path) if configured?
+    return redirect_to(root_path) if self.class.configured?
 
     @status = EnvStore.export.each_with_object({}) do |(key, value), out|
       out[key] = value.present?

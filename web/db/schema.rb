@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_12_040000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_13_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -260,6 +260,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_040000) do
     t.string "tenant_id"
     t.index ["startedAt"], name: "index_SyncRun_on_startedAt"
     t.index ["status"], name: "index_SyncRun_on_status"
+    t.index ["tenant_id"], name: "index_SyncRun_on_running_per_tenant", unique: true, where: "((status)::text = 'running'::text)"
     t.index ["tenant_id"], name: "index_SyncRun_on_tenant_id"
   end
 
@@ -488,8 +489,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_040000) do
   create_table "oauth_allowed_domains", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "domain", null: false
+    t.string "tenant_id"
     t.datetime "updated_at", null: false
-    t.index ["domain"], name: "index_oauth_allowed_domains_on_domain", unique: true
+    t.index ["tenant_id", "domain"], name: "index_oauth_allowed_domains_on_tenant_id_and_domain", unique: true
   end
 
   create_table "order_lines", force: :cascade do |t|
@@ -999,6 +1001,33 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_040000) do
     t.string "tenant_id", null: false
     t.datetime "updated_at", null: false
     t.index ["tenant_id", "name"], name: "index_vendors_on_tenant_id_and_name", unique: true
+  end
+
+  create_table "warehouse_cart_items", force: :cascade do |t|
+    t.bigint "cart_id", null: false
+    t.datetime "created_at", null: false
+    t.integer "line_cents", default: 0, null: false
+    t.integer "quantity", default: 0, null: false
+    t.string "share_id", null: false
+    t.string "sku"
+    t.string "tenant_id", null: false
+    t.string "title"
+    t.integer "unit_cents", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.string "variant_id", null: false
+    t.index ["cart_id", "variant_id"], name: "index_warehouse_cart_items_on_cart_id_and_variant_id", unique: true
+    t.index ["tenant_id", "share_id"], name: "index_warehouse_cart_items_on_tenant_id_and_share_id"
+  end
+
+  create_table "warehouse_carts", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "share_id", null: false
+    t.string "status", default: "open", null: false
+    t.string "tenant_id", null: false
+    t.string "token", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "share_id"], name: "index_warehouse_carts_on_tenant_id_and_share_id"
+    t.index ["token"], name: "index_warehouse_carts_on_token", unique: true
   end
 
   add_foreign_key "InventoryLevel", "ShopifyVariant", column: "shopifyVariantId", on_delete: :nullify

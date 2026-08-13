@@ -22,12 +22,26 @@ class SessionsController < ApplicationController
       return render(:new, status: :unprocessable_entity)
     end
 
-    user = User.find_by(email: params[:email].to_s.downcase)
+    # Password accounts are tenant-scoped like Google sign-in: on a subdomain
+    # the account must belong to that store's tenant, so tenant A's user cannot
+    # sign in on tenant B's subdomain. On the root domain no tenant is
+    # resolvable, so fall back to the unscoped email lookup.
+    tenant = Current.tenant
+    user = if tenant
+      User.find_by(email: params[:email].to_s.downcase, tenant_id: tenant.id)
+    else
+      User.find_by(email: params[:email].to_s.downcase)
+    end
     if user&.active? && user.authenticate(params[:password])
       reset_session # prevent session fixation
       session[:user_id] = user.id
-      AccessLogger.record(source: "password", status: "success", request: request, user: user,
-        domain: user.email.to_s.split("@").last)
+      AccessLogger.record(
+        source: "password",
+        status: "success",
+        request: request,
+        user: user,
+        domain: user.email.to_s.split("@").last,
+      )
       redirect_to(root_path, notice: "Signed in")
     else
       AccessLogger.record(

@@ -73,7 +73,7 @@ class NegativeInventory
         next if location.nil?
 
         SquareClient.request("/inventory/changes/batch-create", method: "POST", body: {
-          idempotency_key: "hh-neg-#{variation_id}-#{level.id}-#{Time.now.to_i}",
+          idempotency_key: "hh-neg-#{variation_id}-#{level.id}-#{level.quantity}",
           changes: [{
             type: "PHYSICAL_COUNT",
             physical_count: {

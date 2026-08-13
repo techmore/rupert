@@ -106,7 +106,7 @@ class SearchFlowTest < ActionDispatch::IntegrationTest
   test "employees are hidden from users without hr.read" do
     People::Employee.create!(tenant_id: @tenant.id, first_name: "Casey", last_name: "Adams", employee_number: "E-SRCH")
     User.create!(email: "cashier@example.com", password: "password123", role: "cashier", tenant_id: @tenant.id)
-    post logout_path
+    delete logout_path
     post login_path, params: { email: "cashier@example.com", password: "password123" }
 
     get search_path, params: { q: "casey", shop: "m11u0i-sb.myshopify.com", embedded: "1" }
@@ -118,7 +118,7 @@ class SearchFlowTest < ActionDispatch::IntegrationTest
   test "search is tenant-scoped" do
     other = Tenant.create!(name: "Other", subdomain: "other")
     User.create!(email: "other@example.com", password: "password123", role: "admin", tenant_id: other.id)
-    post logout_path
+    delete logout_path
     post login_path, params: { email: "other@example.com", password: "password123" }
 
     get search_path, params: { q: "Z-7777", shop: "m11u0i-sb.myshopify.com", embedded: "1" }

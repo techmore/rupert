@@ -17,6 +17,6 @@ class AuthenticatedController < ApplicationController
 
   def user_not_authorized
     flash[:alert] = "You don't have permission to do that."
-    redirect_to(request.referer || root_path)
+    redirect_back(fallback_location: root_path)
   end
 end

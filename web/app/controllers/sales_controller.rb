@@ -45,18 +45,23 @@ class SalesController < AuthenticatedController
 
   private
 
-  # rows: hour (9..21), columns: location name -> gross cents + count
+  # rows: hour (9..21), columns: location name -> gross cents + count. Every
+  # row carries the same column set so the header always renders, even when no
+  # sales happened in the first hour.
   def hourly_pivot(date, source = nil)
-    rows = (9..21).map { |h| { hour: h, label: Time.zone.parse("#{h}:00").strftime("%-I %p"), cells: {} } }
     orders = Core::Order.on_day(date).by_source(source).includes(:location)
+    names = orders.map { |o| o.location&.name || "Unknown" }.uniq
+    rows = (9..21).map do |h|
+      { hour: h, label: Time.zone.parse("#{h}:00").strftime("%-I %p"), cells: names.to_h { |n| [n, { cents: 0, count: 0 }] } }
+    end
 
-    by_hour = orders.group_by { |o| o.occurred_at.hour }
-    by_hour.each do |hour, bucket|
+    orders.group_by { |o| o.occurred_at.hour }.each do |hour, bucket|
       row = rows.find { |r| r[:hour] == hour }
       next unless row
 
       bucket.group_by { |o| o.location&.name || "Unknown" }.each do |name, group|
-        row[:cells][name] = { cents: group.sum(&:gross_cents), count: group.size }
+        row[:cells][name][:cents] += group.sum(&:gross_cents)
+        row[:cells][name][:count] += group.size
       end
     end
     rows

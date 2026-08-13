@@ -17,10 +17,10 @@ class SyncEngineTest < ActiveSupport::TestCase
       mode: "scheduled",
       status: "running",
       source: "all",
-      startedAt: 46.minutes.ago,
+      startedAt: (SyncEngine::STALE_RUN_AFTER + 1.minute).ago,
     )
 
-    assert_nothing_raised { SyncEngine.send(:guard_running!) }
+    SyncEngine.send(:recover_stale_runs!)
 
     stale.reload
     assert_predicate stale, :failed?
@@ -36,6 +36,8 @@ class SyncEngineTest < ActiveSupport::TestCase
       startedAt: 5.minutes.ago,
     )
 
-    assert_raises(SyncEngine::AlreadyRunning) { SyncEngine.send(:guard_running!) }
+    assert_raises(SyncEngine::AlreadyRunning) do
+      SyncEngine.send(:create_run!, mode: "scheduled", source: "all", actor: "user")
+    end
   end
 end

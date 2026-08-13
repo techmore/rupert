@@ -5,7 +5,7 @@ require "test_helper"
 class OauthFlowTest < ActionDispatch::IntegrationTest
   setup do
     @tenant = Tenant.create!(name: "OAuth Co", subdomain: "oauthco#{SecureRandom.hex(4)}")
-    OauthAllowedDomain.create!(domain: "cybersecuritypilot.org")
+    OauthAllowedDomain.create!(domain: "cybersecuritypilot.org", tenant_id: @tenant.id)
   end
 
   teardown do
@@ -20,7 +20,8 @@ class OauthFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "callback signs in an existing super admin from an allowed domain" do
-    sean = User.create!(email: "sean.dolbec@cybersecuritypilot.org", name: "Sean Dolbec", role: "super_admin", password: "password123")
+    host! "#{@tenant.subdomain}.example.com"
+    sean = User.create!(email: "sean.dolbec@cybersecuritypilot.org", name: "Sean Dolbec", role: "super_admin", password: "password123", tenant_id: @tenant.id)
     GoogleOauthService.stubs(:auth_url).returns("https://accounts.google.com/")
     get google_auth_path
     state = session[:oauth_state]
@@ -35,6 +36,7 @@ class OauthFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "callback auto-provisions a reader for a new allowed-domain user" do
+    host! "#{@tenant.subdomain}.example.com"
     GoogleOauthService.stubs(:auth_url).returns("https://accounts.google.com/")
     get google_auth_path
     state = session[:oauth_state]
@@ -65,6 +67,43 @@ class OauthFlowTest < ActionDispatch::IntegrationTest
     assert_nil User.find_by(email: "someone@evil.com")
   end
 
+  test "a domain allowed by one tenant doesn't sign in users on another tenant" do
+    other = Tenant.create!(name: "Other Co", subdomain: "other#{SecureRandom.hex(4)}")
+    host! "#{other.subdomain}.example.com"
+    GoogleOauthService.stubs(:auth_url).returns("https://accounts.google.com/")
+    get google_auth_path
+    state = session[:oauth_state]
+
+    GoogleOauthService.expects(:exchange_code!)
+      .with("code123", redirect_uri: google_callback_url)
+      .returns("email" => "someone@cybersecuritypilot.org", "name" => "Someone")
+
+    get google_callback_path, params: { code: "code123", state: state }
+    assert_redirected_to(login_path)
+    assert_nil User.find_by(email: "someone@cybersecuritypilot.org")
+  end
+
+  test "callback doesn't sign into a same-email account that belongs to another tenant" do
+    other = Tenant.create!(name: "Other Co", subdomain: "other#{SecureRandom.hex(4)}")
+    other_user = User.create!(email: "shared@cybersecuritypilot.org", name: "Shared", role: "reader",
+      password: "password123", tenant_id: other.id)
+    host! "#{@tenant.subdomain}.example.com"
+    GoogleOauthService.stubs(:auth_url).returns("https://accounts.google.com/")
+    get google_auth_path
+    state = session[:oauth_state]
+
+    GoogleOauthService.expects(:exchange_code!)
+      .with("code123", redirect_uri: google_callback_url)
+      .returns("email" => "shared@cybersecuritypilot.org", "name" => "Shared")
+
+    get google_callback_path, params: { code: "code123", state: state }
+    assert_redirected_to(login_path)
+    assert_nil session[:user_id]
+    refute_equal other_user.id, session[:user_id]
+    log = AccessLog.unscoped.order(:id).last
+    assert_equal "account belongs to another tenant", log.detail
+  end
+
   test "authorize records a Google attempt in the access log" do
     GoogleOauthService.stubs(:auth_url).returns("https://accounts.google.com/o/oauth2/auth?dummy=1")
     get google_auth_path
@@ -84,5 +123,22 @@ class OauthFlowTest < ActionDispatch::IntegrationTest
     assert_equal "failure", log.status
     assert_equal "evilcorp.com", log.domain
     assert_includes log.detail, "state check"
+  end
+
+  test "callback rejects a deactivated user" do
+    host! "#{@tenant.subdomain}.example.com"
+    inactive = User.create!(email: "gone@cybersecuritypilot.org", name: "Gone", role: "reader",
+      password: "password123", active: false, tenant_id: @tenant.id)
+    GoogleOauthService.stubs(:auth_url).returns("https://accounts.google.com/")
+    get google_auth_path
+    state = session[:oauth_state]
+
+    GoogleOauthService.expects(:exchange_code!)
+      .with("code123", redirect_uri: google_callback_url)
+      .returns("email" => "gone@cybersecuritypilot.org", "name" => "Gone")
+
+    get google_callback_path, params: { code: "code123", state: state }
+    assert_redirected_to(login_path)
+    refute_equal inactive.id, session[:user_id]
   end
 end
