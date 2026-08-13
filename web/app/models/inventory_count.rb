@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 # A manual physical inventory worksheet. The counter records the actual on-hand
-# quantity per SKU; once a supervisor approves it, the counted quantities
-# override the system's computed totals (see #apply_override!).
+# quantity per SKU; approving a count records it as an audit worksheet for the
+# future, when Rupert becomes the source of truth. Until then it never mutates
+# mirrored inventory — Square is the source of truth today (see #apply_override!).
 class InventoryCount < ApplicationRecord
   include HasCuid
   include TenantScoped
@@ -63,64 +64,14 @@ class InventoryCount < ApplicationRecord
     self
   end
 
-  # Applies the counted quantities as an override of current totals. Called once
-  # the count is approved. For each line, adjusts a level so the variant's
-  # computed total equals the counted quantity and records the movement.
+  # Record-only for now. Square is the source of truth until this app takes
+  # over (the roadmap goal), so approving a count is captured as an audit
+  # record/worksheet and never mutates mirrored inventory. When Rupert becomes
+  # the source of truth, re-enable applying counted quantities here.
   def apply_override!(actor: "user")
     return false unless approved?
 
-    items.find_each do |item|
-      applied = false
-      applied |= adjust_source!(item, source: "shopify",
-        variant_column: :shopifyVariantId, actor: actor) if item.shopifyVariantId.present?
-      applied |= adjust_source!(item, source: "square",
-        variant_column: :squareVariationId, actor: actor) if item.squareVariationId.present?
-      item.update!(applied: applied) if applied
-    end
     update!(appliedAt: Time.current)
     true
-  end
-
-  private
-
-  def adjust_source!(item, source:, variant_column:, actor:)
-    current_total = if source == "shopify"
-                      InventoryLevel.total_for_variant(item.shopifyVariantId)
-                    else
-                      InventoryLevel.total_for_variation(item.squareVariationId)
-                    end
-    delta = item.quantity - current_total
-    return false if delta.zero?
-
-    level = InventoryLevel.find_or_initialize_by(
-      source: source, locationId: override_location(source, variant_column, item),
-      variant_column => item[variant_column]
-    )
-    before = level.quantity.to_i
-    after = [before + delta, 0].max
-    level.quantity = after
-    level.available = after
-    level.save!
-
-    InventoryMovement.create!(
-      source: source, sku: item.sku, direction: delta.positive? ? "in" : "out",
-      delta: delta.abs, quantityBefore: before, quantityAfter: after,
-      reason: "manual count override", reference: "count:#{id}", actor: actor,
-      variant_column => item[variant_column]
-    )
-    true
-  end
-
-  def override_location(source, variant_column, item)
-    return locationId if locationId.present?
-
-    existing = InventoryLevel.where(source: source, variant_column => item[variant_column])
-      .order(updatedAt: :desc).first
-    return existing.locationId if existing
-
-    Location.create!(
-      source: source, externalId: "manual-override-#{source}",
-      name: "Manual override", active: true
-    ).id
   end
 end

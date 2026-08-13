@@ -47,7 +47,7 @@ class InventoryCountsTest < ActionDispatch::IntegrationTest
     assert_equal "admin@example.com", count.createdBy
   end
 
-  test "submit -> approve applies the override" do
+  test "submit -> approve is record-only (no inventory change)" do
     @product = ShopifyProduct.create!(id: "prod-1", title: "Widget", tenant_id: @tenant.id)
     variant = ShopifyVariant.create!(
       title: "Widget - Small",
@@ -81,7 +81,8 @@ class InventoryCountsTest < ActionDispatch::IntegrationTest
 
     post approve_inventory_count_path(count)
     assert count.reload.approved?
-    assert_equal 7, InventoryLevel.total_for_variant(variant.id)
+    assert_equal 10, InventoryLevel.total_for_variant(variant.id)
+    refute InventoryMovement.exists?(sku: "WIDGET-S")
     assert count.appliedAt.present?
   end
 
@@ -156,7 +157,7 @@ class InventoryCountsTest < ActionDispatch::IntegrationTest
     assert_select "input[name='items[][sku]']"
   end
 
-  test "submitting the prepared sheet with overrides applies them on approval" do
+  test "submitting the prepared sheet with overrides records them without applying" do
     @product = ShopifyProduct.create!(id: "prod-2", title: "Gummies", tenant_id: @tenant.id)
     variant = ShopifyVariant.create!(
       title: "Gummies - Bottle",
@@ -195,6 +196,7 @@ class InventoryCountsTest < ActionDispatch::IntegrationTest
     post submit_inventory_count_path(count)
     post approve_inventory_count_path(count)
     assert count.reload.approved?
-    assert_equal 7, InventoryLevel.total_for_variant(variant.id)
+    assert_equal 10, InventoryLevel.total_for_variant(variant.id)
+    refute InventoryMovement.exists?(sku: "GUM-1")
   end
 end

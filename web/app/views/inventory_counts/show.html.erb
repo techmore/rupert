@@ -17,7 +17,7 @@
         <%= button_to "Submit for approval", submit_inventory_count_path(count), method: :post, class: "btn-primary", data: { turbo: false } %>
         <%= button_to "Delete", inventory_count_path(count), method: :delete, class: "btn-ghost", data: { turbo: false, confirm: "Delete this draft count?" } %>
       <% elsif count.pending? %>
-        <%= button_to "Approve & apply override", approve_inventory_count_path(count), method: :post, class: "btn-primary", data: { turbo: false, confirm: "Approve this count? Approved quantities override the current inventory totals." } %>
+        <%= button_to "Approve count", approve_inventory_count_path(count), method: :post, class: "btn-primary", data: { turbo: false, confirm: "Approve this count? It is recorded for audit and does not change inventory — Square is the source of truth." } %>
         <%= button_to "Reject", reject_inventory_count_path(count), method: :post, class: "btn-ghost", data: { turbo: false } %>
       <% elsif count.rejected? %>
         <%= button_to "Reopen as draft", reopen_inventory_count_path(count), method: :post, class: "btn-ghost", data: { turbo: false } %>
@@ -31,8 +31,9 @@
 
   <% if count.approved? %>
     <p class="rounded-xl border border-fern/30 bg-fern/10 px-4 py-3 text-sm text-fern">
-      Approved <%= l(count.approvedAt, format: :long) %> — counted quantities were applied as an override of the
-      computed totals for <%= pluralize(count.applied_items.count, "SKU") %>.
+      Approved <%= l(count.approvedAt, format: :long) %> as an audit record. Overrides are disabled until
+      Rupert becomes the source of truth — Square is the source of truth today, so counted quantities do
+      not change inventory.
     </p>
   <% end %>
 
@@ -87,7 +88,7 @@
                 <% if item.applied? %>
                   <span class="pill-fern">applied</span>
                 <% elsif count.approved? %>
-                  <span class="pill-taupe">skipped</span>
+                  <span class="pill-taupe">recorded</span>
                 <% elsif item.shopifyVariantId.present? || item.squareVariationId.present? %>
                   <span class="pill-taupe">linked</span>
                 <% else %>

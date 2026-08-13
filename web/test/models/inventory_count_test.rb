@@ -46,38 +46,29 @@ class InventoryCountTest < ActiveSupport::TestCase
     assert_equal @square_variation.id, @item.squareVariationId
   end
 
-  test "approve applies the override and records movements" do
+  test "approving a count is record-only: no override, no movements" do
     @count.snapshot_previous!
     @count.submit!
     @count.approve!
     @count.apply_override!(actor: "approver")
     assert @count.approved?
+    assert @count.appliedAt.present?
 
     level = InventoryLevel.find_by(source: "shopify", shopifyVariantId: @shopify_variant.id)
-    assert_equal 7, level.quantity
-    assert_equal 7, InventoryLevel.total_for_variant(@shopify_variant.id)
-
-    movement = InventoryMovement.find_by(sku: "WIDGET-S", source: "shopify")
-    assert_equal "manual count override", movement.reason
-    assert_equal "out", movement.direction
-    assert_equal 3, movement.delta
-    assert_equal 10, movement.quantityBefore
-    assert_equal 7, movement.quantityAfter
-
-    @item.reload
-    assert @item.applied?
-    assert @count.appliedAt.present?
+    assert_equal 10, level.quantity
+    assert_equal 10, InventoryLevel.total_for_variant(@shopify_variant.id)
+    refute InventoryMovement.exists?(sku: "WIDGET-S")
+    refute @item.reload.applied?
   end
 
-  test "square side without a level gets a manual override location" do
+  test "approving never creates square levels or manual override locations" do
     @count.snapshot_previous!
     @count.submit!
     @count.approve!
     @count.apply_override!(actor: "approver")
 
-    square_level = InventoryLevel.find_by(source: "square", squareVariationId: @square_variation.id)
-    assert_equal 7, square_level.quantity
-    assert_equal "Manual override", Location.find(square_level.locationId).name
+    refute InventoryLevel.exists?(source: "square", squareVariationId: @square_variation.id)
+    refute Location.exists?(name: "Manual override")
   end
 
   test "unlinked skus are snapshotted but not applied" do
