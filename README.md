@@ -53,11 +53,34 @@ set on the droplet for production.
 bin/rails ops:sync                    # full Shopify + Square sync
 bin/rails ops:sync_source[square]     # single source
 bin/rails ops:reconcile               # print the reconciliation plan summary
+bin/rails ops:push_guard:status       # freeze + approval-window state per platform
+bin/rails ops:push_guard:approve[square,email]   # record one approval (2 needed to open a window)
+bin/rails ops:push_guard:freeze[square,reason]   # maintenance freeze (blocks writes; syncs still run)
+bin/rails ops:push_guard:unfreeze[square]        # lift a freeze (writes still need approvals)
 bin/rails test                        # page + API smoke tests
 ```
 
 Scheduled syncs run through Solid Queue (`bin/jobs`) — every 15 minutes in
 production, configurable via `SYNC_MINUTES` / `config/solid_queue.yml`.
+
+## Push safety gate
+
+Every outbound write to Shopify or Square (reconcile apply, negative-inventory
+fixes, size-family approvals) is gated by `PlatformPushGuard`:
+
+- **Default-deny**: no platform is written unless a *push window* is open.
+- **Multi-approval**: opening a window requires ≥2 distinct people to approve
+  (configurable via `PUSH_GUARD_MIN_APPROVALS`). Windows last
+  `PUSH_GUARD_WINDOW_MINUTES` (default 60) and expire automatically.
+- **Maintenance freeze**: `ops:push_guard:freeze[platform,reason]` hard-blocks
+  a platform even inside an open window. Syncs are read-only mirrors and keep
+  running while frozen — only writes are blocked. **Square is currently frozen
+  while its platform update is in progress** and stays frozen until someone
+  explicitly unfreezes it (`ops:push_guard:unfreeze[square]`).
+- Overrides can also be set via `.env`/Settings: `PUSH_FREEZE_SHOPIFY`,
+  `PUSH_FREEZE_SQUARE`, `PUSH_GUARD_MIN_APPROVALS`,
+  `PUSH_GUARD_WINDOW_MINUTES`. The gate's state and history live in the Sync
+  page and in `push_guard_<platform>` Setting rows.
 
 ## GUI pages
 

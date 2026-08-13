@@ -35,6 +35,10 @@ module EnvStore
     "BUZZ_ANNOUNCEMENTS_CHANNEL",
     "FULFILLMENT_ALERT_HOURS",
     "OPCODE_BUZZ_PRIVATE_KEY",
+    "PUSH_GUARD_MIN_APPROVALS",
+    "PUSH_GUARD_WINDOW_MINUTES",
+    "PUSH_FREEZE_SHOPIFY",
+    "PUSH_FREEZE_SQUARE",
   ].freeze
 
   # Settings (DB) win over ENV. ENV is only consulted as a global fallback

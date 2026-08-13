@@ -10,6 +10,7 @@ class NegativeInventoryTest < ActiveSupport::TestCase
     @variation = SquareVariation.create!(id: "neg1", itemId: "i1", sku: "NEG1", name: "Neg Item", tenant_id: @tenant.id)
     @level = InventoryLevel.create!(source: "square", locationId: @location.id, squareVariationId: "neg1",
       quantity: -5, available: -5, tenant_id: @tenant.id)
+    open_push_window!("square")
   end
 
   teardown do

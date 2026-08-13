@@ -8,8 +8,22 @@ require "minitest/autorun"
 require "webmock/minitest"
 require "mocha/minitest"
 
+# Opens a push window for a platform: unfreezes it (Square defaults to frozen
+# while its platform update is in progress) and records the two approvals the
+# multi-approval gate requires.
+module PushGuardTestHelper
+  def open_push_window!(platform)
+    PlatformPushGuard.unfreeze!(platform, actor: "tester@example.com")
+    PlatformPushGuard.approve!(platform, email: "approver-a@example.com")
+    PlatformPushGuard.approve!(platform, email: "approver-b@example.com")
+    assert PlatformPushGuard.window_open?(platform), "expected a push window to be open for #{platform}"
+  end
+end
+
 module ActiveSupport
   class TestCase
+    include PushGuardTestHelper
+
     # Run tests in parallel with specified workers
     parallelize(workers: :number_of_processors)
 

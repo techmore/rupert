@@ -65,6 +65,9 @@ class NegativeInventory
       levels = InventoryLevel.where(source: "square", squareVariationId: variation_id).where("quantity < 0")
       return false if levels.empty?
 
+      # Multi-approval gate before any outbound write to Square.
+      PlatformPushGuard.authorize!("square", actor: "user")
+
       sku = SquareVariation.find_by(id: variation_id)&.sku
       before = InventoryLevel.total_for_variation(variation_id)
 

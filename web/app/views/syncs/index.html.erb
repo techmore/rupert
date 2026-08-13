@@ -22,6 +22,8 @@
 
   <%= render "syncs/banner" %>
 
+  <%= render "syncs/push_guard" %>
+
   <% if Current.user.can?("sync.write") %>
     <section class="card card-pad">
       <h2 class="font-display text-xl text-ink">Import SwipeSimple sales (CSV)</h2>

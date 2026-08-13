@@ -269,6 +269,7 @@ class CatalogSyncer
         reason: "Synced from Shopify",
         reference: reference,
         actor: "system",
+        syncRunId: Current.sync_run_id,
         createdAt: Time.current,
       )
     end

@@ -16,4 +16,9 @@ class SyncRun < ApplicationRecord
   def failed?
     status == "failed"
   end
+
+  has_many :movements,
+    class_name: "InventoryMovement",
+    foreign_key: "syncRunId",
+    inverse_of: :sync_run
 end

@@ -17,17 +17,23 @@ class SyncEngine
       raise ArgumentError, "No tenant in context" if Current.tenant_id.nil?
 
       run = create_run!(mode: mode, source: "all", actor: actor)
+      Current.sync_run = run
 
       begin
         summary = {}
+        square_frozen = PlatformPushGuard.frozen?("square")
         shopify = CatalogSyncer.sync!(since: backfill_since(history_days))
         summary[:shopify] = { products: shopify[:products], variants: shopify[:variants] }
         LedgerImporter.from_shopify_orders!(shopify.dig(:orders, "nodes"))
 
+        # Square syncs are read-only mirrors (Square -> local DB) and always run
+        # when configured; the freeze only blocks *writes* to Square.
         if SquareClient.configured?
           square = SquareSyncer.sync!(since: backfill_since(history_days))
           summary[:square] = { locations: square[:locations].length, orders: square[:orders].length }
           LedgerImporter.from_square_orders!(square[:orders])
+        else
+          summary[:square] = { status: "skipped", reason: "Square is not configured" }
         end
 
         AlertGenerator.sync!
@@ -35,7 +41,9 @@ class SyncEngine
         Reconciler.record_run!(rows, mode: mode)
         summary[:reconcile] = Reconciler.summary(rows)
 
-        if SquareClient.configured?
+        if SquareClient.configured? && !square_frozen
+          # Size derives can auto-apply targets to Square (writes), so they stay
+          # paused while Square is frozen — only the read-only mirror above runs.
           summary[:sizes] = SizeDeriver.process_all!
         end
 
@@ -45,6 +53,8 @@ class SyncEngine
       rescue StandardError => e
         run.update!(status: "failed", error: e.message.to_s[0, 2000], finishedAt: Time.current)
         raise
+      ensure
+        Current.sync_run = nil
       end
     end
 
@@ -54,11 +64,14 @@ class SyncEngine
       raise ArgumentError, "Unknown sync source" unless ["shopify", "square"].include?(source)
 
       run = create_run!(mode: "manual", source: source, actor: actor)
+      Current.sync_run = run
 
       begin
         if source == "square"
           raise SquareClient::Error, "SQUARE_ACCESS_TOKEN is not set" unless SquareClient.configured?
 
+          # A Square sync is a read-only mirror and runs even while Square is
+          # frozen (the freeze only blocks outbound writes).
           square = SquareSyncer.sync!
           LedgerImporter.from_square_orders!(square[:orders])
         else
@@ -71,6 +84,8 @@ class SyncEngine
       rescue StandardError => e
         run.update!(status: "failed", error: e.message.to_s[0, 2000], finishedAt: Time.current)
         raise
+      ensure
+        Current.sync_run = nil
       end
     end
 

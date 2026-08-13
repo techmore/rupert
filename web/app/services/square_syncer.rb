@@ -124,6 +124,7 @@ class SquareSyncer
               reason: "Synced from Square",
               reference: "sync",
               actor: "system",
+              syncRunId: Current.sync_run_id,
               createdAt: Time.current,
             )
           end

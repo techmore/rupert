@@ -102,6 +102,9 @@ class SizeDeriver
         return false
       end
 
+      # Multi-approval gate before any outbound write to Square.
+      PlatformPushGuard.authorize!("square", actor: "system")
+
       SquareClient.request("/inventory/changes/batch-create", method: "POST", body: {
         idempotency_key: "hh-size-#{change.sku}-#{change.id}",
         changes: [{

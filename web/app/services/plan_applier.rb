@@ -27,6 +27,8 @@ class PlanApplier
         raise SafetyLocked, "Conflicting duplicate Shopify SKUs must be fixed before applying: #{conflicts.keys.join(", ")}"
       end
 
+      authorize_writes!(grouped.values.flatten, actor: actor)
+
       shopify_location = Location.where(source: "shopify").order(:syncedAt).first
       square_home = SquareSyncer.primary_location_id
 
@@ -97,6 +99,17 @@ class PlanApplier
     end
 
     private
+
+    # Multi-approval gate: no platform gets written unless a push window is
+    # open for it. Authorized up-front so a blocked apply never partially runs.
+    def authorize_writes!(rows, actor:)
+      if rows.any? { |row| (row.shopify_delta || 0) != 0 }
+        PlatformPushGuard.authorize!("shopify", actor: actor)
+      end
+      if rows.any? { |row| (row.square_delta || 0) != 0 }
+        PlatformPushGuard.authorize!("square", actor: actor)
+      end
+    end
 
     # Update the most recent pending run's telemetry so the reports page shows
     # what was actually applied. Pure accounting on local rows — this never

@@ -31,6 +31,28 @@ namespace :ops do
     puts "#{args[:source]} sync completed"
   end
 
+  desc "Backfill syncRunId on mirror movements from the nearest prior sync run (idempotent)"
+  task link_sync_runs: :environment do
+    load_tenant!
+    runs = SyncRun.unscoped.where(tenant_id: Current.tenant_id, source: "all")
+      .order(startedAt: :asc).pluck(:id, :startedAt)
+    if runs.empty?
+      puts "No sync runs to link against"
+      next
+    end
+
+    linked = 0
+    InventoryMovement.unscoped.where(tenant_id: Current.tenant_id, syncRunId: nil)
+      .where(source: ["square", "shopify"]).find_each do |movement|
+      run = runs.reverse_each.find { |_, started_at| started_at <= movement.createdAt }
+      next if run.nil?
+
+      movement.update_column(:syncRunId, run[0])
+      linked += 1
+    end
+    puts "Linked #{linked} movements to their capturing sync run"
+  end
+
   desc "Seed the standard chart of accounts for the active tenant (idempotent)"
   task chart_of_accounts: :environment do
     load_tenant!
@@ -70,6 +92,53 @@ namespace :ops do
       group.each do |plan|
         puts "  #{plan.product.ljust(48)} #{plan.variant_id}  qty=#{plan.current_qty}  ->  #{plan.proposed_sku}"
       end
+    end
+  end
+
+  namespace :push_guard do
+    desc "Show push-guard status for Shopify and Square (freeze + approval windows)"
+    task status: :environment do
+      load_tenant!
+      PlatformPushGuard.status_all.each do |st|
+        state = st[:frozen] ? "FROZEN" : (st[:window_open] ? "window OPEN until #{st[:window_expires_at]}" : "LOCKED")
+        puts "#{st[:label].ljust(8)} #{state}"
+        puts "  approvals: #{st[:approvals_needed]}/#{st[:approvals_required]} #{st[:approvals].map { |a| a[:email] }.join(", ").presence || "(none)"}"
+        puts "  freeze reason: #{st[:freeze_reason].presence || "—"}"
+        next if st[:history].empty?
+
+        puts "  recent events:"
+        st[:history].last(5).each do |h|
+          puts "    #{h["at"]} #{h["action"]} by #{h["by"]}: #{h["detail"]}"
+        end
+      end
+    end
+
+    desc "Record an explicit approval to open a push window: ops:push_guard:approve[square,email] (or APPROVER_EMAIL env)"
+    task :approve, [:platform, :email] => :environment do |_, args|
+      load_tenant!
+      email = args[:email] || ENV["APPROVER_EMAIL"]
+      raise "Provide an approver email as the second argument or set APPROVER_EMAIL" if email.blank?
+
+      result = PlatformPushGuard.approve!(args[:platform], email: email)
+      if result[:window_open]
+        puts "#{PlatformPushGuard.label(args[:platform])} push window OPEN (#{result[:approved_by]}/#{result[:needed]}) until #{result[:window_expires_at]}"
+      else
+        puts "Approval recorded for #{PlatformPushGuard.label(args[:platform])} — #{result[:approved_by]} of #{result[:needed]} approvals needed."
+      end
+    end
+
+    desc "Freeze all pushes to a platform (maintenance): ops:push_guard:freeze[square,reason]"
+    task :freeze, [:platform, :reason] => :environment do |_, args|
+      load_tenant!
+      PlatformPushGuard.freeze!(args[:platform], reason: args[:reason], actor: ENV["ACTOR_EMAIL"].presence || "rake")
+      puts "#{PlatformPushGuard.label(args[:platform])} FROZEN — no writes until unfrozen (syncs still run as read-only mirrors)."
+    end
+
+    desc "Unfreeze a platform (writes still require an approved window): ops:push_guard:unfreeze[square]"
+    task :unfreeze, [:platform] => :environment do |_, args|
+      load_tenant!
+      PlatformPushGuard.unfreeze!(args[:platform], actor: ENV["ACTOR_EMAIL"].presence || "rake")
+      puts "#{PlatformPushGuard.label(args[:platform])} unfrozen — pushes still need an approved window."
     end
   end
 end

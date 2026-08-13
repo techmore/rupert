@@ -84,6 +84,7 @@ Rails.application.routes.draw do
 
   resources :inventory, only: :index do
     collection do
+      get :movements
       post :fix_negative
       post :fix_all_negative
     end
@@ -188,6 +189,9 @@ Rails.application.routes.draw do
     collection do
       post :source
       post :import_swipesimple
+      post :push_guard_approve
+      post :push_guard_freeze
+      post :push_guard_unfreeze
     end
   end
   get "/system", to: "system#index", as: :system

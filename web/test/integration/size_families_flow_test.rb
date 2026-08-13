@@ -8,6 +8,7 @@ class SizeFamiliesFlowTest < ActionDispatch::IntegrationTest
     @admin = User.create!(email: "sf-admin@example.com", password: "password123", role: "admin", name: "Admin", tenant_id: @tenant.id)
     post login_path, params: { email: @admin.email, password: "password123" }
     Current.tenant = @tenant
+    open_push_window!("square")
   end
 
   teardown do

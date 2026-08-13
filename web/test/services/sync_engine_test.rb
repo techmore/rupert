@@ -40,4 +40,37 @@ class SyncEngineTest < ActiveSupport::TestCase
       SyncEngine.send(:create_run!, mode: "scheduled", source: "all", actor: "user")
     end
   end
+
+  test "a Square sync (read-only mirror) still runs while Square is frozen" do
+    assert PlatformPushGuard.frozen?("square")
+
+    SquareClient.stubs(:configured?).returns(true)
+    SquareSyncer.stubs(:sync!).returns({ items: [], variations: [], levels: [], links: [], orders: [], locations: [] })
+    LedgerImporter.stubs(:from_square_orders!).returns(nil)
+
+    run = SyncEngine.run_source!("square", actor: "user")
+
+    assert_predicate run, :success?
+    assert_equal "square", run.source
+  end
+
+  test "a frozen Square still blocks outbound writes" do
+    assert PlatformPushGuard.frozen?("square")
+    error = assert_raises(PlatformPushGuard::FrozenError) do
+      PlatformPushGuard.authorize!("square", actor: "user")
+    end
+    assert_includes error.message, "FROZEN"
+  end
+
+  test "Current.sync_run is set for the duration of a sync and reset after" do
+    SquareClient.stubs(:configured?).returns(true)
+    SquareSyncer.stubs(:sync!).returns({ items: [], variations: [], levels: [], links: [], orders: [], locations: [] })
+    captured = nil
+    LedgerImporter.stubs(:from_square_orders!).with { |_orders| captured = Current.sync_run_id; true }.returns(nil)
+
+    run = SyncEngine.run_source!("square", actor: "user")
+
+    assert_equal run.id, captured
+    assert_nil Current.sync_run_id
+  end
 end

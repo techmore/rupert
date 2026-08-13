@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_13_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_13_010000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -81,10 +81,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_000000) do
     t.string "sku"
     t.string "source", null: false
     t.string "squareVariationId"
+    t.string "syncRunId"
     t.string "tenant_id"
     t.index ["createdAt"], name: "index_InventoryMovement_on_createdAt"
     t.index ["shopifyVariantId"], name: "index_InventoryMovement_on_shopifyVariantId"
     t.index ["source"], name: "index_InventoryMovement_on_source"
+    t.index ["syncRunId"], name: "index_InventoryMovement_on_syncRunId"
     t.index ["tenant_id"], name: "index_InventoryMovement_on_tenant_id"
   end
 

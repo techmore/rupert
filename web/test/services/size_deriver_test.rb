@@ -8,6 +8,7 @@ class SizeDeriverTest < ActiveSupport::TestCase
     @family = SizeFamily.create!(name: "Test Hash", mode: "approval", tenant_id: Current.tenant_id)
     @m35 = @family.members.create!(sku: "thash35", grams: 3.5, tenant_id: Current.tenant_id)
     @m7 = @family.members.create!(sku: "thash7", grams: 7, tenant_id: Current.tenant_id)
+    open_push_window!("square")
   end
 
   teardown do

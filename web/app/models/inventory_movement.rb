@@ -15,6 +15,10 @@ class InventoryMovement < ApplicationRecord
     class_name: "SquareVariation",
     foreign_key: "squareVariationId",
     optional: true
+  belongs_to :sync_run,
+    class_name: "SyncRun",
+    foreign_key: "syncRunId",
+    optional: true
 
   scope :recent, ->(limit = 25) { order(createdAt: :desc).limit(limit) }
   scope :by_source, ->(source) { where(source: source) }
