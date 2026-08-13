@@ -215,13 +215,18 @@ class CatalogSyncer
     end
 
     def sync_variant!(product_id, variant, location)
+      # Mirrored inventory stays non-negative: oversold Shopify counts are
+      # zeroed locally (the negative-inventory remediation) instead of being
+      # pushed back to Shopify. Reconcile therefore sees 0 for these SKUs.
+      quantity = [variant["inventoryQuantity"].to_i, 0].max
+
       attrs = {
         id: variant["id"],
         productId: product_id,
         title: variant["title"],
         sku: variant["sku"],
         price: variant["price"]&.to_f,
-        inventoryQuantity: variant["inventoryQuantity"].to_i,
+        inventoryQuantity: quantity,
         tracked: variant.dig("inventoryItem", "tracked") == true,
         inventoryItemId: variant.dig("inventoryItem", "id"),
         syncedAt: Time.current,
@@ -230,7 +235,6 @@ class CatalogSyncer
 
       return unless location
 
-      quantity = attrs[:inventoryQuantity]
       level = InventoryLevel.find_or_initialize_by(
         source: "shopify", locationId: location["id"], shopifyVariantId: variant["id"],
       )

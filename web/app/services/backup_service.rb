@@ -62,9 +62,6 @@ class BackupService
       quoted = connection.quote(path.to_s)
       connection.execute("VACUUM INTO #{quoted}")
       path
-    rescue SQLite3::SQLException
-      FileUtils.cp(database_path, path)
-      path
     end
 
     def postgres_snapshot_path(dir)
