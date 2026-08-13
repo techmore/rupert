@@ -54,7 +54,7 @@ bin/rails ops:sync_source[square]     # single source
 bin/rails ops:reconcile               # print the reconciliation plan summary
 bin/rails ops:push_guard:status       # freeze + approval-window state per platform
 bin/rails ops:push_guard:approve[square,email]   # record one approval (2 needed to open a window)
-bin/rails ops:push_guard:freeze[square,reason]   # maintenance freeze (blocks writes AND syncs)
+bin/rails ops:push_guard:freeze[square,reason]   # maintenance freeze (blocks writes; syncs still run)
 bin/rails ops:push_guard:unfreeze[square]        # lift a freeze (writes still need approvals)
 bin/rails test                        # page + API smoke tests
 ```
@@ -72,11 +72,10 @@ fixes, size-family approvals) is gated by `PlatformPushGuard`:
   (configurable via `PUSH_GUARD_MIN_APPROVALS`). Windows last
   `PUSH_GUARD_WINDOW_MINUTES` (default 60) and expire automatically.
 - **Maintenance freeze**: `ops:push_guard:freeze[platform,reason]` hard-blocks
-  a platform even inside an open window, and pauses its syncs entirely (full
-  syncs skip it; a single-source sync is rejected) until it is unfrozen.
-  **Square is currently frozen while its platform update is in progress** and
-  stays frozen until someone explicitly unfreezes it
-  (`ops:push_guard:unfreeze[square]`).
+  a platform even inside an open window. Syncs are read-only mirrors and keep
+  running while frozen — only writes are blocked. **Square is currently frozen
+  while its platform update is in progress** and stays frozen until someone
+  explicitly unfreezes it (`ops:push_guard:unfreeze[square]`).
 - Overrides can also be set via `.env`/Settings: `PUSH_FREEZE_SHOPIFY`,
   `PUSH_FREEZE_SQUARE`, `PUSH_GUARD_MIN_APPROVALS`,
   `PUSH_GUARD_WINDOW_MINUTES`. The gate's state and history live in the Sync

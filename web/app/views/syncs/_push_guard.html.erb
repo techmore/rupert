@@ -1,6 +1,6 @@
 <%# Push safety gate: nothing writes to Shopify/Square without an approved
-    multi-person push window, and a frozen platform blocks all traffic — writes
-    and its syncs — until it is explicitly unfrozen. %>
+    multi-person push window, and a frozen platform blocks all writes to it.
+    Syncs are read-only mirrors and keep running while frozen. %>
 <section class="card card-pad border-rose/30">
   <div class="flex flex-wrap items-center justify-between gap-3">
     <div>
@@ -9,7 +9,7 @@
         Every outbound write to Shopify or Square (reconcile apply, negative-inventory fixes, size approvals)
         is blocked unless a push window has been approved by <%= @push_guard.first[:approvals_required] %> different people.
         Windows expire automatically. A <span class="font-semibold text-rose">frozen</span> platform blocks writes
-        <em>and</em> pauses its syncs — Square is frozen during its current platform update.
+        to it (syncs still run as read-only mirrors) — Square is frozen during its current platform update.
       </p>
     </div>
   </div>
@@ -33,7 +33,7 @@
 
         <% if st[:frozen] %>
           <p class="mt-2 text-xs text-rose">
-            All traffic to <%= st[:label] %> is paused while frozen — writes and syncs are blocked until it is unfrozen.
+            Pushes to <%= st[:label] %> are blocked while frozen (syncs still run as read-only mirrors).
           </p>
         <% elsif st[:window_open] %>
           <p class="mt-2 text-xs text-fern">

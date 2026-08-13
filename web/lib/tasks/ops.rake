@@ -131,7 +131,7 @@ namespace :ops do
     task :freeze, [:platform, :reason] => :environment do |_, args|
       load_tenant!
       PlatformPushGuard.freeze!(args[:platform], reason: args[:reason], actor: ENV["ACTOR_EMAIL"].presence || "rake")
-      puts "#{PlatformPushGuard.label(args[:platform])} FROZEN — no writes and no syncs until unfrozen."
+      puts "#{PlatformPushGuard.label(args[:platform])} FROZEN — no writes until unfrozen (syncs still run as read-only mirrors)."
     end
 
     desc "Unfreeze a platform (writes still require an approved window): ops:push_guard:unfreeze[square]"
