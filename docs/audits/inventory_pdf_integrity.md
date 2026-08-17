@@ -144,7 +144,8 @@ Square API ──► SquareSyncer ──► SquareVariation
 
 ## Follow-up fixes (2026-08-17)
 
-Applied after the audit (owner-authorized; see git log `d4a3c39`, `d49b307`):
+Applied after the audit (owner-authorized; see git log `d4a3c39`, `d49b307`,
+`be1a3d7`):
 
 - **Shared-SKU reconciliation guard.** `Reconciler.actionable_rows` now skips
   rows whose SKU is linked to >1 Shopify variant (`Reconciler.shared_skus`,
@@ -162,3 +163,25 @@ Applied after the audit (owner-authorized; see git log `d4a3c39`, `d49b307`):
   `status=ARCHIVED`, their 22 open alerts resolved, and reconcile/alerts/PDF
   reconciliation surfaces now only consider `ACTIVE` products. The write hazard
   on the dead Afghan SKUs was already neutralized by the shared-SKU guard.
+- **Shared-Total flags everywhere (`be1a3d7`).** The PDF's `†` shared-Square-
+  quantity guard was PDF-only; the web Inventory page and the Reconciliation
+  report still repeated the same shared total per linked variant with a
+  fabricated per-row drift/delta. Now both render `45†` + a bare `†` (with a
+  footnote), and the Reconciliation report gives shared rows a `shared` status
+  instead of miscounting them as drift (drift dropped 9→0-consistent).
+- **PDF summary fix (`be1a3d7`).** `square_units` summed each shared pool once
+  per linked variant (2062); now dedupes by `square_variation_id` and equals
+  the true linked-unique total (1248).
+
+### Still open — multi-location pool (latent, 2 items)
+
+`InventoryMaintainer` builds the pool from `square_totals` (sum across all
+Square locations) but writes one `PHYSICAL_COUNT` to the home location. With a
+second Square location (Vendor Events rig) this is only correct when stock lives
+in one location. Verified: **2** Square variations are concurrently nonzero in
+both locations today (`689745640797` Large: home 12 + Vendor Events 10,
+`T275100` Sample: home 2 + Vendor Events 10), so the pool for those is written
+to home alone and the real total drifts (22 → 32). Not changed: this is the live
+auto-writer, the fix touches pool + write-location semantics for both platforms,
+and it needs careful design + the two items are out of sellable scope (Sample /
+Large). Deferred pending explicit sign-off and a test cover.
