@@ -173,15 +173,20 @@ Applied after the audit (owner-authorized; see git log `d4a3c39`, `d49b307`,
   per linked variant (2062); now dedupes by `square_variation_id` and equals
   the true linked-unique total (1248).
 
-### Still open — multi-location pool (latent, 2 items)
+### Still open — multi-location pool (FIXED 2026-08-17, `9e3a88b`)
 
 `InventoryMaintainer` builds the pool from `square_totals` (sum across all
 Square locations) but writes one `PHYSICAL_COUNT` to the home location. With a
-second Square location (Vendor Events rig) this is only correct when stock lives
-in one location. Verified: **2** Square variations are concurrently nonzero in
-both locations today (`689745640797` Large: home 12 + Vendor Events 10,
-`T275100` Sample: home 2 + Vendor Events 10), so the pool for those is written
-to home alone and the real total drifts (22 → 32). Not changed: this is the live
-auto-writer, the fix touches pool + write-location semantics for both platforms,
-and it needs careful design + the two items are out of sellable scope (Sample /
-Large). Deferred pending explicit sign-off and a test cover.
+second Square location (Vendor Events rig) this was incorrect when stock lived
+in two locations. Verified live: `689745640797` Large (home 12 + Vendor 10) was
+in the maintainer's path, so any online sale would have written the all-location
+pool to home alone and double-counted (22 → 32).
+
+**Fixed:** the maintainer now skips any linked SKU whose Square variation has
+concurrent stock in >1 location (`multiloc_total_skus` helper), in both `run!`
+(the 15-min pool push) and `push_square_totals!` (Square-as-truth push). Such
+SKUs are reported for manual handling instead of being half-applied. Regression
+test added. No other SKUs are affected (single-location stock is unchanged).
+
+Remaining known-good-by-design items (unchanged): negative-inventory zeroing,
+per-run push idempotency keys, product/variant pagination ceilings (latent).
