@@ -40,26 +40,14 @@ class InventoryController < AuthenticatedController
       .distinct.order(:source).pluck(:source)
   end
 
-  # GET /inventory/recommended_skus — CSV list of proposed unique SKUs for
-  # every SKU currently shared across different products. Plan-only: applying
-  # requires updating Shopify + Square and re-linking (see ops:sku_remediation_plan).
+  # GET /inventory/recommended_skus — full-catalog Shopify vs Square SKU
+  # matching report as CSV (every variant: Shopify SKU, Square SKU, status,
+  # and proposed unique SKUs for duplicates). Plan-only: applying requires
+  # updating Shopify + Square and re-linking (see ops:sku_remediation_plan).
   def recommended_skus
-    plans = SkuRemediationPlanner.plan
-    csv = CSV.generate do |rows|
-      rows << ["Current SKU", "Product", "Variant", "Shopify Variant ID", "Current Qty", "Proposed SKU", "Note"]
-      plans.each do |plan|
-        rows << [
-          plan.sku,
-          plan.product,
-          plan.variant_title,
-          plan.variant_id,
-          plan.current_qty,
-          plan.proposed_sku,
-          "Shared across products — apply to both Shopify and Square, then re-link",
-        ]
-      end
-    end
-    send_data csv, filename: "recommended-skus-#{Date.current.iso8601}.csv", type: "text/csv"
+    send_data SkuMatchReport.csv,
+      filename: "sku-report-#{Date.current.iso8601}.csv",
+      type: "text/csv"
   end
 
   # GET /inventory/pdf — printable snapshot of the current inventory across

@@ -66,7 +66,7 @@ class InventoryPdfTest < ActionDispatch::IntegrationTest
     assert_select "a[href=?]", pdf_inventory_index_path
   end
 
-  test "recommended skus CSV downloads proposed unique SKUs" do
+  test "recommended skus CSV downloads the full Shopify vs Square SKU report" do
     ShopifyProduct.create!(id: "p2", title: "Other Product")
     ShopifyVariant.create!(title: "Variant A", sku: "SHARED-1", productId: "p1", price: 1.0, inventoryQuantity: 5, tracked: true)
     ShopifyVariant.create!(title: "Variant B", sku: "SHARED-1", productId: "p2", price: 2.0, inventoryQuantity: 3, tracked: true)
@@ -75,10 +75,13 @@ class InventoryPdfTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_equal "text/csv", response.media_type
-    assert_includes response.headers["Content-Disposition"], "recommended-skus"
-    assert_includes response.body, "Current SKU"
+    assert_includes response.headers["Content-Disposition"], "sku-report"
+    assert_includes response.body, "Shopify SKU"
+    assert_includes response.body, "Square SKU"
+    assert_includes response.body, "Status"
     assert_includes response.body, "Proposed SKU"
     assert_includes response.body, "SHARED-1"
+    assert_includes response.body, "duplicate-across-products"
     assert_includes response.body, "SHARED-1-OP", "non-primary product gets a unique suffix"
   end
 end
