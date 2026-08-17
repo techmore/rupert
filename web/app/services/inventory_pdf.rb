@@ -2,6 +2,7 @@
 
 require "prawn"
 require "prawn/table"
+require "set"
 
 # Built-in AFM fonts cover WinAnsi (the em dash / middle dot / accented Latin
 # glyphs this report uses), so the per-document M17N warning is noise here.
@@ -42,7 +43,7 @@ class InventoryPdf
 
   Row = Struct.new(
     :product, :variant, :sku, :price, :shopify_qty, :square_qty, :drift,
-    :sold_7d, :sold_shared, :shared_product_sku,
+    :sold_7d, :sold_shared, :shared_product_sku, :shared_qty,
     keyword_init: true
   )
 
@@ -89,11 +90,13 @@ class InventoryPdf
     summary = summarize(rows)
     timestamps = snapshot_timestamps
     sales_week = sales_week_data
+    square_only = square_only_rows
 
     Prawn::Document.new(page_size: "LETTER", margin: 40) do |pdf|
       write_title(pdf)
       write_stats(pdf, timestamps, summary)
       write_table(pdf, rows)
+      write_square_only(pdf, square_only)
       pdf.start_new_page
       write_sales_week(pdf, sales_week)
       write_footer(pdf)
@@ -123,6 +126,11 @@ class InventoryPdf
     shopify_map = InventoryLevel.shopify_totals
     square_map = InventoryLevel.square_totals
     link_map = SkuLink.linked.index_by(&:shopifyVariantId)
+    # Square variations linked to more than one Shopify variant (shared SKUs
+    # like 689745640858 = multiple 12-count flavors). Their quantity can't be
+    # attributed to a single row, so the Square column flags it with † instead
+    # of repeating the aggregate total on every variant that links to it.
+    shared_square_variations = SkuLink.linked.group(:squareVariationId).count.select { |_, n| n > 1 }.keys.to_set
     # SKUs attached to more than one Shopify variant (e.g. 689745640858 = both
     # Blue Raspberry and Blood Orange 12-count) can't be attributed to a single
     # variant from order lines — flag those rows so the sold count isn't read
@@ -155,12 +163,53 @@ class InventoryPdf
           drift: square_qty ? square_qty - shopify_qty : nil,
           sold_7d: (variant.sku.present? || ptitle.present?) ? sold : nil,
           sold_shared: (sku_shared && via_sku) || (product_has_variants && via_name),
-          shared_product_sku: variant.sku.present? && duplicate_product_skus.include?(variant.sku)
+          shared_product_sku: variant.sku.present? && duplicate_product_skus.include?(variant.sku),
+          shared_qty: link.present? && shared_square_variations.include?(link.squareVariationId)
         )
       end
     end
     zeroed, stocked = rows.partition { |row| zero_on_both?(row) }
     stocked + zeroed
+  end
+
+  # Square variations with mirrored stock that have NO Shopify link — they're
+  # not part of the Shopify-catalog rows above (which can only show Square stock
+  # that maps to a Shopify variant), so they'd be invisible in the report. They
+  # still represent sellable inventory at the physical/home location, so they
+  # get their own section instead of being silently dropped. Quantities are the
+  # home/physical-location totals (the "our shelf" number), not the combined
+  # shop + mobile-event aggregate the main Square column reports.
+  def square_only_rows
+    @square_only_rows ||= begin
+      linked = SkuLink.where.not(squareVariationId: nil).distinct.pluck(:squareVariationId).to_set
+      home = SquareSyncer.primary_location_id
+      return [] unless home
+
+      home_totals = InventoryLevel.mirrored("square")
+        .where(locationId: home.id)
+        .group(:squareVariationId).sum(:quantity)
+
+      home_totals.filter_map do |square_variation_id, qty|
+        next if linked.include?(square_variation_id)
+        next unless qty.to_i.positive?
+
+        variation = SquareVariation.find_by(id: square_variation_id)
+        next unless variation
+
+        item_label = variation.item&.name
+        display = if item_label.present? && item_label != variation.name
+          "#{item_label} — #{variation.name}"
+        else
+          variation.name.presence || "—"
+        end
+
+        {
+          item: display,
+          sku: variation.sku.presence || "—",
+          qty: qty.to_i,
+        }
+      end.sort_by { |r| [r[:item].to_s.downcase, r[:sku].to_s.downcase] }
+    end
   end
 
   # Paid/fulfilled order lines in the window, as [sku, name, quantity] tuples
@@ -302,7 +351,7 @@ class InventoryPdf
   def draw_row_background(pdf, row, y, index)
     if row.shared_product_sku
       pdf.fill_color DUP_SKU_TINT
-    elsif !row.drift.nil? && !row.drift.zero?
+    elsif !row.shared_qty && !row.drift.nil? && !row.drift.zero?
       pdf.fill_color DRIFT_TINT
     elsif zero_on_both?(row)
       pdf.fill_color ZERO_TINT
@@ -322,8 +371,8 @@ class InventoryPdf
       row.sku,
       row.price.nil? ? "—" : format_currency(row.price),
       row.shopify_qty.to_s,
-      row.square_qty.nil? ? UNLINKED : row.square_qty.to_s,
-      row.drift.nil? ? "—" : (row.drift.zero? ? "—" : format("%+d", row.drift)),
+      square_cell(row),
+      drift_cell(row),
       sold_cell(row),
     ]
     baseline = y - ROW_HEIGHT / 2 + 1
@@ -350,10 +399,28 @@ class InventoryPdf
     row.sold_shared && row.sold_7d.positive? ? "#{row.sold_7d}†" : row.sold_7d.to_s
   end
 
+  # The Square quantity, flagged with † when the linked Square variation is
+  # shared by more than one Shopify variant — the aggregate can't be attributed
+  # to this row alone, so it's marked instead of silently repeated.
+  def square_cell(row)
+    return UNLINKED if row.square_qty.nil?
+
+    row.shared_qty ? "#{row.square_qty}†" : row.square_qty.to_s
+  end
+
+  # Drift is only meaningful when the Square quantity pins to this variant; a
+  # shared Square pool gets a bare † instead of a fabricated per-row difference.
+  def drift_cell(row)
+    return "—" if row.drift.nil?
+    return "†" if row.shared_qty
+
+    row.drift.zero? ? "—" : format("%+d", row.drift)
+  end
+
   def cell_color(index, row)
     if index == 2 && row.shared_product_sku
       ROSE
-    elsif index == 6 && !row.drift.nil? && !row.drift.zero?
+    elsif index == 6 && !row.shared_qty && !row.drift.nil? && !row.drift.zero?
       CLAY
     elsif index == 7 && !row.sold_7d.nil? && row.sold_7d.positive?
       OLIVE
@@ -366,7 +433,7 @@ class InventoryPdf
 
   def bold_cell?(index, row)
     (index == 2 && row.shared_product_sku) ||
-      (index == 6 && !row.drift.nil? && !row.drift.zero?) ||
+      (index == 6 && !row.shared_qty && !row.drift.nil? && !row.drift.zero?) ||
       (index == 7 && !row.sold_7d.nil? && row.sold_7d.positive?)
   end
 
@@ -387,6 +454,84 @@ class InventoryPdf
   # Newest day first; each day shows the total units sold plus every paid or
   # fulfilled transaction that day so the report doubles as a reconciliation
   # aid against Shopify and Square.
+
+  # --- Square-only inventory (no Shopify link) --------------------------------
+  #
+  # Mirrored Square stock that has no matching Shopify variant never appears in
+  # the catalog table (which is Shopify-driven). Rendering it here keeps the
+  # report a true snapshot so sellable stock isn't silently invisible.
+
+  SQ_ONLY_HEADERS = ["Item", "SKU", "Qty"].freeze
+  SQ_ONLY_COL_WIDTHS = [352, 120, 60].freeze
+  SQ_ONLY_LEFT_X = [0, 352, 472].freeze
+  SQ_ONLY_RIGHT = [2].freeze
+  SQ_ONLY_ROW_HEIGHT = 12
+
+  def write_square_only(pdf, rows)
+    if rows.empty?
+      return
+    end
+
+    home = SquareSyncer.primary_location_id
+    location_label = home ? " at #{home.name}" : ""
+
+    pdf.move_down 14
+    pdf.text "Square-only inventory (no Shopify listing)#{location_label}", size: 12, style: :bold, color: INK
+    pdf.move_down 3
+    pdf.text(
+      "Mirrored Square stock with no matching Shopify variant#{location_label} — not in the catalog table above. " \
+      "These items aren't sold through the online store by SKU, but they're on hand and shouldn't be forgotten.",
+      size: 7, color: TAUPE,
+    )
+    pdf.move_down 6
+
+    y = pdf.cursor
+    # Column header.
+    pdf.fill_color HAZE
+    pdf.fill_rectangle [0, y], TABLE_WIDTH, HEADER_HEIGHT
+    pdf.fill_color MOCHA
+    pdf.font "Helvetica", style: :bold
+    SQ_ONLY_HEADERS.each_with_index do |header, i|
+      pdf.draw_text header, at: [SQ_ONLY_LEFT_X[i] + 4, y - HEADER_HEIGHT / 2 + 1], size: FONT_SIZE
+    end
+    pdf.font "Helvetica", style: :normal
+    pdf.fill_color INK
+    y -= HEADER_HEIGHT + 3
+
+    pdf.font "Helvetica", size: FONT_SIZE
+    rows.each do |row|
+      if y - SQ_ONLY_ROW_HEIGHT < FOOTER_TOP
+        pdf.start_new_page
+        y = pdf.cursor
+        pdf.fill_color HAZE
+        pdf.fill_rectangle [0, y], TABLE_WIDTH, HEADER_HEIGHT
+        pdf.fill_color MOCHA
+        pdf.font "Helvetica", style: :bold
+        SQ_ONLY_HEADERS.each_with_index do |header, i|
+          pdf.draw_text header, at: [SQ_ONLY_LEFT_X[i] + 4, y - HEADER_HEIGHT / 2 + 1], size: FONT_SIZE
+        end
+        pdf.font "Helvetica", style: :normal
+        pdf.fill_color INK
+        y -= HEADER_HEIGHT + 3
+      end
+
+      baseline = y - SQ_ONLY_ROW_HEIGHT / 2 + 1
+      cells = [row[:item], row[:sku], row[:qty].to_s]
+      cells.each_with_index do |cell, i|
+        pdf.fill_color i == 2 ? INK : MOCHA
+        if SQ_ONLY_RIGHT.include?(i)
+          x = SQ_ONLY_LEFT_X[i] + SQ_ONLY_COL_WIDTHS[i] - 3 - pdf.width_of(cell.to_s)
+        else
+          x = SQ_ONLY_LEFT_X[i] + 4
+        end
+        pdf.draw_text fit_text(pdf, cell, SQ_ONLY_COL_WIDTHS[i] - 7), at: [x, baseline], size: FONT_SIZE
+      end
+      pdf.fill_color INK
+      pdf.stroke_color FOG
+      pdf.stroke_horizontal_line 0, TABLE_WIDTH, at: y - SQ_ONLY_ROW_HEIGHT + 1
+      y -= SQ_ONLY_ROW_HEIGHT
+    end
+  end
 
   def sales_week_data
     orders = Core::Order.includes(:order_lines)
@@ -496,11 +641,14 @@ class InventoryPdf
   def write_footer(pdf)
     pdf.move_down 10
     pdf.text(
-      "Generated by Rupert. Quantities are mirrored from Shopify and Square and refresh every 15 minutes; " \
+      "Generated by Rupert. Quantities are mirrored from Shopify and Square and refresh every 15 minutes. " \
+      "The Square column is the sum across every active Square location (physical shop + mobile events); " \
+      "the Square-only section lists stock with no Shopify listing, at the home location. " \
       "rose rows reuse a SKU on another product (breaks Shopify-Square linking); " \
       "tinted rows show a Shopify vs Square difference; zero-stock rows sit at the bottom; " \
       "7d sold counts paid/fulfilled orders from the last #{SALES_DAYS} days by SKU or product name; " \
-      "† = shared SKU / product match — the sold figure can't be pinned to this exact variant, see the Sales section; " \
+      "† = shared SKU / product match — the sold figure and the Square quantity shared across " \
+      "multiple variants can't be pinned to this exact row, see the Sales section; " \
       "unlinked variants show #{UNLINKED} for Square.",
       size: 6.5, color: TAUPE,
     )

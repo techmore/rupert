@@ -155,4 +155,56 @@ class InventoryPdfServiceTest < ActiveSupport::TestCase
     assert_equal 2, rows.length
     assert rows.all?(&:shared_product_sku), "every variant carrying a cross-product SKU is flagged"
   end
+
+  test "Square quantity shared across variants is flagged rather than repeated" do
+    # One Square variation linked to two Shopify variants (shared SKU).
+    sq = SquareItem.create!(id: "sq-shared-qty", name: "Shared Qty")
+    sv = SquareVariation.create!(id: "sq-var-shared-qty", itemId: "sq-shared-qty", name: "Shared Qty", sku: "PDF-SHARED")
+    v1 = ShopifyVariant.create!(title: "Flavor A", sku: "PDF-SHARED", productId: @product.id, price: 10.0, inventoryQuantity: 2)
+    v2 = ShopifyVariant.create!(title: "Flavor B", sku: "PDF-SHARED", productId: @product.id, price: 10.0, inventoryQuantity: 3)
+    SkuLink.create!(sku: "PDF-SHARED", shopifyVariantId: v1.id, squareVariationId: sv.id)
+    SkuLink.create!(sku: "PDF-SHARED", shopifyVariantId: v2.id, squareVariationId: sv.id)
+    loc = Location.create!(source: "square", externalId: "loc-shared-qty", name: "Main shop")
+    InventoryLevel.create!(source: "square", locationId: loc.externalId, squareVariationId: sv.id, quantity: 40)
+    InventoryLevel.create!(source: "shopify", locationId: "shop-loc", shopifyVariantId: v1.id, quantity: 2)
+    InventoryLevel.create!(source: "shopify", locationId: "shop-loc", shopifyVariantId: v2.id, quantity: 3)
+
+    pdf = InventoryPdf.new
+    shared = pdf.rows.select { |r| r.sku == "PDF-SHARED" }
+    assert_equal 2, shared.length
+    shared.each do |row|
+      assert row.shared_qty, "Square qty shared across variants should be flagged"
+      assert_equal "40†", pdf.send(:square_cell, row), "shared Square qty is marked with †"
+      assert_equal "†", pdf.send(:drift_cell, row), "drift is meaningless for a shared pool"
+    end
+  end
+
+  test "Square-only inventory (no Shopify link) is surfaced, not hidden" do
+    home = Location.create!(source: "square", externalId: "loc-home", name: "Home", syncedAt: 2.minutes.ago)
+    other = Location.create!(source: "square", externalId: "loc-events", name: "Vendor Events", syncedAt: 1.minute.ago)
+    sq = SquareItem.create!(id: "sq-only-item", name: "Event-Only Kit")
+    sv = SquareVariation.create!(id: "sq-only-var", itemId: "sq-only-item", name: "Event Only", sku: "SQ-ONLY")
+    # Stock at the home location (should be reported).
+    InventoryLevel.create!(source: "square", locationId: home.id, squareVariationId: sv.id, quantity: 6)
+    # A different Square-only variation with zero stock (should NOT be listed).
+    sq2 = SquareItem.create!(id: "sq-zero-item", name: "Zero Kit")
+    sv2 = SquareVariation.create!(id: "sq-zero-var", itemId: "sq-zero-item", name: "Zero", sku: "SQ-ZERO")
+    InventoryLevel.create!(source: "square", locationId: home.id, squareVariationId: sv2.id, quantity: 0)
+    # A linked variation (should NOT be listed as square-only).
+    lsq = SquareItem.create!(id: "sq-linked-item", name: "Linked Kit")
+    lsv = SquareVariation.create!(id: "sq-linked-var", itemId: "sq-linked-item", name: "Linked", sku: "PDF-LINKED")
+    lv = ShopifyVariant.create!(title: "Linked Variant", sku: "PDF-LINKED", productId: @product.id, price: 5.0, inventoryQuantity: 1)
+    SkuLink.create!(sku: "PDF-LINKED", shopifyVariantId: lv.id, squareVariationId: lsv.id)
+    InventoryLevel.create!(source: "square", locationId: home.id, squareVariationId: lsv.id, quantity: 4)
+
+    pdf = InventoryPdf.new
+    only = pdf.send(:square_only_rows)
+    assert_includes only.map { |r| r[:sku] }, "SQ-ONLY"
+    assert_empty only.select { |r| r[:sku] == "SQ-ZERO" }, "zero-stock square-only items are not listed"
+    assert_empty only.select { |r| r[:sku] == "PDF-LINKED" }, "linked variations are not listed as square-only"
+    row = only.find { |r| r[:sku] == "SQ-ONLY" }
+    assert_equal 6, row[:qty]
+    # Renders without error (exercises the Prawn layout path).
+    assert_instance_of Prawn::Document, pdf.document
+  end
 end
