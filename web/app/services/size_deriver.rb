@@ -172,6 +172,7 @@ class SizeDeriver
     private
 
     def push_shopify!(variant, current, delta)
+      PlatformPushGuard.authorize!("shopify", actor: "system")
       location = Location.where(source: "shopify").order(:syncedAt).first
       raise ShopifyClient::Error, "No Shopify location" if location.nil?
 

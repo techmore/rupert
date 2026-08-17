@@ -191,6 +191,7 @@ class InventoryMaintainer
     end
 
     def push_shopify!(variant, current, delta, location)
+      PlatformPushGuard.authorize!("shopify", actor: "system")
       slug = variant.sku.to_s.gsub(/[^a-z0-9]/i, "").slice(0, 40)
       slug = "item" if slug.blank?
       response = ShopifyClient.graphql(SHOPIFY_ADJUST_QUERY, {

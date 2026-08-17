@@ -99,6 +99,8 @@ namespace :ops do
   task push_square_totals: :environment do
     load_tenant!
 
+    PlatformPushGuard.authorize!("shopify", actor: "ops:push_square_totals")
+
     query = <<~GRAPHQL
       mutation AdjustInventory($input: InventoryAdjustQuantitiesInput!, $idempotencyKey: String!) {
         inventoryAdjustQuantities(input: $input) @idempotent(key: $idempotencyKey) {

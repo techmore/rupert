@@ -16,7 +16,7 @@ class SettingsController < AuthenticatedController
           key: key,
           set: value.present?,
           masked: value.present? ? EnvStore.mask(value) : nil,
-          source: Setting.exists?(key: key) ? "database" : "environment",
+          source: Setting.exists?(key: key, tenant_id: Current.tenant_id) ? "database" : "environment",
         }
       end,
     })

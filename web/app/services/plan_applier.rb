@@ -94,6 +94,7 @@ class PlanApplier
       end
 
       record_apply(results)
+      DataCache.bump!
 
       { applied: applied, results: results }
     end
