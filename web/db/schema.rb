@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_17_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_17_020000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -63,8 +63,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_17_010000) do
     t.datetime "updatedAt", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.index ["locationId"], name: "index_InventoryLevel_on_locationId"
     t.index ["shopifyVariantId"], name: "index_InventoryLevel_on_shopifyVariantId"
-    t.index ["source", "locationId", "shopifyVariantId"], name: "idx_on_source_locationId_shopifyVariantId_9ef5a647f1", unique: true
-    t.index ["source", "locationId", "squareVariationId"], name: "idx_on_source_locationId_squareVariationId_4ae41ea9a8", unique: true
+    t.index ["tenant_id", "source", "locationId", "shopifyVariantId"], name: "idx_inventory_levels_tenant_source_loc_shopify", unique: true
+    t.index ["tenant_id", "source", "locationId", "squareVariationId"], name: "idx_inventory_levels_tenant_source_loc_square", unique: true
     t.index ["tenant_id", "source", "shopifyVariantId"], name: "idx_inventory_levels_tenant_source_shopify_variant"
     t.index ["tenant_id", "source", "squareVariationId"], name: "idx_inventory_levels_tenant_source_square_variation"
     t.index ["tenant_id"], name: "index_InventoryLevel_on_tenant_id"
@@ -131,8 +131,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_17_010000) do
     t.datetime "syncedAt", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.string "tenant_id"
     t.string "timezone"
-    t.index ["source", "externalId"], name: "index_Location_on_source_and_externalId", unique: true
     t.index ["source"], name: "index_Location_on_source"
+    t.index ["tenant_id", "source", "externalId"], name: "index_Location_on_tenant_source_externalId", unique: true
     t.index ["tenant_id"], name: "index_Location_on_tenant_id"
   end
 
