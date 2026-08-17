@@ -47,4 +47,23 @@ class InventoryMaintainerPushSquareTotalsTest < ActiveSupport::TestCase
     assert_equal 3, movement.delta
     assert_equal "Square-as-truth push", movement.reason
   end
+
+  test "the AdjustInventory idempotency key includes changeFromQuantity" do
+    # Regression: the maintainer previously keyed on SKU+delta only, so two
+    # runs with the same delta but a different starting quantity collided on
+    # Shopify ("idempotency key has different parameters") and the reconcile
+    # push silently failed on every cycle.
+    captured = {}
+    ShopifyClient.stubs(:graphql).with do |_q, variables|
+      captured[:changeFromQuantity] = variables.dig(:input, :changes, 0, :changeFromQuantity)
+      captured[:key] = variables[:idempotencyKey]
+      true
+    end.returns({ "inventoryAdjustQuantities" => { "userErrors" => [] } })
+    InventoryMaintainer.stubs(:shopify_level).returns(10)
+
+    InventoryMaintainer.send(:push_shopify!, @variant, 10, -5, @loc)
+
+    assert_equal 10, captured[:changeFromQuantity]
+    assert_includes captured[:key], "-10-", "key must carry the starting quantity"
+  end
 end

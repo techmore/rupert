@@ -190,7 +190,9 @@ class SizeDeriver
             locationId: location.externalId,
           }],
         },
-        idempotencyKey: "hh-size-#{slug}-#{variant.id}-#{delta}",
+        # Idempotency key captures the full input so a same-delta/different-
+        # changeFromQuantity adjustment isn't rejected as a duplicate.
+        idempotencyKey: "hh-size-#{slug}-#{variant.id}-#{current}-#{delta}",
       })
       user_errors = response.dig("inventoryAdjustQuantities", "userErrors") || []
       raise ShopifyClient::Error, user_errors.map { |i| i["message"] }.join("; ") if user_errors.any?

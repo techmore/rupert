@@ -267,7 +267,10 @@ class InventoryMaintainer
             locationId: location.externalId,
           }],
         },
-        idempotencyKey: "hh-pool-#{slug}-#{variant.id}-#{delta}",
+        # Idempotency key must capture the full input: same SKU+delta with a
+        # different changeFromQuantity is a DIFFERENT adjustment to Shopify and
+        # reusing the key makes it reject the request ("different parameters").
+        idempotencyKey: "hh-pool-#{slug}-#{variant.id}-#{current}-#{delta}",
       })
       user_errors = response.dig("inventoryAdjustQuantities", "userErrors") || []
       raise ShopifyClient::Error, user_errors.map { |i| i["message"] }.join("; ") if user_errors.any?

@@ -75,7 +75,9 @@ class PlanApplier
                   referenceDocumentUri: "herbal-healers://inventory/reconciliation",
                   changes: [{ delta: row.shopify_delta, inventoryItemId: row.inventory_item_id, locationId: shopify_location.externalId }],
                 },
-                idempotencyKey: idempotency_key("hh", row.sku, row.shopify_delta),
+                # Include the starting quantity + delta in the key so the same
+                # delta against a different starting state isn't a duplicate.
+                idempotencyKey: idempotency_key("hh", row.sku, "#{row.shopify_qty}->#{row.shopify_delta}"),
               })
               user_errors = result.dig("inventoryAdjustQuantities", "userErrors") || []
               raise ShopifyClient::Error, user_errors.map { |item| item["message"] }.join("; ") if user_errors.any?
