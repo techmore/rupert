@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_13_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_17_010000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -65,6 +65,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_010000) do
     t.index ["shopifyVariantId"], name: "index_InventoryLevel_on_shopifyVariantId"
     t.index ["source", "locationId", "shopifyVariantId"], name: "idx_on_source_locationId_shopifyVariantId_9ef5a647f1", unique: true
     t.index ["source", "locationId", "squareVariationId"], name: "idx_on_source_locationId_squareVariationId_4ae41ea9a8", unique: true
+    t.index ["tenant_id", "source", "shopifyVariantId"], name: "idx_inventory_levels_tenant_source_shopify_variant"
+    t.index ["tenant_id", "source", "squareVariationId"], name: "idx_inventory_levels_tenant_source_square_variation"
     t.index ["tenant_id"], name: "index_InventoryLevel_on_tenant_id"
   end
 
@@ -87,6 +89,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_010000) do
     t.index ["shopifyVariantId"], name: "index_InventoryMovement_on_shopifyVariantId"
     t.index ["source"], name: "index_InventoryMovement_on_source"
     t.index ["syncRunId"], name: "index_InventoryMovement_on_syncRunId"
+    t.index ["tenant_id", "source", "createdAt"], name: "idx_inventory_movements_tenant_source_created_at"
     t.index ["tenant_id"], name: "index_InventoryMovement_on_tenant_id"
   end
 
@@ -115,6 +118,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_010000) do
     t.string "tenant_id"
     t.index ["occurredAt"], name: "index_LedgerEntry_on_occurredAt"
     t.index ["source"], name: "index_LedgerEntry_on_source"
+    t.index ["tenant_id", "occurredAt"], name: "idx_ledger_entries_tenant_occurred_at"
     t.index ["tenant_id"], name: "index_LedgerEntry_on_tenant_id"
   end
 
@@ -196,6 +200,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_010000) do
     t.string "title", null: false
     t.boolean "tracked", default: false
     t.index ["productId"], name: "index_ShopifyVariant_on_productId"
+    t.index ["sku", "productId"], name: "idx_shopify_variants_sku_product"
     t.index ["sku"], name: "index_ShopifyVariant_on_sku"
     t.index ["tenant_id"], name: "index_ShopifyVariant_on_tenant_id"
     t.index ["tracked"], name: "index_ShopifyVariant_on_tracked"
@@ -261,6 +266,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_010000) do
     t.string "status", null: false
     t.string "tenant_id"
     t.index ["startedAt"], name: "index_SyncRun_on_startedAt"
+    t.index ["status", "finishedAt"], name: "idx_sync_runs_status_finished_at"
     t.index ["status"], name: "index_SyncRun_on_status"
     t.index ["tenant_id"], name: "index_SyncRun_on_running_per_tenant", unique: true, where: "((status)::text = 'running'::text)"
     t.index ["tenant_id"], name: "index_SyncRun_on_tenant_id"
@@ -535,6 +541,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_010000) do
     t.integer "tax_cents", default: 0
     t.string "tenant_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["location_id"], name: "index_orders_on_location_id"
     t.index ["tenant_id", "customer_id"], name: "index_orders_on_tenant_id_and_customer_id"
     t.index ["tenant_id", "occurred_at"], name: "index_orders_on_tenant_id_and_occurred_at"
     t.index ["tenant_id", "source", "source_order_id"], name: "index_orders_on_tenant_id_and_source_and_source_order_id", unique: true
@@ -740,6 +747,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_010000) do
     t.datetime "updated_at", null: false
     t.index ["family_id", "sku"], name: "index_size_changes_on_family_id_and_sku", unique: true
     t.index ["family_id"], name: "index_size_changes_on_family_id"
+    t.index ["tenant_id", "status"], name: "index_size_changes_on_tenant_id_and_status"
     t.index ["tenant_id"], name: "index_size_changes_on_tenant_id"
   end
 
