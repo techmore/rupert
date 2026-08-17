@@ -116,7 +116,9 @@ class CanonicalOrderImporter
     end
 
     # Replaces all line items for an order with the current payload, keeping
-    # the canonical order_lines table in lock-step with the feed.
+    # the canonical order_lines table in lock-step with the feed. When the
+    # payload matches what's already stored, the delete+reinsert churn is
+    # skipped (the 15-minute sync re-imports the whole window every cycle).
     def replace_order_lines!(order, line_items)
       nodes = if line_items.is_a?(Hash)
         Array(line_items["nodes"])
@@ -124,12 +126,10 @@ class CanonicalOrderImporter
         Array(line_items)
       end
 
-      order.order_lines.delete_all
-      nodes.each do |item|
+      rows = nodes.filter_map do |item|
         next if item.blank?
 
-        order.order_lines.create!(
-          tenant_id: Current.tenant_id,
+        {
           sku: item["sku"].presence || item["variation_name"],
           name: item["title"].presence || item["name"] || "Item",
           quantity: item["quantity"].to_i,
@@ -137,7 +137,14 @@ class CanonicalOrderImporter
             money_cents(item.dig("base_price_money")) || 0,
           line_cents: money_cents(item.dig("originalTotalSet", "shopMoney")) ||
             money_cents(item.dig("total_money")) || 0,
-        )
+        }
+      end
+      return if unchanged_records?(order.order_lines, [:sku, :name, :quantity, :unit_cents, :line_cents],
+        rows.map { |r| [r[:sku], r[:name], r[:quantity], r[:unit_cents], r[:line_cents]] })
+
+      order.order_lines.delete_all
+      rows.each do |attrs|
+        order.order_lines.create!(tenant_id: Current.tenant_id, **attrs)
       end
     end
 
@@ -179,6 +186,9 @@ class CanonicalOrderImporter
     end
 
     def replace_payments!(order, payments)
+      return if unchanged_records?(order.payments, [:method, :amount_cents, :reference],
+        payments.map { |p| [p[:method], p[:amount_cents], p[:reference]] })
+
       order.payments.delete_all
       payments.each do |payment|
         order.payments.create!(
@@ -190,6 +200,12 @@ class CanonicalOrderImporter
           paid_at: payment[:paid_at] || Time.current,
         )
       end
+    end
+
+    # True when the stored rows exactly match the payload rows (same order,
+    # same columns) — lets the importer skip delete+reinsert on unchanged orders.
+    def unchanged_records?(association, columns, expected)
+      association.order(:id).pluck(*columns) == expected
     end
 
     # Shopify returns a paymentGatewayNames array, not itemized tenders; infer

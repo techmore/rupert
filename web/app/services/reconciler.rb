@@ -109,25 +109,52 @@ class Reconciler
         failed: 0,
         startedAt: Time.current,
       )
-      rows.each do |row|
-        ReconcileItem.create!(
-          runId: run.id,
-          sku: row.sku,
-          product: row.product,
-          variant: row.variant,
-          tracked: row.tracked,
-          priority: row.priority,
-          shopifyQty: row.shopify_qty,
-          squareQty: row.square_qty,
-          target: row.target,
-          drift: row.drift,
-          shopifyDelta: row.shopify_delta,
-          squareDelta: row.square_delta,
-          ok: nil,
-          actions: nil,
+      unless rows.empty?
+        # Bulk insert (one statement instead of N create! calls); the legacy
+        # HasCuid id format is reproduced inline because callbacks are skipped.
+        ReconcileItem.insert_all(
+          rows.map do |row|
+            {
+              id: new_cuid,
+              runId: run.id,
+              sku: row.sku,
+              product: row.product,
+              variant: row.variant,
+              tracked: row.tracked,
+              priority: row.priority,
+              shopifyQty: row.shopify_qty,
+              squareQty: row.square_qty,
+              target: row.target,
+              drift: row.drift,
+              shopifyDelta: row.shopify_delta,
+              squareDelta: row.square_delta,
+              ok: nil,
+              actions: nil,
+              tenant_id: Current.tenant_id,
+            }
+          end,
+          unique_by: :id,
         )
       end
+      prune_old_runs!
       run
+    end
+
+    # ReconcileRun grows by one row per sync (~96/day) with a ReconcileItem per
+    # SKU each time; keep the last 30 days and drop the rest so the table
+    # doesn't grow without bound.
+    def prune_old_runs!(keep: 30.days)
+      cutoff = Time.current - keep
+      old_ids = ReconcileRun.unscoped.where(tenant_id: Current.tenant_id)
+        .where('"startedAt" < ?', cutoff).pluck(:id)
+      return if old_ids.empty?
+
+      ReconcileItem.unscoped.where(runId: old_ids).delete_all
+      ReconcileRun.unscoped.where(id: old_ids).delete_all
+    end
+
+    def new_cuid
+      "c#{Time.now.to_i.to_s(36)}#{SecureRandom.alphanumeric(16)}"
     end
 
     def compute_target(priority, shopify_qty, square_qty)

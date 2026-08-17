@@ -20,7 +20,7 @@ class InventoryController < AuthenticatedController
     @products = @products.includes(variants: [{ sku_links: { square_variation: :levels } }, :levels])
     @variant_qtys = variant_quantity_map(@products)
     @negative = NegativeInventory.summary
-    @shared_skus = shared_sku_set
+    @shared_skus = DataCache.fetch("inventory/shared_skus") { shared_sku_set }
   end
 
   # GET /inventory/movements — the full inventory movement ledger: every

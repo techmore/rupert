@@ -14,11 +14,11 @@ class DashboardPresenter
     :recent_alerts
 
   def initialize
-    @product_count = ShopifyProduct.count
-    @variant_count = ShopifyVariant.count
-    @sku_link_count = SkuLink.count
-    @open_alerts = StockAlert.open.count
-    @stockouts = StockAlert.open.where("quantity <= 0").count
+    @product_count = DataCache.fetch("dashboard/product_count") { ShopifyProduct.count }
+    @variant_count = DataCache.fetch("dashboard/variant_count") { ShopifyVariant.count }
+    @sku_link_count = DataCache.fetch("dashboard/sku_link_count") { SkuLink.count }
+    @open_alerts = DataCache.fetch("dashboard/open_alerts") { StockAlert.open.count }
+    @stockouts = DataCache.fetch("dashboard/stockouts") { StockAlert.open.where("quantity <= 0").count }
     @recent_runs = ReconcileRun.recent(5)
     @recent_syncs = SyncRun.recent(5)
     @recent_alerts = StockAlert.open.order(createdAt: :desc).limit(5)
