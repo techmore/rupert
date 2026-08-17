@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class InventoryController < AuthenticatedController
-  before_action :authorize_read, only: [:index, :movements]
+  before_action :authorize_read, only: [:index, :movements, :pdf]
   before_action :authorize_fix, only: [:fix_negative, :fix_all_negative]
 
   def index
@@ -34,6 +34,17 @@ class InventoryController < AuthenticatedController
     @names = movement_names(@movements)
     @sources = InventoryMovement.unscoped.where(tenant_id: Current.tenant_id)
       .distinct.order(:source).pluck(:source)
+  end
+
+  # GET /inventory/pdf — printable snapshot of the current inventory across
+  # Shopify and Square, with generated/last-sync timestamps and summary totals.
+  def pdf
+    send_data(
+      InventoryPdf.build,
+      filename: "inventory-#{Time.current.strftime("%Y-%m-%d-%H%M%S")}.pdf",
+      type: "application/pdf",
+      disposition: "attachment",
+    )
   end
 
   # POST /inventory/fix_negative — zero one negative variation/variant.

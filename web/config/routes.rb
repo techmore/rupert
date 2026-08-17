@@ -84,6 +84,7 @@ Rails.application.routes.draw do
 
   resources :inventory, only: :index do
     collection do
+      get :pdf
       get :movements
       post :fix_negative
       post :fix_all_negative

@@ -6,6 +6,7 @@
       <p class="mt-1 text-sm text-mocha">Products mirrored from Shopify, with quantities on both sides.</p>
     </div>
     <div class="flex gap-2">
+      <%= link_to "Download PDF", pdf_inventory_index_path, class: "btn-ghost", title: "Printable snapshot with Shopify, Square, and sync timestamps" %>
       <%= link_to "Movement history", movements_inventory_index_path, class: "btn-ghost" %>
       <%= link_to "Manual counts", inventory_counts_path, class: "btn-ghost" %>
       <%= link_to "New count", new_inventory_count_path, class: "btn-primary" %>

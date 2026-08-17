@@ -87,6 +87,9 @@ gem "paper_trail"
 gem "noticed"
 # Excel export for ledger/reports/sales
 gem "caxlsx_rails"
+# PDF export for the current-inventory snapshot (Inventory page → Download PDF)
+gem "prawn", "~> 2.5"
+gem "prawn-table", "~> 0.2"
 # Faster JSON serialization
 gem "oj"
 

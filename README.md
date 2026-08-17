@@ -88,7 +88,9 @@ fixes, size-family approvals) is gated by `PlatformPushGuard`:
 - **Sales** — daily sales journal in spreadsheet style: an hourly × location
   pivot plus every sale of the day in arrival order
 - **Customers** — unified CRM view (searchable, Ransack + Pagy)
-- **Inventory** — products/variants with Shopify vs Square quantities
+- **Inventory** — products/variants with Shopify vs Square quantities; the
+  "Download PDF" button (`/inventory/pdf`) exports a printable snapshot of the
+  whole catalog with per-platform last-sync timestamps and summary totals
 - **Reconcile** — SKU-level drift plan + per-SKU priority policy
 - **Ledger** — transaction mirror from both platforms
 - **Alerts** — low-stock flags (resolve/ignore)
