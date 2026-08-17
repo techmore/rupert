@@ -38,9 +38,13 @@ class InventoryController < AuthenticatedController
 
   # GET /inventory/pdf — printable snapshot of the current inventory across
   # Shopify and Square, with generated/last-sync timestamps and summary totals.
+  # The rendered PDF is cached behind the DataCache version (bumped on every
+  # sync / inventory approval), so repeat downloads are instant and the file
+  # is regenerated automatically when the mirrored data changes.
   def pdf
+    pdf = DataCache.fetch("inventory/pdf") { InventoryPdf.build }
     send_data(
-      InventoryPdf.build,
+      pdf,
       filename: "inventory-#{Time.current.strftime("%Y-%m-%d-%H%M%S")}.pdf",
       type: "application/pdf",
       disposition: "attachment",

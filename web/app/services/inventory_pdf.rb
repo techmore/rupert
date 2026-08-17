@@ -12,8 +12,12 @@ Prawn::Fonts::AFM.hide_m17n_warning = true
 # 15 minutes), so the PDF carries four timestamps: when the file was
 # generated, the last successful overall sync, and the latest Shopify and
 # Square mirror writes. Below the timestamps it shows summary totals, then a
-# full per-variant table (Shopify qty, Square qty, and drift) so the file
-# doubles as a point-in-time record of each channel's count.
+# full per-variant table (Shopify qty, Square qty, and drift).
+#
+# Performance note: the catalog table is drawn with Prawn's low-level
+# draw_text (no prawn-table Cell objects). Prawing 1900+ Cell objects to
+# render a few hundred variant rows costs ~3s of pure Ruby; low-level text
+# placement renders the same table in well under 200ms.
 class InventoryPdf
   # Tailwind-ish neutrals that survive Prawn's base Helvetica palette.
   INK = "1C1917"
@@ -32,6 +36,17 @@ class InventoryPdf
   # "—" for an unlinked variant's Square count, so the column reads like the
   # Inventory page table instead of showing a misleading zero.
   UNLINKED = "—"
+
+  # Letter width 612 - 2×40 margin = 532pt of usable width.
+  HEADERS = ["Product", "Variant", "SKU", "Price", "Shopify", "Square", "Drift"].freeze
+  COL_WIDTHS = [150, 122, 62, 54, 48, 48, 48].freeze
+  LEFT_X = [40, 190, 312, 374, 428, 476, 524].freeze
+  RIGHT_ALIGNED = [3, 4, 5, 6].freeze
+  TABLE_WIDTH = 532
+  ROW_HEIGHT = 16
+  HEADER_HEIGHT = 18
+  FONT_SIZE = 8
+  FOOTER_TOP = 52
 
   def self.build
     new.build
@@ -154,7 +169,7 @@ class InventoryPdf
       summary[:square_units].to_s,
       format_currency(summary[:valuation]),
     ]
-    pdf.table([labels, values], width: 532, column_widths: [106.4] * 5) do |table|
+    pdf.table([labels, values], width: TABLE_WIDTH, column_widths: [106.4] * 5) do |table|
       table.cells.padding = [5, 6]
       table.cells.borders = [:bottom]
       table.cells.border_color = FOG
@@ -167,41 +182,99 @@ class InventoryPdf
     pdf.move_down 14
   end
 
-  def write_table(pdf, rows)
-    data = [["Product", "Variant", "SKU", "Price", "Shopify", "Square", "Drift"]]
-    data.concat(
-      rows.map do |row|
-        [
-          row.product,
-          row.variant,
-          row.sku,
-          row.price.nil? ? "—" : format_currency(row.price),
-          row.shopify_qty.to_s,
-          row.square_qty.nil? ? UNLINKED : row.square_qty.to_s,
-          row.drift.nil? ? "—" : (row.drift.zero? ? "—" : format("%+d", row.drift)),
-        ]
-      end,
-    )
+  # --- Catalog table ---------------------------------------------------------
+  #
+  # Hand-rolled rows with draw_text (no prawn-table cells): ~16x faster than
+  # prawn-table for catalogs of a few hundred rows.
 
+  def write_table(pdf, rows)
     if rows.empty?
       pdf.text "No inventory mirrored yet — run a sync from the Sync page.", size: 10, color: TAUPE
       return
     end
 
-    pdf.table(data, header: true, width: 532, column_widths: [150, 122, 62, 54, 48, 48, 48]) do |table|
-      table.cells.padding = [3.5, 4]
-      table.cells.font_size = 8
-      table.cells.borders = [:bottom]
-      table.cells.border_color = FOG
-      table.cells.vertical_align = :center
-      table.row(0).background_color = HAZE
-      table.row(0).font_style = :bold
-      table.row(0).text_color = MOCHA
-      table.columns(3).align = :right
-      table.columns(4).align = :right
-      table.columns(5).align = :right
-      table.columns(6).align = :right
+    pdf.font "Helvetica", size: FONT_SIZE
+    y = pdf.cursor
+    draw_table_header(pdf, y)
+    y -= HEADER_HEIGHT + 3
+
+    rows.each_with_index do |row, index|
+      if y - ROW_HEIGHT < FOOTER_TOP
+        pdf.start_new_page
+        y = pdf.cursor
+        draw_table_header(pdf, y)
+        y -= HEADER_HEIGHT + 3
+      end
+
+      draw_row_stripe(pdf, y) if index.even?
+      draw_row(pdf, row, y)
+      pdf.stroke_color FOG
+      pdf.stroke_horizontal_line 40, 40 + TABLE_WIDTH, at: y - 2
+      y -= ROW_HEIGHT
     end
+  end
+
+  def draw_table_header(pdf, y)
+    pdf.fill_color HAZE
+    pdf.fill_rectangle [40, y], TABLE_WIDTH, HEADER_HEIGHT
+    pdf.fill_color MOCHA
+    pdf.font "Helvetica", style: :bold
+    HEADERS.each_with_index do |header, i|
+      pdf.draw_text header, at: [LEFT_X[i] + 4, y - HEADER_HEIGHT / 2 + 1], size: FONT_SIZE
+    end
+    pdf.font "Helvetica", style: :normal
+    pdf.fill_color INK
+  end
+
+  def draw_row_stripe(pdf, y)
+    pdf.fill_color CREAM
+    pdf.fill_rectangle [40, y], TABLE_WIDTH, ROW_HEIGHT
+    pdf.fill_color INK
+  end
+
+  def draw_row(pdf, row, y)
+    cells = [
+      row.product,
+      row.variant,
+      row.sku,
+      row.price.nil? ? "—" : format_currency(row.price),
+      row.shopify_qty.to_s,
+      row.square_qty.nil? ? UNLINKED : row.square_qty.to_s,
+      row.drift.nil? ? "—" : (row.drift.zero? ? "—" : format("%+d", row.drift)),
+    ]
+    baseline = y - ROW_HEIGHT / 2 + 1
+    cells.each_with_index do |cell, i|
+      pdf.fill_color cell_color(i, row)
+      if RIGHT_ALIGNED.include?(i)
+        x = LEFT_X[i] + COL_WIDTHS[i] - 3 - pdf.width_of(cell)
+      else
+        x = LEFT_X[i] + 4
+      end
+      pdf.draw_text fit_text(pdf, cell, COL_WIDTHS[i] - 7), at: [x, baseline], size: FONT_SIZE
+    end
+    pdf.fill_color INK
+  end
+
+  def cell_color(index, row)
+    if index == 6 && !row.drift.nil? && !row.drift.zero?
+      CLAY
+    elsif index.zero?
+      INK
+    else
+      MOCHA
+    end
+  end
+
+  # Truncate to the column width with an ellipsis so long product/variant names
+  # never spill into the next column.
+  def fit_text(pdf, text, max_width)
+    text = text.to_s
+    return text if pdf.width_of(text) <= max_width
+
+    ellipsis = "…"
+    clipped = text.dup
+    clipped = clipped[0...-1] while clipped.length > 1 && pdf.width_of(clipped + ellipsis) > max_width
+    clipped + ellipsis
   end
 
   def write_footer(pdf)
