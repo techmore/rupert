@@ -1,7 +1,7 @@
 <% content_for :title, "Dashboard" %>
 <% presenter = DashboardPresenter.new %>
 <% widgets = @widgets || DashboardWidget.entries({}) %>
-<div class="space-y-8" data-controller="live-sync">
+<div class="space-y-8" data-controller="live-sync" data-action="mousedown->dashboard-customizer#onMouseDown">
   <section class="flex flex-wrap items-end justify-between gap-4">
     <div>
       <p class="eyebrow mb-2 text-olive"><%= l(Time.current, format: :long) %></p>
@@ -10,7 +10,7 @@
     </div>
     <div class="flex flex-col items-end gap-2">
       <div class="flex items-center gap-2">
-        <button type="button" id="customize-toggle" class="btn-ghost btn-sm">Customize</button>
+        <button type="button" data-dashboard-customizer-target="toggle" data-action="click->dashboard-customizer#toggleEditor" class="btn-ghost btn-sm">Customize</button>
         <%= form_tag syncs_path, method: :post do %>
           <%= submit_tag "Sync now", class: "btn-primary", data: { turbo_submits_with: "Syncing…" } %>
         <% end %>
@@ -21,17 +21,17 @@
 
   <%= render "syncs/banner" %>
 
-  <section id="dashboard-customizer" class="card card-pad hidden">
+  <section data-controller="dashboard-customizer" data-dashboard-customizer-target="panel" class="card card-pad hidden">
     <div class="flex items-baseline justify-between">
       <h2 class="font-display text-xl text-ink">Customize dashboard</h2>
-      <button type="button" id="customize-done" class="btn-ghost btn-sm">Done</button>
+      <button type="button" data-dashboard-customizer-target="done" data-action="click->dashboard-customizer#setCustomizingValue:false" class="btn-ghost btn-sm">Done</button>
     </div>
     <p class="mt-1 text-xs text-taupe">Show or hide widgets and set their order. Your layout is saved to your profile.</p>
-    <ul id="customizer-list" class="mt-4 space-y-2">
+    <ul data-dashboard-customizer-target="list" class="mt-4 space-y-2">
       <% widgets.each do |widget, visible| %>
         <li data-editor-key="<%= widget.key %>" class="flex items-center gap-3 rounded-xl bg-haze px-4 py-2.5">
           <span class="flex flex-col text-[10px] leading-tight text-taupe">
-            <button type="button" data-move="<%= widget.key %>" data-dir="up" class="hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive" title="Move <%= widget.label %> up" aria-label="Move <%= widget.label %> up">▲</button>
+            <button type="button" data-move="<%= widget.key %>" data-dir="up" class="hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive" title="Move <%= widget.label %> up" aria-label="Move <%= widget.label %> up"><%= content_tag :span, "▲" %></button>
             <button type="button" data-move="<%= widget.key %>" data-dir="down" class="hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive" title="Move <%= widget.label %> down" aria-label="Move <%= widget.label %> down">▼</button>
           </span>
           <label class="flex flex-1 items-center gap-2.5 text-sm text-ink">
@@ -42,9 +42,9 @@
       <% end %>
     </ul>
     <div class="mt-4 flex items-center gap-3">
-      <button type="button" id="customize-save" class="btn-primary">Save layout</button>
-      <button type="button" id="customize-reset" class="btn-ghost">Reset to default</button>
-      <span id="customize-status" class="text-xs text-mocha"></span>
+      <button type="button" data-dashboard-customizer-target="save" data-action="click->dashboard-customizer#save" class="btn-primary">Save layout</button>
+      <button type="button" data-dashboard-customizer-target="reset" data-action="click->dashboard-customizer#reset" class="btn-ghost">Reset to default</button>
+      <span data-dashboard-customizer-target="status" class="text-xs text-mocha"></span>
     </div>
   </section>
 
@@ -58,74 +58,3 @@
     </div>
   <% end %>
 </div>
-
-<script>
-  (function () {
-    var toggleBtn = document.getElementById("customize-toggle");
-    var doneBtn = document.getElementById("customize-done");
-    var customizer = document.getElementById("dashboard-customizer");
-    var list = document.getElementById("customizer-list");
-    var widgets = document.getElementById("dashboard-widgets");
-    var statusEl = document.getElementById("customize-status");
-    var csrf = document.querySelector('meta[name="csrf-token"]');
-    var csrfHeader = csrf ? { "X-CSRF-Token": csrf.content } : {};
-
-    function setCustomizing(on) {
-      customizer.classList.toggle("hidden", !on);
-      toggleBtn.textContent = on ? "Hide editor" : "Customize";
-    }
-
-    function sectionFor(key) {
-      return widgets.querySelector('[data-widget-key="' + key + '"]');
-    }
-
-    function moveRow(key, dir) {
-      var row = list.querySelector('[data-editor-key="' + key + '"]');
-      var section = sectionFor(key);
-      if (!row) return;
-      var sibling = dir === "up" ? row.previousElementSibling : row.nextElementSibling;
-      if (!sibling) return;
-      list.insertBefore(row, dir === "up" ? sibling : sibling.nextSibling);
-      if (section) {
-        var secSibling = dir === "up" ? section.previousElementSibling : section.nextElementSibling;
-        if (secSibling) widgets.insertBefore(section, dir === "up" ? secSibling : secSibling.nextSibling);
-      }
-    }
-
-    list.addEventListener("click", function (e) {
-      var btn = e.target.closest("[data-move]");
-      if (btn) moveRow(btn.dataset.move, btn.dataset.dir);
-    });
-
-    list.addEventListener("change", function (e) {
-      var cb = e.target.closest("[data-visible]");
-      if (cb) sectionFor(cb.dataset.visible).hidden = !cb.checked;
-    });
-
-    function widgetConfig() {
-      var order = Array.prototype.map.call(list.querySelectorAll("[data-editor-key]"), function (li) { return li.dataset.editorKey; });
-      var hidden = Array.prototype.filter.call(list.querySelectorAll("[data-visible]"), function (cb) { return !cb.checked; })
-        .map(function (cb) { return cb.dataset.visible; });
-      return { widgets: order, hidden: hidden };
-    }
-
-    function save(body) {
-      statusEl.textContent = "Saving…";
-      fetch("/dashboard/customize", {
-        method: "POST",
-        headers: Object.assign({ "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" }, csrfHeader),
-        body: JSON.stringify(body)
-      })
-        .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
-        .then(function (res) {
-          if (res.ok) { window.location.reload(); }
-          else { statusEl.textContent = "Error: " + (res.body.error || "could not save"); }
-        });
-    }
-
-    toggleBtn.addEventListener("click", function () { setCustomizing(customizer.classList.contains("hidden")); });
-    doneBtn.addEventListener("click", function () { setCustomizing(false); });
-    document.getElementById("customize-save").addEventListener("click", function () { save(widgetConfig()); });
-    document.getElementById("customize-reset").addEventListener("click", function () { save({ reset: true }); });
-  })();
-</script>
