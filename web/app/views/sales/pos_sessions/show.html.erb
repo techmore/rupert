@@ -11,6 +11,7 @@
       </p>
     </div>
     <div class="flex items-center gap-2">
+      <%= link_to "Back to registers", sales_pos_sessions_path, class: "btn-ghost btn-sm" %>
       <%= form_tag refresh_sales_pos_session_path(@session), method: :post do %>
         <%= submit_tag "Refresh from orders", class: "btn-ghost btn-sm" %>
       <% end %>

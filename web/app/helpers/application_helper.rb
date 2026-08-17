@@ -100,4 +100,12 @@ module ApplicationHelper
   def cached_fragment(name, **params)
     cache(["page", Current.tenant_id, name, DataCache.version, params].compact) { yield }
   end
+
+  def time_based_greeting
+    case Time.current.hour
+    when 0...12 then "Good morning"
+    when 12...18 then "Good afternoon"
+    else "Good evening"
+    end
+  end
 end

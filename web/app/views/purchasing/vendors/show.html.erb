@@ -10,6 +10,7 @@
       </p>
     </div>
     <div class="flex gap-2">
+      <%= link_to "Back to vendors", purchasing_vendors_path, class: "btn-ghost btn-sm" %>
       <%= link_to "New purchase order", new_purchasing_purchase_order_path(vendor_id: @vendor), class: "btn-primary btn-sm" %>
       <%= link_to "Edit", edit_purchasing_vendor_path(@vendor), class: "btn-ghost btn-sm" %>
       <%= button_to "Remove", @vendor, method: :delete, class: "btn-ghost btn-sm", data: { confirm: "Remove #{@vendor.name}?" } %>

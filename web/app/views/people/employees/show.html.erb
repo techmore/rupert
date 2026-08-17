@@ -14,6 +14,7 @@
       </p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
+      <%= link_to "Back to employees", people_employees_path, class: "btn-ghost btn-sm" %>
       <% if Current.user.can?("hr.write") %>
         <% if @employee.may_place_on_leave? %>
           <%= button_to "Place on leave", transition_people_employee_path(@employee, event: "place_on_leave"), method: :post, class: "btn-ghost btn-sm", data: { confirm: "Put #{@employee.name} on leave?" } %>

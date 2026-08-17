@@ -15,8 +15,11 @@
           <%= f.collection_select :location_id, Location.order(:name), :externalId, :name, { include_blank: "No location" }, class: "select w-full" %>
         </div>
         <div>
-          <%= f.label :opening_cash_cents, "Opening cash (cents)", class: "mb-1 block text-xs font-semibold uppercase tracking-wider text-mocha" %>
-          <%= f.number_field :opening_cash_cents, value: 0, min: 0, class: "input" %>
+          <%= f.label :opening_cash, "Opening cash", class: "mb-1 block text-xs font-semibold uppercase tracking-wider text-mocha" %>
+          <div class="relative">
+            <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-mocha">$</span>
+            <%= f.number_field :opening_cash, value: 0, min: 0, step: "0.01", class: "input pl-7" %>
+          </div>
         </div>
       </div>
       <div class="flex items-center gap-3">

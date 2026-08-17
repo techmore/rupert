@@ -42,7 +42,7 @@ class PagesFlowTest < ActionDispatch::IntegrationTest
   test "dashboard renders" do
     get_page "/"
     assert_response :success
-    assert_select "h1", /Good morning/
+    assert_select "h1", /Good (morning|afternoon|evening)/
   end
 
   test "inventory renders" do

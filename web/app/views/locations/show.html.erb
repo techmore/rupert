@@ -11,6 +11,7 @@
     </div>
     <% if Current.user.can?("inventory.write") %>
       <div class="flex gap-2">
+        <%= link_to "Back to locations", locations_path, class: "btn-ghost btn-sm" %>
         <%= link_to "Edit", edit_location_path(@location), class: "btn-ghost btn-sm" %>
         <%= button_to "Remove", @location, method: :delete, class: "btn-ghost btn-sm", data: { confirm: "Remove this location?" } %>
       </div>

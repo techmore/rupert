@@ -65,8 +65,14 @@ module Sales
       @session = Sales::PosSession.find(params[:id])
     end
 
+    # The form asks for opening cash in dollars ("50.00") and converts to cents
+    # here — asking users to type cents was a real wrong-entry source.
     def pos_session_params
-      params.require(:pos_session).permit(:name, :location_id, :opening_cash_cents)
+      allowed = params.require(:pos_session).permit(:name, :location_id, :opening_cash_cents, :opening_cash)
+      if allowed[:opening_cash].present?
+        allowed[:opening_cash_cents] = (allowed[:opening_cash].to_f * 100).round
+      end
+      allowed.except(:opening_cash)
     end
   end
 end
