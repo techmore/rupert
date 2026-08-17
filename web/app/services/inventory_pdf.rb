@@ -335,32 +335,63 @@ class InventoryPdf
       .sort { |(date_a, _), (date_b, _)| date_b <=> date_a }
   end
 
+  # Last-7-days transaction layout (manual rows, same as the catalog table).
+  SALES_HEADERS = ["Time", "Order", "Source", "Items", "Units", "Amount"].freeze
+  SALES_COL_WIDTHS = [44, 118, 60, 174, 40, 96].freeze
+  SALES_LEFT_X = [0, 44, 162, 222, 396, 436].freeze
+  SALES_RIGHT = [4, 5].freeze
+  DAY_HEADER_HEIGHT = 14
+  SALES_ROW_HEIGHT = 11
+
   def write_sales_week(pdf, sales_week)
     pdf.text "Sales · Last 7 Days", size: 12, style: :bold, color: INK
     pdf.move_down 6
+    y = pdf.cursor
 
     if sales_week.empty?
       pdf.text "No paid or fulfilled sales in the last #{SALES_DAYS} days.", size: 8, color: TAUPE
       return
     end
 
+    pdf.font "Helvetica", size: FONT_SIZE
     sales_week.each do |date, orders|
       units = orders.sum { |order| order.order_lines.sum(:quantity) }
       revenue = orders.sum(&:gross_cents) / 100.0
+      needed = DAY_HEADER_HEIGHT + 3 + SALES_ROW_HEIGHT + orders.length * SALES_ROW_HEIGHT
 
-      pdf.table(
-        [[date.strftime("%A, %B %-e, %Y"), "#{units} units · #{format_currency(revenue)}"]],
-        width: TABLE_WIDTH, column_widths: [400, 132],
-        cell_style: { padding: [3, 5], borders: [:bottom], border_color: FOG, size: 8, text_color: INK }
-      ) do |table|
-        table.column(0).style(font_style: :bold)
-        table.column(1).style(align: :right, font_style: :bold)
-        table.row(0).background_color = HAZE
-        table.row(0).borders = [:bottom]
+      if y - needed < FOOTER_TOP
+        pdf.start_new_page
+        y = pdf.cursor
       end
 
-      rows = orders.map do |order|
-        [
+      # Day header (label + right-aligned daily total).
+      pdf.fill_color HAZE
+      pdf.fill_rectangle [0, y], TABLE_WIDTH, DAY_HEADER_HEIGHT
+      pdf.fill_color INK
+      pdf.font "Helvetica", style: :bold
+      pdf.draw_text date.strftime("%A, %B %-e, %Y"), at: [4, y - DAY_HEADER_HEIGHT / 2 + 1], size: 8
+      total = "#{units} units · #{format_currency(revenue)}"
+      pdf.draw_text total, at: [TABLE_WIDTH - 4 - pdf.width_of(total), y - DAY_HEADER_HEIGHT / 2 + 1], size: 8
+      pdf.font "Helvetica", style: :normal
+      y -= DAY_HEADER_HEIGHT + 3
+
+      # Column header.
+      pdf.fill_color MOCHA
+      pdf.font "Helvetica", style: :bold
+      SALES_HEADERS.each_with_index do |header, i|
+        pdf.draw_text header, at: [SALES_LEFT_X[i] + 4, y - SALES_ROW_HEIGHT / 2 + 1], size: FONT_SIZE
+      end
+      pdf.font "Helvetica", style: :normal
+      pdf.fill_color INK
+      y -= SALES_ROW_HEIGHT
+
+      orders.each do |order|
+        if y - SALES_ROW_HEIGHT < FOOTER_TOP
+          pdf.start_new_page
+          y = pdf.cursor
+        end
+
+        cells = [
           order.occurred_at.in_time_zone.strftime("%-l:%M %p"),
           order.display_number,
           order.source.to_s.capitalize,
@@ -368,18 +399,24 @@ class InventoryPdf
           order.order_lines.sum(:quantity).to_s,
           format_currency(order.gross_cents.to_i / 100.0),
         ]
+        baseline = y - SALES_ROW_HEIGHT / 2 + 1
+        cells.each_with_index do |cell, i|
+          pdf.fill_color i == 5 ? INK : MOCHA
+          pdf.font("Helvetica", style: :bold) if i == 5
+          if SALES_RIGHT.include?(i)
+            x = SALES_LEFT_X[i] + SALES_COL_WIDTHS[i] - 3 - pdf.width_of(cell)
+          else
+            x = SALES_LEFT_X[i] + 4
+          end
+          pdf.draw_text fit_text(pdf, cell, SALES_COL_WIDTHS[i] - 7), at: [x, baseline], size: FONT_SIZE
+          pdf.font("Helvetica", style: :normal) if i == 5
+        end
+        pdf.fill_color INK
+        pdf.stroke_color FOG
+        pdf.stroke_horizontal_line 0, TABLE_WIDTH, at: y - SALES_ROW_HEIGHT + 1
+        y -= SALES_ROW_HEIGHT
       end
-      pdf.move_down 3
-      pdf.table(rows, header: true, width: TABLE_WIDTH, column_widths: [44, 118, 60, 174, 40, 96],
-        cell_style: { padding: [2, 4], borders: [:bottom], border_color: FOG, size: 7, text_color: MOCHA }
-      ) do |table|
-        table.row(0).style(font_style: :bold, text_color: MOCHA, background_color: HAZE)
-        table.column(0).style(text_color: INK)
-        table.column(1).style(text_color: INK)
-        table.column(4).style(align: :right)
-        table.column(5).style(align: :right, text_color: INK, font_style: :bold)
-      end
-      pdf.move_down 8
+      y -= 6
     end
   end
 
