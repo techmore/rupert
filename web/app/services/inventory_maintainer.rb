@@ -154,6 +154,67 @@ class InventoryMaintainer
       summary
     end
 
+    # One-off (or scheduled) "Square is the source of truth" pass: push each
+    # linked tracked variant's Shopify quantity to Square's current total and
+    # journal it as a reconcile-style adjustment. Same push path as the pool
+    # sync, but no size-family/pool math and no Square write — Shopify only.
+    def push_square_totals!(actor: "rake")
+      PlatformPushGuard.authorize!("shopify", actor: actor)
+      location = Location.shopify_primary
+      raise ShopifyClient::Error, "No Shopify location found" if location.nil?
+
+      links = SkuLink.linked.includes(:shopify_variant).to_a
+      square_totals = InventoryLevel.square_totals
+
+      results = {
+        linked: links.length, pushed: 0, failed: 0, skipped: 0, noop: 0, per_sku: [],
+      }
+      links.each do |link|
+        variant = link.shopify_variant
+        next unless variant&.tracked && variant.inventoryItemId.present?
+
+        sku = link.sku.to_s
+        target = [square_totals.fetch(link.squareVariationId, 0).to_i, 0].max
+        delta = target - variant.inventoryQuantity.to_i
+        if delta.zero?
+          results[:skipped] += 1
+          results[:per_sku] << { sku: sku, ok: true, target: target, actions: ["no-op"] }
+          next
+        end
+
+        begin
+          actual = shopify_level(variant.inventoryItemId, location.externalId)
+          actual_delta = target - actual
+          if actual_delta.zero?
+            results[:noop] += 1
+            results[:per_sku] << { sku: sku, ok: true, target: target, actions: ["no-op"] }
+            next
+          end
+          push_shopify!(variant, actual, actual_delta, location)
+          InventoryMovement.create!(
+            sku: sku,
+            shopifyVariantId: variant.id,
+            squareVariationId: link.squareVariationId,
+            source: "reconcile",
+            direction: actual_delta.negative? ? "out" : "in",
+            delta: actual_delta,
+            quantityBefore: actual,
+            quantityAfter: target,
+            reason: "Square-as-truth push",
+            reference: "push_square_totals",
+            actor: actor,
+            createdAt: Time.current,
+          )
+          results[:pushed] += 1
+          results[:per_sku] << { sku: sku, ok: true, target: target, actions: ["Shopify #{actual_delta.positive? ? "+" : ""}#{actual_delta}"] }
+        rescue StandardError => e
+          results[:failed] += 1
+          results[:per_sku] << { sku: sku, ok: false, target: target, actions: ["Shopify ✕ #{e.message}"] }
+        end
+      end
+      results
+    end
+
     private
 
     # Publish the run's adjustments to the inv_adjustments channel, falling back
