@@ -139,3 +139,26 @@ Square API ──► SquareSyncer ──► SquareVariation
 4. **Fix `sync_links!` collisions.** When a SKU matches multiple Square variations (the `by_sku` Hash keeps only the last) the other variation is silently dropped. Safest fix: split into per-variation SKUs (Square variation SKUs are often unique batch codes) and surface collisions rather than auto-link — but this touches the reconcile/maintainer path, so it needs explicit sign-off before any re-link.
 5. **`locationId` convention inconsistency** (Shopify stores external gid, Square stores CUID; `belongs_to :location` only resolves for Square). Fixing it means flipping the stored convention, which would create duplicate levels for existing rows unless data is migrated — defer.
 6. **Staleness after maintainer pushes** — shopify levels/variant qty refresh on the next mirror; acceptable within a 15-min cycle.
+
+---
+
+## Follow-up fixes (2026-08-17)
+
+Applied after the audit (owner-authorized; see git log `d4a3c39`, `d49b307`):
+
+- **Shared-SKU reconciliation guard.** `Reconciler.actionable_rows` now skips
+  rows whose SKU is linked to >1 Shopify variant (`Reconciler.shared_skus`,
+  mirroring `InventoryMaintainer`), and `PlanApplier.apply!` raises
+  `SafetyLocked` if a shared-SKU row ever reaches it. Previously all 9
+  actionable rows were shared SKUs and `689745640858` (same target on two
+  variants) could be half-applied.
+- **Cache false-failure.** `SyncEngine` wraps `DataCache.bump!` so a file-cache
+  store error (observed as `Permission denied @ …/data_version` ~7×/24h) can no
+  longer flip a successful sync to `failed` or fire a spurious "Sync failed"
+  notification. Also normalized `tmp/cache` ownership to `rupert`.
+- **Archive-awareness.** 9 products archived (DRAFT/UNLISTED) on Shopify stayed
+  `ACTIVE` in the mirror with ~1,430 phantom units and 22 phantom alerts, and
+  fed reconcile drift on dead SKUs. The 9 mirror products were set
+  `status=ARCHIVED`, their 22 open alerts resolved, and reconcile/alerts/PDF
+  reconciliation surfaces now only consider `ACTIVE` products. The write hazard
+  on the dead Afghan SKUs was already neutralized by the shared-SKU guard.
