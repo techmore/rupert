@@ -14,98 +14,11 @@
     </div>
   </section>
 
-  <% if @shared_skus.present? %>
-    <div class="rounded-xl border border-rose/30 bg-rose/5 px-4 py-2.5 text-sm text-ink">
-      <span class="font-semibold text-rose"><%= pluralize(@shared_skus.length, "SKU") %> used by more than one product</span>
-      <span class="text-mocha">— rows marked below break Shopify↔Square linking. Download the <b>Recommend SKU download</b> for proposed unique SKUs.</span>
-    </div>
-  <% end %>
-
   <%= form_tag inventory_index_path, method: :get, class: "max-w-sm" do %>
     <input type="search" name="q" value="<%= @q %>" placeholder="Search products or SKUs…" aria-label="Search products or SKUs" class="search w-full" autocomplete="off">
   <% end %>
 
-  <% if @negative[:total].positive? %>
-    <details class="group rounded-xl border border-clay/40 bg-clay/5 px-4 py-3">
-      <summary class="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden [&::-webkit-details-marker]:content-none">
-        <span class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink">
-          <span class="pill-clay"><%= @negative[:total] %> negative counts</span>
-          <span class="text-clay">Inventory went negative — likely oversold items or non-inventory SKUs (like shipping insurance) being tracked. Review and correct below.</span>
-        </span>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-clay transition-transform group-open:rotate-180" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-      </summary>
-
-      <div class="mt-3 space-y-4">
-        <% if @negative[:square].any? %>
-          <div>
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <h3 class="text-sm font-semibold text-ink">Square · <%= @negative[:square].length %> shown</h3>
-              <% if Current.user.can?("reconcile.write") %>
-                <%= button_to "Fix all Square", fix_all_negative_inventory_index_path, method: :post, class: "btn-ghost btn-sm", data: { confirm: "Write physical count 0 to Square for every negative item?" } %>
-              <% end %>
-            </div>
-            <div class="mt-2 max-h-64 overflow-y-auto rounded-lg border border-fog bg-paper">
-              <table class="w-full text-sm">
-                <tbody class="divide-y divide-fog">
-                  <% @negative[:square].each do |item| %>
-                    <tr>
-                      <td class="td font-mono text-xs text-mocha"><%= item.sku.presence || "—" %></td>
-                      <td class="td"><%= item.name || "—" %></td>
-                      <td class="td text-xs text-taupe"><%= item.location %></td>
-                      <td class="td text-right font-semibold text-rose"><%= item.quantity %></td>
-                      <td class="td text-right">
-                        <% if Current.user.can?("reconcile.write") %>
-                          <%= button_to "Set to 0", fix_negative_inventory_index_path, method: :post, params: { source: "square", id: item.id }, class: "btn-ghost btn-sm", data: { confirm: "Zero #{item.sku || "this item"} on Square?" } %>
-                        <% end %>
-                      </td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        <% end %>
-
-        <% if @negative[:shopify].any? %>
-          <div>
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <h3 class="text-sm font-semibold text-ink">Shopify · <%= @negative[:shopify].length %> shown</h3>
-            </div>
-            <div class="mt-2 max-h-64 overflow-y-auto rounded-lg border border-fog bg-paper">
-              <table class="w-full text-sm">
-                <tbody class="divide-y divide-fog">
-                  <% @negative[:shopify].each do |item| %>
-                    <tr>
-                      <td class="td font-mono text-xs text-mocha"><%= item.sku.presence || "—" %></td>
-                      <td class="td"><%= item.name || "—" %></td>
-                      <td class="td text-xs text-taupe"><%= item.location %></td>
-                      <td class="td text-right font-semibold text-rose"><%= item.quantity %></td>
-                      <td class="td text-right">
-                        <% if Current.user.can?("reconcile.write") %>
-                          <%= button_to "Untrack & zero", fix_negative_inventory_index_path, method: :post, params: { source: "shopify", id: item.id }, class: "btn-ghost btn-sm", data: { confirm: "Untrack #{item.sku || "this item"} and zero its mirrored count?" } %>
-                        <% end %>
-                      </td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
-            <p class="mt-1 text-xs text-taupe">These are usually shipping-insurance SKUs. Untracking stops them being reconciled; disable tracking in Shopify for a permanent fix.</p>
-          </div>
-        <% end %>
-      </div>
-    </details>
-  <% end %>
-
-  <% size_items = @products.sum { |product| product.variants.count { |v| @variant_qtys[v.id]&.dig(:size) } } %>
-  <% if size_items.positive? %>
-    <div class="rounded-xl border border-olive/20 bg-olive/5 px-4 py-2.5 text-sm text-ink">
-      <span class="font-semibold"><%= pluralize(size_items, "size-derived variant") %></span> on this page is reconciled from its gram root (e.g. 3.5g / 7g / 14g / 28g) rather than Square realtime — see
-      <%= link_to "Sizes", size_families_path, class: "font-semibold text-olive hover:underline" %>.
-    </div>
-  <% end %>
-
-  <% cached_fragment("inventory/table", q: @q) do %>
+  <% cached_fragment("inventory/table", q: @q, page: @pagy.page) do %>
   <div class="card overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
@@ -133,8 +46,7 @@
               <% link = info[:link] %>
               <% square_qty = info[:square_qty] %>
               <% drift = square_qty != nil ? square_qty - shopify_qty : nil %>
-              <% shared_sku = variant.sku.present? && @shared_skus.include?(variant.sku) %>
-              <tr class="hover:bg-cream <%= shared_sku ? "bg-rose/10" : "" %>">
+              <tr class="hover:bg-cream">
                 <td class="td">
                   <div class="flex items-center gap-3">
                     <% if (thumb = product.thumbnail_url) %>
@@ -145,12 +57,6 @@
                     <div class="min-w-0">
                       <p class="truncate font-medium text-ink"><%= link_to variant.title, shopify_variant_path(variant), class: "hover:text-olive hover:underline" %></p>
                       <p class="truncate text-xs text-taupe"><%= product.title %></p>
-                      <% if shared_sku %>
-                        <span class="mt-1 inline-flex items-center gap-1">
-                          <span class="pill-rose">duplicate SKU</span>
-                          <span class="text-xs text-rose">used by another product</span>
-                        </span>
-                      <% end %>
                       <% if (size = info[:size]) %>
                         <span class="mt-1 inline-flex flex-wrap items-center gap-1.5">
                           <span class="pill-olive">size <%= size[:grams] %>g</span>
@@ -168,7 +74,7 @@
                     </div>
                   </div>
                 </td>
-                <td class="td font-mono text-xs <%= shared_sku ? "font-semibold text-rose" : "text-mocha" %>"><%= variant.sku.presence || "—" %></td>
+                <td class="td font-mono text-xs text-mocha"><%= variant.sku.presence || "—" %></td>
                 <td class="td text-right font-medium text-ink"><%= number_to_currency(variant.price) %></td>
                 <td class="td text-right text-mocha"><%= shopify_qty %></td>
                 <td class="td text-right text-mocha"><%= square_qty || "—" %></td>
@@ -191,7 +97,12 @@
   </div>
   <% end %>
 
-  <% if @products.length >= 40 %>
-    <p class="text-xs text-taupe">Showing the first 40 products — refine your search to narrow down.</p>
+  <% if @pagy.pages > 1 %>
+    <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-taupe">
+      <span>Showing products <%= @pagy.from %>–<%= @pagy.to %> of <%= @pagy.count %>.</span>
+      <%== pagy_nav(@pagy) %>
+    </div>
+  <% elsif @q.blank? && @products.length >= 40 %>
+    <p class="text-xs text-taupe">All products shown.</p>
   <% end %>
 </div>

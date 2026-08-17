@@ -4,22 +4,22 @@ require "csv"
 
 class InventoryController < AuthenticatedController
   before_action :authorize_read, only: [:index, :movements, :pdf, :recommended_skus]
-  before_action :authorize_fix, only: [:fix_negative, :fix_all_negative]
 
   def index
     @q = params[:q].to_s.strip
-    @products = ShopifyProduct.order(title: :asc).limit(40)
+    scope = ShopifyProduct.order(title: :asc)
     if @q.present?
-      @products = @products.where(
+      scope = scope.where(
         "title LIKE ? OR id IN (SELECT \"productId\" FROM \"ShopifyVariant\" WHERE sku LIKE ?)",
         "%#{@q}%",
         "%#{@q}%",
       )
     end
-    @products = @products.includes(variants: [{ sku_links: { square_variation: :levels } }, :levels])
+    scope = scope.includes(variants: [{ sku_links: { square_variation: :levels } }, :levels])
+    # Paginate the whole catalog by product (matching the PDF report's scope,
+    # which covers every product rather than only the first 40).
+    @pagy, @products = pagy(scope, items: 40)
     @variant_qtys = variant_quantity_map(@products)
-    @negative = NegativeInventory.summary
-    @shared_skus = DataCache.fetch("inventory/shared_skus") { SkuRemediationPlanner.shared_skus }
   end
 
   # GET /inventory/movements — the full inventory movement ledger: every
@@ -64,61 +64,10 @@ class InventoryController < AuthenticatedController
     )
   end
 
-  # POST /inventory/fix_negative — zero one negative variation/variant.
-  def fix_negative
-    source = params[:source].to_s
-    id = params[:id].to_s
-    return redirect_to(inventory_index_path, alert: "Missing item") if id.blank?
-
-    if source == "square"
-      return redirect_to(inventory_index_path, alert: guard_error("square")) unless guard_ok?("square")
-    end
-
-    if NegativeInventory.fix!(source: source, id: id)
-      redirect_to(inventory_index_path, notice: "Corrected negative #{source} inventory.")
-    else
-      redirect_to(inventory_index_path, alert: "Could not correct that item — check the logs.")
-    end
-  end
-
-  # POST /inventory/fix_all_negative — zero every negative level.
-  def fix_all_negative
-    unless guard_ok?("square")
-      return redirect_to(inventory_index_path, alert: "Square fixes skipped: #{guard_error("square")}")
-    end
-
-    results = NegativeInventory.fix_all!
-    redirect_to(
-      inventory_index_path,
-      notice: "Corrected #{results[:square]} Square and #{results[:shopify]} Shopify items (#{results[:failed]} failed).",
-    )
-  end
-
   private
-
-  # SKUs attached to variants of more than one distinct product.
-  def shared_sku_set
-    SkuRemediationPlanner.shared_skus
-  end
-
-  def guard_ok?(platform)
-    PlatformPushGuard.authorize!(platform, actor: Current.user.email)
-    true
-  rescue PlatformPushGuard::LockedError => e
-    @guard_error = e.message
-    false
-  end
-
-  def guard_error(platform)
-    @guard_error || PlatformPushGuard.locked_message(platform)
-  end
 
   def authorize_read
     authorize(:module, :inventory_read?)
-  end
-
-  def authorize_fix
-    authorize(:module, :reconcile_write?)
   end
 
   # sku => display name + product, resolved once per page so the ledger view
