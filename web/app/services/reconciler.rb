@@ -35,9 +35,9 @@ class Reconciler
       links = SkuLink.linked.index_by(&:shopifyVariantId)
       size_skus = SizeFamilyMember.pluck(:sku).map { |s| s.to_s.downcase }.to_set
 
-      square_totals = InventoryLevel.where(source: "square").group(:squareVariationId).sum(:quantity)
+      square_totals = InventoryLevel.square_totals
       home_totals = if home_location_id
-        InventoryLevel.where(source: "square", locationId: home_location_id).group(:squareVariationId).sum(:quantity)
+        InventoryLevel.mirrored("square").where(locationId: home_location_id).group(:squareVariationId).sum(:quantity)
       else
         {}
       end

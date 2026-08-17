@@ -27,4 +27,22 @@ class InventoryLevel < ApplicationRecord
   def self.total_for_variation(variation_id)
     where(squareVariationId: variation_id).sum(:quantity)
   end
+
+  # Mirrors for a single source: quantities (current on-hand) plus per-item
+  # totals. Used all over the sync engine and reports — centralizing here keeps
+  # the query convention in one place.
+  scope :mirrored, ->(source) { where(source: source) }
+
+  # { source_item_id => total quantity } for a source, narrowed to one column.
+  def self.totals_by(source, item_column)
+    mirrored(source).group(item_column).sum(:quantity)
+  end
+
+  def self.square_totals
+    totals_by("square", :squareVariationId)
+  end
+
+  def self.shopify_totals
+    totals_by("shopify", :shopifyVariantId)
+  end
 end

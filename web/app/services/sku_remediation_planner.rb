@@ -14,7 +14,7 @@ class SkuRemediationPlanner
     # with a variant of a different product.
     def plan
       plans = []
-      shared_skus.each do |sku|
+      shared_skus(tracked: true).each do |sku|
         variants = ShopifyVariant.joins(:product)
           .where(tracked: true)
           .where.not(sku: [nil, ""])
@@ -41,11 +41,13 @@ class SkuRemediationPlanner
       plans
     end
 
-    def shared_skus
-      ShopifyVariant.where(tracked: true).where.not(sku: [nil, ""])
-        .joins(:product)
+    # SKUs reused by variants of more than one distinct product. `tracked: nil`
+    # (default) considers every variant; pass `true` to only flag tracked ones.
+    def shared_skus(tracked: nil)
+      scope = ShopifyVariant.where.not(sku: [nil, ""])
+      scope = scope.where(tracked: true) if tracked == true
+      scope.joins(:product)
         .group('"ShopifyVariant"."sku"', '"ShopifyVariant"."productId"')
-        .having("COUNT(*) > 0")
         .count
         .keys
         .group_by(&:first)

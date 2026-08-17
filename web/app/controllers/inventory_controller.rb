@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "csv"
-require "set"
 
 class InventoryController < AuthenticatedController
   before_action :authorize_read, only: [:index, :movements, :pdf, :recommended_skus]
@@ -20,7 +19,7 @@ class InventoryController < AuthenticatedController
     @products = @products.includes(variants: [{ sku_links: { square_variation: :levels } }, :levels])
     @variant_qtys = variant_quantity_map(@products)
     @negative = NegativeInventory.summary
-    @shared_skus = DataCache.fetch("inventory/shared_skus") { shared_sku_set }
+    @shared_skus = DataCache.fetch("inventory/shared_skus") { SkuRemediationPlanner.shared_skus }
   end
 
   # GET /inventory/movements — the full inventory movement ledger: every
@@ -97,18 +96,9 @@ class InventoryController < AuthenticatedController
 
   private
 
-  # SKUs reused by variants of more than one distinct product. Duplicate SKUs
-  # break Shopify↔Square linking, so these rows get highlighted on the page.
+  # SKUs attached to variants of more than one distinct product.
   def shared_sku_set
-    rows = ShopifyVariant.joins(:product)
-      .where.not(sku: [nil, ""])
-      .group('"ShopifyVariant"."sku"', '"ShopifyVariant"."productId"')
-      .count
-    skus = Set.new
-    rows.keys.group_by(&:first).each do |sku, pairs|
-      skus << sku if pairs.map(&:last).uniq.length > 1
-    end
-    skus
+    SkuRemediationPlanner.shared_skus
   end
 
   def guard_ok?(platform)

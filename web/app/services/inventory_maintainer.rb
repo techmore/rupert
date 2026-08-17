@@ -55,11 +55,11 @@ class InventoryMaintainer
       # can't be reconciled against a single Square variation — skip, report only.
       shared_skus = SkuLink.linked.group(:sku).distinct.count("shopifyVariantId")
         .select { |_, count| count > 1 }.keys.map(&:downcase).to_set
-      square_totals = InventoryLevel.where(source: "square").group(:squareVariationId).sum(:quantity)
+      square_totals = InventoryLevel.square_totals
       online_sold = Core::OrderLine.joins(:order)
         .where(orders: { source: "shopify", occurred_at: watermark..Time.current })
         .group(:sku).sum(:quantity)
-      shopify_location = Location.where(source: "shopify").order(:syncedAt).first
+      shopify_location = Location.shopify_primary
       home = SquareSyncer.primary_location_id
 
       summary = {

@@ -14,7 +14,7 @@ class ReconciliationReport
   )
 
   def initialize
-    @square_totals = InventoryLevel.where(source: "square").group(:squareVariationId).sum(:quantity)
+    @square_totals = InventoryLevel.square_totals
   end
 
   def matched_rows
@@ -93,8 +93,8 @@ class ReconciliationReport
   end
 
   def last_syncs
-    shopify = Location.where(source: "shopify").order(:syncedAt).first
-    square = Location.where(source: "square").order(:syncedAt).first
+    shopify = Location.shopify_primary
+    square = Location.square_primary
     {
       shopify: shopify&.syncedAt,
       square: square&.syncedAt,

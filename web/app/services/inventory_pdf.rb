@@ -2,7 +2,6 @@
 
 require "prawn"
 require "prawn/table"
-require "set"
 
 # Built-in AFM fonts cover WinAnsi (the em dash / middle dot / accented Latin
 # glyphs this report uses), so the per-document M17N warning is noise here.
@@ -121,8 +120,8 @@ class InventoryPdf
   # the whole catalog rather than the page's 40-row preview. Zero-stock-on-both
   # rows are moved to the bottom so buyers see sellable stock first.
   def load_rows
-    shopify_map = InventoryLevel.where(source: "shopify").group(:shopifyVariantId).sum(:quantity)
-    square_map = InventoryLevel.where(source: "square").group(:squareVariationId).sum(:quantity)
+    shopify_map = InventoryLevel.shopify_totals
+    square_map = InventoryLevel.square_totals
     link_map = SkuLink.linked.index_by(&:shopifyVariantId)
     # SKUs attached to more than one Shopify variant (e.g. 689745640858 = both
     # Blue Raspberry and Blood Orange 12-count) can't be attributed to a single
@@ -134,7 +133,7 @@ class InventoryPdf
     multi_variant_products = ShopifyVariant.group(:productId).count.select { |_, n| n > 1 }.keys
     # SKUs reused by variants of different products (the web page's duplicate
     # SKU flag) — highlighted in rose so duplicate identifiers jump out.
-    duplicate_product_skus = shared_sku_set
+    duplicate_product_skus = SkuRemediationPlanner.shared_skus
 
     rows = ShopifyProduct.order(:title).includes(:variants).flat_map do |product|
       ptitle = product.title.to_s.downcase
@@ -162,19 +161,6 @@ class InventoryPdf
     end
     zeroed, stocked = rows.partition { |row| zero_on_both?(row) }
     stocked + zeroed
-  end
-
-  # SKUs attached to variants of more than one distinct product.
-  def shared_sku_set
-    rows = ShopifyVariant.joins(:product)
-      .where.not(sku: [nil, ""])
-      .group('"ShopifyVariant"."sku"', '"ShopifyVariant"."productId"')
-      .count
-    skus = Set.new
-    rows.keys.group_by(&:first).each do |sku, pairs|
-      skus << sku if pairs.map(&:last).uniq.length > 1
-    end
-    skus
   end
 
   # Paid/fulfilled order lines in the window, as [sku, name, quantity] tuples

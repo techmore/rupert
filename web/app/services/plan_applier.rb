@@ -29,7 +29,7 @@ class PlanApplier
 
       authorize_writes!(grouped.values.flatten, actor: actor)
 
-      shopify_location = Location.where(source: "shopify").order(:syncedAt).first
+      shopify_location = Location.shopify_primary
       square_home = SquareSyncer.primary_location_id
 
       applied = 0

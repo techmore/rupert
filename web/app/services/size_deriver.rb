@@ -173,7 +173,7 @@ class SizeDeriver
 
     def push_shopify!(variant, current, delta)
       PlatformPushGuard.authorize!("shopify", actor: "system")
-      location = Location.where(source: "shopify").order(:syncedAt).first
+      location = Location.shopify_primary
       raise ShopifyClient::Error, "No Shopify location" if location.nil?
 
       slug = variant.sku.to_s.gsub(/[^a-z0-9]/i, "").slice(0, 40)

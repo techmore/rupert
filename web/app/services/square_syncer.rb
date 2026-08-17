@@ -32,7 +32,7 @@ class SquareSyncer
     def primary_location_id
       preferred = EnvStore.fetch("SQUARE_LOCATION_ID", "")
       location = preferred.present? ? Location.find_by(source: "square", externalId: preferred) : nil
-      location || Location.where(source: "square").order(:syncedAt).first
+      location || Location.square_primary
     end
 
     private
