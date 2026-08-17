@@ -22,10 +22,6 @@ class SquareSyncer
       { items: 0, variations: 0, levels: 0, links: 0, orders: orders, locations: locations }
     end
 
-    def configured?
-      SquareClient.configured?
-    end
-
     # How far back to look for orders. Configurable via SYNC_HISTORY_DAYS
     # (defaults to 30 days to match the original behavior).
     def history_lookback

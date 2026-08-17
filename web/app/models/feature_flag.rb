@@ -19,9 +19,5 @@ class FeatureFlag
         setting.value = enabled ? "1" : "0"
       end
     end
-
-    def enabled_value(flag)
-      enabled?(flag) ? "1" : "0"
-    end
   end
 end

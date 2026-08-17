@@ -51,17 +51,17 @@
     <%= render "syncs/runs" %>
 
     <div class="card card-pad">
-      <h2 class="font-display text-xl text-ink">Recent log entries</h2>
+      <h2 class="font-display text-xl text-ink">Recent inventory activity</h2>
       <ul class="mt-4 space-y-2.5">
-        <% if @logs.empty? %>
-          <li class="py-3 text-sm text-taupe">No log file yet — it appears after a sync runs.</li>
+        <% if @recent_movements.empty? %>
+          <li class="py-3 text-sm text-taupe">No inventory movements yet — they appear after a sync runs.</li>
         <% end %>
-        <% @logs.each do |log| %>
-          <li class="flex gap-3">
-            <span class="<%= log["level"] == "success" ? "pill-fern" : log["level"] == "error" ? "pill-rose" : "pill-taupe" %> shrink-0"><%= log["level"] %></span>
+        <% @recent_movements.each do |movement| %>
+          <li class="flex items-start gap-3">
+            <span class="pill-taupe shrink-0"><%= movement.source %></span>
             <div class="min-w-0">
-              <p class="text-sm text-ink"><%= log["message"] %></p>
-              <p class="text-xs text-taupe"><%= l(Time.zone.parse(log["at"]), format: :short) rescue "" %></p>
+              <p class="truncate text-sm text-ink"><%= movement.reason %></p>
+              <p class="text-xs text-taupe"><%= movement.sku.presence || "—" %> · <%= movement.quantityBefore %> → <%= movement.quantityAfter %> · <%= time_ago_in_words(movement.createdAt) %> ago</p>
             </div>
           </li>
         <% end %>

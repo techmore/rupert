@@ -10,7 +10,7 @@ class SyncsController < AuthenticatedController
 
   def index
     @runs = SyncRun.recent(25)
-    @logs = recent_logs
+    @recent_movements = InventoryMovement.includes(:sync_run).order(createdAt: :desc).limit(12)
     @push_guard = PlatformPushGuard.status_all
   end
 
@@ -104,16 +104,5 @@ class SyncsController < AuthenticatedController
 
   def authorize_push_freeze
     authorize(:module, :settings_write?)
-  end
-
-  def recent_logs
-    path = Rails.root.join("..", "sync-log.jsonl")
-    return [] unless File.exist?(path)
-
-    File.readlines(path).last(40).filter_map do |line|
-      JSON.parse(line)
-    rescue JSON::ParserError
-      nil
-    end.reverse
   end
 end

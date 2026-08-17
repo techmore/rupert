@@ -20,8 +20,6 @@ class InventoryLevel < ApplicationRecord
     foreign_key: "squareVariationId",
     optional: true
 
-  scope :by_source, ->(source) { where(source: source) }
-
   def self.total_for_variant(variant_id)
     where(shopifyVariantId: variant_id).sum(:quantity)
   end

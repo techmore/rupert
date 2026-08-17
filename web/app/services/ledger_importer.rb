@@ -3,8 +3,6 @@
 # Port of shopifyLedgerEntries/squareLedgerEntries/upsertLedger from the
 # legacy console — mirrors order money data into the LedgerEntry table.
 class LedgerImporter
-  REVENUE_STATUSES = ["PAID", "PARTIALLY_REFUNDED", "PARTIALLY_PAID", "COMPLETED"].freeze
-
   def self.from_shopify_orders!(nodes)
     entries = Array(nodes).map do |order|
       money = order.dig("currentTotalPriceSet", "shopMoney")
@@ -58,9 +56,5 @@ class LedgerImporter
       LedgerEntry.upsert(entry, unique_by: :id)
     end
     entries.length
-  end
-
-  def self.revenue_status?(status)
-    REVENUE_STATUSES.include?(status)
   end
 end

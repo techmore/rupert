@@ -53,10 +53,6 @@ module EnvStore
     default
   end
 
-  def self.value(key)
-    scoped(key)&.value
-  end
-
   def self.scoped(key)
     Setting.find_by(key: key, tenant_id: Current.tenant_id)
   end
