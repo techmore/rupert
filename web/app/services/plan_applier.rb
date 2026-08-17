@@ -21,6 +21,15 @@ class PlanApplier
       preflight!(rows)
 
       candidates = Reconciler.actionable_rows(rows, skus: skus)
+
+      # Defense-in-depth: never half-apply a shared-SKU pool. A Square variation
+      # linked to >1 Shopify variant is ambiguous; the Maintainer refuses these
+      # and the Reconcile UI must too. Raise loudly rather than apply one row.
+      shared = Reconciler.shared_skus
+      if candidates.any? { |row| shared.include?(row.sku.to_s.downcase) }
+        raise SafetyLocked, "Shared-SKU rows are not reconcilable (they map to >1 Shopify variant): #{candidates.select { |r| shared.include?(r.sku.to_s.downcase) }.map { |r| r.sku }.uniq.join(", ")}"
+      end
+
       grouped = candidates.group_by { |row| row.sku.downcase }
       conflicts = grouped.select { |_, items| items.map { |i| "#{i.target}:#{i.square_variation_id}" }.uniq.length > 1 }
       if conflicts.any?

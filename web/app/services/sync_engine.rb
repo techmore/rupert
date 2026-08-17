@@ -56,7 +56,7 @@ class SyncEngine
         summary[:maintain] = InventoryMaintainer.run!(actor: "sync") if SquareClient.configured?
 
         run.update!(status: "success", finishedAt: Time.current, details: summary.to_json)
-        DataCache.bump!
+        bump_cache_logging_only
         run
       rescue StandardError => e
         run.update!(status: "failed", error: e.message.to_s[0, 2000], finishedAt: Time.current)
@@ -88,7 +88,7 @@ class SyncEngine
           LedgerImporter.from_shopify_orders!(shopify.dig(:orders, "nodes"))
         end
         run.update!(status: "success", finishedAt: Time.current, details: { source: source }.to_json)
-        DataCache.bump!
+        bump_cache_logging_only
         run
       rescue StandardError => e
         run.update!(status: "failed", error: e.message.to_s[0, 2000], finishedAt: Time.current)
@@ -124,6 +124,18 @@ class SyncEngine
       return nil if history_days.nil?
 
       (Time.current - history_days.days).strftime("%Y-%m-%d")
+    end
+
+    # A data-version cache bump is a best-effort side effect: mirrored data has
+    # already persisted and the run is marked success before this runs. A cache-
+    # store failure (e.g. file-cache permissions) must never flip the run to
+    # failed or raise through to a spurious "Sync failed" notification, so log
+    # and swallow it here. The DB-backed Setting row still bumps; the cache just
+    # refreshes lazily on next read.
+    def bump_cache_logging_only
+      DataCache.bump!
+    rescue StandardError => e
+      Rails.logger.warn("SyncEngine: DataCache.bump! failed (sync already succeeded): #{e.class}: #{e.message}")
     end
 
     # The running-run guard is enforced by a per-tenant partial unique index:

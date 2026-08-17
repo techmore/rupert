@@ -89,8 +89,18 @@ class Reconciler
       rows.select do |row|
         sku_match = skus.blank? || skus.any? { |sku| sku.to_s.downcase == row.sku.downcase }
         sku_match && !row.target.nil? && row.tracked && row.square_variation_id.present? &&
-          !row.derived && (row.shopify_delta != 0 || row.square_delta != 0)
+          !row.derived && !shared_skus.include?(row.sku.to_s.downcase) &&
+          (row.shopify_delta != 0 || row.square_delta != 0)
       end
+    end
+
+    # SKUs linked to more than one Shopify variant can't be reconciled against a
+    # single Square variation — mirrors the InventoryMaintainer's shared_skus
+    # guard so the Reconcile UI never proposes (or half-applies) an ambiguous
+    # shared-pool write.
+    def shared_skus
+      @shared_skus ||= SkuLink.linked.group(:sku).distinct.count("shopifyVariantId")
+        .select { |_, count| count > 1 }.keys.map(&:downcase).to_set
     end
 
     def summary(rows)
