@@ -4,6 +4,10 @@
 # cached in DataCache (version-keyed, invalidated on sync / manual mutations);
 # cheap counters and the always-live "recent" lists stay fresh per request.
 class DashboardPresenter
+  # Canonical revenue truth: Core::Order (paid/fulfilled), matching reports.
+  # LedgerEntry remains only the raw transaction mirror for the Ledger page.
+  PAID_STATUSES = ["paid", "fulfilled"].freeze
+
   attr_reader :product_count,
     :variant_count,
     :sku_link_count,
@@ -50,38 +54,42 @@ class DashboardPresenter
   end
 
   def today_revenue
-    @today_revenue ||= DataCache.fetch("dashboard/today_revenue") { today_ledger.sum(:grossCents) }
+    @today_revenue ||= DataCache.fetch("dashboard/today_revenue") { today_orders_scope.sum(:gross_cents) }
   end
 
   def today_orders
-    @today_orders ||= DataCache.fetch("dashboard/today_orders") { today_ledger.count }
+    @today_orders ||= DataCache.fetch("dashboard/today_orders") { today_orders_scope.count }
   end
 
   def today_groups
     @today_groups ||= DataCache.fetch("dashboard/today_groups") do
-      today_ledger.group(:source)
-        .pluck(:source, Arel.sql("SUM(\"grossCents\") AS gross"), Arel.sql("COUNT(*) AS count"))
+      today_orders_scope.group(:source)
+        .pluck(:source, Arel.sql("SUM(\"gross_cents\") AS gross"), Arel.sql("COUNT(*) AS count"))
     end
   end
 
   def yesterday_revenue
     @yesterday_revenue ||= DataCache.fetch("dashboard/yesterday_revenue") do
-      LedgerEntry.where(occurredAt: (today_start - 1.day)...today_start).sum(:grossCents)
+      Core::Order.where(occurred_at: (today_start - 1.day)...today_start, status: PAID_STATUSES).sum(:gross_cents)
     end
   end
 
   def week_revenue
-    @week_revenue ||= DataCache.fetch("dashboard/week_revenue") { LedgerEntry.since(7.days.ago).sum(:grossCents) }
+    @week_revenue ||= DataCache.fetch("dashboard/week_revenue") do
+      Core::Order.since(7.days.ago).where(status: PAID_STATUSES).sum(:gross_cents)
+    end
   end
 
   def month_revenue
-    @month_revenue ||= DataCache.fetch("dashboard/month_revenue") { LedgerEntry.since(30.days.ago).sum(:grossCents) }
+    @month_revenue ||= DataCache.fetch("dashboard/month_revenue") do
+      Core::Order.since(30.days.ago).where(status: PAID_STATUSES).sum(:gross_cents)
+    end
   end
 
   def ledger_groups
     @ledger_groups ||= DataCache.fetch("dashboard/ledger_groups") do
-      LedgerEntry.since(30.days.ago).group(:source)
-        .pluck(:source, Arel.sql("SUM(\"grossCents\") AS gross"), Arel.sql("COUNT(*) AS count"))
+      Core::Order.since(30.days.ago).where(status: PAID_STATUSES).group(:source)
+        .pluck(:source, Arel.sql("SUM(\"gross_cents\") AS gross"), Arel.sql("COUNT(*) AS count"))
     end
   end
 
@@ -136,7 +144,7 @@ class DashboardPresenter
     Time.current.beginning_of_day
   end
 
-  def today_ledger
-    @today_ledger ||= LedgerEntry.since(today_start)
+  def today_orders_scope
+    @today_orders_scope ||= Core::Order.where(occurred_at: today_start..Time.current, status: PAID_STATUSES)
   end
 end

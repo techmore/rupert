@@ -1,4 +1,0 @@
-production:
-  queues:
-    - [default, 2]
-  concurrency: 1
