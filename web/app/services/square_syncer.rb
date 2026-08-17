@@ -79,13 +79,17 @@ class SquareSyncer
         next if square_id.nil?
 
         link = SkuLink.find_or_initialize_by(shopifyVariantId: variant.id)
+        links += 1
+        if link.persisted? && link.sku == variant.sku && link.squareVariationId == square_id &&
+            link.matchSource == "sku" && link.auto
+          next
+        end
         link.sku = variant.sku
         link.squareVariationId = square_id
         link.matchSource = "sku"
         link.auto = true
         link.createdAt ||= Time.current
         link.save!
-        links += 1
       end
       links
     end
@@ -130,8 +134,10 @@ class SquareSyncer
           end
           level.quantity = quantity
           level.available = quantity
-          level.updatedAt = Time.current
-          level.save!
+          if level.new_record? || level.changed?
+            level.updatedAt = Time.current
+            level.save!
+          end
         end
       end
     end

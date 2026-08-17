@@ -22,7 +22,7 @@ class ReportsController < AuthenticatedController
     @days = window_days
     since = @days.days.ago
 
-    payload = DataCache.fetch("reports/sales/#{@days}", ttl: 10.minutes) do
+    payload = DataCache.fetch("reports/sales/#{range_key}", ttl: 10.minutes) do
       {
         revenue_daily: Core::Order.since(since).group_by_day(:occurred_at, range: since..@range_end)
           .sum(:gross_cents).transform_values { |c| (c / 100.0).round(2) },
@@ -65,7 +65,7 @@ class ReportsController < AuthenticatedController
     since = @range
     orders = Core::Order.since(since).where(status: ["paid", "fulfilled"])
 
-    payload = DataCache.fetch("reports/financial/#{@days}", ttl: 10.minutes) do
+    payload = DataCache.fetch("reports/financial/#{range_key}", ttl: 10.minutes) do
       revenue_cents = orders.sum(:gross_cents)
       refund_cents = Core::Refund.joins(:order)
         .where(orders: { occurred_at: since..@range_end })
@@ -184,6 +184,12 @@ class ReportsController < AuthenticatedController
     days.zero? ? 30 : days.clamp(7, 365)
   end
 
+  # Cache key that includes the actual date range so two custom ranges with the
+  # same day-count never share a cached payload.
+  def range_key
+    "#{@days}d-#{@range.to_date.iso8601}..#{@range_end.to_date.iso8601}"
+  end
+
   def parse_date(value)
     Date.parse(value)
   rescue ArgumentError, TypeError
@@ -193,10 +199,11 @@ class ReportsController < AuthenticatedController
   # --- CSV builders ---
 
   def sales_csv
+    orders = Core::Order.since(@range)
+    counts = orders.group_by_day(:occurred_at, range: @range..@range_end).count
     rows = [["Day", "Revenue (USD)", "Orders"]]
-    Core::Order.since(@range).group_by_day(:occurred_at, range: @range..@range_end)
-      .sum(:gross_cents).each do |day, cents|
-      rows << [day.iso8601, (cents / 100.0).round(2), Core::Order.where(occurred_at: day.beginning_of_day..day.end_of_day).count]
+    orders.group_by_day(:occurred_at, range: @range..@range_end).sum(:gross_cents).each do |day, cents|
+      rows << [day.iso8601, (cents / 100.0).round(2), counts.fetch(day, 0)]
     end
     to_csv(rows)
   end

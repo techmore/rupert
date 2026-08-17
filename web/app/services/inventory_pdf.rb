@@ -124,7 +124,6 @@ class InventoryPdf
     shopify_map = InventoryLevel.where(source: "shopify").group(:shopifyVariantId).sum(:quantity)
     square_map = InventoryLevel.where(source: "square").group(:squareVariationId).sum(:quantity)
     link_map = SkuLink.linked.index_by(&:shopifyVariantId)
-    lines = sales_lines
     # SKUs attached to more than one Shopify variant (e.g. 689745640858 = both
     # Blue Raspberry and Blood Orange 12-count) can't be attributed to a single
     # variant from order lines — flag those rows so the sold count isn't read
@@ -143,7 +142,7 @@ class InventoryPdf
       product.variants.sort_by(&:title).map do |variant|
         sku = variant.sku.to_s.downcase
         sku_shared = sku.present? && shared_skus.include?(variant.sku)
-        sold, via_sku, via_name = count_sold(lines, sku, ptitle)
+        sold, via_sku, via_name = count_sold(sku, ptitle)
         link = link_map[variant.id]
         square_qty = link ? square_map.fetch(link.squareVariationId, 0) : nil
         shopify_qty = shopify_map.fetch(variant.id, 0)
@@ -187,23 +186,32 @@ class InventoryPdf
       .map { |sku, name, qty| [sku.to_s.downcase, name.to_s.downcase, qty.to_i] }
   end
 
+  # Precomputed indexes over sales_lines so per-variant sold lookup is O(1)
+  # instead of rescanning every line for every variant (O(variants × lines)).
+  def sales_index
+    @sales_index ||= begin
+      by_sku = Hash.new(0)
+      by_name = Hash.new(0)
+      sku_name_overlap = Hash.new(0)
+      sales_lines.each do |sku, name, qty|
+        by_sku[sku] += qty if sku.present?
+        by_name[name] += qty if name.present?
+        sku_name_overlap[[sku, name]] += qty if sku.present? && name.present?
+      end
+      { by_sku: by_sku, by_name: by_name, overlap: sku_name_overlap }
+    end
+  end
+
   # Units sold for one variant, matching each order line by SKU OR by product
   # title (Square lines sometimes carry a bogus SKU like "Regular"). Returns
-  # [units, matched_by_sku, matched_by_name]. Lines are already downcased.
-  def count_sold(lines, sku, ptitle)
-    total = 0
-    via_sku = false
-    via_name = false
-    lines.each do |line_sku, line_name, qty|
-      if sku.present? && line_sku == sku
-        total += qty
-        via_sku = true
-      elsif ptitle.present? && line_name == ptitle
-        total += qty
-        via_name = true
-      end
-    end
-    [total, via_sku, via_name]
+  # [units, matched_by_sku, matched_by_name]. A line matching both is counted
+  # once (overlap is subtracted), preserving the old SKU-first semantics.
+  def count_sold(sku, ptitle)
+    idx = sales_index
+    sku_units = sku.present? ? idx[:by_sku].fetch(sku, 0) : 0
+    overlap = sku.present? && ptitle.present? ? idx[:overlap].fetch([sku, ptitle], 0) : 0
+    name_units = ptitle.present? ? idx[:by_name].fetch(ptitle, 0) : 0
+    [sku_units + name_units - overlap, sku.present? && idx[:by_sku].key?(sku), (name_units - overlap).positive?]
   end
 
   def zero_on_both?(row)

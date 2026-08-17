@@ -8,9 +8,41 @@ class AlertGenerator
 
   class << self
     def sync!
+      threshold = threshold_for_current_tenant
+      # Load every open alert once so the per-variant pass is in-memory, not one
+      # find_by per variant (which previously ran twice per full sync).
+      open_alerts = StockAlert.where(status: "open")
+        .where(shopifyVariantId: ShopifyVariant.select(:id))
+        .group_by(&:shopifyVariantId)
+      created = 0
+      resolved = 0
       ShopifyVariant.where.not(sku: [nil, ""]).find_each do |variant|
-        sync_variant!(variant.id, variant.sku, variant.inventoryQuantity.to_i)
+        variant_id = variant.id
+        quantity = variant.inventoryQuantity.to_i
+        if quantity > threshold
+          next if open_alerts[variant_id].blank?
+
+          StockAlert.where(id: open_alerts[variant_id].map(&:id)).update_all(
+            status: "resolved",
+            resolvedAt: Time.current,
+            quantity: quantity,
+            note: "Stock recovered to #{quantity} (above threshold of #{threshold})",
+          )
+          resolved += 1
+        elsif open_alerts[variant_id].blank?
+          StockAlert.create!(
+            shopifyVariantId: variant_id,
+            sku: variant.sku,
+            quantity: quantity,
+            threshold: threshold,
+            status: "open",
+            note: quantity <= 0 ? "Out of stock" : "Low stock — below threshold of #{threshold}",
+            createdAt: Time.current,
+          )
+          created += 1
+        end
       end
+      { created: created, resolved: resolved }
     end
 
     def sync_variant!(variant_id, sku, quantity)

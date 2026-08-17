@@ -19,7 +19,7 @@ class ReconciliationReport
 
   def matched_rows
     @matched_rows ||= SkuLink.linked
-      .includes(:shopify_variant, :square_variation)
+      .includes(shopify_variant: :product, square_variation: :item)
       .order(:sku)
       .filter_map do |link|
         variant = link.shopify_variant
@@ -105,7 +105,7 @@ class ReconciliationReport
   # write (which SKU, which platform, before -> after, delta). Anything with a
   # large move or a negative result is flagged for human review.
   def decisions(since: 24.hours.ago)
-    InventoryMovement.where(source: "maintain")
+    @decisions ||= InventoryMovement.where(source: "maintain")
       .where("\"createdAt\" >= ?", since)
       .order(:createdAt)
       .map do |movement|
