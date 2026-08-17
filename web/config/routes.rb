@@ -177,6 +177,7 @@ Rails.application.routes.draw do
       get :financial
       get :inventory
       get :operations
+      get :reconciliation
     end
   end
   resources :ledger, only: :index

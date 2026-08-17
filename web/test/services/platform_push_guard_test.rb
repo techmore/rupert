@@ -22,19 +22,17 @@ class PlatformPushGuardTest < ActiveSupport::TestCase
     refute PlatformPushGuard.frozen?("square")
   end
 
-  test "authorize! raises LockedError with no approvals" do
+  test "authorize! passes without approval windows (owner directive)" do
     PlatformPushGuard.unfreeze!("square", actor: "ops@example.com")
-    error = assert_raises(PlatformPushGuard::LockedError) do
-      PlatformPushGuard.authorize!("square", actor: "user")
-    end
-    assert_includes error.message, "0 of 2 approvals"
+    assert PlatformPushGuard.authorize!("square", actor: "user")
   end
 
-  test "one approval is not enough; two distinct approvals open the window" do
+  test "one approval is not enough to open a window, but two distinct ones are" do
     PlatformPushGuard.unfreeze!("square", actor: "ops@example.com")
 
     PlatformPushGuard.approve!("square", email: "alice@example.com")
-    assert_raises(PlatformPushGuard::LockedError) { PlatformPushGuard.authorize!("square", actor: "user") }
+    refute PlatformPushGuard.window_open?("square")
+    assert PlatformPushGuard.authorize!("square", actor: "user")
 
     PlatformPushGuard.approve!("square", email: "bob@example.com")
     assert PlatformPushGuard.window_open?("square")
@@ -49,7 +47,8 @@ class PlatformPushGuardTest < ActiveSupport::TestCase
 
     status = PlatformPushGuard.status("square")
     assert_equal 1, status[:approvals_needed]
-    assert_raises(PlatformPushGuard::LockedError) { PlatformPushGuard.authorize!("square", actor: "user") }
+    refute PlatformPushGuard.window_open?("square")
+    assert PlatformPushGuard.authorize!("square", actor: "user")
   end
 
   test "a frozen platform stays blocked even inside an open approval window" do
@@ -64,14 +63,14 @@ class PlatformPushGuardTest < ActiveSupport::TestCase
     refute PlatformPushGuard.window_open?("square")
   end
 
-  test "an expired window re-locks pushes" do
+  test "an expired window is reported closed but no longer locks pushes" do
     open_push_window!("square")
     blob = JSON.parse(Setting.find_by(key: "push_guard_square", tenant_id: Current.tenant_id).value)
     blob["window"]["expires_at"] = 1.minute.ago.iso8601
     Setting.find_by(key: "push_guard_square", tenant_id: Current.tenant_id).update!(value: JSON.generate(blob))
 
     refute PlatformPushGuard.window_open?("square")
-    assert_raises(PlatformPushGuard::LockedError) { PlatformPushGuard.authorize!("square", actor: "user") }
+    assert PlatformPushGuard.authorize!("square", actor: "user")
   end
 
   test "revoking an approval below the threshold closes the window" do
@@ -80,7 +79,7 @@ class PlatformPushGuardTest < ActiveSupport::TestCase
 
     PlatformPushGuard.revoke!("square", email: "approver-b@example.com")
     refute PlatformPushGuard.window_open?("square")
-    assert_raises(PlatformPushGuard::LockedError) { PlatformPushGuard.authorize!("square", actor: "user") }
+    assert PlatformPushGuard.authorize!("square", actor: "user")
   end
 
   test "unknown platforms are rejected" do

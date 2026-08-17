@@ -24,6 +24,7 @@ class Reconciler
     :square_home_target,
     :square_variation_id,
     :derived,
+    :image_url,
     keyword_init: true,
   )
 
@@ -78,6 +79,7 @@ class Reconciler
           square_home_target: !target.nil? && !square_qty.nil? && !square_home_qty.nil? ? square_home_qty + (target - square_qty) : nil,
           square_variation_id: square_variation_id,
           derived: size_skus.include?(sku.downcase),
+          image_url: variant.product&.featuredImageUrl,
         )
       end
       rows

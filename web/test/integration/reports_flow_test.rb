@@ -82,6 +82,29 @@ class ReportsFlowTest < ActionDispatch::IntegrationTest
     assert_select "h1", /Operations report/
   end
 
+  test "reconciliation report renders side-by-side Shopify vs Square" do
+    SquareItem.create!(id: "sqitem1", name: "CBD", tenant_id: @tenant.id)
+    SquareVariation.create!(id: "sqvar1", itemId: "sqitem1", name: "Oil", sku: "OIL-1", tenant_id: @tenant.id)
+    SkuLink.create!(sku: "OIL-1", shopifyVariantId: ShopifyVariant.last.id, squareVariationId: "sqvar1", tenant_id: @tenant.id)
+    InventoryLevel.create!(source: "square", locationId: @loc.externalId, squareVariationId: "sqvar1", quantity: 5, tenant_id: @tenant.id)
+
+    get reconciliation_reports_path
+    assert_response :success
+    assert_select "h1", /Inventory reconciliation/
+    assert_select "td", /OIL-1/
+    assert_select "td", /CBD/
+    assert_select "td", /drift/
+  end
+
+  test "reconciliation report exports CSV" do
+    get reconciliation_reports_path(format: :csv)
+    assert_response :success
+    assert_equal "text/csv", response.media_type
+    assert_includes response.body, "SKU"
+    assert_includes response.body, "Square qty"
+    assert_includes response.body, "OIL-1"
+  end
+
   test "reports export CSV" do
     get sales_reports_path(format: :csv)
     assert_response :success

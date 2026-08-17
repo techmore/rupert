@@ -150,6 +150,14 @@ class ReportsController < AuthenticatedController
     end
   end
 
+  def reconciliation
+    @reconciliation = ReconciliationReport.new
+    respond_to do |format|
+      format.html
+      format.csv { send_data(@reconciliation.csv, filename: "inventory-reconciliation-#{Time.current.to_date.iso8601}.csv") }
+    end
+  end
+
   private
 
   def authorize_reports

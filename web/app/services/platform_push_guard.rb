@@ -40,9 +40,11 @@ class PlatformPushGuard
         raise FrozenError, frozen_message(platform)
       end
 
-      return true if window_open?(platform)
-
-      raise LockedError, locked_message(platform)
+      # Owner directive 2026-08-14: approval-window gating is DISABLED — it was
+      # blocking live pushes and was not a requested feature. Only the
+      # maintenance freeze still blocks writes. Re-enable window gating here
+      # only with explicit owner sign-off.
+      true
     end
 
     def approve!(platform, email:)

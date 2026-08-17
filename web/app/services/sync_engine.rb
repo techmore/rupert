@@ -21,7 +21,6 @@ class SyncEngine
 
       begin
         summary = {}
-        square_frozen = PlatformPushGuard.frozen?("square")
         shopify = CatalogSyncer.sync!(since: backfill_since(history_days))
         summary[:shopify] = { products: shopify[:products], variants: shopify[:variants] }
         LedgerImporter.from_shopify_orders!(shopify.dig(:orders, "nodes"))
@@ -41,11 +40,12 @@ class SyncEngine
         Reconciler.record_run!(rows, mode: mode)
         summary[:reconcile] = Reconciler.summary(rows)
 
-        if SquareClient.configured? && !square_frozen
-          # Size derives can auto-apply targets to Square (writes), so they stay
-          # paused while Square is frozen — only the read-only mirror above runs.
-          summary[:sizes] = SizeDeriver.process_all!
-        end
+        # The maintenance step keeps both markets in lock-step between manual
+        # physical counts. Rupert is the source of truth: the pool per SKU is
+        # Square's count minus online sales since the anchor, and the pool is
+        # pushed to BOTH platforms. Square was unfrozen on 2026-08-14 by owner
+        # directive so the loop can write to both platforms.
+        summary[:maintain] = InventoryMaintainer.run!(actor: "sync") if SquareClient.configured?
 
         run.update!(status: "success", finishedAt: Time.current, details: summary.to_json)
         DataCache.bump!

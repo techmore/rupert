@@ -169,6 +169,7 @@
       <table class="w-full text-sm">
         <thead class="border-b border-fog bg-haze/60">
           <tr>
+            <th scope="col" class="th">Photo</th>
             <th scope="col" class="th">SKU</th>
             <th scope="col" class="th">Product / Variant</th>
             <th scope="col" class="th text-right">Shopify</th>
@@ -185,6 +186,13 @@
           <% end %>
           <% @rows.each do |row| %>
             <tr class="hover:bg-cream <%= row.derived ? "opacity-60" : "" %>">
+              <td class="td">
+                <% if row.image_url.present? %>
+                  <img src="<%= row.image_url %>" alt="<%= row.product %>" class="h-10 w-10 rounded-lg border border-fog object-cover" loading="lazy">
+                <% else %>
+                  <span class="block h-10 w-10 rounded-lg border border-dashed border-fog bg-haze/40"></span>
+                <% end %>
+              </td>
               <td class="td font-mono text-xs text-mocha">
                 <%= row.sku %>
                 <% if row.derived %><span class="ml-1 align-middle"><span class="pill-olive">size</span></span><% end %>

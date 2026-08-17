@@ -6,7 +6,7 @@ Use the [Shopify AI Toolkit](https://shopify.dev/docs/apps/build/ai-toolkit) for
 
 ## Hard rules (do not violate)
 
-- **No pushes to Shopify/Square without an approved push window.** Every outbound write (reconcile apply, negative-inventory fixes, size approvals) goes through `PlatformPushGuard` and is blocked unless ≥2 distinct people have explicitly approved a push window (default; see `PUSH_GUARD_MIN_APPROVALS`). Windows auto-expire. Never bypass the guard.
-- **Square is frozen during its platform update (Aug 2026).** Square defaults to frozen: no Square WRITES until it is explicitly unfrozen, but Square SYNCs are read-only mirrors and keep running so the local DB tracks Square's current counts. Check `bin/rails ops:push_guard:status`. Do not unfreeze without an explicit human instruction.
+- **Push-guard approval windows are DISABLED (owner directive, 2026-08-14).** `PlatformPushGuard.authorize!` no longer requires a multi-approval window — only the maintenance freeze still blocks a platform. Re-enable window gating only with explicit owner sign-off.
+- **Square was unfrozen on 2026-08-14 (owner directive) so the maintenance loop can write to both platforms.** The 15-minute sync (`SyncEngine.run!`) now runs `InventoryMaintainer` after each mirror: linked SKUs get Square's count pushed to Shopify (delta-only), and size-family members get derived targets pushed to both platforms. Square may be re-frozen any time via `ops:push_guard:freeze[square,reason]`; check `ops:push_guard:status`.
 - **No SKU changes right now.** Do not create, rename, reassign, or push any SKU changes to Shopify or Square. This includes applying the SKU remediation plan (`ops:sku_remediation_plan` is plan-only). You may plan and inspect, but never write SKUs.
 - When in doubt about a data-mutating action on Shopify/Square, ask before applying.

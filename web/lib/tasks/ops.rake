@@ -95,6 +95,166 @@ namespace :ops do
     end
   end
 
+  desc "Push Square's current totals to Shopify for linked SKUs (Square = source of truth). One-way, idempotent, journaled."
+  task push_square_totals: :environment do
+    load_tenant!
+
+    query = <<~GRAPHQL
+      mutation AdjustInventory($input: InventoryAdjustQuantitiesInput!, $idempotencyKey: String!) {
+        inventoryAdjustQuantities(input: $input) @idempotent(key: $idempotencyKey) {
+          inventoryAdjustmentGroup { createdAt changes { name delta } }
+          userErrors { field message }
+        }
+      }
+    GRAPHQL
+
+    shopify_location = Location.where(source: "shopify").order(:syncedAt).first
+    raise "No Shopify location found — cannot write inventory levels" if shopify_location.nil?
+
+    links = SkuLink.linked.includes(:shopify_variant).to_a
+    square_totals = InventoryLevel.where(source: "square").group(:squareVariationId).sum(:quantity)
+
+    pushed = 0
+    failed = 0
+    skipped = 0
+    results = []
+
+    links.each do |link|
+      variant = link.shopify_variant
+      next unless variant&.tracked
+      next if variant.inventoryItemId.blank?
+
+      sku = link.sku.to_s
+      square_qty = square_totals.fetch(link.squareVariationId, 0).to_i
+      target = [square_qty, 0].max
+      shopify_qty = variant.inventoryQuantity.to_i
+      delta = target - shopify_qty
+
+      if delta == 0
+        skipped += 1
+        results << { sku: sku, ok: true, target: target, actions: ["no-op"] }
+        next
+      end
+
+      begin
+        slug = sku.gsub(/[^a-z0-9]/i, "").slice(0, 40)
+        slug = "item" if slug.blank?
+        response = ShopifyClient.graphql(query, {
+          input: {
+            reason: "correction",
+            name: "available",
+            referenceDocumentUri: "herbal-healers://inventory/square-as-truth",
+            changes: [{
+              delta: delta,
+              changeFromQuantity: shopify_qty,
+              inventoryItemId: variant.inventoryItemId,
+              locationId: shopify_location.externalId,
+            }],
+          },
+          idempotencyKey: "hh-s2s-#{slug}-#{variant.id}-#{delta}",
+        })
+        user_errors = response.dig("inventoryAdjustQuantities", "userErrors") || []
+        raise ShopifyClient::Error, user_errors.map { |i| i["message"] }.join("; ") if user_errors.any?
+
+        InventoryMovement.create!(
+          sku: sku,
+          shopifyVariantId: variant.id,
+          squareVariationId: link.squareVariationId,
+          source: "reconcile",
+          direction: delta.negative? ? "out" : "in",
+          delta: delta,
+          quantityBefore: shopify_qty,
+          quantityAfter: target,
+          reason: "Square-as-truth push",
+          reference: "push_square_totals",
+          actor: "system",
+          createdAt: Time.current,
+        )
+        pushed += 1
+        results << { sku: sku, ok: true, target: target, actions: ["Shopify #{delta.positive? ? "+" : ""}#{delta}"] }
+      rescue StandardError => e
+        failed += 1
+        results << { sku: sku, ok: false, target: target, actions: ["Shopify ✕ #{e.message}"] }
+      end
+    end
+
+    puts JSON.pretty_generate(
+      linked: links.length,
+      pushed: pushed,
+      failed: failed,
+      skipped: skipped,
+      unmatched_square_variations: SquareVariation.where.not(id: links.map(&:squareVariationId).compact).count,
+      unmatched_shopify_variants: ShopifyVariant.where.not(id: links.map(&:shopifyVariantId).compact).count,
+      results: results,
+    )
+  end
+
+  desc "Run the inventory maintenance loop now: Square counts to Shopify (linked SKUs) + size-family derives to both platforms"
+  task maintain: :environment do
+    load_tenant!
+    puts JSON.pretty_generate(InventoryMaintainer.run!(actor: "rake"))
+  end
+
+  desc "Seed size families from products labeled the same (group by product title, members derived from Square variation names). Idempotent, approval mode."
+  task seed_families: :environment do
+    load_tenant!
+
+    square_totals = InventoryLevel.where(source: "square").group(:squareVariationId).sum(:quantity)
+
+    # Candidate memberships: tracked Shopify variants with a SKU, grouped by
+    # product title. Grams come from the Square variation name (physical truth),
+    # falling back to a numeric prefix in the SKU.
+    candidates = ShopifyVariant.where(tracked: true).where.not(sku: [nil, ""]).includes(:product)
+      .to_a.group_by { |v| v.product&.title }.filter_map do |title, variants|
+      members = variants.filter_map do |v|
+        link = SkuLink.find_by(shopifyVariantId: v.id) || SkuLink.find_by(sku: v.sku)
+        variation = link ? SquareVariation.find_by(id: link.squareVariationId) : SquareVariation.find_by(sku: v.sku)
+        grams = (variation&.name.to_s.match(/\d+(\.\d+)?/))&.[](0)&.to_f
+        grams ||= v.sku.to_s.match(/\d+(\.\d+)?/)&.[](0)&.to_f
+        next if grams.nil? || grams <= 0
+
+        { sku: v.sku.to_s, grams: grams, square_variation_id: variation&.id, variant_id: v.id }
+      end
+      next if title.blank? || members.length < 2
+
+      [title, members]
+    end
+
+    # Guard: a Square variation shared across two product labels (e.g. the rosin
+    # strains share DSLR1/DSLR5 on Square) would make families fight over one
+    # variation — skip every family that touches a shared variation.
+    variation_use = Hash.new(0)
+    candidates.each { |_, members| members.each { |m| variation_use[m[:square_variation_id]] += 1 if m[:square_variation_id] } }
+    created = 0
+    skipped_shared = 0
+
+    candidates.each do |title, members|
+      if members.any? { |m| m[:square_variation_id] && variation_use[m[:square_variation_id]] > 1 }
+        skipped_shared += 1
+        puts "SKIP #{title} — members share a Square variation used by another product"
+        next
+      end
+
+      family = SizeFamily.find_or_create_by!(name: title, tenant_id: Current.tenant_id)
+      is_new = family.previous_changes["id"].present? || family.created_at_previously_changed?
+      family.update!(mode: "approval")
+      members.each do |m|
+        member = family.members.find_or_initialize_by(sku: m[:sku])
+        member.tenant_id = Current.tenant_id
+        member.grams = m[:grams]
+        member.square_variation_id = m[:square_variation_id]
+        member.save!
+      end
+
+      base = members.sum { |m| square_totals.fetch(m[:square_variation_id], 0).to_i * m[:grams] }
+      family.update!(base_grams: base, sales_watermark: Time.current) if family.base_grams.nil?
+      created += 1
+      puts "SEED #{title} base_grams=#{family.base_grams} members=#{members.map { |m| "#{m[:sku]}=#{m[:grams]}g" }.join(", ")}"
+    end
+
+    puts "families seeded: #{created}, skipped (shared variations): #{skipped_shared}"
+  end
+
   namespace :push_guard do
     desc "Show push-guard status for Shopify and Square (freeze + approval windows)"
     task status: :environment do

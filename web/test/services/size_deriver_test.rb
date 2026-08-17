@@ -31,12 +31,12 @@ class SizeDeriverTest < ActiveSupport::TestCase
     @family.update!(base_grams: 100, sales_watermark: Time.current - 1.hour)
     @m35.update!(square_variation_id: "v35")
     @m7.update!(square_variation_id: "v7")
-    SquareClient.stubs(:configured?).returns(true)
-    SquareClient.stubs(:locations).returns([{ "id" => "L1" }])
-    SquareClient.stubs(:orders).returns([
-      { "line_items" => [{ "catalog_object_id" => "v35", "quantity" => 2 }] },
-      { "line_items" => [{ "catalog_object_id" => "v7", "quantity" => 1 }] },
-    ])
+
+    order = Core::Order.new(source: "shopify", source_order_id: "o-1", channel: "online", gross_cents: 1000, occurred_at: 30.minutes.ago, tenant_id: Current.tenant_id)
+    order.mark_paid!
+    order.save!
+    order.order_lines.create!(tenant_id: Current.tenant_id, sku: "thash35", name: "3.5g", quantity: 2, line_cents: 500)
+    order.order_lines.create!(tenant_id: Current.tenant_id, sku: "thash7", name: "7g", quantity: 1, line_cents: 500)
 
     result = SizeDeriver.build(@family)
     assert_in_delta 100 - (2 * 3.5) - 7, result[:root_grams], 0.01
@@ -46,11 +46,11 @@ class SizeDeriverTest < ActiveSupport::TestCase
   test "root grams floor at zero" do
     @family.update!(base_grams: 5, sales_watermark: Time.current - 1.hour)
     @m35.update!(square_variation_id: "v35")
-    SquareClient.stubs(:configured?).returns(true)
-    SquareClient.stubs(:locations).returns([{ "id" => "L1" }])
-    SquareClient.stubs(:orders).returns([
-      { "line_items" => [{ "catalog_object_id" => "v35", "quantity" => 4 }] },
-    ])
+
+    order = Core::Order.new(source: "shopify", source_order_id: "o-2", channel: "online", gross_cents: 1000, occurred_at: 30.minutes.ago, tenant_id: Current.tenant_id)
+    order.mark_paid!
+    order.save!
+    order.order_lines.create!(tenant_id: Current.tenant_id, sku: "thash35", name: "3.5g", quantity: 4, line_cents: 1000)
 
     result = SizeDeriver.build(@family)
     assert_equal 0.0, result[:root_grams]
