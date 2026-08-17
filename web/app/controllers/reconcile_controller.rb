@@ -34,31 +34,13 @@ class ReconcileController < AuthenticatedController
   # Each size family rendered as its root plus the sizes that derive from it,
   # so the screen shows which SKUs are derivatives of which root.
   def size_family_groups
-    SizeFamily.includes(:members).order(:name).map do |family|
-      root = family.base_grams&.to_f
-      pending = family.size_changes.pending.index_by { |change| change.sku.downcase }
-      members = family.members.order(:grams).map do |member|
-        {
-          member: member,
-          current: member.square_variation_id ? InventoryLevel.total_for_variation(member.square_variation_id) : nil,
-          target: root ? (root / member.grams.to_f).floor : nil,
-          pending: pending[member.sku.downcase],
-        }
-      end
-      root_item = nil
-      if family.root_sku.present?
-        variation = SquareVariation.find_by(sku: family.root_sku)
-        root_item = {
-          sku: family.root_sku,
-          current: variation ? InventoryLevel.total_for_variation(variation.id) : nil,
-        }
-      end
+    SizeFamilySnapshot.all.map do |snap|
       {
-        family: family,
-        root: root,
-        root_item: root_item,
-        members: members,
-        pending_count: family.size_changes.pending.count,
+        family: snap.family,
+        root: snap.root_grams,
+        root_item: snap.root_item,
+        members: snap.members,
+        pending_count: snap.pending_count,
       }
     end
   end

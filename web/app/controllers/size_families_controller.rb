@@ -9,27 +9,13 @@ class SizeFamiliesController < AuthenticatedController
   before_action :set_family, only: [:edit, :update, :destroy, :derive, :set_root, :approve_all, :add_member, :remove_member, :approve]
 
   def index
-    @families = SizeFamily.order(:name).map do |family|
-      root = family.base_grams&.to_f
-      pending_by_sku = family.size_changes.pending.index_by { |change| change.sku.downcase }
-      members = family.members.order(:grams).map do |member|
-        current = member.square_variation_id ? InventoryLevel.total_for_variation(member.square_variation_id) : nil
-        target = root ? (root / member.grams.to_f).floor : nil
-        pending = pending_by_sku[member.sku.downcase]
-        {
-          member: member,
-          current: current,
-          target: target,
-          pending: pending,
-          in_sync: pending.nil? && !target.nil? && target == current,
-        }
-      end
+    @families = SizeFamilySnapshot.all.map do |snap|
       {
-        family: family,
-        root: root,
-        members: members,
-        pending_count: family.size_changes.pending.count,
-        last_derived: family.size_changes.maximum(:updated_at),
+        family: snap.family,
+        root: snap.root_grams,
+        members: snap.members,
+        pending_count: snap.pending_count,
+        last_derived: snap.last_derived,
       }
     end
     @pending_changes = SizeChange.pending.order(:sku).to_a
