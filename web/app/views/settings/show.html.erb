@@ -311,6 +311,10 @@
     document.getElementById("restore-file").addEventListener("change", function (e) {
       var file = e.target.files[0];
       if (!file) return;
+      if (!window.confirm("Restore this backup? This replaces ALL current data in the database. This cannot be undone.")) {
+        e.target.value = "";
+        return;
+      }
       var r = document.getElementById("restore-result");
       r.textContent = "Restoring…";
       var form = new FormData();

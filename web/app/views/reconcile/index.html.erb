@@ -7,7 +7,7 @@
     </div>
     <div class="flex flex-col items-end gap-2">
       <%= form_tag apply_reconcile_index_path, method: :post, data: { confirm: "Apply the reconciliation plan? This writes inventory adjustments to Shopify and Square." } do %>
-        <%= submit_tag "Apply adjustments", class: "btn-primary", disabled: @summary[:actionable].zero?, data: { disable_with: "Applying…" } %>
+        <%= submit_tag "Apply adjustments", class: "btn-primary", disabled: @summary[:actionable].zero?, data: { turbo_submits_with: "Applying…" } %>
       <% end %>
       <% if @summary[:actionable].positive? %>
         <p class="max-w-xs text-right text-xs text-taupe">

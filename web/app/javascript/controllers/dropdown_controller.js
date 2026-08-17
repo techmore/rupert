@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["menu"]
+  static targets = ["menu", "trigger"]
 
   connect() {
     this.onKeydown = (e) => {
@@ -25,12 +25,17 @@ export default class extends Controller {
 
   open() {
     this.menuTarget.classList.remove("hidden")
-    this.element.setAttribute("aria-expanded", "true")
+    this.setExpanded(true)
   }
 
   close() {
     this.menuTarget.classList.add("hidden")
-    this.element.setAttribute("aria-expanded", "false")
+    this.setExpanded(false)
+  }
+
+  setExpanded(value) {
+    if (this.hasTriggerTarget) this.triggerTarget.setAttribute("aria-expanded", value.toLocaleString())
+    else this.element.setAttribute("aria-expanded", value.toLocaleString())
   }
 
   get isOpen() {

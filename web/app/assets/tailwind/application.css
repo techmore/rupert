@@ -6,7 +6,7 @@
   --color-paper: #ffffff;
   --color-ink: #1a393d;
   --color-mocha: #52504e;
-  --color-taupe: #8a857c;
+  --color-taupe: #6b655c; /* darkened for WCAG AA contrast on paper/oat */
   --color-fog: #eae8e6;
   --color-haze: #f0ece7;
   --color-olive: #1a393d;

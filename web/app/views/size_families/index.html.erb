@@ -68,7 +68,7 @@
           </div>
           <div class="flex flex-wrap gap-2">
             <% if can_apply %>
-              <%= button_to "Derive now", derive_size_family_path(family), method: :post, class: "btn-ghost btn-sm", data: { disable_with: "Deriving…" } %>
+              <%= button_to "Derive now", derive_size_family_path(family), method: :post, class: "btn-ghost btn-sm", data: { turbo_submits_with: "Deriving…" } %>
               <% if row[:pending_count].positive? %>
                 <%= button_to "Approve all (#{row[:pending_count]})", approve_all_size_family_path(family), method: :post, class: "btn-primary btn-sm", data: { confirm: "Write all pending sizes for #{family.name} to Square?" } %>
               <% end %>

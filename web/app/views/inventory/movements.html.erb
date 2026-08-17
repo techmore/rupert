@@ -20,7 +20,7 @@
   <%= form_tag movements_inventory_index_path, method: :get, class: "flex flex-wrap items-end gap-2" do %>
     <div class="w-56">
       <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="q">SKU</label>
-      <input type="search" id="q" name="q" value="<%= params[:q] %>" placeholder="Search SKUs…" class="input" autocomplete="off">
+      <input type="search" id="q" name="q" value="<%= params[:q] %>" placeholder="Search SKUs…" aria-label="Search movement SKUs" class="input" autocomplete="off">
     </div>
     <div>
       <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="source">Source</label>

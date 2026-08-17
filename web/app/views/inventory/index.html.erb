@@ -22,7 +22,7 @@
   <% end %>
 
   <%= form_tag inventory_index_path, method: :get, class: "max-w-sm" do %>
-    <input type="search" name="q" value="<%= @q %>" placeholder="Search products or SKUs…" class="search w-full" autocomplete="off">
+    <input type="search" name="q" value="<%= @q %>" placeholder="Search products or SKUs…" aria-label="Search products or SKUs" class="search w-full" autocomplete="off">
   <% end %>
 
   <% if @negative[:total].positive? %>
