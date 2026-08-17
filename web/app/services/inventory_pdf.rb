@@ -48,10 +48,13 @@ class InventoryPdf
   # Inventory page table instead of showing a misleading zero.
   UNLINKED = "—"
 
-  # Letter width 612 - 2×40 margin = 532pt of usable width.
+  # Letter width 612 - 2×40 margin = 532pt of usable content width. These are
+  # coordinates RELATIVE to the margin box (Prawn's draw_text/fill_rectangle
+  # are relative, unlike screen coordinates) — (0,0) is the top-left of the
+  # content area.
   HEADERS = ["Product", "Variant", "SKU", "Price", "Shopify", "Square", "Drift", "7d sold"].freeze
   COL_WIDTHS = [128, 104, 56, 46, 42, 42, 44, 70].freeze
-  LEFT_X = [40, 168, 272, 328, 374, 416, 458, 502].freeze
+  LEFT_X = [0, 128, 232, 288, 334, 376, 418, 462].freeze
   RIGHT_ALIGNED = [3, 4, 5, 6, 7].freeze
   TABLE_WIDTH = 532
   ROW_HEIGHT = 12
@@ -83,11 +86,14 @@ class InventoryPdf
   def build_document
     summary = summarize(rows)
     timestamps = snapshot_timestamps
+    sales_week = sales_week_data
 
     Prawn::Document.new(page_size: "LETTER", margin: 40) do |pdf|
       write_title(pdf)
       write_stats(pdf, timestamps, summary)
       write_table(pdf, rows)
+      pdf.start_new_page
+      write_sales_week(pdf, sales_week)
       write_footer(pdf)
     end
   end
@@ -225,14 +231,14 @@ class InventoryPdf
       # Separator between rows — at the row's bottom edge, never through the
       # glyphs (text baseline is y - ROW_HEIGHT/2 + 1, so the line at the bottom
       # edge stays clear of the text).
-      pdf.stroke_horizontal_line 40, 40 + TABLE_WIDTH, at: y - ROW_HEIGHT + 1
+      pdf.stroke_horizontal_line 0, TABLE_WIDTH, at: y - ROW_HEIGHT + 1
       y -= ROW_HEIGHT
     end
   end
 
   def draw_table_header(pdf, y)
     pdf.fill_color HAZE
-    pdf.fill_rectangle [40, y], TABLE_WIDTH, HEADER_HEIGHT
+    pdf.fill_rectangle [0, y], TABLE_WIDTH, HEADER_HEIGHT
     pdf.fill_color MOCHA
     pdf.font "Helvetica", style: :bold
     HEADERS.each_with_index do |header, i|
@@ -254,7 +260,7 @@ class InventoryPdf
     else
       return
     end
-    pdf.fill_rectangle [40, y], TABLE_WIDTH, ROW_HEIGHT
+    pdf.fill_rectangle [0, y], TABLE_WIDTH, ROW_HEIGHT
     pdf.fill_color INK
   end
 
@@ -312,6 +318,73 @@ class InventoryPdf
     clipped = text.dup
     clipped = clipped[0...-1] while clipped.length > 1 && pdf.width_of(clipped + ellipsis) > max_width
     clipped + ellipsis
+  end
+
+  # --- Last 7 days sales ------------------------------------------------------
+  #
+  # Newest day first; each day shows the total units sold plus every paid or
+  # fulfilled transaction that day so the report doubles as a reconciliation
+  # aid against Shopify and Square.
+
+  def sales_week_data
+    orders = Core::Order.includes(:order_lines)
+      .where(occurred_at: SALES_DAYS.days.ago.beginning_of_day..Time.current)
+      .where(status: ["paid", "fulfilled"])
+      .order(occurred_at: :desc)
+    orders.group_by { |order| order.occurred_at.to_date }
+      .sort { |(date_a, _), (date_b, _)| date_b <=> date_a }
+  end
+
+  def write_sales_week(pdf, sales_week)
+    pdf.text "Sales · Last 7 Days", size: 12, style: :bold, color: INK
+    pdf.move_down 6
+
+    if sales_week.empty?
+      pdf.text "No paid or fulfilled sales in the last #{SALES_DAYS} days.", size: 8, color: TAUPE
+      return
+    end
+
+    sales_week.each do |date, orders|
+      units = orders.sum { |order| order.order_lines.sum(:quantity) }
+      revenue = orders.sum(&:gross_cents) / 100.0
+
+      pdf.table(
+        [[date.strftime("%A, %B %-e, %Y"), "#{units} units · #{format_currency(revenue)}"]],
+        width: TABLE_WIDTH, column_widths: [400, 132],
+        cell_style: { padding: [3, 5], borders: [:bottom], border_color: FOG, size: 8, text_color: INK }
+      ) do |table|
+        table.column(0).style(font_style: :bold)
+        table.column(1).style(align: :right, font_style: :bold)
+        table.row(0).background_color = HAZE
+        table.row(0).borders = [:bottom]
+      end
+
+      rows = orders.map do |order|
+        [
+          order.occurred_at.in_time_zone.strftime("%-l:%M %p"),
+          order.display_number,
+          order.source.to_s.capitalize,
+          item_summary(order),
+          order.order_lines.sum(:quantity).to_s,
+          format_currency(order.gross_cents.to_i / 100.0),
+        ]
+      end
+      pdf.move_down 3
+      pdf.table(rows, header: true, width: TABLE_WIDTH, column_widths: [44, 118, 60, 174, 40, 96],
+        cell_style: { padding: [2, 4], borders: [:bottom], border_color: FOG, size: 7, text_color: MOCHA }
+      ) do |table|
+        table.row(0).style(font_style: :bold, text_color: MOCHA, background_color: HAZE)
+        table.column(0).style(text_color: INK)
+        table.column(1).style(text_color: INK)
+        table.column(4).style(align: :right)
+        table.column(5).style(align: :right, text_color: INK, font_style: :bold)
+      end
+      pdf.move_down 8
+    end
+  end
+
+  def item_summary(order)
+    order.order_lines.map { |line| "#{line.quantity}× #{line.sku.presence || line.name}" }.join(", ")
   end
 
   def write_footer(pdf)

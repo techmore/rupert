@@ -96,4 +96,27 @@ class InventoryPdfServiceTest < ActiveSupport::TestCase
     assert_equal "PDF-ZERO", rows.last.sku, "zero-stock-on-both items land at the bottom"
     assert rows.first(rows.length - 1).none? { |r| r.sku == "PDF-ZERO" }, "stocked items all sort above the zero-stock block"
   end
+
+  test "sales week groups by day, newest first, with per-day transactions" do
+    loc = Location.create!(source: "square", externalId: "loc-sw", name: "Main shop")
+    3.times do |i|
+      order = Core::Order.new(
+        source: "square",
+        source_order_id: "sq-sw-#{i}",
+        channel: "pos",
+        gross_cents: 1000 * (i + 1),
+        tax_cents: 0,
+        occurred_at: i.days.ago,
+        location_id: loc.externalId,
+      )
+      order.mark_paid!
+      order.save!
+      order.order_lines.create!(tenant_id: @tenant.id, sku: "PDF-1", name: "Variant 1", quantity: i + 1, line_cents: 1000 * (i + 1))
+    end
+
+    week = InventoryPdf.new.send(:sales_week_data)
+    assert_equal 3, week.length
+    assert_operator week[0][0], :>, week[1][0], "days are newest first"
+    assert_equal 1, week[0][1].sum { |o| o.order_lines.sum(:quantity) }, "today's unit total"
+  end
 end
