@@ -15,7 +15,7 @@
   <% end %>
 
   <%= form_tag people_timesheets_path, method: :get, class: "flex flex-wrap gap-2" do %>
-    <select name="status" class="select w-auto" onchange="this.form.submit()">
+    <select name="status" data-controller="auto-submit" data-action="change->auto-submit#submit" class="select w-auto">
       <option value="all" <%= @status == "all" ? "selected" : "" %>>All statuses</option>
       <% People::Timesheet.aasm.states.map(&:name).each do |status| %>
         <option value="<%= status %>" <%= @status == status.to_s ? "selected" : "" %>><%= status.to_s.titleize %></option>

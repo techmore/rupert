@@ -41,7 +41,7 @@ class ModuleRegistry
     Entry.new(key: "timesheets", name: "Timesheets", path: -> { people_timesheets_path }, permission: "timesheets.read", position: 88),
     Entry.new(key: "leave", name: "Leave & PTO", path: -> { people_leave_requests_path }, permission: "leave.read", position: 89),
     Entry.new(key: "payroll", name: "Payroll", path: -> { people_pay_runs_path }, permission: "payroll.read", position: 90),
-    Entry.new(key: "accounts", name: "Accounts", path: -> { users_path }, permission: "users.read", position: 84),
+    Entry.new(key: "accounts", name: "Users", path: -> { users_path }, permission: "users.read", position: 84),
     Entry.new(key: "permissions", name: "Permissions", path: -> { permissions_path }, permission: "users.read", position: 92),
     Entry.new(key: "vendors", name: "Vendors", path: -> { purchasing_vendors_path }, permission: "purchasing.read", position: 45),
     Entry.new(key: "purchase_orders", name: "Purchase orders", path: -> { purchasing_purchase_orders_path }, permission: "purchasing.read", position: 46),

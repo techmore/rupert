@@ -35,7 +35,7 @@
 
   <%= form_tag people_employees_path, method: :get, class: "flex flex-wrap gap-2" do %>
     <input type="search" name="q" value="<%= params[:q] %>" placeholder="Search name, employee #, email…" aria-label="Search employees" class="search w-full sm:max-w-xs" autocomplete="off">
-    <select name="status" class="select w-auto" onchange="this.form.submit()">
+    <select name="status" data-controller="auto-submit" data-action="change->auto-submit#submit" class="select w-auto">
       <option value="all" <%= @status == "all" ? "selected" : "" %>>All statuses</option>
       <% People::Employee.aasm.states.map(&:name).each do |status| %>
         <option value="<%= status %>" <%= @status == status.to_s ? "selected" : "" %>><%= status.to_s.titleize %></option>
