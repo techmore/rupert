@@ -85,8 +85,8 @@ class InventoryPdf
     timestamps = snapshot_timestamps
 
     Prawn::Document.new(page_size: "LETTER", margin: 40) do |pdf|
-      write_header(pdf, timestamps)
-      write_summary(pdf, summary)
+      write_title(pdf)
+      write_stats(pdf, timestamps, summary)
       write_table(pdf, rows)
       write_footer(pdf)
     end
@@ -161,56 +161,38 @@ class InventoryPdf
     }
   end
 
-  def write_header(pdf, timestamps)
-    pdf.text "Current Inventory Snapshot", size: 19, style: :bold, color: INK
+  # Compact header: small title, then one wide stat strip that pairs the four
+  # timestamps with the six totals so the catalog table keeps most of the page.
+  def write_title(pdf)
+    pdf.text "Current Inventory Snapshot", size: 14, style: :bold, color: INK
     pdf.move_down 2
-    pdf.text tenant_line, size: 10, color: MOCHA
-    pdf.move_down 12
-
-    pdf.text "Timestamps", size: 11, style: :bold, color: INK
-    pdf.move_down 4
-    stamp_rows = [
-      ["Generated at", fmt(timestamps[:generated])],
-      ["Overall last sync", fmt(timestamps[:overall])],
-      ["Shopify last sync", fmt(timestamps[:shopify])],
-      ["Square last sync", fmt(timestamps[:square])],
-    ]
-    pdf.table(stamp_rows, width: 340, column_widths: [150, 190]) do |table|
-      table.cells.padding = [2.5, 6]
-      table.cells.borders = [:bottom]
-      table.cells.border_color = FOG
-      table.cells.font_size = 8.5
-      table.cells.text_color = MOCHA
-      table.column(0).font_style = :bold
-      table.column(0).text_color = INK
-    end
-    pdf.move_down 14
-
-    pdf.text "Summary", size: 11, style: :bold, color: INK
-    pdf.move_down 4
+    pdf.text tenant_line, size: 8, color: MOCHA
+    pdf.move_down 8
   end
 
-  def write_summary(pdf, summary)
-    labels = ["Products", "Variants", "Shopify units", "Square units", "Sold 7d", "Retail value"]
-    values = [
-      summary[:products].to_s,
-      summary[:variants].to_s,
-      summary[:shopify_units].to_s,
-      summary[:square_units].to_s,
-      summary[:sold_7d].to_s,
-      format_currency(summary[:valuation]),
+  def write_stats(pdf, timestamps, summary)
+    data = [
+      ["Generated at", fmt(timestamps[:generated]), "Products", summary[:products].to_s],
+      ["Overall sync", fmt(timestamps[:overall]), "Variants", summary[:variants].to_s],
+      ["Shopify sync", fmt(timestamps[:shopify]), "Shopify units", summary[:shopify_units].to_s],
+      ["Square sync", fmt(timestamps[:square]), "Square units", summary[:square_units].to_s],
+      ["", "", "Sold last 7d", summary[:sold_7d].to_s],
+      ["", "", "Retail value", format_currency(summary[:valuation])],
     ]
-    pdf.table([labels, values], width: TABLE_WIDTH, column_widths: [TABLE_WIDTH / 6.0] * 6) do |table|
-      table.cells.padding = [5, 6]
-      table.cells.borders = [:bottom]
-      table.cells.border_color = FOG
-      table.cells.font_size = 8.5
-      table.row(0).font_style = :bold
-      table.row(0).background_color = HAZE
-      table.row(0).text_color = MOCHA
-      table.row(1).text_color = INK
+    pdf.table(data, width: TABLE_WIDTH, column_widths: [116, 184, 102, 130]) do |table|
+      table.cells.style(
+        padding: [2, 5],
+        borders: [:bottom],
+        border_color: FOG,
+        size: 7,
+        text_color: MOCHA,
+      )
+      table.column(0).style(font_style: :bold, text_color: INK)
+      table.column(1).style(text_color: INK)
+      table.column(2).style(font_style: :bold, text_color: INK)
+      table.column(3).style(font_style: :bold, text_color: INK, align: :right)
     end
-    pdf.move_down 14
+    pdf.move_down 8
   end
 
   # --- Catalog table ---------------------------------------------------------
@@ -240,7 +222,10 @@ class InventoryPdf
       draw_row_background(pdf, row, y, index)
       draw_row(pdf, row, y)
       pdf.stroke_color FOG
-      pdf.stroke_horizontal_line 40, 40 + TABLE_WIDTH, at: y - 2
+      # Separator between rows — at the row's bottom edge, never through the
+      # glyphs (text baseline is y - ROW_HEIGHT/2 + 1, so the line at the bottom
+      # edge stays clear of the text).
+      pdf.stroke_horizontal_line 40, 40 + TABLE_WIDTH, at: y - ROW_HEIGHT + 1
       y -= ROW_HEIGHT
     end
   end
