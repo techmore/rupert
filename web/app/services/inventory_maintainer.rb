@@ -55,6 +55,12 @@ class InventoryMaintainer
       # can't be reconciled against a single Square variation — skip, report only.
       shared_skus = SkuLink.linked.group(:sku).distinct.count("shopifyVariantId")
         .select { |_, count| count > 1 }.keys.map(&:downcase).to_set
+      # A Square variation with stock in MORE than one Square location (home +
+      # a mobile/secondary rig) can't be represented by a single PHYSICAL_COUNT
+      # at home: writing the all-location pool to home would double-count the
+      # other location's stock. Skip such SKUs for the automated pool push and
+      # report them for manual handling (same philosophy as shared_skus above).
+      multiloc_skus = multiloc_total_skus
       square_totals = InventoryLevel.square_totals
       online_sold = Core::OrderLine.joins(:order)
         .where(orders: { source: "shopify", occurred_at: watermark..Time.current })
@@ -64,7 +70,7 @@ class InventoryMaintainer
 
       summary = {
         watermark: watermark, linked: 0, shopify_pushed: 0, square_pushed: 0,
-        noop: 0, skipped_unlinked: 0, failed: 0, families: nil, results: [],
+        noop: 0, skipped_unlinked: 0, skipped_multiloc: 0, failed: 0, families: nil, results: [],
       }
 
       SkuLink.linked.includes(:shopify_variant).each do |link|
@@ -73,6 +79,11 @@ class InventoryMaintainer
         variant = link.shopify_variant
         next if family_skus.include?(sku.downcase)
         next if shared_skus.include?(sku.downcase)
+        if multiloc_skus.include?(sku.downcase)
+          summary[:skipped_multiloc] += 1
+          summary[:results] << { sku: sku, actions: ["skipped: Square stock spans multiple locations — manual reconcile"], pool: nil, square_qty: square_totals.fetch(link.squareVariationId, 0), online_sold: online_sold.fetch(sku, 0) }
+          next
+        end
 
         if variant.nil? || !variant.tracked || variant.inventoryItemId.blank? || shopify_location.nil?
           summary[:skipped_unlinked] += 1
@@ -165,6 +176,7 @@ class InventoryMaintainer
 
       links = SkuLink.linked.includes(:shopify_variant).to_a
       square_totals = InventoryLevel.square_totals
+      multiloc_skus = multiloc_total_skus
 
       results = {
         linked: links.length, pushed: 0, failed: 0, skipped: 0, noop: 0, per_sku: [],
@@ -174,6 +186,11 @@ class InventoryMaintainer
         next unless variant&.tracked && variant.inventoryItemId.present?
 
         sku = link.sku.to_s
+        if multiloc_skus.include?(sku.downcase)
+          results[:skipped] += 1
+          results[:per_sku] << { sku: sku, ok: false, target: nil, actions: ["skipped: Square stock spans multiple locations — manual reconcile"] }
+          next
+        end
         target = [square_totals.fetch(link.squareVariationId, 0).to_i, 0].max
         delta = target - variant.inventoryQuantity.to_i
         if delta.zero?
@@ -234,6 +251,17 @@ class InventoryMaintainer
       head = "Inventory adjustments — #{Time.current.in_time_zone("America/New_York").strftime("%H:%M %Z")}"
       head += " · #{summary[:failed]} failed" if summary[:failed].to_i.positive?
       "#{head}\n#{lines.join("\n")}"
+    end
+
+    # The linked Shopify SKUs whose Square variation has stock in more than one
+    # Square location concurrently (home + a secondary/mobile location). These
+    # can't be represented by a single home PHYSICAL_COUNT, so they're excluded
+    # from the automated pool push and the Square-as-truth push.
+    def multiloc_total_skus
+      ids = InventoryLevel.where(source: "square", quantity: 1..)
+        .group(:squareVariationId).having("count(DISTINCT \"locationId\") > 1")
+        .pluck(:squareVariationId)
+      SkuLink.where(squareVariationId: ids).pluck(:sku).map(&:downcase).to_set
     end
 
     # The online-sales watermark. First run initializes it to the earliest

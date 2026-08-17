@@ -68,4 +68,23 @@ class InventoryMaintainerPushSquareTotalsTest < ActiveSupport::TestCase
     assert_includes captured[:key], "10->-5", "key must carry the starting quantity and delta"
     assert_match(/hh-pool-.*-\d+-\d+->-5\z/, captured[:key], "key must carry a per-run token")
   end
+
+  test "skips a linked SKU whose Square stock spans multiple locations (no half-push)" do
+    # Regression: a Square variation with concurrent stock in >1 location can't be
+    # represented by a single home PHYSICAL_COUNT (or a single Shopify target).
+    # It must be skipped from the Square-as-truth push, not half-applied.
+    second_loc = Location.create!(source: "square", externalId: "sq-loc-2", name: "Vendor Rig", syncedAt: Time.current)
+    InventoryLevel.create!(source: "square", locationId: second_loc.id, squareVariationId: @sq_variation.id, quantity: 7)
+    # home 5 + rig 7 = 12 across two locations
+    @variant.update!(inventoryQuantity: 2)
+    ShopifyClient.stubs(:graphql).never
+
+    result = InventoryMaintainer.push_square_totals!(actor: "test")
+
+    assert_equal 1, result[:linked]
+    assert_equal 0, result[:pushed]
+    assert_equal 1, result[:skipped], "multi-location SKU must be skipped, not pushed"
+    assert_includes result[:per_sku].first[:actions].join, "multiple locations"
+    assert_nil result[:per_sku].first[:target]
+  end
 end
