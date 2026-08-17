@@ -119,4 +119,31 @@ class InventoryPdfServiceTest < ActiveSupport::TestCase
     assert_operator week[0][0], :>, week[1][0], "days are newest first"
     assert_equal 1, week[0][1].sum { |o| o.order_lines.sum(:quantity) }, "today's unit total"
   end
+
+  test "shared SKUs flag the sold count as covering multiple variants and transactions show the product name" do
+    # A second variant carrying the same SKU as PDF-1.
+    ShopifyVariant.create!(title: "Variant 1 (dup)", sku: "PDF-1", productId: @product.id, price: 9.0, inventoryQuantity: 1)
+
+    order = Core::Order.new(
+      source: "shopify",
+      source_order_id: "sh-shared-1",
+      channel: "online",
+      gross_cents: 2000,
+      tax_cents: 0,
+      occurred_at: 1.day.ago,
+    )
+    order.mark_paid!
+    order.save!
+    order.order_lines.create!(tenant_id: @tenant.id, sku: "PDF-1", name: "CBD Tincture - 1000mg", quantity: 2, line_cents: 2000)
+
+    pdf = InventoryPdf.new
+    shared_rows = pdf.rows.select { |r| r.sku == "PDF-1" }
+    assert_equal 2, shared_rows.length, "both variants share the SKU"
+    shared_rows.each do |row|
+      assert row.sold_shared, "shared SKU should be flagged"
+      assert_equal 2, row.sold_7d, "SKU-level sold total is shown on every variant carrying it"
+      assert_equal "2†", pdf.send(:sold_cell, row), "sold cell marks the shared-SKU total"
+    end
+    assert_includes pdf.send(:item_summary, order), "CBD Tincture - 1000mg (PDF-1)"
+  end
 end

@@ -40,7 +40,7 @@ class InventoryPdf
 
   Row = Struct.new(
     :product, :variant, :sku, :price, :shopify_qty, :square_qty, :drift,
-    :sold_7d,
+    :sold_7d, :sold_shared,
     keyword_init: true
   )
 
@@ -114,14 +114,6 @@ class InventoryPdf
     run.finishedAt || run.startedAt
   end
 
-  # Units sold per SKU over the configured window, from the canonical sales
-  # store (paid/fulfilled orders only).
-  def sales_since(days)
-    Core::OrderLine.joins(:order)
-      .where(orders: { status: ["paid", "fulfilled"], occurred_at: days.days.ago.beginning_of_day..Time.current })
-      .group(:sku).sum(:quantity)
-  end
-
   # Mirrors the Inventory page's row shape (product-first ordering) but covers
   # the whole catalog rather than the page's 40-row preview. Zero-stock-on-both
   # rows are moved to the bottom so buyers see sellable stock first.
@@ -129,10 +121,23 @@ class InventoryPdf
     shopify_map = InventoryLevel.where(source: "shopify").group(:shopifyVariantId).sum(:quantity)
     square_map = InventoryLevel.where(source: "square").group(:squareVariationId).sum(:quantity)
     link_map = SkuLink.linked.index_by(&:shopifyVariantId)
-    sold = sales_since(SALES_DAYS)
+    lines = sales_lines
+    # SKUs attached to more than one Shopify variant (e.g. 689745640858 = both
+    # Blue Raspberry and Blood Orange 12-count) can't be attributed to a single
+    # variant from order lines — flag those rows so the sold count isn't read
+    # as one variant's number. Products with several variants have the same
+    # problem when a sale only matches by product name (Square order lines
+    # often carry junk SKUs like "Regular").
+    shared_skus = ShopifyVariant.where.not(sku: nil).group(:sku).count.select { |_, n| n > 1 }.keys
+    multi_variant_products = ShopifyVariant.group(:productId).count.select { |_, n| n > 1 }.keys
 
     rows = ShopifyProduct.order(:title).includes(:variants).flat_map do |product|
+      ptitle = product.title.to_s.downcase
+      product_has_variants = multi_variant_products.include?(product.id)
       product.variants.sort_by(&:title).map do |variant|
+        sku = variant.sku.to_s.downcase
+        sku_shared = sku.present? && shared_skus.include?(variant.sku)
+        sold, via_sku, via_name = count_sold(lines, sku, ptitle)
         link = link_map[variant.id]
         square_qty = link ? square_map.fetch(link.squareVariationId, 0) : nil
         shopify_qty = shopify_map.fetch(variant.id, 0)
@@ -144,12 +149,41 @@ class InventoryPdf
           shopify_qty: shopify_qty,
           square_qty: square_qty,
           drift: square_qty ? square_qty - shopify_qty : nil,
-          sold_7d: variant.sku.present? ? sold.fetch(variant.sku, 0) : nil
+          sold_7d: (variant.sku.present? || ptitle.present?) ? sold : nil,
+          sold_shared: (sku_shared && via_sku) || (product_has_variants && via_name)
         )
       end
     end
     zeroed, stocked = rows.partition { |row| zero_on_both?(row) }
     stocked + zeroed
+  end
+
+  # Paid/fulfilled order lines in the window, as [sku, name, quantity] tuples
+  # with the text already downcased so per-variant matching is cheap.
+  def sales_lines
+    @sales_lines ||= Core::OrderLine.joins(:order)
+      .where(orders: { status: ["paid", "fulfilled"], occurred_at: SALES_DAYS.days.ago.beginning_of_day..Time.current })
+      .pluck(:sku, :name, :quantity)
+      .map { |sku, name, qty| [sku.to_s.downcase, name.to_s.downcase, qty.to_i] }
+  end
+
+  # Units sold for one variant, matching each order line by SKU OR by product
+  # title (Square lines sometimes carry a bogus SKU like "Regular"). Returns
+  # [units, matched_by_sku, matched_by_name]. Lines are already downcased.
+  def count_sold(lines, sku, ptitle)
+    total = 0
+    via_sku = false
+    via_name = false
+    lines.each do |line_sku, line_name, qty|
+      if sku.present? && line_sku == sku
+        total += qty
+        via_sku = true
+      elsif ptitle.present? && line_name == ptitle
+        total += qty
+        via_name = true
+      end
+    end
+    [total, via_sku, via_name]
   end
 
   def zero_on_both?(row)
@@ -162,7 +196,7 @@ class InventoryPdf
       variants: rows.length,
       shopify_units: rows.sum { |row| row.shopify_qty.to_i },
       square_units: rows.sum { |row| row.square_qty.to_i },
-      sold_7d: rows.sum { |row| row.sold_7d.to_i },
+      sold_7d: sales_lines.sum { |_, _, qty| qty.to_i },
       valuation: rows.sum { |row| (row.price || 0).to_f * row.shopify_qty.to_i }
     }
   end
@@ -273,7 +307,7 @@ class InventoryPdf
       row.shopify_qty.to_s,
       row.square_qty.nil? ? UNLINKED : row.square_qty.to_s,
       row.drift.nil? ? "—" : (row.drift.zero? ? "—" : format("%+d", row.drift)),
-      row.sold_7d.nil? ? "—" : row.sold_7d.to_s,
+      sold_cell(row),
     ]
     baseline = y - ROW_HEIGHT / 2 + 1
     cells.each_with_index do |cell, i|
@@ -289,6 +323,14 @@ class InventoryPdf
       pdf.font("Helvetica", style: :normal) if bold
     end
     pdf.fill_color INK
+  end
+
+  # "2†" marks a shared SKU: the count covers every variant carrying that SKU,
+  # so it can't be pinned to this one variant (see the footer legend).
+  def sold_cell(row)
+    return "—" if row.sold_7d.nil?
+
+    row.sold_shared && row.sold_7d.positive? ? "#{row.sold_7d}†" : row.sold_7d.to_s
   end
 
   def cell_color(index, row)
@@ -420,8 +462,15 @@ class InventoryPdf
     end
   end
 
+  # Product name first (order lines carry the platform's item title, e.g.
+  # "30mg THC Gummies - Blood Orange - Sativa") so each transaction matches a
+  # product at a glance; the SKU rides along in parentheses when present.
   def item_summary(order)
-    order.order_lines.map { |line| "#{line.quantity}× #{line.sku.presence || line.name}" }.join(", ")
+    order.order_lines.map do |line|
+      label = line.name.presence || line.sku.presence || "item"
+      label += " (#{line.sku})" if line.sku.present? && line.sku != line.name
+      "#{line.quantity}× #{label}"
+    end.join(", ")
   end
 
   def write_footer(pdf)
@@ -429,7 +478,8 @@ class InventoryPdf
     pdf.text(
       "Generated by Rupert. Quantities are mirrored from Shopify and Square and refresh every 15 minutes; " \
       "tinted rows show a Shopify vs Square difference; zero-stock rows sit at the bottom; " \
-      "7d sold counts paid/fulfilled orders from the last #{SALES_DAYS} days; " \
+      "7d sold counts paid/fulfilled orders from the last #{SALES_DAYS} days by SKU or product name; " \
+      "† = shared SKU / product match — the sold figure can't be pinned to this exact variant, see the Sales section; " \
       "unlinked variants show #{UNLINKED} for Square.",
       size: 6.5, color: TAUPE,
     )
