@@ -77,10 +77,20 @@
                 <td class="td font-mono text-xs text-mocha"><%= variant.sku.presence || "—" %></td>
                 <td class="td text-right font-medium text-ink"><%= number_to_currency(variant.price) %></td>
                 <td class="td text-right text-mocha"><%= shopify_qty %></td>
-                <td class="td text-right text-mocha"><%= square_qty || "—" %></td>
+                <td class="td text-right text-mocha">
+                  <% if square_qty.nil? %>
+                    —
+                  <% elsif info[:shared] %>
+                    <%= square_qty %>†<span class="sr-only"> (shared Square total — spans multiple variants)</span>
+                  <% else %>
+                    <%= square_qty %>
+                  <% end %>
+                </td>
                 <td class="td text-right">
                   <% if drift.nil? %>
                     <span class="font-medium text-taupe">—</span>
+                  <% elsif info[:shared] %>
+                    <span class="font-medium text-taupe" title="Shared Square total — cannot be attributed to a single variant">†</span>
                   <% else %>
                     <span class="<%= drift == 0 ? "font-medium text-taupe" : "font-semibold text-clay" %>">
                       <%= drift == 0 ? "—" : drift.positive? ? "+#{drift}" : drift %>
@@ -96,6 +106,7 @@
     </div>
   </div>
   <% end %>
+  <p class="px-1 text-xs text-taupe">† Shared Square total — one Square variation is linked to more than one Shopify variant, so its quantity can't be attributed to a single row's drift.</p>
 
   <% if @pagy.pages > 1 %>
     <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-taupe">

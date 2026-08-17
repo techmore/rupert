@@ -43,7 +43,7 @@ class InventoryPdf
 
   Row = Struct.new(
     :product, :variant, :sku, :price, :shopify_qty, :square_qty, :drift,
-    :sold_7d, :sold_shared, :shared_product_sku, :shared_qty,
+    :sold_7d, :sold_shared, :shared_product_sku, :shared_qty, :square_variation_id,
     keyword_init: true
   )
 
@@ -164,7 +164,8 @@ class InventoryPdf
           sold_7d: (variant.sku.present? || ptitle.present?) ? sold : nil,
           sold_shared: (sku_shared && via_sku) || (product_has_variants && via_name),
           shared_product_sku: variant.sku.present? && duplicate_product_skus.include?(variant.sku),
-          shared_qty: link.present? && shared_square_variations.include?(link.squareVariationId)
+          shared_qty: link.present? && shared_square_variations.include?(link.squareVariationId),
+          square_variation_id: link&.squareVariationId
         )
       end
     end
@@ -254,11 +255,18 @@ class InventoryPdf
   end
 
   def summarize(rows)
+    # Square units must not double-count a shared pool once per linked variant.
+    # Sum each unique linked Square variation once (dedupe by square_variation_id).
+    square_units = rows.each_with_object(Hash.new(0)) do |row, acc|
+      next if row.square_qty.nil?
+      acc[row.square_variation_id || row.variant] = row.square_qty.to_i
+    end.values.sum
+
     {
       products: rows.map(&:product).uniq.size,
       variants: rows.length,
       shopify_units: rows.sum { |row| row.shopify_qty.to_i },
-      square_units: rows.sum { |row| row.square_qty.to_i },
+      square_units: square_units,
       sold_7d: sales_lines.sum { |_, _, qty| qty.to_i },
       valuation: rows.sum { |row| (row.price || 0).to_f * row.shopify_qty.to_i }
     }

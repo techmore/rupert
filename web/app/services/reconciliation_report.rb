@@ -9,12 +9,17 @@ require "csv"
 class ReconciliationReport
   Row = Struct.new(
     :sku, :product, :shopify_variant, :square_variation,
-    :shopify_qty, :square_qty, :delta, :status,
+    :shopify_qty, :square_qty, :delta, :status, :shared,
     keyword_init: true,
   )
 
   def initialize
     @square_totals = InventoryLevel.square_totals
+    # Square variations linked to more than one Shopify variant can't be pinned
+    # to a single row — flag them (†) instead of reading the shared total as one
+    # variant's number (same guard as the PDF report and Inventory page).
+    @shared_sq_variations = SkuLink.linked.group(:squareVariationId).count
+      .select { |_, n| n > 1 }.keys.to_set
   end
 
   def matched_rows
@@ -31,6 +36,7 @@ class ReconciliationReport
         shopify_qty = variant.inventoryQuantity.to_i
         square_qty = square_qty(link.squareVariationId)
         delta = square_qty - shopify_qty
+        shared = @shared_sq_variations.include?(link.squareVariationId)
         Row.new(
           sku: link.sku,
           product: variant.product&.title || variation.item&.name,
@@ -39,7 +45,8 @@ class ReconciliationReport
           shopify_qty: shopify_qty,
           square_qty: square_qty,
           delta: delta,
-          status: delta.zero? ? "matched" : "drift",
+          status: (delta.zero? && !shared) ? "matched" : (shared ? "shared" : "drift"),
+          shared: shared,
         )
       end
   end

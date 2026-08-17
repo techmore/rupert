@@ -89,6 +89,11 @@ class InventoryController < AuthenticatedController
   # index view doesn't run per-row queries.
   def variant_quantity_map(products)
     size_map = size_family_map
+    # Square variations linked to more than one Shopify variant can't be
+    # attributed to a single row — flag them so the shared total isn't read as
+    # one variant's number (same †-style guard as the PDF report).
+    shared_square_variations = SkuLink.linked.group(:squareVariationId).count
+      .select { |_, n| n > 1 }.keys.to_set
     map = {}
     products.each do |product|
       product.variants.each do |variant|
@@ -97,6 +102,7 @@ class InventoryController < AuthenticatedController
           shopify_qty: variant.levels.sum(&:quantity),
           link: link,
           square_qty: link ? link.square_variation&.levels&.sum(&:quantity) : nil,
+          shared: link && shared_square_variations.include?(link.squareVariationId),
           size: size_map[variant.sku.to_s.downcase],
         }
       end

@@ -35,6 +35,7 @@
   <div class="card overflow-hidden">
     <div class="border-b border-fog px-5 py-3">
       <h2 class="font-display text-lg text-ink">Side-by-side counts · <%= @reconciliation.rows.length %> items</h2>
+      <p class="text-xs text-taupe">† Shared Square total — one Square variation is linked to more than one Shopify variant, so its quantity can't be attributed to a single row's delta.</p>
     </div>
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
@@ -58,9 +59,19 @@
               <td class="td text-mocha"><%= row.shopify_variant || "—" %></td>
               <td class="td text-mocha"><%= row.square_variation || "—" %></td>
               <td class="td text-right text-mocha"><%= row.shopify_qty || "—" %></td>
-              <td class="td text-right text-mocha"><%= row.square_qty || "—" %></td>
+              <td class="td text-right text-mocha">
+                <% if row.square_qty.nil? %>
+                  —
+                <% elsif row.shared %>
+                  <%= row.square_qty %>†<span class="sr-only"> (shared Square total — spans multiple variants)</span>
+                <% else %>
+                  <%= row.square_qty %>
+                <% end %>
+              </td>
               <td class="td text-right">
-                <% if row.delta.nil? %>
+                <% if row.status == "shared" %>
+                  <span class="font-medium text-taupe" title="Shared Square total — cannot be attributed to a single variant">†</span>
+                <% elsif row.delta.nil? %>
                   <span class="font-medium text-taupe">—</span>
                 <% else %>
                   <span class="<%= row.delta.zero? ? "font-medium text-taupe" : "font-semibold text-clay" %>">
@@ -74,6 +85,8 @@
                   <span class="pill-fern">in sync</span>
                 <% when "drift" %>
                   <span class="pill-rose">drift</span>
+                <% when "shared" %>
+                  <span class="pill-taupe" title="Square total shared across multiple variants">shared</span>
                 <% when "square_only" %>
                   <span class="pill-taupe">no Shopify link</span>
                 <% when "shopify_only" %>
