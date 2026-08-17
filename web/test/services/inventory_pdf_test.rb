@@ -4,7 +4,8 @@ require "test_helper"
 
 class InventoryPdfServiceTest < ActiveSupport::TestCase
   setup do
-    Current.tenant = tenants(:default_tenant)
+    @tenant = tenants(:default_tenant)
+    Current.tenant = @tenant
     @product = ShopifyProduct.create!(id: "pdf-p1", title: "CBD Tincture")
     120.times do |i|
       ShopifyVariant.create!(
@@ -33,11 +34,66 @@ class InventoryPdfServiceTest < ActiveSupport::TestCase
     assert_equal 120, pdf.rows.length, "export covers the whole catalog, not the 40-row page preview"
 
     doc = pdf.document
-    # 120 rows at ~8pt cannot fit on one LETTER page, so the export spills onto
-    # later pages to prove genuine full-catalog coverage.
+    # 120 rows at a compact 7pt grid cannot fit on one LETTER page, so the
+    # export spills onto later pages to prove genuine full-catalog coverage.
     assert_operator doc.page_count, :>=, 2, "120 rows should overflow onto a second page"
 
     bytes = InventoryPdf.build
     assert bytes.start_with?("%PDF-1"), "output looks like a PDF"
+  end
+
+  test "includes units sold in the last 7 days per SKU" do
+    loc = Location.create!(source: "square", externalId: "loc-sold", name: "Main shop")
+    order = Core::Order.new(
+      source: "square",
+      source_order_id: "sq-sold-1",
+      channel: "pos",
+      gross_cents: 3000,
+      tax_cents: 0,
+      occurred_at: 2.days.ago,
+      location_id: loc.externalId,
+    )
+    order.mark_paid!
+    order.save!
+    order.order_lines.create!(tenant_id: @tenant.id, sku: "PDF-1", name: "Variant 1", quantity: 3, line_cents: 3000)
+
+    # A refunded order's sales must NOT count.
+    refunded = Core::Order.new(
+      source: "square",
+      source_order_id: "sq-refund-1",
+      channel: "pos",
+      gross_cents: 5000,
+      tax_cents: 0,
+      occurred_at: 1.day.ago,
+      location_id: loc.externalId,
+    )
+    refunded.mark_paid!
+    refunded.save!
+    refunded.order_lines.create!(tenant_id: @tenant.id, sku: "PDF-1", name: "Variant 1", quantity: 2, line_cents: 5000)
+    refunded.refund!
+
+    row = InventoryPdf.new.rows.find { |r| r.sku == "PDF-1" }
+    assert_equal 3, row.sold_7d
+  end
+
+  test "zero-stock-on-both rows are sorted to the bottom" do
+    ShopifyVariant.create!(
+      title: "Zero Stock Item",
+      sku: "PDF-ZERO",
+      productId: @product.id,
+      price: 5.0,
+      inventoryQuantity: 0,
+    )
+    sq = SquareItem.create!(id: "sq-zero", name: "Zero Stock")
+    sv = SquareVariation.create!(id: "sq-var-zero", itemId: "sq-zero", name: "Zero Stock", sku: "PDF-ZERO")
+    variant = ShopifyVariant.find_by(sku: "PDF-ZERO")
+    SkuLink.create!(sku: "PDF-ZERO", shopifyVariantId: variant.id, squareVariationId: sv.id)
+    loc = Location.create!(source: "square", externalId: "loc-zero", name: "Main shop")
+    InventoryLevel.create!(source: "square", locationId: loc.externalId, squareVariationId: sv.id, quantity: 0)
+    InventoryLevel.create!(source: "shopify", locationId: "shop-loc", shopifyVariantId: variant.id, quantity: 0)
+
+    rows = InventoryPdf.new.rows
+    assert_equal "PDF-ZERO", rows.last.sku, "zero-stock-on-both items land at the bottom"
+    assert rows.first(rows.length - 1).none? { |r| r.sku == "PDF-ZERO" }, "stocked items all sort above the zero-stock block"
   end
 end

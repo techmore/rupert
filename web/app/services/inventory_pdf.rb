@@ -12,7 +12,14 @@ Prawn::Fonts::AFM.hide_m17n_warning = true
 # 15 minutes), so the PDF carries four timestamps: when the file was
 # generated, the last successful overall sync, and the latest Shopify and
 # Square mirror writes. Below the timestamps it shows summary totals, then a
-# full per-variant table (Shopify qty, Square qty, and drift).
+# full per-variant table with Shopify qty, Square qty, drift, and units sold
+# in the last 7 days.
+#
+# Layout choices:
+#   - "… difference" rows (non-zero drift) are tinted and the drift value is
+#     colored and bold
+#   - items with zero stock on BOTH platforms are sorted to the bottom
+#   - a compact 7pt row grid fits far more content per page
 #
 # Performance note: the catalog table is drawn with Prawn's low-level
 # draw_text (no prawn-table Cell objects). Prawing 1900+ Cell objects to
@@ -27,9 +34,13 @@ class InventoryPdf
   HAZE = "EDEFF0"
   CREAM = "FAFAF9"
   CLAY = "B45309"
+  OLIVE = "5B7C41"
+  DRIFT_TINT = "FFF4E0"  # pale amber — non-zero drift rows
+  ZERO_TINT = "F5F0EC"   # pale stone — zero-stock-on-both rows
 
   Row = Struct.new(
     :product, :variant, :sku, :price, :shopify_qty, :square_qty, :drift,
+    :sold_7d,
     keyword_init: true
   )
 
@@ -38,15 +49,16 @@ class InventoryPdf
   UNLINKED = "—"
 
   # Letter width 612 - 2×40 margin = 532pt of usable width.
-  HEADERS = ["Product", "Variant", "SKU", "Price", "Shopify", "Square", "Drift"].freeze
-  COL_WIDTHS = [150, 122, 62, 54, 48, 48, 48].freeze
-  LEFT_X = [40, 190, 312, 374, 428, 476, 524].freeze
-  RIGHT_ALIGNED = [3, 4, 5, 6].freeze
+  HEADERS = ["Product", "Variant", "SKU", "Price", "Shopify", "Square", "Drift", "7d sold"].freeze
+  COL_WIDTHS = [128, 104, 56, 46, 42, 42, 44, 70].freeze
+  LEFT_X = [40, 168, 272, 328, 374, 416, 458, 502].freeze
+  RIGHT_ALIGNED = [3, 4, 5, 6, 7].freeze
   TABLE_WIDTH = 532
-  ROW_HEIGHT = 16
-  HEADER_HEIGHT = 18
-  FONT_SIZE = 8
+  ROW_HEIGHT = 12
+  HEADER_HEIGHT = 14
+  FONT_SIZE = 7
   FOOTER_TOP = 52
+  SALES_DAYS = 7
 
   def self.build
     new.build
@@ -96,14 +108,24 @@ class InventoryPdf
     run.finishedAt || run.startedAt
   end
 
+  # Units sold per SKU over the configured window, from the canonical sales
+  # store (paid/fulfilled orders only).
+  def sales_since(days)
+    Core::OrderLine.joins(:order)
+      .where(orders: { status: ["paid", "fulfilled"], occurred_at: days.days.ago.beginning_of_day..Time.current })
+      .group(:sku).sum(:quantity)
+  end
+
   # Mirrors the Inventory page's row shape (product-first ordering) but covers
-  # the whole catalog rather than the page's 40-row preview.
+  # the whole catalog rather than the page's 40-row preview. Zero-stock-on-both
+  # rows are moved to the bottom so buyers see sellable stock first.
   def load_rows
     shopify_map = InventoryLevel.where(source: "shopify").group(:shopifyVariantId).sum(:quantity)
     square_map = InventoryLevel.where(source: "square").group(:squareVariationId).sum(:quantity)
     link_map = SkuLink.linked.index_by(&:shopifyVariantId)
+    sold = sales_since(SALES_DAYS)
 
-    ShopifyProduct.order(:title).includes(:variants).flat_map do |product|
+    rows = ShopifyProduct.order(:title).includes(:variants).flat_map do |product|
       product.variants.sort_by(&:title).map do |variant|
         link = link_map[variant.id]
         square_qty = link ? square_map.fetch(link.squareVariationId, 0) : nil
@@ -115,10 +137,17 @@ class InventoryPdf
           price: variant.price,
           shopify_qty: shopify_qty,
           square_qty: square_qty,
-          drift: square_qty ? square_qty - shopify_qty : nil
+          drift: square_qty ? square_qty - shopify_qty : nil,
+          sold_7d: variant.sku.present? ? sold.fetch(variant.sku, 0) : nil
         )
       end
     end
+    zeroed, stocked = rows.partition { |row| zero_on_both?(row) }
+    stocked + zeroed
+  end
+
+  def zero_on_both?(row)
+    row.shopify_qty.to_i <= 0 && row.square_qty.present? && row.square_qty <= 0
   end
 
   def summarize(rows)
@@ -127,6 +156,7 @@ class InventoryPdf
       variants: rows.length,
       shopify_units: rows.sum { |row| row.shopify_qty.to_i },
       square_units: rows.sum { |row| row.square_qty.to_i },
+      sold_7d: rows.sum { |row| row.sold_7d.to_i },
       valuation: rows.sum { |row| (row.price || 0).to_f * row.shopify_qty.to_i }
     }
   end
@@ -161,19 +191,20 @@ class InventoryPdf
   end
 
   def write_summary(pdf, summary)
-    labels = ["Products", "Variants", "Shopify units", "Square units", "Retail value"]
+    labels = ["Products", "Variants", "Shopify units", "Square units", "Sold 7d", "Retail value"]
     values = [
       summary[:products].to_s,
       summary[:variants].to_s,
       summary[:shopify_units].to_s,
       summary[:square_units].to_s,
+      summary[:sold_7d].to_s,
       format_currency(summary[:valuation]),
     ]
-    pdf.table([labels, values], width: TABLE_WIDTH, column_widths: [106.4] * 5) do |table|
+    pdf.table([labels, values], width: TABLE_WIDTH, column_widths: [TABLE_WIDTH / 6.0] * 6) do |table|
       table.cells.padding = [5, 6]
       table.cells.borders = [:bottom]
       table.cells.border_color = FOG
-      table.cells.font_size = 9
+      table.cells.font_size = 8.5
       table.row(0).font_style = :bold
       table.row(0).background_color = HAZE
       table.row(0).text_color = MOCHA
@@ -206,7 +237,7 @@ class InventoryPdf
         y -= HEADER_HEIGHT + 3
       end
 
-      draw_row_stripe(pdf, y) if index.even?
+      draw_row_background(pdf, row, y, index)
       draw_row(pdf, row, y)
       pdf.stroke_color FOG
       pdf.stroke_horizontal_line 40, 40 + TABLE_WIDTH, at: y - 2
@@ -226,8 +257,18 @@ class InventoryPdf
     pdf.fill_color INK
   end
 
-  def draw_row_stripe(pdf, y)
-    pdf.fill_color CREAM
+  # Highlights differences: drift rows get an amber tint, zero-stock rows a
+  # stone tint, and the rest keep the subtle cream zebra stripe.
+  def draw_row_background(pdf, row, y, index)
+    if !row.drift.nil? && !row.drift.zero?
+      pdf.fill_color DRIFT_TINT
+    elsif zero_on_both?(row)
+      pdf.fill_color ZERO_TINT
+    elsif index.even?
+      pdf.fill_color CREAM
+    else
+      return
+    end
     pdf.fill_rectangle [40, y], TABLE_WIDTH, ROW_HEIGHT
     pdf.fill_color INK
   end
@@ -241,16 +282,20 @@ class InventoryPdf
       row.shopify_qty.to_s,
       row.square_qty.nil? ? UNLINKED : row.square_qty.to_s,
       row.drift.nil? ? "—" : (row.drift.zero? ? "—" : format("%+d", row.drift)),
+      row.sold_7d.nil? ? "—" : row.sold_7d.to_s,
     ]
     baseline = y - ROW_HEIGHT / 2 + 1
     cells.each_with_index do |cell, i|
       pdf.fill_color cell_color(i, row)
+      bold = bold_cell?(i, row)
+      pdf.font("Helvetica", style: :bold) if bold
       if RIGHT_ALIGNED.include?(i)
         x = LEFT_X[i] + COL_WIDTHS[i] - 3 - pdf.width_of(cell)
       else
         x = LEFT_X[i] + 4
       end
       pdf.draw_text fit_text(pdf, cell, COL_WIDTHS[i] - 7), at: [x, baseline], size: FONT_SIZE
+      pdf.font("Helvetica", style: :normal) if bold
     end
     pdf.fill_color INK
   end
@@ -258,11 +303,18 @@ class InventoryPdf
   def cell_color(index, row)
     if index == 6 && !row.drift.nil? && !row.drift.zero?
       CLAY
+    elsif index == 7 && !row.sold_7d.nil? && row.sold_7d.positive?
+      OLIVE
     elsif index.zero?
       INK
     else
       MOCHA
     end
+  end
+
+  def bold_cell?(index, row)
+    (index == 6 && !row.drift.nil? && !row.drift.zero?) ||
+      (index == 7 && !row.sold_7d.nil? && row.sold_7d.positive?)
   end
 
   # Truncate to the column width with an ellipsis so long product/variant names
@@ -280,16 +332,18 @@ class InventoryPdf
   def write_footer(pdf)
     pdf.move_down 10
     pdf.text(
-      "Generated by Rupert. Quantities are mirrored from Shopify and Square " \
-      "and refresh every 15 minutes; unlinked variants show #{UNLINKED} for Square.",
-      size: 7.5, color: TAUPE,
+      "Generated by Rupert. Quantities are mirrored from Shopify and Square and refresh every 15 minutes; " \
+      "tinted rows show a Shopify vs Square difference; zero-stock rows sit at the bottom; " \
+      "7d sold counts paid/fulfilled orders from the last #{SALES_DAYS} days; " \
+      "unlinked variants show #{UNLINKED} for Square.",
+      size: 6.5, color: TAUPE,
     )
     pdf.number_pages(
       "Page <page> of <total>",
       at: [pdf.bounds.left, 16],
       width: pdf.bounds.width,
       align: :right,
-      size: 7.5,
+      size: 6.5,
       color: TAUPE,
     )
   end
