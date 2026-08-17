@@ -13,10 +13,10 @@
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <% if @doc == "invoice" %>
-        <button type="button" onclick="window.print()" class="btn-primary">Print invoice</button>
+        <button type="button" data-controller="print" data-action="click->print#print" class="btn-primary">Print invoice</button>
         <%= link_to "Packing slip", order_path(@order, doc: "packing_slip"), class: "btn-ghost btn-sm" %>
       <% else %>
-        <button type="button" onclick="window.print()" class="btn-primary">Print packing slip</button>
+        <button type="button" data-controller="print" data-action="click->print#print" class="btn-primary">Print packing slip</button>
         <%= link_to "Invoice", order_path(@order), class: "btn-ghost btn-sm" %>
       <% end %>
       <%= link_to "Back to sales", sales_path, class: "btn-ghost btn-sm" %>

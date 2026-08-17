@@ -6,7 +6,7 @@
   </div>
   <div class="flex gap-2">
     <%= link_to @doc == "invoice" ? "Packing slips" : "Invoices", sales_print_path(date: @date, doc: @doc == "invoice" ? "packing_slip" : "invoice"), class: "btn-ghost btn-sm" %>
-    <button type="button" onclick="window.print()" class="btn-primary btn-sm">Print</button>
+    <button type="button" data-controller="print" data-action="click->print#print" class="btn-primary btn-sm">Print</button>
     <%= link_to "Back to sales", sales_path, class: "btn-ghost btn-sm" %>
   </div>
 </div>

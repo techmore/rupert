@@ -18,11 +18,11 @@
     <div class="card card-pad">
       <h2 class="font-display text-xl text-ink">Vendor link</h2>
       <p class="mt-1 text-sm text-mocha">Copy this secret URL and send it to the vendor. The token in the URL is the only access control.</p>
-      <div class="mt-4 flex items-center gap-2">
-        <code id="share-url" class="min-w-0 flex-1 truncate rounded-xl border border-fog bg-haze px-3 py-2 font-mono text-xs text-mocha"><%= warehouse_sale_url(@share.token) %></code>
-        <button type="button" id="copy-url" class="btn-ghost btn-sm shrink-0">Copy</button>
+      <div class="mt-4 flex items-center gap-2" data-controller="copy">
+        <code data-copy-target="source" class="min-w-0 flex-1 truncate rounded-xl border border-fog bg-haze px-3 py-2 font-mono text-xs text-mocha"><%= warehouse_sale_url(@share.token) %></code>
+        <button type="button" data-action="click->copy#copy" class="btn-ghost btn-sm shrink-0">Copy</button>
+        <span data-copy-target="status" class="text-xs text-fern" hidden>Copied!</span>
       </div>
-      <p id="copy-status" class="mt-2 text-xs text-fern" hidden>Copied!</p>
     </div>
 
     <div class="card card-pad">
@@ -87,30 +87,3 @@
     <% end %>
   </div>
 </div>
-
-<script>
-  (function () {
-    var url = document.getElementById("share-url");
-    var btn = document.getElementById("copy-url");
-    var status = document.getElementById("copy-status");
-    if (!url || !btn) return;
-    btn.addEventListener("click", function () {
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(url.textContent.trim()).then(function () {
-          status.hidden = false;
-          setTimeout(function () { status.hidden = true; }, 2000);
-        });
-      } else {
-        var range = document.createRange();
-        range.selectNodeContents(url);
-        var sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
-        document.execCommand("copy");
-        sel.removeAllRanges();
-        status.hidden = false;
-        setTimeout(function () { status.hidden = true; }, 2000);
-      }
-    });
-  })();
-</script>
