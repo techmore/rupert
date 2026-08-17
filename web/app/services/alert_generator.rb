@@ -16,7 +16,10 @@ class AlertGenerator
         .group_by(&:shopifyVariantId)
       created = 0
       resolved = 0
-      ShopifyVariant.where.not(sku: [nil, ""]).find_each do |variant|
+      # Only sellable (ACTIVE) products generate alerts. Archived/DRAFT/UNLISTED
+      # products were dropped from the live catalog — they must not reopen alerts.
+      ShopifyVariant.joins(:product).where('"ShopifyProduct"."status" = ?', "ACTIVE")
+        .where.not(sku: [nil, ""]).find_each do |variant|
         variant_id = variant.id
         quantity = variant.inventoryQuantity.to_i
         if quantity > threshold

@@ -143,7 +143,7 @@ class InventoryPdf
     # SKU flag) — highlighted in rose so duplicate identifiers jump out.
     duplicate_product_skus = SkuRemediationPlanner.shared_skus
 
-    rows = ShopifyProduct.order(:title).includes(:variants).flat_map do |product|
+    rows = ShopifyProduct.active.order(:title).includes(:variants).flat_map do |product|
       ptitle = product.title.to_s.downcase
       product_has_variants = multi_variant_products.include?(product.id)
       product.variants.sort_by(&:title).map do |variant|

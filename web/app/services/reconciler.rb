@@ -43,7 +43,11 @@ class Reconciler
       end
 
       rows = []
-      ShopifyVariant.includes(:product).where.not(sku: [nil, ""]).where(tracked: true).find_each do |variant|
+      # Only sellable (ACTIVE) Shopify products participate in reconciliation.
+      # Archived/DRAFT/UNLISTED products were dropped from the live catalog and
+      # must not generate drift/actions.
+      ShopifyVariant.joins(:product).where('"ShopifyProduct"."status" = ?', "ACTIVE")
+        .where.not(sku: [nil, ""]).where(tracked: true).find_each do |variant|
         sku = variant.sku.to_s.strip
         next if sku.empty?
 
