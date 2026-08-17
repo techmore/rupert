@@ -267,10 +267,12 @@ class InventoryMaintainer
             locationId: location.externalId,
           }],
         },
-        # Idempotency key must capture the full input: same SKU+delta with a
-        # different changeFromQuantity is a DIFFERENT adjustment to Shopify and
-        # reusing the key makes it reject the request ("different parameters").
-        idempotencyKey: "hh-pool-#{slug}-#{variant.id}-#{current}-#{delta}",
+        # Idempotency key must be unique per logical adjustment. Shopify keeps
+        # keys for a long time, so a deterministic key that recurs every 15-min
+        # cycle (same variant, same delta, same starting qty) is re-submitted and
+        # rejected as "different parameters". A per-run token keeps each distinct
+        # adjustment to its own key while staying stable for retries within a run.
+        idempotencyKey: "hh-pool-#{slug}-#{variant.id}-#{Current.sync_run_id.presence || Time.current.to_i}-#{current}->#{delta}",
       })
       user_errors = response.dig("inventoryAdjustQuantities", "userErrors") || []
       raise ShopifyClient::Error, user_errors.map { |i| i["message"] }.join("; ") if user_errors.any?

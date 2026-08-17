@@ -190,9 +190,9 @@ class SizeDeriver
             locationId: location.externalId,
           }],
         },
-        # Idempotency key captures the full input so a same-delta/different-
-        # changeFromQuantity adjustment isn't rejected as a duplicate.
-        idempotencyKey: "hh-size-#{slug}-#{variant.id}-#{current}-#{delta}",
+        # Per-run token in the key so a recurring (variant, delta, starting qty)
+        # isn't re-submitted as a rejected duplicate on later cycles.
+        idempotencyKey: "hh-size-#{slug}-#{variant.id}-#{Current.sync_run_id.presence || Time.current.to_i}-#{current}->#{delta}",
       })
       user_errors = response.dig("inventoryAdjustQuantities", "userErrors") || []
       raise ShopifyClient::Error, user_errors.map { |i| i["message"] }.join("; ") if user_errors.any?

@@ -48,11 +48,12 @@ class InventoryMaintainerPushSquareTotalsTest < ActiveSupport::TestCase
     assert_equal "Square-as-truth push", movement.reason
   end
 
-  test "the AdjustInventory idempotency key includes changeFromQuantity" do
-    # Regression: the maintainer previously keyed on SKU+delta only, so two
-    # runs with the same delta but a different starting quantity collided on
-    # Shopify ("idempotency key has different parameters") and the reconcile
-    # push silently failed on every cycle.
+  test "the AdjustInventory idempotency key is unique per adjustment" do
+    # Regression: the maintainer previously keyed on SKU+delta only. Shopify
+    # keeps keys for a long time, so a recurring (variant, delta, starting qty)
+    # on the 15-min cycle was re-submitted and rejected as "different
+    # parameters", failing the reconcile push every cycle. The key must carry a
+    # per-run token AND the starting quantity.
     captured = {}
     ShopifyClient.stubs(:graphql).with do |_q, variables|
       captured[:changeFromQuantity] = variables.dig(:input, :changes, 0, :changeFromQuantity)
@@ -64,6 +65,7 @@ class InventoryMaintainerPushSquareTotalsTest < ActiveSupport::TestCase
     InventoryMaintainer.send(:push_shopify!, @variant, 10, -5, @loc)
 
     assert_equal 10, captured[:changeFromQuantity]
-    assert_includes captured[:key], "-10-", "key must carry the starting quantity"
+    assert_includes captured[:key], "10->-5", "key must carry the starting quantity and delta"
+    assert_match(/hh-pool-.*-\d+-\d+->-5\z/, captured[:key], "key must carry a per-run token")
   end
 end
