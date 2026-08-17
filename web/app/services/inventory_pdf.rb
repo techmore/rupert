@@ -96,6 +96,7 @@ class InventoryPdf
       write_title(pdf)
       write_stats(pdf, timestamps, summary)
       write_table(pdf, rows)
+      write_color_key(pdf)
       write_square_only(pdf, square_only)
       pdf.start_new_page
       write_sales_week(pdf, sales_week)
@@ -644,6 +645,34 @@ class InventoryPdf
       label += " (#{line.sku})" if line.sku.present? && line.sku != line.name
       "#{line.quantity}× #{label}"
     end.join(", ")
+  end
+
+  # A printed legend for the catalog-table highlighting: each tinted row's
+  # meaning plus the † and — markers. Uses a Prawn table so the color swatches
+  # (per-cell backgrounds) lay out reliably without manual coordinates.
+  def write_color_key(pdf)
+    pdf.move_down 10
+    pdf.fill_color INK
+    pdf.text "Color key", size: 8, style: :bold
+    swatches = [DRIFT_TINT, ZERO_TINT, DUP_SKU_TINT, CREAM, nil, nil]
+    labels = [
+      "Sellable row — non-zero Shopify vs Square difference (drift)",
+      "Out of stock on both platforms (sorted to the bottom)",
+      "Duplicate SKU — reused by another product (breaks Shopify–Square linking)",
+      "Alternating row stripe (zebra)",
+      "† = shared SKU / Square total spanning multiple variants — not pinned to this row",
+      "#{UNLINKED} = no Square link for this variant",
+    ]
+    data = swatches.each_index.map { |i| [swatches[i].nil? ? "" : " ", labels[i]] }
+    table = pdf.make_table(data, width: pdf.bounds.width, cell_style: {
+      size: 6.5, color: TAUPE, border_width: 0, padding: [2, 4], valign: :center,
+    }) do |t|
+      t.column(0).width = 22
+    end
+    swatches.each_with_index { |color, i| table.row(i).column(0).background_color = color if color }
+    table.draw
+    pdf.move_down 2
+    pdf.fill_color INK
   end
 
   def write_footer(pdf)
