@@ -168,6 +168,75 @@ namespace :ops do
     puts "families seeded: #{created}, skipped (shared variations): #{skipped_shared}"
   end
 
+  namespace :audit do
+    desc "Deep audit of Square SKUs vs the live API, mirror, and Shopify links (read-only)"
+    task square_skus: :environment do
+      load_tenant!
+      r = SquareSkuAudit.run!
+      s = r.summary
+
+      puts "=" * 70
+      puts "SQUARE SKU AUDIT — #{Current.tenant.name} @ #{Time.current}"
+      puts "Run via live Square API (2 locations). Read-only; no changes made."
+      puts "=" * 70
+      puts format("%-48s %6s", "Live Square variations", s[:live_variations])
+      puts format("%-48s %6s", "  with a SKU", s[:with_sku])
+      puts format("%-48s %6s", "  WITHOUT a SKU", s[:without_sku])
+      puts format("%-48s %6s", "Mirrored in DB", s[:mirrored])
+      puts format("%-48s %6s", "  live but NOT mirrored (missing)", s[:not_mirrored])
+      puts format("%-48s %6s", "  stale mirror rows (deleted on Square)", s[:stale_mirror])
+      puts format("%-48s %6s", "Duplicate SKUs (shared)", s[:duplicate_skus])
+      puts format("%-48s %6s", "Unlinked Square variations", s[:unlinked])
+      puts format("%-48s %6s", "  ..of which SELLABLE (qty>0)", s[:sellable_unlinked])
+      puts format("%-48s %6s", "  ..of which sellable AND no SKU", s[:sellable_no_sku])
+      puts format("%-48s %6s", "Shopify variants w/o Square SKU (excl ROUTEINS)", s[:real_unmatched])
+      puts format("%-48s %6s", "Variations with zero/absent inventory", s[:zero_qty])
+
+      unless r.stale_mirror.empty?
+        puts "\nStale mirror rows (no longer in live API):"
+        r.stale_mirror.each { |v| puts "  #{v.id}  #{v.name}  sku=#{v.sku.presence || '(none)'}  syncedAt=#{v.syncedAt}" }
+      end
+      unless r.sellable_unlinked.empty?
+        puts "\nSellable (qty>0) but UNLINKED (top 25 by qty):"
+        r.sellable_unlinked.sort_by { |v| -r.counts[v[:variationId]].to_i }.first(25).each do |v|
+          puts format("  %5d  %-30s  sku=%-14s", r.counts[v[:variationId]].to_i, v[:name][0, 30], v[:sku].presence || "(none)")
+        end
+      end
+      unless r.sellable_no_sku.empty?
+        puts "\nSellable AND no SKU (cannot auto-link):"
+        r.sellable_no_sku.sort_by { |v| -r.counts[v[:variationId]].to_i }.each do |v|
+          puts format("  %5d  %-30s", r.counts[v[:variationId]].to_i, v[:name][0, 30])
+        end
+      end
+      unless r.real_unmatched.empty?
+        puts "\nShopify variants with no Square SKU match (excl ROUTEINS):"
+        r.real_unmatched.each { |v| puts "  #{v.title}  sku=#{v.sku}  tracked=#{v.tracked}  product=#{v.product&.title}" }
+      end
+    end
+
+    desc "Delete stale SquareVariation mirror rows that no longer exist in the live API (DB-only; no Square/Shopify writes)"
+    task prune_stale_mirror: :environment do
+      load_tenant!
+      live_ids = SquareClient.catalog.map { |v| v[:variationId] }.to_set
+      stale = SquareVariation.where(tenant_id: Current.tenant_id).reject { |v| live_ids.include?(v.id) }
+      if stale.empty?
+        puts "No stale mirror rows — mirror matches live Square catalog."
+        next
+      end
+
+      ids = stale.map(&:id)
+      levels = InventoryLevel.where(squareVariationId: ids).destroy_all
+      movements = InventoryMovement.where(squareVariationId: ids).destroy_all
+      alerts = StockAlert.where(squareVariationId: ids).destroy_all
+      links = SkuLink.where(squareVariationId: ids).destroy_all
+      SquareVariation.where(id: ids).delete_all
+
+      puts "Removed #{stale.length} stale SquareVariation rows not in live API (syncedAt <= #{stale.map(&:syncedAt).max}):"
+      stale.each { |v| puts "  - #{v.id}  #{v.name}  sku=#{v.sku.presence || '(none)'}" }
+      puts "Dependents removed: #{levels.size} levels, #{movements.size} movements, #{alerts.size} alerts, #{links.size} links."
+    end
+  end
+
   namespace :push_guard do
     desc "Show push-guard status for Shopify and Square (freeze + approval windows)"
     task status: :environment do

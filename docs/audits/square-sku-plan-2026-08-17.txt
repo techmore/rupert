@@ -1,0 +1,377 @@
+SQUARE SKU REMEDIATION PLAN (DRAFT — NOT APPLIED)
+Generated: 2026-08-17 19:49:35 -0400
+Scope: sellable-unlinked Square variations; missing-SKU variations.
+NOTE: Per current rule, NO SKU/link changes have been or will be written.
+
+========================================================================
+SECTION 1 — SELLABLE & UNLINKED, AUTO-LINKABLE BY SKU (0)
+These have a SKU that already exists on a Shopify variant; linking is a reference
+table add (SkuLink) — NO Shopify/SKU edits needed.
+========================================================================
+
+========================================================================
+SECTION 2 — SELLABLE & UNLINKED, WITH NAME-MATCH CANDIDATE (169)
+No SKU overlap with Shopify, so these need NAME-based linking or SKU remediation.
+For each: the strongest Shopify variant candidate by name is shown (review before linking).
+Variations without a confident name match need a SKU aligned with Shopify's scheme (SKU changes are currently blocked).
+========================================================================
+    225  20 Count                         sku=689745640919   item=QBOQCV7UIHBEN7VSRQCKS4SE item_name=3 Count                     
+        -> candidate: 10mg THC + CBD Gummy Squares - Assorted  : 3 Count  (words=2)
+    191  Regular                          sku=689745640568   item=B64TFLEO2AZCD5USPVOY4P2O item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+    146  Regular                          sku=782244Q        item=HHRBZAF2RPZPWQRUUMQ62AUI item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+    134  10 Count                         sku=689745640926   item=QBOQCV7UIHBEN7VSRQCKS4SE item_name=3 Count                     
+        -> candidate: 10mg THC + CBD Gummy Squares - Assorted  : 3 Count  (words=2)
+     92  3 Count                          sku=(none)         item=QBOQCV7UIHBEN7VSRQCKS4SE item_name=3 Count                     
+        -> candidate: 10mg THC + CBD Gummy Squares - Assorted  : 3 Count  (words=2)
+     82  Regular                          sku=P155356        item=SGRUQRRIU2XKAURDKXYVPN54 item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+     66  1 ct                             sku=NERDZ          item=ZP3LOSC2GHRW2M2AOYN4QQCN item_name=1 ct                        
+        -> candidate: Papaya Crush Tier 2 Rosin (Sativa - 62.2 : 1 Gram  (words=1)
+     31  10mg                             sku=737519V        item=2PCPFQEOV6OQ7PXSUL2FJ45S item_name=5mg                         
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+     31  Regular                          sku=5311800        item=WTKOK5SWNEADVQLKR3GQFGJ7 item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+     26  Regular                          sku=W306895        item=SXSXWL7BWP4ROWP2RYALATPB item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+     25  Pineapple Jalapeno (5mg)         sku=L124059        item=2PCPFQEOV6OQ7PXSUL2FJ45S item_name=5mg                         
+        -> candidate: King Cone Pre-Roll - THCA : Pineapple Trainwreck (Sativa)  (words=1)
+     25  Blueberry Lemonade 100           sku=K851086        item=A2JJ6FJ3MEBU5E2SZK5FC3I2 item_name=Mango Lemonade 100          
+        -> candidate: King Cone Pre-Roll - THCA : Blueberry Muffin (Indica)  (words=1)
+     25  Regular                          sku=Y327780        item=WRHH2N35CTHHOB6F6RBVMYEO item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+     25  Regular                          sku=2246763        item=BNMTOT6IACDVUFWCFKCMXNUY item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+     23  Regular                          sku=3395889        item=TQZ6KKAY6NRJCUUY2HDDJPQR item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+     22  10mg THC - Single                sku=(none)         item=MCLE6P7Q2GBFVKVW7JDZGKB4 item_name=2.5mg THC - Single          
+        -> candidate: Shipping Protection by Route : 2.15  (words=1)
+     19  Raspberry Sweet Tea 100          sku=3669390        item=A2JJ6FJ3MEBU5E2SZK5FC3I2 item_name=Mango Lemonade 100          
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+     18  Regular                          sku=8446800        item=CIH346HWNXIWWL63HHGPON47 item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+     18  6oz Bottle                       sku=R751387        item=PDM43NZOBNI7MQKHZMSKUZZ3 item_name=6oz Bottle                  
+        -> candidate: Liquid Harmony - THC Beverage Enhancer : 6oz Bottle  (words=2)
+     17  Regular                          sku=Z161463        item=JSW7OZ2UKBADNRM23JRDW2IP item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+     16  Regular                          sku=H862482        item=4RRCF3UM5N32FKAXI5LW5OS5 item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+     16  Mango Lemonade 100               sku=3741071        item=A2JJ6FJ3MEBU5E2SZK5FC3I2 item_name=Mango Lemonade 100          
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+     15  Blackberry 50mg - Single         sku=1600134        item=26NZICYIXKD7JJOBKODHEHXZ item_name=Raspberry 50mg - Single     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+     14  Regular                          sku=V727538        item=FQMBQROMTUZY24XUKZNM7WEQ item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+     14  5mg                              sku=474279Z        item=2PCPFQEOV6OQ7PXSUL2FJ45S item_name=5mg                         
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+     13  5mg THC - Single                 sku=(none)         item=MCLE6P7Q2GBFVKVW7JDZGKB4 item_name=2.5mg THC - Single          
+        -> candidate: Shipping Protection by Route : 2.15  (words=1)
+     12  Sample                           sku=T275100        item=JAWZ74XMFH4SOLEUFRNUMMP2 item_name=Large                       
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+     12  Regular                          sku=PETNUGS        item=FSARKNHEERPWIAMDRNOCNRLK item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+     11  Regular                          sku=689745640490   item=KYMRQ3MZPFJISSGMGMDH4KP5 item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+     11  Orange - Singe                   sku=2038887        item=26NZICYIXKD7JJOBKODHEHXZ item_name=Raspberry 50mg - Single     
+        -> candidate: AdaptoSquare : Orange  (words=1)
+     11  Regular                          sku=113997T        item=WT6PHB2ZXZK2OAWB76ZMQNBG item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+     10  Raspberry 50mg - Single          sku=667625L        item=26NZICYIXKD7JJOBKODHEHXZ item_name=Raspberry 50mg - Single     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+     10  10 Grams                         sku=Z914873        item=K62CQDC5KCBENEH3MXM7XRIX item_name=2.5 Grams                   
+        -> candidate: Citrus Burst Live Resin (Sativa - 83.20% : 2.5 Grams  (words=3)
+      9  Pineapple Trainwreck (Sativa)    sku=Q188573        item=6VGX4IIVXSGAW66WK4VC5LW5 item_name=Fusion (Hybrid)             
+        -> candidate: King Cone Pre-Roll - THCA : Pineapple Trainwreck (Sativa)  (words=3)
+      9  Regular                          sku=5433029        item=AF6OMJSRSOWZDROASREW2EQ5 item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      9  Lemon 50mg - Single              sku=T075057        item=26NZICYIXKD7JJOBKODHEHXZ item_name=Raspberry 50mg - Single     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      9  Regular                          sku=512935X        item=NXPBFHOGECZBSLAEM276CLGR item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      9  Regular                          sku=C764564        item=4L2HZLMLOMWU6QW2NHIVKCAK item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      8  15mg                             sku=490755X        item=2PCPFQEOV6OQ7PXSUL2FJ45S item_name=5mg                         
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      8  100 Count                        sku=(none)         item=QBOQCV7UIHBEN7VSRQCKS4SE item_name=3 Count                     
+        -> candidate: 10mg THC + CBD Gummy Squares - Assorted  : 3 Count  (words=2)
+      8  Regular                          sku=J977529        item=YEU27SY5EW34LQ6RF4UPHFXW item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      7  Blueberry Pomegranate - Single   sku=J681616        item=26NZICYIXKD7JJOBKODHEHXZ item_name=Raspberry 50mg - Single     
+        -> candidate: King Cone Pre-Roll - THCA : Blueberry Muffin (Indica)  (words=1)
+      7  Regular                          sku=N768264        item=CEANDN3C6CVJXXFHCW33QBPL item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      7  3.5 Grams                        sku=K239116        item=COHHEC3QNAXZDR2YVGQZTAJ5 item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      7  2 Count                          sku=cocozen2       item=U3EOXQB3F5WHI5JHFALDOL3K item_name=2 Count                     
+        -> candidate: 30mg THC Gummies - Wild Cherry - Indica : 2 Count  (words=2)
+      6  3.5 Grams                        sku=691107Z        item=XDDSYAA276Z6UI4PXTXA4BWK item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      6  Pink Lemonade 25                 sku=D432634        item=A2JJ6FJ3MEBU5E2SZK5FC3I2 item_name=Mango Lemonade 100          
+        -> candidate: Citrus Burst Live Resin (Sativa - 83.20% : 25 Grams  (words=1)
+      6  StrawJack                        sku=441235Z        item=BIJVT2OPTLSBPS6Y2XLJFKTO item_name=Orange Runtz (Hybrid)       
+        -> candidate: AdaptoSquare : Orange  (words=1)
+      6  3.5 Grams                        sku=581889Q        item=BM4SDSDEIEHQ2IMOX5IWRSUU item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      6  Regular                          sku=223969Y        item=QVEPX5YW5W3I757PIQJ37UPK item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      6  3.5 Grams                        sku=409945C        item=WTZC7GJTYD556GHXFVLVTDTG item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      6  Cross Fade 10mg THC & CBD        sku=150457Z        item=NXJLD5JBGITO3CMLZFMOGTJV item_name=4 pack                      
+        -> candidate: Shipping Protection by Route : 4.75  (words=1)
+      6  Huckleberry (5mg)                sku=C123720        item=2PCPFQEOV6OQ7PXSUL2FJ45S item_name=5mg                         
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      5  14 Grams                         sku=7556078        item=FEWPF27MBYQR4VCMJTNFZZUP item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      5  Regular                          sku=369733S        item=DXEBWCREV72246GFJYUATC7F item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      5  Orange Cream Puff 25             sku=A556994        item=A2JJ6FJ3MEBU5E2SZK5FC3I2 item_name=Mango Lemonade 100          
+        -> candidate: AdaptoSquare : Orange  (words=1)
+      5  28 Grams                         sku=J264940        item=CZGYK5AQ7ZKQGWKT2UQEDCTZ item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      5  3.5 Grams                        sku=3225101        item=CZGYK5AQ7ZKQGWKT2UQEDCTZ item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      5  3.5 Grams                        sku=9827142        item=25QWXF3GE3UMKJTM57DOO5QG item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      5  3.5 Grams                        sku=E310898        item=D3YUWA4Q3OVR4QQIEZVPAGAX item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      5  3.5 Grams                        sku=7699231        item=HTQYR7LYFLBV6HCFBVH7ZLVC item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      5  3.5 Grams                        sku=1690360        item=4NQI6BORZZGKDG6YVLQTU4QX item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      5  3.5 Grams                        sku=F609479        item=AVGD6ETBLJQXBLMUZW4OFBRU item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      4  3.5 Grams                        sku=834712Q        item=QL574XSL3RB2OBDMSQUUV5JD item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      4  5 Grams                          sku=N668539        item=K62CQDC5KCBENEH3MXM7XRIX item_name=2.5 Grams                   
+        -> candidate: Citrus Burst Live Resin (Sativa - 83.20% : 2.5 Grams  (words=3)
+      4  25 Grams                         sku=6722595        item=K62CQDC5KCBENEH3MXM7XRIX item_name=2.5 Grams                   
+        -> candidate: Citrus Burst Live Resin (Sativa - 83.20% : 2.5 Grams  (words=3)
+      4  3.5 Grams                        sku=898044F        item=RFGDJETAYGGHGV7SIOCZFDSC item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      4  Regular                          sku=825073W        item=RK2EANXHPHAF5K7MXJOIQ2QX item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      4  Regular                          sku=6855210        item=B3O4S6G2K6OX3BSJPSXUV4CZ item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      4  Regular                          sku=X465192        item=FKMFRV3MNXVE3S6PWLZ2LG7L item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      4  Regular                          sku=6345221        item=YGYRBIE5ZL7UXWHODX6T7CRK item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      4  3.5 Grams                        sku=481420E        item=DWRDJN3OSP2ZW3MZBCOJXZRS item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      4  2.5 Grams                        sku=289972K        item=VK26QLDBDTGNJCR5E7YP7A3S item_name=2.5 Grams                   
+        -> candidate: Citrus Burst Live Resin (Sativa - 83.20% : 2.5 Grams  (words=3)
+      4  3.5 Grams                        sku=913877E        item=YC4WMP3CZYU3BNX2NP2H7RNN item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      4  14 Grams                         sku=K277419        item=7GZZ22LBX52EOQ24IFKTLNGM item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      4  Watermelon 25                    sku=448454Y        item=A2JJ6FJ3MEBU5E2SZK5FC3I2 item_name=Mango Lemonade 100          
+        -> candidate: Citrus Burst Live Resin (Sativa - 83.20% : 25 Grams  (words=1)
+      4  7 Grams                          sku=4610882        item=JVS34A5DDGLKY3APE6BEJDKK item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      3  1 Gram                           sku=3275119        item=AYGQHKIFGRSZS3XJTHZ36XLZ item_name=1 Gram                      
+        -> candidate: Papaya Crush Tier 2 Rosin (Sativa - 62.2 : 1 Gram  (words=2)
+      3  1 Gram                           sku=8361551        item=JDAC74ZVRJI5ATVZJMVMVNZD item_name=1 Gram                      
+        -> candidate: Papaya Crush Tier 2 Rosin (Sativa - 62.2 : 1 Gram  (words=2)
+      3  Regular                          sku=T943804        item=BELXJQ3LYPOPVFZJY4BMENVD item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      3  3.5 Grams                        sku=114371Q        item=2SJBPPUMIWDHJT6MCOMT2X2O item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      3  1 Gram                           sku=V482000        item=NHCD76VYGEI6SNIFI26CJW37 item_name=1 Gram                      
+        -> candidate: Papaya Crush Tier 2 Rosin (Sativa - 62.2 : 1 Gram  (words=2)
+      3  3.5 Grams                        sku=K660783        item=FEWPF27MBYQR4VCMJTNFZZUP item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      3  7 Grams                          sku=C397146        item=FEWPF27MBYQR4VCMJTNFZZUP item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      3  28 Grams                         sku=F254391        item=FEWPF27MBYQR4VCMJTNFZZUP item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      3  7 Grams                          sku=G084802        item=7GZZ22LBX52EOQ24IFKTLNGM item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      3  3.5 Grams                        sku=H052028        item=7EP5VVAYWCMMXACCCKUVVWSM item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      3  Regular                          sku=930163A        item=GSJHAEJU2YKAC7RY6YRRJ33I item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      3  3.5 Grams                        sku=256104F        item=KHL2XJ5BLVWMJQSPD4M3VMCM item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      3  3.5 Grams                        sku=K713479        item=5RX6TECEQ5QKPS6BRZ6VXQW2 item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      3  Mountain Tiger                   sku=685381521926   item=XNQCAGWPGL3SDHPTFAXA3U57 item_name=Root Beer                   
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      3  3.5 Grams                        sku=5519885        item=RWGUPONZQQ5WU4K2Q6YNGL3A item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      3  7 Grams                          sku=T518052        item=ST25XSSMNCK2CUKMX35JCVHU item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      2  5 Grams                          sku=W453742        item=PLX6L4KQVGSFKPEWHJBGKR5J item_name=1 Gram                      
+        -> candidate: Citrus Burst Live Resin (Sativa - 83.20% : 5 Grams  (words=2)
+      2  7 Grams                          sku=8041858        item=COHHEC3QNAXZDR2YVGQZTAJ5 item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      2  3.5 Grams                        sku=K441807        item=3FOWMJBC6LFGK3ADFFBJZN6I item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      2  5 Grams                          sku=F456423        item=ZA2P55GJAJPKO3EV7C7P22O2 item_name=1 Gram                      
+        -> candidate: Citrus Burst Live Resin (Sativa - 83.20% : 5 Grams  (words=2)
+      2  1 Gram                           sku=P542141        item=ZA2P55GJAJPKO3EV7C7P22O2 item_name=1 Gram                      
+        -> candidate: Papaya Crush Tier 2 Rosin (Sativa - 62.2 : 1 Gram  (words=2)
+      2  7 Grams                          sku=8298947        item=YC4WMP3CZYU3BNX2NP2H7RNN item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      2  5 Grams                          sku=6573988        item=AYGQHKIFGRSZS3XJTHZ36XLZ item_name=1 Gram                      
+        -> candidate: Citrus Burst Live Resin (Sativa - 83.20% : 5 Grams  (words=2)
+      2  1 Gram                           sku=2588985        item=PUPRZANFMWFEI467TCVO2V25 item_name=1 Gram                      
+        -> candidate: Papaya Crush Tier 2 Rosin (Sativa - 62.2 : 1 Gram  (words=2)
+      2  3.5 Grams                        sku=327967R        item=PBBF4FMONCZ7RNFT6EWPVSGJ item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      2  3.5 Grams                        sku=1904883        item=VQ2FAWE3FNZZXKQ6U2XYDQGO item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      2  28 Grams                         sku=M494781        item=N2C3MVDNWNKCOFMHRF22LHHB item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      2  3.5 Grams                        sku=655423R        item=TNZL6JUZM5APUVLR7P7BJKHW item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      2  28 Grams                         sku=B282149        item=HTQYR7LYFLBV6HCFBVH7ZLVC item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      2  Orange Soda                      sku=(none)         item=XNQCAGWPGL3SDHPTFAXA3U57 item_name=Root Beer                   
+        -> candidate: AdaptoSquare : Orange  (words=1)
+      2  Regular                          sku=847154W        item=ESK4BMYYZSZXEOGXO4AYZYWF item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      2  1 Gram                           sku=8470211        item=DCK3U22MKCQDBWV6UD5SI3ZZ item_name=1 Gram                      
+        -> candidate: Papaya Crush Tier 2 Rosin (Sativa - 62.2 : 1 Gram  (words=2)
+      2  28 Grams                         sku=6938575        item=ST25XSSMNCK2CUKMX35JCVHU item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      2  14 Grams                         sku=V060182        item=ST25XSSMNCK2CUKMX35JCVHU item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      2  7 Grams                          sku=H373449        item=XDDSYAA276Z6UI4PXTXA4BWK item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      2  7 Grams                          sku=655112X        item=SGWN6ZDS7JOCNK77HNZ35JZI item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      2  28 Grams                         sku=Z453271        item=7GZZ22LBX52EOQ24IFKTLNGM item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      2  Regular                          sku=638296A        item=JZA2IOJN3G5JNDF27E4P6X3T item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      2  2.5 Grams                        sku=602138S        item=STC7KTVGTQZGVBL2NO3Z2ILB item_name=2.5 Grams                   
+        -> candidate: Citrus Burst Live Resin (Sativa - 83.20% : 2.5 Grams  (words=3)
+      2  Frosted Grapes (Hybrid)          sku=689745640872   item=CUDVQITSOSUXHP6KTQIUTWVD item_name=Frosted Grapes (Hybrid)     
+        -> candidate: King Cone Pre-Roll - THCA : Kryptonite (Hybrid)  (words=1)
+      2  5 Grams                          sku=1767776        item=VK26QLDBDTGNJCR5E7YP7A3S item_name=2.5 Grams                   
+        -> candidate: Citrus Burst Live Resin (Sativa - 83.20% : 2.5 Grams  (words=3)
+      1  7 Grams                          sku=311658F        item=2SJBPPUMIWDHJT6MCOMT2X2O item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  Root Beer                        sku=(none)         item=XNQCAGWPGL3SDHPTFAXA3U57 item_name=Root Beer                   
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      1  28 Grams                         sku=M863871        item=KHL2XJ5BLVWMJQSPD4M3VMCM item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  14 Grams                         sku=M622978        item=25QWXF3GE3UMKJTM57DOO5QG item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  28 Grams                         sku=Y746506        item=25QWXF3GE3UMKJTM57DOO5QG item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  28 Grams                         sku=YB28           item=NXUASPXGGXFEB67CA2CWBAM2 item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  7 Grams                          sku=289125Y        item=CZGYK5AQ7ZKQGWKT2UQEDCTZ item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  5 Grams                          sku=H734809        item=EG3U3V3QO3NZEZXNEHVRNBHP item_name=2.5 Grams                   
+        -> candidate: Citrus Burst Live Resin (Sativa - 83.20% : 2.5 Grams  (words=3)
+      1  14 Grams                         sku=M925494        item=CZGYK5AQ7ZKQGWKT2UQEDCTZ item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  14 Grams                         sku=YB14           item=NXUASPXGGXFEB67CA2CWBAM2 item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  28 Grams                         sku=4813185        item=COHHEC3QNAXZDR2YVGQZTAJ5 item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  7 Grams                          sku=C240019        item=RFGDJETAYGGHGV7SIOCZFDSC item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  14 Grams                         sku=B541915        item=RFGDJETAYGGHGV7SIOCZFDSC item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  2.5 Grams                        sku=271439N        item=EG3U3V3QO3NZEZXNEHVRNBHP item_name=2.5 Grams                   
+        -> candidate: Citrus Burst Live Resin (Sativa - 83.20% : 2.5 Grams  (words=3)
+      1  5 Grams                          sku=528881H        item=PUPRZANFMWFEI467TCVO2V25 item_name=1 Gram                      
+        -> candidate: Citrus Burst Live Resin (Sativa - 83.20% : 5 Grams  (words=2)
+      1  14 Grams                         sku=Q097725        item=COHHEC3QNAXZDR2YVGQZTAJ5 item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  5 Grams                          sku=T199514        item=STC7KTVGTQZGVBL2NO3Z2ILB item_name=2.5 Grams                   
+        -> candidate: Citrus Burst Live Resin (Sativa - 83.20% : 2.5 Grams  (words=3)
+      1  5 Grams                          sku=F390376        item=JDAC74ZVRJI5ATVZJMVMVNZD item_name=1 Gram                      
+        -> candidate: Citrus Burst Live Resin (Sativa - 83.20% : 5 Grams  (words=2)
+      1  1 Gram                           sku=J451783        item=PLX6L4KQVGSFKPEWHJBGKR5J item_name=1 Gram                      
+        -> candidate: Papaya Crush Tier 2 Rosin (Sativa - 62.2 : 1 Gram  (words=2)
+      1  7 Grams                          sku=L277028        item=DWRDJN3OSP2ZW3MZBCOJXZRS item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  14 Grams                         sku=594974C        item=DWRDJN3OSP2ZW3MZBCOJXZRS item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  Single 165mg                     sku=9624192        item=YXX5FTITQXB5EG3RF7TFKQMF item_name=Single 165mg                
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      1  7 Grams                          sku=C250138        item=VKOK3SXDFEMRKOVUH5JLUBN2 item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  28 Grams                         sku=7978718        item=RWGUPONZQQ5WU4K2Q6YNGL3A item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  28 Grams                         sku=5643869        item=5RX6TECEQ5QKPS6BRZ6VXQW2 item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  7 Grams                          sku=833580V        item=ZUQASRVIZLJQI7X4HPCZHSZR item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  3.5 Grams                        sku=244706Z        item=TBDVTKJBSEVQ4UV3XMSSFUSB item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  14 Grams                         sku=D817834        item=TBDVTKJBSEVQ4UV3XMSSFUSB item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  1 Gram                           sku=2931766        item=SX3H2FKFZXEUE4HLCP6P2KRA item_name=1 Gram                      
+        -> candidate: Papaya Crush Tier 2 Rosin (Sativa - 62.2 : 1 Gram  (words=2)
+      1  Single Can                       sku=B139277        item=HATMBE7S7KUWPYJ2JZMJ2OIH item_name=Single Can                  
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      1  Regular                          sku=592445R        item=QBXXF43RG433BCFSXSIIBUU6 item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      1  Regular                          sku=192145A        item=KVYZZZURZITNKVGYVE23MSFX item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      1  Regular                          sku=323394K        item=LDSUNQQKOH2AXXFGZHRBH7LQ item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      1  5 Grams                          sku=G349053        item=DCK3U22MKCQDBWV6UD5SI3ZZ item_name=1 Gram                      
+        -> candidate: Citrus Burst Live Resin (Sativa - 83.20% : 5 Grams  (words=2)
+      1  Regular                          sku=211357M        item=OX5WX22D3FRDXDKRQ2FWXYH4 item_name=Regular                     
+        -> NO confident Shopify name match — needs SKU assignment in Square (SKU changes blocked)
+      1  14 Grams                         sku=7877501        item=HTQYR7LYFLBV6HCFBVH7ZLVC item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  7 Grams                          sku=357124D        item=HTQYR7LYFLBV6HCFBVH7ZLVC item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  14 Grams                         sku=566278X        item=N2C3MVDNWNKCOFMHRF22LHHB item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  3.5 Grams                        sku=F494089        item=N2C3MVDNWNKCOFMHRF22LHHB item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  14 Grams                         sku=149068M        item=Y7OM2WLMXPWIPLLGML5YLWEU item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  2.5 Grams                        sku=750971F        item=LHN27UHISSJNET2UY7MQTZGH item_name=2.5 Grams                   
+        -> candidate: Citrus Burst Live Resin (Sativa - 83.20% : 2.5 Grams  (words=3)
+      1  28 Grams                         sku=6016043        item=AVGD6ETBLJQXBLMUZW4OFBRU item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  14 Grams                         sku=2148156        item=AVGD6ETBLJQXBLMUZW4OFBRU item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  7 Grams                          sku=N044091        item=AVGD6ETBLJQXBLMUZW4OFBRU item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  28 Grams                         sku=X586694        item=VQ2FAWE3FNZZXKQ6U2XYDQGO item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  7 Grams                          sku=4027149        item=4NQI6BORZZGKDG6YVLQTU4QX item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  3.5 Grams                        sku=P720949        item=GCH3QLA6VAK6G3Q4RIUODV52 item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  28 Grams                         sku=680544G        item=D3YUWA4Q3OVR4QQIEZVPAGAX item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  14 Grams                         sku=561339J        item=D3YUWA4Q3OVR4QQIEZVPAGAX item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  28 Grams                         sku=E627572        item=GCH3QLA6VAK6G3Q4RIUODV52 item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+      1  28 Grams                         sku=K607019        item=YC4WMP3CZYU3BNX2NP2H7RNN item_name=3.5 Grams                   
+        -> candidate: Kundalini Sherbet (Hybrid - 30.64% THCA) : 3.5 Grams  (words=3)
+
+========================================================================
+SECTION 3 — SELLABLE VARIATIONS WITH NO SKU AT ALL (6)
+Highest priority: cannot ever be linked/inventoried by SKU. Proposed SKUs are
+suggestions only — final values must be set in Square, reviewed manually.
+========================================================================
+     92  3 Count                          item=QBOQCV7UIHBEN7VSRQCKS4SE PROPOSED_SKU=3-count-3-count              (review + set in Square)
+     22  10mg THC - Single                item=MCLE6P7Q2GBFVKVW7JDZGKB4 PROPOSED_SKU=2-5mg-thc-single-10mg-thc-si (review + set in Square)
+     13  5mg THC - Single                 item=MCLE6P7Q2GBFVKVW7JDZGKB4 PROPOSED_SKU=2-5mg-thc-single-5mg-thc-sin (review + set in Square)
+      8  100 Count                        item=QBOQCV7UIHBEN7VSRQCKS4SE PROPOSED_SKU=3-count-100-count            (review + set in Square)
+      2  Orange Soda                      item=XNQCAGWPGL3SDHPTFAXA3U57 PROPOSED_SKU=root-beer-orange-soda        (review + set in Square)
+      1  Root Beer                        item=XNQCAGWPGL3SDHPTFAXA3U57 PROPOSED_SKU=root-beer-root-beer          (review + set in Square)
+
+========================================================================
+SECTION 4 — DUPLICATE SKU (same SKU, >1 variation)
+========================================================================
+  sku=388062Y        on 2 variations:
+      5 Grams                    item=RY32NKQXPS662JDZBLUKCY5L qty=0
+      5 Grams                    item=6RQB3GM54QEFZW6VABB2SNIZ qty=0
+  sku=388062Y        on 2 variations:
+      5 Grams                    item=RY32NKQXPS662JDZBLUKCY5L qty=0
+      5 Grams                    item=6RQB3GM54QEFZW6VABB2SNIZ qty=0
