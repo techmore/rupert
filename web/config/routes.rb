@@ -86,6 +86,7 @@ Rails.application.routes.draw do
     collection do
       get :pdf
       get :movements
+      get :recommended_skus
       post :fix_negative
       post :fix_all_negative
     end

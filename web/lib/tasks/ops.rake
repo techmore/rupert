@@ -90,7 +90,7 @@ namespace :ops do
     plans.group_by(&:sku).each do |sku, group|
       puts "\n#{sku} (#{group.length} variants):"
       group.each do |plan|
-        puts "  #{plan.product.ljust(48)} #{plan.variant_id}  qty=#{plan.current_qty}  ->  #{plan.proposed_sku}"
+        puts "  #{plan.product.ljust(48)} #{plan.variant_title.ljust(18)} qty=#{plan.current_qty}  ->  #{plan.proposed_sku}"
       end
     end
   end

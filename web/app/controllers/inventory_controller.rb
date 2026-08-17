@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
+require "csv"
+require "set"
+
 class InventoryController < AuthenticatedController
-  before_action :authorize_read, only: [:index, :movements, :pdf]
+  before_action :authorize_read, only: [:index, :movements, :pdf, :recommended_skus]
   before_action :authorize_fix, only: [:fix_negative, :fix_all_negative]
 
   def index
@@ -17,6 +20,7 @@ class InventoryController < AuthenticatedController
     @products = @products.includes(variants: [{ sku_links: { square_variation: :levels } }, :levels])
     @variant_qtys = variant_quantity_map(@products)
     @negative = NegativeInventory.summary
+    @shared_skus = shared_sku_set
   end
 
   # GET /inventory/movements — the full inventory movement ledger: every
@@ -34,6 +38,28 @@ class InventoryController < AuthenticatedController
     @names = movement_names(@movements)
     @sources = InventoryMovement.unscoped.where(tenant_id: Current.tenant_id)
       .distinct.order(:source).pluck(:source)
+  end
+
+  # GET /inventory/recommended_skus — CSV list of proposed unique SKUs for
+  # every SKU currently shared across different products. Plan-only: applying
+  # requires updating Shopify + Square and re-linking (see ops:sku_remediation_plan).
+  def recommended_skus
+    plans = SkuRemediationPlanner.plan
+    csv = CSV.generate do |rows|
+      rows << ["Current SKU", "Product", "Variant", "Shopify Variant ID", "Current Qty", "Proposed SKU", "Note"]
+      plans.each do |plan|
+        rows << [
+          plan.sku,
+          plan.product,
+          plan.variant_title,
+          plan.variant_id,
+          plan.current_qty,
+          plan.proposed_sku,
+          "Shared across products — apply to both Shopify and Square, then re-link",
+        ]
+      end
+    end
+    send_data csv, filename: "recommended-skus-#{Date.current.iso8601}.csv", type: "text/csv"
   end
 
   # GET /inventory/pdf — printable snapshot of the current inventory across
@@ -82,6 +108,20 @@ class InventoryController < AuthenticatedController
   end
 
   private
+
+  # SKUs reused by variants of more than one distinct product. Duplicate SKUs
+  # break Shopify↔Square linking, so these rows get highlighted on the page.
+  def shared_sku_set
+    rows = ShopifyVariant.joins(:product)
+      .where.not(sku: [nil, ""])
+      .group('"ShopifyVariant"."sku"', '"ShopifyVariant"."productId"')
+      .count
+    skus = Set.new
+    rows.keys.group_by(&:first).each do |sku, pairs|
+      skus << sku if pairs.map(&:last).uniq.length > 1
+    end
+    skus
+  end
 
   def guard_ok?(platform)
     PlatformPushGuard.authorize!(platform, actor: Current.user.email)

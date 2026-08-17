@@ -146,4 +146,13 @@ class InventoryPdfServiceTest < ActiveSupport::TestCase
     end
     assert_includes pdf.send(:item_summary, order), "CBD Tincture - 1000mg (PDF-1)"
   end
+
+  test "cross-product duplicate SKUs are flagged for rose highlighting" do
+    other = ShopifyProduct.create!(id: "pdf-p2", title: "Other Tincture")
+    ShopifyVariant.create!(title: "Dup", sku: "PDF-1", productId: other.id, price: 8.0, inventoryQuantity: 2)
+
+    rows = InventoryPdf.new.rows.select { |r| r.sku == "PDF-1" }
+    assert_equal 2, rows.length
+    assert rows.all?(&:shared_product_sku), "every variant carrying a cross-product SKU is flagged"
+  end
 end
