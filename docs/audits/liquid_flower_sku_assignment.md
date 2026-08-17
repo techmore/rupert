@@ -1,10 +1,10 @@
 # Plan — SKU assignment for the "Liquid Flower" THCA Live Resin Disposable Vape
 
-Status: **APPLIED 2026-08-17 (owner-authorized).** Nothing in this doc was written
-when it was first drafted; the 9-variant SKU assignment below was subsequently
-applied to Shopify via `productVariantsBulkUpdate` (nested `inventoryItem.sku`),
-then Shopify + Square syncs were run to auto-link, and the family was confirmed
-0-drift. Only the 2 flagged items (Kosher Kush x ChemDawg — see §2b) remain.
+Status: **APPLIED 2026-08-17 (owner-authorized).** The 9-variant SKU assignment
+was applied to Shopify via `productVariantsBulkUpdate` (nested
+`inventoryItem.sku`), then Shopify + Square syncs were run to auto-link, and the
+family was confirmed 0-drift. The previously-flagged EOL variant (Kosher Kush x
+ChemDawg, `§2b`) was deleted from Shopify and its stale mirror cleaned.
 Scope: SKU-assignment/relink proposal for the `"Liquid Flower" THCA Live Resin
 Disposable Vape` product (Shopify product `gid://shopify/Product/7348065959991`).
 
@@ -53,14 +53,13 @@ Cookies (`I2T27GD5BYFWPSBZOD6EXT7W`, sq SKU `S865085`). So the live link points
 at the wrong Square stock. Fix: set Shopify SKU to `S865085` (per the table). After
 relink, verify the old `689745640766` link is released and not duplicated.
 
-### 2b. "Kosher Kush x ChemDawg (Indica)" has NO Square counterpart
-The Shopify variant `42203009613879` has no matching strain in Square. Closest
-Square variation is **"Kosher Chem (Indica)"** (`ZYGQY4FALWPIZOALAMXVASXA`, SKU
-`8431769`) — a differently-named strain. Assigning `8431769` would link to the
-wrong product line. **Recommendation: do not auto-assign.** Decide whether Square
-should add a "Kosher Kush x ChemDawg" variation, or the Shopify title/SKU should be
-retired/renamed to match Square's "Kosher Chem". *No proposed SKU — leave for a
-human catalog decision.*
+### 2b. "Kosher Kush x ChemDawg (Indica)" — REMOVED (EOL)
+The Shopify variant `42203009613879` had no matching strain in Square and was an
+**end-of-life SKU**. On owner authorization it was **deleted from Shopify**
+(`productVariantsBulkDelete`) and its stale local mirror rows were cleaned up
+(InventoryLevel × 1, open "Out of stock" StockAlert × 1, ShopifyVariant × 1).
+Verified safe before removal: 0 order lines, 0 movements, 0 links, 0 stock, 0
+ledger references. The product now mirrors Shopify's live 9 variants.
 
 ## 3. Current quantity status (post-Strawnana reconcile)
 
