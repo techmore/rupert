@@ -9,12 +9,20 @@ class SyncEngine
 
   # Generous enough to cover backfills that legitimately run for a while; the
   # per-tenant unique index (not this window) is what stops overlapping syncs.
-  STALE_RUN_AFTER = 3.hours
+  # A run stuck past this is genuinely hung (scheduled syncs fire every 15
+  # minutes and normally finish in ~1 minute) and would otherwise block the
+  # whole schedule until the worker restarts.
+  STALE_RUN_AFTER = 45.minutes
 
   class << self
     def run!(mode: "manual", actor: "user", tenant: nil, history_days: nil)
       Current.tenant = tenant if tenant
       raise ArgumentError, "No tenant in context" if Current.tenant_id.nil?
+
+      # Recover any orphaned running run BEFORE we try to start a new one so a
+      # hung/failed worker can't hold the per-tenant lock indefinitely. This
+      # is what keeps the 15-minute schedule alive across worker restarts.
+      recover_stale_runs!
 
       run = create_run!(mode: mode, source: "all", actor: actor)
       Current.sync_run = run
@@ -63,6 +71,7 @@ class SyncEngine
       raise ArgumentError, "No tenant in context" if Current.tenant_id.nil?
       raise ArgumentError, "Unknown sync source" unless ["shopify", "square"].include?(source)
 
+      recover_stale_runs!
       run = create_run!(mode: "manual", source: source, actor: actor)
       Current.sync_run = run
 

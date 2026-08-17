@@ -41,6 +41,31 @@ class SyncEngineTest < ActiveSupport::TestCase
     end
   end
 
+  test "run! proactively recovers an orphaned run so the schedule stays alive" do
+    # A worker restart left an old run marked running (no details/error) —
+    # run! must clear it before starting, not block for the whole window.
+    orphan = SyncRun.create!(
+      mode: "scheduled",
+      status: "running",
+      source: "all",
+      startedAt: (SyncEngine::STALE_RUN_AFTER + 1.minute).ago,
+    )
+
+    ShopifyClient.stubs(:configured?).returns(true)
+    CatalogSyncer.stubs(:sync!).returns({ products: 1, variants: 1, orders: { "nodes" => [] } })
+    LedgerImporter.stubs(:from_shopify_orders!).returns(nil)
+    SquareClient.stubs(:configured?).returns(false)
+    AlertGenerator.stubs(:sync!).returns({ created: 0, resolved: 0 })
+    Reconciler.stubs(:build_rows).returns([])
+    Reconciler.stubs(:record_run!).returns(nil)
+
+    run = SyncEngine.run!(mode: "scheduled", actor: "scheduler")
+
+    assert_predicate run, :success?
+    assert_predicate orphan.reload, :failed?
+    assert_equal 0, SyncRun.unscoped.where(status: "running").count, "only the new run exists, no orphans"
+  end
+
   test "a Square sync (read-only mirror) still runs while Square is frozen" do
     assert PlatformPushGuard.frozen?("square")
 
