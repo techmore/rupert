@@ -9,17 +9,6 @@
       <%= form_tag apply_reconcile_index_path, method: :post, data: { confirm: "Apply the reconciliation plan? This writes inventory adjustments to Shopify and Square." } do %>
         <%= submit_tag "Apply adjustments", class: "btn-primary", disabled: @summary[:actionable].zero?, data: { turbo_submits_with: "Applying…" } %>
       <% end %>
-      <% if @summary[:actionable].positive? %>
-        <p class="max-w-xs text-right text-xs text-taupe">
-          <% shopify_ok = @push_guard["shopify"][:window_open] && !@push_guard["shopify"][:frozen] %>
-          <% square_ok = @push_guard["square"][:window_open] && !@push_guard["square"][:frozen] %>
-          Pushes need approved windows:
-          <span class="<%= shopify_ok ? "font-semibold text-fern" : "font-semibold text-rose" %>">Shopify <%= shopify_ok ? "open" : "locked" %></span>
-          ·
-          <span class="<%= square_ok ? "font-semibold text-fern" : "font-semibold text-rose" %>">Square <%= square_ok ? "open" : ( (@push_guard["square"][:frozen]) ? "frozen" : "locked") %></span>
-          — manage on the <a href="<%= syncs_path %>" class="font-semibold text-olive hover:underline">Sync page</a>.
-        </p>
-      <% end %>
     </div>
   </section>
 

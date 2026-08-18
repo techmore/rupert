@@ -8,7 +8,6 @@ class ReconcileController < AuthenticatedController
     @rows = Reconciler.build_rows
     @summary = Reconciler.summary(@rows)
     @size_groups = size_family_groups
-    @push_guard = PlatformPushGuard.status_all.index_by { |s| s[:platform] }
   end
 
   def policy
