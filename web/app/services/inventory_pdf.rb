@@ -95,8 +95,8 @@ class InventoryPdf
     Prawn::Document.new(page_size: "LETTER", margin: 40) do |pdf|
       write_title(pdf)
       write_stats(pdf, timestamps, summary)
-      write_table(pdf, rows)
       write_color_key(pdf)
+      write_table(pdf, rows)
       write_square_only(pdf, square_only)
       pdf.start_new_page
       write_sales_week(pdf, sales_week)
@@ -184,18 +184,23 @@ class InventoryPdf
   def square_only_rows
     @square_only_rows ||= begin
       linked = SkuLink.where.not(squareVariationId: nil).distinct.pluck(:squareVariationId).to_set
-      home = SquareSyncer.primary_location_id
-      return [] unless home
-
-      home_totals = InventoryLevel.mirrored("square")
-        .where(locationId: home.id)
+      # All-location totals (home + mobile), so square-only stock parked at a
+      # non-home location (e.g. the Vendor Events rig) is surfaced too. These
+      # are unlinked variations, so they never also appear in the catalog
+      # table's Square column (which only shows linked stock).
+      totals = InventoryLevel.mirrored("square")
         .group(:squareVariationId).sum(:quantity)
 
-      home_totals.filter_map do |square_variation_id, qty|
+      # Eager-load every variation + its item once (avoids a per-row find_by /
+      # item N+1) and index by id for O(1) lookup.
+      variations = SquareVariation.includes(:item)
+        .where(id: totals.keys).index_by(&:id)
+
+      totals.filter_map do |square_variation_id, qty|
         next if linked.include?(square_variation_id)
         next unless qty.to_i.positive?
 
-        variation = SquareVariation.find_by(id: square_variation_id)
+        variation = variations[square_variation_id]
         next unless variation
 
         item_label = variation.item&.name
@@ -252,7 +257,12 @@ class InventoryPdf
   end
 
   def zero_on_both?(row)
-    row.shopify_qty.to_i <= 0 && row.square_qty.present? && row.square_qty <= 0
+    # A row is non-sellable when Shopify has none, and Square is either also
+    # non-positive or tied to no link (unknown → treated as no on-hand stock).
+    # This makes unlinked 0-Shopify (dead) variants sort to the bottom and get
+    # the stone tint just like verified-zero rows, instead of floating among
+    # sellable stock.
+    row.shopify_qty.to_i <= 0 && (row.square_qty.nil? || row.square_qty <= 0)
   end
 
   def summarize(rows)
@@ -481,14 +491,11 @@ class InventoryPdf
       return
     end
 
-    home = SquareSyncer.primary_location_id
-    location_label = home ? " at #{home.name}" : ""
-
     pdf.move_down 14
-    pdf.text "Square-only inventory (no Shopify listing)#{location_label}", size: 12, style: :bold, color: INK
+    pdf.text "Square-only inventory (no Shopify listing) — across all Square locations", size: 12, style: :bold, color: INK
     pdf.move_down 3
     pdf.text(
-      "Mirrored Square stock with no matching Shopify variant#{location_label} — not in the catalog table above. " \
+      "Mirrored Square stock with no matching Shopify variant (sum across every Square location, home + mobile) — not in the catalog table above. " \
       "These items aren't sold through the online store by SKU, but they're on hand and shouldn't be forgotten.",
       size: 7, color: TAUPE,
     )
@@ -647,31 +654,38 @@ class InventoryPdf
     end.join(", ")
   end
 
-  # A printed legend for the catalog-table highlighting: each tinted row's
-  # meaning plus the † and — markers. Uses a Prawn table so the color swatches
-  # (per-cell backgrounds) lay out reliably without manual coordinates.
+  # A printed key/legend at the top of the report explaining the catalog-table
+  # highlighting (row tints), the duplicate-name/SKU marking, and the † and —
+  # markers — so buyers/readers can decode the table before they read it.
+  # Rendered as a Prawn table so the color swatches lay out reliably.
   def write_color_key(pdf)
-    pdf.move_down 10
+    pdf.move_down 8
+    pdf.fill_color HAZE
+    pdf.fill_rectangle [0, pdf.cursor + 6], TABLE_WIDTH, 20
     pdf.fill_color INK
-    pdf.text "Color key", size: 8, style: :bold
-    swatches = [DRIFT_TINT, ZERO_TINT, DUP_SKU_TINT, CREAM, nil, nil]
+    pdf.text "How to read this report", size: 9, style: :bold
+    pdf.move_down 4
+
+    swatches = [DRIFT_TINT, ZERO_TINT, DUP_SKU_TINT, CREAM, nil, nil, nil, nil]
     labels = [
-      "Sellable row — non-zero Shopify vs Square difference (drift)",
-      "Out of stock on both platforms (sorted to the bottom)",
-      "Duplicate SKU — reused by another product (breaks Shopify–Square linking)",
-      "Alternating row stripe (zebra)",
-      "† = shared SKU / Square total spanning multiple variants — not pinned to this row",
-      "#{UNLINKED} = no Square link for this variant",
+      "Amber row — Shopify vs Square differ (non-zero drift); the drift value is bold",
+      "Stone row — out of stock on both platforms (sorted to the bottom)",
+      "Rose row — DUPLICATE NAME/SKU: this SKU is reused by another product, which breaks Shopify–Square linking",
+      "Zebra stripe — alternating rows for readability",
+      "† in the Square/Drift/7d columns — a shared SKU: the total spans multiple variations and can't be pinned to this row",
+      "#{UNLINKED} under Square — no Square link for this variant",
+      "• SKU in bold rose — duplicate SKU",
+      "7d sold in green — paid/fulfilled units in the last #{SALES_DAYS} days",
     ]
     data = swatches.each_index.map { |i| [swatches[i].nil? ? "" : " ", labels[i]] }
-    table = pdf.make_table(data, width: pdf.bounds.width, cell_style: {
-      size: 6.5, color: TAUPE, border_width: 0, padding: [2, 4], valign: :center,
+    table = pdf.make_table(data, width: TABLE_WIDTH, cell_style: {
+      size: 6.8, color: MOCHA, border_width: 0, padding: [2, 4], valign: :center,
     }) do |t|
       t.column(0).width = 22
     end
     swatches.each_with_index { |color, i| table.row(i).column(0).background_color = color if color }
     table.draw
-    pdf.move_down 2
+    pdf.move_down 6
     pdf.fill_color INK
   end
 
@@ -680,7 +694,7 @@ class InventoryPdf
     pdf.text(
       "Generated by Rupert. Quantities are mirrored from Shopify and Square and refresh every 15 minutes. " \
       "The Square column is the sum across every active Square location (physical shop + mobile events); " \
-      "the Square-only section lists stock with no Shopify listing, at the home location. " \
+      "the Square-only section lists stock with no Shopify listing, summed across both locations. " \
       "rose rows reuse a SKU on another product (breaks Shopify-Square linking); " \
       "tinted rows show a Shopify vs Square difference; zero-stock rows sit at the bottom; " \
       "7d sold counts paid/fulfilled orders from the last #{SALES_DAYS} days by SKU or product name; " \
