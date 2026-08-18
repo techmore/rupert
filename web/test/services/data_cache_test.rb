@@ -74,4 +74,37 @@ class DataCacheTest < ActiveSupport::TestCase
     end
     assert_equal 0, calls
   end
+
+  test "version falls back to the DB row when the cache store errors" do
+    # Regression: a cache-store failure (e.g. Errno::EACCES on the file store)
+    # must not 500 the request — DataCache.version degrades to the DB row.
+    raising = Object.new
+    def raising.fetch(*) = raise(Errno::EACCES, "permission denied")
+    def raising.delete(*) = raise(Errno::EACCES, "permission denied")
+    Rails.cache = raising
+
+    Setting.find_or_create_for(DataCache::VERSION_KEY, Current.tenant_id) { |s| s.value = "7" }
+    assert_equal 7, DataCache.version, "version should fall back to the DB value when the cache store raises"
+  end
+
+  test "fetch falls back to computing the block when the cache store errors" do
+    raising = Object.new
+    def raising.fetch(*) = raise(Errno::EACCES, "permission denied")
+    def raising.delete(*) = raise(Errno::EACCES, "permission denied")
+    Rails.cache = raising
+
+    result = DataCache.fetch("test/fallback") { "computed" }
+    assert_equal "computed", result, "fetch should compute and return the block result when the cache store raises"
+  end
+
+  test "bump! still succeeds when the cache store delete errors" do
+    raising = Object.new
+    def raising.fetch(*) = raise(Errno::EACCES, "permission denied")
+    def raising.delete(*) = raise(Errno::EACCES, "permission denied")
+    Rails.cache = raising
+
+    before = DataCache.version
+    new = DataCache.bump! # must not raise on the cache delete error
+    assert_equal before + 1, new
+  end
 end
