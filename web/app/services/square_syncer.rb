@@ -71,6 +71,9 @@ class SquareSyncer
       catalog.each { |v| by_sku[v[:sku].downcase] = v[:variationId] if v[:sku].present? }
       links = 0
       ShopifyVariant.where.not(sku: [nil, ""]).find_each do |variant|
+        # Wholesale/bulk Shopify-only products never link to Square (they're not
+        # carried there) — the wholesale tag on the product excludes them.
+        next if variant.product&.tags.to_s.split(",").map(&:strip).include?("wholesale")
         square_id = by_sku[variant.sku.downcase]
         next if square_id.nil?
 

@@ -10,7 +10,7 @@ class CatalogSyncer
       publications(first: 30) { nodes { id name autoPublish } }
       products(first: 250, query: "status:active", sortKey: TITLE) {
         nodes {
-          id title status handle publishedAt totalInventory
+          id title tags status handle publishedAt totalInventory
           featuredImage { url altText }
           resourcePublicationsCount { count }
           resourcePublications(first: 20) { nodes { isPublished publishDate publication { id name } } }
@@ -200,6 +200,7 @@ class CatalogSyncer
             publishedAt: parse_time(product["publishedAt"]),
             totalInventory: product["totalInventory"].to_i,
             featuredImageUrl: product.dig("featuredImage", "url"),
+            tags: Array(product["tags"]).join(", "),
             syncedAt: Time.current,
           },
           unique_by: :id,
