@@ -18,6 +18,12 @@
         <%= text_field_tag :date, @date.iso8601, type: "date", class: "select" %>
         <%= submit_tag "Jump to day", class: "btn-ghost btn-sm" %>
       <% end %>
+      <div class="flex items-center gap-1">
+        <%= link_to "← Prev", sales_path(date: (@date - 1.day).iso8601, source: (@source == "all" ? nil : @source), window: @window_days),
+              class: "nav-pill nav-pill-idle-sm", title: "Previous day (#{(@date - 1.day).strftime('%b %-e')})" %>
+        <%= link_to "Next →", sales_path(date: (@date + 1.day).iso8601, source: (@source == "all" ? nil : @source), window: @window_days),
+              class: "nav-pill nav-pill-idle-sm", title: "Next day (#{(@date + 1.day).strftime('%b %-e')})" %>
+      </div>
       <div class="flex items-center gap-1 rounded-full border border-fog bg-paper p-1">
         <%= link_to "Print", sales_print_path(date: @date), class: "nav-pill nav-pill-idle-sm", title: "Batch print this day's packing slips" %>
         <%= link_to "Invoices", sales_print_path(date: @date, doc: "invoice"), class: "nav-pill nav-pill-idle-sm", title: "Batch print this day's invoices" %>
