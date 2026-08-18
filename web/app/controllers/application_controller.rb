@@ -11,7 +11,10 @@ class ApplicationController < ActionController::Base
     Current.user = session[:user_id] ? User.find_by(id: session[:user_id]) : nil
 
     if Current.user&.super_admin?
-      Current.tenant = Tenant.find_by(subdomain: request.subdomain)
+      # Super admins are platform-wide and may scope to any store via its
+      # subdomain; fall back to their own tenant when the host has no matching
+      # subdomain so tenant-scoped data (syncs, inventory, etc.) isn't hidden.
+      Current.tenant = Tenant.find_by(subdomain: request.subdomain) || Current.user.tenant
     else
       Current.tenant = Current.user&.tenant
       Current.tenant ||= Tenant.find_by(subdomain: request.subdomain) if Current.user.nil?

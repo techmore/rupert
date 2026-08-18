@@ -133,8 +133,8 @@ class SizeDeriver
         end
       end
 
-      # Square: physical count at the home location (skipped while frozen).
-      if change.square_variation_id.present? && home.present? && !PlatformPushGuard.frozen?("square")
+      # Square: physical count at the home location.
+      if change.square_variation_id.present? && home.present?
         PlatformPushGuard.authorize!("square", actor: "system")
         before = InventoryLevel.total_for_variation(change.square_variation_id)
         begin

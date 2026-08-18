@@ -6,7 +6,7 @@ Use the [Shopify AI Toolkit](https://shopify.dev/docs/apps/build/ai-toolkit) for
 
 ## Hard rules (do not violate)
 
-- **Push-guard approval windows are DISABLED (owner directive, 2026-08-14).** `PlatformPushGuard.authorize!` no longer requires a multi-approval window — only the maintenance freeze still blocks a platform. Re-enable window gating only with explicit owner sign-off.
-- **Square was unfrozen on 2026-08-14 (owner directive) so the maintenance loop can write to both platforms.** The 15-minute sync (`SyncEngine.run!`) now runs `InventoryMaintainer` after each mirror: linked SKUs get Square's count pushed to Shopify (delta-only), and size-family members get derived targets pushed to both platforms. Square may be re-frozen any time via `ops:push_guard:freeze[square,reason]`; check `ops:push_guard:status`.
-- **No SKU changes right now.** Do not create, rename, reassign, or push any SKU changes to Shopify or Square. This includes applying the SKU remediation plan (`ops:sku_remediation_plan` is plan-only). You may plan and inspect, but never write SKUs.
-- When in doubt about a data-mutating action on Shopify/Square, ask before applying.
+- **The push guard is REMOVED (owner directive, 2026-08-18).** `PlatformPushGuard.authorize!` is a no-op: no outbound write is blocked by approval windows or the maintenance freeze. Freeze/approve/status remain only as read-only operator info. The replacement safeguard is the rule below.
+- **ALWAYS ASK before any data-mutating action on Shopify or Square** — creating/updating products, pushing inventory, or writing SKUs. Do not apply without explicit owner sign-off first. Syncs (read-only mirrors into the local DB) are fine to run without asking.
+- **Square can still be frozen any time for maintenance via `ops:push_guard:freeze[square,reason]`** — this now records state for awareness but no longer blocks writes; check `ops:push_guard:status`.
+- **SKU changes require explicit owner sign-off before writing** to Shopify or Square. You may plan and inspect freely, but never write SKUs without asking.

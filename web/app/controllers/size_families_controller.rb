@@ -52,8 +52,6 @@ class SizeFamiliesController < AuthenticatedController
 
   # POST /size_families/:id/derive — recompute sizes from the root gram bank now.
   def derive
-    return redirect_to(size_families_path, alert: PlatformPushGuard.frozen_message("square")) if PlatformPushGuard.frozen?("square")
-
     summary = SizeDeriver.process(@family)
     redirect_to(
       size_families_path,
@@ -66,8 +64,6 @@ class SizeFamiliesController < AuthenticatedController
 
   # POST /size_families/derive_all — recompute every family now.
   def derive_all
-    return redirect_to(size_families_path, alert: PlatformPushGuard.frozen_message("square")) if PlatformPushGuard.frozen?("square")
-
     summary = SizeDeriver.process_all!
     redirect_to(
       size_families_path,
@@ -86,8 +82,6 @@ class SizeFamiliesController < AuthenticatedController
   # POST /size_families/approve_all (collection) or /size_families/:id/approve_all
   # (member) — write pending sizes to Square, for one family or all.
   def approve_all
-    return redirect_to(size_families_path, alert: push_guard_error) unless push_guard_ok?
-
     scope = @family ? @family.size_changes.pending : SizeChange.pending
     applied = 0
     failed = 0
@@ -100,8 +94,6 @@ class SizeFamiliesController < AuthenticatedController
 
   # POST /size_families/:id/approve — write one pending size to Square.
   def approve
-    return redirect_to(size_families_path, alert: push_guard_error) unless push_guard_ok?
-
     change = @family.size_changes.find(params[:change_id])
     ok = SizeDeriver.apply_change!(change)
     redirect_to(
@@ -150,17 +142,5 @@ class SizeFamiliesController < AuthenticatedController
 
   def authorize_apply
     authorize(:module, :reconcile_write?)
-  end
-
-  def push_guard_ok?
-    PlatformPushGuard.authorize!("square", actor: Current.user.email)
-    true
-  rescue PlatformPushGuard::LockedError => e
-    @push_guard_error = e.message
-    false
-  end
-
-  def push_guard_error
-    @push_guard_error || PlatformPushGuard.locked_message("square")
   end
 end

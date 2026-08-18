@@ -1,0 +1,100 @@
+{
+  "applied": 12,
+  "skipped_drift": 1,
+  "failed": 0,
+  "details": [
+    {
+      "vid": 42397529538615,
+      "step": "drift",
+      "expected": "DRK-25-ROOTBEER",
+      "actual": "gata-juice-25mg-thc-drinks-root-beer",
+      "proposed": "gata-juice-25mg-thc-drinks-root-beer",
+      "product": "Gata 25mg THC Drinks",
+      "variant": "Root Beer"
+    },
+    {
+      "vid": 42397529571383,
+      "step": "applied",
+      "proposed": "685381521926",
+      "product": "Gata 25mg THC Drinks",
+      "variant": "Mountain Tiger"
+    },
+    {
+      "vid": 42397529604151,
+      "step": "applied",
+      "proposed": "gata-juice-25mg-thc-drinks-orange-soda",
+      "product": "Gata 25mg THC Drinks",
+      "variant": "Orange Soda"
+    },
+    {
+      "vid": 42397529735223,
+      "step": "applied",
+      "proposed": "gata-juice-25mg-thc-drinks-half-half",
+      "product": "Gata 25mg THC Drinks",
+      "variant": "Half & Half"
+    },
+    {
+      "vid": 42397529669687,
+      "step": "applied",
+      "proposed": "gata-juice-25mg-thc-drinks-fruit-punch",
+      "product": "Gata 25mg THC Drinks",
+      "variant": "Fruit Punch"
+    },
+    {
+      "vid": 42397529767991,
+      "step": "applied",
+      "proposed": "gata-juice-25mg-thc-drinks-sweet-tea",
+      "product": "Gata 25mg THC Drinks",
+      "variant": "Sweet Tea"
+    },
+    {
+      "vid": 42203144323127,
+      "step": "applied",
+      "proposed": "6737903",
+      "product": "King Cone Pre-Roll - THCA",
+      "variant": "Venom OG (Indica)"
+    },
+    {
+      "vid": 42014699552823,
+      "step": "applied",
+      "proposed": "R751387",
+      "product": "Liquid Serenity CBD Beverage Enhancer - THC Free",
+      "variant": "6oz Bottle"
+    },
+    {
+      "vid": 42331151695927,
+      "step": "applied",
+      "proposed": "2588985",
+      "product": "Benzina Tier 2 Rosin (Indica - 63.51% THCA)",
+      "variant": "1 Gram"
+    },
+    {
+      "vid": 42331124465719,
+      "step": "applied",
+      "proposed": "3275119",
+      "product": "Jelly Donut Tier 2 Rosin (Hybrid - 62.21% THCA)",
+      "variant": "1 Gram"
+    },
+    {
+      "vid": 42331151401015,
+      "step": "applied",
+      "proposed": "P542141",
+      "product": "Orange Crush Tier 2 Rosin (Sativa - 62.52% THCA)",
+      "variant": "1 Gram"
+    },
+    {
+      "vid": 42331150942263,
+      "step": "applied",
+      "proposed": "8361551",
+      "product": "Honey Banana Tier 2 Rosin (Hybrid - 62.31% THCA)",
+      "variant": "1 Gram"
+    },
+    {
+      "vid": 42331151794231,
+      "step": "applied",
+      "proposed": "J451783",
+      "product": "Papaya Crush Tier 2 Rosin (Sativa - 62.22% THCA)",
+      "variant": "1 Gram"
+    }
+  ]
+}

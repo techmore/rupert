@@ -79,12 +79,9 @@ class SyncEngineTest < ActiveSupport::TestCase
     assert_equal "square", run.source
   end
 
-  test "a frozen Square still blocks outbound writes" do
+  test "a frozen Square no longer blocks outbound writes (guard removed)" do
     assert PlatformPushGuard.frozen?("square")
-    error = assert_raises(PlatformPushGuard::FrozenError) do
-      PlatformPushGuard.authorize!("square", actor: "user")
-    end
-    assert_includes error.message, "FROZEN"
+    assert PlatformPushGuard.authorize!("square", actor: "user")
   end
 
   test "Current.sync_run is set for the duration of a sync and reset after" do

@@ -115,7 +115,7 @@ class InventoryMaintainer
           end
         end
 
-        if link.squareVariationId.present? && home.present? && pool != square_qty && !PlatformPushGuard.frozen?("square")
+        if link.squareVariationId.present? && home.present? && pool != square_qty
           begin
             PlatformPushGuard.authorize!("square", actor: "system")
             SquareClient.request("/inventory/changes/batch-create", method: "POST", body: {

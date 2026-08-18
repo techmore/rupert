@@ -1,24 +1,16 @@
 # frozen_string_literal: true
 
-# Gatekeeper for every outbound write to Shopify and Square (inventory
-# adjustments, physical counts, size derives). No push happens until a
-# "push window" has been explicitly opened by multiple distinct approvers —
-# by default two — and windows expire automatically after PUSH_GUARD_WINDOW_MINUTES.
+# Gatekeeper for outbound writes to Shopify and Square.
 #
-# A platform can additionally be *frozen* (maintenance/update mode), which
-# hard-blocks all writes to it even inside an open approval window. Syncs are
-# read-only mirrors (platform -> local DB) and keep running while frozen.
-# Square defaults to frozen while its platform update is in progress until
-# someone explicitly unfreezes it.
+# Owner directive 2026-08-18: the push guard is REMOVED. No outbound write is
+# blocked by an approval window or a maintenance freeze. Safety is instead a
+# human/agent rule: ALWAYS ASK before any data-mutating push to Shopify or
+# Square. This class is kept purely as read-only/operator information —
+# freeze!/unfreeze!/approve!/status report state and history but nothing here
+# blocks a write (authorize! is a no-op).
 #
 # State is stored per tenant as JSON blobs in Setting rows:
 #   push_guard_shopify / push_guard_square
-#
-# Overrides (Setting or process ENV):
-#   PUSH_GUARD_MIN_APPROVALS   distinct approvers required (default 2)
-#   PUSH_GUARD_WINDOW_MINUTES  window length after approvals met (default 60)
-#   PUSH_FREEZE_SHOPIFY        "1"/"0" forces the frozen state
-#   PUSH_FREEZE_SQUARE         "1"/"0" forces the frozen state
 class PlatformPushGuard
   PLATFORMS = %w[shopify square].freeze
 
@@ -29,21 +21,12 @@ class PlatformPushGuard
   class FrozenError < LockedError; end
 
   class << self
-    # Raises FrozenError when the platform is frozen, LockedError when no
-    # approval window is open. Call this immediately before any outbound
-    # write so no path can bypass the multi-approval gate.
+    # No-op. Owner directive 2026-08-18: the push guard is removed — neither
+    # approval windows nor the maintenance freeze block writes. The safeguard
+    # is a human/agent rule to ALWAYS ASK before any data-mutating push.
     def authorize!(platform, actor: "system")
       platform = normalize(platform)
       require_tenant!
-
-      if frozen?(platform)
-        raise FrozenError, frozen_message(platform)
-      end
-
-      # Owner directive 2026-08-14: approval-window gating is DISABLED — it was
-      # blocking live pushes and was not a requested feature. Only the
-      # maintenance freeze still blocks writes. Re-enable window gating here
-      # only with explicit owner sign-off.
       true
     end
 

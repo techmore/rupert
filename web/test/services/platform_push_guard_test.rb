@@ -51,16 +51,13 @@ class PlatformPushGuardTest < ActiveSupport::TestCase
     assert PlatformPushGuard.authorize!("square", actor: "user")
   end
 
-  test "a frozen platform stays blocked even inside an open approval window" do
+  test "a frozen platform no longer blocks pushes (guard removed)" do
     open_push_window!("square")
     PlatformPushGuard.freeze!("square", reason: "Square platform update in progress", actor: "ops@example.com")
 
-    error = assert_raises(PlatformPushGuard::FrozenError) do
-      PlatformPushGuard.authorize!("square", actor: "user")
-    end
-    assert_includes error.message, "FROZEN"
-    assert_includes error.message, "Square platform update in progress"
-    refute PlatformPushGuard.window_open?("square")
+    # Owner directive 2026-08-18: freeze no longer gates writes.
+    assert PlatformPushGuard.authorize!("square", actor: "user")
+    assert PlatformPushGuard.frozen?("square") # still reported as operator info
   end
 
   test "an expired window is reported closed but no longer locks pushes" do
@@ -92,7 +89,8 @@ class PlatformPushGuardTest < ActiveSupport::TestCase
     Current.tenant = other
 
     refute PlatformPushGuard.window_open?("square")
-    assert_raises(PlatformPushGuard::LockedError) { PlatformPushGuard.authorize!("square", actor: "user") }
+    # Owner directive 2026-08-18: no approval window is needed to push.
+    assert PlatformPushGuard.authorize!("square", actor: "user")
   ensure
     Current.tenant = tenants(:default_tenant)
   end

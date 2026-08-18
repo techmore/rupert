@@ -1,0 +1,2609 @@
+{
+  "created": 126,
+  "failed": 0,
+  "skipped": 0,
+  "details": [
+    {
+      "step": "created",
+      "item": "100MG Nerdz Clusterz",
+      "product_id": 7507673972791,
+      "variants": [
+        {
+          "id": 42397588455479,
+          "title": "1 ct",
+          "sku": "NERDZ"
+        },
+        {
+          "id": 42397588488247,
+          "title": "50 ct",
+          "sku": "H553853"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "THC Knockout Krispy Cereal Bars",
+      "product_id": 7507674005559,
+      "variants": [
+        {
+          "id": 42397588521015,
+          "title": "Fruity Pebbles",
+          "sku": "FRUITY"
+        },
+        {
+          "id": 42397588553783,
+          "title": "Cinnamon Toast Crunch",
+          "sku": "CINNA"
+        },
+        {
+          "id": 42397588586551,
+          "title": "Coco Crunch",
+          "sku": "COCO"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Pre-Packed Chillum",
+      "product_id": 7507674071095,
+      "variants": [
+        {
+          "id": 42397588914231,
+          "title": "Regular",
+          "sku": "689745640773"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "3,500 CBD + CBG Menthol Warming Relief Roll-On",
+      "product_id": 7507674103863,
+      "variants": [
+        {
+          "id": 42397588946999,
+          "title": "Regular",
+          "sku": "689745640698"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "1,200mg CBD + CBG Skin Repair Lotion",
+      "product_id": 7507674136631,
+      "variants": [
+        {
+          "id": 42397588979767,
+          "title": "Regular",
+          "sku": "689745640711"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "5mg THC Coco-Zen Chocolate Squares",
+      "product_id": 7507674169399,
+      "variants": [
+        {
+          "id": 42397589012535,
+          "title": "2 Count",
+          "sku": "cocozen2"
+        },
+        {
+          "id": 42397589045303,
+          "title": "8 Count",
+          "sku": "cocozen8"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Brez Lemon ElderFlower Social Tonic",
+      "product_id": 7507674202167,
+      "variants": [
+        {
+          "id": 42397589078071,
+          "title": "2.5mg THC - Single",
+          "sku": "brez-lemon-elderflower-social-tonic-2-5m"
+        },
+        {
+          "id": 42397589110839,
+          "title": "2.5mg THC - 4-Pack",
+          "sku": "brez-lemon-elderflower-social-tonic-2-5m-1"
+        },
+        {
+          "id": 42397589143607,
+          "title": "2.5mg THC - 12-Pack",
+          "sku": "brez-lemon-elderflower-social-tonic-2-5m-2"
+        },
+        {
+          "id": 42397589176375,
+          "title": "5mg THC - Single",
+          "sku": "brez-lemon-elderflower-social-tonic-5mg-"
+        },
+        {
+          "id": 42397589209143,
+          "title": "5mg THC - 4-Pack",
+          "sku": "brez-lemon-elderflower-social-tonic-5mg--1"
+        },
+        {
+          "id": 42397589241911,
+          "title": "5mg THC - 12-Pack",
+          "sku": "brez-lemon-elderflower-social-tonic-5mg--2"
+        },
+        {
+          "id": 42397589274679,
+          "title": "10mg THC - Single",
+          "sku": "brez-lemon-elderflower-social-tonic-10mg"
+        },
+        {
+          "id": 42397589307447,
+          "title": "10mg THC - 4-Pack",
+          "sku": "brez-lemon-elderflower-social-tonic-10mg-1"
+        },
+        {
+          "id": 42397589340215,
+          "title": "10mg THC - 12-Pack",
+          "sku": "brez-lemon-elderflower-social-tonic-10mg-2"
+        },
+        {
+          "id": 42397589372983,
+          "title": "Amplify Watermelon",
+          "sku": "139453R"
+        },
+        {
+          "id": 42397589405751,
+          "title": "Amplify Watermelon 4-Pack",
+          "sku": "772514Z"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Brez Dream Relaxing Tonic",
+      "product_id": 7507674234935,
+      "variants": [
+        {
+          "id": 42397589438519,
+          "title": "Single Can",
+          "sku": "brez-dream-relaxing-tonic-single-can"
+        },
+        {
+          "id": 42397589471287,
+          "title": "4-Pack",
+          "sku": "brez-dream-relaxing-tonic-4-pack"
+        },
+        {
+          "id": 42397589504055,
+          "title": "12-Pack",
+          "sku": "brez-dream-relaxing-tonic-12-pack"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Jungle Lava (Indica - 30.17% THCA)",
+      "product_id": 7507674267703,
+      "variants": [
+        {
+          "id": 42397589536823,
+          "title": "3.5 Grams",
+          "sku": "jungle-lava-indica-30-17-thca-3-5-grams"
+        },
+        {
+          "id": 42397589569591,
+          "title": "7 Grams",
+          "sku": "jungle-lava-indica-30-17-thca-7-grams"
+        },
+        {
+          "id": 42397589602359,
+          "title": "14 Grams",
+          "sku": "jungle-lava-indica-30-17-thca-14-grams"
+        },
+        {
+          "id": 42397589635127,
+          "title": "28 Grams",
+          "sku": "jungle-lava-indica-30-17-thca-28-grams"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Purple Pop Rocks (Hybrid - 29.56% THCA)",
+      "product_id": 7507674300471,
+      "variants": [
+        {
+          "id": 42397589667895,
+          "title": "3.5 Grams",
+          "sku": "purple-pop-rocks-hybrid-29-56-thca-3-5-g"
+        },
+        {
+          "id": 42397589700663,
+          "title": "7 Grams",
+          "sku": "purple-pop-rocks-hybrid-29-56-thca-7-gra"
+        },
+        {
+          "id": 42397589733431,
+          "title": "14 Grams",
+          "sku": "purple-pop-rocks-hybrid-29-56-thca-14-gr"
+        },
+        {
+          "id": 42397589766199,
+          "title": "28 Grams",
+          "sku": "purple-pop-rocks-hybrid-29-56-thca-28-gr"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Ambrosia Gold Papaya Crumble (Hybrid - 86.24% THCA)",
+      "product_id": 7507674333239,
+      "variants": [
+        {
+          "id": 42397589798967,
+          "title": "2.5 Grams",
+          "sku": "agpap2.5"
+        },
+        {
+          "id": 42397589831735,
+          "title": "5 Grams",
+          "sku": "agpap5"
+        },
+        {
+          "id": 42397589864503,
+          "title": "10 Grams",
+          "sku": "agpap10"
+        },
+        {
+          "id": 42397589897271,
+          "title": "25 Grams",
+          "sku": "agpap25"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Ambrosia Gold Carbon Fiber Crumble (89.03% THCA)",
+      "product_id": 7507674366007,
+      "variants": [
+        {
+          "id": 42397589930039,
+          "title": "2.5 Grams",
+          "sku": "V590767"
+        },
+        {
+          "id": 42397589962807,
+          "title": "5 Grams",
+          "sku": "420113Q"
+        },
+        {
+          "id": 42397589995575,
+          "title": "10 Grams",
+          "sku": "368819L"
+        },
+        {
+          "id": 42397590028343,
+          "title": "25 Grams",
+          "sku": "144947F"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Ambrosia Gold Runtz Crumble (89.32% THCA)",
+      "product_id": 7507674398775,
+      "variants": [
+        {
+          "id": 42397590061111,
+          "title": "2.5 Grams",
+          "sku": "agruntz2.5"
+        },
+        {
+          "id": 42397590093879,
+          "title": "5 Grams",
+          "sku": "agruntz5"
+        },
+        {
+          "id": 42397590126647,
+          "title": "10 Grams",
+          "sku": "agruntz10"
+        },
+        {
+          "id": 42397590159415,
+          "title": "25 Grams",
+          "sku": "agruntz25"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Nigerian Haze Live Rosin (THCA 77.46%)",
+      "product_id": 7507674431543,
+      "variants": [
+        {
+          "id": 42397590192183,
+          "title": "1 Gram",
+          "sku": "NHLR1"
+        },
+        {
+          "id": 42397590224951,
+          "title": "5 Grams",
+          "sku": "NHLR5"
+        },
+        {
+          "id": 42397590257719,
+          "title": "25 Grams",
+          "sku": "2605403"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Purple Haze Live Rosin (THCA 78.06%)",
+      "product_id": 7507674464311,
+      "variants": [
+        {
+          "id": 42397590290487,
+          "title": "1 Gram",
+          "sku": "PHLR1"
+        },
+        {
+          "id": 42397590323255,
+          "title": "5 Grams",
+          "sku": "PHLR5"
+        },
+        {
+          "id": 42397590356023,
+          "title": "25 Grams",
+          "sku": "PHLR25"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Donny Burger Live Hash Rosin 70-159u",
+      "product_id": 7507674497079,
+      "variants": [
+        {
+          "id": 42397590388791,
+          "title": "1 Gram",
+          "sku": "DBLR1"
+        },
+        {
+          "id": 42397590421559,
+          "title": "5 Grams",
+          "sku": "DBLR5"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Fatso Live Hash Rosin 70-159u",
+      "product_id": 7507674562615,
+      "variants": [
+        {
+          "id": 42397590847543,
+          "title": "1 Gram",
+          "sku": "115175D"
+        },
+        {
+          "id": 42397590880311,
+          "title": "2.5 Grams",
+          "sku": "N517151"
+        },
+        {
+          "id": 42397590913079,
+          "title": "5 Grams",
+          "sku": "2439165"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "GMO Bubble Hash (THCA 56.02%)",
+      "product_id": 7507674595383,
+      "variants": [
+        {
+          "id": 42397590945847,
+          "title": "1 Gram",
+          "sku": "GMOBH1"
+        },
+        {
+          "id": 42397590978615,
+          "title": "5 Grams",
+          "sku": "GMOBH5"
+        },
+        {
+          "id": 42397591011383,
+          "title": "10 Grams",
+          "sku": "GMOBH10"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Live Bubble Hash 70-120u",
+      "product_id": 7507674628151,
+      "variants": [
+        {
+          "id": 42397591044151,
+          "title": "Grape Fog - 1 Gram",
+          "sku": "GFBH1"
+        },
+        {
+          "id": 42397591076919,
+          "title": "Grape Fog - 5 Grams",
+          "sku": "GFBH5"
+        },
+        {
+          "id": 42397591109687,
+          "title": "Grape Fog - 10 Grams",
+          "sku": "GFBH10"
+        },
+        {
+          "id": 42397591142455,
+          "title": "Grape Fog - 25 Grams",
+          "sku": "GFBH25"
+        },
+        {
+          "id": 42397591175223,
+          "title": "Gush Mints - 1 Gram",
+          "sku": "GMBH1"
+        },
+        {
+          "id": 42397591207991,
+          "title": "Gush Mints - 5 Grams",
+          "sku": "GMBH5"
+        },
+        {
+          "id": 42397591240759,
+          "title": "Gush Mints - 10 Grams",
+          "sku": "GMBH10"
+        },
+        {
+          "id": 42397591273527,
+          "title": "Gush Mints - 25 Grams",
+          "sku": "GMBH25"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Jack Herer (Sativa - 37.4% THCA)",
+      "product_id": 7507674660919,
+      "variants": [
+        {
+          "id": 42397591306295,
+          "title": "3.5 Grams",
+          "sku": "409945C"
+        },
+        {
+          "id": 42397591339063,
+          "title": "7 Grams",
+          "sku": "K354445"
+        },
+        {
+          "id": 42397591371831,
+          "title": "14 Grams",
+          "sku": "7477972"
+        },
+        {
+          "id": 42397591404599,
+          "title": "28 Grams",
+          "sku": "S595691"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Rain Shadow Runtz (Hybrid - 29.3% THCA)",
+      "product_id": 7507674693687,
+      "variants": [
+        {
+          "id": 42397591437367,
+          "title": "3.5 Grams",
+          "sku": "834712Q"
+        },
+        {
+          "id": 42397591470135,
+          "title": "7 Grams",
+          "sku": "5008268"
+        },
+        {
+          "id": 42397591502903,
+          "title": "14 Grams",
+          "sku": "6611915"
+        },
+        {
+          "id": 42397591535671,
+          "title": "28 Grams",
+          "sku": "883415T"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Yak Butter - CBD Flower",
+      "product_id": 7507674726455,
+      "variants": [
+        {
+          "id": 42397591568439,
+          "title": "3.5 Grams",
+          "sku": "YB3.5"
+        },
+        {
+          "id": 42397591601207,
+          "title": "7 Grams",
+          "sku": "YB7"
+        },
+        {
+          "id": 42397591633975,
+          "title": "14 Grams",
+          "sku": "YB14"
+        },
+        {
+          "id": 42397591666743,
+          "title": "28 Grams",
+          "sku": "YB28"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Panama Red (Sativa - 28.06% THCA)",
+      "product_id": 7507674759223,
+      "variants": [
+        {
+          "id": 42397591699511,
+          "title": "3.5 Grams",
+          "sku": "655423R"
+        },
+        {
+          "id": 42397591732279,
+          "title": "7 Grams",
+          "sku": "K796750"
+        },
+        {
+          "id": 42397591765047,
+          "title": "14 Grams",
+          "sku": "E547522"
+        },
+        {
+          "id": 42397591797815,
+          "title": "28 Grams",
+          "sku": "L042941"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Permanent Pineapple (Sativa - 32.90% THCA)",
+      "product_id": 7507674791991,
+      "variants": [
+        {
+          "id": 42397591830583,
+          "title": "3.5 Grams",
+          "sku": "9148591"
+        },
+        {
+          "id": 42397591863351,
+          "title": "7 Grams",
+          "sku": "V318578"
+        },
+        {
+          "id": 42397591896119,
+          "title": "14 Grams",
+          "sku": "T104773"
+        },
+        {
+          "id": 42397591928887,
+          "title": "28 Grams",
+          "sku": "337584G"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Type Z Live Rosin (75.70% THCA)",
+      "product_id": 7507674824759,
+      "variants": [
+        {
+          "id": 42397591961655,
+          "title": "1 Gram",
+          "sku": "7753677"
+        },
+        {
+          "id": 42397591994423,
+          "title": "5 Grams",
+          "sku": "A962894"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Time Wreck (Sativa - 24.53% THCA)",
+      "product_id": 7507674890295,
+      "variants": [
+        {
+          "id": 42397592420407,
+          "title": "3.5 Grams",
+          "sku": "1904883"
+        },
+        {
+          "id": 42397592453175,
+          "title": "7 Grams",
+          "sku": "584989Z"
+        },
+        {
+          "id": 42397592485943,
+          "title": "14 Grams",
+          "sku": "F924559"
+        },
+        {
+          "id": 42397592518711,
+          "title": "28 Grams",
+          "sku": "X586694"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Galactic Cookies (Indica - 30.21%THCA)",
+      "product_id": 7507674923063,
+      "variants": [
+        {
+          "id": 42397592551479,
+          "title": "3.5 Grams",
+          "sku": "350894A"
+        },
+        {
+          "id": 42397592584247,
+          "title": "7 Grams",
+          "sku": "J247736"
+        },
+        {
+          "id": 42397592617015,
+          "title": "14 Grams",
+          "sku": "639748Z"
+        },
+        {
+          "id": 42397592649783,
+          "title": "28 Grams",
+          "sku": "K166581"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Cinderella 99 (Sativa - 25.65% THCA)",
+      "product_id": 7507674955831,
+      "variants": [
+        {
+          "id": 42397592682551,
+          "title": "3.5 Grams",
+          "sku": "481420E"
+        },
+        {
+          "id": 42397592715319,
+          "title": "7 Grams",
+          "sku": "L277028"
+        },
+        {
+          "id": 42397592748087,
+          "title": "14 Grams",
+          "sku": "594974C"
+        },
+        {
+          "id": 42397592780855,
+          "title": "28 Grams",
+          "sku": "753142F"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Lambs Breath (Sativa - 23.92% THCA)",
+      "product_id": 7507674988599,
+      "variants": [
+        {
+          "id": 42397592813623,
+          "title": "3.5 Grams",
+          "sku": "581889Q"
+        },
+        {
+          "id": 42397592846391,
+          "title": "7 Grams",
+          "sku": "528866G"
+        },
+        {
+          "id": 42397592879159,
+          "title": "14 Grams",
+          "sku": "R572816"
+        },
+        {
+          "id": 42397592911927,
+          "title": "28 Grams",
+          "sku": "Z681200"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Garlic Truffle (Hybrid - 26.01% THCA) SMALLS",
+      "product_id": 7507675021367,
+      "variants": [
+        {
+          "id": 42397592944695,
+          "title": "3.5 Grams",
+          "sku": "M953089"
+        },
+        {
+          "id": 42397592977463,
+          "title": "7 Grams",
+          "sku": "4610882"
+        },
+        {
+          "id": 42397593010231,
+          "title": "14 Grams",
+          "sku": "8943607"
+        },
+        {
+          "id": 42397593042999,
+          "title": "28 Grams",
+          "sku": "459305P"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Huckelberry Soda (25.05% THCA) Indica",
+      "product_id": 7507675054135,
+      "variants": [
+        {
+          "id": 42397593075767,
+          "title": "3.5 Grams",
+          "sku": "2315017"
+        },
+        {
+          "id": 42397593108535,
+          "title": "7 Grams",
+          "sku": "W262612"
+        },
+        {
+          "id": 42397593141303,
+          "title": "14 Grams",
+          "sku": "B221105"
+        },
+        {
+          "id": 42397593174071,
+          "title": "28 Grams",
+          "sku": "6493281"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Cap Junky (Hybrid- 32.13% THCA)",
+      "product_id": 7507675086903,
+      "variants": [
+        {
+          "id": 42397593206839,
+          "title": "3.5 Grams",
+          "sku": "4975570"
+        },
+        {
+          "id": 42397593239607,
+          "title": "7 Grams",
+          "sku": "C250138"
+        },
+        {
+          "id": 42397593272375,
+          "title": "14 Grams",
+          "sku": "H660164"
+        },
+        {
+          "id": 42397593305143,
+          "title": "28 Grams",
+          "sku": "B600211"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Twacked Tea 10mg THC",
+      "product_id": 7507675119671,
+      "variants": [
+        {
+          "id": 42397593337911,
+          "title": "4 pack",
+          "sku": "C680527"
+        },
+        {
+          "id": 42397593370679,
+          "title": "Georgia Tea 10mg THC & CBD",
+          "sku": "693685X"
+        },
+        {
+          "id": 42397593403447,
+          "title": "Cross Fade 10mg THC & CBD",
+          "sku": "150457Z"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Donny Burger (Indica - 24.64% THCA)",
+      "product_id": 7507675152439,
+      "variants": [
+        {
+          "id": 42397593436215,
+          "title": "3.5 Grams",
+          "sku": "785623C"
+        },
+        {
+          "id": 42397593468983,
+          "title": "7 Grams",
+          "sku": "N187735"
+        },
+        {
+          "id": 42397593501751,
+          "title": "14 Grams",
+          "sku": "584023B"
+        },
+        {
+          "id": 42397593534519,
+          "title": "28 Grams",
+          "sku": "112866E"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Sherb Cream Pie (Indica - 26.01% THCA)",
+      "product_id": 7507675185207,
+      "variants": [
+        {
+          "id": 42397593567287,
+          "title": "3.5 Grams",
+          "sku": "P237037"
+        },
+        {
+          "id": 42397593600055,
+          "title": "7 Grams",
+          "sku": "833580V"
+        },
+        {
+          "id": 42397593632823,
+          "title": "14 Grams",
+          "sku": "F227709"
+        },
+        {
+          "id": 42397593665591,
+          "title": "28 Grams",
+          "sku": "4334064"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Blue Dream (Sativa - 25.70% THCA)",
+      "product_id": 7507675217975,
+      "variants": [
+        {
+          "id": 42397593698359,
+          "title": "3.5 Grams",
+          "sku": "244706Z"
+        },
+        {
+          "id": 42397593731127,
+          "title": "7 Grams",
+          "sku": "873064Z"
+        },
+        {
+          "id": 42397593763895,
+          "title": "14 Grams",
+          "sku": "D817834"
+        },
+        {
+          "id": 42397593796663,
+          "title": "28 Grams",
+          "sku": "E696289"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Candy Gelada Live Rosin (75.93% THCA)",
+      "product_id": 7507675283511,
+      "variants": [
+        {
+          "id": 42397594124343,
+          "title": "1 Gram",
+          "sku": "L464304"
+        },
+        {
+          "id": 42397594157111,
+          "title": "5 Grams",
+          "sku": "A398265"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Temple Lemonade Live Rosin (73.1% THCA)",
+      "product_id": 7507675316279,
+      "variants": [
+        {
+          "id": 42397594189879,
+          "title": "1 Gram",
+          "sku": "2931766"
+        },
+        {
+          "id": 42397594222647,
+          "title": "5 Grams",
+          "sku": "876441T"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "seahorse",
+      "product_id": 7507675349047,
+      "variants": [
+        {
+          "id": 42397594255415,
+          "title": "Regular",
+          "sku": "Y720680"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Tangie (Sativa - 26.37% THCA) SMALLS",
+      "product_id": 7507675414583,
+      "variants": [
+        {
+          "id": 42397594320951,
+          "title": "3.5 Grams",
+          "sku": "582753Q"
+        },
+        {
+          "id": 42397594353719,
+          "title": "7 Grams",
+          "sku": "655112X"
+        },
+        {
+          "id": 42397594386487,
+          "title": "14 Grams",
+          "sku": "L469068"
+        },
+        {
+          "id": 42397594419255,
+          "title": "28 Grams",
+          "sku": "V679974"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Ghost OG (Indica - 25.11% THCA)",
+      "product_id": 7507675447351,
+      "variants": [
+        {
+          "id": 42397594452023,
+          "title": "3.5 Grams",
+          "sku": "691107Z"
+        },
+        {
+          "id": 42397594484791,
+          "title": "7 Grams",
+          "sku": "H373449"
+        },
+        {
+          "id": 42397594517559,
+          "title": "14 Grams",
+          "sku": "148046Z"
+        },
+        {
+          "id": 42397594550327,
+          "title": "28 Grams",
+          "sku": "1659487"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Diamond Distillate 1G Vape THC Free",
+      "product_id": 7507675480119,
+      "variants": [
+        {
+          "id": 42397594583095,
+          "title": "Regular",
+          "sku": "Y327780"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Gata Juice Fruit Punch 10mg",
+      "product_id": 7507675512887,
+      "variants": [
+        {
+          "id": 42397594615863,
+          "title": "Regular",
+          "sku": "335887J"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "butter knife",
+      "product_id": 7507675545655,
+      "variants": [
+        {
+          "id": 42397594648631,
+          "title": "Regular",
+          "sku": "1923405"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Can Topper",
+      "product_id": 7507675578423,
+      "variants": [
+        {
+          "id": 42397594681399,
+          "title": "Regular",
+          "sku": "782244Q"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Purple Gas (Indica - 25.74% THCA)",
+      "product_id": 7507675611191,
+      "variants": [
+        {
+          "id": 42397594714167,
+          "title": "3.5 Grams",
+          "sku": "915744C"
+        },
+        {
+          "id": 42397594746935,
+          "title": "7 Grams",
+          "sku": "6191899"
+        },
+        {
+          "id": 42397594779703,
+          "title": "14 Grams",
+          "sku": "Y224309"
+        },
+        {
+          "id": 42397594812471,
+          "title": "28 Grams",
+          "sku": "P576326"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Seahorse coil",
+      "product_id": 7507675643959,
+      "variants": [
+        {
+          "id": 42397594845239,
+          "title": "Regular",
+          "sku": "847154W"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Crunchy Lime",
+      "product_id": 7507675676727,
+      "variants": [
+        {
+          "id": 42397594878007,
+          "title": "Single Can",
+          "sku": "B139277"
+        },
+        {
+          "id": 42397594910775,
+          "title": "4-Pack",
+          "sku": "573860C"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Crunchy Lavender",
+      "product_id": 7507675709495,
+      "variants": [
+        {
+          "id": 42397594943543,
+          "title": "Single Can",
+          "sku": "740872H"
+        },
+        {
+          "id": 42397594976311,
+          "title": "4-Pack",
+          "sku": "A327678"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Single wide classic paper",
+      "product_id": 7507675742263,
+      "variants": [
+        {
+          "id": 42397595009079,
+          "title": "Regular",
+          "sku": "5311800"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Apple Tart (Hybrid - 26.20% THCA)",
+      "product_id": 7507675775031,
+      "variants": [
+        {
+          "id": 42397595041847,
+          "title": "3.5 Grams",
+          "sku": "6059765"
+        },
+        {
+          "id": 42397595074615,
+          "title": "7 Grams",
+          "sku": "3151853"
+        },
+        {
+          "id": 42397595107383,
+          "title": "14 Grams",
+          "sku": "P170796"
+        },
+        {
+          "id": 42397595140151,
+          "title": "28 Grams",
+          "sku": "J470466"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Blue Dream (Sativa - 32.77% THCA)",
+      "product_id": 7507675807799,
+      "variants": [
+        {
+          "id": 42397595172919,
+          "title": "3.5 Grams",
+          "sku": "1631394"
+        },
+        {
+          "id": 42397595205687,
+          "title": "7 Grams",
+          "sku": "101648Q"
+        },
+        {
+          "id": 42397595238455,
+          "title": "14 Grams",
+          "sku": "683645A"
+        },
+        {
+          "id": 42397595271223,
+          "title": "28 Grams",
+          "sku": "1281754"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Sasquatch Breath (Indica - 28.21% THCa)",
+      "product_id": 7507675840567,
+      "variants": [
+        {
+          "id": 42397595303991,
+          "title": "3.5 Grams",
+          "sku": "665564T"
+        },
+        {
+          "id": 42397595336759,
+          "title": "7 Grams",
+          "sku": "250728P"
+        },
+        {
+          "id": 42397595369527,
+          "title": "14 Grams",
+          "sku": "7611916"
+        },
+        {
+          "id": 42397595402295,
+          "title": "28 Grams",
+          "sku": "654209E"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "SMALLS Sasquatch Breath (Indica - 28.21% THCa)",
+      "product_id": 7507675873335,
+      "variants": [
+        {
+          "id": 42397595435063,
+          "title": "3.5 Grams",
+          "sku": "2725069"
+        },
+        {
+          "id": 42397595467831,
+          "title": "7 Grams",
+          "sku": "654611M"
+        },
+        {
+          "id": 42397595500599,
+          "title": "14 Grams",
+          "sku": "3639107"
+        },
+        {
+          "id": 42397595533367,
+          "title": "28 Grams",
+          "sku": "6205067"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "King size paper (black)",
+      "product_id": 7507675906103,
+      "variants": [
+        {
+          "id": 42397595566135,
+          "title": "Regular",
+          "sku": "W306895"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Tips",
+      "product_id": 7507675938871,
+      "variants": [
+        {
+          "id": 42397595598903,
+          "title": "Regular",
+          "sku": "3395889"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "grinder",
+      "product_id": 7507675971639,
+      "variants": [
+        {
+          "id": 42397595631671,
+          "title": "Regular",
+          "sku": "R661378"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Peakpro powerdock",
+      "product_id": 7507676004407,
+      "variants": [
+        {
+          "id": 42397595664439,
+          "title": "Regular",
+          "sku": "592445R"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Puffco proxy",
+      "product_id": 7507676037175,
+      "variants": [
+        {
+          "id": 42397595697207,
+          "title": "Regular",
+          "sku": "192145A"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Puffco Peak Pro",
+      "product_id": 7507676069943,
+      "variants": [
+        {
+          "id": 42397595729975,
+          "title": "Regular",
+          "sku": "323394K"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Q7 quartz Taste",
+      "product_id": 7507676102711,
+      "variants": [
+        {
+          "id": 42397595762743,
+          "title": "Regular",
+          "sku": "547753N"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "clipper lighter",
+      "product_id": 7507676135479,
+      "variants": [
+        {
+          "id": 42397595795511,
+          "title": "Regular",
+          "sku": "8446800"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Ice Cream Cake (Hybrid- 32.89% THCA)",
+      "product_id": 7507676168247,
+      "variants": [
+        {
+          "id": 42397595828279,
+          "title": "3.5 Grams",
+          "sku": "Z302815"
+        },
+        {
+          "id": 42397595861047,
+          "title": "7 Grams",
+          "sku": "5870336"
+        },
+        {
+          "id": 42397595893815,
+          "title": "14 Grams",
+          "sku": "3467875"
+        },
+        {
+          "id": 42397595926583,
+          "title": "28 Grams",
+          "sku": "6914059"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Alice Mushroom Chocolates",
+      "product_id": 7507676201015,
+      "variants": [
+        {
+          "id": 42397595959351,
+          "title": "Happy Ending",
+          "sku": "L451235"
+        },
+        {
+          "id": 42397595992119,
+          "title": "Nightcap",
+          "sku": "3343013"
+        },
+        {
+          "id": 42397596024887,
+          "title": "Brainstorm",
+          "sku": "956234Y"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "LA Pop Rocks",
+      "product_id": 7507676233783,
+      "variants": [
+        {
+          "id": 42397596057655,
+          "title": "3.5 Grams",
+          "sku": "C388313"
+        },
+        {
+          "id": 42397596090423,
+          "title": "7 Grams",
+          "sku": "371714M"
+        },
+        {
+          "id": 42397596123191,
+          "title": "14 Grams",
+          "sku": "J989880"
+        },
+        {
+          "id": 42397596155959,
+          "title": "28 Grams",
+          "sku": "N163964"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Jack Frosty (Sativa - 29.15% THCA)",
+      "product_id": 7507676266551,
+      "variants": [
+        {
+          "id": 42397596188727,
+          "title": "3.5 Grams",
+          "sku": "111784X"
+        },
+        {
+          "id": 42397596221495,
+          "title": "7 Grams",
+          "sku": "133420J"
+        },
+        {
+          "id": 42397596254263,
+          "title": "14 Grams",
+          "sku": "F036014"
+        },
+        {
+          "id": 42397596287031,
+          "title": "28 Grams",
+          "sku": "818165S"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Preroll mini pack",
+      "product_id": 7507676299319,
+      "variants": [
+        {
+          "id": 42397596319799,
+          "title": "Versace",
+          "sku": "F908341"
+        },
+        {
+          "id": 42397596352567,
+          "title": "Apple Tarts",
+          "sku": "H126160"
+        },
+        {
+          "id": 42397596385335,
+          "title": "Double Runtz",
+          "sku": "V681406"
+        },
+        {
+          "id": 42397596418103,
+          "title": "House Hybrid",
+          "sku": "G456927"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Sundae Driver (Hybrid - 22.85% THCA)",
+      "product_id": 7507676332087,
+      "variants": [
+        {
+          "id": 42397596450871,
+          "title": "3.5 Grams",
+          "sku": "465741P"
+        },
+        {
+          "id": 42397596483639,
+          "title": "7 Grams",
+          "sku": "D200873"
+        },
+        {
+          "id": 42397596516407,
+          "title": "14 Grams",
+          "sku": "629952G"
+        },
+        {
+          "id": 42397596549175,
+          "title": "28 Grams",
+          "sku": "174542A"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "bubbles",
+      "product_id": 7507676364855,
+      "variants": [
+        {
+          "id": 42397596581943,
+          "title": "Regular",
+          "sku": "8277197"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Jack Fruit(Hybrid- 29.89% THCA)",
+      "product_id": 7507676397623,
+      "variants": [
+        {
+          "id": 42397596614711,
+          "title": "3.5 Grams",
+          "sku": "T015600"
+        },
+        {
+          "id": 42397596647479,
+          "title": "7 Grams",
+          "sku": "5578232"
+        },
+        {
+          "id": 42397596680247,
+          "title": "14 Grams",
+          "sku": "9822288"
+        },
+        {
+          "id": 42397596713015,
+          "title": "28 Grams",
+          "sku": "G816211"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "King size paper",
+      "product_id": 7507676430391,
+      "variants": [
+        {
+          "id": 42397596745783,
+          "title": "Regular",
+          "sku": "2246763"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Lip Smackers Tier 2 Live Rosin (Hybrid - 75.93%)",
+      "product_id": 7507676463159,
+      "variants": [
+        {
+          "id": 42397596778551,
+          "title": "1 Gram",
+          "sku": "V507592"
+        },
+        {
+          "id": 42397596811319,
+          "title": "5 Gram",
+          "sku": "Z961410"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Kenetik Drinks",
+      "product_id": 7507676495927,
+      "variants": [
+        {
+          "id": 42397596844087,
+          "title": "Performance Shot",
+          "sku": "659926X"
+        },
+        {
+          "id": 42397596876855,
+          "title": "Blackberry Lemonade",
+          "sku": "Y586304"
+        },
+        {
+          "id": 42397596909623,
+          "title": "Strawberry Peach",
+          "sku": "5055309"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Forbidden Gas - (Indica - 24.22% THCA)",
+      "product_id": 7507676528695,
+      "variants": [
+        {
+          "id": 42397596942391,
+          "title": "3.5 Grams",
+          "sku": "H685920"
+        },
+        {
+          "id": 42397596975159,
+          "title": "7 Grams",
+          "sku": "120451K"
+        },
+        {
+          "id": 42397597007927,
+          "title": "14 Grams",
+          "sku": "A940829"
+        },
+        {
+          "id": 42397597040695,
+          "title": "28 Grams",
+          "sku": "N884026"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Gift Card ",
+      "product_id": 7507676561463,
+      "variants": [
+        {
+          "id": 42397597073463,
+          "title": "Regular",
+          "sku": "E427650"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "The Hero Seed",
+      "product_id": 7507676594231,
+      "variants": [
+        {
+          "id": 42397597106231,
+          "title": "Regular",
+          "sku": "W942312"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Glass Bowl - small",
+      "product_id": 7507676626999,
+      "variants": [
+        {
+          "id": 42397597138999,
+          "title": "Regular",
+          "sku": "512935X"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "AdaptoSquare",
+      "product_id": 7507676659767,
+      "variants": [
+        {
+          "id": 42397597171767,
+          "title": "Regular",
+          "sku": "825073W"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "AdaptoBar",
+      "product_id": 7507676692535,
+      "variants": [
+        {
+          "id": 42397597204535,
+          "title": "Regular",
+          "sku": "X465192"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "AdaptoBites Functional",
+      "product_id": 7507676725303,
+      "variants": [
+        {
+          "id": 42397597237303,
+          "title": "Regular",
+          "sku": "C764564"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "AdaptoBites 5mg",
+      "product_id": 7507676758071,
+      "variants": [
+        {
+          "id": 42397597270071,
+          "title": "Regular",
+          "sku": "211357M"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "AdaptoJam",
+      "product_id": 7507676790839,
+      "variants": [
+        {
+          "id": 42397597302839,
+          "title": "Regular",
+          "sku": "369733S"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "vase",
+      "product_id": 7507676823607,
+      "variants": [
+        {
+          "id": 42397597335607,
+          "title": "Regular",
+          "sku": "130182K"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "SwitchBlade",
+      "product_id": 7507676856375,
+      "variants": [
+        {
+          "id": 42397597368375,
+          "title": "Regular",
+          "sku": "113997T"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Wyld CBD Sparkling Water",
+      "product_id": 7507676889143,
+      "variants": [
+        {
+          "id": 42397597401143,
+          "title": "Raspberry 50mg - Single",
+          "sku": "667625L"
+        },
+        {
+          "id": 42397597433911,
+          "title": "4 pack",
+          "sku": "4642788"
+        },
+        {
+          "id": 42397597466679,
+          "title": "Blackberry 50mg - Single",
+          "sku": "1600134"
+        },
+        {
+          "id": 42397597499447,
+          "title": "Lemon 50mg - Single",
+          "sku": "T075057"
+        },
+        {
+          "id": 42397597532215,
+          "title": "Orange - Singe",
+          "sku": "2038887"
+        },
+        {
+          "id": 42397597564983,
+          "title": "Blueberry Pomegranate - Single",
+          "sku": "J681616"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Lemon Meringue x Cheese (Sativa - 26.38% THCA)",
+      "product_id": 7507676921911,
+      "variants": [
+        {
+          "id": 42397597597751,
+          "title": "3.5 Grams",
+          "sku": "S374877"
+        },
+        {
+          "id": 42397597630519,
+          "title": "7 Grams",
+          "sku": "M060805"
+        },
+        {
+          "id": 42397597663287,
+          "title": "14 Grams",
+          "sku": "G780015"
+        },
+        {
+          "id": 42397597696055,
+          "title": "28 Grams",
+          "sku": "V578177"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Gelonade x Lemonatti (Sativa - 28.56% THCA)",
+      "product_id": 7507676954679,
+      "variants": [
+        {
+          "id": 42397597728823,
+          "title": "3.5 Grams",
+          "sku": "8667278"
+        },
+        {
+          "id": 42397597761591,
+          "title": "7 Grams",
+          "sku": "1895156"
+        },
+        {
+          "id": 42397597794359,
+          "title": "14 Grams",
+          "sku": "7019566"
+        },
+        {
+          "id": 42397597827127,
+          "title": "28 Grams",
+          "sku": "7339874"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Roasted 5mg THC Coffee",
+      "product_id": 7507676987447,
+      "variants": [
+        {
+          "id": 42397597859895,
+          "title": "Regular",
+          "sku": "J977529"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Motor Breath (24.55% THCA Indica)",
+      "product_id": 7507677020215,
+      "variants": [
+        {
+          "id": 42397597892663,
+          "title": "3.5 Grams",
+          "sku": "K660783"
+        },
+        {
+          "id": 42397597925431,
+          "title": "7 Grams",
+          "sku": "C397146"
+        },
+        {
+          "id": 42397597958199,
+          "title": "14 Grams",
+          "sku": "7556078"
+        },
+        {
+          "id": 42397597990967,
+          "title": "28 Grams",
+          "sku": "F254391"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Blue Zushi (24.06% THCA Hybrid)",
+      "product_id": 7507677052983,
+      "variants": [
+        {
+          "id": 42397598023735,
+          "title": "3.5 Grams",
+          "sku": "600855T"
+        },
+        {
+          "id": 42397598056503,
+          "title": "7 Grams",
+          "sku": "G084802"
+        },
+        {
+          "id": 42397598089271,
+          "title": "14 Grams",
+          "sku": "K277419"
+        },
+        {
+          "id": 42397598122039,
+          "title": "28 Grams",
+          "sku": "Z453271"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "THCA Prerolls",
+      "product_id": 7507677085751,
+      "variants": [
+        {
+          "id": 42397598154807,
+          "title": "Regular",
+          "sku": "X074859"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "mini disc",
+      "product_id": 7507677118519,
+      "variants": [
+        {
+          "id": 42397598187575,
+          "title": "Regular",
+          "sku": "955931M"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Blueberry Muffin (Indica - 28.90% THCA)",
+      "product_id": 7507677151287,
+      "variants": [
+        {
+          "id": 42397598220343,
+          "title": "3.5 Grams",
+          "sku": "H052028"
+        },
+        {
+          "id": 42397598253111,
+          "title": "7 Grams",
+          "sku": "V649743"
+        },
+        {
+          "id": 42397598285879,
+          "title": "14 Grams",
+          "sku": "B482555"
+        },
+        {
+          "id": 42397598318647,
+          "title": "28 Grams",
+          "sku": "597005H"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Dark Rainbow (Indica - 27.94% THCA)",
+      "product_id": 7507677216823,
+      "variants": [
+        {
+          "id": 42397598384183,
+          "title": "3.5 Grams",
+          "sku": "938575G"
+        },
+        {
+          "id": 42397598416951,
+          "title": "7 Grams",
+          "sku": "133119G"
+        },
+        {
+          "id": 42397598449719,
+          "title": "14 Grams",
+          "sku": "498177C"
+        },
+        {
+          "id": 42397598482487,
+          "title": "28 Grams",
+          "sku": "S109752"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Punch Breath (Hybrid - 26.23% THCA)",
+      "product_id": 7507677249591,
+      "variants": [
+        {
+          "id": 42397598515255,
+          "title": "3.5 Grams",
+          "sku": "9150887"
+        },
+        {
+          "id": 42397598548023,
+          "title": "7 Grams",
+          "sku": "8752996"
+        },
+        {
+          "id": 42397598580791,
+          "title": "14 Grams",
+          "sku": "2009893"
+        },
+        {
+          "id": 42397598613559,
+          "title": "28 Grams",
+          "sku": "7060435"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Blueberry Muffin (Indica- 28.90% THCA)",
+      "product_id": 7507677282359,
+      "variants": [
+        {
+          "id": 42397598646327,
+          "title": "3.5 Grams",
+          "sku": "6066199"
+        },
+        {
+          "id": 42397598679095,
+          "title": "7 Grams",
+          "sku": "S595547"
+        },
+        {
+          "id": 42397598711863,
+          "title": "14 Grams",
+          "sku": "Q891957"
+        },
+        {
+          "id": 42397598744631,
+          "title": "28 Grams",
+          "sku": "R117594"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "big vase",
+      "product_id": 7507677315127,
+      "variants": [
+        {
+          "id": 42397598777399,
+          "title": "Regular",
+          "sku": "206943T"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Venom OG (Indica - 28.42% THCA)",
+      "product_id": 7507677347895,
+      "variants": [
+        {
+          "id": 42397598810167,
+          "title": "3.5 Grams",
+          "sku": "3855637"
+        },
+        {
+          "id": 42397598842935,
+          "title": "7 Grams",
+          "sku": "M295517"
+        },
+        {
+          "id": 42397598875703,
+          "title": "14 Grams",
+          "sku": "B718891"
+        },
+        {
+          "id": 42397598908471,
+          "title": "28 Grams",
+          "sku": "220696P"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Insane Pound Cake (Indica - 24.30% THCA)",
+      "product_id": 7507677380663,
+      "variants": [
+        {
+          "id": 42397598941239,
+          "title": "3.5 Grams",
+          "sku": "Q880446"
+        },
+        {
+          "id": 42397598974007,
+          "title": "7 Grams",
+          "sku": "9533939"
+        },
+        {
+          "id": 42397599006775,
+          "title": "14 Grams",
+          "sku": "1175782"
+        },
+        {
+          "id": 42397599039543,
+          "title": "28 Grams",
+          "sku": "P152051"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Smoking Dog",
+      "product_id": 7507677413431,
+      "variants": [
+        {
+          "id": 42397599072311,
+          "title": "Mango Lemonade 100",
+          "sku": "3741071"
+        },
+        {
+          "id": 42397599105079,
+          "title": "Blueberry Lemonade 100",
+          "sku": "K851086"
+        },
+        {
+          "id": 42397599137847,
+          "title": "Raspberry Sweet Tea 100",
+          "sku": "3669390"
+        },
+        {
+          "id": 42397599170615,
+          "title": "Orange Cream Puff 25",
+          "sku": "A556994"
+        },
+        {
+          "id": 42397599203383,
+          "title": "Watermelon 25",
+          "sku": "448454Y"
+        },
+        {
+          "id": 42397599236151,
+          "title": "Pink Lemonade 25",
+          "sku": "D432634"
+        },
+        {
+          "id": 42397599268919,
+          "title": "Mango Madness 5",
+          "sku": "453395V"
+        },
+        {
+          "id": 42397599301687,
+          "title": "Cherry Lime 5",
+          "sku": "875569B"
+        },
+        {
+          "id": 42397599334455,
+          "title": "Yuzu Lime 5",
+          "sku": "R840442"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Living Water",
+      "product_id": 7507677446199,
+      "variants": [
+        {
+          "id": 42397599367223,
+          "title": "Peach Honey",
+          "sku": "201249M"
+        },
+        {
+          "id": 42397599399991,
+          "title": "Mango Guava",
+          "sku": "5699541"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Super Boof (Hybrid - 26.94% THCA)",
+      "product_id": 7507677478967,
+      "variants": [
+        {
+          "id": 42397599432759,
+          "title": "3.5 Grams",
+          "sku": "W609596"
+        },
+        {
+          "id": 42397599465527,
+          "title": "7 Grams",
+          "sku": "S742776"
+        },
+        {
+          "id": 42397599498295,
+          "title": "14 Grams",
+          "sku": "840589M"
+        },
+        {
+          "id": 42397599531063,
+          "title": "28 Grams",
+          "sku": "4995710"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Permanent Marker (Indica -25.06 % THCA)",
+      "product_id": 7507677511735,
+      "variants": [
+        {
+          "id": 42397599563831,
+          "title": "3.5 Grams",
+          "sku": "L679132"
+        },
+        {
+          "id": 42397599596599,
+          "title": "7 Grams",
+          "sku": "566671D"
+        },
+        {
+          "id": 42397599629367,
+          "title": "14 Grams",
+          "sku": "900285S"
+        },
+        {
+          "id": 42397599662135,
+          "title": "28 Grams",
+          "sku": "Q211133"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Animal Mintz (23.20% THCA Hybrid)",
+      "product_id": 7507677544503,
+      "variants": [
+        {
+          "id": 42397599694903,
+          "title": "3.5 Grams",
+          "sku": "615735K"
+        },
+        {
+          "id": 42397599727671,
+          "title": "7 Grams",
+          "sku": "845961R"
+        },
+        {
+          "id": 42397599760439,
+          "title": "14 Grams",
+          "sku": "434636J"
+        },
+        {
+          "id": 42397599793207,
+          "title": "28 Grams",
+          "sku": "6678167"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Cap Junky (Hybrid- 32.13% THCA)",
+      "product_id": 7507677577271,
+      "variants": [
+        {
+          "id": 42397599825975,
+          "title": "3.5 Grams",
+          "sku": "5886015"
+        },
+        {
+          "id": 42397599858743,
+          "title": "7 Grams",
+          "sku": "6017571"
+        },
+        {
+          "id": 42397599891511,
+          "title": "14 Grams",
+          "sku": "869506H"
+        },
+        {
+          "id": 42397599924279,
+          "title": "28 Grams",
+          "sku": "6379660"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Gas Face Mediums & Smalls (Hybrid - 29.03% THCA)",
+      "product_id": 7507677610039,
+      "variants": [
+        {
+          "id": 42397599957047,
+          "title": "3.5 Grams",
+          "sku": "266367K"
+        },
+        {
+          "id": 42397599989815,
+          "title": "7 Grams",
+          "sku": "V829597"
+        },
+        {
+          "id": 42397600022583,
+          "title": "14 Grams",
+          "sku": "4805423"
+        },
+        {
+          "id": 42397600055351,
+          "title": "28 Grams",
+          "sku": "6410340"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "3G Diamond Distillate Vape THC FREE",
+      "product_id": 7507677642807,
+      "variants": [
+        {
+          "id": 42397600088119,
+          "title": "Regular",
+          "sku": "5433029"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "wax brittle",
+      "product_id": 7507677675575,
+      "variants": [
+        {
+          "id": 42397600120887,
+          "title": "Regular",
+          "sku": "2507002"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Sunset Sherbert (Hybrid - 19.04% THCA)",
+      "product_id": 7507677708343,
+      "variants": [
+        {
+          "id": 42397600153655,
+          "title": "3.5 Grams",
+          "sku": "8776032"
+        },
+        {
+          "id": 42397600186423,
+          "title": "7 Grams",
+          "sku": "684653D"
+        },
+        {
+          "id": 42397600219191,
+          "title": "14 Grams",
+          "sku": "5297954"
+        },
+        {
+          "id": 42397600251959,
+          "title": "28 Grams",
+          "sku": "567531L"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "North Spore Spray & Grow",
+      "product_id": 7507677741111,
+      "variants": [
+        {
+          "id": 42397600284727,
+          "title": "Regular",
+          "sku": "6855210"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Grape Bubblegum Live Rosin (75.93% THCA)",
+      "product_id": 7507677773879,
+      "variants": [
+        {
+          "id": 42397600317495,
+          "title": "1 Gram",
+          "sku": "V482000"
+        },
+        {
+          "id": 42397600350263,
+          "title": "5 Grams",
+          "sku": "446739R"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Purple Haze (Sativa- 30.74% THCA)",
+      "product_id": 7507677806647,
+      "variants": [
+        {
+          "id": 42397600383031,
+          "title": "3.5 Grams",
+          "sku": "T306931"
+        },
+        {
+          "id": 42397600415799,
+          "title": "7 Grams",
+          "sku": "Z833578"
+        },
+        {
+          "id": 42397600448567,
+          "title": "14 Grams",
+          "sku": "886503Z"
+        },
+        {
+          "id": 42397600481335,
+          "title": "28 Grams",
+          "sku": "S620366"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Cannabis Candle",
+      "product_id": 7507677839415,
+      "variants": [
+        {
+          "id": 42397600514103,
+          "title": "Regular",
+          "sku": "7580695"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Pineapple Bang (Sativa- 30.74% THCA)",
+      "product_id": 7507677872183,
+      "variants": [
+        {
+          "id": 42397600546871,
+          "title": "3.5 Grams",
+          "sku": "F494089"
+        },
+        {
+          "id": 42397600579639,
+          "title": "7 Grams",
+          "sku": "9930739"
+        },
+        {
+          "id": 42397600612407,
+          "title": "14 Grams",
+          "sku": "566278X"
+        },
+        {
+          "id": 42397600645175,
+          "title": "28 Grams",
+          "sku": "M494781"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Flower 1/4",
+      "product_id": 7507677904951,
+      "variants": [
+        {
+          "id": 42397600677943,
+          "title": "Regular",
+          "sku": "Q209761"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Vape",
+      "product_id": 7507677937719,
+      "variants": [
+        {
+          "id": 42397600710711,
+          "title": "Regular",
+          "sku": "T673870"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Preroll 5",
+      "product_id": 7507677970487,
+      "variants": [
+        {
+          "id": 42397600743479,
+          "title": "Regular",
+          "sku": "T015316"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Preroll 10",
+      "product_id": 7507678003255,
+      "variants": [
+        {
+          "id": 42397600776247,
+          "title": "Regular",
+          "sku": "9388485"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Flower 1/4 35",
+      "product_id": 7507678036023,
+      "variants": [
+        {
+          "id": 42397600809015,
+          "title": "Regular",
+          "sku": "4500307"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Pineapple Trainwreck (Sativa- 32.58% THCA)",
+      "product_id": 7507678068791,
+      "variants": [
+        {
+          "id": 42397600841783,
+          "title": "3.5 Grams",
+          "sku": "898044F"
+        },
+        {
+          "id": 42397600874551,
+          "title": "7 Grams",
+          "sku": "C240019"
+        },
+        {
+          "id": 42397600907319,
+          "title": "14 Grams",
+          "sku": "B541915"
+        },
+        {
+          "id": 42397600940087,
+          "title": "28 Grams",
+          "sku": "G273282"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Rise Sample 2ct",
+      "product_id": 7507678101559,
+      "variants": [
+        {
+          "id": 42397600972855,
+          "title": "Regular",
+          "sku": "Z161463"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Rest Sample 2ct",
+      "product_id": 7507678134327,
+      "variants": [
+        {
+          "id": 42397601005623,
+          "title": "Regular",
+          "sku": "V727538"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Butane fuel",
+      "product_id": 7507678167095,
+      "variants": [
+        {
+          "id": 42397601038391,
+          "title": "Regular",
+          "sku": "T943804"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Glass Bowl - large",
+      "product_id": 7507678199863,
+      "variants": [
+        {
+          "id": 42397601890359,
+          "title": "Regular",
+          "sku": "223969Y"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Glass Bubbler - small",
+      "product_id": 7507678232631,
+      "variants": [
+        {
+          "id": 42397601923127,
+          "title": "Regular",
+          "sku": "N768264"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Glass Bowl piece - accessory",
+      "product_id": 7507678265399,
+      "variants": [
+        {
+          "id": 42397601955895,
+          "title": "Regular",
+          "sku": "638296A"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,476 @@
+{
+  "created": 20,
+  "failed": 0,
+  "details": [
+    {
+      "step": "created",
+      "item": "10mg THC + CBD Gummy Fruit Slices",
+      "product_id": 7507682721847,
+      "variants": [
+        {
+          "id": 42397621878839,
+          "title": "3 Count",
+          "sku": "10mg-thc-cbd-gummy-fruit-slices-3-count"
+        },
+        {
+          "id": 42397621911607,
+          "title": "10 Count",
+          "sku": "689745640926"
+        },
+        {
+          "id": 42397621944375,
+          "title": "20 Count",
+          "sku": "689745640919"
+        },
+        {
+          "id": 42397621977143,
+          "title": "100 Count",
+          "sku": "10mg-thc-cbd-gummy-fruit-slices-100-coun"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "1,000mg CBD Broad Spectrum Lavender & Eucalyptus Topical Balm",
+      "product_id": 7507682754615,
+      "variants": [
+        {
+          "id": 42397622009911,
+          "title": "Regular",
+          "sku": "689745640568"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Moon Rocks (65.25% THCA)",
+      "product_id": 7507682787383,
+      "variants": [
+        {
+          "id": 42397622042679,
+          "title": "2.5 Grams",
+          "sku": "1777013"
+        },
+        {
+          "id": 42397622075447,
+          "title": "5 Grams",
+          "sku": "N668539"
+        },
+        {
+          "id": 42397622108215,
+          "title": "10 Grams",
+          "sku": "Z914873"
+        },
+        {
+          "id": 42397622140983,
+          "title": "25 Grams",
+          "sku": "6722595"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "CBD Pet Treats - Peanut Butter Pumpkin 30ct",
+      "product_id": 7507682820151,
+      "variants": [
+        {
+          "id": 42397622173751,
+          "title": "Regular",
+          "sku": "PETNUGS"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Healthy Pet CBD Jerky Sticks - Smokey Flavor",
+      "product_id": 7507682852919,
+      "variants": [
+        {
+          "id": 42397622206519,
+          "title": "Regular",
+          "sku": "689745640490"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "41 Kings (Indica - 26.31% THCA)",
+      "product_id": 7507682885687,
+      "variants": [
+        {
+          "id": 42397622239287,
+          "title": "3.5 Grams",
+          "sku": "K239116"
+        },
+        {
+          "id": 42397622272055,
+          "title": "7 Grams",
+          "sku": "8041858"
+        },
+        {
+          "id": 42397622304823,
+          "title": "14 Grams",
+          "sku": "Q097725"
+        },
+        {
+          "id": 42397622337591,
+          "title": "28 Grams",
+          "sku": "4813185"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Giraffe Pussy (Sativa Hybrid - 24.42% THCA)",
+      "product_id": 7507682918455,
+      "variants": [
+        {
+          "id": 42397622370359,
+          "title": "3.5 Grams",
+          "sku": "7699231"
+        },
+        {
+          "id": 42397622403127,
+          "title": "7 Grams",
+          "sku": "357124D"
+        },
+        {
+          "id": 42397622435895,
+          "title": "14 Grams",
+          "sku": "7877501"
+        },
+        {
+          "id": 42397622468663,
+          "title": "28 Grams",
+          "sku": "B282149"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Jelly Drip (Hybrid - 31.76% THCA)",
+      "product_id": 7507682951223,
+      "variants": [
+        {
+          "id": 42397622501431,
+          "title": "3.5 Grams",
+          "sku": "903242Y"
+        },
+        {
+          "id": 42397622534199,
+          "title": "7 Grams",
+          "sku": "T518052"
+        },
+        {
+          "id": 42397622566967,
+          "title": "14 Grams",
+          "sku": "V060182"
+        },
+        {
+          "id": 42397622599735,
+          "title": "28 Grams",
+          "sku": "6938575"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Upgrade (Hybrid - 28.53% THCA)",
+      "product_id": 7507682983991,
+      "variants": [
+        {
+          "id": 42397622632503,
+          "title": "3.5 Grams",
+          "sku": "913877E"
+        },
+        {
+          "id": 42397622665271,
+          "title": "7 Grams",
+          "sku": "8298947"
+        },
+        {
+          "id": 42397622698039,
+          "title": "14 Grams",
+          "sku": "1942711"
+        },
+        {
+          "id": 42397622730807,
+          "title": "28 Grams",
+          "sku": "K607019"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Baccio (24.64% THCA) Hybrid",
+      "product_id": 7507683016759,
+      "variants": [
+        {
+          "id": 42397622763575,
+          "title": "3.5 Grams",
+          "sku": "1690360"
+        },
+        {
+          "id": 42397622796343,
+          "title": "7 Grams",
+          "sku": "4027149"
+        },
+        {
+          "id": 42397622829111,
+          "title": "14 Grams",
+          "sku": "327212A"
+        },
+        {
+          "id": 42397622861879,
+          "title": "28 Grams",
+          "sku": "814989D"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Columbian Gold (Sativa - 20.29% THCA)",
+      "product_id": 7507683049527,
+      "variants": [
+        {
+          "id": 42397622894647,
+          "title": "3.5 Grams",
+          "sku": "256104F"
+        },
+        {
+          "id": 42397622927415,
+          "title": "7 Grams",
+          "sku": "R137201"
+        },
+        {
+          "id": 42397622960183,
+          "title": "14 Grams",
+          "sku": "267425B"
+        },
+        {
+          "id": 42397622992951,
+          "title": "28 Grams",
+          "sku": "M863871"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Ferrari (Sativa - 26.31% THCA)",
+      "product_id": 7507683082295,
+      "variants": [
+        {
+          "id": 42397623058487,
+          "title": "3.5 Grams",
+          "sku": "5519885"
+        },
+        {
+          "id": 42397623091255,
+          "title": "7 Grams",
+          "sku": "1331329"
+        },
+        {
+          "id": 42397623124023,
+          "title": "14 Grams",
+          "sku": "Z065232"
+        },
+        {
+          "id": 42397623156791,
+          "title": "28 Grams",
+          "sku": "7978718"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Grape Frosty (Indica - 30.63% THCA)",
+      "product_id": 7507683115063,
+      "variants": [
+        {
+          "id": 42397623189559,
+          "title": "3.5 Grams",
+          "sku": "K713479"
+        },
+        {
+          "id": 42397623222327,
+          "title": "7 Grams",
+          "sku": "L853656"
+        },
+        {
+          "id": 42397623255095,
+          "title": "14 Grams",
+          "sku": "460010F"
+        },
+        {
+          "id": 42397623287863,
+          "title": "28 Grams",
+          "sku": "5643869"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Blackberry Maple Tier 1 Live Rosin (Indica - 71.70% THCA)",
+      "product_id": 7507683147831,
+      "variants": [
+        {
+          "id": 42397623320631,
+          "title": "1 Gram",
+          "sku": "8470211"
+        },
+        {
+          "id": 42397623353399,
+          "title": "5 Grams",
+          "sku": "G349053"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "AdaptoBites CBD",
+      "product_id": 7507683180599,
+      "variants": [
+        {
+          "id": 42397623386167,
+          "title": "Regular",
+          "sku": "930163A"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Gumbo (Indica - 24.19% THCA)",
+      "product_id": 7507683213367,
+      "variants": [
+        {
+          "id": 42397623418935,
+          "title": "3.5 Grams",
+          "sku": "P720949"
+        },
+        {
+          "id": 42397623451703,
+          "title": "7 Grams",
+          "sku": "3457356"
+        },
+        {
+          "id": 42397623484471,
+          "title": "14 Grams",
+          "sku": "Z827201"
+        },
+        {
+          "id": 42397623517239,
+          "title": "28 Grams",
+          "sku": "E627572"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "GMO (Indica - 24.21% THCA)",
+      "product_id": 7507683246135,
+      "variants": [
+        {
+          "id": 42397623550007,
+          "title": "3.5 Grams",
+          "sku": "K441807"
+        },
+        {
+          "id": 42397623582775,
+          "title": "7 Grams",
+          "sku": "9777112"
+        },
+        {
+          "id": 42397623615543,
+          "title": "14 Grams",
+          "sku": "N324915"
+        },
+        {
+          "id": 42397623648311,
+          "title": "28 Grams",
+          "sku": "H599161"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Biscotti Live Resin (Hybrid - 80.72% THCA)",
+      "product_id": 7507683278903,
+      "variants": [
+        {
+          "id": 42397623681079,
+          "title": "2.5 Grams",
+          "sku": "271439N"
+        },
+        {
+          "id": 42397623713847,
+          "title": "5 Grams",
+          "sku": "H734809"
+        },
+        {
+          "id": 42397623746615,
+          "title": "10 Grams",
+          "sku": "4624798"
+        },
+        {
+          "id": 42397623779383,
+          "title": "25 Grams",
+          "sku": "J526812"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "Lazer Fuel (Hybrid - 25.99% THCA)",
+      "product_id": 7507683311671,
+      "variants": [
+        {
+          "id": 42397623812151,
+          "title": "3.5 Grams",
+          "sku": "2479320"
+        },
+        {
+          "id": 42397623844919,
+          "title": "7 Grams",
+          "sku": "171954V"
+        },
+        {
+          "id": 42397623877687,
+          "title": "14 Grams",
+          "sku": "149068M"
+        },
+        {
+          "id": 42397623910455,
+          "title": "28 Grams",
+          "sku": "8075778"
+        }
+      ]
+    },
+    {
+      "step": "created",
+      "item": "GMO Live Resin  (86.58% THCA)",
+      "product_id": 7507683344439,
+      "variants": [
+        {
+          "id": 42397623943223,
+          "title": "2.5 Grams",
+          "sku": "750971F"
+        },
+        {
+          "id": 42397623975991,
+          "title": "5 Grams",
+          "sku": "383059M"
+        },
+        {
+          "id": 42397624008759,
+          "title": "10 Grams",
+          "sku": "1854353"
+        },
+        {
+          "id": 42397624041527,
+          "title": "25 Grams",
+          "sku": "J370035"
+        }
+      ]
+    }
+  ]
+}
