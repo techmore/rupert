@@ -237,6 +237,53 @@ namespace :ops do
     end
   end
 
+  namespace :remediate do
+    desc "Dry-run: print the Square SKU remediation plan (links + SKU writes + dup fix). No writes."
+    task square_skus: :environment do
+      load_tenant!
+      plan = SquareSkuRemediator.build_plan!
+      s = plan[:summary]
+      puts "SQUARE SKU REMEDIATION PLAN (DRY-RUN — nothing applied)"
+      puts "Generated: #{plan[:generated_at]}  tenant=#{Current.tenant.name}"
+      puts "  links to create (DB-only):       #{s[:links]}"
+      puts "  Square SKU assignments (writes): #{s[:sku_assignments]}"
+      puts "  duplicate SKU fixes (writes):    #{s[:duplicate_fix]}"
+      puts ""
+
+      puts "A) LINKS TO CREATE (SkuLink rows -> #{s[:links]})"
+      plan[:links_to_create].first(30).each do |rec|
+        puts format("  L  %-32s sku=%-14s  ->  $%-10s %s (score=%d)",
+          rec[:square][:name][0, 32], rec[:square][:sku].presence || "(none)", rec[:shopify].product&.title.to_s[0, 40], rec[:shopify].title.to_s[0, 30], rec[:score])
+      end
+      puts "  ... and #{s[:links] - 30} more" if s[:links] > 30
+
+      puts "\nB) SQUARE SKU ASSIGNMENTS (UpsertCatalogObject -> #{s[:sku_assignments]})"
+      plan[:sku_assignments].each do |w|
+        puts format("  S  %5d  %-32s item=%-28s -> SKU %s",
+          w[:qty], w[:variation][:name][0, 32], w[:item_name][0, 28], w[:proposed_sku])
+      end
+
+      puts "\nC) DUPLICATE SKU FIX"
+      if plan[:duplicate_fix]
+        w = plan[:duplicate_fix]
+        puts format("  D  %-32s (%s) -> SKU %s", w[:variation][:name], w[:variation][:variationId], w[:proposed_sku])
+      else
+        puts "  (none)"
+      end
+
+      puts "\nTo apply after review:  CONFIRM_REMEDIATION=yes TENANT_ID=... rails ops:remediate:square_skus:apply"
+      puts "(Square writes need an approved push window first.)"
+    end
+
+    namespace :square_skus do
+      desc "APPLY the Square SKU remediation plan (requires CONFIRM_REMEDIATION=yes + approved Square push window)"
+      task apply: :environment do
+        load_tenant!
+        puts JSON.pretty_generate(SquareSkuRemediator.apply!)
+      end
+    end
+  end
+
   namespace :push_guard do
     desc "Show push-guard status for Shopify and Square (freeze + approval windows)"
     task status: :environment do

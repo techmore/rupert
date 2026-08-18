@@ -74,3 +74,31 @@ The viable fixes for the 169 sellable-unlinked variations are:
 Both touch SKUs / links on Square — currently **blocked** by the "No SKU changes
 right now" directive. Re-run `ops:audit:square_skus` after that rule lifts to
 action the plan file.
+
+---
+
+## UPDATE 2026-08-18 — remediation applied (rule lifted)
+
+The "No SKU changes" rule was lifted and the plan was executed via the new
+`SquareSkuRemediator` service (`ops:remediate:square_skus[apply]`):
+
+| Item | Before | After |
+|---|---|---|
+| Variations without a SKU | 47 | **0** |
+| Duplicate SKUs (shared) | 1 | **0** |
+| Sellable AND no SKU | 6 | **0** |
+| SkuLinks | 63 | **64** (+1 confident named link) |
+
+- Assigned generated SKUs (lowercase item-variation slugs) to all 47 no-SKU
+  Square variations via UpsertCatalogObject (full-replacement, fresh-versioned,
+  preserving all fields incl. location overrides).
+- Fixed the duplicate `388062y` → `388062y-2` on the second variation.
+- Created 1 confident named link (Pineapple Trainwreck → King Cone Pre-Roll).
+- Deliberately did **not** auto-link the remaining generic sellable-unlinked
+  variations ("3.5/7/14/28 Grams", "Regular") — those need manual strain mapping.
+- Re-ran a Square mirror sync; the DB mirror now shows 701 variations, 0 no-SKU.
+
+Remaining known gap: **168 sellable-but-unlinked** variations (mostly generic
+flower-size "N Grams" and "Regular" items) still lack a Shopify `SkuLink` because
+their Square naming doesn't match Shopify's product structure. These need either
+manual mapping or per-item SKU alignment with Shopify's scheme.
