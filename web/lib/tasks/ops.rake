@@ -284,6 +284,43 @@ namespace :ops do
     end
   end
 
+  namespace :consolidate do
+    desc "Dry-run: show which per-SKU variants stay canonical and which get untracked. No writes."
+    task shopify_skus: :environment do
+      load_tenant!
+      plan = ShopifySkuConsolidator.build_plan!
+      s = plan[:summary]
+      puts "SHOPIFY SKU CONSOLIDATION PLAN (DRY-RUN — nothing applied)"
+      puts "Generated: #{plan[:generated_at]}  tenant=#{Current.tenant.name}"
+      puts "  pooled-SKU groups: #{s[:groups]}"
+      puts "  surplus variants to untrack: #{s[:surplus_to_untrack]}"
+      puts "  canonical variants kept: #{s[:canonical_kept]}"
+      puts "  ROUTEINS skipped: #{plan[:skipped_routeins]}"
+      puts ""
+      plan[:groups].each do |g|
+        puts "SKU #{g[:base].inspect} (#{g[:size]}) -> KEEP #{g[:canonical].id}"
+        puts "     canonical  [#{product_label(g[:canonical])}] tracked=#{g[:canonical].tracked} linked=#{SkuLink.linked.exists?(shopifyVariantId: g[:canonical].id)}"
+        g[:surplus].each do |v|
+          puts "     UNTRACK    [#{product_label(v)}] tracked=#{v.tracked} linked=#{SkuLink.linked.exists?(shopifyVariantId: v.id)}"
+        end
+      end
+      puts "\nTo apply after review: CONFIRM_CONSOLIDATE=yes TENANT_ID=... rails ops:consolidate:shopify_skus:apply"
+    end
+
+    def product_label(v)
+      p = ShopifyProduct.find_by(id: v.productId)
+      p ? "#{p.title.to_s[0, 38]} / #{p.status}" : "?"
+    end
+
+    namespace :shopify_skus do
+      desc "APPLY Shopify SKU consolidation (untrack surplus variants). Requires CONFIRM_CONSOLIDATE=yes"
+      task apply: :environment do
+        load_tenant!
+        puts JSON.pretty_generate(ShopifySkuConsolidator.apply!)
+      end
+    end
+  end
+
   namespace :push_guard do
     desc "Show push-guard status for Shopify and Square (freeze + approval windows)"
     task status: :environment do
