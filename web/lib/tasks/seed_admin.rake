@@ -27,13 +27,25 @@ namespace :rupert do
     admin.password = password
     admin.save!
 
-    puts ""
-    puts "  Super admin ready"
-    puts "  URL:      #{ENV.fetch("HOST", "http://localhost:3000")}"
-    puts "  Email:    #{admin.email}"
-    puts "  Password: #{password}"
-    puts ""
-    puts "Sign in, then create the first customer under Tenants > New tenant"
-    puts "to give it its own subdomain."
+    credentials = <<~TEXT
+
+      Super admin ready
+      URL:      #{ENV.fetch("HOST", "http://localhost:3000")}
+      Email:    #{admin.email}
+      Password: #{password}
+
+      Sign in, then create the first customer under Tenants > New tenant
+      to give it its own subdomain.
+    TEXT
+
+    if $stdout.isatty
+      puts credentials
+    else
+      # Non-interactive (cron/CI/scripts): never leak the password into logs.
+      # Write it to a 0600 file instead.
+      path = Rails.root.join("tmp", "seed_admin_credentials.txt")
+      File.write(path, credentials, perm: 0o600)
+      puts "Super admin created. Credentials written to #{path} (mode 0600)."
+    end
   end
 end

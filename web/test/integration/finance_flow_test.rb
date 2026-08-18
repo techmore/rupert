@@ -98,7 +98,7 @@ class FinanceFlowTest < ActionDispatch::IntegrationTest
     po.lines.each { |line| line.update!(received_quantity: line.quantity) }
     po.mark_received!
 
-    assert_equal 10000, AccountsService.payable_total_cents
+    assert_equal 10000, Purchasing::Payables.total_cents
 
     post finance_vendor_payments_path, params: {
       vendor_payment: { vendor_id: vendor.id, amount: "40.00", paid_on: "2026-08-02", method: "check" },
@@ -108,7 +108,7 @@ class FinanceFlowTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert_response :success
 
-    assert_equal 6000, AccountsService.payable_total_cents
+    assert_equal 6000, Purchasing::Payables.total_cents
     assert_select "td", /Pay Me/
   end
 

@@ -13,15 +13,6 @@
 class SizeDeriver
   SALES_OVERLAP = 10.minutes
 
-  SHOPIFY_ADJUST_QUERY = <<~GRAPHQL
-    mutation AdjustInventory($input: InventoryAdjustQuantitiesInput!, $idempotencyKey: String!) {
-      inventoryAdjustQuantities(input: $input) @idempotent(key: $idempotencyKey) {
-        inventoryAdjustmentGroup { createdAt changes { name delta } }
-        userErrors { field message }
-      }
-    }
-  GRAPHQL
-
   class << self
     def process_all!
       summary = { families: 0, applied: 0, pending: 0, failed: 0 }
@@ -123,7 +114,18 @@ class SizeDeriver
           next if delta.zero?
 
           begin
-            push_shopify!(variant, current, delta)
+            PlatformPushGuard.authorize!("shopify", actor: "system")
+            shopify = Location.shopify_primary
+            raise ShopifyClient::Error, "No Shopify location" if shopify.nil?
+
+            InventoryWriter.adjust_shopify!(
+              inventory_item_id: variant.inventoryItemId,
+              delta: delta,
+              location: shopify,
+              reference: "size-derive",
+              change_from: current,
+              idempotency_key: InventoryWriter.per_run_key("hh-size", variant.sku, variant.id, current, delta),
+            )
             journal_movement(change, variant_id: variant.id, before: current, after: target, platform: "shopify", delta: delta)
             notes << "Shopify #{delta.positive? ? "+" : ""}#{delta}"
           rescue StandardError => e
@@ -138,21 +140,13 @@ class SizeDeriver
         PlatformPushGuard.authorize!("square", actor: "system")
         before = InventoryLevel.total_for_variation(change.square_variation_id)
         begin
-          SquareClient.request("/inventory/changes/batch-create", method: "POST", body: {
+          InventoryWriter.physical_count!(
+            catalog_object_id: change.square_variation_id,
+            quantity: target,
+            location: home,
+            reference_id: "hh-size-#{change.sku}",
             idempotency_key: "hh-size-#{change.sku}-#{change.id}",
-            changes: [{
-              type: "PHYSICAL_COUNT",
-              physical_count: {
-                reference_id: "hh-size-#{change.sku}",
-                catalog_object_id: change.square_variation_id,
-                state: "IN_STOCK",
-                location_id: home.externalId,
-                quantity: target.to_s,
-                occurred_at: Time.current.iso8601,
-              },
-            }],
-            ignore_unchanged_counts: true,
-          })
+          )
           journal_movement(change, before: before, after: target, platform: "square", delta: target - before)
           notes << "Square → #{target}"
         rescue StandardError => e
@@ -170,35 +164,6 @@ class SizeDeriver
     end
 
     private
-
-    def push_shopify!(variant, current, delta)
-      PlatformPushGuard.authorize!("shopify", actor: "system")
-      location = Location.shopify_primary
-      raise ShopifyClient::Error, "No Shopify location" if location.nil?
-
-      slug = variant.sku.to_s.gsub(/[^a-z0-9]/i, "").slice(0, 40)
-      slug = "item" if slug.blank?
-      response = ShopifyClient.graphql(SHOPIFY_ADJUST_QUERY, {
-        input: {
-          reason: "correction",
-          name: "available",
-          referenceDocumentUri: "herbal-healers://inventory/size-derive",
-          changes: [{
-            delta: delta,
-            changeFromQuantity: current,
-            inventoryItemId: variant.inventoryItemId,
-            locationId: location.externalId,
-          }],
-        },
-        # Per-run token in the key so a recurring (variant, delta, starting qty)
-        # isn't re-submitted as a rejected duplicate on later cycles.
-        idempotencyKey: "hh-size-#{slug}-#{variant.id}-#{Current.sync_run_id.presence || Time.current.to_i}-#{current}->#{delta}",
-      })
-      user_errors = response.dig("inventoryAdjustQuantities", "userErrors") || []
-      raise ShopifyClient::Error, user_errors.map { |i| i["message"] }.join("; ") if user_errors.any?
-
-      true
-    end
 
     def journal_movement(change, variant_id: nil, before:, after:, platform:, delta:)
       InventoryMovement.create!(

@@ -49,20 +49,27 @@ class InventoryMaintainerPushSquareTotalsTest < ActiveSupport::TestCase
   end
 
   test "the AdjustInventory idempotency key is unique per adjustment" do
-    # Regression: the maintainer previously keyed on SKU+delta only. Shopify
-    # keeps keys for a long time, so a recurring (variant, delta, starting qty)
-    # on the 15-min cycle was re-submitted and rejected as "different
-    # parameters", failing the reconcile push every cycle. The key must carry a
-    # per-run token AND the starting quantity.
+    # Regression: the writer previously keyed on SKU+delta only (as part of
+    # InventoryMaintainer#push_shopify!). Shopify keeps keys for a long time, so
+    # a recurring (variant, delta, starting qty) on the 15-min cycle was
+    # re-submitted and rejected as "different parameters", failing the reconcile
+    # push every cycle. The key must carry a per-run token AND the starting
+    # quantity.
     captured = {}
     ShopifyClient.stubs(:graphql).with do |_q, variables|
       captured[:changeFromQuantity] = variables.dig(:input, :changes, 0, :changeFromQuantity)
       captured[:key] = variables[:idempotencyKey]
       true
     end.returns({ "inventoryAdjustQuantities" => { "userErrors" => [] } })
-    InventoryMaintainer.stubs(:shopify_level).returns(10)
 
-    InventoryMaintainer.send(:push_shopify!, @variant, 10, -5, @loc)
+    InventoryWriter.adjust_shopify!(
+      inventory_item_id: @variant.inventoryItemId,
+      delta: -5,
+      location: @loc,
+      reference: "pool-sync",
+      change_from: 10,
+      idempotency_key: InventoryWriter.per_run_key("hh-pool", @variant.sku, @variant.id, 10, -5),
+    )
 
     assert_equal 10, captured[:changeFromQuantity]
     assert_includes captured[:key], "10->-5", "key must carry the starting quantity and delta"

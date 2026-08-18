@@ -24,15 +24,6 @@
 # Unlinked SKUs on either platform are skipped and reported, never created
 # (SKU changes are still frozen by policy).
 class InventoryMaintainer
-  SHOPIFY_ADJUST_QUERY = <<~GRAPHQL
-    mutation AdjustInventory($input: InventoryAdjustQuantitiesInput!, $idempotencyKey: String!) {
-      inventoryAdjustQuantities(input: $input) @idempotent(key: $idempotencyKey) {
-        inventoryAdjustmentGroup { createdAt changes { name delta } }
-        userErrors { field message }
-      }
-    }
-  GRAPHQL
-
   SHOPIFY_LEVEL_QUERY = <<~GRAPHQL
     query ShopifyLevel($inventoryItemId: ID!, $locationId: ID!) {
       inventoryItem(id: $inventoryItemId) {
@@ -104,7 +95,15 @@ class InventoryMaintainer
               summary[:noop] += 1
             else
               actual_delta = pool - actual
-              push_shopify!(variant, actual, actual_delta, shopify_location)
+              PlatformPushGuard.authorize!("shopify", actor: "system")
+              InventoryWriter.adjust_shopify!(
+                inventory_item_id: variant.inventoryItemId,
+                delta: actual_delta,
+                location: shopify_location,
+                reference: "pool-sync",
+                change_from: actual,
+                idempotency_key: InventoryWriter.per_run_key("hh-pool", variant.sku, variant.id, actual, actual_delta),
+              )
               journal(link, variant.id, actual, pool, actual_delta, "shopify")
               summary[:shopify_pushed] += 1
               notes << "Shopify #{actual_delta.positive? ? "+" : ""}#{actual_delta}"
@@ -118,21 +117,13 @@ class InventoryMaintainer
         if link.squareVariationId.present? && home.present? && pool != square_qty
           begin
             PlatformPushGuard.authorize!("square", actor: "system")
-            SquareClient.request("/inventory/changes/batch-create", method: "POST", body: {
-              idempotency_key: "hh-pool-#{sku.gsub(/[^a-z0-9]/i, "").slice(0, 40)}-#{link.squareVariationId}-#{pool}-#{Time.current.to_i}",
-              changes: [{
-                type: "PHYSICAL_COUNT",
-                physical_count: {
-                  reference_id: "hh-pool-#{sku}",
-                  catalog_object_id: link.squareVariationId,
-                  state: "IN_STOCK",
-                  location_id: home.externalId,
-                  quantity: pool.to_s,
-                  occurred_at: Time.current.iso8601,
-                },
-              }],
-              ignore_unchanged_counts: true,
-            })
+            InventoryWriter.physical_count!(
+              catalog_object_id: link.squareVariationId,
+              quantity: pool,
+              location: home,
+              reference_id: "hh-pool-#{sku}",
+              idempotency_key: "hh-pool-#{InventoryWriter.slugify(sku)}-#{link.squareVariationId}-#{pool}-#{Time.current.to_i}",
+            )
             journal(link, nil, square_qty, pool, pool - square_qty, "square")
             summary[:square_pushed] += 1
             notes << "Square → #{pool}"
@@ -207,7 +198,14 @@ class InventoryMaintainer
             results[:per_sku] << { sku: sku, ok: true, target: target, actions: ["no-op"] }
             next
           end
-          push_shopify!(variant, actual, actual_delta, location)
+          InventoryWriter.adjust_shopify!(
+            inventory_item_id: variant.inventoryItemId,
+            delta: actual_delta,
+            location: location,
+            reference: "pool-sync",
+            change_from: actual,
+            idempotency_key: InventoryWriter.per_run_key("hh-pool", variant.sku, variant.id, actual, actual_delta),
+          )
           InventoryMovement.create!(
             sku: sku,
             shopifyVariantId: variant.id,
@@ -277,35 +275,6 @@ class InventoryMaintainer
       Setting.create_with(value: watermark.iso8601)
         .find_or_create_by!(key: POOL_WATERMARK_KEY, tenant_id: Current.tenant_id)
       watermark
-    end
-
-    def push_shopify!(variant, current, delta, location)
-      PlatformPushGuard.authorize!("shopify", actor: "system")
-      slug = variant.sku.to_s.gsub(/[^a-z0-9]/i, "").slice(0, 40)
-      slug = "item" if slug.blank?
-      response = ShopifyClient.graphql(SHOPIFY_ADJUST_QUERY, {
-        input: {
-          reason: "correction",
-          name: "available",
-          referenceDocumentUri: "herbal-healers://inventory/pool-sync",
-          changes: [{
-            delta: delta,
-            changeFromQuantity: current,
-            inventoryItemId: variant.inventoryItemId,
-            locationId: location.externalId,
-          }],
-        },
-        # Idempotency key must be unique per logical adjustment. Shopify keeps
-        # keys for a long time, so a deterministic key that recurs every 15-min
-        # cycle (same variant, same delta, same starting qty) is re-submitted and
-        # rejected as "different parameters". A per-run token keeps each distinct
-        # adjustment to its own key while staying stable for retries within a run.
-        idempotencyKey: "hh-pool-#{slug}-#{variant.id}-#{Current.sync_run_id.presence || Time.current.to_i}-#{current}->#{delta}",
-      })
-      user_errors = response.dig("inventoryAdjustQuantities", "userErrors") || []
-      raise ShopifyClient::Error, user_errors.map { |i| i["message"] }.join("; ") if user_errors.any?
-
-      true
     end
 
     # Reads the actual available quantity at the location straight from Shopify,

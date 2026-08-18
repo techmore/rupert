@@ -5,15 +5,6 @@
 class PlanApplier
   class SafetyLocked < StandardError; end
 
-  ADJUST_QUERY = <<~GRAPHQL
-    mutation AdjustInventory($input: InventoryAdjustQuantitiesInput!, $idempotencyKey: String!) {
-      inventoryAdjustQuantities(input: $input) @idempotent(key: $idempotencyKey) {
-        inventoryAdjustmentGroup { createdAt changes { name delta } }
-        userErrors { field message }
-      }
-    }
-  GRAPHQL
-
   class << self
     # Returns { applied:, results: [{ sku:, ok:, target:, actions: [] }] }
     def apply!(skus: nil, actor: "user")
@@ -48,21 +39,14 @@ class PlanApplier
 
         if row.square_delta != 0 && square_home.present?
           begin
-            SquareClient.request("/inventory/changes/batch-create", method: "POST", body: {
-              idempotency_key: idempotency_key("hh-sync", row.sku, row.square_home_target),
-              changes: [{
-                type: "PHYSICAL_COUNT",
-                physical_count: {
-                  reference_id: idempotency_key("hh-sync", row.sku, row.square_home_target),
-                  catalog_object_id: row.square_variation_id,
-                  state: "IN_STOCK",
-                  location_id: square_home.externalId,
-                  quantity: row.square_home_target.to_s,
-                  occurred_at: Time.current.iso8601,
-                },
-              }],
-              ignore_unchanged_counts: true,
-            })
+            count_key = idempotency_key("hh-sync", row.sku, row.square_home_target)
+            InventoryWriter.physical_count!(
+              catalog_object_id: row.square_variation_id,
+              quantity: row.square_home_target,
+              location: square_home,
+              reference_id: count_key,
+              idempotency_key: count_key,
+            )
             notes << "Square #{square_home.name}→#{row.square_home_target} (shared total #{row.target})"
             journal_movement(row, source: "reconcile", square_delta: row.square_delta, reference: "apply")
           rescue StandardError => e
@@ -77,19 +61,15 @@ class PlanApplier
             notes << "Shopify write needs location + read/write inventory scopes (re-install app with access)"
           else
             begin
-              result = ShopifyClient.graphql(ADJUST_QUERY, {
-                input: {
-                  reason: "correction",
-                  name: "available",
-                  referenceDocumentUri: "herbal-healers://inventory/reconciliation",
-                  changes: [{ delta: row.shopify_delta, inventoryItemId: row.inventory_item_id, locationId: shopify_location.externalId }],
-                },
-                # Include the starting quantity + delta in the key so the same
-                # delta against a different starting state isn't a duplicate.
-                idempotencyKey: idempotency_key("hh", row.sku, "#{row.shopify_qty}->#{row.shopify_delta}"),
-              })
-              user_errors = result.dig("inventoryAdjustQuantities", "userErrors") || []
-              raise ShopifyClient::Error, user_errors.map { |item| item["message"] }.join("; ") if user_errors.any?
+              # Include the starting quantity + delta in the key so the same
+              # delta against a different starting state isn't a duplicate.
+              InventoryWriter.adjust_shopify!(
+                inventory_item_id: row.inventory_item_id,
+                delta: row.shopify_delta,
+                location: shopify_location,
+                reference: "reconciliation",
+                idempotency_key: idempotency_key("hh", row.sku, "#{row.shopify_qty}->#{row.shopify_delta}"),
+              )
 
               notes << "Shopify #{row.shopify_delta.positive? ? "+" : ""}#{row.shopify_delta}"
               journal_movement(row, source: "reconcile", shopify_delta: row.shopify_delta, reference: "apply")
@@ -176,9 +156,7 @@ class PlanApplier
     end
 
     def idempotency_key(prefix, sku, target)
-      slug = sku.gsub(/[^a-z0-9]/i, "").slice(0, 40)
-      slug = "item" if slug.blank?
-      "#{prefix}-#{slug}-#{target}"
+      "#{prefix}-#{InventoryWriter.slugify(sku)}-#{target}"
     end
   end
 end

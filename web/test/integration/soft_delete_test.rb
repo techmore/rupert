@@ -75,9 +75,9 @@ class SoftDeleteTest < ActionDispatch::IntegrationTest
     po.mark_received!
 
     payment = Finance::VendorPayment.create!(tenant_id: @tenant.id, vendor_id: vendor.id, amount_cents: 4000, paid_on: Date.today, method: "check")
-    assert_equal 6000, AccountsService.payable_total_cents
+    assert_equal 6000, Purchasing::Payables.total_cents
 
     payment.discard
-    assert_equal 10000, AccountsService.payable_total_cents # deleted payment no longer reduces AP
+    assert_equal 10000, Purchasing::Payables.total_cents # deleted payment no longer reduces AP
   end
 end

@@ -75,21 +75,13 @@ class NegativeInventory
         location = level.location
         next if location.nil?
 
-        SquareClient.request("/inventory/changes/batch-create", method: "POST", body: {
+        InventoryWriter.physical_count!(
+          catalog_object_id: variation_id,
+          quantity: 0,
+          location: location,
+          reference_id: "hh-neg-#{variation_id}",
           idempotency_key: "hh-neg-#{variation_id}-#{level.id}-#{level.quantity}",
-          changes: [{
-            type: "PHYSICAL_COUNT",
-            physical_count: {
-              reference_id: "hh-neg-#{variation_id}",
-              catalog_object_id: variation_id,
-              state: "IN_STOCK",
-              location_id: location.externalId,
-              quantity: "0",
-              occurred_at: Time.current.iso8601,
-            },
-          }],
-          ignore_unchanged_counts: true,
-        })
+        )
         level.update!(quantity: 0, available: 0, updatedAt: Time.current)
       end
 

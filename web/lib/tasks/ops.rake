@@ -1,8 +1,12 @@
 # frozen_string_literal: true
 
 namespace :ops do
-  def load_tenant!
+  def load_tenant!(write: false)
     tenant_id = ENV["TENANT_ID"]
+    if write && tenant_id.blank?
+      raise "This task WRITES to tenant data and requires explicit TENANT_ID (e.g. TENANT_ID=<tenant id> bin/rails <task>)"
+    end
+
     tenant = tenant_id.present? ? Tenant.find_by(id: tenant_id) : Tenant.where(status: "active").first
     raise "No tenant found (set TENANT_ID or seed one)" if tenant.nil?
 
@@ -67,9 +71,9 @@ namespace :ops do
     puts Reconciler.summary(rows).to_json
   end
 
-  desc "Apply the reconciliation plan to Shopify and Square inventory"
+  desc "Apply the reconciliation plan to Shopify and Square inventory (WRITES; requires TENANT_ID)"
   task apply: :environment do
-    load_tenant!
+    load_tenant!(write: true)
     result = PlanApplier.apply!(actor: "rake")
     puts "Applied #{result[:applied]} adjustment(s)"
     result[:results].each do |row|
@@ -214,9 +218,9 @@ namespace :ops do
       end
     end
 
-    desc "Delete stale SquareVariation mirror rows that no longer exist in the live API (DB-only; no Square/Shopify writes)"
+    desc "Delete stale SquareVariation mirror rows that no longer exist in the live API (DB-only; deletes rows — requires TENANT_ID)"
     task prune_stale_mirror: :environment do
-      load_tenant!
+      load_tenant!(write: true)
       live_ids = SquareClient.catalog.map { |v| v[:variationId] }.to_set
       stale = SquareVariation.where(tenant_id: Current.tenant_id).reject { |v| live_ids.include?(v.id) }
       if stale.empty?
@@ -276,9 +280,9 @@ namespace :ops do
     end
 
     namespace :square_skus do
-      desc "APPLY the Square SKU remediation plan (requires CONFIRM_REMEDIATION=yes + approved Square push window)"
+      desc "APPLY the Square SKU remediation plan (WRITES to Square; requires CONFIRM_REMEDIATION=yes + TENANT_ID)"
       task apply: :environment do
-        load_tenant!
+        load_tenant!(write: true)
         puts JSON.pretty_generate(SquareSkuRemediator.apply!)
       end
     end
@@ -313,9 +317,9 @@ namespace :ops do
     end
 
     namespace :shopify_skus do
-      desc "APPLY Shopify SKU consolidation (untrack surplus variants). Requires CONFIRM_CONSOLIDATE=yes"
+      desc "APPLY Shopify SKU consolidation (untrack surplus variants). Requires CONFIRM_CONSOLIDATE=yes + TENANT_ID"
       task apply: :environment do
-        load_tenant!
+        load_tenant!(write: true)
         puts JSON.pretty_generate(ShopifySkuConsolidator.apply!)
       end
     end
