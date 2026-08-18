@@ -91,15 +91,17 @@ class InventoryPdf
   def build_document
     summary = summarize(rows)
     timestamps = snapshot_timestamps
+    attention = attention_items(rows)
+    movers = top_movers(rows)
     sales_week = sales_week_data
-    square_only = square_only_rows
 
     Prawn::Document.new(page_size: "LETTER", margin: 40) do |pdf|
       write_title(pdf)
       write_stats(pdf, timestamps, summary)
+      write_attention(pdf, attention)
+      write_movers(pdf, movers)
       write_color_key(pdf)
       write_table(pdf, rows)
-      write_square_only(pdf, square_only)
       pdf.start_new_page
       write_sales_week(pdf, sales_week)
       write_footer(pdf)
@@ -183,51 +185,6 @@ class InventoryPdf
     stocked + zeroed + untracked_rows
   end
 
-  # Square variations with mirrored stock that have NO Shopify link — they're
-  # not part of the Shopify-catalog rows above (which can only show Square stock
-  # that maps to a Shopify variant), so they'd be invisible in the report. They
-  # still represent sellable inventory at the physical/home location, so they
-  # get their own section instead of being silently dropped. Quantities are the
-  # home/physical-location totals (the "our shelf" number), not the combined
-  # shop + mobile-event aggregate the main Square column reports.
-  def square_only_rows
-    @square_only_rows ||= begin
-      linked = SkuLink.where.not(squareVariationId: nil).distinct.pluck(:squareVariationId).to_set
-      # All-location totals (home + mobile), so square-only stock parked at a
-      # non-home location (e.g. the Vendor Events rig) is surfaced too. These
-      # are unlinked variations, so they never also appear in the catalog
-      # table's Square column (which only shows linked stock).
-      totals = InventoryLevel.mirrored("square")
-        .group(:squareVariationId).sum(:quantity)
-
-      # Eager-load every variation + its item once (avoids a per-row find_by /
-      # item N+1) and index by id for O(1) lookup.
-      variations = SquareVariation.includes(:item)
-        .where(id: totals.keys).index_by(&:id)
-
-      totals.filter_map do |square_variation_id, qty|
-        next if linked.include?(square_variation_id)
-        next unless qty.to_i.positive?
-
-        variation = variations[square_variation_id]
-        next unless variation
-
-        item_label = variation.item&.name
-        display = if item_label.present? && item_label != variation.name
-          "#{item_label} — #{variation.name}"
-        else
-          variation.name.presence || "—"
-        end
-
-        {
-          item: display,
-          sku: variation.sku.presence || "—",
-          qty: qty.to_i,
-        }
-      end.sort_by { |r| [r[:item].to_s.downcase, r[:sku].to_s.downcase] }
-    end
-  end
-
   # Paid/fulfilled order lines in the window, as [sku, name, quantity] tuples
   # with the text already downcased so per-variant matching is cheap.
   def sales_lines
@@ -304,10 +261,10 @@ class InventoryPdf
   def write_stats(pdf, timestamps, summary)
     data = [
       ["Generated at", fmt(timestamps[:generated]), "Products", summary[:products].to_s],
-      ["Overall sync", fmt(timestamps[:overall]), "Variants", summary[:variants].to_s],
-      ["Shopify sync", fmt(timestamps[:shopify]), "Shopify units", summary[:shopify_units].to_s],
-      ["Square sync", fmt(timestamps[:square]), "Square units", summary[:square_units].to_s],
-      ["", "", "Sold last 7d", summary[:sold_7d].to_s],
+      ["Overall sync", fmt(timestamps[:overall]), "Tracked variants", summary[:variants].to_s],
+      ["Shopify sync", fmt(timestamps[:shopify]), "On-hand (Shopify)", summary[:shopify_units].to_s],
+      ["Square sync", fmt(timestamps[:square]), "On-hand (Square, linked)", summary[:square_units].to_s],
+      ["", "", "Sold last 7d (units)", summary[:sold_7d].to_s],
       ["", "", "Retail value", format_currency(summary[:valuation])],
     ]
     pdf.table(data, width: TABLE_WIDTH, column_widths: [116, 184, 102, 130]) do |table|
@@ -322,6 +279,88 @@ class InventoryPdf
       table.column(1).style(text_color: INK)
       table.column(2).style(font_style: :bold, text_color: INK)
       table.column(3).style(font_style: :bold, text_color: INK, align: :right)
+    end
+    pdf.move_down 8
+  end
+
+  # -- Attention (what needs your time) --------------------------------------
+  #
+  # The report leads with exceptions instead of a flat dump: stockouts, drift,
+  # negatives, and fast movers. `tracked` rows only (canonical sellable items).
+
+  def attention_items(rows)
+    tracked = rows.select(&:tracked)
+    out_of_stock = tracked.select { |r| r.shopify_qty.to_i <= 0 && (r.square_qty.nil? || r.square_qty <= 0) }
+    negative = tracked.select { |r| r.shopify_qty.to_i < 0 || (r.square_qty && r.square_qty < 0) }
+    drift = tracked.select { |r| r.drift && r.drift.abs >= 20 }
+    {
+      out_of_stock: out_of_stock.sort_by { |r| r.shopify_qty.to_i },
+      negative: negative.sort_by { |r| [r.shopify_qty.to_i, r.square_qty.to_i] },
+      drift: drift.sort_by { |r| -r.drift.abs },
+    }
+  end
+
+  # Top movers by units sold, ONE entry per product (a product's multiple
+  # strain variants share the same product-title match, so we collapse them to
+  # the best variant rather than double-listing the same product 5x).
+  def top_movers(rows)
+    tracked = rows.select(&:tracked).select { |r| r.sold_7d.to_i.positive? }
+    tracked.group_by(&:product).values
+      .map { |vs| vs.max_by { |r| r.sold_7d.to_i } }
+      .sort_by { |r| -r.sold_7d.to_i }
+      .first(10)
+  end
+
+  def write_attention(pdf, attention)
+    has_any = attention.values.any?(&:present?)
+    pdf.move_down 6
+    pdf.fill_color INK
+    pdf.text "Needs attention", size: 11, style: :bold
+    if !has_any
+      pdf.text "No stockouts, negatives, or large drift right now — the catalog is in good shape.", size: 8, color: OLIVE
+      pdf.move_down 6
+      return
+    end
+
+    groups = {
+      "Out of stock" => attention[:out_of_stock],
+      "Negative stock" => attention[:negative],
+      "Drift (Shopify vs Square)" => attention[:drift],
+    }
+    groups.each do |label, list|
+      next if list.empty?
+      pdf.fill_color HAZE
+      pdf.fill_rectangle [0, pdf.cursor + 3], TABLE_WIDTH, 14
+      pdf.fill_color INK
+      pdf.text "#{label} — #{list.length}", size: 8, style: :bold
+      pdf.move_down 2
+      list.first(8).each do |r|
+        detail = if label == "Drift (Shopify vs Square)"
+          format("Sh %d vs Sq %d (diff %+d)", r.shopify_qty.to_i, r.square_qty.to_i, r.drift.to_i)
+        else
+          format("Sh %d  Sq %s", r.shopify_qty.to_i, r.square_qty&.to_s || "—")
+        end
+        pdf.text "  • #{r.product[0,34]} — #{r.variant[0,20]} (#{r.sku})  #{detail}", size: 7, color: MOCHA
+      end
+      pdf.text("  … +#{list.length - 8} more", size: 6.5, color: TAUPE) if list.length > 8
+      pdf.move_down 5
+    end
+    pdf.move_down 3
+  end
+
+  def write_movers(pdf, movers)
+    return if movers.empty?
+    pdf.text "Top movers — units sold (7d)", size: 11, style: :bold
+    rows = movers.map { |r| [r.product[0,46], r.variant[0,30], r.sold_7d.to_s, r.shopify_qty.to_s] }
+    pdf.table(rows, width: TABLE_WIDTH, header: true, column_widths: [250, 130, 76, 76]) do |t|
+      t.row(0).font_style = :bold
+      t.row(0).background_color = HAZE
+      t.cells.size = 7
+      t.cells.padding = [2, 4]
+      t.cells.border_color = FOG
+      t.cells.text_color = MOCHA
+      t.column(2).align = :right
+      t.column(3).align = :right
     end
     pdf.move_down 8
   end
@@ -489,81 +528,6 @@ class InventoryPdf
   # fulfilled transaction that day so the report doubles as a reconciliation
   # aid against Shopify and Square.
 
-  # --- Square-only inventory (no Shopify link) --------------------------------
-  #
-  # Mirrored Square stock that has no matching Shopify variant never appears in
-  # the catalog table (which is Shopify-driven). Rendering it here keeps the
-  # report a true snapshot so sellable stock isn't silently invisible.
-
-  SQ_ONLY_HEADERS = ["Item", "SKU", "Qty"].freeze
-  SQ_ONLY_COL_WIDTHS = [352, 120, 60].freeze
-  SQ_ONLY_LEFT_X = [0, 352, 472].freeze
-  SQ_ONLY_RIGHT = [2].freeze
-  SQ_ONLY_ROW_HEIGHT = 12
-
-  def write_square_only(pdf, rows)
-    if rows.empty?
-      return
-    end
-
-    pdf.move_down 14
-    pdf.text "Square-only inventory (no Shopify listing) — across all Square locations", size: 12, style: :bold, color: INK
-    pdf.move_down 3
-    pdf.text(
-      "Mirrored Square stock with no matching Shopify variant (sum across every Square location, home + mobile) — not in the catalog table above. " \
-      "These items aren't sold through the online store by SKU, but they're on hand and shouldn't be forgotten.",
-      size: 7, color: TAUPE,
-    )
-    pdf.move_down 6
-
-    y = pdf.cursor
-    # Column header.
-    pdf.fill_color HAZE
-    pdf.fill_rectangle [0, y], TABLE_WIDTH, HEADER_HEIGHT
-    pdf.fill_color MOCHA
-    pdf.font "Helvetica", style: :bold
-    SQ_ONLY_HEADERS.each_with_index do |header, i|
-      pdf.draw_text header, at: [SQ_ONLY_LEFT_X[i] + 4, y - HEADER_HEIGHT / 2 + 1], size: FONT_SIZE
-    end
-    pdf.font "Helvetica", style: :normal
-    pdf.fill_color INK
-    y -= HEADER_HEIGHT + 3
-
-    pdf.font "Helvetica", size: FONT_SIZE
-    rows.each do |row|
-      if y - SQ_ONLY_ROW_HEIGHT < FOOTER_TOP
-        pdf.start_new_page
-        y = pdf.cursor
-        pdf.fill_color HAZE
-        pdf.fill_rectangle [0, y], TABLE_WIDTH, HEADER_HEIGHT
-        pdf.fill_color MOCHA
-        pdf.font "Helvetica", style: :bold
-        SQ_ONLY_HEADERS.each_with_index do |header, i|
-          pdf.draw_text header, at: [SQ_ONLY_LEFT_X[i] + 4, y - HEADER_HEIGHT / 2 + 1], size: FONT_SIZE
-        end
-        pdf.font "Helvetica", style: :normal
-        pdf.fill_color INK
-        y -= HEADER_HEIGHT + 3
-      end
-
-      baseline = y - SQ_ONLY_ROW_HEIGHT / 2 + 1
-      cells = [row[:item], row[:sku], row[:qty].to_s]
-      cells.each_with_index do |cell, i|
-        pdf.fill_color i == 2 ? INK : MOCHA
-        if SQ_ONLY_RIGHT.include?(i)
-          x = SQ_ONLY_LEFT_X[i] + SQ_ONLY_COL_WIDTHS[i] - 3 - pdf.width_of(cell.to_s)
-        else
-          x = SQ_ONLY_LEFT_X[i] + 4
-        end
-        pdf.draw_text fit_text(pdf, cell, SQ_ONLY_COL_WIDTHS[i] - 7), at: [x, baseline], size: FONT_SIZE
-      end
-      pdf.fill_color INK
-      pdf.stroke_color FOG
-      pdf.stroke_horizontal_line 0, TABLE_WIDTH, at: y - SQ_ONLY_ROW_HEIGHT + 1
-      y -= SQ_ONLY_ROW_HEIGHT
-    end
-  end
-
   def sales_week_data
     orders = Core::Order.includes(:order_lines)
       .where(occurred_at: SALES_DAYS.days.ago.beginning_of_day..Time.current)
@@ -708,8 +672,7 @@ class InventoryPdf
     pdf.move_down 10
     pdf.text(
       "Generated by Rupert. Quantities are mirrored from Shopify and Square and refresh every 15 minutes. " \
-      "The Square column is the sum across every active Square location (physical shop + mobile events); " \
-      "the Square-only section lists stock with no Shopify listing, summed across both locations. " \
+      "The Square column is the sum across every active Square location (physical shop + mobile events). " \
       "rose rows reuse a SKU on another product (breaks Shopify-Square linking); " \
       "tinted rows show a Shopify vs Square difference; zero-stock rows sit at the bottom; " \
       "7d sold counts paid/fulfilled orders from the last #{SALES_DAYS} days by SKU or product name; " \
