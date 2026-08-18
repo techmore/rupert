@@ -40,13 +40,17 @@
             </tr>
           <% end %>
           <% @products.each do |product| %>
-            <% product.variants.sort_by(&:title).each do |variant| %>
+            <% variants = product.variants.sort_by(&:title)
+                 .reject { |v| qty = @variant_qtys.dig(v.id, :shopify_qty) || 0; !v.tracked && @variant_qtys.dig(v.id, :link).nil? && qty <= 0 }
+                 .sort_by { |v| [v.tracked ? 0 : 1, v.title] } %>
+            <% variants.each do |variant| %>
               <% info = @variant_qtys.fetch(variant.id, {}) %>
+              <% untracked = !variant.tracked %>
               <% shopify_qty = info[:shopify_qty] || 0 %>
               <% link = info[:link] %>
               <% square_qty = info[:square_qty] %>
               <% drift = square_qty != nil ? square_qty - shopify_qty : nil %>
-              <tr class="hover:bg-cream">
+              <tr class="hover:bg-cream <%= untracked ? "bg-haze/60 opacity-70" : "" %>">
                 <td class="td">
                   <div class="flex items-center gap-3">
                     <% if (thumb = product.thumbnail_url) %>
@@ -57,6 +61,12 @@
                     <div class="min-w-0">
                       <p class="truncate font-medium text-ink"><%= link_to variant.title, shopify_variant_path(variant), class: "hover:text-olive hover:underline" %></p>
                       <p class="truncate text-xs text-taupe"><%= product.title %></p>
+                      <% if untracked %>
+                        <span class="mt-1 inline-flex items-center gap-1">
+                          <span class="pill-taupe">untracked</span>
+                          <span class="text-xs text-taupe">surplus duplicate — not synced/reconciled</span>
+                        </span>
+                      <% end %>
                       <% if (size = info[:size]) %>
                         <span class="mt-1 inline-flex flex-wrap items-center gap-1.5">
                           <span class="pill-olive">size <%= size[:grams] %>g</span>

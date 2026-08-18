@@ -39,11 +39,13 @@ class InventoryPdf
   DRIFT_TINT = "FFF4E0"  # pale amber — non-zero drift rows
   ZERO_TINT = "F5F0EC"   # pale stone — zero-stock-on-both rows
   DUP_SKU_TINT = "FDE8EA"  # pale rose — SKU reused by another product
+  UNT_TINT = "EFEFEC"      # pale gray — untracked (surplus/duplicate) variant, dimmed
   ROSE = "B91C1C"
 
   Row = Struct.new(
     :product, :variant, :sku, :price, :shopify_qty, :square_qty, :drift,
     :sold_7d, :sold_shared, :shared_product_sku, :shared_qty, :square_variation_id,
+    :tracked,
     keyword_init: true
   )
 
@@ -147,13 +149,16 @@ class InventoryPdf
     rows = ShopifyProduct.active.order(:title).includes(:variants).flat_map do |product|
       ptitle = product.title.to_s.downcase
       product_has_variants = multi_variant_products.include?(product.id)
-      product.variants.sort_by(&:title).map do |variant|
+      product.variants.sort_by(&:title).filter_map do |variant|
         sku = variant.sku.to_s.downcase
         sku_shared = sku.present? && shared_skus.include?(variant.sku)
         sold, via_sku, via_name = count_sold(sku, ptitle)
         link = link_map[variant.id]
         square_qty = link ? square_map.fetch(link.squareVariationId, 0) : nil
         shopify_qty = shopify_map.fetch(variant.id, 0)
+        # Skip inert, untracked helpers (e.g. ROUTEINS shipping insurance):
+        # unlinked and with no stock on either platform, they're not inventory.
+        next if !variant.tracked && link.nil? && shopify_qty.to_i <= 0
         Row.new(
           product: product.title,
           variant: variant.title,
@@ -166,12 +171,16 @@ class InventoryPdf
           sold_shared: (sku_shared && via_sku) || (product_has_variants && via_name),
           shared_product_sku: variant.sku.present? && duplicate_product_skus.include?(variant.sku),
           shared_qty: link.present? && shared_square_variations.include?(link.squareVariationId),
-          square_variation_id: link&.squareVariationId
+          square_variation_id: link&.squareVariationId,
+          tracked: variant.tracked
         )
       end
     end
-    zeroed, stocked = rows.partition { |row| zero_on_both?(row) }
-    stocked + zeroed
+    # Sort: tracked (canonical sellable) rows first — stocked first, then
+    # zero-on-both — and UNTRACKED (surplus/duplicate) rows last, dimmed.
+    tracked_rows, untracked_rows = rows.partition(&:tracked)
+    zeroed, stocked = tracked_rows.partition { |row| zero_on_both?(row) }
+    stocked + zeroed + untracked_rows
   end
 
   # Square variations with mirrored stock that have NO Shopify link — they're
@@ -368,7 +377,9 @@ class InventoryPdf
   # "duplicate SKU" flag), drift rows amber, zero-stock rows stone, and the
   # rest keep the subtle cream zebra stripe.
   def draw_row_background(pdf, row, y, index)
-    if row.shared_product_sku
+    if !row.tracked
+      pdf.fill_color UNT_TINT
+    elsif row.shared_product_sku
       pdf.fill_color DUP_SKU_TINT
     elsif !row.shared_qty && !row.drift.nil? && !row.drift.zero?
       pdf.fill_color DRIFT_TINT
@@ -437,6 +448,8 @@ class InventoryPdf
   end
 
   def cell_color(index, row)
+    return TAUPE unless row.tracked  # untracked (surplus) rows render dimmed
+
     if index == 2 && row.shared_product_sku
       ROSE
     elsif index == 6 && !row.shared_qty && !row.drift.nil? && !row.drift.zero?
@@ -451,6 +464,8 @@ class InventoryPdf
   end
 
   def bold_cell?(index, row)
+    return false unless row.tracked
+
     (index == 2 && row.shared_product_sku) ||
       (index == 6 && !row.shared_qty && !row.drift.nil? && !row.drift.zero?) ||
       (index == 7 && !row.sold_7d.nil? && row.sold_7d.positive?)
@@ -666,15 +681,15 @@ class InventoryPdf
     pdf.text "How to read this report", size: 9, style: :bold
     pdf.move_down 4
 
-    swatches = [DRIFT_TINT, ZERO_TINT, DUP_SKU_TINT, CREAM, nil, nil, nil, nil]
+    swatches = [DUP_SKU_TINT, UNT_TINT, DRIFT_TINT, ZERO_TINT, CREAM, nil, nil, nil]
     labels = [
+      "Rose row — DUPLICATE NAME/SKU: this SKU is reused by another product, which breaks Shopify–Square linking",
+      "GRAY row, dimmed & at the bottom — UNTRACKED variant: a surplus duplicate of a SKU that already has one real (tracked) product; excluded from sync/reconcile",
       "Amber row — Shopify vs Square differ (non-zero drift); the drift value is bold",
       "Stone row — out of stock on both platforms (sorted to the bottom)",
-      "Rose row — DUPLICATE NAME/SKU: this SKU is reused by another product, which breaks Shopify–Square linking",
       "Zebra stripe — alternating rows for readability",
       "† in the Square/Drift/7d columns — a shared SKU: the total spans multiple variations and can't be pinned to this row",
       "#{UNLINKED} under Square — no Square link for this variant",
-      "• SKU in bold rose — duplicate SKU",
       "7d sold in green — paid/fulfilled units in the last #{SALES_DAYS} days",
     ]
     data = swatches.each_index.map { |i| [swatches[i].nil? ? "" : " ", labels[i]] }
