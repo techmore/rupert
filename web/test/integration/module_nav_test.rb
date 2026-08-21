@@ -29,18 +29,17 @@ class ModuleNavTest < ActionDispatch::IntegrationTest
   test "header shows module areas and the active area is highlighted" do
     get inventory_index_path
     assert_response :success
-    ["Overview", "Commerce", "Operations", "System"].each do |name|
+    ["Overview", "Sell", "Stock", "Money", "Work", "Team", "System"].each do |name|
       assert_select "nav[aria-label='Module areas'] a", text: name
     end
-    assert_select "nav[aria-label='Module areas'] a.nav-pill-active", text: "Commerce"
+    assert_select "nav[aria-label='Module areas'] a.nav-pill-active", text: "Stock"
   end
 
   test "second bar shows the modules of the active area" do
     get inventory_index_path
     assert_response :success
-    assert_select "nav[aria-label='Module'] a", text: "Sales"
-    assert_select "nav[aria-label='Module'] a", text: "Customers"
-    assert_select "nav[aria-label='Module'] a", text: "Registers"
+    assert_select "nav[aria-label='Module'] a", text: "Locations"
+    assert_select "nav[aria-label='Module'] a", text: "Alerts"
     assert_select "nav[aria-label='Module'] a.nav-pill-active-sm", text: "Inventory"
   end
 
@@ -64,9 +63,9 @@ class ModuleNavTest < ActionDispatch::IntegrationTest
 
     get ledger_index_path
     assert_response :success
-    assert_select "nav[aria-label='Module areas'] a", text: "Operations"
+    assert_select "nav[aria-label='Module areas'] a", text: "Money"
     assert_select "nav[aria-label='Module'] a", text: "Ledger"
-    assert_select "nav[aria-label='Module'] a", text: "Catalog Links"
+    assert_select "nav[aria-label='Module'] a", text: "Reports"
     assert_select "nav[aria-label='Module'] a", text: "Projects", count: 0
     assert_select "nav[aria-label='Module'] a", text: "Goals", count: 0
     assert_select "nav[aria-label='Module'] a", text: "KPIs", count: 0
@@ -85,7 +84,7 @@ class ModuleNavTest < ActionDispatch::IntegrationTest
   test "Finance Accounts module doesn't leak into the Team nav" do
     get finance_accounts_path
     assert_response :success
-    assert_select "nav[aria-label='Module areas'] a", text: "Finance"
+    assert_select "nav[aria-label='Module areas'] a", text: "Money"
     assert_select "nav[aria-label='Module'] a", text: "Accounts", count: 1
     assert_select "nav[aria-label='Module'] a.nav-pill-active-sm", text: "Accounts"
 

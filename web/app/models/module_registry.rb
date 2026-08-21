@@ -66,15 +66,17 @@ class ModuleRegistry
     end
 
     # Top-level ERP areas that group modules in the header. "modules" lists the
-    # entry keys that belong to the area, in display order.
+    # entry keys that belong to the area, in display order. Areas follow the
+    # operator's day (sell / stock / money / work / team), not the org chart.
+    # Every registered module must appear in exactly one area.
     AREAS = [
       { key: "overview", name: "Overview", modules: ["dashboard"] },
-      { key: "commerce", name: "Commerce", modules: ["sales", "registers", "customers", "inventory", "locations", "warehouse"] },
-      { key: "operations", name: "Operations", modules: ["reports", "reconcile", "sizes", "ledger", "projects", "tasks", "goals", "kpis"] },
-      { key: "purchasing", name: "Purchasing", modules: ["vendors", "purchase_orders"] },
-      { key: "finance", name: "Finance", modules: ["finance_accounts", "chart_of_accounts", "expenses", "payments"] },
+      { key: "sell", name: "Sell", modules: ["sales", "registers", "customers"] },
+      { key: "stock", name: "Stock", modules: ["inventory", "locations", "alerts", "purchase_orders", "vendors", "reconcile", "sizes"] },
+      { key: "money", name: "Money", modules: ["reports", "ledger", "finance_accounts", "chart_of_accounts", "expenses", "payments"] },
+      { key: "work", name: "Work", modules: ["projects", "tasks", "goals", "kpis"] },
       { key: "team", name: "Team", modules: ["accounts", "employees", "departments", "positions", "timesheets", "leave", "payroll", "permissions"] },
-      { key: "system", name: "System", modules: ["system", "connections", "alerts", "activity", "access_log", "sync", "settings"] },
+      { key: "system", name: "System", modules: ["system", "connections", "sync", "settings", "warehouse", "activity", "access_log"] },
     ].freeze
 
     def area_key_for(module_key)
