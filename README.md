@@ -190,6 +190,10 @@ records; no longer written), `Location`,
   rejected (`[API] Invalid API key or access token`), re-install the app on
   the store or regenerate the secret in the Shopify admin — the sync will
   fail loudly in the Sync page until then.
-- SQLite is fine for a single-instance ops tool; the production warning can
-  be silenced, but if you outgrow it, switch `config/database.yml` to
-  PostgreSQL and `db:import_legacy`-style migration.
+- **PostgreSQL** is the production database (the legacy SQLite import path is
+  kept only for one-time migrations). Mirror/journal tables are pruned
+  nightly by `DataRetentionJob`; canonical business data is never pruned.
+- **Shopify and Square are separate locations with independent inventories.**
+  The sync is a read-only mirror; nothing equalizes quantities across them.
+  Outbound stock writes happen only through explicit, owner-approved flows,
+  and SKU writes always require owner sign-off first.

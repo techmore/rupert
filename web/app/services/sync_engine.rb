@@ -37,6 +37,9 @@ class SyncEngine
         summary = {}
         shopify = CatalogSyncer.sync!(since: order_since("shopify", history_days))
         summary[:shopify] = { products: shopify[:products], variants: shopify[:variants] }
+        if (oversold = shopify[:oversold_variants]).to_i.positive?
+          summary[:shopify][:oversold_variants] = oversold
+        end
         LedgerImporter.from_shopify_orders!(shopify.dig(:orders, "nodes"))
         advance_watermark!("shopify", run.startedAt)
 

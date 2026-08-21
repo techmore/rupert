@@ -235,6 +235,7 @@ class CatalogSyncer
       product_rows = []
       variant_rows = []
       variant_nodes = []
+      oversold = 0
 
       products.each do |product|
         product_rows << {
@@ -250,9 +251,15 @@ class CatalogSyncer
           tenant_id: Current.tenant_id,
         }
         Array(product.dig("variants", "nodes")).each do |node|
+          raw_qty = node["inventoryQuantity"].to_i
+          oversold += 1 if raw_qty.negative?
           variant_rows << build_variant_row(product["id"], node, now)
           variant_nodes << node
         end
+      end
+
+      if oversold.positive?
+        Rails.logger.warn("CatalogSyncer: #{oversold} Shopify variants are oversold (negative stock) — mirrored as 0. See NegativeInventory / restock queue.")
       end
 
       # One statement per table per sync instead of one upsert per row; rows
@@ -265,7 +272,7 @@ class CatalogSyncer
       end
 
       prune_stale_shopify_levels!
-      { products: product_rows.length, variants: variant_rows.length }
+      { products: product_rows.length, variants: variant_rows.length, oversold_variants: oversold }
     end
 
     def build_variant_row(product_id, variant, now)
