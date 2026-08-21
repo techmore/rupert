@@ -63,24 +63,21 @@ class CatalogSyncerTest < ActiveSupport::TestCase
       "sku" => "TEA-50",
       "price" => "12.00",
       "inventoryQuantity" => 7,
-      "inventoryItem" => {
-        "id" => "gid://shopify/InventoryItem/9",
-        "tracked" => true,
-        "inventoryLevels" => {
-          "nodes" => [
-            { "location" => { "id" => "gid://shopify/Location/1" },
-              "quantities" => [{ "name" => "available", "quantity" => 5 }] },
-            { "location" => { "id" => "gid://shopify/Location/2" },
-              "quantities" => [{ "name" => "available", "quantity" => 2 }] },
-          ],
-        },
-      },
+      "inventoryItem" => { "id" => "gid://shopify/InventoryItem/9", "tracked" => true },
+    }
+    levels = {
+      "gid://shopify/InventoryItem/9" => [
+        { "location" => { "id" => "gid://shopify/Location/1" },
+          "quantities" => [{ "name" => "available", "quantity" => 5 }] },
+        { "location" => { "id" => "gid://shopify/Location/2" },
+          "quantities" => [{ "name" => "available", "quantity" => 2 }] },
+      ],
     }
 
     ShopifyProduct.create!(id: "gid://shopify/Product/1", title: "Tea")
     ShopifyVariant.create!(id: variant["id"], productId: "gid://shopify/Product/1", title: "Tea / 50g", sku: "TEA-50")
 
-    CatalogSyncer.send(:sync_levels_batched!, [variant],
+    CatalogSyncer.send(:sync_levels_batched!, [variant], levels,
       { "gid://shopify/Location/1" => home, "gid://shopify/Location/2" => rig }, home, Time.current)
 
     levels = InventoryLevel.where(source: "shopify", shopifyVariantId: variant["id"])
@@ -103,11 +100,12 @@ class CatalogSyncerTest < ActiveSupport::TestCase
       "inventoryQuantity" => 3,
       "inventoryItem" => { "id" => "gid://shopify/InventoryItem/10", "tracked" => false },
     }
+    levels = {}
 
     ShopifyProduct.create!(id: "gid://shopify/Product/2", title: "Poster")
     ShopifyVariant.create!(id: variant["id"], productId: "gid://shopify/Product/2", title: "Poster", sku: nil)
 
-    CatalogSyncer.send(:sync_levels_batched!, [variant], {}, primary, Time.current)
+    CatalogSyncer.send(:sync_levels_batched!, [variant], levels, {}, primary, Time.current)
 
     levels = InventoryLevel.where(source: "shopify", shopifyVariantId: variant["id"])
     assert_equal 1, levels.count
@@ -121,20 +119,19 @@ class CatalogSyncerTest < ActiveSupport::TestCase
       "title" => "Tea / 50g",
       "sku" => "TEA-50",
       "inventoryQuantity" => 5,
-      "inventoryItem" => {
-        "id" => "gid://shopify/InventoryItem/11",
-        "tracked" => true,
-        "inventoryLevels" => {
-          "nodes" => [{ "location" => { "id" => "gid://shopify/Location/1" },
-                        "quantities" => [{ "name" => "available", "quantity" => 5 }] }],
-        },
-      },
+      "inventoryItem" => { "id" => "gid://shopify/InventoryItem/11", "tracked" => true },
+    }
+    levels = {
+      "gid://shopify/InventoryItem/11" => [
+        { "location" => { "id" => "gid://shopify/Location/1" },
+          "quantities" => [{ "name" => "available", "quantity" => 5 }] },
+      ],
     }
     locations = { "gid://shopify/Location/1" => home }
     ShopifyProduct.create!(id: "gid://shopify/Product/3", title: "Tea")
     ShopifyVariant.create!(id: variant["id"], productId: "gid://shopify/Product/3", title: "Tea / 50g", sku: "TEA-50")
 
-    2.times { CatalogSyncer.send(:sync_levels_batched!, [variant], locations, home, Time.current) }
+    2.times { CatalogSyncer.send(:sync_levels_batched!, [variant], levels, locations, home, Time.current) }
 
     assert_equal 1, InventoryLevel.where(source: "shopify", shopifyVariantId: variant["id"]).count
     assert_equal 1, InventoryMovement.where(shopifyVariantId: variant["id"]).count # only the initial 0->5

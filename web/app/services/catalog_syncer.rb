@@ -10,30 +10,38 @@ class CatalogSyncer
     }
   GRAPHQL
 
-  # Products are fetched with full cursor pagination: a bare `first: 250`
-  # silently truncated catalogs beyond one page. Page size is capped at 100
-  # because the nested per-variant inventoryLevels raise the query's computed
-  # GraphQL cost — at first: 250 it exceeds Shopify's single-query max (1000)
-  # and every sync fails. paginate_products walks as many pages as needed.
+  # Products are fetched with full cursor pagination (a bare `first: 250`
+  # silently truncated catalogs beyond one page). NOTE: no inventoryLevels here
+  # — nesting per-variant levels inside the catalog query pushes its computed
+  # GraphQL cost past Shopify's single-query max (1000) and fails every sync.
+  # Per-location quantities come from INVENTORY_LEVELS_QUERY instead, keyed by
+  # the variant's inventoryItemId.
   PRODUCTS_QUERY = <<~GRAPHQL
     query Products($cursor: String) {
-      products(first: 100, query: "status:active", sortKey: TITLE, after: $cursor) {
+      products(first: 250, query: "status:active", sortKey: TITLE, after: $cursor) {
         pageInfo { hasNextPage endCursor }
         nodes {
           id title tags status handle publishedAt totalInventory
           featuredImage { url altText }
-          variants(first: 100) {
+          variants(first: 100) { nodes { id title sku price inventoryQuantity inventoryItem { id tracked } } }
+        }
+      }
+    }
+  GRAPHQL
+
+  # Per-location "available" quantities, queried separately from the catalog
+  # so neither query approaches the cost limit. Page size kept deliberately
+  # small: each inventoryItem carries an inventoryLevels connection.
+  INVENTORY_LEVELS_QUERY = <<~GRAPHQL
+    query VariantLevels($ids: [ID!]!, $cursor: String) {
+      inventoryItems(first: 50, ids: $ids, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id
+          inventoryLevels(first: 10) {
             nodes {
-              id title sku price inventoryQuantity
-              inventoryItem {
-                id tracked
-                inventoryLevels(first: 10) {
-                  nodes {
-                    location { id }
-                    quantities(names: ["available"]) { name quantity }
-                  }
-                }
-              }
+              location { id }
+              quantities(names: ["available"]) { name quantity }
             }
           }
         }
@@ -99,15 +107,20 @@ class CatalogSyncer
       # Shopify levels mirror PER LOCATION now (same as Square): keyed by the
       # Location record id, quantity = that location's "available" count.
       # The variant's inventoryQuantity total is still stored on ShopifyVariant.
+      product_pages = paginate_products
+      variant_nodes = product_pages.flat_map { |p| Array(p.dig("variants", "nodes")) }
+      levels_by_item_id = fetch_inventory_levels(variant_nodes.map { |v| v.dig("inventoryItem", "id") })
+
       locations_by_gid = Location.by_source("shopify")
         .index_by(&:externalId)
       primary = Location.shopify_primary ||
         Location.find_by(source: "shopify", externalId: "default")
 
-      counts = sync_products!(paginate_products, locations_by_gid, primary)
+      counts = sync_products!(product_pages, levels_by_item_id, locations_by_gid, primary)
       {
         products: counts[:products],
         variants: counts[:variants],
+        oversold_variants: counts[:oversold_variants],
         locations: location_nodes,
         orders: paginate_orders(since),
         shop: ShopifyClient.graphql(SHOP_QUERY, {})["shop"],
@@ -161,6 +174,30 @@ class CatalogSyncer
         cursor = info["endCursor"]
       end
       nodes
+    end
+
+    # Per-location "available" levels for the given inventory item ids, keyed
+    # by item id. Queried separately from the catalog (see PRODUCTS_QUERY note)
+    # and paginated 50 items at a time to keep computed cost well under the
+    # single-query max.
+    def fetch_inventory_levels(item_ids)
+      ids = item_ids.compact.uniq
+      return {} if ids.empty?
+
+      result = Hash.new { |hash, key| hash[key] = [] }
+      cursor = nil
+      loop do
+        data = ShopifyClient.graphql(INVENTORY_LEVELS_QUERY, { ids: ids, cursor: cursor })
+        nodes = data.dig("inventoryItems", "nodes") || []
+        nodes.each do |item|
+          result[item["id"]] += Array(item.dig("inventoryLevels", "nodes"))
+        end
+        info = data.dig("inventoryItems", "pageInfo") || {}
+        break unless info["hasNextPage"] && info["endCursor"]
+
+        cursor = info["endCursor"]
+      end
+      result
     end
 
     # Fetches every order in the window, following the cursor until exhausted.
@@ -232,7 +269,7 @@ class CatalogSyncer
       chosen
     end
 
-    def sync_products!(products, locations_by_gid, primary)
+    def sync_products!(products, levels_by_item_id, locations_by_gid, primary)
       now = Time.current
       product_rows = []
       variant_rows = []
@@ -270,7 +307,7 @@ class CatalogSyncer
       ActiveRecord::Base.transaction do
         ShopifyProduct.upsert_all(product_rows, unique_by: :id) if product_rows.any?
         ShopifyVariant.upsert_all(variant_rows, unique_by: :id) if variant_rows.any?
-        sync_levels_batched!(variant_nodes, locations_by_gid, primary, now)
+        sync_levels_batched!(variant_nodes, levels_by_item_id, locations_by_gid, primary, now)
       end
 
       prune_stale_shopify_levels!
@@ -307,7 +344,7 @@ class CatalogSyncer
     # then written as a single level upsert + movements insert inside the
     # caller's transaction. Quantity changes journal before -> after exactly as
     # the per-row version did.
-    def sync_levels_batched!(variant_nodes, locations_by_gid, primary, now)
+    def sync_levels_batched!(variant_nodes, levels_by_item_id, locations_by_gid, primary, now)
       desired = []
       variant_nodes.each do |variant|
         variant_id = variant["id"]
@@ -315,7 +352,7 @@ class CatalogSyncer
         item = variant["inventoryItem"] || {}
         quantity = [variant["inventoryQuantity"].to_i, 0].max
 
-        level_nodes = Array(item.dig("inventoryLevels", "nodes"))
+        level_nodes = levels_by_item_id[item["id"]] || []
         if level_nodes.empty?
           # Untracked items / shapes without level data: keep the variant total
           # on the primary row so the item still surfaces in views and alerts.
