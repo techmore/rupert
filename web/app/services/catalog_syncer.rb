@@ -20,7 +20,20 @@ class CatalogSyncer
         nodes {
           id title tags status handle publishedAt totalInventory
           featuredImage { url altText }
-          variants(first: 100) { nodes { id title sku price inventoryQuantity inventoryItem { id tracked } } }
+          variants(first: 100) {
+            nodes {
+              id title sku price inventoryQuantity
+              inventoryItem {
+                id tracked
+                inventoryLevels(first: 10) {
+                  nodes {
+                    location { id }
+                    quantities(names: ["available"]) { name quantity }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -77,13 +90,23 @@ class CatalogSyncer
     # Returns { products:, variants:, locations:, orders:, shop: }
     def sync!(since: nil)
       since ||= (Time.current - history_lookback).strftime("%Y-%m-%d")
-      locations = fetch_locations
-      sync_locations!(locations)
-      counts = sync_products!(paginate_products, locations)
+      location_nodes = fetch_locations
+      sync_locations!(location_nodes)
+      assign_shopify_primary!(location_nodes)
+
+      # Shopify levels mirror PER LOCATION now (same as Square): keyed by the
+      # Location record id, quantity = that location's "available" count.
+      # The variant's inventoryQuantity total is still stored on ShopifyVariant.
+      locations_by_gid = Location.by_source("shopify")
+        .index_by(&:externalId)
+      primary = Location.shopify_primary ||
+        Location.find_by(source: "shopify", externalId: "default")
+
+      counts = sync_products!(paginate_products, locations_by_gid, primary)
       {
         products: counts[:products],
         variants: counts[:variants],
-        locations: locations,
+        locations: location_nodes,
         orders: paginate_orders(since),
         shop: ShopifyClient.graphql(SHOP_QUERY, {})["shop"],
       }
@@ -185,8 +208,29 @@ class CatalogSyncer
       record
     end
 
-    def sync_products!(products, locations)
-      primary = locations.first || Location.find_by(source: "shopify", externalId: "default")
+    # Flags exactly one Shopify location as primary: SHOPIFY_LOCATION_ID if set,
+    # else the first ACTIVE location in the API's order (the online store is
+    # usually first), else the first known row. Deterministic — the previous
+    # "oldest syncedAt wins" pick broke once more than one location existed.
+    def assign_shopify_primary!(location_nodes)
+      preferred_gid = EnvStore.fetch("SHOPIFY_LOCATION_ID", "").presence
+      gids = location_nodes.map { |node| node["id"] }
+      active_gids = location_nodes.select { |node| node["isActive"] != false }.map { |node| node["id"] }
+      chosen_gid =
+        (preferred_gid if gids.include?(preferred_gid)) ||
+        active_gids.first ||
+        gids.first
+
+      chosen = chosen_gid.present? ? Location.find_by(source: "shopify", externalId: chosen_gid) : nil
+      return if chosen.nil?
+
+      Location.by_source("shopify").where(primary_location: true).where.not(id: chosen.id)
+        .update_all(primary_location: false) # rubocop:disable Rails/SkipsModelValidations
+      chosen.update_column(:primary_location, true) unless chosen.primary_location? # rubocop:disable Rails/SkipsModelValidations
+      chosen
+    end
+
+    def sync_products!(products, locations_by_gid, primary)
       variant_count = 0
 
       products.each do |product|
@@ -206,19 +250,21 @@ class CatalogSyncer
         )
 
         Array(product.dig("variants", "nodes")).each do |variant|
-          sync_variant!(product["id"], variant, primary)
+          sync_variant!(product["id"], variant, locations_by_gid, primary)
           variant_count += 1
         end
       end
 
+      prune_stale_shopify_levels!
       { products: products.length, variants: variant_count }
     end
 
-    def sync_variant!(product_id, variant, location)
+    def sync_variant!(product_id, variant, locations_by_gid, primary)
       # Mirrored inventory stays non-negative: oversold Shopify counts are
       # zeroed locally (the negative-inventory remediation) instead of being
       # pushed back to Shopify. Reconcile therefore sees 0 for these SKUs.
       quantity = [variant["inventoryQuantity"].to_i, 0].max
+      item = variant["inventoryItem"] || {}
 
       attrs = {
         id: variant["id"],
@@ -227,31 +273,66 @@ class CatalogSyncer
         sku: variant["sku"],
         price: variant["price"]&.to_f,
         inventoryQuantity: quantity,
-        tracked: variant.dig("inventoryItem", "tracked") == true,
-        inventoryItemId: variant.dig("inventoryItem", "id"),
+        tracked: item["tracked"] == true,
+        inventoryItemId: item["id"],
         syncedAt: Time.current,
       }
       ShopifyVariant.upsert(attrs, unique_by: :id)
 
-      return unless location
+      # One mirrored level PER Shopify location (like the Square side), keyed by
+      # the Location record id so level.location resolves and per-location stock
+      # is answerable. Aggregated readers (totals, dashboards, PDF) sum across
+      # rows, so their numbers are unchanged.
+      level_nodes = Array(item.dig("inventoryLevels", "nodes"))
+      if level_nodes.empty?
+        # Untracked items / shapes without level data: keep the variant total on
+        # the primary row so the item still surfaces in views and alerts.
+        write_shopify_level!(primary&.id, variant["id"], variant["sku"], quantity) if primary
+      else
+        level_nodes.each do |node|
+          location = locations_by_gid[node.dig("location", "id")]
+          next if location.nil?
+
+          available = Array(node["quantities"]).find { |q| q["name"] == "available" }&.dig("quantity").to_i
+          write_shopify_level!(location.id, variant["id"], variant["sku"], [available, 0].max)
+        end
+      end
+
+      AlertGenerator.sync_variant!(variant["id"], variant["sku"], quantity)
+    end
+
+    def write_shopify_level!(location_id, variant_id, sku, quantity)
+      return if location_id.nil?
 
       level = InventoryLevel.find_or_initialize_by(
-        source: "shopify", locationId: location["id"], shopifyVariantId: variant["id"],
+        source: "shopify", locationId: location_id, shopifyVariantId: variant_id,
       )
       journal_movement(
         level,
-        variant["id"],
+        variant_id,
         quantity,
         source: "shopify",
         reference: "sync",
-        sku: variant["sku"],
+        sku: sku,
       )
       level.quantity = quantity
       level.available = quantity
       level.updatedAt = Time.current
       level.save!
+    end
 
-      AlertGenerator.sync_variant!(variant["id"], variant["sku"], quantity)
+    # Deletes mirrored Shopify levels whose location no longer exists (a
+    # location was deactivated/removed on Shopify). Guarded: if NO shopify
+    # locations are known — e.g. a transient API failure earlier in the run —
+    # nothing is deleted. Stale rows are dropped without journaling; they were
+    # mirror bookkeeping for a location that no longer exists, not real stock.
+    def prune_stale_shopify_levels!
+      known_ids = Location.by_source("shopify").pluck(:id)
+      return 0 if known_ids.empty?
+
+      removed = InventoryLevel.mirrored("shopify").where.not(locationId: known_ids).delete_all
+      Rails.logger.info("CatalogSyncer: pruned #{removed} stale Shopify inventory level rows") if removed.positive?
+      removed
     end
 
     def journal_movement(level, variant_id, new_quantity, source:, reference:, sku:)

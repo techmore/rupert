@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_21_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_21_020000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -129,12 +129,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_010000) do
     t.string "externalId", null: false
     t.string "kind"
     t.string "name", null: false
+    t.boolean "primary_location", default: false, null: false
     t.string "source", null: false
     t.datetime "syncedAt", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.string "tenant_id"
     t.string "timezone"
     t.index ["source"], name: "index_Location_on_source"
     t.index ["tenant_id", "source", "externalId"], name: "index_Location_on_tenant_source_externalId", unique: true
+    t.index ["tenant_id", "source", "primary_location"], name: "idx_locations_tenant_source_primary"
     t.index ["tenant_id"], name: "index_Location_on_tenant_id"
   end
 

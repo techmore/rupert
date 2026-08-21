@@ -13,9 +13,9 @@ class ConnectionsGuide
       key: "shopify",
       name: "Shopify",
       description: "Product catalog and online orders.",
-      keys: ["SHOPIFY_CLIENT_ID", "SHOPIFY_CLIENT_SECRET", "SHOPIFY_SHOP_DOMAIN"],
+      keys: ["SHOPIFY_CLIENT_ID", "SHOPIFY_CLIENT_SECRET", "SHOPIFY_SHOP_DOMAIN", "SHOPIFY_LOCATION_ID"],
       find_url: "https://admin.shopify.com/",
-      find_hint: "Store admin → Settings → Apps and sales channels, or your Partner dashboard → Apps.",
+      find_hint: "Store admin → Settings → Apps and sales channels, or your Partner dashboard → Apps. SHOPIFY_LOCATION_ID is optional — it pins which location counts as your primary selling location; leave it blank and the sync picks the first active one.",
       renewal_note: "Secrets can be rotated any time. If a sync reports an invalid token, re-install the app or regenerate the client secret — nothing else changes.",
     ),
     Service.new(
