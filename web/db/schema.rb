@@ -10,9 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_21_030000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_21_040000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+  enable_extension "pg_trgm"
 
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
@@ -205,9 +206,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_030000) do
     t.boolean "tracked", default: false
     t.index ["productId"], name: "index_ShopifyVariant_on_productId"
     t.index ["sku", "productId"], name: "idx_shopify_variants_sku_product"
+    t.index ["sku"], name: "idx_trgm_shopifyvariant_sku", opclass: :gin_trgm_ops, using: :gin
     t.index ["sku"], name: "index_ShopifyVariant_on_sku"
     t.index ["tenant_id", "inventoryItemId"], name: "idx_shopify_variants_tenant_inventory_item_id"
     t.index ["tenant_id"], name: "index_ShopifyVariant_on_tenant_id"
+    t.index ["title"], name: "idx_trgm_shopifyvariant_title", opclass: :gin_trgm_ops, using: :gin
     t.index ["tracked"], name: "index_ShopifyVariant_on_tracked"
   end
 
@@ -356,6 +359,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_030000) do
     t.string "source", null: false
     t.string "tenant_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["email"], name: "idx_trgm_customers_email", opclass: :gin_trgm_ops, using: :gin
+    t.index ["first_name"], name: "idx_trgm_customers_first_name", opclass: :gin_trgm_ops, using: :gin
+    t.index ["last_name"], name: "idx_trgm_customers_last_name", opclass: :gin_trgm_ops, using: :gin
+    t.index ["phone"], name: "idx_trgm_customers_phone", opclass: :gin_trgm_ops, using: :gin
     t.index ["tenant_id", "email"], name: "index_customers_on_tenant_id_and_email"
     t.index ["tenant_id", "external_id", "source"], name: "index_customers_on_tenant_id_and_external_id_and_source", unique: true
     t.index ["tenant_id", "phone"], name: "index_customers_on_tenant_id_and_phone"
@@ -548,6 +555,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_030000) do
     t.string "tenant_id", null: false
     t.datetime "updated_at", null: false
     t.index ["location_id"], name: "index_orders_on_location_id"
+    t.index ["order_number"], name: "idx_trgm_orders_order_number", opclass: :gin_trgm_ops, using: :gin
+    t.index ["source_order_id"], name: "idx_trgm_orders_source_order_id", opclass: :gin_trgm_ops, using: :gin
     t.index ["tenant_id", "customer_id"], name: "index_orders_on_tenant_id_and_customer_id"
     t.index ["tenant_id", "occurred_at"], name: "index_orders_on_tenant_id_and_occurred_at"
     t.index ["tenant_id", "order_number"], name: "index_orders_on_tenant_id_and_order_number"
