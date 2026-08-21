@@ -41,7 +41,8 @@ module Core
     end
 
     def lifetime_value_cents
-      orders.sum(:gross_cents)
+      # Grouped aggregate instead of orders.sum (one SQL SUM per rendered row).
+      @lifetime_value_cents ||= orders.pick(Arel.sql("COALESCE(SUM(gross_cents), 0)")).to_i
     end
   end
 end

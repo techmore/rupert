@@ -529,7 +529,7 @@ class InventoryPdf
 
     pdf.font "Helvetica", size: FONT_SIZE
     sales_week.each do |date, orders|
-      units = orders.sum { |order| order.order_lines.sum(:quantity) }
+      units = orders.sum { |order| order.order_lines.sum(&:quantity) }
       revenue = orders.sum(&:gross_cents) / 100.0
       needed = DAY_HEADER_HEIGHT + 3 + SALES_ROW_HEIGHT + orders.length * SALES_ROW_HEIGHT
 
@@ -570,7 +570,7 @@ class InventoryPdf
           order.display_number,
           order.source.to_s.capitalize,
           item_summary(order),
-          order.order_lines.sum(:quantity).to_s,
+          order.order_lines.sum(&:quantity).to_s,
           format_currency(order.gross_cents.to_i / 100.0),
         ]
         baseline = y - SALES_ROW_HEIGHT / 2 + 1

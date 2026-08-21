@@ -26,9 +26,10 @@ class SalesController < AuthenticatedController
     @day_sales = Core::Order.on_day(@date).by_source(source_scope).includes(:fulfillments, :location).order(occurred_at: :asc)
     @day_total_cents = @day_sales.sum(:gross_cents)
     @locations = Location.order(:name).pluck(:name, :id)
-    @revenue_series = DashboardPresenter.new.revenue_series(days: @window_days, source: source_scope)
-    @hourly_series = DashboardPresenter.new.hourly_series(days: @window_days, source: source_scope)
-    @source_breakdown = DashboardPresenter.new.source_breakdown(days: @window_days)
+    presenter = DashboardPresenter.new
+    @revenue_series = presenter.revenue_series(days: @window_days, source: source_scope)
+    @hourly_series = presenter.hourly_series(days: @window_days, source: source_scope)
+    @source_breakdown = presenter.source_breakdown(days: @window_days)
   end
 
   # Batch print view: every order on a day as a packing slip (or invoice),

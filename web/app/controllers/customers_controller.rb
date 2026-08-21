@@ -7,7 +7,10 @@ class CustomersController < AuthenticatedController
     authorize(:module, :customers_read?)
 
     @q = Core::Customer.ransack(params[:q])
-    @pagy, @customers = pagy(@q.result.includes(:orders).order(created_at: :desc), items: 25)
+    @pagy, @customers = pagy(@q.result.order(created_at: :desc), items: 25)
+    # One grouped SUM for the page instead of a lifetime-value query per row.
+    @lifetime_totals = Core::Order.where(customer_id: @customers.map(&:id))
+      .group(:customer_id).sum(:gross_cents)
   end
 
   def show
