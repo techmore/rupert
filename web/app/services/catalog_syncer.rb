@@ -29,25 +29,12 @@ class CatalogSyncer
     }
   GRAPHQL
 
-  # Per-location "available" quantities, queried separately from the catalog
-  # so neither query approaches the cost limit. Page size kept deliberately
-  # small: each inventoryItem carries an inventoryLevels connection.
-  INVENTORY_LEVELS_QUERY = <<~GRAPHQL
-    query VariantLevels($ids: [ID!]!, $cursor: String) {
-      inventoryItems(first: 50, ids: $ids, after: $cursor) {
-        pageInfo { hasNextPage endCursor }
-        nodes {
-          id
-          inventoryLevels(first: 10) {
-            nodes {
-              location { id }
-              quantities(names: ["available"]) { name quantity }
-            }
-          }
-        }
-      }
-    }
-  GRAPHQL
+  # Per-location "available" quantities are fetched SEPARATELY from the catalog
+  # (nesting them there exceeds Shopify's single-query cost max). There is no
+  # ids-filtered connection for this API version, so we batch aliased singular
+  # inventoryItem lookups instead — LEVELS_BATCH caps each request's computed
+  # cost well under the limit.
+  LEVELS_BATCH = 30
 
   LOCATIONS_QUERY = <<~GRAPHQL
     query Locations { locations(first: 10) { nodes { id name isActive } } }
@@ -177,27 +164,31 @@ class CatalogSyncer
     end
 
     # Per-location "available" levels for the given inventory item ids, keyed
-    # by item id. Queried separately from the catalog (see PRODUCTS_QUERY note)
-    # and paginated 50 items at a time to keep computed cost well under the
-    # single-query max.
+    # by item id. Batched aliased lookups (see LEVELS_BATCH note); unknown ids
+    # simply come back nil and are skipped.
     def fetch_inventory_levels(item_ids)
-      ids = item_ids.compact.uniq
-      return {} if ids.empty?
-
       result = Hash.new { |hash, key| hash[key] = [] }
-      cursor = nil
-      loop do
-        data = ShopifyClient.graphql(INVENTORY_LEVELS_QUERY, { ids: ids, cursor: cursor })
-        nodes = data.dig("inventoryItems", "nodes") || []
-        nodes.each do |item|
-          result[item["id"]] += Array(item.dig("inventoryLevels", "nodes"))
-        end
-        info = data.dig("inventoryItems", "pageInfo") || {}
-        break unless info["hasNextPage"] && info["endCursor"]
+      item_ids.compact.uniq.each_slice(LEVELS_BATCH) do |batch|
+        variables = batch.each_with_index.to_h { |id, i| ["v#{i}", id] }
+        data = ShopifyClient.graphql(levels_query(batch.length), variables)
+        batch.each_with_index do |id, i|
+          item = data["v#{i}"]
+          next if item.nil?
 
-        cursor = info["endCursor"]
+          result[id] += Array(item.dig("inventoryLevels", "nodes"))
+        end
       end
       result
+    end
+
+    def levels_query(count)
+      variables = (0...count).map { |i| "$v#{i}: ID!" }.join(", ")
+      fields = (0...count).map do |i|
+        <<~G.squish
+          v#{i}: inventoryItem(id: $v#{i}) { id inventoryLevels(first: 10) { nodes { location { id } quantities(names: ["available"]) { name quantity } } } }
+        G
+      end.join(" ")
+      "query Levels(#{variables}) { #{fields} }"
     end
 
     # Fetches every order in the window, following the cursor until exhausted.
