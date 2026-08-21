@@ -1,16 +1,8 @@
 <%= render "reports/layout", title: "Inventory reconciliation", subtitle: "Side-by-side Shopify vs Square counts from the sync mirrors — refreshed every 15 minutes." do %>
-  <section class="grid grid-cols-2 gap-4 lg:grid-cols-5">
+  <section class="grid grid-cols-1 gap-4 sm:grid-cols-3">
     <div class="stat">
       <p class="stat-label">Linked SKUs</p>
       <p class="stat-value mt-1"><%= @reconciliation.summary[:linked] %></p>
-    </div>
-    <div class="stat">
-      <p class="stat-label">In sync</p>
-      <p class="stat-value mt-1 text-fern"><%= @reconciliation.summary[:in_sync] %></p>
-    </div>
-    <div class="stat">
-      <p class="stat-label">Drift</p>
-      <p class="stat-value mt-1 text-clay"><%= @reconciliation.summary[:drift] %></p>
     </div>
     <div class="stat">
       <p class="stat-label">Square only</p>
@@ -28,14 +20,14 @@
     ·
     <span class="font-medium text-ink">Square <%= @reconciliation.last_syncs[:square]&.to_fs(:short) || "—" %></span>
     <span class="mt-2 block rounded-xl bg-haze px-3 py-2 text-xs text-taupe">
-      Snapshots reflect the latest 15-minute sync. <span class="font-semibold text-ink"><%= @reconciliation.summary[:drift] %> linked SKUs</span> differ between platforms; unmatched rows show items only on one side.
+      Snapshots reflect the latest 15-minute sync.
     </span>
   </div>
 
   <div class="card overflow-hidden">
     <div class="border-b border-fog px-5 py-3">
       <h2 class="font-display text-lg text-ink">Side-by-side counts · <%= @reconciliation.rows.length %> items</h2>
-      <p class="text-xs text-taupe">† Shared Square total — one Square variation is linked to more than one Shopify variant, so its quantity can't be attributed to a single row's delta.</p>
+      <p class="text-xs text-taupe">† Shared Square total — one Square variation is linked to more than one Shopify variant, so its quantity can't be pinned to a single row.</p>
     </div>
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
@@ -47,13 +39,12 @@
             <th scope="col" class="th">Square variation</th>
             <th scope="col" class="th text-right">Shopify</th>
             <th scope="col" class="th text-right">Square</th>
-            <th scope="col" class="th text-right">Δ (Sq − Sh)</th>
             <th scope="col" class="th">Status</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-fog">
           <% @reconciliation.rows.each do |row| %>
-            <tr class="hover:bg-cream <%= row.status == "drift" ? "bg-haze/40" : "" %>">
+            <tr class="hover:bg-cream">
               <td class="td font-mono text-xs text-mocha"><%= row.sku %></td>
               <td class="td font-medium text-ink"><%= row.product %></td>
               <td class="td text-mocha"><%= row.shopify_variant || "—" %></td>
@@ -68,23 +59,10 @@
                   <%= row.square_qty %>
                 <% end %>
               </td>
-              <td class="td text-right">
-                <% if row.status == "shared" %>
-                  <span class="font-medium text-taupe" title="Shared Square total — cannot be attributed to a single variant">†</span>
-                <% elsif row.delta.nil? %>
-                  <span class="font-medium text-taupe">—</span>
-                <% else %>
-                  <span class="<%= row.delta.zero? ? "font-medium text-taupe" : "font-semibold text-clay" %>">
-                    <%= row.delta.zero? ? "—" : row.delta.positive? ? "+#{row.delta}" : row.delta %>
-                  </span>
-                <% end %>
-              </td>
               <td class="td">
                 <% case row.status %>
-                <% when "matched" %>
-                  <span class="pill-fern">in sync</span>
-                <% when "drift" %>
-                  <span class="pill-rose">drift</span>
+                <% when "matched", "drift" %>
+                  <span class="pill-fern">linked</span>
                 <% when "shared" %>
                   <span class="pill-taupe" title="Square total shared across multiple variants">shared</span>
                 <% when "square_only" %>

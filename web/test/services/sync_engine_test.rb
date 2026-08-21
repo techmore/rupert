@@ -95,4 +95,45 @@ class SyncEngineTest < ActiveSupport::TestCase
     assert_equal run.id, captured
     assert_nil Current.sync_run_id
   end
+
+  test "sync skips reconcile planning while the reconcile flag is off" do
+    # Default state (absent Setting row = off): no plan is built or recorded,
+    # and the run summary says so instead of carrying stale drift numbers.
+    FeatureFlag.stubs(:enabled?).with(:inventory_push).returns(false)
+    FeatureFlag.stubs(:enabled?).with(:reconcile).returns(false)
+
+    ShopifyClient.stubs(:configured?).returns(true)
+    CatalogSyncer.stubs(:sync!).returns({ products: 1, variants: 1, orders: { "nodes" => [] } })
+    LedgerImporter.stubs(:from_shopify_orders!).returns(nil)
+    SquareClient.stubs(:configured?).returns(false)
+    AlertGenerator.stubs(:sync!).returns({ created: 0, resolved: 0 })
+    Reconciler.expects(:build_rows).never
+    Reconciler.expects(:record_run!).never
+
+    run = SyncEngine.run!(mode: "scheduled", actor: "scheduler")
+
+    assert_predicate run, :success?
+    details = JSON.parse(run.details)
+    assert_equal "skipped", details.dig("reconcile", "status")
+  end
+
+  test "sync builds and records the reconcile plan when the flag is on" do
+    FeatureFlag.stubs(:enabled?).with(:inventory_push).returns(false)
+    FeatureFlag.stubs(:enabled?).with(:reconcile).returns(true)
+
+    ShopifyClient.stubs(:configured?).returns(true)
+    CatalogSyncer.stubs(:sync!).returns({ products: 1, variants: 1, orders: { "nodes" => [] } })
+    LedgerImporter.stubs(:from_shopify_orders!).returns(nil)
+    SquareClient.stubs(:configured?).returns(false)
+    AlertGenerator.stubs(:sync!).returns({ created: 0, resolved: 0 })
+    rows = []
+    Reconciler.expects(:build_rows).returns(rows)
+    Reconciler.expects(:record_run!).with(rows, mode: "scheduled")
+    Reconciler.stubs(:summary).returns({ total: 0 })
+
+    run = SyncEngine.run!(mode: "scheduled", actor: "scheduler")
+
+    assert_predicate run, :success?
+    assert_equal({ "total" => 0 }, JSON.parse(run.details)["reconcile"])
+  end
 end

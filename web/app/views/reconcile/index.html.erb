@@ -3,23 +3,23 @@
   <section class="flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="font-display text-3xl text-ink">Reconcile</h1>
-      <p class="mt-1 text-sm text-mocha">SKU-level bridge between Shopify variants and Square variations, with live drift from inventory levels.</p>
+      <p class="mt-1 text-sm text-mocha">SKU-level bridge between Shopify variants and Square variations.</p>
     </div>
     <div class="flex flex-col items-end gap-2">
-      <%= form_tag apply_reconcile_index_path, method: :post, data: { confirm: "Apply the reconciliation plan? This writes inventory adjustments to Shopify and Square." } do %>
-        <%= submit_tag "Apply adjustments", class: "btn-primary", disabled: @summary[:actionable].zero?, data: { turbo_submits_with: "Applying…" } %>
+      <% if FeatureFlag.enabled?(:reconcile) %>
+        <%= form_tag apply_reconcile_index_path, method: :post, data: { confirm: "Apply the reconciliation plan? This writes inventory adjustments to Shopify and Square." } do %>
+          <%= submit_tag "Apply adjustments", class: "btn-primary", disabled: @summary[:actionable].zero?, data: { turbo_submits_with: "Applying…" } %>
+        <% end %>
+      <% else %>
+        <span class="badge bg-taupe">Reconciliation writes disabled — syncing continues</span>
       <% end %>
     </div>
   </section>
 
-  <section class="grid grid-cols-3 gap-4">
+  <section class="grid grid-cols-2 gap-4">
     <div class="stat">
       <p class="stat-label">Linked SKUs</p>
       <p class="stat-value mt-1"><%= @summary[:total] %></p>
-    </div>
-    <div class="stat">
-      <p class="stat-label">Out of sync</p>
-      <p class="stat-value mt-1"><%= @summary[:drift_count] %></p>
     </div>
     <div class="stat">
       <p class="stat-label">Actionable</p>
@@ -163,7 +163,6 @@
             <th scope="col" class="th">Product / Variant</th>
             <th scope="col" class="th text-right">Shopify</th>
             <th scope="col" class="th text-right">Square</th>
-            <th scope="col" class="th text-right">Drift</th>
             <th scope="col" class="th">Priority</th>
           </tr>
         </thead>
@@ -192,15 +191,6 @@
               </td>
               <td class="td text-right text-mocha"><%= row.shopify_qty %></td>
               <td class="td text-right text-mocha"><%= row.square_qty %></td>
-              <td class="td text-right">
-                <% if row.drift.nil? %>
-                  <span class="font-medium text-taupe">—</span>
-                <% else %>
-                  <span class="<%= row.drift == 0 ? "font-medium text-taupe" : "font-semibold text-clay" %>">
-                    <%= row.drift == 0 ? "—" : row.drift.positive? ? "+#{row.drift}" : row.drift %>
-                  </span>
-                <% end %>
-              </td>
               <td class="td">
                 <% if row.derived %>
                   <span class="text-xs text-taupe">via <a href="<%= size_families_path %>" class="text-olive hover:underline">Sizes</a></span>

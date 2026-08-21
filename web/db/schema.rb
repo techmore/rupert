@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_17_020000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_21_010000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -89,7 +89,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_17_020000) do
     t.index ["shopifyVariantId"], name: "index_InventoryMovement_on_shopifyVariantId"
     t.index ["source"], name: "index_InventoryMovement_on_source"
     t.index ["syncRunId"], name: "index_InventoryMovement_on_syncRunId"
+    t.index ["tenant_id", "sku"], name: "idx_inventory_movements_tenant_sku"
     t.index ["tenant_id", "source", "createdAt"], name: "idx_inventory_movements_tenant_source_created_at"
+    t.index ["tenant_id", "squareVariationId"], name: "idx_inventory_movements_tenant_square_variation"
     t.index ["tenant_id"], name: "index_InventoryMovement_on_tenant_id"
   end
 
@@ -202,6 +204,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_17_020000) do
     t.index ["productId"], name: "index_ShopifyVariant_on_productId"
     t.index ["sku", "productId"], name: "idx_shopify_variants_sku_product"
     t.index ["sku"], name: "index_ShopifyVariant_on_sku"
+    t.index ["tenant_id", "inventoryItemId"], name: "idx_shopify_variants_tenant_inventory_item_id"
     t.index ["tenant_id"], name: "index_ShopifyVariant_on_tenant_id"
     t.index ["tracked"], name: "index_ShopifyVariant_on_tracked"
   end
@@ -217,6 +220,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_17_020000) do
     t.index ["shopifyVariantId", "squareVariationId"], name: "SkuLink_shopifyVariantId_squareVariationId_key", unique: true
     t.index ["shopifyVariantId"], name: "index_SkuLink_on_shopifyVariantId", unique: true
     t.index ["sku"], name: "index_SkuLink_on_sku"
+    t.index ["tenant_id", "squareVariationId"], name: "idx_sku_links_tenant_square_variation"
     t.index ["tenant_id"], name: "index_SkuLink_on_tenant_id"
   end
 
@@ -544,6 +548,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_17_020000) do
     t.index ["location_id"], name: "index_orders_on_location_id"
     t.index ["tenant_id", "customer_id"], name: "index_orders_on_tenant_id_and_customer_id"
     t.index ["tenant_id", "occurred_at"], name: "index_orders_on_tenant_id_and_occurred_at"
+    t.index ["tenant_id", "order_number"], name: "index_orders_on_tenant_id_and_order_number"
     t.index ["tenant_id", "source", "source_order_id"], name: "index_orders_on_tenant_id_and_source_and_source_order_id", unique: true
     t.index ["tenant_id", "status"], name: "index_orders_on_tenant_id_and_status"
   end

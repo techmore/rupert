@@ -93,7 +93,7 @@ class ReportsFlowTest < ActionDispatch::IntegrationTest
     assert_select "h1", /Inventory reconciliation/
     assert_select "td", /OIL-1/
     assert_select "td", /CBD/
-    assert_select "td", /drift/
+    assert_select "td", /linked/
   end
 
   test "reconciliation report exports CSV" do

@@ -5,6 +5,8 @@
 class FeatureFlag
   FLAGS = {
     fulfillment_workflow: "fulfillment_workflow_enabled",
+    reconcile: "reconcile_enabled",
+    inventory_push: "inventory_push_enabled",
   }.freeze
 
   class << self

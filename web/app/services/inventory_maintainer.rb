@@ -44,8 +44,7 @@ class InventoryMaintainer
       family_skus = SizeFamilyMember.pluck(:sku).map { |s| s.to_s.downcase }.to_set
       # One Shopify SKU mapping to multiple variants (e.g. DSLR1 = 5 strains)
       # can't be reconciled against a single Square variation — skip, report only.
-      shared_skus = SkuLink.linked.group(:sku).distinct.count("shopifyVariantId")
-        .select { |_, count| count > 1 }.keys.map(&:downcase).to_set
+      shared_skus = SkuLink.shared_skus
       # A Square variation with stock in MORE than one Square location (home +
       # a mobile/secondary rig) can't be represented by a single PHYSICAL_COUNT
       # at home: writing the all-location pool to home would double-count the

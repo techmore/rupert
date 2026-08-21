@@ -94,6 +94,7 @@ class Reconciler
         sku_match = skus.blank? || skus.any? { |sku| sku.to_s.downcase == row.sku.downcase }
         sku_match && !row.target.nil? && row.tracked && row.square_variation_id.present? &&
           !row.derived && !shared_skus.include?(row.sku.to_s.downcase) &&
+          !multiloc_skus.include?(row.sku.to_s.downcase) &&
           (row.shopify_delta != 0 || row.square_delta != 0)
       end
     end
@@ -103,14 +104,30 @@ class Reconciler
     # guard so the Reconcile UI never proposes (or half-applies) an ambiguous
     # shared-pool write.
     def shared_skus
-      @shared_skus ||= SkuLink.linked.group(:sku).distinct.count("shopifyVariantId")
-        .select { |_, count| count > 1 }.keys.map(&:downcase).to_set
+      @shared_skus ||= SkuLink.shared_skus
+    end
+
+    # A Square variation with stock in more than one Square location can't be
+    # represented by a single home PHYSICAL_COUNT, so it's not reconcilable.
+    # Mirrors the InventoryMaintainer's multiloc guard; without this the
+    # reconciled home target can go negative and the PlanApplier preflight
+    # would block the entire apply on one un-reconcilable SKU.
+    def multiloc_skus
+      @multiloc_skus ||= begin
+        ids = InventoryLevel.where(source: "square", quantity: 1..)
+          .group(:squareVariationId).having("count(DISTINCT \"locationId\") > 1")
+          .pluck(:squareVariationId)
+        SkuLink.where(squareVariationId: ids).pluck(:sku).map(&:downcase).to_set
+      end
     end
 
     def summary(rows)
-      blocked = rows.count { |row| row.square_delta && !row.square_home_target.nil? && row.square_home_target.negative? }
+      candidates = actionable_rows(rows)
       drift_count = rows.count { |row| !row.target.nil? && row.drift != 0 && row.tracked && row.square_variation_id.present? && !row.derived }
-      { total: rows.length, drift_count: drift_count, actionable: actionable_rows(rows).length, blocked_adjustments: blocked, derived: rows.count(&:derived) }
+      # Only the rows we would actually write can be "blocked by a negative
+      # Square home count" — shared/multiloc/derived rows aren't candidates.
+      blocked = candidates.count { |row| row.square_delta && !row.square_home_target.nil? && row.square_home_target.negative? }
+      { total: rows.length, drift_count: drift_count, actionable: candidates.length, blocked_adjustments: blocked, derived: rows.count(&:derived) }
     end
 
     def record_run!(rows, mode:)

@@ -29,7 +29,6 @@
             <th scope="col" class="th text-right">Price</th>
             <th scope="col" class="th text-right">Shopify</th>
             <th scope="col" class="th text-right">Square</th>
-            <th scope="col" class="th text-right">Drift</th>
             <th scope="col" class="th">Linked</th>
           </tr>
         </thead>
@@ -49,7 +48,6 @@
               <% shopify_qty = info[:shopify_qty] || 0 %>
               <% link = info[:link] %>
               <% square_qty = info[:square_qty] %>
-              <% drift = square_qty != nil ? square_qty - shopify_qty : nil %>
               <tr class="hover:bg-cream <%= untracked ? "bg-haze/60 opacity-70" : "" %>">
                 <td class="td">
                   <div class="flex items-center gap-3">
@@ -96,17 +94,6 @@
                     <%= square_qty %>
                   <% end %>
                 </td>
-                <td class="td text-right">
-                  <% if drift.nil? %>
-                    <span class="font-medium text-taupe">—</span>
-                  <% elsif info[:shared] %>
-                    <span class="font-medium text-taupe" title="Shared Square total — cannot be attributed to a single variant">†</span>
-                  <% else %>
-                    <span class="<%= drift == 0 ? "font-medium text-taupe" : "font-semibold text-clay" %>">
-                      <%= drift == 0 ? "—" : drift.positive? ? "+#{drift}" : drift %>
-                    </span>
-                  <% end %>
-                </td>
                 <td class="td"><%= link ? content_tag(:span, "linked", class: "pill-fern") : content_tag(:span, "unlinked", class: "pill-taupe") %></td>
               </tr>
             <% end %>
@@ -116,7 +103,7 @@
     </div>
   </div>
   <% end %>
-  <p class="px-1 text-xs text-taupe">† Shared Square total — one Square variation is linked to more than one Shopify variant, so its quantity can't be attributed to a single row's drift.</p>
+  <p class="px-1 text-xs text-taupe">† Shared Square total — one Square variation is linked to more than one Shopify variant, so its quantity can't be attributed to a single variant.</p>
 
   <% if @pagy.pages > 1 %>
     <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-taupe">

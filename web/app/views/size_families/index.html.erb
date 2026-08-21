@@ -116,7 +116,6 @@
                       <th scope="col" class="py-1 pr-3">SKU</th>
                       <th scope="col" class="py-1 pr-3 text-right">Current</th>
                       <th scope="col" class="py-1 pr-3 text-right">Target</th>
-                      <th scope="col" class="py-1 pr-3 text-right">Drift</th>
                       <th scope="col" class="py-1"></th>
                     </tr>
                   </thead>
@@ -127,17 +126,6 @@
                         <td class="py-2 pr-3 font-mono text-xs text-mocha"><%= m[:member].sku %></td>
                         <td class="py-2 pr-3 text-right text-mocha"><%= m[:current].nil? ? "—" : m[:current] %></td>
                         <td class="py-2 pr-3 text-right font-semibold text-olive"><%= m[:target].nil? ? "—" : m[:target] %></td>
-                        <td class="py-2 pr-3 text-right">
-                          <% if m[:current].nil? || m[:target].nil? %>
-                            <span class="text-taupe">—</span>
-                          <% elsif m[:pending] %>
-                            <span class="font-semibold text-clay"><%= m[:pending].target_quantity > m[:current] ? "+" : "" %><%= m[:pending].target_quantity - m[:current] %></span>
-                          <% elsif m[:in_sync] %>
-                            <span class="text-taupe">—</span>
-                          <% else %>
-                            <span class="font-semibold text-clay"><%= m[:target] > m[:current] ? "+" : "" %><%= m[:target] - m[:current] %></span>
-                          <% end %>
-                        </td>
                         <td class="py-2 text-right">
                           <% if m[:pending] %>
                             <% if can_apply %>

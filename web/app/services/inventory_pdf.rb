@@ -13,12 +13,10 @@ Prawn::Fonts::AFM.hide_m17n_warning = true
 # 15 minutes), so the PDF carries four timestamps: when the file was
 # generated, the last successful overall sync, and the latest Shopify and
 # Square mirror writes. Below the timestamps it shows summary totals, then a
-# full per-variant table with Shopify qty, Square qty, drift, and units sold
-# in the last 7 days.
+# full per-variant table with Shopify qty, Square qty, and units sold in the
+# last 7 days.
 #
 # Layout choices:
-#   - "… difference" rows (non-zero drift) are tinted and the drift value is
-#     colored and bold
 #   - items with zero stock on BOTH platforms are sorted to the bottom
 #   - a compact 7pt row grid fits far more content per page
 #
@@ -34,16 +32,14 @@ class InventoryPdf
   FOG = "D6D3D1"
   HAZE = "EDEFF0"
   CREAM = "FAFAF9"
-  CLAY = "B45309"
   OLIVE = "5B7C41"
-  DRIFT_TINT = "FFF4E0"  # pale amber — non-zero drift rows
   ZERO_TINT = "F5F0EC"   # pale stone — zero-stock-on-both rows
   DUP_SKU_TINT = "FDE8EA"  # pale rose — SKU reused by another product
   UNT_TINT = "EFEFEC"      # pale gray — untracked (surplus/duplicate) variant, dimmed
   ROSE = "B91C1C"
 
   Row = Struct.new(
-    :product, :variant, :sku, :price, :shopify_qty, :square_qty, :drift,
+    :product, :variant, :sku, :price, :shopify_qty, :square_qty,
     :sold_7d, :sold_shared, :shared_product_sku, :shared_qty, :square_variation_id,
     :tracked,
     keyword_init: true
@@ -57,10 +53,10 @@ class InventoryPdf
   # coordinates RELATIVE to the margin box (Prawn's draw_text/fill_rectangle
   # are relative, unlike screen coordinates) — (0,0) is the top-left of the
   # content area.
-  HEADERS = ["Product", "Variant", "SKU", "Price", "Shopify", "Square", "Drift", "7d sold"].freeze
-  COL_WIDTHS = [128, 104, 56, 46, 42, 42, 44, 70].freeze
-  LEFT_X = [0, 128, 232, 288, 334, 376, 418, 462].freeze
-  RIGHT_ALIGNED = [3, 4, 5, 6, 7].freeze
+  HEADERS = ["Product", "Variant", "SKU", "Price", "Shopify", "Square", "7d sold"].freeze
+  COL_WIDTHS = [128, 104, 56, 46, 42, 54, 102].freeze
+  LEFT_X = [0, 128, 232, 288, 334, 376, 430].freeze
+  RIGHT_ALIGNED = [3, 4, 5, 6].freeze
   TABLE_WIDTH = 532
   ROW_HEIGHT = 12
   HEADER_HEIGHT = 14
@@ -168,7 +164,6 @@ class InventoryPdf
           price: variant.price,
           shopify_qty: shopify_qty,
           square_qty: square_qty,
-          drift: square_qty ? square_qty - shopify_qty : nil,
           sold_7d: (variant.sku.present? || ptitle.present?) ? sold : nil,
           sold_shared: (sku_shared && via_sku) || (product_has_variants && via_name),
           shared_product_sku: variant.sku.present? && duplicate_product_skus.include?(variant.sku),
@@ -292,11 +287,9 @@ class InventoryPdf
     tracked = rows.select(&:tracked)
     out_of_stock = tracked.select { |r| r.shopify_qty.to_i <= 0 && (r.square_qty.nil? || r.square_qty <= 0) }
     negative = tracked.select { |r| r.shopify_qty.to_i < 0 || (r.square_qty && r.square_qty < 0) }
-    drift = tracked.select { |r| r.drift && r.drift.abs >= 20 }
     {
       out_of_stock: out_of_stock.sort_by { |r| r.shopify_qty.to_i },
       negative: negative.sort_by { |r| [r.shopify_qty.to_i, r.square_qty.to_i] },
-      drift: drift.sort_by { |r| -r.drift.abs },
     }
   end
 
@@ -317,7 +310,7 @@ class InventoryPdf
     pdf.fill_color INK
     pdf.text "Needs attention", size: 11, style: :bold
     if !has_any
-      pdf.text "No stockouts, negatives, or large drift right now — the catalog is in good shape.", size: 8, color: OLIVE
+      pdf.text "No stockouts or negatives right now — the catalog is in good shape.", size: 8, color: OLIVE
       pdf.move_down 6
       return
     end
@@ -325,7 +318,6 @@ class InventoryPdf
     groups = {
       "Out of stock" => attention[:out_of_stock],
       "Negative stock" => attention[:negative],
-      "Drift (Shopify vs Square)" => attention[:drift],
     }
     groups.each do |label, list|
       next if list.empty?
@@ -335,12 +327,7 @@ class InventoryPdf
       pdf.text "#{label} — #{list.length}", size: 8, style: :bold
       pdf.move_down 2
       list.first(8).each do |r|
-        detail = if label == "Drift (Shopify vs Square)"
-          format("Sh %d vs Sq %d (diff %+d)", r.shopify_qty.to_i, r.square_qty.to_i, r.drift.to_i)
-        else
-          format("Sh %d  Sq %s", r.shopify_qty.to_i, r.square_qty&.to_s || "—")
-        end
-        pdf.text "  • #{r.product[0,34]} — #{r.variant[0,20]} (#{r.sku})  #{detail}", size: 7, color: MOCHA
+        pdf.text "  • #{r.product[0,34]} — #{r.variant[0,20]} (#{r.sku})  Sh #{r.shopify_qty.to_i}  Sq #{r.square_qty&.to_s || "—"}", size: 7, color: MOCHA
       end
       pdf.text("  … +#{list.length - 8} more", size: 6.5, color: TAUPE) if list.length > 8
       pdf.move_down 5
@@ -413,15 +400,13 @@ class InventoryPdf
   end
 
   # Highlights differences: duplicate-SKU rows get a rose tint (the web page's
-  # "duplicate SKU" flag), drift rows amber, zero-stock rows stone, and the
-  # rest keep the subtle cream zebra stripe.
+  # "duplicate SKU" flag), zero-stock rows stone, and the rest keep the subtle
+  # cream zebra stripe.
   def draw_row_background(pdf, row, y, index)
     if !row.tracked
       pdf.fill_color UNT_TINT
     elsif row.shared_product_sku
       pdf.fill_color DUP_SKU_TINT
-    elsif !row.shared_qty && !row.drift.nil? && !row.drift.zero?
-      pdf.fill_color DRIFT_TINT
     elsif zero_on_both?(row)
       pdf.fill_color ZERO_TINT
     elsif index.even?
@@ -441,7 +426,6 @@ class InventoryPdf
       row.price.nil? ? "—" : format_currency(row.price),
       row.shopify_qty.to_s,
       square_cell(row),
-      drift_cell(row),
       sold_cell(row),
     ]
     baseline = y - ROW_HEIGHT / 2 + 1
@@ -477,23 +461,12 @@ class InventoryPdf
     row.shared_qty ? "#{row.square_qty}†" : row.square_qty.to_s
   end
 
-  # Drift is only meaningful when the Square quantity pins to this variant; a
-  # shared Square pool gets a bare † instead of a fabricated per-row difference.
-  def drift_cell(row)
-    return "—" if row.drift.nil?
-    return "†" if row.shared_qty
-
-    row.drift.zero? ? "—" : format("%+d", row.drift)
-  end
-
   def cell_color(index, row)
     return TAUPE unless row.tracked  # untracked (surplus) rows render dimmed
 
     if index == 2 && row.shared_product_sku
       ROSE
-    elsif index == 6 && !row.shared_qty && !row.drift.nil? && !row.drift.zero?
-      CLAY
-    elsif index == 7 && !row.sold_7d.nil? && row.sold_7d.positive?
+    elsif index == 6 && !row.sold_7d.nil? && row.sold_7d.positive?
       OLIVE
     elsif index.zero?
       INK
@@ -506,8 +479,7 @@ class InventoryPdf
     return false unless row.tracked
 
     (index == 2 && row.shared_product_sku) ||
-      (index == 6 && !row.shared_qty && !row.drift.nil? && !row.drift.zero?) ||
-      (index == 7 && !row.sold_7d.nil? && row.sold_7d.positive?)
+      (index == 6 && !row.sold_7d.nil? && row.sold_7d.positive?)
   end
 
   # Truncate to the column width with an ellipsis so long product/variant names
@@ -645,14 +617,13 @@ class InventoryPdf
     pdf.text "How to read this report", size: 9, style: :bold
     pdf.move_down 4
 
-    swatches = [DUP_SKU_TINT, UNT_TINT, DRIFT_TINT, ZERO_TINT, CREAM, nil, nil, nil]
+    swatches = [DUP_SKU_TINT, UNT_TINT, ZERO_TINT, CREAM, nil, nil, nil]
     labels = [
       "Rose row — DUPLICATE NAME/SKU: this SKU is reused by another product, which breaks Shopify–Square linking",
       "GRAY row, dimmed & at the bottom — UNTRACKED variant: a surplus duplicate of a SKU that already has one real (tracked) product; excluded from sync/reconcile",
-      "Amber row — Shopify vs Square differ (non-zero drift); the drift value is bold",
       "Stone row — out of stock on both platforms (sorted to the bottom)",
       "Zebra stripe — alternating rows for readability",
-      "† in the Square/Drift/7d columns — a shared SKU: the total spans multiple variations and can't be pinned to this row",
+      "† in the Square/7d columns — a shared SKU: the total spans multiple variations and can't be pinned to this row",
       "#{UNLINKED} under Square — no Square link for this variant",
       "7d sold in green — paid/fulfilled units in the last #{SALES_DAYS} days",
     ]

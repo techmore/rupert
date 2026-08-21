@@ -4,40 +4,23 @@
 # Shopify product catalog, variants, locations, and inventory levels into
 # the database, journaling quantity changes as movements.
 class CatalogSyncer
-  OPERATIONS_QUERY = <<~GRAPHQL
-    query Ops($orderQuery: String!, $orderCursor: String) {
+  SHOP_QUERY = <<~GRAPHQL
+    query Shop {
       shop { name myshopifyDomain currencyCode }
-      publications(first: 30) { nodes { id name autoPublish } }
-      products(first: 250, query: "status:active", sortKey: TITLE) {
+    }
+  GRAPHQL
+
+  # Products are fetched with full cursor pagination: a bare `first: 250`
+  # silently truncated catalogs beyond one page. 250/page is the GraphQL cap;
+  # paginate_products walks every page so nothing is missed.
+  PRODUCTS_QUERY = <<~GRAPHQL
+    query Products($cursor: String) {
+      products(first: 250, query: "status:active", sortKey: TITLE, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
         nodes {
           id title tags status handle publishedAt totalInventory
           featuredImage { url altText }
-          resourcePublicationsCount { count }
-          resourcePublications(first: 20) { nodes { isPublished publishDate publication { id name } } }
           variants(first: 100) { nodes { id title sku price inventoryQuantity inventoryItem { id tracked } } }
-        }
-      }
-      orders(first: 100, query: $orderQuery, sortKey: CREATED_AT, reverse: true, after: $orderCursor) {
-        pageInfo { hasNextPage endCursor }
-        nodes {
-          id name createdAt displayFinancialStatus paymentGatewayNames
-          currentTotalPriceSet { shopMoney { amount currencyCode } }
-          currentTotalTaxSet { shopMoney { amount currencyCode } }
-          customer { id email firstName lastName phone }
-          shippingAddress {
-            address1 address2 city country province zip phone
-          }
-          fulfillments {
-            id status createdAt updatedAt
-            trackingInfo { company number url }
-          }
-          lineItems(first: 100) {
-            nodes {
-              title variantTitle sku quantity
-              originalUnitPriceSet { shopMoney { amount currencyCode } }
-              originalTotalSet { shopMoney { amount currencyCode } }
-            }
-          }
         }
       }
     }
@@ -96,14 +79,13 @@ class CatalogSyncer
       since ||= (Time.current - history_lookback).strftime("%Y-%m-%d")
       locations = fetch_locations
       sync_locations!(locations)
-      data = ShopifyClient.graphql(OPERATIONS_QUERY, { orderQuery: "created_at:>=#{since}" })
-      counts = sync_products!(data["products"]["nodes"], locations)
+      counts = sync_products!(paginate_products, locations)
       {
         products: counts[:products],
         variants: counts[:variants],
         locations: locations,
         orders: paginate_orders(since),
-        shop: data["shop"],
+        shop: ShopifyClient.graphql(SHOP_QUERY, {})["shop"],
       }
     end
 
@@ -137,6 +119,23 @@ class CatalogSyncer
     def history_lookback
       days = EnvStore.fetch("SYNC_HISTORY_DAYS", "").to_i
       days.positive? ? days.days : 30.days
+    end
+
+    # Fetches every ACTIVE product, following the cursor until exhausted.
+    # Returns the flat array of product nodes for sync_products!.
+    def paginate_products
+      nodes = []
+      cursor = nil
+      loop do
+        data = ShopifyClient.graphql(PRODUCTS_QUERY, { cursor: cursor })
+        page = data["products"]
+        nodes.concat(page["nodes"] || [])
+        info = page["pageInfo"] || {}
+        break unless info["hasNextPage"] && info["endCursor"]
+
+        cursor = info["endCursor"]
+      end
+      nodes
     end
 
     # Fetches every order in the window, following the cursor until exhausted.

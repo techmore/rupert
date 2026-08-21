@@ -28,4 +28,12 @@ class SkuLink < ApplicationRecord
   def linked?
     shopifyVariantId.present? && squareVariationId.present?
   end
+
+  # SKUs linked to more than one Shopify variant — ambiguous for a single
+  # Square-variation target. Used by Reconciler and InventoryMaintainer to
+  # guard against half-applied shared-pool writes.
+  def self.shared_skus
+    SkuLink.linked.group(:sku).distinct.count("shopifyVariantId")
+      .select { |_, count| count > 1 }.keys.map(&:downcase).to_set
+  end
 end

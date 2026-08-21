@@ -178,6 +178,21 @@ class SettingsController < AuthenticatedController
     redirect_to(settings_path, notice: "Fulfillment workflow #{params[:enabled] == "1" ? "enabled" : "disabled"}.")
   end
 
+  # POST /settings/reconcile — enable/disable inventory reconciliation writes.
+  # Syncing continues either way; only the apply (write) step is gated.
+  def reconcile
+    FeatureFlag.set(:reconcile, params[:enabled] == "1")
+    redirect_to(settings_path, notice: "Reconciliation #{params[:enabled] == "1" ? "enabled" : "disabled"}.")
+  end
+
+  # POST /settings/inventory_push — enable/disable the automatic quantity push
+  # that keeps Shopify and Square in lock-step. Shopify and Square are separate
+  # inventories, so this is off by default; read-only syncing still runs.
+  def inventory_push
+    FeatureFlag.set(:inventory_push, params[:enabled] == "1")
+    redirect_to(settings_path, notice: "Inventory quantity sync #{params[:enabled] == "1" ? "enabled" : "disabled"}.")
+  end
+
   # POST /settings/buzz_generate — create (or replace) the Rupert agent keypair
   def buzz_generate
     BuzzAgent.generate_keypair!

@@ -328,7 +328,9 @@ class CanonicalOrderImporter
       return if hash.blank?
 
       amount = hash["amount"]
-      amount.is_a?(Numeric) ? amount.to_i : (amount.to_f * 100).round
+      # Square money payloads arrive as integer cents and must NOT be inflated;
+      # Shopify amounts are dollar strings handled by Money.
+      amount.is_a?(Numeric) ? amount.to_i : Money.cents_from_amount(amount)
     end
 
     def parse_time(value)

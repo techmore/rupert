@@ -204,6 +204,8 @@ Rails.application.routes.draw do
   resource :settings, only: :show do
     post :tenant
     post :fulfillment_workflow
+    post :reconcile
+    post :inventory_push
     post :oauth_credentials
     post :oauth_domains
     delete :oauth_domains, to: "settings#oauth_remove_domain"

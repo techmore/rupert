@@ -229,12 +229,9 @@ class SwipesimpleImporter
     end
 
     def money_to_cents(raw)
-      return 0 if raw.nil? || raw.to_s.strip.empty?
-
-      cleaned = raw.to_s.gsub(/[$,\s]/, "")
-      (cleaned.to_f * 100).round
-    rescue ArgumentError, TypeError
-      0
+      # CSV cells are often blank (missing columns, empty cells); callers sum
+      # and multiply the result, so blanks coerce to 0 instead of nil.
+      Money.cents_from_amount(raw).to_i
     end
 
     def parse_date(raw)

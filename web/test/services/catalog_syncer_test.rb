@@ -37,4 +37,19 @@ class CatalogSyncerTest < ActiveSupport::TestCase
     assert_equal %w[a b c], result["nodes"].map { |n| n["id"] }
     refute result["pageInfo"]["hasNextPage"]
   end
+
+  test "paginate_products walks all pages instead of truncating at 250" do
+    page1 = { "products" => { "nodes" => [{ "id" => "p1" }, { "id" => "p2" }],
+                              "pageInfo" => { "hasNextPage" => true, "endCursor" => "c1" } } }
+    page2 = { "products" => { "nodes" => [{ "id" => "p3" }],
+                              "pageInfo" => { "hasNextPage" => false, "endCursor" => "c2" } } }
+
+    ShopifyClient.stubs(:graphql)
+                 .returns(page1)
+                 .then.returns(page2)
+
+    result = CatalogSyncer.send(:paginate_products)
+
+    assert_equal %w[p1 p2 p3], result.map { |n| n["id"] }
+  end
 end

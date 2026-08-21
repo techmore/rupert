@@ -176,7 +176,6 @@ class InventoryPdfServiceTest < ActiveSupport::TestCase
     shared.each do |row|
       assert row.shared_qty, "Square qty shared across variants should be flagged"
       assert_equal "40†", pdf.send(:square_cell, row), "shared Square qty is marked with †"
-      assert_equal "†", pdf.send(:drift_cell, row), "drift is meaningless for a shared pool"
     end
   end
 end

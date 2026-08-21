@@ -8,10 +8,16 @@ class PlanApplier
   class << self
     # Returns { applied:, results: [{ sku:, ok:, target:, actions: [] }] }
     def apply!(skus: nil, actor: "user")
-      rows = Reconciler.build_rows
-      preflight!(rows)
+      # Reconcile writes can be paused independently of syncing. While disabled,
+      # applying is a safe no-op so neither the UI Apply button nor ops:apply
+      # writes to either platform (sync keeps recording drift snapshots).
+      unless FeatureFlag.enabled?(:reconcile)
+        return { applied: 0, results: [], disabled: true }
+      end
 
+      rows = Reconciler.build_rows
       candidates = Reconciler.actionable_rows(rows, skus: skus)
+      preflight!(rows, candidates)
 
       # Defense-in-depth: never half-apply a shared-SKU pool. A Square variation
       # linked to >1 Shopify variant is ambiguous; the Maintainer refuses these
@@ -126,13 +132,16 @@ class PlanApplier
       )
     end
 
-    def preflight!(rows)
+    def preflight!(rows, candidates)
       reasons = []
       shopify_locations = Location.where(source: "shopify").count
       reasons << "Shopify must have exactly one active inventory location for this shared-pool setup" if shopify_locations != 1
       square_home = SquareSyncer.primary_location_id
       reasons << "Square home-base location is unavailable" if square_home.nil?
-      blocked = rows.count { |row| row.square_delta && !row.square_home_target.nil? && row.square_home_target.negative? }
+      # Only rows we will actually write can drive a home-base negative; shared,
+      # multi-location, and derived SKUs are excluded from candidates and must
+      # never lock the whole apply.
+      blocked = candidates.count { |row| row.square_delta && !row.square_home_target.nil? && row.square_home_target.negative? }
       reasons << "#{blocked} corrections would make the Square home-base count negative" if blocked.positive?
 
       raise SafetyLocked, "Inventory writes are safety-locked because the shared-pool preflight did not pass: #{reasons.join("; ")}" if reasons.any?
