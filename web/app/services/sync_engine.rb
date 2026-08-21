@@ -44,32 +44,11 @@ class SyncEngine
         end
 
         AlertGenerator.sync!
-
-        # Reconcile *planning* (build rows + record a run) only runs when the
-        # reconcile flag is on. Shopify and Square are separate locations with
-        # independent inventories, so the lock-step plan is legacy: recording a
-        # full-catalog run every 15 minutes while writes are disabled was pure
-        # overhead. The mirror sync above is unaffected.
-        if FeatureFlag.enabled?(:reconcile)
-          rows = Reconciler.build_rows
-          Reconciler.record_run!(rows, mode: mode)
-          summary[:reconcile] = Reconciler.summary(rows)
-        else
-          summary[:reconcile] = { status: "skipped", reason: "Reconciliation planning is disabled" }
-        end
-
-        # The maintenance step keeps both markets in lock-step between manual
-        # physical counts. Rupert is the source of truth: the pool per SKU is
-        # Square's count minus online sales since the anchor, and the pool is
-        # pushed to BOTH platforms. Square was unfrozen on 2026-08-14 by owner
-        # directive so the loop can write to both platforms.
-        #
-        # Shopify and Square are SEPARATE inventories, so aligning their
-        # quantities is wrong — the quantity push is gated by the inventory_push
-        # flag (off by default). The read-only mirror above still runs.
-        if FeatureFlag.enabled?(:inventory_push) && SquareClient.configured?
-          summary[:maintain] = InventoryMaintainer.run!(actor: "sync")
-        end
+        # NOTE: no quantity equalization here. Shopify and Square are separate
+        # locations with independent inventories; the old lock-step machinery
+        # (Reconciler plan, InventoryMaintainer pool push) was removed.
+        # Outbound stock writes happen only through explicit, owner-approved
+        # flows (size-family derives, remediation tasks).
 
         run.update!(status: "success", finishedAt: Time.current, details: summary.to_json)
         bump_cache_logging_only

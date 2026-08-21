@@ -30,8 +30,8 @@ class SkuLink < ApplicationRecord
   end
 
   # SKUs linked to more than one Shopify variant — ambiguous for a single
-  # Square-variation target. Used by Reconciler and InventoryMaintainer to
-  # guard against half-applied shared-pool writes.
+  # Square-variation target. Used by the shared-pool guards so no write ever
+  # half-applies an ambiguous shared pool.
   def self.shared_skus
     SkuLink.linked.group(:sku).distinct.count("shopifyVariantId")
       .select { |_, count| count > 1 }.keys.map(&:downcase).to_set

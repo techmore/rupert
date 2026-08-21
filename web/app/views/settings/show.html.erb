@@ -79,28 +79,6 @@
         <%= submit_tag FeatureFlag.enabled?(:fulfillment_workflow) ? "Enabled" : "Disabled", class: FeatureFlag.enabled?(:fulfillment_workflow) ? "btn-primary btn-sm" : "btn-ghost btn-sm" %>
       <% end %>
     </div>
-
-    <div class="mt-4 flex items-center justify-between rounded-xl bg-haze px-4 py-3">
-      <div>
-        <p class="text-sm font-medium text-ink">Inventory reconciliation</p>
-        <p class="text-xs text-taupe">When disabled, the sync keeps running and drift is still recorded, but no automatic inventory corrections are written to Shopify or Square.</p>
-      </div>
-      <%= form_tag reconcile_settings_path, method: :post do %>
-        <%= hidden_field_tag :enabled, FeatureFlag.enabled?(:reconcile) ? "0" : "1" %>
-        <%= submit_tag FeatureFlag.enabled?(:reconcile) ? "Enabled" : "Disabled", class: FeatureFlag.enabled?(:reconcile) ? "btn-primary btn-sm" : "btn-ghost btn-sm" %>
-      <% end %>
-    </div>
-
-    <div class="mt-4 flex items-center justify-between rounded-xl bg-haze px-4 py-3">
-      <div>
-        <p class="text-sm font-medium text-ink">Inventory quantity sync</p>
-        <p class="text-xs text-taupe">When enabled, the background loop pushes quantities between Shopify and Square to keep them in lock-step. Shopify and Square are separate inventories, so this is disabled by default — read-only syncing still runs.</p>
-      </div>
-      <%= form_tag inventory_push_settings_path, method: :post do %>
-        <%= hidden_field_tag :enabled, FeatureFlag.enabled?(:inventory_push) ? "0" : "1" %>
-        <%= submit_tag FeatureFlag.enabled?(:inventory_push) ? "Enabled" : "Disabled", class: FeatureFlag.enabled?(:inventory_push) ? "btn-primary btn-sm" : "btn-ghost btn-sm" %>
-      <% end %>
-    </div>
   </section>
 
   <section class="card card-pad">

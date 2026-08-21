@@ -34,22 +34,14 @@ class DashboardPresenter
     @linked_count ||= DataCache.fetch("dashboard/linked_count") { SkuLink.linked.count }
   end
 
-  def drifting
-    @drifting ||= DataCache.fetch("dashboard/drifting") do
-      ids = SkuLink.linked.pluck(:shopifyVariantId, :squareVariationId)
-      shopify_totals = InventoryLevel.where(shopifyVariantId: ids.map(&:first))
-        .group(:shopifyVariantId).sum(:quantity)
-      square_totals = InventoryLevel.where(squareVariationId: ids.map(&:second))
-        .group(:squareVariationId).sum(:quantity)
-      ids.count do |shopify_id, square_id|
-        shopify_totals[shopify_id].to_i != square_totals[square_id].to_i
-      end
-    end
-  end
-
-  def reconcile_summary
-    @reconcile_summary ||= DataCache.fetch("dashboard/reconcile_summary") do
-      Reconciler.summary(Reconciler.build_rows)
+  # Linked pairs whose SKUs disagree — a catalog-identity problem, not a stock
+  # problem. Quantity differences between Shopify and Square are normal (two
+  # locations, two inventories) and are deliberately not counted anywhere.
+  def sku_mismatches
+    @sku_mismatches ||= DataCache.fetch("dashboard/sku_mismatches") do
+      links = SkuLink.linked.includes(:square_variation)
+      square_skus = links.to_h { |l| [l.id, l.square_variation&.sku.to_s.downcase] }
+      links.count { |l| l.sku.to_s.downcase != square_skus[l.id] }
     end
   end
 

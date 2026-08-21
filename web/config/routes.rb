@@ -164,12 +164,7 @@ Rails.application.routes.draw do
       post :reopen
     end
   end
-  resources :reconcile, only: :index do
-    collection do
-      post :policy
-      post :apply
-    end
-  end
+  resources :reconcile, only: :index
   resources :reports, only: [:index] do
     collection do
       get :sales
@@ -204,8 +199,6 @@ Rails.application.routes.draw do
   resource :settings, only: :show do
     post :tenant
     post :fulfillment_workflow
-    post :reconcile
-    post :inventory_push
     post :oauth_credentials
     post :oauth_domains
     delete :oauth_domains, to: "settings#oauth_remove_domain"

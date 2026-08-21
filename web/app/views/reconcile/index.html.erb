@@ -1,29 +1,30 @@
-<% content_for :title, "Reconcile" %>
+<% content_for :title, "Catalog Links" %>
 <div class="space-y-6">
   <section class="flex flex-wrap items-end justify-between gap-4">
     <div>
-      <h1 class="font-display text-3xl text-ink">Reconcile</h1>
-      <p class="mt-1 text-sm text-mocha">SKU-level bridge between Shopify variants and Square variations.</p>
+      <h1 class="font-display text-3xl text-ink">Catalog Links</h1>
+      <p class="mt-1 max-w-2xl text-sm text-mocha">Which sellable items are the same across Shopify and Square. This is an identity audit only — Shopify and Square are separate locations with independent inventories, so different quantities are normal and never auto-corrected.</p>
     </div>
-    <div class="flex flex-col items-end gap-2">
-      <% if FeatureFlag.enabled?(:reconcile) %>
-        <%= form_tag apply_reconcile_index_path, method: :post, data: { confirm: "Apply the reconciliation plan? This writes inventory adjustments to Shopify and Square." } do %>
-          <%= submit_tag "Apply adjustments", class: "btn-primary", disabled: @summary[:actionable].zero?, data: { turbo_submits_with: "Applying…" } %>
-        <% end %>
-      <% else %>
-        <span class="badge bg-taupe">Reconciliation writes disabled — syncing continues</span>
-      <% end %>
-    </div>
+    <%= link_to "Download PDF snapshot", pdf_inventory_index_path, class: "btn-ghost", data: { turbo: false } %>
   </section>
 
-  <section class="grid grid-cols-2 gap-4">
+  <section class="grid grid-cols-2 gap-4 md:grid-cols-4">
     <div class="stat">
-      <p class="stat-label">Linked SKUs</p>
-      <p class="stat-value mt-1"><%= @summary[:total] %></p>
+      <p class="stat-label">Linked items</p>
+      <p class="stat-value mt-1"><%= @summary[:linked] %></p>
     </div>
     <div class="stat">
-      <p class="stat-label">Actionable</p>
-      <p class="stat-value mt-1"><%= @summary[:actionable] %></p>
+      <p class="stat-label">Matched SKUs</p>
+      <p class="stat-value mt-1"><%= @summary[:matched] %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">SKU mismatches</p>
+      <p class="stat-value mt-1 <%= @summary[:mismatched].positive? ? "text-clay" : "" %>"><%= @summary[:mismatched] %></p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">One-sided</p>
+      <p class="stat-value mt-1"><%= @summary[:shopify_only] + @summary[:square_only] %></p>
+      <p class="mt-1 text-xs text-taupe"><%= @summary[:shopify_only] %> Shopify-only · <%= @summary[:square_only] %> Square-only</p>
     </div>
   </section>
 
@@ -32,7 +33,7 @@
       <div class="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h2 class="font-display text-2xl text-ink">Size families</h2>
-          <p class="mt-1 text-sm text-mocha">Each root product with the sizes derived from its gram bank. Sizes reconcile on the <a href="<%= size_families_path %>" class="font-semibold text-olive hover:underline">Sizes</a> page, not here.</p>
+          <p class="mt-1 text-sm text-mocha">Each root product with the sizes derived from its gram bank. Sizes are managed on the <a href="<%= size_families_path %>" class="font-semibold text-olive hover:underline">Sizes</a> page, not here.</p>
         </div>
         <a href="<%= size_families_path %>" class="btn-ghost btn-sm">Manage on Sizes</a>
       </div>
@@ -144,68 +145,63 @@
     </div>
   <% end %>
 
-  <div class="card p-4 text-sm text-mocha">
-    Applying adjustments writes to Shopify and Square. Set the per-SKU priority policy here; the Sync page runs automatic reconciliation on a schedule, and <code class="font-mono text-xs">bin/rails ops:apply</code> applies the full plan.
-    <% if @summary[:derived].positive? %>
-      <span class="mt-2 block rounded-xl bg-haze px-3 py-2 text-xs text-mocha">
-        <span class="font-semibold text-ink"><%= @summary[:derived] %> size-derived SKUs</span> are reconciled by their gram root on the
-        <%= link_to "Sizes page", size_families_path, class: "font-semibold text-olive hover:underline" %> — they're excluded here so the two systems don't fight.
-      </span>
-    <% end %>
-  </div>
-  <div class="card overflow-hidden">
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead class="border-b border-fog bg-haze/60">
-          <tr>
-            <th scope="col" class="th">Photo</th>
-            <th scope="col" class="th">SKU</th>
-            <th scope="col" class="th">Product / Variant</th>
-            <th scope="col" class="th text-right">Shopify</th>
-            <th scope="col" class="th text-right">Square</th>
-            <th scope="col" class="th">Priority</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-fog">
-          <% if @rows.empty? %>
-            <tr>
-              <td class="td py-8 text-center text-taupe">No SKU links yet — run a sync first.</td>
-            </tr>
-          <% end %>
-          <% @rows.each do |row| %>
-            <tr class="hover:bg-cream <%= row.derived ? "opacity-60" : "" %>">
-              <td class="td">
-                <% if row.image_url.present? %>
-                  <img src="<%= row.image_url %>" alt="<%= row.product %>" class="h-10 w-10 rounded-lg border border-fog object-cover" loading="lazy">
-                <% else %>
-                  <span class="block h-10 w-10 rounded-lg border border-dashed border-fog bg-haze/40"></span>
-                <% end %>
-              </td>
-              <td class="td font-mono text-xs text-mocha">
-                <%= row.sku %>
-                <% if row.derived %><span class="ml-1 align-middle"><span class="pill-olive">size</span></span><% end %>
-              </td>
-              <td class="td">
-                <p class="font-medium text-ink"><%= row.product %></p>
-                <p class="text-xs text-taupe"><%= row.variant %></p>
-              </td>
-              <td class="td text-right text-mocha"><%= row.shopify_qty %></td>
-              <td class="td text-right text-mocha"><%= row.square_qty %></td>
-              <td class="td">
-                <% if row.derived %>
-                  <span class="text-xs text-taupe">via <a href="<%= size_families_path %>" class="text-olive hover:underline">Sizes</a></span>
-                <% else %>
-                  <%= form_tag policy_reconcile_index_path, method: :post, class: "inline-block" do %>
-                    <%= hidden_field_tag :sku, row.sku %>
-                    <%= select_tag :priority, options_for_select(Reconciler::PRIORITIES, row.priority),
-                          class: "select", onchange: "this.form.submit()" %>
-                  <% end %>
-                <% end %>
-              </td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
+  <section>
+    <div class="flex flex-wrap items-end justify-between gap-2">
+      <h2 class="font-display text-2xl text-ink">Linked items</h2>
+      <p class="text-xs text-taupe">Mismatches first. Quantities shown per platform are independent on purpose.</p>
     </div>
-  </div>
+    <div class="card mt-3 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="border-b border-fog bg-haze/60">
+            <tr>
+              <th scope="col" class="th">SKU</th>
+              <th scope="col" class="th">Shopify</th>
+              <th scope="col" class="th">Square</th>
+              <th scope="col" class="th text-right">Shopify qty</th>
+              <th scope="col" class="th text-right">Square qty</th>
+              <th scope="col" class="th text-right">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-fog">
+            <% if @rows.empty? %>
+              <tr>
+                <td colspan="6" class="td py-8 text-center text-taupe">No SKU links yet — run a sync first.</td>
+              </tr>
+            <% end %>
+            <% @rows.each do |row| %>
+              <tr class="hover:bg-cream">
+                <td class="td font-mono text-xs text-mocha">
+                  <%= row.sku %>
+                  <% if row.status == "mismatched" %>
+                    <span class="ml-1 text-[10px] text-clay">↔ <%= row.square_sku.presence || "no Square SKU" %></span>
+                  <% end %>
+                </td>
+                <td class="td">
+                  <p class="font-medium text-ink"><%= row.shopify_title %></p>
+                  <p class="text-xs text-taupe"><%= row.product_title %></p>
+                </td>
+                <td class="td text-mocha"><%= row.square_name %></td>
+                <td class="td text-right text-mocha"><%= row.shopify_qty %></td>
+                <td class="td text-right text-mocha"><%= row.square_qty %></td>
+                <td class="td text-right">
+                  <% if row.status == "matched" %>
+                    <span class="pill-fern">matched</span>
+                  <% else %>
+                    <span class="pill-clay">mismatched</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <% if @pagy.pages > 1 %>
+      <div class="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-taupe">
+        <span>Showing <%= @pagy.from %>–<%= @pagy.to %> of <%= @pagy.count %> linked items.</span>
+        <%== pagy_nav(@pagy) %>
+      </div>
+    <% end %>
+  </section>
 </div>

@@ -20,7 +20,7 @@ class ModuleRegistry
     Entry.new(key: "inventory", name: "Inventory", path: -> { inventory_index_path }, permission: "inventory.read", position: 40),
     Entry.new(key: "locations", name: "Locations", path: -> { locations_path }, permission: "inventory.read", position: 42),
     Entry.new(key: "warehouse", name: "Warehouse", path: -> { warehouse_path }, permission: "settings.read", position: 43),
-    Entry.new(key: "reconcile", name: "Reconcile", path: -> { reconcile_index_path }, permission: "reconcile.read", position: 50),
+    Entry.new(key: "reconcile", name: "Catalog Links", path: -> { reconcile_index_path }, permission: "reconcile.read", position: 50),
     Entry.new(key: "sizes", name: "Sizes", path: -> { size_families_path }, permission: "reconcile.read", position: 51),
     Entry.new(key: "reports", name: "Reports", path: -> { reports_path }, permission: "reports.read", position: 55),
     Entry.new(key: "ledger", name: "Ledger", path: -> { ledger_index_path }, permission: "ledger.read", position: 60),

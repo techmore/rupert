@@ -66,7 +66,7 @@ class ModuleNavTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "nav[aria-label='Module areas'] a", text: "Operations"
     assert_select "nav[aria-label='Module'] a", text: "Ledger"
-    assert_select "nav[aria-label='Module'] a", text: "Reconcile"
+    assert_select "nav[aria-label='Module'] a", text: "Catalog Links"
     assert_select "nav[aria-label='Module'] a", text: "Projects", count: 0
     assert_select "nav[aria-label='Module'] a", text: "Goals", count: 0
     assert_select "nav[aria-label='Module'] a", text: "KPIs", count: 0

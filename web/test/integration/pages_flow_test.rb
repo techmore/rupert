@@ -51,15 +51,11 @@ class PagesFlowTest < ActionDispatch::IntegrationTest
     assert_select "h1", "Inventory"
   end
 
-  test "reconcile renders with policy form" do
+  test "catalog links renders as a read-only identity audit" do
     get_page reconcile_index_path
     assert_response :success
-    assert_select "h1", "Reconcile"
-    if ShopifyVariant.exists?
-      assert_select "select[name=priority]"
-    else
-      assert_select "td", /No SKU links yet/
-    end
+    assert_select "h1", "Catalog Links"
+    assert_select "main form", count: 0 # no apply/priority forms — read-only page
   end
 
   test "ledger renders" do

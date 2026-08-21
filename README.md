@@ -49,37 +49,32 @@ set on the droplet for production.
 ## Operations
 
 ```bash
-bin/rails ops:sync                    # full Shopify + Square sync
+bin/rails ops:sync                    # full Shopify + Square mirror sync
 bin/rails ops:sync_source[square]     # single source
-bin/rails ops:reconcile               # print the reconciliation plan summary
+bin/rails ops:catalog_links           # print catalog link stats (linked/matched/mismatched)
 bin/rails ops:push_guard:status       # freeze + approval-window state per platform
-bin/rails ops:push_guard:approve[square,email]   # record one approval (2 needed to open a window)
-bin/rails ops:push_guard:freeze[square,reason]   # maintenance freeze (blocks writes; syncs still run)
-bin/rails ops:push_guard:unfreeze[square]        # lift a freeze (writes still need approvals)
+bin/rails ops:push_guard:freeze[square,reason]   # record a maintenance freeze (awareness only)
+bin/rails ops:push_guard:unfreeze[square]
 bin/rails test                        # page + API smoke tests
 ```
 
 Scheduled syncs run through Solid Queue (`bin/jobs`) — every 15 minutes in
 production, configurable via `SYNC_MINUTES` / `config/solid_queue.yml`.
 
-## Push safety gate
+## Write safety
 
-Every outbound write to Shopify or Square (reconcile apply, negative-inventory
-fixes, size-family approvals) is gated by `PlatformPushGuard`:
+The sync loop is a read-only mirror: it never writes quantities or SKUs to
+Shopify or Square on its own. The old automatic lock-step machinery
+(reconcile-plan apply, shared-pool push) was removed in August 2026 when the
+operating model changed: Shopify and Square are separate locations serving the
+same items from independent inventories, so equalizing them was wrong.
 
-- **Default-deny**: no platform is written unless a *push window* is open.
-- **Multi-approval**: opening a window requires ≥2 distinct people to approve
-  (configurable via `PUSH_GUARD_MIN_APPROVALS`). Windows last
-  `PUSH_GUARD_WINDOW_MINUTES` (default 60) and expire automatically.
-- **Maintenance freeze**: `ops:push_guard:freeze[platform,reason]` hard-blocks
-  a platform even inside an open window. Syncs are read-only mirrors and keep
-  running while frozen — only writes are blocked. **Square is currently frozen
-  while its platform update is in progress** and stays frozen until someone
-  explicitly unfreezes it (`ops:push_guard:unfreeze[square]`).
-- Overrides can also be set via `.env`/Settings: `PUSH_FREEZE_SHOPIFY`,
-  `PUSH_FREEZE_SQUARE`, `PUSH_GUARD_MIN_APPROVALS`,
-  `PUSH_GUARD_WINDOW_MINUTES`. The gate's state and history live in the Sync
-  page and in `push_guard_<platform>` Setting rows.
+Outbound stock writes now happen only through explicit, owner-approved flows
+(size-family derives, remediation tasks). Per owner directive (2026-08-18) the
+former `PlatformPushGuard` approval-window enforcement is a no-op — freezes and
+windows are recorded for operator awareness only. The standing rule is:
+**always ask the owner before any data-mutating action on Shopify or Square,
+and never write SKUs without explicit sign-off.**
 
 ## GUI pages
 
@@ -88,10 +83,12 @@ fixes, size-family approvals) is gated by `PlatformPushGuard`:
 - **Sales** — daily sales journal in spreadsheet style: an hourly × location
   pivot plus every sale of the day in arrival order
 - **Customers** — unified CRM view (searchable, Ransack + Pagy)
-- **Inventory** — products/variants with Shopify vs Square quantities; the
+- **Inventory** — products/variants with per-location Shopify vs Square quantities; the
   "Download PDF" button (`/inventory/pdf`) exports a printable snapshot of the
   whole catalog with per-platform last-sync timestamps and summary totals
-- **Reconcile** — SKU-level drift plan + per-SKU priority policy
+- **Catalog Links** (`/reconcile`) — read-only SKU identity audit between
+  platforms: linked items, matched/mismatched SKUs, one-sided counts. Quantity
+  differences across locations are normal and shown, never "corrected"
 - **Ledger** — transaction mirror from both platforms
 - **Alerts** — low-stock flags (resolve/ignore)
 - **Sync** — run syncs, view run history and logs
@@ -175,7 +172,8 @@ alternative and are not used for deployment).
 
 Mirrors the legacy Prisma schema (table/column names preserved for import
 compatibility): `ShopifyProduct`, `ShopifyVariant`, `SquareItem`,
-`SquareVariation`, `SkuLink`, `ReconcileRun`, `ReconcileItem`, `Location`,
+`SquareVariation`, `SkuLink`, `ReconcileRun`, `ReconcileItem` (historical run
+records; no longer written), `Location`,
 `InventoryLevel`, `InventoryMovement`, `StockAlert`, `SyncRun`,
 `InventoryPolicy`, `LedgerEntry`, plus Shopify session storage (`shops`,
 `users`) and app `settings`.

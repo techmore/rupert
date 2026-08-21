@@ -30,24 +30,23 @@ class DashboardPresenterTest < ActiveSupport::TestCase
     level.update!(quantity: qty, available: qty)
   end
 
-  test "drifting counts only linked skus whose shopify and square totals differ" do
+  test "sku_mismatches counts linked skus whose SKUs differ from Square" do
     add_link!
-    set_shopify_qty(5)
-    set_square_qty(7)
+    assert_equal 0, DashboardPresenter.new.sku_mismatches
 
-    assert_equal 1, DashboardPresenter.new.drifting
-
-    set_square_qty(5)
-    assert_equal 0, DashboardPresenter.new.drifting
+    @sq_variation.update!(sku: "DIFFERENT")
+    DataCache.bump!
+    assert_equal 1, DashboardPresenter.new.sku_mismatches
   end
 
-  test "drifting ignores unlinked skus and sums across locations" do
+  test "sku_mismatches ignores quantity differences and unlinked items" do
     other_variation = SquareVariation.create!(id: "sqv2", sku: "UNLINKED", name: "B", itemId: @sqv.id, tenant_id: @tenant.id)
-    set_shopify_qty(3)
-    set_square_qty(3)
+    add_link!
+    set_shopify_qty(5)
+    set_square_qty(7) # quantities differ across locations — normal, not a mismatch
     InventoryLevel.create!(source: "square", locationId: @sq_location.id, squareVariationId: other_variation.id,
       quantity: 9, available: 9, tenant_id: @tenant.id)
 
-    assert_equal 0, DashboardPresenter.new.drifting
+    assert_equal 0, DashboardPresenter.new.sku_mismatches
   end
 end

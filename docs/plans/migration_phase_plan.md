@@ -1,5 +1,12 @@
 # Phase migration plan — sync Shopify & Square inventory/SKUs
 
+> **SUPERSEDED (2026-08-21).** The operating model changed: Shopify and Square
+> are two distinct locations frequently serving the same items from different
+> inventories. Inventory no longer syncs "in lock-step" between them — the
+> quantity-equalization phases below were never fully executed and the
+> machinery was removed. What survives from this plan is the SKU *identity*
+> work (shared SKUs, linking), now surfaced on the Catalog Links page.
+
 Goal: a single system where shared products exist on both platforms under the
 same SKU, inventory stays in lock-step, and Shopify-only wholesale/bulk items
 are tagged so they never sync to Square.

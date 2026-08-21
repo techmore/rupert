@@ -64,21 +64,10 @@ namespace :ops do
     puts "Chart of accounts seeded (#{count} accounts)"
   end
 
-  desc "Print the reconciliation plan summary"
-  task reconcile: :environment do
+  desc "Print catalog link stats: linked / matched / mismatched / one-sided SKUs"
+  task catalog_links: :environment do
     load_tenant!
-    rows = Reconciler.build_rows
-    puts Reconciler.summary(rows).to_json
-  end
-
-  desc "Apply the reconciliation plan to Shopify and Square inventory (WRITES; requires TENANT_ID)"
-  task apply: :environment do
-    load_tenant!(write: true)
-    result = PlanApplier.apply!(actor: "rake")
-    puts "Applied #{result[:applied]} adjustment(s)"
-    result[:results].each do |row|
-      puts "#{row[:sku]}: #{row[:ok] ? "ok" : "FAILED"} target=#{row[:target]} #{row[:actions].join("; ")}"
-    end
+    puts CatalogLinks.summary.to_json
   end
 
   desc "Dry-run: print the plan for SKUs shared across products (no changes made)"
@@ -97,19 +86,6 @@ namespace :ops do
         puts "  #{plan.product.ljust(48)} #{plan.variant_title.ljust(18)} qty=#{plan.current_qty}  ->  #{plan.proposed_sku}"
       end
     end
-  end
-
-  desc "Push Square's current totals to Shopify for linked SKUs (Square = source of truth). One-way, idempotent, journaled."
-  task push_square_totals: :environment do
-    load_tenant!
-    result = InventoryMaintainer.push_square_totals!(actor: ENV["ACTOR_EMAIL"].presence || "rake")
-    puts JSON.pretty_generate(result)
-  end
-
-  desc "Run the inventory maintenance loop now: Square counts to Shopify (linked SKUs) + size-family derives to both platforms"
-  task maintain: :environment do
-    load_tenant!
-    puts JSON.pretty_generate(InventoryMaintainer.run!(actor: "rake"))
   end
 
   desc "Seed size families from products labeled the same (group by product title, members derived from Square variation names). Idempotent, approval mode."

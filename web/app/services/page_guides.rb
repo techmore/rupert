@@ -13,11 +13,11 @@ class PageGuides
       summary: "Your at-a-glance store health: today's money, sales volume, and anything needing attention like inventory drift or low stock.",
       sections: [
         { heading: "What you're seeing", body: "The top cards summarize today and yesterday: gross revenue, sales volume, and attention items. Charts show the trend over the last 30 days. The attention rail lists real problems — SKUs where Shopify and Square disagree, or items near/out of stock — so you act on the exceptions, not the whole list." },
-        { heading: "How to read the numbers", body: "Revenue is gross sales (before returns), from orders mirrored by the sync. Volume is order count, not items. 'vs yesterday' compares the same hour-of-day, so morning vs morning. A red SKU in attention means a reconcile adjustment is waiting." },
+        { heading: "How to read the numbers", body: "Revenue is gross sales (before returns), from orders mirrored by the sync. Volume is order count, not items. 'vs yesterday' compares the same hour-of-day, so morning vs morning. A clay SKU in attention means its SKU differs between Shopify and Square — worth a look on Catalog Links." },
       ],
       tips: [
         "Check the attention rail first every morning — it's ordered by severity.",
-        "Drill into an out-of-sync SKU on the Reconcile page, don't fix it by hand in Square.",
+        "Quantity differences between Shopify and Square are normal (two locations, two inventories). Only SKU mismatches need action, on the Catalog Links page.",
         "Customize which widgets you see from the customize control, not the code.",
       ],
     ),
@@ -38,8 +38,8 @@ class PageGuides
       key: "inventory", title: "Inventory",
       summary: "Your catalog mirrored from Shopify with quantities on both sides — plus size-derived products and a banner when any count is negative.",
       sections: [
-        { heading: "What you're seeing", body: "One row per product variant: its Shopify and Square counts and the drift between them. A 'size 5g' badge means the variant derives from a root gram bank and reconciles on the Sizes page, not here. The red banner lists negative counts — oversold or non-inventory SKUs — with one-click corrections." },
-        { heading: "How to read the numbers", body: "Drift = Square − Shopify. Positive means Square thinks you have more than Shopify; negative means less. Zero is healthy. Search by product title or SKU; the page shows the first 40 matches." },
+        { heading: "What you're seeing", body: "One row per product variant: its Shopify and Square counts side by side. These are two different locations with two different inventories — different numbers are normal, not an error. A 'size 5g' badge means the variant derives from a root gram bank and is managed on the Sizes page. The red banner lists negative counts — oversold or non-inventory SKUs — with one-click corrections." },
+        { heading: "How to read the numbers", body: "Shopify is your online stock; Square is what you hold for in-person sales. Compare each against its own reorder point, not against the other column. Search by product title or SKU; the page shows the first 40 matches." },
       ],
       tips: [
         "When the negative-count banner appears, fix items individually (Set to 0 / Untrack) so you don't guess.",
@@ -48,16 +48,16 @@ class PageGuides
       ],
     ),
     "reconcile" => Guide.new(
-      key: "reconcile", title: "Reconcile",
-      summary: "The bridge between Shopify and Square inventory — see where they disagree, set which side wins, and apply corrections.",
+      key: "reconcile", title: "Catalog Links",
+      summary: "Which items are the same across Shopify and Square — a read-only identity audit. Shopify and Square are separate locations with separate stock, so quantities here are informational, never corrected.",
       sections: [
-        { heading: "What you're seeing", body: "A row per linked SKU with both counts, the drift, and a priority policy. Below, 'Size families' groups each root product with the sizes derived from it. The pending-approval queue lists size changes waiting to be written." },
-        { heading: "How priority works", body: "Priority decides the reconciliation target: 'lowest' takes whichever side has less, 'shopify' trusts Shopify, 'square' trusts Square. The apply button writes the chosen targets to both platforms with a safety preflight." },
+        { heading: "What you're seeing", body: "A row per linked item with its Shopify and Square names, SKUs, and current counts. 'Matched' means both platforms agree on the SKU. 'Mismatched' means the same item is identified differently on each side — those float to the top. Below, 'Size families' groups each root product with its derived sizes, plus the pending-approval queue." },
+        { heading: "What to do about mismatches", body: "A mismatch is a labeling decision, not an emergency: pick one canonical SKU and apply it on both platforms (SKU writes always get owner sign-off first), or unlink if they're truly different items. Nothing here writes automatically." },
       ],
       tips: [
-        "Start with 'lowest' for products you physically control; switch to 'square' only when Square is authoritative.",
-        "Size-derived SKUs are excluded here on purpose — they're handled by the root gram math on the Sizes page.",
-        "Review the pending size queue and approve it in one click when the math looks right.",
+        "Run a sync after creating new SKUs so new items appear as linked.",
+        "One-sided counts (Shopify-only / Square-only) are expected — wholesale and event stock often lives on just one platform.",
+        "Size-derived SKUs are handled by the root gram math on the Sizes page.",
       ],
     ),
     "sizes" => Guide.new(

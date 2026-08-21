@@ -100,10 +100,7 @@ class SecurityFlowTest < ActionDispatch::IntegrationTest
     assert_redirected_to(root_path)
   end
 
-  test "a reader cannot apply reconcile adjustments or update alert status" do
-    post apply_reconcile_index_path, params: { shop: "m11u0i-sb.myshopify.com", embedded: "1" }
-    assert_redirected_to(root_path)
-
+  test "a reader cannot update alert status" do
     alert = StockAlert.create!(tenant_id: @tenant.id, sku: "X-1", quantity: 1, threshold: 5, status: "open")
     post update_status_alerts_path, params: { id: alert.id, status: "resolved", shop: "m11u0i-sb.myshopify.com", embedded: "1" }
     assert_redirected_to(root_path)

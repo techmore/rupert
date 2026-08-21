@@ -68,14 +68,13 @@ module ApplicationHelper
 
   def attention_items(presenter)
     items = []
-    drift = presenter.reconcile_summary[:drift_count]
-    actionable = presenter.reconcile_summary[:actionable]
+    mismatches = presenter.sku_mismatches
 
-    if drift.positive?
+    if mismatches.positive?
       items << {
-        label: "#{drift} SKUs out of sync",
-        note: "#{actionable} need an adjustment — Shopify vs Square differ",
-        value: actionable.to_s,
+        label: "#{mismatches} SKU mismatches",
+        note: "Same item, different SKU per platform — review on Catalog Links",
+        value: mismatches.to_s,
         pill: "pill-clay",
       }
     end

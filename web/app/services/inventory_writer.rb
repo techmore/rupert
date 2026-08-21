@@ -4,10 +4,10 @@
 # pipeline:
 #
 #   * Shopify AdjustInventory mutation — the same GraphQL document was embedded
-#     in InventoryMaintainer, SizeDeriver and PlanApplier, each with its own
+#     in SizeDeriver and NegativeInventory, each with its own
 #     copy of the userErrors check.
-#   * Square PHYSICAL_COUNT batch-create bodies — InventoryMaintainer,
-#     SizeDeriver, PlanApplier and NegativeInventory all built the identical
+#   * Square PHYSICAL_COUNT batch-create bodies — SizeDeriver and
+#     NegativeInventory both built the identical
 #     four-field payload by hand.
 #   * The SKU -> slug sanitization shared by every idempotency-key formula.
 #
