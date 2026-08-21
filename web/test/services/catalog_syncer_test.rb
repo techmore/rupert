@@ -53,11 +53,9 @@ class CatalogSyncerTest < ActiveSupport::TestCase
     assert_equal %w[p1 p2 p3], result.map { |n| n["id"] }
   end
 
-  test "sync_variant! mirrors one level per Shopify location" do
+  test "sync_levels_batched! mirrors one level per Shopify location" do
     home = Location.create!(source: "shopify", externalId: "gid://shopify/Location/1", name: "Online")
     rig = Location.create!(source: "shopify", externalId: "gid://shopify/Location/2", name: "Market Rig")
-    ShopifyProduct.create!(id: "gid://shopify/Product/1", title: "Tea")
-    AlertGenerator.stubs(:sync_variant!).returns(nil)
 
     variant = {
       "id" => "gid://shopify/ProductVariant/9",
@@ -79,8 +77,11 @@ class CatalogSyncerTest < ActiveSupport::TestCase
       },
     }
 
-    CatalogSyncer.send(:sync_variant!, "gid://shopify/Product/1", variant,
-      { "gid://shopify/Location/1" => home, "gid://shopify/Location/2" => rig }, home)
+    ShopifyProduct.create!(id: "gid://shopify/Product/1", title: "Tea")
+    ShopifyVariant.create!(id: variant["id"], productId: "gid://shopify/Product/1", title: "Tea / 50g", sku: "TEA-50")
+
+    CatalogSyncer.send(:sync_levels_batched!, [variant],
+      { "gid://shopify/Location/1" => home, "gid://shopify/Location/2" => rig }, home, Time.current)
 
     levels = InventoryLevel.where(source: "shopify", shopifyVariantId: variant["id"])
     assert_equal 2, levels.count
@@ -88,12 +89,12 @@ class CatalogSyncerTest < ActiveSupport::TestCase
     assert_equal 2, levels.find_by(locationId: rig.id).quantity
     # Rows are keyed by the Location record id so level.location resolves.
     assert_equal home.id, levels.find_by(locationId: home.id).location&.id
+    # Quantity changes journal movements.
+    assert_equal 2, InventoryMovement.where(shopifyVariantId: variant["id"]).count
   end
 
-  test "sync_variant! falls back to the primary row when no levels are returned" do
+  test "sync_levels_batched! falls back to the primary row when no levels are returned" do
     primary = Location.create!(source: "shopify", externalId: "gid://shopify/Location/1", name: "Online")
-    ShopifyProduct.create!(id: "gid://shopify/Product/1", title: "Poster")
-    AlertGenerator.stubs(:sync_variant!).returns(nil)
 
     variant = {
       "id" => "gid://shopify/ProductVariant/10",
@@ -103,11 +104,40 @@ class CatalogSyncerTest < ActiveSupport::TestCase
       "inventoryItem" => { "id" => "gid://shopify/InventoryItem/10", "tracked" => false },
     }
 
-    CatalogSyncer.send(:sync_variant!, "gid://shopify/Product/1", variant, {}, primary)
+    ShopifyProduct.create!(id: "gid://shopify/Product/2", title: "Poster")
+    ShopifyVariant.create!(id: variant["id"], productId: "gid://shopify/Product/2", title: "Poster", sku: nil)
+
+    CatalogSyncer.send(:sync_levels_batched!, [variant], {}, primary, Time.current)
 
     levels = InventoryLevel.where(source: "shopify", shopifyVariantId: variant["id"])
     assert_equal 1, levels.count
     assert_equal 3, levels.find_by(locationId: primary.id).quantity
+  end
+
+  test "sync_levels_batched! is idempotent — reruns update in place without duplicate movements" do
+    home = Location.create!(source: "shopify", externalId: "gid://shopify/Location/1", name: "Online")
+    variant = {
+      "id" => "gid://shopify/ProductVariant/11",
+      "title" => "Tea / 50g",
+      "sku" => "TEA-50",
+      "inventoryQuantity" => 5,
+      "inventoryItem" => {
+        "id" => "gid://shopify/InventoryItem/11",
+        "tracked" => true,
+        "inventoryLevels" => {
+          "nodes" => [{ "location" => { "id" => "gid://shopify/Location/1" },
+                        "quantities" => [{ "name" => "available", "quantity" => 5 }] }],
+        },
+      },
+    }
+    locations = { "gid://shopify/Location/1" => home }
+    ShopifyProduct.create!(id: "gid://shopify/Product/3", title: "Tea")
+    ShopifyVariant.create!(id: variant["id"], productId: "gid://shopify/Product/3", title: "Tea / 50g", sku: "TEA-50")
+
+    2.times { CatalogSyncer.send(:sync_levels_batched!, [variant], locations, home, Time.current) }
+
+    assert_equal 1, InventoryLevel.where(source: "shopify", shopifyVariantId: variant["id"]).count
+    assert_equal 1, InventoryMovement.where(shopifyVariantId: variant["id"]).count # only the initial 0->5
   end
 
   test "prune_stale_shopify_levels! removes rows for vanished locations and guards an empty map" do

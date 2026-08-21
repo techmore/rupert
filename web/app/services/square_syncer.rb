@@ -49,40 +49,43 @@ class SquareSyncer
     end
 
     def sync_catalog!(catalog)
-      catalog.group_by { |v| v[:itemId] }.each do |item_id, variations|
-        SquareItem.upsert({ id: item_id, name: variations.first[:name], syncedAt: Time.current }, unique_by: :id)
-        variations.each do |variation|
-          SquareVariation.upsert(
-            {
-              id: variation[:variationId],
-              itemId: item_id,
-              sku: variation[:sku],
-              name: variation[:name],
-              syncedAt: Time.current,
-            },
-            unique_by: :id,
-          )
-        end
+      now = Time.current
+      item_rows = {}
+      variation_rows = []
+      catalog.each do |variation|
+        # Bulk writes skip callbacks, so rows carry tenant_id explicitly.
+        item_rows[variation[:itemId]] ||= {
+          id: variation[:itemId], name: variation[:name], syncedAt: now, tenant_id: Current.tenant_id,
+        }
+        variation_rows << {
+          id: variation[:variationId], itemId: variation[:itemId], sku: variation[:sku],
+          name: variation[:name], syncedAt: now, tenant_id: Current.tenant_id,
+        }
       end
+
+      SquareItem.upsert_all(item_rows.values, unique_by: :id) if item_rows.any?
+      SquareVariation.upsert_all(variation_rows, unique_by: :id) if variation_rows.any?
     end
 
     def sync_links!(catalog)
       by_sku = {}
       catalog.each { |v| by_sku[v[:sku].downcase] = v[:variationId] if v[:sku].present? }
+      existing_links = SkuLink.all.index_by(&:shopifyVariantId)
       links = 0
-      ShopifyVariant.where.not(sku: [nil, ""]).find_each do |variant|
+      ShopifyVariant.where.not(sku: [nil, ""]).includes(:product).find_each do |variant|
         # Wholesale/bulk Shopify-only products never link to Square (they're not
         # carried there) — the wholesale tag on the product excludes them.
         next if variant.product&.tags.to_s.split(",").map(&:strip).include?("wholesale")
         square_id = by_sku[variant.sku.downcase]
         next if square_id.nil?
 
-        link = SkuLink.find_or_initialize_by(shopifyVariantId: variant.id)
+        link = existing_links[variant.id]
         links += 1
-        if link.persisted? && link.sku == variant.sku && link.squareVariationId == square_id &&
+        if link && link.sku == variant.sku && link.squareVariationId == square_id &&
             link.matchSource == "sku" && link.auto
           next
         end
+        link ||= SkuLink.new(shopifyVariantId: variant.id)
         link.sku = variant.sku
         link.squareVariationId = square_id
         link.matchSource = "sku"
@@ -94,6 +97,7 @@ class SquareSyncer
     end
 
     def sync_levels!(locations, catalog, counts, primary)
+      now = Time.current
       location_records = locations.map do |location|
         upsert_location(
           source: "square",
@@ -105,39 +109,69 @@ class SquareSyncer
       end
       location_records.find { |l| l.externalId == primary["id"] } || location_records.first
 
+      # Desired per-location rows, diffed against existing levels loaded once,
+      # then written as one upsert + one movement insert (same shape as the
+      # Shopify side).
+      desired = []
       location_records.each do |location_record|
         by_variation = counts[:counts_by_location][location_record.externalId] || Hash.new(0)
         catalog.each do |variation|
           quantity = by_variation[variation[:variationId]]
           next if quantity.nil?
 
-          level = InventoryLevel.find_or_initialize_by(
-            source: "square", locationId: location_record.id, squareVariationId: variation[:variationId],
-          )
-          before = level.quantity || 0
-          if before != quantity
-            InventoryMovement.create!(
-              sku: variation[:sku],
-              squareVariationId: variation[:variationId],
-              source: "square",
-              direction: "set",
-              delta: quantity - before,
-              quantityBefore: before,
-              quantityAfter: quantity,
-              reason: "Synced from Square",
-              reference: "sync",
-              actor: "system",
-              syncRunId: Current.sync_run_id,
-              createdAt: Time.current,
-            )
-          end
-          level.quantity = quantity
-          level.available = quantity
-          if level.new_record? || level.changed?
-            level.updatedAt = Time.current
-            level.save!
-          end
+          desired << {
+            location_id: location_record.id,
+            variation_id: variation[:variationId],
+            sku: variation[:sku],
+            quantity: quantity,
+          }
         end
+      end
+      return if desired.empty?
+
+      existing = InventoryLevel.mirrored("square")
+        .where(squareVariationId: desired.map { |d| d[:variation_id] })
+        .index_by { |level| [level.locationId, level.squareVariationId] }
+
+      level_rows = desired.map do |d|
+        old = existing[[d[:location_id], d[:variation_id]]]
+        {
+          id: old&.id || HasCuid.generate,
+          source: "square",
+          locationId: d[:location_id],
+          squareVariationId: d[:variation_id],
+          quantity: d[:quantity],
+          available: d[:quantity],
+          updatedAt: now,
+          tenant_id: Current.tenant_id,
+        }
+      end
+
+      movement_rows = desired.filter_map do |d|
+        before = existing[[d[:location_id], d[:variation_id]]]&.quantity || 0
+        next if before == d[:quantity]
+
+        {
+          id: HasCuid.generate,
+          sku: d[:sku],
+          squareVariationId: d[:variation_id],
+          source: "square",
+          direction: "set",
+          delta: d[:quantity] - before,
+          quantityBefore: before,
+          quantityAfter: d[:quantity],
+          reason: "Synced from Square",
+          reference: "sync",
+          actor: "system",
+          syncRunId: Current.sync_run_id,
+          createdAt: now,
+          tenant_id: Current.tenant_id,
+        }
+      end
+
+      ActiveRecord::Base.transaction do
+        InventoryLevel.upsert_all(level_rows, unique_by: :idx_inventory_levels_tenant_source_loc_square)
+        InventoryMovement.insert_all(movement_rows) if movement_rows.any?
       end
     end
 

@@ -52,9 +52,10 @@ class LedgerImporter
   end
 
   def self.upsert!(entries)
-    entries.each do |entry|
-      LedgerEntry.upsert(entry, unique_by: :id)
-    end
+    # Bulk writes skip callbacks, so rows carry tenant_id explicitly (this also
+    # heals the historical NULL-tenant ledger rows on conflict).
+    entries.each { |entry| entry[:tenant_id] = Current.tenant_id }
+    LedgerEntry.upsert_all(entries, unique_by: :id) if entries.any?
     entries.length
   end
 end

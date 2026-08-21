@@ -231,42 +231,51 @@ class CatalogSyncer
     end
 
     def sync_products!(products, locations_by_gid, primary)
-      variant_count = 0
+      now = Time.current
+      product_rows = []
+      variant_rows = []
+      variant_nodes = []
 
       products.each do |product|
-        ShopifyProduct.upsert(
-          {
-            id: product["id"],
-            title: product["title"],
-            status: product["status"],
-            handle: product["handle"],
-            publishedAt: parse_time(product["publishedAt"]),
-            totalInventory: product["totalInventory"].to_i,
-            featuredImageUrl: product.dig("featuredImage", "url"),
-            tags: Array(product["tags"]).join(", "),
-            syncedAt: Time.current,
-          },
-          unique_by: :id,
-        )
-
-        Array(product.dig("variants", "nodes")).each do |variant|
-          sync_variant!(product["id"], variant, locations_by_gid, primary)
-          variant_count += 1
+        product_rows << {
+          id: product["id"],
+          title: product["title"],
+          status: product["status"],
+          handle: product["handle"],
+          publishedAt: parse_time(product["publishedAt"]),
+          totalInventory: product["totalInventory"].to_i,
+          featuredImageUrl: product.dig("featuredImage", "url"),
+          tags: Array(product["tags"]).join(", "),
+          syncedAt: now,
+          tenant_id: Current.tenant_id,
+        }
+        Array(product.dig("variants", "nodes")).each do |node|
+          variant_rows << build_variant_row(product["id"], node, now)
+          variant_nodes << node
         end
       end
 
+      # One statement per table per sync instead of one upsert per row; rows
+      # carry tenant_id explicitly because bulk writes skip callbacks (and
+      # TenantScoped's assign_tenant with them).
+      ActiveRecord::Base.transaction do
+        ShopifyProduct.upsert_all(product_rows, unique_by: :id) if product_rows.any?
+        ShopifyVariant.upsert_all(variant_rows, unique_by: :id) if variant_rows.any?
+        sync_levels_batched!(variant_nodes, locations_by_gid, primary, now)
+      end
+
       prune_stale_shopify_levels!
-      { products: products.length, variants: variant_count }
+      { products: product_rows.length, variants: variant_rows.length }
     end
 
-    def sync_variant!(product_id, variant, locations_by_gid, primary)
+    def build_variant_row(product_id, variant, now)
       # Mirrored inventory stays non-negative: oversold Shopify counts are
       # zeroed locally (the negative-inventory remediation) instead of being
       # pushed back to Shopify. Reconcile therefore sees 0 for these SKUs.
       quantity = [variant["inventoryQuantity"].to_i, 0].max
       item = variant["inventoryItem"] || {}
 
-      attrs = {
+      {
         id: variant["id"],
         productId: product_id,
         title: variant["title"],
@@ -275,50 +284,89 @@ class CatalogSyncer
         inventoryQuantity: quantity,
         tracked: item["tracked"] == true,
         inventoryItemId: item["id"],
-        syncedAt: Time.current,
+        syncedAt: now,
+        tenant_id: Current.tenant_id,
       }
-      ShopifyVariant.upsert(attrs, unique_by: :id)
-
-      # One mirrored level PER Shopify location (like the Square side), keyed by
-      # the Location record id so level.location resolves and per-location stock
-      # is answerable. Aggregated readers (totals, dashboards, PDF) sum across
-      # rows, so their numbers are unchanged.
-      level_nodes = Array(item.dig("inventoryLevels", "nodes"))
-      if level_nodes.empty?
-        # Untracked items / shapes without level data: keep the variant total on
-        # the primary row so the item still surfaces in views and alerts.
-        write_shopify_level!(primary&.id, variant["id"], variant["sku"], quantity) if primary
-      else
-        level_nodes.each do |node|
-          location = locations_by_gid[node.dig("location", "id")]
-          next if location.nil?
-
-          available = Array(node["quantities"]).find { |q| q["name"] == "available" }&.dig("quantity").to_i
-          write_shopify_level!(location.id, variant["id"], variant["sku"], [available, 0].max)
-        end
-      end
-
-      AlertGenerator.sync_variant!(variant["id"], variant["sku"], quantity)
     end
 
-    def write_shopify_level!(location_id, variant_id, sku, quantity)
-      return if location_id.nil?
+    # One mirrored level PER Shopify location (like the Square side), keyed by
+    # the Location record id so level.location resolves and per-location stock
+    # is answerable. Aggregated readers (totals, dashboards, PDF) sum across
+    # rows, so their numbers are unchanged.
+    #
+    # Batched: desired rows are diffed against the existing levels loaded once,
+    # then written as a single level upsert + movements insert inside the
+    # caller's transaction. Quantity changes journal before -> after exactly as
+    # the per-row version did.
+    def sync_levels_batched!(variant_nodes, locations_by_gid, primary, now)
+      desired = []
+      variant_nodes.each do |variant|
+        variant_id = variant["id"]
+        sku = variant["sku"]
+        item = variant["inventoryItem"] || {}
+        quantity = [variant["inventoryQuantity"].to_i, 0].max
 
-      level = InventoryLevel.find_or_initialize_by(
-        source: "shopify", locationId: location_id, shopifyVariantId: variant_id,
-      )
-      journal_movement(
-        level,
-        variant_id,
-        quantity,
-        source: "shopify",
-        reference: "sync",
-        sku: sku,
-      )
-      level.quantity = quantity
-      level.available = quantity
-      level.updatedAt = Time.current
-      level.save!
+        level_nodes = Array(item.dig("inventoryLevels", "nodes"))
+        if level_nodes.empty?
+          # Untracked items / shapes without level data: keep the variant total
+          # on the primary row so the item still surfaces in views and alerts.
+          next if primary.nil?
+
+          desired << { location_id: primary.id, variant_id: variant_id, sku: sku, quantity: quantity }
+        else
+          level_nodes.each do |node|
+            location = locations_by_gid[node.dig("location", "id")]
+            next if location.nil?
+
+            available = Array(node["quantities"]).find { |q| q["name"] == "available" }&.dig("quantity").to_i
+            desired << { location_id: location.id, variant_id: variant_id, sku: sku, quantity: [available, 0].max }
+          end
+        end
+      end
+      return if desired.empty?
+
+      existing = InventoryLevel.mirrored("shopify")
+        .where(shopifyVariantId: desired.map { |d| d[:variant_id] })
+        .index_by { |level| [level.locationId, level.shopifyVariantId] }
+
+      level_rows = desired.map do |d|
+        old = existing[[d[:location_id], d[:variant_id]]]
+        {
+          id: old&.id || HasCuid.generate,
+          source: "shopify",
+          locationId: d[:location_id],
+          shopifyVariantId: d[:variant_id],
+          quantity: d[:quantity],
+          available: d[:quantity],
+          updatedAt: now,
+          tenant_id: Current.tenant_id,
+        }
+      end
+
+      movement_rows = desired.filter_map do |d|
+        before = existing[[d[:location_id], d[:variant_id]]]&.quantity || 0
+        next if before == d[:quantity]
+
+        {
+          id: HasCuid.generate,
+          sku: d[:sku],
+          shopifyVariantId: d[:variant_id],
+          source: "shopify",
+          direction: "set",
+          delta: d[:quantity] - before,
+          quantityBefore: before,
+          quantityAfter: d[:quantity],
+          reason: "Synced from Shopify",
+          reference: "sync",
+          actor: "system",
+          syncRunId: Current.sync_run_id,
+          createdAt: now,
+          tenant_id: Current.tenant_id,
+        }
+      end
+
+      InventoryLevel.upsert_all(level_rows, unique_by: :idx_inventory_levels_tenant_source_loc_shopify)
+      InventoryMovement.insert_all(movement_rows) if movement_rows.any?
     end
 
     # Deletes mirrored Shopify levels whose location no longer exists (a
@@ -333,26 +381,6 @@ class CatalogSyncer
       removed = InventoryLevel.mirrored("shopify").where.not(locationId: known_ids).delete_all
       Rails.logger.info("CatalogSyncer: pruned #{removed} stale Shopify inventory level rows") if removed.positive?
       removed
-    end
-
-    def journal_movement(level, variant_id, new_quantity, source:, reference:, sku:)
-      before = level.quantity || 0
-      return if before == new_quantity
-
-      InventoryMovement.create!(
-        sku: sku,
-        shopifyVariantId: variant_id,
-        source: source,
-        direction: "set",
-        delta: new_quantity - before,
-        quantityBefore: before,
-        quantityAfter: new_quantity,
-        reason: "Synced from Shopify",
-        reference: reference,
-        actor: "system",
-        syncRunId: Current.sync_run_id,
-        createdAt: Time.current,
-      )
     end
 
     def parse_time(value)
