@@ -108,4 +108,64 @@ class SyncEngineTest < ActiveSupport::TestCase
     refute details.key?("reconcile"), "no drift plan is computed or recorded"
     refute details.key?("maintain"), "no lock-step quantity push runs"
   end
+
+  test "a successful sync advances the per-source order watermarks" do
+    ShopifyClient.stubs(:configured?).returns(true)
+    CatalogSyncer.stubs(:sync!).returns({ products: 1, variants: 1, orders: { "nodes" => [] } })
+    LedgerImporter.stubs(:from_shopify_orders!).returns(nil)
+    SquareClient.stubs(:configured?).returns(true)
+    SquareSyncer.stubs(:sync!).returns({ items: [], variations: [], levels: [], links: [], orders: [], locations: [] })
+    LedgerImporter.stubs(:from_square_orders!).returns(nil)
+    AlertGenerator.stubs(:sync!).returns({ created: 0, resolved: 0 })
+
+    run = SyncEngine.run!(mode: "scheduled", actor: "scheduler")
+
+    assert_predicate run, :success?
+    shopify_wm = Time.zone.parse(Setting.find_by!(key: "sync_watermark_shopify", tenant_id: Current.tenant_id).value)
+    square_wm = Time.zone.parse(Setting.find_by!(key: "sync_watermark_square", tenant_id: Current.tenant_id).value)
+    assert_in_delta run.startedAt, shopify_wm, 1.second
+    assert_in_delta run.startedAt, square_wm, 1.second
+  end
+
+  test "incremental runs fetch only the watermark window plus refresh tail" do
+    Setting.create!(key: "sync_watermark_shopify", value: 2.hours.ago.iso8601, tenant_id: Current.tenant_id)
+
+    captured_since = nil
+    CatalogSyncer.stubs(:sync!).with { |args| captured_since = args[:since]; true }
+      .returns({ products: 1, variants: 1, orders: { "nodes" => [] } })
+    LedgerImporter.stubs(:from_shopify_orders!).returns(nil)
+    SquareClient.stubs(:configured?).returns(false)
+    AlertGenerator.stubs(:sync!).returns({ created: 0, resolved: 0 })
+
+    SyncEngine.run!(mode: "scheduled", actor: "scheduler")
+
+    # since = watermark - 48h tail -> about 50 hours ago, not the 30-day default.
+    assert_not_nil captured_since
+    assert_operator Time.zone.parse(captured_since), :>, 3.days.ago
+  end
+
+  test "explicit history_days bypasses the watermark (manual backfill)" do
+    Setting.create!(key: "sync_watermark_shopify", value: 2.hours.ago.iso8601, tenant_id: Current.tenant_id)
+
+    captured_since = nil
+    CatalogSyncer.stubs(:sync!).with { |args| captured_since = args[:since]; true }
+      .returns({ products: 1, variants: 1, orders: { "nodes" => [] } })
+    LedgerImporter.stubs(:from_shopify_orders!).returns(nil)
+    SquareClient.stubs(:configured?).returns(false)
+    AlertGenerator.stubs(:sync!).returns({ created: 0, resolved: 0 })
+
+    SyncEngine.run!(mode: "backfill", actor: "rake", history_days: 365)
+
+    assert_equal (Time.current - 365.days).strftime("%Y-%m-%d"), captured_since
+  end
+
+  test "a failed sync does not advance the watermark" do
+    ShopifyClient.stubs(:configured?).returns(true)
+    CatalogSyncer.stubs(:sync!).raises(StandardError, "Shopify down")
+    SquareClient.stubs(:configured?).returns(false)
+
+    assert_raises(StandardError) { SyncEngine.run!(mode: "scheduled", actor: "scheduler") }
+
+    assert_nil Setting.find_by(key: "sync_watermark_shopify", tenant_id: Current.tenant_id)
+  end
 end

@@ -14,6 +14,12 @@ class SyncEngine
   # whole schedule until the worker restarts.
   STALE_RUN_AFTER = 45.minutes
 
+  # Incremental order imports: every scheduled sync re-fetches only orders
+  # newer than the last successful import, minus this tail so late fulfillment
+  # updates and stragglers still get caught. Manual backfills
+  # (ops:backfill[DAYS], or any explicit history_days) bypass the watermark.
+  REFRESH_TAIL = 48.hours
+
   class << self
     def run!(mode: "manual", actor: "user", tenant: nil, history_days: nil)
       Current.tenant = tenant if tenant
@@ -29,16 +35,18 @@ class SyncEngine
 
       begin
         summary = {}
-        shopify = CatalogSyncer.sync!(since: backfill_since(history_days))
+        shopify = CatalogSyncer.sync!(since: order_since("shopify", history_days))
         summary[:shopify] = { products: shopify[:products], variants: shopify[:variants] }
         LedgerImporter.from_shopify_orders!(shopify.dig(:orders, "nodes"))
+        advance_watermark!("shopify", run.startedAt)
 
         # Square syncs are read-only mirrors (Square -> local DB) and always run
         # when configured; the freeze only blocks *writes* to Square.
         if SquareClient.configured?
-          square = SquareSyncer.sync!(since: backfill_since(history_days))
+          square = SquareSyncer.sync!(since: order_since("square", history_days))
           summary[:square] = { locations: square[:locations].length, orders: square[:orders].length }
           LedgerImporter.from_square_orders!(square[:orders])
+          advance_watermark!("square", run.startedAt)
         else
           summary[:square] = { status: "skipped", reason: "Square is not configured" }
         end
@@ -76,12 +84,13 @@ class SyncEngine
 
           # A Square sync is a read-only mirror and runs even while Square is
           # frozen (the freeze only blocks outbound writes).
-          square = SquareSyncer.sync!
+          square = SquareSyncer.sync!(since: order_since("square", nil))
           LedgerImporter.from_square_orders!(square[:orders])
         else
-          shopify = CatalogSyncer.sync!
+          shopify = CatalogSyncer.sync!(since: order_since("shopify", nil))
           LedgerImporter.from_shopify_orders!(shopify.dig(:orders, "nodes"))
         end
+        advance_watermark!(source, run.startedAt)
         run.update!(status: "success", finishedAt: Time.current, details: { source: source }.to_json)
         bump_cache_logging_only
         run
@@ -119,6 +128,43 @@ class SyncEngine
       return nil if history_days.nil?
 
       (Time.current - history_days.days).strftime("%Y-%m-%d")
+    end
+
+    # The `since` for a source's order fetch. Explicit history_days (manual
+    # backfill) always wins; otherwise the per-source watermark from the last
+    # successful import, minus REFRESH_TAIL so late fulfillment updates and
+    # stragglers are re-fetched. No watermark yet -> nil -> the syncer's
+    # default lookback (first run / fresh tenant).
+    def order_since(source, history_days)
+      return backfill_since(history_days) if history_days.present?
+
+      watermark = read_watermark(source)
+      return nil if watermark.nil?
+
+      since = watermark - REFRESH_TAIL
+      source == "square" ? since.iso8601 : since.strftime("%Y-%m-%d")
+    end
+
+    def read_watermark(source)
+      value = Setting.find_by(key: watermark_key(source), tenant_id: Current.tenant_id)&.value
+      value.present? ? Time.zone.parse(value) : nil
+    rescue ArgumentError, TypeError
+      nil
+    end
+
+    # Advances only after a successful import. A failure here is logged and
+    # swallowed: the safe direction is to re-import (idempotent upserts), never
+    # to skip data.
+    def advance_watermark!(source, to_time)
+      Setting.create_with(value: to_time.iso8601)
+        .find_or_create_by!(key: watermark_key(source), tenant_id: Current.tenant_id)
+        .update!(value: to_time.iso8601)
+    rescue StandardError => e
+      Rails.logger.warn("SyncEngine: could not advance #{source} watermark (orders will be re-imported next run): #{e.class}: #{e.message}")
+    end
+
+    def watermark_key(source)
+      "sync_watermark_#{source}"
     end
 
     # A data-version cache bump is a best-effort side effect: mirrored data has
