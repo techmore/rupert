@@ -11,11 +11,13 @@ class CatalogSyncer
   GRAPHQL
 
   # Products are fetched with full cursor pagination: a bare `first: 250`
-  # silently truncated catalogs beyond one page. 250/page is the GraphQL cap;
-  # paginate_products walks every page so nothing is missed.
+  # silently truncated catalogs beyond one page. Page size is capped at 100
+  # because the nested per-variant inventoryLevels raise the query's computed
+  # GraphQL cost — at first: 250 it exceeds Shopify's single-query max (1000)
+  # and every sync fails. paginate_products walks as many pages as needed.
   PRODUCTS_QUERY = <<~GRAPHQL
     query Products($cursor: String) {
-      products(first: 250, query: "status:active", sortKey: TITLE, after: $cursor) {
+      products(first: 100, query: "status:active", sortKey: TITLE, after: $cursor) {
         pageInfo { hasNextPage endCursor }
         nodes {
           id title tags status handle publishedAt totalInventory
