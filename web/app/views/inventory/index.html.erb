@@ -3,10 +3,10 @@
   <section class="flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="font-display text-3xl text-ink">Inventory</h1>
-      <p class="mt-1 text-sm text-mocha">Products mirrored from Shopify, with quantities on both sides.</p>
+      <p class="mt-1 max-w-2xl text-sm text-mocha">Stock held at each location. Shopify and Square are separate locations with independent inventories — different numbers across columns are normal, not an error.</p>
     </div>
     <div class="flex gap-2">
-      <%= link_to "Download PDF", pdf_inventory_index_path, class: "btn-ghost", data: { turbo: false }, title: "Printable snapshot with Shopify, Square, and sync timestamps" %>
+      <%= link_to "Download PDF", pdf_inventory_index_path, class: "btn-ghost", data: { turbo: false }, title: "Printable snapshot with per-location stock and sync timestamps" %>
       <%= link_to "Recommend SKU download", recommended_skus_inventory_index_path, class: "btn-ghost", data: { turbo: false }, title: "Download proposed unique SKUs for every SKU shared across different products (plan only — no changes made)" %>
       <%= link_to "Movement history", movements_inventory_index_path, class: "btn-ghost" %>
       <%= link_to "Manual counts", inventory_counts_path, class: "btn-ghost" %>
@@ -27,15 +27,20 @@
             <th scope="col" class="th">Product / Variant</th>
             <th scope="col" class="th">SKU</th>
             <th scope="col" class="th text-right">Price</th>
-            <th scope="col" class="th text-right">Shopify</th>
-            <th scope="col" class="th text-right">Square</th>
-            <th scope="col" class="th">Linked</th>
+            <% @stock_locations.each do |location| %>
+              <th scope="col" class="th text-right" title="<%= location.source == "shopify" ? "Shopify" : "Square" %> — <%= location.name %>">
+                <span class="block truncate max-w-[7rem] ml-auto"><%= location.name %></span>
+                <span class="block text-[9px] font-normal normal-case tracking-normal text-taupe"><%= location.source %></span>
+              </th>
+            <% end %>
+            <th scope="col" class="th text-right">Total on hand</th>
+            <th scope="col" class="th text-right">Catalog</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-fog">
           <% if @products.empty? %>
             <tr>
-              <td class="td py-8 text-center text-taupe"><%= @q.present? ? "Nothing matches that search." : "No products mirrored yet — run a sync." %></td>
+              <td class="td py-8 text-center text-taupe" colspan="<%= 6 + @stock_locations.length %>"><%= @q.present? ? "Nothing matches that search." : "No products mirrored yet — run a sync." %></td>
             </tr>
           <% end %>
           <% @products.each do |product| %>
@@ -46,7 +51,8 @@
               <% info = @variant_qtys.fetch(variant.id, {}) %>
               <% untracked = !variant.tracked %>
               <% shopify_qty = info[:shopify_qty] || 0 %>
-              <% link = info[:link] %>
+              <% shopify_by_location = info[:shopify_by_location] || {} %>
+              <% square_by_location = info[:square_by_location] %>
               <% square_qty = info[:square_qty] %>
               <tr class="hover:bg-cream <%= untracked ? "bg-haze/60 opacity-70" : "" %>">
                 <td class="td">
@@ -84,17 +90,43 @@
                 </td>
                 <td class="td font-mono text-xs text-mocha"><%= variant.sku.presence || "—" %></td>
                 <td class="td text-right font-medium text-ink"><%= number_to_currency(variant.price) %></td>
-                <td class="td text-right text-mocha"><%= shopify_qty %></td>
-                <td class="td text-right text-mocha">
+                <% @stock_locations.each do |location| %>
+                  <td class="td text-right">
+                    <% if location.source == "shopify" %>
+                      <span class="<%= (shopify_by_location[location.id] || 0).zero? ? "text-taupe" : "font-medium text-ink" %>"><%= shopify_by_location[location.id] || 0 %></span>
+                    <% elsif square_by_location %>
+                      <% qty = square_by_location[location.id] %>
+                      <% if qty.nil? %>
+                        <span class="text-fog">·</span>
+                      <% else %>
+                        <span class="<%= qty.zero? ? "text-taupe" : "font-medium text-ink" %>"><%= qty %><%= info[:shared] && qty.positive? ? "†" : "" %></span>
+                      <% end %>
+                    <% else %>
+                      <span class="text-fog">·</span>
+                    <% end %>
+                  </td>
+                <% end %>
+                <td class="td text-right">
+                  <span class="font-semibold text-ink"><%= shopify_qty %></span>
+                  <span class="text-taupe">shop</span>
                   <% if square_qty.nil? %>
-                    —
-                  <% elsif info[:shared] %>
-                    <%= square_qty %>†<span class="sr-only"> (shared Square total — spans multiple variants)</span>
+                    <span class="text-xs text-taupe">· not carried</span>
                   <% else %>
-                    <%= square_qty %>
+                    <span class="mx-0.5 text-fog">|</span>
+                    <span class="font-semibold text-ink"><%= square_qty %><%= info[:shared] && square_qty.positive? ? "†" : "" %></span>
+                    <span class="text-taupe">pos</span>
                   <% end %>
                 </td>
-                <td class="td"><%= link ? content_tag(:span, "linked", class: "pill-fern") : content_tag(:span, "unlinked", class: "pill-taupe") %></td>
+                <td class="td text-right">
+                  <% case info[:status] %>
+                  <% when "matched" %>
+                    <span class="pill-fern">matched</span>
+                  <% when "mismatched" %>
+                    <%= link_to "mismatched", reconcile_index_path, class: "pill-clay hover:underline", title: "Same item, different SKU per platform — review on Catalog Links" %>
+                  <% else %>
+                    <span class="pill-taupe">unlinked</span>
+                  <% end %>
+                </td>
               </tr>
             <% end %>
           <% end %>
@@ -103,7 +135,7 @@
     </div>
   </div>
   <% end %>
-  <p class="px-1 text-xs text-taupe">† Shared Square total — one Square variation is linked to more than one Shopify variant, so its quantity can't be attributed to a single variant.</p>
+  <p class="px-1 text-xs text-taupe">† Shared Square stock — one Square variation is linked to more than one Shopify variant, so its quantity can't be attributed to a single row. A middle dot means the item isn't carried at that location.</p>
 
   <% if @pagy.pages > 1 %>
     <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-taupe">

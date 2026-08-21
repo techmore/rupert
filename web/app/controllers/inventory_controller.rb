@@ -19,7 +19,8 @@ class InventoryController < AuthenticatedController
     # Paginate the whole catalog by product (matching the PDF report's scope,
     # which covers every product rather than only the first 40).
     @pagy, @products = pagy(scope, items: 40)
-    @variant_qtys = variant_quantity_map(@products)
+    @variant_qtys = variant_stock_map(@products)
+    @stock_locations = stock_locations
   end
 
   # GET /inventory/movements — the full inventory movement ledger: every
@@ -85,24 +86,61 @@ class InventoryController < AuthenticatedController
     names
   end
 
-  # Precompute per-variant quantities and the linked Square quantity so the
-  # index view doesn't run per-row queries.
-  def variant_quantity_map(products)
+  # Active locations for the per-location stock columns: Shopify locations
+  # first, then Square, alphabetical within each. Shopify and Square are
+  # separate locations with independent inventories — each column answers
+  # "how many are held THERE", not a comparison.
+  def stock_locations
+    Location.where(active: true).to_a
+      .sort_by { |location| [location.source == "shopify" ? 0 : 1, location.name.to_s.downcase] }
+  end
+
+  # Precompute per-variant stock so the index view doesn't run per-row queries:
+  # totals plus per-location breakdowns for both platforms, and the catalog
+  # identity status (matched / mismatched / unlinked) from CatalogLinks.
+  def variant_stock_map(products)
     size_map = size_family_map
     # Square variations linked to more than one Shopify variant can't be
     # attributed to a single row — flag them so the shared total isn't read as
     # one variant's number (same †-style guard as the PDF report).
     shared_square_variations = SkuLink.linked.group(:squareVariationId).count
       .select { |_, n| n > 1 }.keys.to_set
+
+    variants = products.flat_map(&:variants)
+    square_variation_ids = variants.filter_map { |v| v.sku_links.find(&:linked?)&.squareVariationId }
+
+    shopify_by_variant = InventoryLevel.mirrored("shopify")
+      .where(shopifyVariantId: variants.map(&:id)).group_by(&:shopifyVariantId)
+    square_by_variation = InventoryLevel.mirrored("square")
+      .where(squareVariationId: square_variation_ids).group_by(&:squareVariationId)
+
     map = {}
     products.each do |product|
       product.variants.each do |variant|
         link = variant.sku_links.find(&:linked?)
+        variation = link&.square_variation
+
+        shopify_levels = shopify_by_variant[variant.id] || []
+        square_levels = variation ? (square_by_variation[variation.id] || []) : []
+
+        status =
+          if link.nil?
+            "unlinked"
+          elsif link.sku.to_s.downcase == variation.sku.to_s.downcase
+            "matched"
+          else
+            "mismatched"
+          end
+
         map[variant.id] = {
-          shopify_qty: variant.levels.sum(&:quantity),
+          shopify_qty: shopify_levels.sum(&:quantity),
+          shopify_by_location: shopify_levels.index_by(&:locationId).transform_values(&:quantity),
           link: link,
-          square_qty: link ? link.square_variation&.levels&.sum(&:quantity) : nil,
+          # nil Square numbers mean "not carried on Square" vs a real 0.
+          square_qty: variation ? square_levels.sum(&:quantity) : nil,
+          square_by_location: variation ? square_levels.index_by(&:locationId).transform_values(&:quantity) : nil,
           shared: link && shared_square_variations.include?(link.squareVariationId),
+          status: status,
           size: size_map[variant.sku.to_s.downcase],
         }
       end
