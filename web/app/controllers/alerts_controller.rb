@@ -6,7 +6,19 @@ class AlertsController < AuthenticatedController
 
   def index
     @status = params[:status].presence || "open"
-    @alerts = StockAlert.by_status(@status).order(createdAt: :desc).limit(50)
+    scope = StockAlert.by_status(@status)
+
+    if @status == "open"
+      # Most urgent first: least days of cover at the top; SKUs with no
+      # recent sales sink (restocking them isn't the fix).
+      @advice = RestockAdvisor.for_alerts(scope.open.to_a)
+      @alerts = scope.open.sort_by { |a| [@advice[a.id]&.days_of_cover.nil? ? 1 : 0, @advice[a.id]&.days_of_cover || 0] }
+        .first(50)
+    else
+      @alerts = scope.order(createdAt: :desc).limit(50)
+      @advice = RestockAdvisor.for_alerts(@alerts)
+    end
+
     @counts = StockAlert.group(:status).count
   end
 

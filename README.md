@@ -91,7 +91,11 @@ and never write SKUs without explicit sign-off.**
   platforms: linked items, matched/mismatched SKUs, one-sided counts. Quantity
   differences across locations are normal and shown, never "corrected"
 - **Ledger** — transaction mirror from both platforms
-- **Alerts** — low-stock flags (resolve/ignore)
+- **Alerts** — low-stock flags turned into restock decisions: per-location
+  on-hand, 14/30-day sales pace across channels, days of cover, and a
+  suggested reorder quantity (~30 days of cover at recent pace). Open alerts
+  sort by urgency; resolve/ignore as before. Advice only — nothing is ordered
+  or written automatically
 - **Sync** — run syncs, view run history and logs
 - **SwipeSimple** — import sales from a SwipeSimple CSV export (no public API) into the canonical sales stream
 - **Connections** — plain-language guide to every service's keys: what's set, where to find each, and how to renew
