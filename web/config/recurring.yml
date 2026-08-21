@@ -31,3 +31,7 @@ production:
     class: BackupJob
     queue: default
     schedule: every 6 hours
+  data_retention:
+    class: DataRetentionJob
+    queue: default
+    schedule: "40 3 * * * America/New_York"

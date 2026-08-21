@@ -1,0 +1,18 @@
+# frozen_string_literal: true
+
+# Nightly retention pruning, per tenant (TenantScoped models need a tenant in
+# context). One tenant failing must not stop the others.
+class DataRetentionJob < ActiveJob::Base
+  queue_as :default
+
+  def perform
+    Tenant.find_each do |tenant|
+      Current.tenant = tenant
+      DataRetention.prune_all!
+    rescue StandardError => e
+      logger.error("#{self.class}: retention prune failed for tenant #{tenant.id}: #{e.class}: #{e.message}")
+    ensure
+      Current.tenant = nil
+    end
+  end
+end
