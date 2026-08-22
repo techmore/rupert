@@ -45,10 +45,11 @@ class SecurityFlowTest < ActionDispatch::IntegrationTest
 
   test 'a reader cannot export environment secrets' do
     Setting.create!(key: 'SHOPIFY_CLIENT_SECRET', tenant_id: @tenant.id, value: 'super-secret-token')
-    get_page env_export_settings_path
+    get_page env_export_confirm_settings_path
     # reader has no settings.read -> Pundit denies -> redirect
     assert_redirected_to(root_path)
-    get env_export_settings_path, params: { shop: 'm11u0i-sb.myshopify.com', embedded: '1' }
+    post env_export_settings_path, params: { shop: 'm11u0i-sb.myshopify.com', embedded: '1',
+                                             password: 'password123' }
     assert_not_includes response.body, 'super-secret-token'
   end
 
@@ -59,12 +60,13 @@ class SecurityFlowTest < ActionDispatch::IntegrationTest
 
     delete logout_path
     post login_path, params: { email: 'admin2@example.com', password: 'password123' }
-    get env_export_settings_path, params: { shop: 'm11u0i-sb.myshopify.com', embedded: '1' }
+    post env_export_settings_path, params: { shop: 'm11u0i-sb.myshopify.com', embedded: '1',
+                                             password: 'password123' }
     assert_redirected_to(settings_path)
     assert_not_includes response.body, 'super-secret-token'
   end
 
-  test 'a super admin can export environment secrets' do
+  test 'env export requires the current password even for a super admin' do
     User.create!(email: 'boss@example.com', password: 'password123', role: 'super_admin',
                  tenant_id: @tenant.id, name: 'Boss')
     Setting.create!(key: 'SHOPIFY_CLIENT_SECRET', tenant_id: @tenant.id, value: 'super-secret-token')
@@ -72,7 +74,17 @@ class SecurityFlowTest < ActionDispatch::IntegrationTest
     delete logout_path
     host! "#{@tenant.subdomain}.example.com"
     post login_path, params: { email: 'boss@example.com', password: 'password123' }
-    get env_export_settings_path, params: { shop: 'm11u0i-sb.myshopify.com', embedded: '1' }
+
+    # Wrong / missing password is rejected.
+    post env_export_settings_path, params: { shop: 'm11u0i-sb.myshopify.com', embedded: '1',
+                                             password: 'wrong-password' }
+    assert_redirected_to(env_export_confirm_settings_path)
+    post env_export_settings_path, params: { shop: 'm11u0i-sb.myshopify.com', embedded: '1' }
+    assert_redirected_to(env_export_confirm_settings_path)
+
+    # Correct password yields the export.
+    post env_export_settings_path, params: { shop: 'm11u0i-sb.myshopify.com', embedded: '1',
+                                             password: 'password123' }
     assert_response :success
     assert_includes response.body, 'super-secret-token'
   end

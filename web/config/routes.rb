@@ -204,7 +204,8 @@ Rails.application.routes.draw do
     delete :oauth_domains, to: 'settings#oauth_remove_domain'
     get :env, defaults: { format: :json }
     post :env_import, defaults: { format: :json }
-    get :env_export
+    get :env_export, to: 'settings#new_env_export', as: :env_export_confirm
+    post :env_export, as: :env_export
     get :backup
     post :restore, defaults: { format: :json }
     get :drive_status, defaults: { format: :json }

@@ -95,7 +95,7 @@ class PagesFlowTest < ActionDispatch::IntegrationTest
     assert_equal ['SQUARE_ENVIRONMENT'], JSON.parse(response.body)['imported']
 
     # Plain admins can import (settings.write) but not export raw secrets.
-    get env_export_settings_path
+    post env_export_settings_path, params: { password: 'password123' }
     assert_redirected_to(settings_path)
 
     User.create!(email: 'platform@example.com', password: 'password123',
@@ -103,7 +103,7 @@ class PagesFlowTest < ActionDispatch::IntegrationTest
     delete logout_path
     host! 'testshop.example.com'
     post login_path, params: { email: 'platform@example.com', password: 'password123' }
-    get env_export_settings_path
+    post env_export_settings_path, params: { password: 'password123' }
     assert_match(/SQUARE_ENVIRONMENT=sandbox/, response.body)
 
     Setting.find_by(key: 'SQUARE_ENVIRONMENT').destroy

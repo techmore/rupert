@@ -10,7 +10,7 @@
       <div class="flex items-baseline justify-between">
         <h2 class="font-display text-xl text-ink">Environment (.env)</h2>
         <% if Current.user.super_admin? %>
-          <%= link_to "Export .env", env_export_settings_path, class: "btn-ghost btn-sm", data: { turbo: false } %>
+          <%= link_to "Export .env", env_export_confirm_settings_path, class: "btn-ghost btn-sm", data: { turbo: false } %>
         <% end %>
       </div>
       <p class="mt-2 text-xs text-taupe">Import a .env file (or paste its contents) to update managed keys. Values are stored encrypted in the database and override the droplet env.</p>

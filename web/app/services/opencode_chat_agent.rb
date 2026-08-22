@@ -8,6 +8,11 @@ require 'timeout'
 # identity, continuously monitors the channel, keeps a rolling conversation
 # context, and replies to mentions — or proactively when it judges it can add
 # value. Runs as its own process under systemd (bin/opencode_agent).
+#
+# Channel messages come from untrusted peers, so the CLI is invoked with
+# `--agent chat` — an opencode config agent with every tool disabled (bash,
+# write, webfetch, ...) and `--pure` to skip external plugins. The model can
+# only produce text; it cannot execute commands on this host.
 class OpencodeChatAgent
   NAME = 'rupert'
   CONTEXT_WINDOW = 24
@@ -242,7 +247,7 @@ class OpencodeChatAgent
     PROMPT
     output = Timeout.timeout(90) do
       IO.popen(
-        ['opencode', 'run', '--format', 'json', '--dir', '/tmp/opencode', prompt],
+        ['opencode', 'run', '--format', 'json', '--pure', '--agent', 'chat', '--dir', '/tmp/opencode', prompt],
         err: %i[child out], &:read
       )
     end

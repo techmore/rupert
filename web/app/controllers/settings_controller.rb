@@ -37,8 +37,17 @@ class SettingsController < AuthenticatedController
     render(json: { ok: false, error: e.message }, status: :unprocessable_entity)
   end
 
-  # GET /settings/env_export — raw .env text of managed keys
+  # GET /settings/env_export — confirmation page (the download itself is POST)
+  def new_env_export; end
+
+  # POST /settings/env_export — raw .env text of managed keys. Requires the
+  # user's password again so an unlocked browser can't silently exfiltrate
+  # secrets, and POST (not GET) keeps it out of caches/logs.
   def env_export
+    unless Current.user.authenticate(params[:password].to_s)
+      return redirect_to(env_export_confirm_settings_path, alert: 'Password incorrect.')
+    end
+
     body = EnvStore.export.map { |key, value| "#{key}=#{value}" }.join("\n") + "\n"
     render(plain: body, content_type: 'text/plain')
   end
