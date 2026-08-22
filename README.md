@@ -9,7 +9,7 @@ and deploys to a DigitalOcean droplet (manually — GitHub is a code repo only).
 ```
 Shopify ──┐                     ┌── Dashboard
           │                     ├── Inventory
-Square ───┼── sync engine ──▶ Prisma-style SQLite DB ──▶ GUI
+Square ───┼── sync engine ──▶ PostgreSQL DB ──▶ GUI
           │   (Rails jobs)     │      (Rails + Tailwind)
           └────────────────────┴── Settings (env, backup/restore)
 ```
@@ -18,7 +18,7 @@ Square ───┼── sync engine ──▶ Prisma-style SQLite DB ──▶
 
 | Path | Purpose |
 | --- | --- |
-| `web/` | The Rails 7.1 app: sync engine services, Oatmeal GUI, JSON APIs |
+| `web/` | The Rails 8.1 app: sync engine services, Oatmeal GUI, JSON APIs |
 | `legacy/` | The original Node/React implementation, kept as reference |
 | `shopify.app.toml` | Shopify app config (scopes, webhooks) |
 | `Dockerfile`, `docker-compose.yml` | Droplet deployment (fallback, unused) |

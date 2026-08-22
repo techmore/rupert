@@ -7,8 +7,8 @@ class SalesController < AuthenticatedController
     authorize(:module, :sales_read?)
 
     @date = begin
-      Date.parse(params[:date])
-    rescue
+      Date.parse(params[:date].to_s)
+    rescue Date::Error
       Time.current.to_date
     end
     @window_days = params[:window].present? ? params[:window].to_i.clamp(1, 365) : 30

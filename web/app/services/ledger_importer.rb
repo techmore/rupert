@@ -35,8 +35,11 @@ class LedgerImporter
         sourceOrderId: order["id"],
         orderName: "SQ-#{order["id"].to_s.slice(0, 12)}",
         occurredAt: begin
-          Time.zone.parse(order["created_at"])
-        rescue
+          parsed = Time.zone.parse(order["created_at"])
+          Rails.logger.warn("LedgerImporter: bad Square order created_at #{order['created_at'].inspect} for order #{order['id']}") if parsed.nil?
+          parsed || Time.current
+        rescue TypeError, ArgumentError => e
+          Rails.logger.warn("LedgerImporter: could not parse Square order created_at #{order['created_at'].inspect}: #{e.message}")
           Time.current
         end,
         syncedAt: Time.current,

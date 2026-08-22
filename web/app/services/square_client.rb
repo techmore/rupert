@@ -40,7 +40,8 @@ class SquareClient
 
       payload = begin
         JSON.parse(response.body)
-      rescue
+      rescue JSON::ParserError => e
+        Rails.logger.warn("SquareClient: unparseable response body for #{method} #{pathname}: #{e.message}")
         {}
       end
       unless response.is_a?(Net::HTTPSuccess)

@@ -70,17 +70,6 @@ class CatalogSyncer
     }
   GRAPHQL
 
-  # Minimal query to backfill featured images without re-pulling the whole
-  # catalog. `first: 250` per page; cursor pagination for large catalogs.
-  IMAGE_BACKFILL_QUERY = <<~GRAPHQL
-    query Images($cursor: String) {
-      products(first: 250, query: "status:active", sortKey: TITLE, after: $cursor) {
-        pageInfo { hasNextPage endCursor }
-        nodes { id featuredImage { url } }
-      }
-    }
-  GRAPHQL
-
   THRESHOLD = 5
 
   class << self
@@ -112,29 +101,6 @@ class CatalogSyncer
         orders: paginate_orders(since),
         shop: ShopifyClient.graphql(SHOP_QUERY, {})["shop"],
       }
-    end
-
-    # Backfill featuredImageUrl for every active product (used when images
-    # were added after a catalog was already mirrored). Returns rows updated.
-    def backfill_images!
-      count = 0
-      cursor = nil
-      loop do
-        data = ShopifyClient.graphql(IMAGE_BACKFILL_QUERY, { cursor: cursor })
-        nodes = data.dig("products", "nodes") || []
-        nodes.each do |node|
-          url = node.dig("featuredImage", "url")
-          next if url.blank?
-
-          updated = ShopifyProduct.where(id: node["id"]).update_all(featuredImageUrl: url)
-          count += updated
-        end
-        page = data.dig("products", "pageInfo") || {}
-        break unless page["hasNextPage"] && page["endCursor"]
-
-        cursor = page["endCursor"]
-      end
-      count
     end
 
     private

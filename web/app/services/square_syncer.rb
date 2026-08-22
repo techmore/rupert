@@ -107,7 +107,6 @@ class SquareSyncer
           timezone: location["timezone"],
         )
       end
-      location_records.find { |l| l.externalId == primary["id"] } || location_records.first
 
       # Desired per-location rows, diffed against existing levels loaded once,
       # then written as one upsert + one movement insert (same shape as the
