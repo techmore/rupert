@@ -11,8 +11,8 @@ class AddEmployeesAndRolePermissions < ActiveRecord::Migration[8.1]
       t.boolean(:enabled, default: true, null: false)
       t.timestamps
 
-      t.index([:tenant_id, :role, :permission], unique: true)
-      t.index([:tenant_id, :role])
+      t.index(%i[tenant_id role permission], unique: true)
+      t.index(%i[tenant_id role])
     end
   end
 end

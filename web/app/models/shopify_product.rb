@@ -3,20 +3,20 @@
 class ShopifyProduct < ApplicationRecord
   include TenantScoped
 
-  self.table_name = "ShopifyProduct"
-  self.primary_key = "id"
+  self.table_name = 'ShopifyProduct'
+  self.primary_key = 'id'
 
   has_many :variants,
-    class_name: "ShopifyVariant",
-    foreign_key: "productId",
-    dependent: :destroy,
-    inverse_of: :product
+           class_name: 'ShopifyVariant',
+           foreign_key: 'productId',
+           dependent: :destroy,
+           inverse_of: :product
 
-  scope :active, -> { where(status: "ACTIVE") }
-  scope :search, ->(q) {
+  scope :active, -> { where(status: 'ACTIVE') }
+  scope :search, lambda { |q|
     return all if q.blank?
 
-    where(title: q).or(where("title LIKE ?", "%#{q}%"))
+    where(title: q).or(where('title LIKE ?', "%#{q}%"))
   }
 
   # Shopify CDN URLs accept &width= / &height= to request resized renditions.
@@ -24,7 +24,7 @@ class ShopifyProduct < ApplicationRecord
   def thumbnail_url(width: 96, height: 96)
     return if featuredImageUrl.blank?
 
-    separator = featuredImageUrl.include?("?") ? "&" : "?"
+    separator = featuredImageUrl.include?('?') ? '&' : '?'
     "#{featuredImageUrl}#{separator}width=#{width}&height=#{height}"
   end
 end

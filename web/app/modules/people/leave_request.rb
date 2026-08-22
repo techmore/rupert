@@ -6,22 +6,22 @@ module People
     include TenantScoped
     include AASM
 
-    self.table_name = "leave_requests"
+    self.table_name = 'leave_requests'
 
-    LEAVE_TYPES = ["vacation", "sick", "personal", "unpaid"].freeze
+    LEAVE_TYPES = %w[vacation sick personal unpaid].freeze
 
-    belongs_to :employee, class_name: "People::Employee"
-    belongs_to :reviewer, class_name: "User", foreign_key: :reviewed_by, optional: true
+    belongs_to :employee, class_name: 'People::Employee'
+    belongs_to :reviewer, class_name: 'User', foreign_key: :reviewed_by, optional: true
 
     validates :leave_type, inclusion: { in: LEAVE_TYPES }
     validates :starts_on, :ends_on, presence: true
     validate :ends_after_starts
 
     scope :recent, ->(limit = 200) { order(starts_on: :desc).limit(limit) }
-    scope :pending, -> { where(status: "requested") }
-    scope :by_status, ->(status) { status.present? && status != "all" ? where(status: status) : all }
+    scope :pending, -> { where(status: 'requested') }
+    scope :by_status, ->(status) { status.present? && status != 'all' ? where(status: status) : all }
 
-    aasm column: "status", no_direct_assignment: true do
+    aasm column: 'status', no_direct_assignment: true do
       state :requested, initial: true
       state :approved
       state :denied
@@ -34,7 +34,7 @@ module People
         transitions from: :requested, to: :denied
       end
       event :cancel do
-        transitions from: [:requested, :approved], to: :cancelled
+        transitions from: %i[requested approved], to: :cancelled
       end
     end
 
@@ -45,7 +45,7 @@ module People
     end
 
     def duration_label
-      hours.present? && hours.positive? ? "#{format("%g", hours)}h" : "#{days}d"
+      hours.present? && hours.positive? ? "#{format('%g', hours)}h" : "#{days}d"
     end
 
     private
@@ -53,7 +53,7 @@ module People
     def ends_after_starts
       return if starts_on.nil? || ends_on.nil?
 
-      errors.add(:ends_on, "must be after the start") if ends_on < starts_on
+      errors.add(:ends_on, 'must be after the start') if ends_on < starts_on
     end
   end
 end

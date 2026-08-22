@@ -77,7 +77,7 @@ class CatalogSyncer
 
     # Returns { products:, variants:, locations:, orders:, shop: }
     def sync!(since: nil)
-      since ||= (Time.current - history_lookback).strftime("%Y-%m-%d")
+      since ||= (Time.current - history_lookback).strftime('%Y-%m-%d')
       location_nodes = fetch_locations
       sync_locations!(location_nodes)
       assign_shopify_primary!(location_nodes)
@@ -86,13 +86,13 @@ class CatalogSyncer
       # Location record id, quantity = that location's "available" count.
       # The variant's inventoryQuantity total is still stored on ShopifyVariant.
       product_pages = paginate_products
-      variant_nodes = product_pages.flat_map { |p| Array(p.dig("variants", "nodes")) }
-      levels_by_item_id = fetch_inventory_levels(variant_nodes.map { |v| v.dig("inventoryItem", "id") })
+      variant_nodes = product_pages.flat_map { |p| Array(p.dig('variants', 'nodes')) }
+      levels_by_item_id = fetch_inventory_levels(variant_nodes.map { |v| v.dig('inventoryItem', 'id') })
 
-      locations_by_gid = Location.by_source("shopify")
-        .index_by(&:externalId)
+      locations_by_gid = Location.by_source('shopify')
+                                 .index_by(&:externalId)
       primary = Location.shopify_primary ||
-        Location.find_by(source: "shopify", externalId: "default")
+                Location.find_by(source: 'shopify', externalId: 'default')
 
       counts = sync_products!(product_pages, levels_by_item_id, locations_by_gid, primary)
       {
@@ -101,7 +101,7 @@ class CatalogSyncer
         oversold_variants: counts[:oversold_variants],
         locations: location_nodes,
         orders: paginate_orders(since),
-        shop: ShopifyClient.graphql(SHOP_QUERY, {})["shop"],
+        shop: ShopifyClient.graphql(SHOP_QUERY, {})['shop']
       }
     end
 
@@ -114,12 +114,12 @@ class CatalogSyncer
       cursor = nil
       loop do
         data = ShopifyClient.graphql(PRODUCTS_QUERY, { cursor: cursor })
-        page = data["products"]
-        nodes.concat(page["nodes"] || [])
-        info = page["pageInfo"] || {}
-        break unless info["hasNextPage"] && info["endCursor"]
+        page = data['products']
+        nodes.concat(page['nodes'] || [])
+        info = page['pageInfo'] || {}
+        break unless info['hasNextPage'] && info['endCursor']
 
-        cursor = info["endCursor"]
+        cursor = info['endCursor']
       end
       nodes
     end
@@ -136,19 +136,19 @@ class CatalogSyncer
           item = data["v#{i}"]
           next if item.nil?
 
-          result[id] += Array(item.dig("inventoryLevels", "nodes"))
+          result[id] += Array(item.dig('inventoryLevels', 'nodes'))
         end
       end
       result
     end
 
     def levels_query(count)
-      variables = (0...count).map { |i| "$v#{i}: ID!" }.join(", ")
+      variables = (0...count).map { |i| "$v#{i}: ID!" }.join(', ')
       fields = (0...count).map do |i|
         <<~G.squish
           v#{i}: inventoryItem(id: $v#{i}) { id inventoryLevels(first: 10) { nodes { location { id } quantities(names: ["available"]) { name quantity } } } }
         G
-      end.join(" ")
+      end.join(' ')
       "query Levels(#{variables}) { #{fields} }"
     end
 
@@ -159,31 +159,31 @@ class CatalogSyncer
       cursor = nil
       loop do
         data = ShopifyClient.graphql(ORDERS_QUERY, { orderQuery: "created_at:>=#{since}", orderCursor: cursor })
-        page = data["orders"]
-        nodes.concat(page["nodes"] || [])
-        info = page["pageInfo"] || {}
-        break unless info["hasNextPage"] && info["endCursor"]
+        page = data['orders']
+        nodes.concat(page['nodes'] || [])
+        info = page['pageInfo'] || {}
+        break unless info['hasNextPage'] && info['endCursor']
 
-        cursor = info["endCursor"]
+        cursor = info['endCursor']
       end
-      { "nodes" => nodes, "pageInfo" => { "hasNextPage" => false, "endCursor" => cursor } }
+      { 'nodes' => nodes, 'pageInfo' => { 'hasNextPage' => false, 'endCursor' => cursor } }
     end
 
     def fetch_locations
-      ShopifyClient.graphql(LOCATIONS_QUERY, {})["locations"]["nodes"]
+      ShopifyClient.graphql(LOCATIONS_QUERY, {})['locations']['nodes']
     end
 
     def sync_locations!(nodes)
       if nodes.empty?
-        upsert_location(source: "shopify", external_id: "default", name: "Shopify Online Store", kind: "VIRTUAL")
+        upsert_location(source: 'shopify', external_id: 'default', name: 'Shopify Online Store', kind: 'VIRTUAL')
       else
         nodes.each do |location|
           upsert_location(
-            source: "shopify",
-            external_id: location["id"],
-            name: location["name"],
-            kind: "RETAIL",
-            active: location["isActive"] != false,
+            source: 'shopify',
+            external_id: location['id'],
+            name: location['name'],
+            kind: 'RETAIL',
+            active: location['isActive'] != false
           )
         end
       end
@@ -194,20 +194,20 @@ class CatalogSyncer
     # usually first), else the first known row. Deterministic — the previous
     # "oldest syncedAt wins" pick broke once more than one location existed.
     def assign_shopify_primary!(location_nodes)
-      preferred_gid = EnvStore.fetch("SHOPIFY_LOCATION_ID", "").presence
-      gids = location_nodes.map { |node| node["id"] }
-      active_gids = location_nodes.select { |node| node["isActive"] != false }.map { |node| node["id"] }
+      preferred_gid = EnvStore.fetch('SHOPIFY_LOCATION_ID', '').presence
+      gids = location_nodes.map { |node| node['id'] }
+      active_gids = location_nodes.select { |node| node['isActive'] != false }.map { |node| node['id'] }
       chosen_gid =
         (preferred_gid if gids.include?(preferred_gid)) ||
         active_gids.first ||
         gids.first
 
-      chosen = chosen_gid.present? ? Location.find_by(source: "shopify", externalId: chosen_gid) : nil
+      chosen = chosen_gid.present? ? Location.find_by(source: 'shopify', externalId: chosen_gid) : nil
       return if chosen.nil?
 
-      Location.by_source("shopify").where(primary_location: true).where.not(id: chosen.id)
-        .update_all(primary_location: false) # rubocop:disable Rails/SkipsModelValidations
-      chosen.update_column(:primary_location, true) unless chosen.primary_location? # rubocop:disable Rails/SkipsModelValidations
+      Location.by_source('shopify').where(primary_location: true).where.not(id: chosen.id)
+              .update_all(primary_location: false)
+      chosen.update_column(:primary_location, true) unless chosen.primary_location?
       chosen
     end
 
@@ -220,21 +220,21 @@ class CatalogSyncer
 
       products.each do |product|
         product_rows << {
-          id: product["id"],
-          title: product["title"],
-          status: product["status"],
-          handle: product["handle"],
-          publishedAt: parse_time(product["publishedAt"]),
-          totalInventory: product["totalInventory"].to_i,
-          featuredImageUrl: product.dig("featuredImage", "url"),
-          tags: Array(product["tags"]).join(", "),
+          id: product['id'],
+          title: product['title'],
+          status: product['status'],
+          handle: product['handle'],
+          publishedAt: parse_time(product['publishedAt']),
+          totalInventory: product['totalInventory'].to_i,
+          featuredImageUrl: product.dig('featuredImage', 'url'),
+          tags: Array(product['tags']).join(', '),
           syncedAt: now,
-          tenant_id: Current.tenant_id,
+          tenant_id: Current.tenant_id
         }
-        Array(product.dig("variants", "nodes")).each do |node|
-          raw_qty = node["inventoryQuantity"].to_i
+        Array(product.dig('variants', 'nodes')).each do |node|
+          raw_qty = node['inventoryQuantity'].to_i
           oversold += 1 if raw_qty.negative?
-          variant_rows << build_variant_row(product["id"], node, now)
+          variant_rows << build_variant_row(product['id'], node, now)
           variant_nodes << node
         end
       end
@@ -260,20 +260,20 @@ class CatalogSyncer
       # Mirrored inventory stays non-negative: oversold Shopify counts are
       # zeroed locally (the negative-inventory remediation) instead of being
       # pushed back to Shopify. Reconcile therefore sees 0 for these SKUs.
-      quantity = [variant["inventoryQuantity"].to_i, 0].max
-      item = variant["inventoryItem"] || {}
+      quantity = [variant['inventoryQuantity'].to_i, 0].max
+      item = variant['inventoryItem'] || {}
 
       {
-        id: variant["id"],
+        id: variant['id'],
         productId: product_id,
-        title: variant["title"],
-        sku: variant["sku"],
-        price: variant["price"]&.to_f,
+        title: variant['title'],
+        sku: variant['sku'],
+        price: variant['price']&.to_f,
         inventoryQuantity: quantity,
-        tracked: item["tracked"] == true,
-        inventoryItemId: item["id"],
+        tracked: item['tracked'] == true,
+        inventoryItemId: item['id'],
         syncedAt: now,
-        tenant_id: Current.tenant_id,
+        tenant_id: Current.tenant_id
       }
     end
 
@@ -289,12 +289,12 @@ class CatalogSyncer
     def sync_levels_batched!(variant_nodes, levels_by_item_id, locations_by_gid, primary, now)
       desired = []
       variant_nodes.each do |variant|
-        variant_id = variant["id"]
-        sku = variant["sku"]
-        item = variant["inventoryItem"] || {}
-        quantity = [variant["inventoryQuantity"].to_i, 0].max
+        variant_id = variant['id']
+        sku = variant['sku']
+        item = variant['inventoryItem'] || {}
+        quantity = [variant['inventoryQuantity'].to_i, 0].max
 
-        level_nodes = levels_by_item_id[item["id"]] || []
+        level_nodes = levels_by_item_id[item['id']] || []
         if level_nodes.empty?
           # Untracked items / shapes without level data: keep the variant total
           # on the primary row so the item still surfaces in views and alerts.
@@ -303,31 +303,34 @@ class CatalogSyncer
           desired << { location_id: primary.id, variant_id: variant_id, sku: sku, quantity: quantity }
         else
           level_nodes.each do |node|
-            location = locations_by_gid[node.dig("location", "id")]
+            location = locations_by_gid[node.dig('location', 'id')]
             next if location.nil?
 
-            available = Array(node["quantities"]).find { |q| q["name"] == "available" }&.dig("quantity").to_i
+            available = Array(node['quantities']).find { |q| q['name'] == 'available' }&.dig('quantity').to_i
             desired << { location_id: location.id, variant_id: variant_id, sku: sku, quantity: [available, 0].max }
           end
         end
       end
       return if desired.empty?
 
-      existing = InventoryLevel.mirrored("shopify")
-        .where(shopifyVariantId: desired.map { |d| d[:variant_id] })
-        .index_by { |level| [level.locationId, level.shopifyVariantId] }
+      existing = InventoryLevel.mirrored('shopify')
+                               .where(shopifyVariantId: desired.map { |d| d[:variant_id] })
+                               .index_by do |level|
+        [level.locationId,
+         level.shopifyVariantId]
+      end
 
       level_rows = desired.map do |d|
         old = existing[[d[:location_id], d[:variant_id]]]
         {
           id: old&.id || HasCuid.generate,
-          source: "shopify",
+          source: 'shopify',
           locationId: d[:location_id],
           shopifyVariantId: d[:variant_id],
           quantity: d[:quantity],
           available: d[:quantity],
           updatedAt: now,
-          tenant_id: Current.tenant_id,
+          tenant_id: Current.tenant_id
         }
       end
 
@@ -339,17 +342,17 @@ class CatalogSyncer
           id: HasCuid.generate,
           sku: d[:sku],
           shopifyVariantId: d[:variant_id],
-          source: "shopify",
-          direction: "set",
+          source: 'shopify',
+          direction: 'set',
           delta: d[:quantity] - before,
           quantityBefore: before,
           quantityAfter: d[:quantity],
-          reason: "Synced from Shopify",
-          reference: "sync",
-          actor: "system",
+          reason: 'Synced from Shopify',
+          reference: 'sync',
+          actor: 'system',
           syncRunId: Current.sync_run_id,
           createdAt: now,
-          tenant_id: Current.tenant_id,
+          tenant_id: Current.tenant_id
         }
       end
 
@@ -363,10 +366,10 @@ class CatalogSyncer
     # nothing is deleted. Stale rows are dropped without journaling; they were
     # mirror bookkeeping for a location that no longer exists, not real stock.
     def prune_stale_shopify_levels!
-      known_ids = Location.by_source("shopify").pluck(:id)
+      known_ids = Location.by_source('shopify').pluck(:id)
       return 0 if known_ids.empty?
 
-      removed = InventoryLevel.mirrored("shopify").where.not(locationId: known_ids).delete_all
+      removed = InventoryLevel.mirrored('shopify').where.not(locationId: known_ids).delete_all
       Rails.logger.info("CatalogSyncer: pruned #{removed} stale Shopify inventory level rows") if removed.positive?
       removed
     end

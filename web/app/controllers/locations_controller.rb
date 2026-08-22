@@ -3,7 +3,7 @@
 # Multi-location management: physical/virtual stock locations across Shopify
 # and Square. Synced locations are read-only-ish; manual ones can be added.
 class LocationsController < AuthenticatedController
-  before_action :set_location, only: [:show, :edit, :update, :destroy]
+  before_action :set_location, only: %i[show edit update destroy]
 
   def index
     authorize(:module, :inventory_read?)
@@ -16,23 +16,23 @@ class LocationsController < AuthenticatedController
   def show
     authorize(:module, :inventory_read?)
     @levels = InventoryLevel.where(tenant_id: Current.tenant_id, locationId: @location.id)
-      .includes(:shopify_variant).order(:quantity).limit(100)
+                            .includes(:shopify_variant).order(:quantity).limit(100)
     @total_units = InventoryLevel.where(tenant_id: Current.tenant_id, locationId: @location.id).sum(:quantity)
   end
 
   def new
     authorize(:module, :inventory_write?)
-    @location = Location.new(active: true, source: "manual")
+    @location = Location.new(active: true, source: 'manual')
   end
 
   def create
     authorize(:module, :inventory_write?)
     @location = Location.new(location_params.merge(tenant_id: Current.tenant_id))
-    @location.source = "manual"
+    @location.source = 'manual'
     @location.externalId = "manual-#{SecureRandom.hex(8)}"
     @location.syncedAt = Time.current
     if @location.save
-      redirect_to(@location, notice: "Location added.")
+      redirect_to(@location, notice: 'Location added.')
     else
       render(:new, status: :unprocessable_entity)
     end
@@ -45,7 +45,7 @@ class LocationsController < AuthenticatedController
   def update
     authorize(:module, :inventory_write?)
     if @location.update(location_params)
-      redirect_to(@location, notice: "Location updated.")
+      redirect_to(@location, notice: 'Location updated.')
     else
       render(:edit, status: :unprocessable_entity)
     end
@@ -56,7 +56,7 @@ class LocationsController < AuthenticatedController
     return redirect_to(@location, alert: "Location has stock levels and can't be removed.") if @location.levels.any?
 
     @location.destroy
-    redirect_to(locations_path, notice: "Location removed.")
+    redirect_to(locations_path, notice: 'Location removed.')
   end
 
   private

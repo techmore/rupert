@@ -3,8 +3,8 @@
 # Builds deterministic management briefs from the canonical store database.
 # No model calls are involved; every figure is reproducible from stored rows.
 class OperationsBrief
-  TIME_ZONE = "America/New_York"
-  REVENUE_STATUSES = ["paid", "fulfilled"].freeze
+  TIME_ZONE = 'America/New_York'
+  REVENUE_STATUSES = %w[paid fulfilled].freeze
 
   class << self
     def publish!(kind, channel: nil)
@@ -34,9 +34,9 @@ class OperationsBrief
 
   def build
     case @kind
-    when "daily_close" then daily_close
-    when "morning" then morning
-    when "weekly" then weekly
+    when 'daily_close' then daily_close
+    when 'morning' then morning
+    when 'weekly' then weekly
     else raise ArgumentError, "Unknown operations brief: #{@kind}"
     end
   end
@@ -46,11 +46,11 @@ class OperationsBrief
     orders = revenue_orders.where(occurred_at: date.all_day)
     previous = revenue_orders.where(occurred_at: (date - 1.day).all_day)
     lines = [
-      "Daily store close — #{date.strftime("%b %-d")}",
+      "Daily store close — #{date.strftime('%b %-d')}",
       metric_line(orders, comparison: previous),
       "Channels: #{channel_breakdown(orders)}",
       "Top items: #{top_items(orders)}",
-      "Exceptions: #{exception_summary}",
+      "Exceptions: #{exception_summary}"
     ]
     [lines.join("\n"), date.iso8601]
   end
@@ -59,15 +59,15 @@ class OperationsBrief
     date = Time.zone.today
     last_sync = SyncRun.order(startedAt: :desc).first
     sync_text = if last_sync
-      "#{last_sync.status} at #{last_sync.startedAt.in_time_zone.strftime("%-I:%M %p")}"
-    else
-      "no sync recorded"
-    end
+                  "#{last_sync.status} at #{last_sync.startedAt.in_time_zone.strftime('%-I:%M %p')}"
+                else
+                  'no sync recorded'
+                end
     content = [
-      "Morning action brief — #{date.strftime("%b %-d")}",
+      "Morning action brief — #{date.strftime('%b %-d')}",
       "Sync: #{sync_text}",
       "Yesterday: #{metric_line(revenue_orders.where(occurred_at: (date - 1.day).all_day))}",
-      "Action queue: #{exception_summary}",
+      "Action queue: #{exception_summary}"
     ].join("\n")
     [content, date.iso8601]
   end
@@ -77,11 +77,11 @@ class OperationsBrief
     current = revenue_orders.where(occurred_at: (end_date - 7.days)...end_date)
     previous = revenue_orders.where(occurred_at: (end_date - 14.days)...(end_date - 7.days))
     content = [
-      "Weekly business review — week ending #{(end_date - 1.day).strftime("%b %-d")}",
+      "Weekly business review — week ending #{(end_date - 1.day).strftime('%b %-d')}",
       metric_line(current, comparison: previous),
       "Channels: #{channel_breakdown(current)}",
       "Top items: #{top_items(current, limit: 5)}",
-      "Operations: #{sync_failure_count(end_date)} sync failure(s) · #{exception_summary}",
+      "Operations: #{sync_failure_count(end_date)} sync failure(s) · #{exception_summary}"
     ].join("\n")
     [content, end_date.to_date.iso8601]
   end
@@ -98,44 +98,44 @@ class OperationsBrief
 
     previous_gross = comparison.sum(:gross_cents)
     change = previous_gross.zero? ? nil : ((gross - previous_gross) * 100.0 / previous_gross).round(1)
-    change ? "#{line} · #{format("%+.1f", change)}% vs prior period" : "#{line} · prior comparison unavailable"
+    change ? "#{line} · #{format('%+.1f', change)}% vs prior period" : "#{line} · prior comparison unavailable"
   end
 
   def channel_breakdown(orders)
     counts = orders.group(:source).count
     totals = orders.group(:source).sum(:gross_cents)
-    return "none" if counts.empty?
+    return 'none' if counts.empty?
 
-    counts.sort.map { |source, count| "#{source}: #{count}/#{money(totals.fetch(source))}" }.join(" · ")
+    counts.sort.map { |source, count| "#{source}: #{count}/#{money(totals.fetch(source))}" }.join(' · ')
   end
 
   def top_items(orders, limit: 3)
     items = Core::OrderLine.where(order_id: orders.select(:id)).group(:name).sum(:quantity)
     top = items.sort_by { |name, quantity| [-quantity, name.to_s] }.first(limit)
-    top.any? ? top.map { |name, quantity| "#{name.presence || "Unnamed item"} (#{quantity})" }.join(", ") : "none"
+    top.any? ? top.map { |name, quantity| "#{name.presence || 'Unnamed item'} (#{quantity})" }.join(', ') : 'none'
   end
 
   def exception_summary
-    overdue = Core::Order.where(channel: "online", status: "paid")
-      .where.not(fulfillment_status: ["shipped", "arrived", "completed"])
-      .where("occurred_at < ?", 24.hours.ago)
-      .where.missing(:fulfillments)
-      .count
+    overdue = Core::Order.where(channel: 'online', status: 'paid')
+                         .where.not(fulfillment_status: %w[shipped arrived completed])
+                         .where('occurred_at < ?', 24.hours.ago)
+                         .where.missing(:fulfillments)
+                         .count
     open_alerts = StockAlert.open.count
-    zero_stock = StockAlert.open.where("quantity <= 0").count
+    zero_stock = StockAlert.open.where('quantity <= 0').count
     "#{overdue} overdue fulfillment · #{open_alerts} stock alert(s) (#{zero_stock} at zero)"
   end
 
   def sync_failure_count(end_date)
-    SyncRun.where(status: "failed", startedAt: (end_date - 7.days)...end_date).count
+    SyncRun.where(status: 'failed', startedAt: (end_date - 7.days)...end_date).count
   end
 
   def money(cents)
-    format("$%.2f", cents.to_f / 100.0)
+    format('$%.2f', cents.to_f / 100.0)
   end
 
   def announcements_channel
-    EnvStore.fetch("BUZZ_ANNOUNCEMENTS_CHANNEL", "").presence || BuzzAgent.channel_id
+    EnvStore.fetch('BUZZ_ANNOUNCEMENTS_CHANNEL', '').presence || BuzzAgent.channel_id
   end
 
   def publication_key

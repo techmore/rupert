@@ -13,8 +13,8 @@ class CreateActivityLogs < ActiveRecord::Migration[8.1]
       t.text(:details)
       t.timestamps
 
-      t.index([:tenant_id, :created_at])
-      t.index([:tenant_id, :subject_type, :subject_id])
+      t.index(%i[tenant_id created_at])
+      t.index(%i[tenant_id subject_type subject_id])
     end
   end
 end

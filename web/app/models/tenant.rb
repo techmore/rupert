@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 class Tenant < ApplicationRecord
-  self.table_name = "tenants"
-  self.primary_key = "id"
+  self.table_name = 'tenants'
+  self.primary_key = 'id'
 
   has_many :users, dependent: :destroy
   has_many :settings, dependent: :destroy
@@ -11,12 +11,13 @@ class Tenant < ApplicationRecord
 
   validates :name, presence: true
   validates :subdomain,
-    presence: true,
-    uniqueness: true,
-    format: { with: /\A[a-z0-9][a-z0-9-]*[a-z0-9]\z/, message: "must be lowercase letters, numbers, and hyphens" }
+            presence: true,
+            uniqueness: true,
+            format: { with: /\A[a-z0-9][a-z0-9-]*[a-z0-9]\z/,
+                      message: 'must be lowercase letters, numbers, and hyphens' }
   validates :shopify_shop_domain,
-    allow_blank: true,
-    format: { with: /\A[a-z0-9-]+\.myshopify\.com\z/, message: "must look like your-store.myshopify.com" }
+            allow_blank: true,
+            format: { with: /\A[a-z0-9-]+\.myshopify\.com\z/, message: 'must look like your-store.myshopify.com' }
 
   def to_param
     subdomain

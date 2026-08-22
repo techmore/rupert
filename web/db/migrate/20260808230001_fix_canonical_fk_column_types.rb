@@ -2,9 +2,9 @@
 
 class FixCanonicalFkColumnTypes < ActiveRecord::Migration[8.1]
   def up
-    change_column(:order_lines, :order_id, :bigint, using: "order_id::bigint")
-    change_column(:payments, :order_id, :bigint, using: "order_id::bigint")
-    change_column(:orders, :customer_id, :bigint, using: "customer_id::bigint")
+    change_column(:order_lines, :order_id, :bigint, using: 'order_id::bigint')
+    change_column(:payments, :order_id, :bigint, using: 'order_id::bigint')
+    change_column(:orders, :customer_id, :bigint, using: 'customer_id::bigint')
   end
 
   def down

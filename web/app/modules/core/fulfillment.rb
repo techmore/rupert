@@ -6,13 +6,13 @@ module Core
   class Fulfillment < ApplicationRecord
     include TenantScoped
 
-    belongs_to :order, class_name: "Core::Order", inverse_of: :fulfillments
+    belongs_to :order, class_name: 'Core::Order', inverse_of: :fulfillments
 
     validates :source, presence: true
     validates :tracking_number, presence: true, if: -> { tracking_company.present? }
     validates :source_fulfillment_id, uniqueness: { scope: :source }, allow_nil: true
 
-    scope :with_tracking, -> { where.not(tracking_number: [nil, ""]) }
+    scope :with_tracking, -> { where.not(tracking_number: [nil, '']) }
     scope :recent, ->(limit = 50) { order(created_at: :desc).limit(limit) }
 
     def tracking?
@@ -25,10 +25,10 @@ module Core
 
     def status_label
       case status
-      when "fulfilled" then "Fulfilled"
-      when "in_transit" then "In transit"
-      when "delivered" then "Delivered"
-      else "Pending"
+      when 'fulfilled' then 'Fulfilled'
+      when 'in_transit' then 'In transit'
+      when 'delivered' then 'Delivered'
+      else 'Pending'
       end
     end
 

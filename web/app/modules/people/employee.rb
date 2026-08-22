@@ -8,20 +8,20 @@ module People
     include TenantScoped
     include AASM
 
-    self.table_name = "employees"
+    self.table_name = 'employees'
 
-    EMPLOYMENT_TYPES = ["full_time", "part_time", "contractor", "seasonal"].freeze
+    EMPLOYMENT_TYPES = %w[full_time part_time contractor seasonal].freeze
 
     belongs_to :user, optional: true
-    belongs_to :department, class_name: "People::Department", optional: true
-    belongs_to :position, class_name: "People::Position", optional: true
-    has_many :pay_rates, class_name: "People::PayRate", dependent: :destroy
-    has_many :timesheets, class_name: "People::Timesheet", dependent: :destroy
+    belongs_to :department, class_name: 'People::Department', optional: true
+    belongs_to :position, class_name: 'People::Position', optional: true
+    has_many :pay_rates, class_name: 'People::PayRate', dependent: :destroy
+    has_many :timesheets, class_name: 'People::Timesheet', dependent: :destroy
     has_many :timesheet_entries, through: :timesheets, source: :entries
-    has_many :leave_balances, class_name: "People::LeaveBalance", dependent: :destroy
-    has_many :leave_requests, class_name: "People::LeaveRequest", dependent: :destroy
-    has_many :payslips, class_name: "People::Payslip", dependent: :destroy
-    has_many :managed_departments, class_name: "People::Department", foreign_key: :manager_id, dependent: :nullify
+    has_many :leave_balances, class_name: 'People::LeaveBalance', dependent: :destroy
+    has_many :leave_requests, class_name: 'People::LeaveRequest', dependent: :destroy
+    has_many :payslips, class_name: 'People::Payslip', dependent: :destroy
+    has_many :managed_departments, class_name: 'People::Department', foreign_key: :manager_id, dependent: :nullify
 
     validates :first_name, presence: true
     validates :last_name, presence: true
@@ -31,11 +31,11 @@ module People
     validate :termination_after_hire
 
     scope :ordered, -> { order(:last_name, :first_name) }
-    scope :active, -> { where(status: "active") }
+    scope :active, -> { where(status: 'active') }
     scope :on_payroll, -> { where(id: People::PayRate.current.pluck(:employee_id)) }
-    scope :by_status, ->(status) { status.present? && status != "all" ? where(status: status) : all }
+    scope :by_status, ->(status) { status.present? && status != 'all' ? where(status: status) : all }
 
-    aasm column: "status", no_direct_assignment: true do
+    aasm column: 'status', no_direct_assignment: true do
       state :active, initial: true
       state :on_leave
       state :terminated
@@ -47,7 +47,7 @@ module People
         transitions from: :on_leave, to: :active
       end
       event :terminate do
-        transitions from: [:active, :on_leave], to: :terminated
+        transitions from: %i[active on_leave], to: :terminated
       end
       event :rehire do
         transitions from: :terminated, to: :active
@@ -57,14 +57,14 @@ module People
     def name
       "#{first_name} #{last_name}"
     end
-    alias_method :display_name, :name
+    alias display_name name
 
     def full_name
-      [first_name, legal_name == name ? nil : legal_name, last_name].compact.join(" ")
+      [first_name, legal_name == name ? nil : legal_name, last_name].compact.join(' ')
     end
 
     def current_pay_rate
-      pay_rates.where("ended_on IS NULL OR ended_on >= ?", Date.current).order(effective_on: :desc).first
+      pay_rates.where('ended_on IS NULL OR ended_on >= ?', Date.current).order(effective_on: :desc).first
     end
 
     def on_payroll?
@@ -82,13 +82,13 @@ module People
     def termination_after_hire
       return if hire_date.nil? || termination_date.nil?
 
-      errors.add(:termination_date, "must be after the hire date") if termination_date < hire_date
+      errors.add(:termination_date, 'must be after the hire date') if termination_date < hire_date
     end
 
     def default_accrual(leave_type)
       case leave_type
-      when "vacation" then 80.0
-      when "sick" then 40.0
+      when 'vacation' then 80.0
+      when 'sick' then 40.0
       else 0.0
       end
     end

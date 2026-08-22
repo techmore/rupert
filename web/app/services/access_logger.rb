@@ -14,7 +14,7 @@ class AccessLogger
         status: status,
         ip: request.remote_ip,
         user_agent: request.user_agent&.to_s&.slice(0, 255),
-        detail: detail,
+        detail: detail
       )
     rescue StandardError
       nil

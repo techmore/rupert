@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require "google/apis/drive_v3"
-require "signet/oauth_2/client"
-require "fileutils"
+require 'google/apis/drive_v3'
+require 'signet/oauth_2/client'
+require 'fileutils'
 
 # Google Drive backup for the Settings page. Uses OAuth2 (user-consent) so the
 # app writes into the owner's Drive without sharing credentials with tenants.
@@ -13,9 +13,9 @@ class GoogleDriveBackupService
   class NotConfiguredError < StandardError; end
   class NotConnectedError < StandardError; end
 
-  SCOPE = "https://www.googleapis.com/auth/drive.file"
+  SCOPE = 'https://www.googleapis.com/auth/drive.file'
   DEFAULT_RETENTION = 7
-  FOLDER_NAME = "Rupert Backups"
+  FOLDER_NAME = 'Rupert Backups'
 
   class << self
     def configured?
@@ -23,14 +23,14 @@ class GoogleDriveBackupService
     end
 
     def connected?
-      configured? && EnvStore.fetch("GOOGLE_DRIVE_REFRESH_TOKEN", "").present?
+      configured? && EnvStore.fetch('GOOGLE_DRIVE_REFRESH_TOKEN', '').present?
     end
 
     def auth_url(redirect_uri:, state: nil)
       require_credentials!
       client = signet
       client.redirect_uri = redirect_uri
-      params = { access_type: "offline", prompt: "consent" }
+      params = { access_type: 'offline', prompt: 'consent' }
       params[:state] = state if state.present?
       client.authorization_uri(params).to_s
     end
@@ -42,48 +42,48 @@ class GoogleDriveBackupService
       client.code = code
       client.fetch_access_token!
       if client.refresh_token.blank?
-        raise NotConnectedError, "Google did not return a refresh token — try disconnecting and reconnecting"
+        raise NotConnectedError, 'Google did not return a refresh token — try disconnecting and reconnecting'
       end
 
-      EnvStore.set("GOOGLE_DRIVE_REFRESH_TOKEN", client.refresh_token)
+      EnvStore.set('GOOGLE_DRIVE_REFRESH_TOKEN', client.refresh_token)
     end
 
     # Snapshot + upload + share + prune. Returns the BackupLog record.
-    def backup!(actor: "manual")
-      raise NotConnectedError, "Google Drive is not connected" unless connected?
+    def backup!(actor: 'manual')
+      raise NotConnectedError, 'Google Drive is not connected' unless connected?
 
-      log = BackupLog.create!(status: "running", startedAt: Time.current, tenant_id: Current.tenant_id)
+      log = BackupLog.create!(status: 'running', startedAt: Time.current, tenant_id: Current.tenant_id)
       path = nil
       begin
         path = BackupService.snapshot_path
-        filename = "rupert-backup-#{Time.current.strftime("%Y%m%d-%H%M%S")}#{File.extname(path)}"
+        filename = "rupert-backup-#{Time.current.strftime('%Y%m%d-%H%M%S')}#{File.extname(path)}"
 
         drive = drive_service
         folder_id = ensure_folder!(drive)
         metadata = Google::Apis::DriveV3::File.new(
-          name: filename, parents: [folder_id], mime_type: "application/octet-stream",
+          name: filename, parents: [folder_id], mime_type: 'application/octet-stream'
         )
         file = drive.create_file(
           metadata,
           upload_source: path,
-          content_type: "application/octet-stream",
+          content_type: 'application/octet-stream'
         )
 
         prune_old!(drive, folder_id)
 
         log.update!(
-          status: "success",
+          status: 'success',
           finishedAt: Time.current,
           fileName: filename,
           fileSize: File.size(path),
           driveFileId: file.id,
-          driveUrl: "https://drive.google.com/file/d/#{file.id}/view",
+          driveUrl: "https://drive.google.com/file/d/#{file.id}/view"
         )
       rescue StandardError => e
         log.update!(
-          status: "failed",
+          status: 'failed',
           finishedAt: Time.current,
-          error: e.message.to_s[0, 2000],
+          error: e.message.to_s[0, 2000]
         )
         raise
       ensure
@@ -99,43 +99,43 @@ class GoogleDriveBackupService
         configured: configured?,
         connected: connected?,
         retention: retention,
-        folder_id: EnvStore.fetch("GOOGLE_DRIVE_FOLDER_ID", ""),
-        client_id_set: EnvStore.fetch("GOOGLE_DRIVE_CLIENT_ID", "").present?,
-        client_secret_set: EnvStore.fetch("GOOGLE_DRIVE_CLIENT_SECRET", "").present?,
-        refresh_token_set: EnvStore.fetch("GOOGLE_DRIVE_REFRESH_TOKEN", "").present?,
+        folder_id: EnvStore.fetch('GOOGLE_DRIVE_FOLDER_ID', ''),
+        client_id_set: EnvStore.fetch('GOOGLE_DRIVE_CLIENT_ID', '').present?,
+        client_secret_set: EnvStore.fetch('GOOGLE_DRIVE_CLIENT_SECRET', '').present?,
+        refresh_token_set: EnvStore.fetch('GOOGLE_DRIVE_REFRESH_TOKEN', '').present?,
         last: last && {
           status: last.status,
           startedAt: last.startedAt,
           finishedAt: last.finishedAt,
           fileName: last.fileName,
           driveUrl: last.driveUrl,
-          error: last.error,
+          error: last.error
         },
-        latest_drive_url: latest_ok&.driveUrl,
+        latest_drive_url: latest_ok&.driveUrl
       }
     end
 
     def disconnect!
-      EnvStore.set("GOOGLE_DRIVE_REFRESH_TOKEN", nil)
+      EnvStore.set('GOOGLE_DRIVE_REFRESH_TOKEN', nil)
     end
 
     def retention
-      value = EnvStore.fetch("GOOGLE_DRIVE_RETENTION", DEFAULT_RETENTION.to_s).to_i
+      value = EnvStore.fetch('GOOGLE_DRIVE_RETENTION', DEFAULT_RETENTION.to_s).to_i
       value.positive? ? value : DEFAULT_RETENTION
     end
 
     private
 
     def require_credentials!
-      raise NotConfiguredError, "GOOGLE_DRIVE_CLIENT_ID / CLIENT_SECRET are not set" unless configured?
+      raise NotConfiguredError, 'GOOGLE_DRIVE_CLIENT_ID / CLIENT_SECRET are not set' unless configured?
     end
 
     def client_id
-      EnvStore.fetch("GOOGLE_DRIVE_CLIENT_ID", "")
+      EnvStore.fetch('GOOGLE_DRIVE_CLIENT_ID', '')
     end
 
     def client_secret
-      EnvStore.fetch("GOOGLE_DRIVE_CLIENT_SECRET", "")
+      EnvStore.fetch('GOOGLE_DRIVE_CLIENT_SECRET', '')
     end
 
     def signet
@@ -143,14 +143,14 @@ class GoogleDriveBackupService
         client_id: client_id,
         client_secret: client_secret,
         scope: SCOPE,
-        authorization_uri: "https://accounts.google.com/o/oauth2/auth",
-        token_credential_uri: "https://oauth2.googleapis.com/token",
+        authorization_uri: 'https://accounts.google.com/o/oauth2/auth',
+        token_credential_uri: 'https://oauth2.googleapis.com/token'
       )
     end
 
     def drive_service
-      refresh = EnvStore.fetch("GOOGLE_DRIVE_REFRESH_TOKEN", "")
-      raise NotConnectedError, "Google Drive is not connected" if refresh.blank?
+      refresh = EnvStore.fetch('GOOGLE_DRIVE_REFRESH_TOKEN', '')
+      raise NotConnectedError, 'Google Drive is not connected' if refresh.blank?
 
       client = signet
       client.refresh_token = refresh
@@ -162,28 +162,28 @@ class GoogleDriveBackupService
     end
 
     def ensure_folder!(drive)
-      existing = EnvStore.fetch("GOOGLE_DRIVE_FOLDER_ID", "")
+      existing = EnvStore.fetch('GOOGLE_DRIVE_FOLDER_ID', '')
       return existing if existing.present?
 
       query = "name='#{FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
-      results = drive.list_files(q: query, fields: "files(id)", page_size: 1)
+      results = drive.list_files(q: query, fields: 'files(id)', page_size: 1)
       folder = if results.files.any?
-        results.files.first
-      else
-        drive.create_file(Google::Apis::DriveV3::File.new(
-          name: FOLDER_NAME, mime_type: "application/vnd.google-apps.folder",
-        ))
-      end
-      EnvStore.set("GOOGLE_DRIVE_FOLDER_ID", folder.id)
+                 results.files.first
+               else
+                 drive.create_file(Google::Apis::DriveV3::File.new(
+                                     name: FOLDER_NAME, mime_type: 'application/vnd.google-apps.folder'
+                                   ))
+               end
+      EnvStore.set('GOOGLE_DRIVE_FOLDER_ID', folder.id)
       folder.id
     end
 
     def prune_old!(drive, folder_id)
       files = drive.list_files(
         q: "'#{folder_id}' in parents and trashed=false",
-        fields: "files(id,createdTime)",
+        fields: 'files(id,createdTime)',
         page_size: 100,
-        order_by: "createdTime desc",
+        order_by: 'createdTime desc'
       ).files
       files.drop(retention).each { |file| drive.delete_file(file.id) }
     end

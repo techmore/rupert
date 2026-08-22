@@ -6,7 +6,7 @@ module Finance
   # first visit if empty (idempotent).
   class ChartOfAccountsController < AuthenticatedController
     before_action :seed_if_empty
-    before_action :set_account, only: [:edit, :update, :archive, :restore]
+    before_action :set_account, only: %i[edit update archive restore]
 
     def index
       authorize(:module, :finance_read?)
@@ -65,7 +65,7 @@ module Finance
 
     # Guarantee the standard chart exists without requiring a rake step.
     def seed_if_empty
-      ChartOfAccounts.seed! if Current.user&.can?("finance.read") && Account.count.zero?
+      ChartOfAccounts.seed! if Current.user&.can?('finance.read') && Account.count.zero?
     end
 
     def account_params

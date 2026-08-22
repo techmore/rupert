@@ -1,18 +1,18 @@
 # frozen_string_literal: true
 
-require "csv"
+require 'csv'
 
 class InventoryController < AuthenticatedController
-  before_action :authorize_read, only: [:index, :movements, :pdf, :recommended_skus]
+  before_action :authorize_read, only: %i[index movements pdf recommended_skus]
 
   def index
     @q = params[:q].to_s.strip
     scope = ShopifyProduct.order(title: :asc)
     if @q.present?
       scope = scope.where(
-        "title LIKE ? OR id IN (SELECT \"productId\" FROM \"ShopifyVariant\" WHERE sku LIKE ?)",
+        'title LIKE ? OR id IN (SELECT "productId" FROM "ShopifyVariant" WHERE sku LIKE ?)',
         "%#{@q}%",
-        "%#{@q}%",
+        "%#{@q}%"
       )
     end
     scope = scope.includes(variants: [{ sku_links: { square_variation: :levels } }, :levels])
@@ -29,15 +29,15 @@ class InventoryController < AuthenticatedController
     scope = InventoryMovement.includes(:sync_run).order(createdAt: :desc)
     scope = scope.where(source: params[:source]) if params[:source].present?
     if (q = params[:q].to_s.strip).present?
-      scope = scope.where("sku ILIKE ?", "%#{q}%")
+      scope = scope.where('sku ILIKE ?', "%#{q}%")
     end
     days = params[:days].to_i
     days = 30 unless (1..365).cover?(days)
-    scope = scope.where("\"createdAt\" >= ?", days.days.ago)
+    scope = scope.where('"createdAt" >= ?', days.days.ago)
     @pagy, @movements = pagy(scope, items: 50)
     @names = movement_names(@movements)
     @sources = InventoryMovement.unscoped.where(tenant_id: Current.tenant_id)
-      .distinct.order(:source).pluck(:source)
+                                .distinct.order(:source).pluck(:source)
   end
 
   # GET /inventory/recommended_skus — full-catalog Shopify vs Square SKU
@@ -46,8 +46,8 @@ class InventoryController < AuthenticatedController
   # updating Shopify + Square and re-linking (see ops:sku_remediation_plan).
   def recommended_skus
     send_data SkuMatchReport.csv,
-      filename: "sku-report-#{Date.current.iso8601}.csv",
-      type: "text/csv"
+              filename: "sku-report-#{Date.current.iso8601}.csv",
+              type: 'text/csv'
   end
 
   # GET /inventory/pdf — printable snapshot of the current inventory across
@@ -56,12 +56,12 @@ class InventoryController < AuthenticatedController
   # sync / inventory approval), so repeat downloads are instant and the file
   # is regenerated automatically when the mirrored data changes.
   def pdf
-    pdf = DataCache.fetch("inventory/pdf") { InventoryPdf.build }
+    pdf = DataCache.fetch('inventory/pdf') { InventoryPdf.build }
     send_data(
       pdf,
-      filename: "inventory-#{Time.current.strftime("%Y-%m-%d-%H%M%S")}.pdf",
-      type: "application/pdf",
-      disposition: "attachment",
+      filename: "inventory-#{Time.current.strftime('%Y-%m-%d-%H%M%S')}.pdf",
+      type: 'application/pdf',
+      disposition: 'attachment'
     )
   end
 
@@ -92,7 +92,7 @@ class InventoryController < AuthenticatedController
   # "how many are held THERE", not a comparison.
   def stock_locations
     Location.where(active: true).to_a
-      .sort_by { |location| [location.source == "shopify" ? 0 : 1, location.name.to_s.downcase] }
+            .sort_by { |location| [location.source == 'shopify' ? 0 : 1, location.name.to_s.downcase] }
   end
 
   # Precompute per-variant stock so the index view doesn't run per-row queries:
@@ -104,15 +104,15 @@ class InventoryController < AuthenticatedController
     # attributed to a single row — flag them so the shared total isn't read as
     # one variant's number (same †-style guard as the PDF report).
     shared_square_variations = SkuLink.linked.group(:squareVariationId).count
-      .select { |_, n| n > 1 }.keys.to_set
+                                      .select { |_, n| n > 1 }.keys.to_set
 
     variants = products.flat_map(&:variants)
     square_variation_ids = variants.filter_map { |v| v.sku_links.find(&:linked?)&.squareVariationId }
 
-    shopify_by_variant = InventoryLevel.mirrored("shopify")
-      .where(shopifyVariantId: variants.map(&:id)).group_by(&:shopifyVariantId)
-    square_by_variation = InventoryLevel.mirrored("square")
-      .where(squareVariationId: square_variation_ids).group_by(&:squareVariationId)
+    shopify_by_variant = InventoryLevel.mirrored('shopify')
+                                       .where(shopifyVariantId: variants.map(&:id)).group_by(&:shopifyVariantId)
+    square_by_variation = InventoryLevel.mirrored('square')
+                                        .where(squareVariationId: square_variation_ids).group_by(&:squareVariationId)
 
     map = {}
     products.each do |product|
@@ -125,11 +125,11 @@ class InventoryController < AuthenticatedController
 
         status =
           if link.nil?
-            "unlinked"
+            'unlinked'
           elsif link.sku.to_s.downcase == variation.sku.to_s.downcase
-            "matched"
+            'matched'
           else
-            "mismatched"
+            'mismatched'
           end
 
         map[variant.id] = {
@@ -141,7 +141,7 @@ class InventoryController < AuthenticatedController
           square_by_location: variation ? square_levels.index_by(&:locationId).transform_values(&:quantity) : nil,
           shared: link && shared_square_variations.include?(link.squareVariationId),
           status: status,
-          size: size_map[variant.sku.to_s.downcase],
+          size: size_map[variant.sku.to_s.downcase]
         }
       end
     end
@@ -153,8 +153,8 @@ class InventoryController < AuthenticatedController
     map = {}
     SizeFamily.includes(:members, :size_changes).find_each do |family|
       root = family.base_grams&.to_f
-      pending = family.size_changes.select { |change| change.status == "pending" }
-        .index_by { |change| change.sku.downcase }
+      pending = family.size_changes.select { |change| change.status == 'pending' }
+                      .index_by { |change| change.sku.downcase }
       family.members.each do |member|
         map[member.sku.downcase] = {
           family_id: family.id,
@@ -162,7 +162,7 @@ class InventoryController < AuthenticatedController
           grams: member.grams.to_f,
           root: root,
           target: root ? (root / member.grams.to_f).floor : nil,
-          pending: pending[member.sku.downcase],
+          pending: pending[member.sku.downcase]
         }
       end
     end

@@ -2,7 +2,7 @@
 
 module Goals
   class GoalsController < AuthenticatedController
-    before_action :set_goal, only: [:show, :update, :destroy, :transition]
+    before_action :set_goal, only: %i[show update destroy transition]
 
     def index
       authorize(:module, :projects_read?)
@@ -23,7 +23,7 @@ module Goals
       authorize(:module, :projects_write?)
       @goal = Goals::Goal.new(goal_params)
       if @goal.save
-        redirect_to(@goal, notice: "Goal created.")
+        redirect_to(@goal, notice: 'Goal created.')
       else
         render(:new, status: :unprocessable_entity)
       end
@@ -36,7 +36,7 @@ module Goals
     def update
       authorize(@goal)
       if @goal.update(goal_params)
-        redirect_to(@goal, notice: "Goal updated.")
+        redirect_to(@goal, notice: 'Goal updated.')
       else
         render(:edit, status: :unprocessable_entity)
       end
@@ -45,14 +45,14 @@ module Goals
     def destroy
       authorize(@goal)
       @goal.destroy
-      redirect_to(goals_path, notice: "Goal deleted.")
+      redirect_to(goals_path, notice: 'Goal deleted.')
     end
 
     # POST /goals/:id/transition?event=activate|achieve|abandon
     def transition
       authorize(@goal)
       event = params[:event]
-      if ["activate", "achieve", "abandon"].include?(event) && @goal.public_send("may_#{event}?")
+      if %w[activate achieve abandon].include?(event) && @goal.public_send("may_#{event}?")
         @goal.send("#{event}!")
         redirect_to(@goal, notice: "Goal #{event}d.")
       else

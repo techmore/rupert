@@ -8,12 +8,12 @@ class ActivityLogger
       ActivityLog.create!(
         tenant_id: Current.tenant_id,
         user_id: actor&.id,
-        actor_name: actor&.display_name || actor&.email || "system",
+        actor_name: actor&.display_name || actor&.email || 'system',
         action: action,
         subject_type: subject.class.name,
         subject_id: subject.try(:id)&.to_s,
         subject_label: subject_label(subject),
-        details: details,
+        details: details
       )
     rescue StandardError
       nil

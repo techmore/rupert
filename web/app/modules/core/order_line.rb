@@ -5,9 +5,9 @@ module Core
   class OrderLine < ApplicationRecord
     include TenantScoped
 
-    self.table_name = "order_lines"
+    self.table_name = 'order_lines'
 
-    belongs_to :order, class_name: "Core::Order", foreign_key: :order_id
+    belongs_to :order, class_name: 'Core::Order', foreign_key: :order_id
 
     validates :name, presence: true
     validates :quantity, numericality: { greater_than_or_equal_to: 0 }

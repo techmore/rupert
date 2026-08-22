@@ -2,7 +2,7 @@
 
 module People
   class DepartmentsController < AuthenticatedController
-    before_action :set_department, only: [:edit, :update]
+    before_action :set_department, only: %i[edit update]
 
     def index
       authorize(:module, :hr_read?)
@@ -20,8 +20,8 @@ module People
       authorize(:module, :hr_write?)
       @department = People::Department.new(department_params)
       if @department.save
-        ActivityLogger.log("department_created", subject: @department)
-        redirect_to(people_departments_path, notice: "Department created.")
+        ActivityLogger.log('department_created', subject: @department)
+        redirect_to(people_departments_path, notice: 'Department created.')
       else
         @managers = People::Employee.active.ordered
         render(:new, status: :unprocessable_entity)
@@ -36,8 +36,8 @@ module People
     def update
       authorize(:module, :hr_write?)
       if @department.update(department_params)
-        ActivityLogger.log("department_updated", subject: @department)
-        redirect_to(people_departments_path, notice: "Department updated.")
+        ActivityLogger.log('department_updated', subject: @department)
+        redirect_to(people_departments_path, notice: 'Department updated.')
       else
         @managers = People::Employee.active.ordered
         render(:edit, status: :unprocessable_entity)

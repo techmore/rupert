@@ -9,5 +9,5 @@ class RolePermission < ApplicationRecord
 
   validates :role, presence: true, inclusion: { in: User.roles.keys }
   validates :permission, presence: true
-  validates :permission, uniqueness: { scope: [:tenant_id, :role] }
+  validates :permission, uniqueness: { scope: %i[tenant_id role] }
 end

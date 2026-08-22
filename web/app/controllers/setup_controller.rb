@@ -4,7 +4,7 @@
 # while no tenants exist. Subsequent tenants are added from the platform
 # (TenantsController) by a super admin.
 class SetupController < ApplicationController
-  skip_before_action :require_login, only: [:new, :create]
+  skip_before_action :require_login, only: %i[new create]
 
   def new
     redirect_to(login_path) if Tenant.exists?
@@ -18,7 +18,7 @@ class SetupController < ApplicationController
       email: params[:user_email].to_s.downcase,
       name: params[:user_name],
       password: params[:user_password],
-      role: "super_admin",
+      role: 'super_admin'
     )
 
     if tenant.save
@@ -27,11 +27,11 @@ class SetupController < ApplicationController
       Finance::ChartOfAccounts.seed!
       Current.tenant = nil
       session[:user_id] = user.id
-      redirect_to(root_url(subdomain: tenant.subdomain), notice: "Welcome! Your workspace is ready.")
+      redirect_to(root_url(subdomain: tenant.subdomain), notice: 'Welcome! Your workspace is ready.')
     else
       @tenant = tenant
       @user = user
-      flash.now[:alert] = "Please fix the errors below."
+      flash.now[:alert] = 'Please fix the errors below.'
       render(:new, status: :unprocessable_entity)
     end
   end

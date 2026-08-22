@@ -9,22 +9,22 @@ class NegativeInventory
 
   class << self
     def summary(limit: 50)
-      square = negative_levels("square")
-      shopify = negative_levels("shopify")
+      square = negative_levels('square')
+      shopify = negative_levels('shopify')
       {
         total: square.length + shopify.length,
         square: square.first(limit),
-        shopify: shopify.first(limit),
+        shopify: shopify.first(limit)
       }
     end
 
     def fix!(source:, id:)
-      source == "square" ? fix_square_variation!(id) : fix_shopify_variant!(id)
+      source == 'square' ? fix_square_variation!(id) : fix_shopify_variant!(id)
     end
 
     def fix_all!
-      square_variation_ids = InventoryLevel.where(source: "square").where("quantity < 0").distinct.pluck(:squareVariationId)
-      shopify_variant_ids = InventoryLevel.where(source: "shopify").where("quantity < 0").distinct.pluck(:shopifyVariantId)
+      square_variation_ids = InventoryLevel.where(source: 'square').where('quantity < 0').distinct.pluck(:squareVariationId)
+      shopify_variant_ids = InventoryLevel.where(source: 'shopify').where('quantity < 0').distinct.pluck(:shopifyVariantId)
 
       results = { square: 0, shopify: 0, failed: 0 }
       square_variation_ids.each { |id| fix_square_variation!(id) ? results[:square] += 1 : results[:failed] += 1 }
@@ -36,11 +36,11 @@ class NegativeInventory
 
     def negative_levels(source)
       InventoryLevel.where(source: source)
-        .where("quantity < 0")
-        .order(:quantity)
-        .includes(:square_variation, :shopify_variant, :location)
-        .map do |level|
-        if source == "square"
+                    .where('quantity < 0')
+                    .order(:quantity)
+                    .includes(:square_variation, :shopify_variant, :location)
+                    .map do |level|
+        if source == 'square'
           variation = level.square_variation
           sku = variation&.sku
           name = variation&.name
@@ -50,11 +50,11 @@ class NegativeInventory
           name = variant&.title
         end
         Item.new(
-          id: source == "square" ? level.squareVariationId : level.shopifyVariantId,
+          id: source == 'square' ? level.squareVariationId : level.shopifyVariantId,
           sku: sku,
           name: name,
           location: level.location&.name,
-          quantity: level.quantity,
+          quantity: level.quantity
         )
       end
     end
@@ -62,11 +62,11 @@ class NegativeInventory
     def fix_square_variation!(variation_id)
       return false if variation_id.blank?
 
-      levels = InventoryLevel.where(source: "square", squareVariationId: variation_id).where("quantity < 0")
+      levels = InventoryLevel.where(source: 'square', squareVariationId: variation_id).where('quantity < 0')
       return false if levels.empty?
 
       # Multi-approval gate before any outbound write to Square.
-      PlatformPushGuard.authorize!("square", actor: "user")
+      PlatformPushGuard.authorize!('square', actor: 'user')
 
       sku = SquareVariation.find_by(id: variation_id)&.sku
       before = InventoryLevel.total_for_variation(variation_id)
@@ -80,7 +80,7 @@ class NegativeInventory
           quantity: 0,
           location: location,
           reference_id: "hh-neg-#{variation_id}",
-          idempotency_key: "hh-neg-#{variation_id}-#{level.id}-#{level.quantity}",
+          idempotency_key: "hh-neg-#{variation_id}-#{level.id}-#{level.quantity}"
         )
         level.update!(quantity: 0, available: 0, updatedAt: Time.current)
       end
@@ -88,15 +88,15 @@ class NegativeInventory
       InventoryMovement.create!(
         sku: sku,
         squareVariationId: variation_id,
-        source: "negative-fix",
-        direction: (-before).negative? ? "out" : "in",
+        source: 'negative-fix',
+        direction: (-before).negative? ? 'out' : 'in',
         delta: -before,
         quantityBefore: before,
         quantityAfter: 0,
-        reason: "Corrected negative Square inventory",
-        reference: "inventory-banner",
-        actor: "user",
-        createdAt: Time.current,
+        reason: 'Corrected negative Square inventory',
+        reference: 'inventory-banner',
+        actor: 'user',
+        createdAt: Time.current
       )
       true
     rescue StandardError => e
@@ -107,7 +107,7 @@ class NegativeInventory
     def fix_shopify_variant!(variant_id)
       return false if variant_id.blank?
 
-      levels = InventoryLevel.where(source: "shopify", shopifyVariantId: variant_id).where("quantity < 0")
+      levels = InventoryLevel.where(source: 'shopify', shopifyVariantId: variant_id).where('quantity < 0')
       return false if levels.empty?
 
       before = InventoryLevel.total_for_variant(variant_id)
@@ -118,15 +118,15 @@ class NegativeInventory
       InventoryMovement.create!(
         sku: variant&.sku,
         shopifyVariantId: variant_id,
-        source: "negative-fix",
-        direction: (-before).negative? ? "out" : "in",
+        source: 'negative-fix',
+        direction: (-before).negative? ? 'out' : 'in',
         delta: -before,
         quantityBefore: before,
         quantityAfter: 0,
-        reason: "Zeroed negative Shopify mirror (non-inventory SKU)",
-        reference: "inventory-banner",
-        actor: "user",
-        createdAt: Time.current,
+        reason: 'Zeroed negative Shopify mirror (non-inventory SKU)',
+        reference: 'inventory-banner',
+        actor: 'user',
+        createdAt: Time.current
       )
       true
     rescue StandardError => e

@@ -5,7 +5,7 @@
 # server. On approval a canonical Core::Order is created and the cart is
 # checked out.
 class WarehouseCheckoutsController < ApplicationController
-  layout "warehouse_sale"
+  layout 'warehouse_sale'
   include WarehousePortal
 
   skip_before_action :require_login
@@ -26,12 +26,12 @@ class WarehouseCheckoutsController < ApplicationController
       cart: current_cart,
       shipping: order_params,
       payment_nonce: params[:payment_nonce],
-      data_descriptor: params[:data_descriptor],
+      data_descriptor: params[:data_descriptor]
     )
 
     if result.success?
       clear_cart_token!
-      redirect_to(warehouse_order_path(@share.token, result.order.order_number), notice: "Order confirmed.")
+      redirect_to(warehouse_order_path(@share.token, result.order.order_number), notice: 'Order confirmed.')
     else
       @cart = current_cart
       @client_key = AuthorizeNetClient.client_key
@@ -58,7 +58,7 @@ class WarehouseCheckoutsController < ApplicationController
       :shipping_zip,
       :shipping_country,
       :shipping_phone,
-      :email,
+      :email
     ).to_h.symbolize_keys
   end
 end

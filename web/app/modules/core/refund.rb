@@ -7,14 +7,14 @@ module Core
     include Discard::Model
     include TenantScoped
 
-    self.table_name = "refunds"
+    self.table_name = 'refunds'
 
     # Exclude discarded rows by default so they don't count toward refund totals.
     default_scope { undiscarded }
 
-    METHODS = ["card", "cash", "gift_card", "check", "store_credit", "other"].freeze
+    METHODS = %w[card cash gift_card check store_credit other].freeze
 
-    belongs_to :order, class_name: "Core::Order", foreign_key: :order_id, inverse_of: :refunds
+    belongs_to :order, class_name: 'Core::Order', foreign_key: :order_id, inverse_of: :refunds
 
     validates :amount_cents, numericality: { greater_than: 0 }
     validates :method, presence: true, inclusion: { in: METHODS }

@@ -5,19 +5,19 @@
 # survives reloads without any login. Prices are always computed server-side
 # (never trusted from the browser) via WarehouseShare#sale_price.
 class WarehouseCart < ApplicationRecord
-  STATUSES = ["open", "checked_out"].freeze
+  STATUSES = %w[open checked_out].freeze
 
-  belongs_to :share, class_name: "WarehouseShare", foreign_key: :share_id
+  belongs_to :share, class_name: 'WarehouseShare', foreign_key: :share_id
   has_many :items,
-    class_name: "WarehouseCartItem",
-    foreign_key: :cart_id,
-    dependent: :destroy
+           class_name: 'WarehouseCartItem',
+           foreign_key: :cart_id,
+           dependent: :destroy
 
   validates :token, presence: true, uniqueness: true
   validates :status, inclusion: { in: STATUSES }
 
   def checked_out?
-    status == "checked_out"
+    status == 'checked_out'
   end
 
   def add_item!(variant, quantity: 1)
@@ -26,7 +26,7 @@ class WarehouseCart < ApplicationRecord
     item.tenant_id = tenant_id
     item.share_id = share_id
     item.sku = variant.sku
-    item.title = [variant.product&.title, variant.title].compact.join(" · ")
+    item.title = [variant.product&.title, variant.title].compact.join(' · ')
     item.quantity = (item.quantity.to_i + quantity).clamp(1, WarehouseCartItem::MAX_QUANTITY)
     item.assign_price!(share, variant)
     item.save!
@@ -55,6 +55,6 @@ class WarehouseCart < ApplicationRecord
   end
 
   def mark_checked_out!
-    update!(status: "checked_out")
+    update!(status: 'checked_out')
   end
 end

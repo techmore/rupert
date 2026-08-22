@@ -11,23 +11,23 @@ module Core
       # correlated subqueries.
       def by_customer
         rows = Core::Customer.joins(:orders)
-          .where(orders: { status: ["paid", "fulfilled"] })
-          .group("customers.id", "customers.first_name", "customers.last_name", "customers.email", "customers.phone")
-          .select(
-            "customers.id",
-            "customers.first_name",
-            "customers.last_name",
-            "customers.email",
-            "customers.phone",
-            "SUM(orders.gross_cents) AS gross_cents",
-            "COUNT(orders.id) AS order_count",
-          )
+                             .where(orders: { status: %w[paid fulfilled] })
+                             .group('customers.id', 'customers.first_name', 'customers.last_name', 'customers.email', 'customers.phone')
+                             .select(
+                               'customers.id',
+                               'customers.first_name',
+                               'customers.last_name',
+                               'customers.email',
+                               'customers.phone',
+                               'SUM(orders.gross_cents) AS gross_cents',
+                               'COUNT(orders.id) AS order_count'
+                             )
 
-        paid_by_customer = Core::Payment.where(status: "completed")
-          .joins(:order)
-          .where(orders: { status: ["paid", "fulfilled"] })
-          .group("orders.customer_id")
-          .sum(:amount_cents)
+        paid_by_customer = Core::Payment.where(status: 'completed')
+                                        .joins(:order)
+                                        .where(orders: { status: %w[paid fulfilled] })
+                                        .group('orders.customer_id')
+                                        .sum(:amount_cents)
 
         rows.filter_map do |row|
           paid = paid_by_customer.fetch(row.id, 0)
@@ -38,7 +38,7 @@ module Core
             customer: row,
             balance_cents: balance,
             paid_cents: paid,
-            order_count: row.order_count,
+            order_count: row.order_count
           }
         end.sort_by { |r| -r[:balance_cents] }
       end

@@ -5,9 +5,9 @@ module People
   class LeaveBalance < ApplicationRecord
     include TenantScoped
 
-    self.table_name = "leave_balances"
+    self.table_name = 'leave_balances'
 
-    belongs_to :employee, class_name: "People::Employee"
+    belongs_to :employee, class_name: 'People::Employee'
 
     validates :leave_type, inclusion: { in: LeaveRequest::LEAVE_TYPES }
     validates :year, presence: true, numericality: { only_integer: true }

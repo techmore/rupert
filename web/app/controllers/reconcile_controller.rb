@@ -29,7 +29,7 @@ class ReconcileController < AuthenticatedController
         root: snap.root_grams,
         root_item: snap.root_item,
         members: snap.members,
-        pending_count: snap.pending_count,
+        pending_count: snap.pending_count
       }
     end
   end

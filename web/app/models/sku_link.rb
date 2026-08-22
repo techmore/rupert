@@ -4,23 +4,23 @@ class SkuLink < ApplicationRecord
   include HasCuid
   include TenantScoped
 
-  self.table_name = "SkuLink"
-  self.primary_key = "id"
+  self.table_name = 'SkuLink'
+  self.primary_key = 'id'
 
   belongs_to :shopify_variant,
-    class_name: "ShopifyVariant",
-    foreign_key: "shopifyVariantId",
-    optional: true
+             class_name: 'ShopifyVariant',
+             foreign_key: 'shopifyVariantId',
+             optional: true
   belongs_to :square_variation,
-    class_name: "SquareVariation",
-    foreign_key: "squareVariationId",
-    optional: true
+             class_name: 'SquareVariation',
+             foreign_key: 'squareVariationId',
+             optional: true
 
   scope :linked, -> { where.not(shopifyVariantId: nil).where.not(squareVariationId: nil) }
-  scope :search, ->(q) {
+  scope :search, lambda { |q|
     return all if q.blank?
 
-    where("sku LIKE ?", "%#{q}%")
+    where('sku LIKE ?', "%#{q}%")
   }
 
   validates :sku, presence: true
@@ -33,7 +33,7 @@ class SkuLink < ApplicationRecord
   # Square-variation target. Used by the shared-pool guards so no write ever
   # half-applies an ambiguous shared pool.
   def self.shared_skus
-    SkuLink.linked.group(:sku).distinct.count("shopifyVariantId")
-      .select { |_, count| count > 1 }.keys.map(&:downcase).to_set
+    SkuLink.linked.group(:sku).distinct.count('shopifyVariantId')
+           .select { |_, count| count > 1 }.keys.map(&:downcase).to_set
   end
 end

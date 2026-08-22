@@ -45,6 +45,7 @@ class ApplicationPolicy
   # platform-wide and have effective_permissions ["*"], so they bypass this too.
   def tenant?
     return true if user&.super_admin?
+
     record.respond_to?(:tenant_id) ? record.tenant_id == user&.tenant_id : true
   end
 end

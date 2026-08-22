@@ -14,7 +14,7 @@ class CreateAccessLogs < ActiveRecord::Migration[8.1]
       t.timestamps
     end
     add_index :access_logs, :tenant_id
-    add_index :access_logs, [:tenant_id, :created_at]
-    add_index :access_logs, [:tenant_id, :status]
+    add_index :access_logs, %i[tenant_id created_at]
+    add_index :access_logs, %i[tenant_id status]
   end
 end

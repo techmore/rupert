@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "timeout"
+require 'timeout'
 
 # Collects server + database health metrics for the System (admin) page.
 # All reads are read-only and wrapped in timeouts so a hung metric never
@@ -9,33 +9,33 @@ require "timeout"
 # whose job is to report load.
 class SystemPresenter
   attr_reader :load_averages,
-    :cpu_count,
-    :mem_total_mb,
-    :mem_used_mb,
-    :mem_available_mb,
-    :swap_total_mb,
-    :swap_used_mb,
-    :disk_used_pct,
-    :disk_free_gb,
-    :uptime_seconds,
-    :puma_rss_mb,
-    :puma_threads,
-    :db_connections,
-    :db_max_connections,
-    :db_cache_hit_pct,
-    :db_deadlocks,
-    :db_size_mb,
-    :slow_queries,
-    :active_queries,
-    :locked_queries,
-    :bloat_tables,
-    :big_tables,
-    :job_pending,
-    :job_queued,
-    :job_failed,
-    :sync_success_rate,
-    :cache_entries,
-    :cache_dir_mb
+              :cpu_count,
+              :mem_total_mb,
+              :mem_used_mb,
+              :mem_available_mb,
+              :swap_total_mb,
+              :swap_used_mb,
+              :disk_used_pct,
+              :disk_free_gb,
+              :uptime_seconds,
+              :puma_rss_mb,
+              :puma_threads,
+              :db_connections,
+              :db_max_connections,
+              :db_cache_hit_pct,
+              :db_deadlocks,
+              :db_size_mb,
+              :slow_queries,
+              :active_queries,
+              :locked_queries,
+              :bloat_tables,
+              :big_tables,
+              :job_pending,
+              :job_queued,
+              :job_failed,
+              :sync_success_rate,
+              :cache_entries,
+              :cache_dir_mb
 
   def initialize
     collect_os
@@ -47,19 +47,19 @@ class SystemPresenter
   private
 
   def collect_os
-    @cpu_count = nproc = %x(nproc).to_i
+    @cpu_count = nproc = `nproc`.to_i
     @cpu_count = 2 if nproc.zero?
-    @load_averages = read_file("/proc/loadavg").to_s.split.first(3).map(&:to_f)
-    mem = read_file("/proc/meminfo").to_s
-    @mem_total_mb = kb("MemTotal", mem) / 1024
-    @mem_available_mb = kb("MemAvailable", mem) / 1024
+    @load_averages = read_file('/proc/loadavg').to_s.split.first(3).map(&:to_f)
+    mem = read_file('/proc/meminfo').to_s
+    @mem_total_mb = kb('MemTotal', mem) / 1024
+    @mem_available_mb = kb('MemAvailable', mem) / 1024
     @mem_used_mb = @mem_total_mb - @mem_available_mb
-    @swap_total_mb = kb("SwapTotal", mem) / 1024
-    @swap_used_mb = kb("SwapTotal", mem) / 1024 - kb("SwapFree", mem) / 1024
-    disk = %x(df -B1 / 2>/dev/null).lines.last.to_s.split
-    @disk_used_pct = disk[4].to_s.delete("%").to_i
+    @swap_total_mb = kb('SwapTotal', mem) / 1024
+    @swap_used_mb = kb('SwapTotal', mem) / 1024 - kb('SwapFree', mem) / 1024
+    disk = `df -B1 / 2>/dev/null`.lines.last.to_s.split
+    @disk_used_pct = disk[4].to_s.delete('%').to_i
     @disk_free_gb = disk[3].to_i.to_f / 1024**3
-    @uptime_seconds = read_file("/proc/uptime").to_s.split.first.to_f.round
+    @uptime_seconds = read_file('/proc/uptime').to_s.split.first.to_f.round
   end
 
   def collect_process
@@ -70,17 +70,17 @@ class SystemPresenter
 
   def collect_db
     conn = ActiveRecord::Base.connection
-    @db_connections = conn.select_value("SELECT count(*) FROM pg_stat_activity WHERE datname = current_database()").to_i
-    @db_max_connections = conn.select_value("SHOW max_connections").to_i
+    @db_connections = conn.select_value('SELECT count(*) FROM pg_stat_activity WHERE datname = current_database()').to_i
+    @db_max_connections = conn.select_value('SHOW max_connections').to_i
     stats = conn.select_one(<<~SQL) || {}
       SELECT
         round(blks_hit::numeric / NULLIF(blks_hit + blks_read, 0) * 100, 1) AS cache_hit_pct,
         deadlocks
       FROM pg_stat_database WHERE datname = current_database()
     SQL
-    @db_cache_hit_pct = stats["cache_hit_pct"].to_f
-    @db_deadlocks = stats["deadlocks"].to_i
-    @db_size_mb = (conn.select_value("SELECT pg_database_size(current_database())").to_i / 1024.0 / 1024).round(1)
+    @db_cache_hit_pct = stats['cache_hit_pct'].to_f
+    @db_deadlocks = stats['deadlocks'].to_i
+    @db_size_mb = (conn.select_value('SELECT pg_database_size(current_database())').to_i / 1024.0 / 1024).round(1)
 
     @slow_queries = query_stats(conn, <<~SQL)
       SELECT pid, state, left(query, 120) AS query,
@@ -135,17 +135,17 @@ class SystemPresenter
   def collect_jobs
     @job_pending = begin
       SolidQueue::ReadyExecution.count
-    rescue
+    rescue StandardError
       0
     end
     @job_queued = begin
       SolidQueue::ScheduledExecution.count
-    rescue
+    rescue StandardError
       0
     end
     @job_failed = begin
       SolidQueue::FailedExecution.count
-    rescue
+    rescue StandardError
       0
     end
     @sync_success_rate = sync_success_rate_value
@@ -172,7 +172,7 @@ class SystemPresenter
   end
 
   def puma_pids
-    %x(pgrep -f "puma").lines.map(&:to_i)
+    `pgrep -f "puma"`.lines.map(&:to_i)
   rescue StandardError
     []
   end
@@ -193,11 +193,11 @@ class SystemPresenter
     total = SyncRun.count
     return 0 if total.zero?
 
-    (SyncRun.where(status: "success").count.to_f / total * 100).round(1)
+    (SyncRun.where(status: 'success').count.to_f / total * 100).round(1)
   end
 
   def cache_dir_mb_value
-    dir = Rails.root.join("tmp", "cache")
+    dir = Rails.root.join('tmp', 'cache')
     return 0 unless Dir.exist?(dir)
 
     Timeout.timeout(5) do
@@ -209,7 +209,7 @@ class SystemPresenter
   end
 
   def cache_entries_count
-    dir = Rails.root.join("tmp", "cache")
+    dir = Rails.root.join('tmp', 'cache')
     return 0 unless Dir.exist?(dir)
 
     Timeout.timeout(5) do

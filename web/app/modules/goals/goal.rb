@@ -5,16 +5,16 @@ module Goals
     include TenantScoped
     include AASM
 
-    self.table_name = "goals"
+    self.table_name = 'goals'
 
     validates :name, presence: true
     validates :target_value, numericality: true, allow_nil: true
     validates :current_value, numericality: true, allow_nil: true
 
     scope :recent, ->(limit = 20) { order(updated_at: :desc).limit(limit) }
-    scope :active, -> { where(status: "active") }
+    scope :active, -> { where(status: 'active') }
 
-    aasm column: "status", no_direct_assignment: true do
+    aasm column: 'status', no_direct_assignment: true do
       state :draft, initial: true
       state :active
       state :achieved
@@ -24,10 +24,10 @@ module Goals
         transitions from: :draft, to: :active
       end
       event :achieve do
-        transitions from: [:active, :draft], to: :achieved
+        transitions from: %i[active draft], to: :achieved
       end
       event :abandon do
-        transitions from: [:draft, :active], to: :abandoned
+        transitions from: %i[draft active], to: :abandoned
       end
     end
 

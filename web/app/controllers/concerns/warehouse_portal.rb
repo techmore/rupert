@@ -22,7 +22,7 @@ module WarehousePortal
         cart = WarehouseCart.create!(
           share: @share,
           tenant_id: @share.tenant_id,
-          token: SecureRandom.alphanumeric(32),
+          token: SecureRandom.alphanumeric(32)
         )
         write_cart_token(cart.token)
       end
@@ -47,6 +47,6 @@ module WarehousePortal
   end
 
   def render_404
-    render(plain: "Not found", status: :not_found)
+    render(plain: 'Not found', status: :not_found)
   end
 end

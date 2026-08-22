@@ -11,10 +11,10 @@ class DataRetention
   # year: it is the re-importable source of truth for order backfills
   # (CanonicalOrderImporter.backfill_from_ledger!).
   POLICIES = {
-    "InventoryMovement" => [180.days, "createdAt"],
-    "LedgerEntry" => [365.days, "occurredAt"],
-    "AccessLog" => [90.days, "created_at"],
-    "ActivityLog" => [90.days, "created_at"],
+    'InventoryMovement' => [180.days, 'createdAt'],
+    'LedgerEntry' => [365.days, 'occurredAt'],
+    'AccessLog' => [90.days, 'created_at'],
+    'ActivityLog' => [90.days, 'created_at']
   }.freeze
 
   BATCH_SIZE = 5_000
@@ -38,7 +38,9 @@ class DataRetention
         total += scope.where(id: ids).delete_all
         break if ids.size < batch_size
       end
-      Rails.logger.info("DataRetention: pruned #{total} #{scope.name} rows older than #{older_than.iso8601}") if total.positive?
+      if total.positive?
+        Rails.logger.info("DataRetention: pruned #{total} #{scope.name} rows older than #{older_than.iso8601}")
+      end
       total
     end
   end

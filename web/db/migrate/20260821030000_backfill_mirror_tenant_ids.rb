@@ -21,10 +21,10 @@ class BackfillMirrorTenantIds < ActiveRecord::Migration[8.1]
   ].freeze
 
   def up
-    tenant = execute("SELECT id FROM tenants ORDER BY created_at LIMIT 2").to_a
+    tenant = execute('SELECT id FROM tenants ORDER BY created_at LIMIT 2').to_a
     return unless tenant.length == 1
 
-    tenant_id = tenant.first["id"]
+    tenant_id = tenant.first['id']
     MIRROR_TABLES.each do |table|
       execute <<~SQL.squish
         UPDATE "#{table}" SET "tenant_id" = '#{tenant_id}' WHERE "tenant_id" IS NULL

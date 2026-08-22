@@ -4,45 +4,45 @@
 # specific record. Authorize with `authorize :module, :sales_read?` and define
 # a method per permission.
 class ModulePolicy < ApplicationPolicy
-  [
-    :dashboard_read,
-    :sales_read,
-    :sales_write,
-    :customers_read,
-    :customers_write,
-    :inventory_read,
-    :inventory_write,
-    :reconcile_read,
-    :reconcile_write,
-    :reports_read,
-    :reports_write,
-    :ledger_read,
-    :ledger_write,
-    :projects_read,
-    :projects_write,
-    :alerts_read,
-    :alerts_write,
-    :sync_read,
-    :sync_write,
-    :settings_read,
-    :settings_write,
-    :system_read,
-    :system_write,
-    :users_read,
-    :users_write,
-    :purchasing_read,
-    :purchasing_write,
-    :finance_read,
-    :finance_write,
-    :hr_read,
-    :hr_write,
-    :timesheets_read,
-    :timesheets_write,
-    :leave_read,
-    :leave_write,
-    :payroll_read,
-    :payroll_write,
+  %i[
+    dashboard_read
+    sales_read
+    sales_write
+    customers_read
+    customers_write
+    inventory_read
+    inventory_write
+    reconcile_read
+    reconcile_write
+    reports_read
+    reports_write
+    ledger_read
+    ledger_write
+    projects_read
+    projects_write
+    alerts_read
+    alerts_write
+    sync_read
+    sync_write
+    settings_read
+    settings_write
+    system_read
+    system_write
+    users_read
+    users_write
+    purchasing_read
+    purchasing_write
+    finance_read
+    finance_write
+    hr_read
+    hr_write
+    timesheets_read
+    timesheets_write
+    leave_read
+    leave_write
+    payroll_read
+    payroll_write
   ].each do |perm|
-    define_method("#{perm}?") { module?(perm.to_s.tr("_", ".")) }
+    define_method("#{perm}?") { module?(perm.to_s.tr('_', '.')) }
   end
 end

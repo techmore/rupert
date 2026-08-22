@@ -5,11 +5,11 @@ module People
   class TimesheetEntry < ApplicationRecord
     include TenantScoped
 
-    self.table_name = "timesheet_entries"
+    self.table_name = 'timesheet_entries'
 
-    WORK_TYPES = ["regular", "overtime", "pto", "holiday"].freeze
+    WORK_TYPES = %w[regular overtime pto holiday].freeze
 
-    belongs_to :timesheet, class_name: "People::Timesheet"
+    belongs_to :timesheet, class_name: 'People::Timesheet'
 
     validates :worked_on, presence: true
     validates :hours, numericality: { greater_than: 0, less_than_or_equal_to: 24 }

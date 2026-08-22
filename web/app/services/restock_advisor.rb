@@ -18,7 +18,7 @@ class RestockAdvisor
     :sold_30,
     :days_of_cover,   # Float or nil (no recent sales)
     :suggested_qty,   # Integer or nil (no recent sales — restocking won't help)
-    keyword_init: true,
+    keyword_init: true
   )
 
   COVER_DAYS = 30
@@ -48,7 +48,7 @@ class RestockAdvisor
           sold_14: sold14.fetch(key, 0),
           sold_30: s30,
           days_of_cover: daily_rate.positive? ? (on_hand / daily_rate).round(1) : nil,
-          suggested_qty: daily_rate.positive? ? [((daily_rate * COVER_DAYS).ceil - on_hand), 0].max : nil,
+          suggested_qty: daily_rate.positive? ? [((daily_rate * COVER_DAYS).ceil - on_hand), 0].max : nil
         )
         [alert.id, row]
       end
@@ -58,13 +58,19 @@ class RestockAdvisor
 
     # sku => [shopify_units_total, square_units_total] for every location.
     def stock_by_sku(skus)
-      variant_ids = ShopifyVariant.where("LOWER(\"sku\") IN (?)", skus).pluck(:id, :sku)
-        .to_h { |id, sku| [id, sku.to_s.downcase] }
-      variation_ids = SquareVariation.where("LOWER(\"sku\") IN (?)", skus).pluck(:id, :sku)
-        .to_h { |id, sku| [id, sku.to_s.downcase] }
+      variant_ids = ShopifyVariant.where('LOWER("sku") IN (?)', skus).pluck(:id, :sku)
+                                  .to_h do |id, sku|
+        [id,
+         sku.to_s.downcase]
+      end
+      variation_ids = SquareVariation.where('LOWER("sku") IN (?)', skus).pluck(:id, :sku)
+                                     .to_h do |id, sku|
+        [id,
+         sku.to_s.downcase]
+      end
 
-      shop = InventoryLevel.mirrored("shopify").where(shopifyVariantId: variant_ids.keys)
-      pos = InventoryLevel.mirrored("square").where(squareVariationId: variation_ids.keys)
+      shop = InventoryLevel.mirrored('shopify').where(shopifyVariantId: variant_ids.keys)
+      pos = InventoryLevel.mirrored('square').where(squareVariationId: variation_ids.keys)
 
       shop_totals = Hash.new(0)
       shop.group_by(&:shopifyVariantId).each do |id, levels|
@@ -82,11 +88,11 @@ class RestockAdvisor
     # (Shopify + Square + SwipeSimple all land there).
     def sold_by_sku(skus, window)
       Core::OrderLine.joins(:order)
-        .where("LOWER(order_lines.\"sku\") IN (?)", skus)
-        .where(orders: { occurred_at: window.ago.. })
-        .group(:sku)
-        .sum(:quantity)
-        .to_h { |sku, qty| [sku.downcase, qty] }
+                     .where('LOWER(order_lines."sku") IN (?)', skus)
+                     .where(orders: { occurred_at: window.ago.. })
+                     .group(:sku)
+                     .sum(:quantity)
+                     .to_h { |sku, qty| [sku.downcase, qty] }
     end
   end
 end

@@ -9,7 +9,7 @@ module SyncConcern
   # How far back to look for orders. Configurable via SYNC_HISTORY_DAYS
   # (defaults to 30 days to match the original behavior).
   def history_lookback
-    days = EnvStore.fetch("SYNC_HISTORY_DAYS", "").to_i
+    days = EnvStore.fetch('SYNC_HISTORY_DAYS', '').to_i
     days.positive? ? days.days : 30.days
   end
 

@@ -5,13 +5,16 @@
 # clears the overrides so a role falls back to the defaults.
 class PermissionsController < AuthenticatedController
   before_action :authorize_read, only: :show
-  before_action :authorize_write, only: [:save, :reset]
+  before_action :authorize_write, only: %i[save reset]
 
   def show
     @roles = User.roles.keys
     @catalog = User.permission_catalog
     @overrides = RolePermission.where(tenant_id: Current.tenant_id)
-      .index_by { |rp| [rp.role, rp.permission] }
+                               .index_by do |rp|
+      [rp.role,
+       rp.permission]
+    end
     @builtin = User::ROLE_PERMISSIONS
   end
 
@@ -28,14 +31,14 @@ class PermissionsController < AuthenticatedController
         RolePermission.create!(tenant_id: Current.tenant_id, role: role, permission: permission, enabled: true)
       end
     end
-    ActivityLogger.log("role_permissions_saved", details: "role overrides updated")
-    redirect_to(permissions_path, notice: "Permissions saved.")
+    ActivityLogger.log('role_permissions_saved', details: 'role overrides updated')
+    redirect_to(permissions_path, notice: 'Permissions saved.')
   end
 
   def reset
     RolePermission.where(tenant_id: Current.tenant_id).delete_all
-    ActivityLogger.log("role_permissions_reset", details: "cleared to defaults")
-    redirect_to(permissions_path, notice: "Permissions reset to defaults.")
+    ActivityLogger.log('role_permissions_reset', details: 'cleared to defaults')
+    redirect_to(permissions_path, notice: 'Permissions reset to defaults.')
   end
 
   private

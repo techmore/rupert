@@ -24,7 +24,7 @@ class SizeDeriver
         summary[:failed] += result[:failed]
       rescue StandardError => e
         summary[:failed] += 1
-        Rails.logger.error("[SizeDeriver] #{family&.name || "family"} failed: #{e.class}: #{e.message}")
+        Rails.logger.error("[SizeDeriver] #{family&.name || 'family'} failed: #{e.class}: #{e.message}")
       end
       summary
     end
@@ -55,7 +55,7 @@ class SizeDeriver
           member: member,
           target: target,
           current: current,
-          needed: current.nil? || target != current,
+          needed: current.nil? || target != current
         }
       end
 
@@ -114,20 +114,21 @@ class SizeDeriver
           next if delta.zero?
 
           begin
-            PlatformPushGuard.authorize!("shopify", actor: "system")
+            PlatformPushGuard.authorize!('shopify', actor: 'system')
             shopify = Location.shopify_primary
-            raise ShopifyClient::Error, "No Shopify location" if shopify.nil?
+            raise ShopifyClient::Error, 'No Shopify location' if shopify.nil?
 
             InventoryWriter.adjust_shopify!(
               inventory_item_id: variant.inventoryItemId,
               delta: delta,
               location: shopify,
-              reference: "size-derive",
+              reference: 'size-derive',
               change_from: current,
-              idempotency_key: InventoryWriter.per_run_key("hh-size", variant.sku, variant.id, current, delta),
+              idempotency_key: InventoryWriter.per_run_key('hh-size', variant.sku, variant.id, current, delta)
             )
-            journal_movement(change, variant_id: variant.id, before: current, after: target, platform: "shopify", delta: delta)
-            notes << "Shopify #{delta.positive? ? "+" : ""}#{delta}"
+            journal_movement(change, variant_id: variant.id, before: current, after: target, platform: 'shopify',
+                                     delta: delta)
+            notes << "Shopify #{delta.positive? ? '+' : ''}#{delta}"
           rescue StandardError => e
             ok = false
             notes << "Shopify ✕ #{e.message}"
@@ -137,7 +138,7 @@ class SizeDeriver
 
       # Square: physical count at the home location.
       if change.square_variation_id.present? && home.present?
-        PlatformPushGuard.authorize!("square", actor: "system")
+        PlatformPushGuard.authorize!('square', actor: 'system')
         before = InventoryLevel.total_for_variation(change.square_variation_id)
         begin
           InventoryWriter.physical_count!(
@@ -145,9 +146,9 @@ class SizeDeriver
             quantity: target,
             location: home,
             reference_id: "hh-size-#{change.sku}",
-            idempotency_key: "hh-size-#{change.sku}-#{change.id}",
+            idempotency_key: "hh-size-#{change.sku}-#{change.id}"
           )
-          journal_movement(change, before: before, after: target, platform: "square", delta: target - before)
+          journal_movement(change, before: before, after: target, platform: 'square', delta: target - before)
           notes << "Square → #{target}"
         rescue StandardError => e
           ok = false
@@ -156,29 +157,29 @@ class SizeDeriver
       end
 
       if ok
-        change.update!(status: "applied", error: notes.join(", ").presence)
+        change.update!(status: 'applied', error: notes.join(', ').presence)
       else
-        change.update!(status: "failed", error: notes.join(", ").presence)
+        change.update!(status: 'failed', error: notes.join(', ').presence)
       end
       ok
     end
 
     private
 
-    def journal_movement(change, variant_id: nil, before:, after:, platform:, delta:)
+    def journal_movement(change, before:, after:, platform:, delta:, variant_id: nil)
       InventoryMovement.create!(
         sku: change.sku,
         shopifyVariantId: variant_id,
-        squareVariationId: platform == "square" ? change.square_variation_id : nil,
-        source: "size-derive",
-        direction: delta.negative? ? "out" : "in",
+        squareVariationId: platform == 'square' ? change.square_variation_id : nil,
+        source: 'size-derive',
+        direction: delta.negative? ? 'out' : 'in',
         delta: delta,
         quantityBefore: before,
         quantityAfter: after,
-        reason: "Derived size from root grams",
+        reason: 'Derived size from root grams',
         reference: "size-family-#{change.family_id}",
-        actor: "system",
-        createdAt: Time.current,
+        actor: 'system',
+        createdAt: Time.current
       )
     end
 
@@ -216,14 +217,14 @@ class SizeDeriver
       since = family.sales_watermark - SALES_OVERLAP
       sold = 0.0
       Core::OrderLine.joins(:order)
-        .where(orders: { occurred_at: since..Time.current })
-        .where.not(sku: nil)
-        .find_each do |line|
-          grams = lookup[line.sku.to_s.downcase]
-          next if grams.nil?
+                     .where(orders: { occurred_at: since..Time.current })
+                     .where.not(sku: nil)
+                     .find_each do |line|
+                       grams = lookup[line.sku.to_s.downcase]
+                       next if grams.nil?
 
-          sold += line.quantity.to_i * grams
-        end
+                       sold += line.quantity.to_i * grams
+                     end
 
       family.update!(sales_watermark: Time.current)
       sold.round(3)
@@ -234,8 +235,11 @@ class SizeDeriver
       family.members.each do |member|
         grams = member.grams.to_f
         lookup[member.sku.to_s.downcase] = grams
-        variation = member.square_variation_id.present? ?
-          SquareVariation.find_by(id: member.square_variation_id) : SquareVariation.find_by(sku: member.sku)
+        variation = if member.square_variation_id.present?
+                      SquareVariation.find_by(id: member.square_variation_id)
+                    else
+                      SquareVariation.find_by(sku: member.sku)
+                    end
         lookup[variation.name.to_s.downcase] = grams if variation
         lookup[variation.sku.to_s.downcase] = grams if variation && variation.sku.present?
       end
@@ -254,7 +258,7 @@ class SizeDeriver
       family.size_changes.pending.find_each do |change|
         next if applicable.any? { |proposal| proposal[:member].sku.casecmp?(change.sku) }
 
-        change.update!(status: "skipped")
+        change.update!(status: 'skipped')
       end
 
       applicable.each do |proposal|
@@ -264,8 +268,8 @@ class SizeDeriver
         change.root_grams = result[:root_grams]
         change.target_quantity = proposal[:target]
         change.square_variation_id = proposal[:member].square_variation_id
-        change.status = "pending"
-        change.mode = "approval"
+        change.status = 'pending'
+        change.mode = 'approval'
         change.error = nil
         change.save!
       end

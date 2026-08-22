@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "set"
-
 # Consolidates surplus Shopify variants that share one SKU (which maps to a
 # single POOLED Square item). Business decision: for these SKUs there is really
 # only ONE physical product per SKU/size, so Shopify should have exactly one
@@ -25,7 +23,7 @@ class ShopifySkuConsolidator
       new.build_plan!
     end
 
-    def apply!(confirmed: ENV["CONFIRM_CONSOLIDATE"] == "yes")
+    def apply!(confirmed: ENV['CONFIRM_CONSOLIDATE'] == 'yes')
       r = new
       r.build_plan!
       r.apply!(confirmed: confirmed)
@@ -44,7 +42,7 @@ class ShopifySkuConsolidator
         canonical: canonical,
         surplus: surplus,
         already_tracked: surplus.count { |v| v.tracked },
-        archived_surplus: surplus.count { |v| status_of(v) == "ARCHIVED" },
+        archived_surplus: surplus.count { |v| status_of(v) == 'ARCHIVED' }
       }
     end
 
@@ -57,13 +55,13 @@ class ShopifySkuConsolidator
         groups: consolidated.length,
         surplus_to_untrack: consolidated.sum { |g| g[:surplus].count { |v| v.tracked } },
         archived_surplus_to_delink: consolidated.sum { |g| g[:archived_surplus] },
-        canonical_kept: consolidated.length,
-      },
+        canonical_kept: consolidated.length
+      }
     }
   end
 
-  def apply!(confirmed: ENV["CONFIRM_CONSOLIDATE"] == "yes")
-    raise "Call build_plan! first" if @plan.nil?
+  def apply!(confirmed: ENV['CONFIRM_CONSOLIDATE'] == 'yes')
+    raise 'Call build_plan! first' if @plan.nil?
     raise "Applying requires ENV['CONFIRM_CONSOLIDATE']=yes" unless confirmed
 
     result = { untracked: 0, delinked_archived: 0, skipped_already_untracked: 0, canonical_kept: [] }
@@ -77,12 +75,12 @@ class ShopifySkuConsolidator
         end
         # archived duplicate copies should lose their link so they stop tripping
         # the shared-SKU flag
-        if status_of(v) == "ARCHIVED"
-          link = SkuLink.linked.find_by(shopifyVariantId: v.id)
-          if link
-            link.destroy
-            result[:delinked_archived] += 1
-          end
+        next unless status_of(v) == 'ARCHIVED'
+
+        link = SkuLink.linked.find_by(shopifyVariantId: v.id)
+        if link
+          link.destroy
+          result[:delinked_archived] += 1
         end
       end
       result[:canonical_kept] << g[:canonical].sku
@@ -93,11 +91,12 @@ class ShopifySkuConsolidator
   private
 
   def duplicate_groups
-    scope = ShopifyVariant.where.not(sku: [nil, ""])
-      .where(tracked: true) # only consider currently-tracked (sellable) variants
+    scope = ShopifyVariant.where.not(sku: [nil, ''])
+                          .where(tracked: true) # only consider currently-tracked (sellable) variants
     collisions = {}
     scope.each do |v|
       next if SKIP_SKUS.include?(v.sku.downcase)
+
       collisions[v.sku] ||= []
       collisions[v.sku] << v
     end
@@ -108,7 +107,7 @@ class ShopifySkuConsolidator
   # duplicates to clean), then one already linked to a Square variation, then
   # the first by id.
   def pick_canonical(variants)
-    active = variants.select { |v| status_of(v) != "ARCHIVED" }
+    active = variants.select { |v| status_of(v) != 'ARCHIVED' }
     pool = active.empty? ? variants : active
 
     linked = pool.find { |v| SkuLink.linked.exists?(shopifyVariantId: v.id) }

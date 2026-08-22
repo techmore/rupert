@@ -21,37 +21,37 @@ class SyncEngine
   REFRESH_TAIL = 48.hours
 
   class << self
-    def run!(mode: "manual", actor: "user", tenant: nil, history_days: nil)
+    def run!(mode: 'manual', actor: 'user', tenant: nil, history_days: nil)
       Current.tenant = tenant if tenant
-      raise ArgumentError, "No tenant in context" if Current.tenant_id.nil?
+      raise ArgumentError, 'No tenant in context' if Current.tenant_id.nil?
 
       # Recover any orphaned running run BEFORE we try to start a new one so a
       # hung/failed worker can't hold the per-tenant lock indefinitely. This
       # is what keeps the 15-minute schedule alive across worker restarts.
       recover_stale_runs!
 
-      run = create_run!(mode: mode, source: "all", actor: actor)
+      run = create_run!(mode: mode, source: 'all', actor: actor)
       Current.sync_run = run
 
       begin
         summary = {}
-        shopify = CatalogSyncer.sync!(since: order_since("shopify", history_days))
+        shopify = CatalogSyncer.sync!(since: order_since('shopify', history_days))
         summary[:shopify] = { products: shopify[:products], variants: shopify[:variants] }
         if (oversold = shopify[:oversold_variants]).to_i.positive?
           summary[:shopify][:oversold_variants] = oversold
         end
-        LedgerImporter.from_shopify_orders!(shopify.dig(:orders, "nodes"))
-        advance_watermark!("shopify", run.startedAt)
+        LedgerImporter.from_shopify_orders!(shopify.dig(:orders, 'nodes'))
+        advance_watermark!('shopify', run.startedAt)
 
         # Square syncs are read-only mirrors (Square -> local DB) and always run
         # when configured; the freeze only blocks *writes* to Square.
         if SquareClient.configured?
-          square = SquareSyncer.sync!(since: order_since("square", history_days))
+          square = SquareSyncer.sync!(since: order_since('square', history_days))
           summary[:square] = { locations: square[:locations].length, orders: square[:orders].length }
           LedgerImporter.from_square_orders!(square[:orders])
-          advance_watermark!("square", run.startedAt)
+          advance_watermark!('square', run.startedAt)
         else
-          summary[:square] = { status: "skipped", reason: "Square is not configured" }
+          summary[:square] = { status: 'skipped', reason: 'Square is not configured' }
         end
 
         AlertGenerator.sync!
@@ -61,44 +61,44 @@ class SyncEngine
         # Outbound stock writes happen only through explicit, owner-approved
         # flows (size-family derives, remediation tasks).
 
-        run.update!(status: "success", finishedAt: Time.current, details: summary.to_json)
+        run.update!(status: 'success', finishedAt: Time.current, details: summary.to_json)
         bump_cache_logging_only
         run
       rescue StandardError => e
-        run.update!(status: "failed", error: e.message.to_s[0, 2000], finishedAt: Time.current)
+        run.update!(status: 'failed', error: e.message.to_s[0, 2000], finishedAt: Time.current)
         raise
       ensure
         Current.sync_run = nil
       end
     end
 
-    def run_source!(source, actor: "user", tenant: nil)
+    def run_source!(source, actor: 'user', tenant: nil)
       Current.tenant = tenant if tenant
-      raise ArgumentError, "No tenant in context" if Current.tenant_id.nil?
-      raise ArgumentError, "Unknown sync source" unless ["shopify", "square"].include?(source)
+      raise ArgumentError, 'No tenant in context' if Current.tenant_id.nil?
+      raise ArgumentError, 'Unknown sync source' unless %w[shopify square].include?(source)
 
       recover_stale_runs!
-      run = create_run!(mode: "manual", source: source, actor: actor)
+      run = create_run!(mode: 'manual', source: source, actor: actor)
       Current.sync_run = run
 
       begin
-        if source == "square"
-          raise SquareClient::Error, "SQUARE_ACCESS_TOKEN is not set" unless SquareClient.configured?
+        if source == 'square'
+          raise SquareClient::Error, 'SQUARE_ACCESS_TOKEN is not set' unless SquareClient.configured?
 
           # A Square sync is a read-only mirror and runs even while Square is
           # frozen (the freeze only blocks outbound writes).
-          square = SquareSyncer.sync!(since: order_since("square", nil))
+          square = SquareSyncer.sync!(since: order_since('square', nil))
           LedgerImporter.from_square_orders!(square[:orders])
         else
-          shopify = CatalogSyncer.sync!(since: order_since("shopify", nil))
-          LedgerImporter.from_shopify_orders!(shopify.dig(:orders, "nodes"))
+          shopify = CatalogSyncer.sync!(since: order_since('shopify', nil))
+          LedgerImporter.from_shopify_orders!(shopify.dig(:orders, 'nodes'))
         end
         advance_watermark!(source, run.startedAt)
-        run.update!(status: "success", finishedAt: Time.current, details: { source: source }.to_json)
+        run.update!(status: 'success', finishedAt: Time.current, details: { source: source }.to_json)
         bump_cache_logging_only
         run
       rescue StandardError => e
-        run.update!(status: "failed", error: e.message.to_s[0, 2000], finishedAt: Time.current)
+        run.update!(status: 'failed', error: e.message.to_s[0, 2000], finishedAt: Time.current)
         raise
       ensure
         Current.sync_run = nil
@@ -106,22 +106,23 @@ class SyncEngine
     end
 
     def running?
-      SyncRun.unscoped.where(tenant_id: Current.tenant_id, status: "running").exists?
+      SyncRun.unscoped.where(tenant_id: Current.tenant_id, status: 'running').exists?
     end
 
     # One-way import of a SwipeSimple CSV export (SwipeSimple has no public
     # API). Idempotent, synchronous, and recorded as a sync run.
-    def import_swipesimple_csv!(csv_text_or_path, actor: "user", tenant: nil)
+    def import_swipesimple_csv!(csv_text_or_path, actor: 'user', tenant: nil)
       Current.tenant = tenant if tenant
-      raise ArgumentError, "No tenant in context" if Current.tenant_id.nil?
+      raise ArgumentError, 'No tenant in context' if Current.tenant_id.nil?
 
-      run = SyncRun.create!(mode: "csv", status: "running", source: "swipesimple", actor: actor, startedAt: Time.current)
+      run = SyncRun.create!(mode: 'csv', status: 'running', source: 'swipesimple', actor: actor,
+                            startedAt: Time.current)
       summary = SwipesimpleImporter.import!(csv_text_or_path)
-      run.update!(status: "success", finishedAt: Time.current, details: summary.to_h.to_json)
+      run.update!(status: 'success', finishedAt: Time.current, details: summary.to_h.to_json)
       DataCache.bump!
       summary
     rescue StandardError => e
-      run&.update!(status: "failed", error: e.message.to_s[0, 2000], finishedAt: Time.current)
+      run&.update!(status: 'failed', error: e.message.to_s[0, 2000], finishedAt: Time.current)
       raise
     end
 
@@ -130,7 +131,7 @@ class SyncEngine
     def backfill_since(history_days)
       return nil if history_days.nil?
 
-      (Time.current - history_days.days).strftime("%Y-%m-%d")
+      (Time.current - history_days.days).strftime('%Y-%m-%d')
     end
 
     # The `since` for a source's order fetch. Explicit history_days (manual
@@ -145,7 +146,7 @@ class SyncEngine
       return nil if watermark.nil?
 
       since = watermark - REFRESH_TAIL
-      source == "square" ? since.iso8601 : since.strftime("%Y-%m-%d")
+      source == 'square' ? since.iso8601 : since.strftime('%Y-%m-%d')
     end
 
     def read_watermark(source)
@@ -160,8 +161,8 @@ class SyncEngine
     # to skip data.
     def advance_watermark!(source, to_time)
       Setting.create_with(value: to_time.iso8601)
-        .find_or_create_by!(key: watermark_key(source), tenant_id: Current.tenant_id)
-        .update!(value: to_time.iso8601)
+             .find_or_create_by!(key: watermark_key(source), tenant_id: Current.tenant_id)
+             .update!(value: to_time.iso8601)
     rescue StandardError => e
       Rails.logger.warn("SyncEngine: could not advance #{source} watermark (orders will be re-imported next run): #{e.class}: #{e.message}")
     end
@@ -187,22 +188,22 @@ class SyncEngine
     # retried after stale runs are cleared, so two threads can never sync the
     # same tenant concurrently.
     def create_run!(mode:, source:, actor:)
-      run = SyncRun.new(mode: mode, status: "running", source: source, actor: actor, startedAt: Time.current)
+      run = SyncRun.new(mode: mode, status: 'running', source: source, actor: actor, startedAt: Time.current)
       run.save!
       run
     rescue ActiveRecord::RecordNotUnique
       recover_stale_runs!
-      raise AlreadyRunning, "A sync is already running" if running?
+      raise AlreadyRunning, 'A sync is already running' if running?
 
       retry
     end
 
     def recover_stale_runs!
       cutoff = STALE_RUN_AFTER.ago
-      SyncRun.unscoped.where(tenant_id: Current.tenant_id, status: "running").where('"startedAt" < ?', cutoff).update_all(
-        status: "failed",
+      SyncRun.unscoped.where(tenant_id: Current.tenant_id, status: 'running').where('"startedAt" < ?', cutoff).update_all(
+        status: 'failed',
         finishedAt: Time.current,
-        error: "Automatically recovered stale sync after #{STALE_RUN_AFTER.inspect}",
+        error: "Automatically recovered stale sync after #{STALE_RUN_AFTER.inspect}"
       )
     end
   end

@@ -20,7 +20,7 @@ class CatalogLinks
     :square_sku,
     :square_qty,
     :status,
-    keyword_init: true,
+    keyword_init: true
   )
 
   class << self
@@ -34,7 +34,7 @@ class CatalogLinks
         next if variant.nil? || variation.nil?
 
         square_sku = variation.sku.presence
-        status = link.sku.to_s.downcase == square_sku.to_s.downcase ? "matched" : "mismatched"
+        status = link.sku.to_s.downcase == square_sku.to_s.downcase ? 'matched' : 'mismatched'
 
         Row.new(
           sku: link.sku,
@@ -44,15 +44,15 @@ class CatalogLinks
           square_name: variation.name,
           square_sku: square_sku,
           square_qty: square_totals[variation.id] || 0,
-          status: status,
+          status: status
         )
-      end.sort_by { |row| [row.status == "matched" ? 1 : 0, row.product_title.to_s.downcase] }
+      end.sort_by { |row| [row.status == 'matched' ? 1 : 0, row.product_title.to_s.downcase] }
     end
 
     def summary
       rows = self.rows
       linked = rows.length
-      matched = rows.count { |r| r.status == "matched" }
+      matched = rows.count { |r| r.status == 'matched' }
 
       # Anti-joins via subquery over COMPLETE links only (both sides present):
       # a dead half-link row means the item is effectively one-sided.
@@ -66,11 +66,11 @@ class CatalogLinks
         matched: matched,
         mismatched: linked - matched,
         shopify_only: ShopifyVariant.joins(:product)
-          .where('"ShopifyProduct"."status" = ?', "ACTIVE")
-          .where.not(sku: [nil, ""])
-          .where.not(id: linked_shopify_ids).count,
-        square_only: SquareVariation.where.not(sku: [nil, ""])
-          .where.not(id: linked_square_ids).count,
+                                    .where('"ShopifyProduct"."status" = ?', 'ACTIVE')
+                                    .where.not(sku: [nil, ''])
+                                    .where.not(id: linked_shopify_ids).count,
+        square_only: SquareVariation.where.not(sku: [nil, ''])
+                                    .where.not(id: linked_square_ids).count
       }
     end
   end

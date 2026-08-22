@@ -8,14 +8,16 @@
 # the box locally.
 if Rails.env.production?
   %w[RAILS_ENCRYPTION_PRIMARY_KEY RAILS_ENCRYPTION_DETERMINISTIC_KEY RAILS_ENCRYPTION_KEY_DERIVATION_SALT].each do |key|
-    raise "Missing #{key} in the environment — set it (bin/rails db:encryption:init) or encrypted settings will be unreadable" if ENV[key].blank?
+    if ENV[key].blank?
+      raise "Missing #{key} in the environment — set it (bin/rails db:encryption:init) or encrypted settings will be unreadable"
+    end
   end
 else
-  ENV["RAILS_ENCRYPTION_PRIMARY_KEY"] ||= "dev-primary-key-0123456789abcdef"
-  ENV["RAILS_ENCRYPTION_DETERMINISTIC_KEY"] ||= "dev-deterministic-key-0123456789"
-  ENV["RAILS_ENCRYPTION_KEY_DERIVATION_SALT"] ||= "dev-kdf-salt-0123456789abcdef"
+  ENV['RAILS_ENCRYPTION_PRIMARY_KEY'] ||= 'dev-primary-key-0123456789abcdef'
+  ENV['RAILS_ENCRYPTION_DETERMINISTIC_KEY'] ||= 'dev-deterministic-key-0123456789'
+  ENV['RAILS_ENCRYPTION_KEY_DERIVATION_SALT'] ||= 'dev-kdf-salt-0123456789abcdef'
 end
 
-Rails.application.config.active_record.encryption.primary_key = ENV.fetch("RAILS_ENCRYPTION_PRIMARY_KEY")
-Rails.application.config.active_record.encryption.deterministic_key = ENV.fetch("RAILS_ENCRYPTION_DETERMINISTIC_KEY")
-Rails.application.config.active_record.encryption.key_derivation_salt = ENV.fetch("RAILS_ENCRYPTION_KEY_DERIVATION_SALT")
+Rails.application.config.active_record.encryption.primary_key = ENV.fetch('RAILS_ENCRYPTION_PRIMARY_KEY')
+Rails.application.config.active_record.encryption.deterministic_key = ENV.fetch('RAILS_ENCRYPTION_DETERMINISTIC_KEY')
+Rails.application.config.active_record.encryption.key_derivation_salt = ENV.fetch('RAILS_ENCRYPTION_KEY_DERIVATION_SALT')

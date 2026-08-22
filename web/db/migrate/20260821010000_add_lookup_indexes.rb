@@ -9,18 +9,18 @@
 #   per-variation history joins on the fastest-growing table
 class AddLookupIndexes < ActiveRecord::Migration[8.1]
   def change
-    add_index :orders, [:tenant_id, :order_number],
-      name: "index_orders_on_tenant_id_and_order_number"
+    add_index :orders, %i[tenant_id order_number],
+              name: 'index_orders_on_tenant_id_and_order_number'
 
-    add_index :"ShopifyVariant", [:tenant_id, :inventoryItemId],
-      name: "idx_shopify_variants_tenant_inventory_item_id"
+    add_index :ShopifyVariant, %i[tenant_id inventoryItemId],
+              name: 'idx_shopify_variants_tenant_inventory_item_id'
 
-    add_index :"SkuLink", [:tenant_id, :squareVariationId],
-      name: "idx_sku_links_tenant_square_variation"
+    add_index :SkuLink, %i[tenant_id squareVariationId],
+              name: 'idx_sku_links_tenant_square_variation'
 
-    add_index :"InventoryMovement", [:tenant_id, :sku],
-      name: "idx_inventory_movements_tenant_sku"
-    add_index :"InventoryMovement", [:tenant_id, :squareVariationId],
-      name: "idx_inventory_movements_tenant_square_variation"
+    add_index :InventoryMovement, %i[tenant_id sku],
+              name: 'idx_inventory_movements_tenant_sku'
+    add_index :InventoryMovement, %i[tenant_id squareVariationId],
+              name: 'idx_inventory_movements_tenant_square_variation'
   end
 end

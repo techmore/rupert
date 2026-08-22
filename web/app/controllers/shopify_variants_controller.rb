@@ -24,20 +24,20 @@ class ShopifyVariantsController < AuthenticatedController
     link.tenant_id = Current.tenant_id
     link.squareVariationId = square.id
     link.sku = @variant.sku.presence || square.sku.presence || @variant.id
-    link.matchSource = "manual"
+    link.matchSource = 'manual'
     link.auto = false
     link.createdAt ||= Time.current
     link.save!
     redirect_to(shopify_variant_path(@variant), notice: "Linked #{@variant.title} to #{square.name}.")
   rescue ActiveRecord::RecordNotFound
-    redirect_to(shopify_variant_path(@variant), alert: "Square variation not found.")
+    redirect_to(shopify_variant_path(@variant), alert: 'Square variation not found.')
   end
 
   # Break the link; the next sync will re-link by SKU if SKUs still match.
   def unlink
     authorize(:module, :inventory_write?)
     @variant.sku_links.destroy_all
-    redirect_to(shopify_variant_path(@variant), notice: "Link removed.")
+    redirect_to(shopify_variant_path(@variant), notice: 'Link removed.')
   end
 
   private

@@ -1,16 +1,16 @@
 # frozen_string_literal: true
 
 ShopifyApp.configure do |config|
-  config.application_name = "Rupert"
-  config.scope = ENV.fetch("SCOPES", "read_products,write_products,read_inventory,write_inventory,read_locations,read_orders,read_customers,write_customers,read_fulfillments,write_fulfillments") # See shopify.app.toml for scopes
+  config.application_name = 'Rupert'
+  config.scope = ENV.fetch('SCOPES', 'read_products,write_products,read_inventory,write_inventory,read_locations,read_orders,read_customers,write_customers,read_fulfillments,write_fulfillments') # See shopify.app.toml for scopes
   # Consult this page for more scope options: https://shopify.dev/api/usage/access-scopes
   config.embedded_app = true
   config.after_authenticate_job = false
-  config.api_version = "2026-07"
+  config.api_version = '2026-07'
 
   # Offline Access Tokens Configuration
   # https://shopify.dev/docs/apps/build/authentication-authorization/access-token-types/offline-access-tokens
-  config.shop_session_repository = "Shop"
+  config.shop_session_repository = 'Shop'
 
   # Online Access Tokens Configuration
   # https://shopify.dev/docs/apps/build/authentication-authorization/access-token-types/online-access-tokens
@@ -23,10 +23,10 @@ ShopifyApp.configure do |config|
   # Automatically trigger re-authentication when the session has expired.
   config.check_session_expiry_date = true
 
-  config.root_url = "/api"
-  config.login_url = "/api/auth"
-  config.login_callback_url = "/api/auth/callback"
-  config.embedded_redirect_url = "/ExitIframe"
+  config.root_url = '/api'
+  config.login_url = '/api/auth'
+  config.login_callback_url = '/api/auth/callback'
+  config.embedded_redirect_url = '/ExitIframe'
 
   # You may want to charge merchants for using your app. Setting the billing configuration will cause the Authenticated
   # controller concern to check that the session is for a merchant that has an active one-time payment or subscription.
@@ -41,16 +41,16 @@ ShopifyApp.configure do |config|
   #   currency_code: "USD", # Only supports USD for now
   # )
 
-  config.api_key = ENV.fetch("SHOPIFY_API_KEY", "").presence
-  config.secret = ENV.fetch("SHOPIFY_API_SECRET", "").presence
+  config.api_key = ENV.fetch('SHOPIFY_API_KEY', '').presence
+  config.secret = ENV.fetch('SHOPIFY_API_SECRET', '').presence
   # Set `old_secret` to the old secret when rotating client credentials
   # https://shopify.dev/docs/apps/build/authentication-authorization/client-secrets/rotate-revoke-client-credentials
-  config.old_secret = ""
-  config.myshopify_domain = ENV.fetch("SHOP_CUSTOM_DOMAIN", "").presence if ENV.fetch("SHOP_CUSTOM_DOMAIN", "").present?
+  config.old_secret = ''
+  config.myshopify_domain = ENV.fetch('SHOP_CUSTOM_DOMAIN', '').presence if ENV.fetch('SHOP_CUSTOM_DOMAIN', '').present?
 
   if defined? Rails::Server
-    raise("Missing SHOPIFY_API_KEY. See https://github.com/Shopify/shopify_app#requirements") unless config.api_key
-    raise("Missing SHOPIFY_API_SECRET. See https://github.com/Shopify/shopify_app#requirements") unless config.secret
+    raise('Missing SHOPIFY_API_KEY. See https://github.com/Shopify/shopify_app#requirements') unless config.api_key
+    raise('Missing SHOPIFY_API_SECRET. See https://github.com/Shopify/shopify_app#requirements') unless config.secret
   end
 end
 
@@ -60,16 +60,16 @@ Rails.application.config.after_initialize do
       api_key: ShopifyApp.configuration.api_key,
       api_secret_key: ShopifyApp.configuration.secret,
       api_version: ShopifyApp.configuration.api_version,
-      host_name: URI(ENV.fetch("HOST", "")).host || "",
+      host_name: URI(ENV.fetch('HOST', '')).host || '',
       scope: ShopifyApp.configuration.scope,
-      is_private: !ENV.fetch("SHOPIFY_APP_PRIVATE_SHOP", "").empty?,
+      is_private: !ENV.fetch('SHOPIFY_APP_PRIVATE_SHOP', '').empty?,
       is_embedded: ShopifyApp.configuration.embedded_app,
       logger: Rails.logger,
       log_level: :info,
-      private_shop: ENV.fetch("SHOPIFY_APP_PRIVATE_SHOP", nil),
+      private_shop: ENV.fetch('SHOPIFY_APP_PRIVATE_SHOP', nil),
       user_agent_prefix: "ShopifyApp/#{ShopifyApp::VERSION}",
       old_api_secret_key: ShopifyApp.configuration.old_secret,
-      expiring_offline_access_tokens: true,
+      expiring_offline_access_tokens: true
     )
   end
 end

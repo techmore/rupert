@@ -5,16 +5,16 @@ module Projects
     include TenantScoped
     include AASM
 
-    self.table_name = "projects"
+    self.table_name = 'projects'
 
-    belongs_to :owner, class_name: "User", foreign_key: :owner_id, optional: true
-    has_many :tasks, class_name: "Projects::Task", foreign_key: :project_id, dependent: :destroy
+    belongs_to :owner, class_name: 'User', foreign_key: :owner_id, optional: true
+    has_many :tasks, class_name: 'Projects::Task', foreign_key: :project_id, dependent: :destroy
 
     validates :name, presence: true
 
     scope :recent, ->(limit = 20) { order(updated_at: :desc).limit(limit) }
 
-    aasm column: "status", no_direct_assignment: true do
+    aasm column: 'status', no_direct_assignment: true do
       state :planned, initial: true
       state :active
       state :on_hold
@@ -22,16 +22,16 @@ module Projects
       state :archived
 
       event :start do
-        transitions from: [:planned, :on_hold], to: :active
+        transitions from: %i[planned on_hold], to: :active
       end
       event :hold do
         transitions from: :active, to: :on_hold
       end
       event :complete do
-        transitions from: [:active, :on_hold], to: :completed
+        transitions from: %i[active on_hold], to: :completed
       end
       event :archive do
-        transitions from: [:completed, :planned, :active, :on_hold], to: :archived
+        transitions from: %i[completed planned active on_hold], to: :archived
       end
     end
 

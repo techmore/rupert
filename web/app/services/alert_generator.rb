@@ -11,25 +11,25 @@ class AlertGenerator
       threshold = threshold_for_current_tenant
       # Load every open alert once so the per-variant pass is in-memory, not one
       # find_by per variant (which previously ran twice per full sync).
-      open_alerts = StockAlert.where(status: "open")
-        .where(shopifyVariantId: ShopifyVariant.select(:id))
-        .group_by(&:shopifyVariantId)
+      open_alerts = StockAlert.where(status: 'open')
+                              .where(shopifyVariantId: ShopifyVariant.select(:id))
+                              .group_by(&:shopifyVariantId)
       created = 0
       resolved = 0
       # Only sellable (ACTIVE) products generate alerts. Archived/DRAFT/UNLISTED
       # products were dropped from the live catalog — they must not reopen alerts.
-      ShopifyVariant.joins(:product).where('"ShopifyProduct"."status" = ?', "ACTIVE")
-        .where.not(sku: [nil, ""]).find_each do |variant|
+      ShopifyVariant.joins(:product).where('"ShopifyProduct"."status" = ?', 'ACTIVE')
+                    .where.not(sku: [nil, '']).find_each do |variant|
         variant_id = variant.id
         quantity = variant.inventoryQuantity.to_i
         if quantity > threshold
           next if open_alerts[variant_id].blank?
 
           StockAlert.where(id: open_alerts[variant_id].map(&:id)).update_all(
-            status: "resolved",
+            status: 'resolved',
             resolvedAt: Time.current,
             quantity: quantity,
-            note: "Stock recovered to #{quantity} (above threshold of #{threshold})",
+            note: "Stock recovered to #{quantity} (above threshold of #{threshold})"
           )
           resolved += 1
         elsif open_alerts[variant_id].blank?
@@ -38,9 +38,9 @@ class AlertGenerator
             sku: variant.sku,
             quantity: quantity,
             threshold: threshold,
-            status: "open",
-            note: quantity <= 0 ? "Out of stock" : "Low stock — below threshold of #{threshold}",
-            createdAt: Time.current,
+            status: 'open',
+            note: quantity <= 0 ? 'Out of stock' : "Low stock — below threshold of #{threshold}",
+            createdAt: Time.current
           )
           created += 1
         end
@@ -52,7 +52,7 @@ class AlertGenerator
       threshold = threshold_for_current_tenant
       return resolve_recovered!(variant_id, quantity, threshold) if quantity > threshold
 
-      existing = StockAlert.find_by(shopifyVariantId: variant_id, status: "open")
+      existing = StockAlert.find_by(shopifyVariantId: variant_id, status: 'open')
       return if existing
 
       StockAlert.create!(
@@ -60,9 +60,9 @@ class AlertGenerator
         sku: sku,
         quantity: quantity,
         threshold: threshold,
-        status: "open",
-        note: quantity <= 0 ? "Out of stock" : "Low stock — below threshold of #{threshold}",
-        createdAt: Time.current,
+        status: 'open',
+        note: quantity <= 0 ? 'Out of stock' : "Low stock — below threshold of #{threshold}",
+        createdAt: Time.current
       )
     end
 
@@ -70,14 +70,14 @@ class AlertGenerator
     # open alerts for that variant resolved instead of leaving them open until
     # a human resolves them manually.
     def resolve_recovered!(variant_id, quantity, threshold)
-      open_alerts = StockAlert.where(shopifyVariantId: variant_id, status: "open")
+      open_alerts = StockAlert.where(shopifyVariantId: variant_id, status: 'open')
       return if open_alerts.none?
 
       open_alerts.update_all(
-        status: "resolved",
+        status: 'resolved',
         resolvedAt: Time.current,
         quantity: quantity,
-        note: "Stock recovered to #{quantity} (above threshold of #{threshold})",
+        note: "Stock recovered to #{quantity} (above threshold of #{threshold})"
       )
     end
 

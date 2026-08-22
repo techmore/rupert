@@ -8,7 +8,7 @@ class FulfillmentMonitorJob < ApplicationJob
   retry_on StandardError, wait: :polynomially_longer, attempts: 5
 
   def perform
-    Tenant.where(status: "active").find_each do |tenant|
+    Tenant.where(status: 'active').find_each do |tenant|
       Current.tenant = tenant
       begin
         FulfillmentMonitor.check! if BuzzAgent.configured?

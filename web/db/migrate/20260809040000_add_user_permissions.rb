@@ -9,8 +9,8 @@ class AddUserPermissions < ActiveRecord::Migration[8.1]
       t.boolean(:enabled, default: true, null: false)
       t.timestamps
 
-      t.index([:tenant_id, :user_id, :permission], unique: true)
-      t.index([:tenant_id, :user_id])
+      t.index(%i[tenant_id user_id permission], unique: true)
+      t.index(%i[tenant_id user_id])
     end
   end
 end

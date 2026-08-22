@@ -2,13 +2,15 @@
 
 module Projects
   class TasksController < AuthenticatedController
-    before_action :set_task, only: [:update, :destroy, :transition]
+    before_action :set_task, only: %i[update destroy transition]
 
     # All tasks across projects, newest first, filterable by status.
     def index
       authorize(:module, :projects_read?)
       tasks = Projects::Task.includes(:project).order(updated_at: :desc)
-      tasks = tasks.where(status: params[:status]) if params[:status].in?(Projects::Task.aasm.states.map(&:name).map(&:to_s))
+      if params[:status].in?(Projects::Task.aasm.states.map(&:name).map(&:to_s))
+        tasks = tasks.where(status: params[:status])
+      end
       @pagy, @tasks = pagy(tasks, items: 30)
       @open_count = Projects::Task.open.count
       @done_count = Projects::Task.completed.count
@@ -21,18 +23,18 @@ module Projects
       @task.assignee_id = Current.user.id if params[:assign_self]
 
       if @task.save
-        redirect_to(@project, notice: "Task added.")
+        redirect_to(@project, notice: 'Task added.')
       else
-        redirect_to(@project, alert: @task.errors.full_messages.join(", "))
+        redirect_to(@project, alert: @task.errors.full_messages.join(', '))
       end
     end
 
     def update
       authorize(@task)
       if @task.update(task_params)
-        redirect_back(fallback_location: @task.project, notice: "Task updated.")
+        redirect_back(fallback_location: @task.project, notice: 'Task updated.')
       else
-        redirect_back(fallback_location: @task.project, alert: @task.errors.full_messages.join(", "))
+        redirect_back(fallback_location: @task.project, alert: @task.errors.full_messages.join(', '))
       end
     end
 
@@ -40,14 +42,14 @@ module Projects
       authorize(@task)
       project = @task.project
       @task.destroy
-      redirect_to(project || projects_path, notice: "Task deleted.")
+      redirect_to(project || projects_path, notice: 'Task deleted.')
     end
 
     # POST /tasks/:id/transition?event=start|finish|block|reopen
     def transition
       authorize(@task)
       event = params[:event]
-      if ["start", "finish", "block", "reopen"].include?(event) && @task.public_send("may_#{event}?")
+      if %w[start finish block reopen].include?(event) && @task.public_send("may_#{event}?")
         @task.send("#{event}!")
         redirect_back(fallback_location: @task.project, notice: "Task #{event}ed.")
       else

@@ -7,7 +7,7 @@
 class WarehouseCartItem < ApplicationRecord
   MAX_QUANTITY = 999
 
-  belongs_to :cart, class_name: "WarehouseCart", foreign_key: :cart_id
+  belongs_to :cart, class_name: 'WarehouseCart', foreign_key: :cart_id
 
   def variant
     @variant ||= ShopifyVariant.unscoped.find_by(id: variant_id)

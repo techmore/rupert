@@ -7,11 +7,11 @@ module Core
   class Customer < ApplicationRecord
     include TenantScoped
 
-    self.table_name = "customers"
+    self.table_name = 'customers'
 
-    SOURCES = ["shopify", "square", "pos", "manual"].freeze
+    SOURCES = %w[shopify square pos manual].freeze
 
-    has_many :orders, class_name: "Core::Order", foreign_key: :customer_id
+    has_many :orders, class_name: 'Core::Order', foreign_key: :customer_id
 
     def self.policy_class
       CustomerPolicy
@@ -20,29 +20,29 @@ module Core
     validates :external_id, presence: true
     validates :source, inclusion: { in: SOURCES }
 
-    scope :search, ->(term) do
+    scope :search, lambda { |term|
       if term.present?
-        where("first_name ILIKE :q OR last_name ILIKE :q OR email ILIKE :q OR phone ILIKE :q", q: "%#{term}%")
+        where('first_name ILIKE :q OR last_name ILIKE :q OR email ILIKE :q OR phone ILIKE :q', q: "%#{term}%")
       end
-    end
+    }
 
     class << self
       def ransackable_attributes(_auth_object = nil)
-        ["first_name", "last_name", "email", "phone", "source", "created_at"]
+        %w[first_name last_name email phone source created_at]
       end
 
       def ransackable_associations(_auth_object = nil)
-        ["orders"]
+        ['orders']
       end
     end
 
     def name
-      [first_name, last_name].compact.join(" ").presence || email || phone || "Unnamed customer"
+      [first_name, last_name].compact.join(' ').presence || email || phone || 'Unnamed customer'
     end
 
     def lifetime_value_cents
       # Grouped aggregate instead of orders.sum (one SQL SUM per rendered row).
-      @lifetime_value_cents ||= orders.pick(Arel.sql("COALESCE(SUM(gross_cents), 0)")).to_i
+      @lifetime_value_cents ||= orders.pick(Arel.sql('COALESCE(SUM(gross_cents), 0)')).to_i
     end
   end
 end

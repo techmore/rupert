@@ -4,12 +4,12 @@ class InventoryCountItem < ApplicationRecord
   include HasCuid
   include TenantScoped
 
-  self.table_name = "InventoryCountItem"
-  self.primary_key = "id"
+  self.table_name = 'InventoryCountItem'
+  self.primary_key = 'id'
 
-  belongs_to :count, class_name: "InventoryCount", foreign_key: "countId", optional: false
-  belongs_to :shopify_variant, class_name: "ShopifyVariant", foreign_key: "shopifyVariantId", optional: true
-  belongs_to :square_variation, class_name: "SquareVariation", foreign_key: "squareVariationId", optional: true
+  belongs_to :count, class_name: 'InventoryCount', foreign_key: 'countId', optional: false
+  belongs_to :shopify_variant, class_name: 'ShopifyVariant', foreign_key: 'shopifyVariantId', optional: true
+  belongs_to :square_variation, class_name: 'SquareVariation', foreign_key: 'squareVariationId', optional: true
 
   validates :sku, presence: true
   validates :quantity, numericality: { only_integer: true, greater_than_or_equal_to: 0 }

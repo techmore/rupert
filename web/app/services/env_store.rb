@@ -6,41 +6,41 @@
 module EnvStore
   # Keys that the GUI may manage. Boot-time keys (SHOPIFY_API_KEY, SECRET,
   # RAILS_MASTER_KEY, DATABASE_URL...) are set by the droplet env instead.
-  MANAGED_KEYS = [
-    "SHOPIFY_CLIENT_ID",
-    "SHOPIFY_CLIENT_SECRET",
-    "SHOPIFY_SHOP_DOMAIN",
-    "SHOPIFY_LOCATION_ID",
-    "SQUARE_APPLICATION_ID",
-    "SQUARE_ACCESS_TOKEN",
-    "SQUARE_ENVIRONMENT",
-    "SQUARE_LOCATION_ID",
-    "SQUARE_SANDBOX_APPLICATION_ID",
-    "SQUARE_SANDBOX_ACCESS_TOKEN",
-    "AUTHORIZE_NET_LOGIN_ID",
-    "AUTHORIZE_NET_TRANSACTION_KEY",
-    "AUTHORIZE_NET_CLIENT_KEY",
-    "AUTHORIZE_NET_SANDBOX",
-    "SYNC_MINUTES",
-    "SYNC_HISTORY_DAYS",
-    "GOOGLE_DRIVE_CLIENT_ID",
-    "GOOGLE_DRIVE_CLIENT_SECRET",
-    "GOOGLE_DRIVE_REFRESH_TOKEN",
-    "GOOGLE_DRIVE_FOLDER_ID",
-    "GOOGLE_DRIVE_RETENTION",
-    "GOOGLE_OAUTH_CLIENT_ID",
-    "GOOGLE_OAUTH_CLIENT_SECRET",
-    "BUZZ_RELAY_URL",
-    "BUZZ_PRIVATE_KEY",
-    "BUZZ_CHANNEL",
-    "BUZZ_ANNOUNCEMENTS_CHANNEL",
-    "BUZZ_INV_ADJUSTMENTS_CHANNEL",
-    "FULFILLMENT_ALERT_HOURS",
-    "OPCODE_BUZZ_PRIVATE_KEY",
-    "PUSH_GUARD_MIN_APPROVALS",
-    "PUSH_GUARD_WINDOW_MINUTES",
-    "PUSH_FREEZE_SHOPIFY",
-    "PUSH_FREEZE_SQUARE",
+  MANAGED_KEYS = %w[
+    SHOPIFY_CLIENT_ID
+    SHOPIFY_CLIENT_SECRET
+    SHOPIFY_SHOP_DOMAIN
+    SHOPIFY_LOCATION_ID
+    SQUARE_APPLICATION_ID
+    SQUARE_ACCESS_TOKEN
+    SQUARE_ENVIRONMENT
+    SQUARE_LOCATION_ID
+    SQUARE_SANDBOX_APPLICATION_ID
+    SQUARE_SANDBOX_ACCESS_TOKEN
+    AUTHORIZE_NET_LOGIN_ID
+    AUTHORIZE_NET_TRANSACTION_KEY
+    AUTHORIZE_NET_CLIENT_KEY
+    AUTHORIZE_NET_SANDBOX
+    SYNC_MINUTES
+    SYNC_HISTORY_DAYS
+    GOOGLE_DRIVE_CLIENT_ID
+    GOOGLE_DRIVE_CLIENT_SECRET
+    GOOGLE_DRIVE_REFRESH_TOKEN
+    GOOGLE_DRIVE_FOLDER_ID
+    GOOGLE_DRIVE_RETENTION
+    GOOGLE_OAUTH_CLIENT_ID
+    GOOGLE_OAUTH_CLIENT_SECRET
+    BUZZ_RELAY_URL
+    BUZZ_PRIVATE_KEY
+    BUZZ_CHANNEL
+    BUZZ_ANNOUNCEMENTS_CHANNEL
+    BUZZ_INV_ADJUSTMENTS_CHANNEL
+    FULFILLMENT_ALERT_HOURS
+    OPCODE_BUZZ_PRIVATE_KEY
+    PUSH_GUARD_MIN_APPROVALS
+    PUSH_GUARD_WINDOW_MINUTES
+    PUSH_FREEZE_SHOPIFY
+    PUSH_FREEZE_SQUARE
   ].freeze
 
   # Settings (DB) win over ENV. ENV is only consulted as a global fallback
@@ -60,7 +60,7 @@ module EnvStore
 
   # Write a managed key into the tenant settings (nil removes it).
   def self.set(key, value)
-    raise ArgumentError, "Key is not managed by the settings store" unless MANAGED_KEYS.include?(key)
+    raise ArgumentError, 'Key is not managed by the settings store' unless MANAGED_KEYS.include?(key)
 
     if value.nil?
       scoped(key)&.destroy
@@ -85,12 +85,11 @@ module EnvStore
   end
 
   def self.export
-    managed = MANAGED_KEYS.to_h { |key| [key, effective(key)] }
-    managed
+    MANAGED_KEYS.to_h { |key| [key, effective(key)] }
   end
 
   def self.effective(key)
-    fetch(key, "")
+    fetch(key, '')
   end
 
   def self.settings_map
@@ -98,10 +97,10 @@ module EnvStore
   end
 
   def self.mask(value)
-    return "" if value.blank?
+    return '' if value.blank?
 
     if value.length <= 8
-      "••••••••"
+      '••••••••'
     else
       "#{value[0, 4]}••••#{value[-4, 4]}"
     end
@@ -110,14 +109,14 @@ module EnvStore
   def self.parse(text)
     text.to_s.lines.each_with_object({}) do |line, result|
       stripped = line.strip
-      next if stripped.empty? || stripped.start_with?("#")
+      next if stripped.empty? || stripped.start_with?('#')
 
-      key, _, value = stripped.partition("=")
+      key, _, value = stripped.partition('=')
       key = key.strip
       next if key.empty?
 
       value = value.strip
-      value = value[1..-2] if value.start_with?("\"") && value.end_with?("\"")
+      value = value[1..-2] if value.start_with?('"') && value.end_with?('"')
       value = value[1..-2] if value.start_with?("'") && value.end_with?("'")
       result[key] = value
     end

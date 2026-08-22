@@ -6,23 +6,23 @@
 class DashboardPresenter
   # Canonical revenue truth: Core::Order (paid/fulfilled), matching reports.
   # LedgerEntry remains only the raw transaction mirror for the Ledger page.
-  PAID_STATUSES = ["paid", "fulfilled"].freeze
+  PAID_STATUSES = %w[paid fulfilled].freeze
 
   attr_reader :product_count,
-    :variant_count,
-    :sku_link_count,
-    :open_alerts,
-    :stockouts,
-    :recent_runs,
-    :recent_syncs,
-    :recent_alerts
+              :variant_count,
+              :sku_link_count,
+              :open_alerts,
+              :stockouts,
+              :recent_runs,
+              :recent_syncs,
+              :recent_alerts
 
   def initialize
-    @product_count = DataCache.fetch("dashboard/product_count") { ShopifyProduct.count }
-    @variant_count = DataCache.fetch("dashboard/variant_count") { ShopifyVariant.count }
-    @sku_link_count = DataCache.fetch("dashboard/sku_link_count") { SkuLink.count }
-    @open_alerts = DataCache.fetch("dashboard/open_alerts") { StockAlert.open.count }
-    @stockouts = DataCache.fetch("dashboard/stockouts") { StockAlert.open.where("quantity <= 0").count }
+    @product_count = DataCache.fetch('dashboard/product_count') { ShopifyProduct.count }
+    @variant_count = DataCache.fetch('dashboard/variant_count') { ShopifyVariant.count }
+    @sku_link_count = DataCache.fetch('dashboard/sku_link_count') { SkuLink.count }
+    @open_alerts = DataCache.fetch('dashboard/open_alerts') { StockAlert.open.count }
+    @stockouts = DataCache.fetch('dashboard/stockouts') { StockAlert.open.where('quantity <= 0').count }
     @recent_runs = ReconcileRun.recent(5)
     @recent_syncs = SyncRun.recent(5)
     @recent_alerts = StockAlert.open.order(createdAt: :desc).limit(5)
@@ -31,14 +31,14 @@ class DashboardPresenter
   # --- Cached (version-keyed, invalidated on sync/mutations) ---
 
   def linked_count
-    @linked_count ||= DataCache.fetch("dashboard/linked_count") { SkuLink.linked.count }
+    @linked_count ||= DataCache.fetch('dashboard/linked_count') { SkuLink.linked.count }
   end
 
   # Linked pairs whose SKUs disagree — a catalog-identity problem, not a stock
   # problem. Quantity differences between Shopify and Square are normal (two
   # locations, two inventories) and are deliberately not counted anywhere.
   def sku_mismatches
-    @sku_mismatches ||= DataCache.fetch("dashboard/sku_mismatches") do
+    @sku_mismatches ||= DataCache.fetch('dashboard/sku_mismatches') do
       links = SkuLink.linked.includes(:square_variation)
       square_skus = links.to_h { |l| [l.id, l.square_variation&.sku.to_s.downcase] }
       links.count { |l| l.sku.to_s.downcase != square_skus[l.id] }
@@ -46,59 +46,59 @@ class DashboardPresenter
   end
 
   def today_revenue
-    @today_revenue ||= DataCache.fetch("dashboard/today_revenue") { today_orders_scope.sum(:gross_cents) }
+    @today_revenue ||= DataCache.fetch('dashboard/today_revenue') { today_orders_scope.sum(:gross_cents) }
   end
 
   def today_orders
-    @today_orders ||= DataCache.fetch("dashboard/today_orders") { today_orders_scope.count }
+    @today_orders ||= DataCache.fetch('dashboard/today_orders') { today_orders_scope.count }
   end
 
   def today_groups
-    @today_groups ||= DataCache.fetch("dashboard/today_groups") do
+    @today_groups ||= DataCache.fetch('dashboard/today_groups') do
       today_orders_scope.group(:source)
-        .pluck(:source, Arel.sql("SUM(\"gross_cents\") AS gross"), Arel.sql("COUNT(*) AS count"))
+                        .pluck(:source, Arel.sql('SUM("gross_cents") AS gross'), Arel.sql('COUNT(*) AS count'))
     end
   end
 
   def yesterday_revenue
-    @yesterday_revenue ||= DataCache.fetch("dashboard/yesterday_revenue") do
+    @yesterday_revenue ||= DataCache.fetch('dashboard/yesterday_revenue') do
       Core::Order.where(occurred_at: (today_start - 1.day)...today_start, status: PAID_STATUSES).sum(:gross_cents)
     end
   end
 
   def week_revenue
-    @week_revenue ||= DataCache.fetch("dashboard/week_revenue") do
+    @week_revenue ||= DataCache.fetch('dashboard/week_revenue') do
       Core::Order.since(7.days.ago).where(status: PAID_STATUSES).sum(:gross_cents)
     end
   end
 
   def month_revenue
-    @month_revenue ||= DataCache.fetch("dashboard/month_revenue") do
+    @month_revenue ||= DataCache.fetch('dashboard/month_revenue') do
       Core::Order.since(30.days.ago).where(status: PAID_STATUSES).sum(:gross_cents)
     end
   end
 
   def ledger_groups
-    @ledger_groups ||= DataCache.fetch("dashboard/ledger_groups") do
+    @ledger_groups ||= DataCache.fetch('dashboard/ledger_groups') do
       Core::Order.since(30.days.ago).where(status: PAID_STATUSES).group(:source)
-        .pluck(:source, Arel.sql("SUM(\"gross_cents\") AS gross"), Arel.sql("COUNT(*) AS count"))
+                 .pluck(:source, Arel.sql('SUM("gross_cents") AS gross'), Arel.sql('COUNT(*) AS count'))
     end
   end
 
   # Revenue per day over the last N days, for chartkick line/area charts.
   def revenue_series(days: 30, source: nil)
-    key = "dashboard/revenue_series/#{days}/#{source || "all"}"
+    key = "dashboard/revenue_series/#{days}/#{source || 'all'}"
     DataCache.fetch(key, ttl: 10.minutes) do
       scope = Core::Order.since(days.days.ago)
       scope = scope.where(source: source) if source.present?
       scope.group_by_day(:occurred_at, default_value: 0, range: days.days.ago..Time.current).sum(:gross_cents)
-        .transform_values { |cents| (cents / 100.0).round(2) }
+           .transform_values { |cents| (cents / 100.0).round(2) }
     end
   end
 
   # Sales count per day over the last N days.
   def sales_volume_series(days: 30, source: nil)
-    key = "dashboard/sales_volume/#{days}/#{source || "all"}"
+    key = "dashboard/sales_volume/#{days}/#{source || 'all'}"
     DataCache.fetch(key, ttl: 10.minutes) do
       scope = Core::Order.since(days.days.ago)
       scope = scope.where(source: source) if source.present?
@@ -108,12 +108,12 @@ class DashboardPresenter
 
   # Gross per hour across all days in range — powers the POS daily shape.
   def hourly_series(days: 30, source: nil)
-    key = "dashboard/hourly_series/#{days}/#{source || "all"}"
+    key = "dashboard/hourly_series/#{days}/#{source || 'all'}"
     DataCache.fetch(key, ttl: 10.minutes) do
       scope = Core::Order.since(days.days.ago)
       scope = scope.where(source: source) if source.present?
       scope.group_by_hour_of_day(:occurred_at, range: days.days.ago..Time.current).sum(:gross_cents)
-        .transform_values { |cents| (cents / 100.0).round(2) }
+           .transform_values { |cents| (cents / 100.0).round(2) }
     end
   end
 
@@ -122,7 +122,7 @@ class DashboardPresenter
     key = "dashboard/source_breakdown/#{days}"
     DataCache.fetch(key, ttl: 10.minutes) do
       Core::Order.since(days.days.ago).group(:source).sum(:gross_cents)
-        .transform_keys(&:capitalize).transform_values { |cents| cents / 100.0 }
+                 .transform_keys(&:capitalize).transform_values { |cents| cents / 100.0 }
     end
   end
 

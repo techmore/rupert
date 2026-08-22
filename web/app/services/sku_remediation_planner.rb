@@ -16,24 +16,24 @@ class SkuRemediationPlanner
       plans = []
       shared_skus(tracked: true).each do |sku|
         variants = ShopifyVariant.joins(:product)
-          .where(tracked: true)
-          .where.not(sku: [nil, ""])
-          .where(sku: sku)
-          .order('"ShopifyProduct"."title", "ShopifyVariant"."title"')
+                                 .where(tracked: true)
+                                 .where.not(sku: [nil, ''])
+                                 .where(sku: sku)
+                                 .order('"ShopifyProduct"."title", "ShopifyVariant"."title"')
         primary = variants.first.product.title
         variants.each do |variant|
           proposed = if variant.product.title == primary
-            sku
-          else
-            "#{sku}-#{product_slug(variant.product.title)}"
-          end
+                       sku
+                     else
+                       "#{sku}-#{product_slug(variant.product.title)}"
+                     end
           plans << Plan.new(
             sku: sku,
             product: variant.product.title,
             variant_id: variant.id,
             variant_title: variant.title,
             current_qty: variant.inventoryQuantity,
-            proposed_sku: proposed,
+            proposed_sku: proposed
           )
         end
       end
@@ -44,15 +44,15 @@ class SkuRemediationPlanner
     # SKUs reused by variants of more than one distinct product. `tracked: nil`
     # (default) considers every variant; pass `true` to only flag tracked ones.
     def shared_skus(tracked: nil)
-      scope = ShopifyVariant.where.not(sku: [nil, ""])
+      scope = ShopifyVariant.where.not(sku: [nil, ''])
       scope = scope.where(tracked: true) if tracked == true
       scope.joins(:product)
-        .group('"ShopifyVariant"."sku"', '"ShopifyVariant"."productId"')
-        .count
-        .keys
-        .group_by(&:first)
-        .select { |_, product_ids| product_ids.map(&:last).uniq.length > 1 }
-        .keys
+           .group('"ShopifyVariant"."sku"', '"ShopifyVariant"."productId"')
+           .count
+           .keys
+           .group_by(&:first)
+           .select { |_, product_ids| product_ids.map(&:last).uniq.length > 1 }
+           .keys
     end
 
     private
@@ -72,7 +72,7 @@ class SkuRemediationPlanner
 
     def product_slug(title)
       words = title.split(/\s+/).filter_map do |word|
-        clean = word.sub(/[^a-zA-Z].*\z/, "")
+        clean = word.sub(/[^a-zA-Z].*\z/, '')
         next if clean.empty?
         next if clean.match?(/[0-9]/)
         next if STOP_WORDS.include?(clean.downcase)

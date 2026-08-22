@@ -4,7 +4,7 @@ class LedgerController < AuthenticatedController
   before_action :authorize_read
 
   def index
-    @source = params[:source].presence || "all"
+    @source = params[:source].presence || 'all'
     @window_days = params[:window].present? ? params[:window].to_i.clamp(1, 365) : 30
 
     since = Time.current - @window_days.days
@@ -12,7 +12,7 @@ class LedgerController < AuthenticatedController
 
     @entries = scope.recent(200)
     @groups = LedgerEntry.since(since).by_source(@source)
-      .group(:source).pluck(:source, Arel.sql("SUM(\"grossCents\") AS gross"), Arel.sql("COUNT(*) AS count"))
+                         .group(:source).pluck(:source, Arel.sql('SUM("grossCents") AS gross'), Arel.sql('COUNT(*) AS count'))
     @total_cents = @groups.sum { |_, gross, _| gross.to_i }
   end
 

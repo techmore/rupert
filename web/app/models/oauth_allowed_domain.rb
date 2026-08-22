@@ -7,11 +7,12 @@ class OauthAllowedDomain < ApplicationRecord
   include TenantScoped
 
   validates :domain,
-    presence: true,
-    uniqueness: { scope: :tenant_id, case_sensitive: false },
-    format: { with: /\A[a-z0-9][a-z0-9-]*(\.[a-z0-9][a-z0-9-]*)+\.?[a-z]*\z/, message: "must look like example.com" }
+            presence: true,
+            uniqueness: { scope: :tenant_id, case_sensitive: false },
+            format: { with: /\A[a-z0-9][a-z0-9-]*(\.[a-z0-9][a-z0-9-]*)+\.?[a-z]*\z/,
+                      message: 'must look like example.com' }
 
-  before_validation { self.domain = domain.to_s.downcase.strip.sub(/\A@/, "") }
+  before_validation { self.domain = domain.to_s.downcase.strip.sub(/\A@/, '') }
 
   # Does this tenant allow Google sign-in for the email's domain? Defaults to
   # Current.tenant; callers on the pre-auth callback (where Current.tenant may
@@ -20,7 +21,7 @@ class OauthAllowedDomain < ApplicationRecord
   def self.allowed?(email, tenant: Current.tenant)
     return false if email.blank? || tenant.nil?
 
-    domain = email.split("@").last.to_s.downcase
+    domain = email.split('@').last.to_s.downcase
     unscoped.exists?(tenant_id: tenant.id, domain: domain)
   end
 end

@@ -12,8 +12,8 @@ class WarehouseController < AuthenticatedController
   end
 
   def update_tiers
-    params.to_unsafe_hash.fetch("tiers", {}).each_value do |attrs|
-      if attrs[:_destroy] == "1"
+    params.to_unsafe_hash.fetch('tiers', {}).each_value do |attrs|
+      if attrs[:_destroy] == '1'
         WarehouseTier.where(shareId: nil).find_by(id: attrs[:id])&.destroy
       elsif attrs[:minQty].present?
         tier = WarehouseTier.where(shareId: nil).find_by(id: attrs[:id]) || WarehouseTier.new(shareId: nil)
@@ -22,9 +22,9 @@ class WarehouseController < AuthenticatedController
         tier.save!
       end
     end
-    redirect_to(warehouse_path, notice: "Global tier schedule updated")
+    redirect_to(warehouse_path, notice: 'Global tier schedule updated')
   rescue ActiveRecord::RecordInvalid => e
-    redirect_to(warehouse_path, alert: e.record.errors.full_messages.join(", "))
+    redirect_to(warehouse_path, alert: e.record.errors.full_messages.join(', '))
   end
 
   private

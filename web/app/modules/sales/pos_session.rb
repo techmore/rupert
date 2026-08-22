@@ -8,10 +8,10 @@ module Sales
     include TenantScoped
     include AASM
 
-    self.table_name = "pos_sessions"
+    self.table_name = 'pos_sessions'
 
-    belongs_to :user, class_name: "User", optional: true
-    belongs_to :location, class_name: "Location", foreign_key: :location_id, optional: true
+    belongs_to :user, class_name: 'User', optional: true
+    belongs_to :location, class_name: 'Location', foreign_key: :location_id, optional: true
 
     validates :name, presence: true
     validates :opened_at, presence: true
@@ -19,7 +19,7 @@ module Sales
 
     scope :recent, ->(limit = 20) { order(opened_at: :desc).limit(limit) }
 
-    aasm column: "status", no_direct_assignment: true do
+    aasm column: 'status', no_direct_assignment: true do
       state :open, initial: true
       state :closed
 
@@ -60,14 +60,14 @@ module Sales
     # Pull sales for this session's window and location from the canonical
     # order stream, grouped by payment method.
     def refresh_from_orders!
-      orders = Core::Order.where("occurred_at >= ?", opened_at)
-      orders = orders.where("occurred_at < ?", closed_at) if closed_at
+      orders = Core::Order.where('occurred_at >= ?', opened_at)
+      orders = orders.where('occurred_at < ?', closed_at) if closed_at
       orders = orders.where(location_id: location_id) if location_id.present?
 
-      tenders = orders.joins(:payments).group("payments.method").sum("payments.amount_cents")
-      self.cash_sales_cents = tenders["cash"].to_i
-      self.card_sales_cents = tenders["card"].to_i
-      self.gift_sales_cents = tenders["gift_card"].to_i
+      tenders = orders.joins(:payments).group('payments.method').sum('payments.amount_cents')
+      self.cash_sales_cents = tenders['cash'].to_i
+      self.card_sales_cents = tenders['card'].to_i
+      self.gift_sales_cents = tenders['gift_card'].to_i
       self.expected_cash_cents = expected_cash_cents
       save!
     end

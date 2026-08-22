@@ -10,13 +10,13 @@ class AddRunningSyncRunUniqueIndex < ActiveRecord::Migration[8.1]
 
   def up
     add_index '"SyncRun"', :tenant_id,
-      name: "index_SyncRun_on_running_per_tenant",
-      where: "status = 'running'",
-      unique: true,
-      algorithm: :concurrently
+              name: 'index_SyncRun_on_running_per_tenant',
+              where: "status = 'running'",
+              unique: true,
+              algorithm: :concurrently
   end
 
   def down
-    remove_index '"SyncRun"', name: "index_SyncRun_on_running_per_tenant"
+    remove_index '"SyncRun"', name: 'index_SyncRun_on_running_per_tenant'
   end
 end

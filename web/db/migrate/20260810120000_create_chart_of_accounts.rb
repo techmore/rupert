@@ -12,8 +12,8 @@ class CreateChartOfAccounts < ActiveRecord::Migration[8.1]
       t.boolean(:active, null: false, default: true)
       t.timestamps
 
-      t.index([:tenant_id, :code], unique: true)
-      t.index([:tenant_id, :account_type])
+      t.index(%i[tenant_id code], unique: true)
+      t.index(%i[tenant_id account_type])
     end
   end
 end

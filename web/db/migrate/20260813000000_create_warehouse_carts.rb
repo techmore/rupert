@@ -6,11 +6,11 @@ class CreateWarehouseCarts < ActiveRecord::Migration[8.1]
       t.string :tenant_id, null: false
       t.string :share_id, null: false
       t.string :token, null: false
-      t.string :status, default: "open", null: false
+      t.string :status, default: 'open', null: false
       t.timestamps
 
       t.index :token, unique: true
-      t.index [:tenant_id, :share_id]
+      t.index %i[tenant_id share_id]
     end
 
     create_table :warehouse_cart_items do |t|
@@ -25,8 +25,8 @@ class CreateWarehouseCarts < ActiveRecord::Migration[8.1]
       t.integer :line_cents, default: 0, null: false
       t.timestamps
 
-      t.index [:cart_id, :variant_id], unique: true
-      t.index [:tenant_id, :share_id]
+      t.index %i[cart_id variant_id], unique: true
+      t.index %i[tenant_id share_id]
     end
   end
 end

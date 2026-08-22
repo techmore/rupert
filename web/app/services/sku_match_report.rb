@@ -17,7 +17,7 @@
 class SkuMatchReport
   Row = Struct.new(
     :product, :variant, :shopify_sku, :square_sku, :linked, :status, :proposed_sku, :note,
-    keyword_init: true,
+    keyword_init: true
   )
 
   def self.rows
@@ -34,8 +34,8 @@ class SkuMatchReport
       product.variants.sort_by(&:title).map do |variant|
         link = link_map[variant.id]
         square = link && square_by_id[link.squareVariationId]
-        shopify_sku = variant.sku.presence || ""
-        square_sku = square&.sku.presence || ""
+        shopify_sku = variant.sku.presence || ''
+        square_sku = square&.sku.presence || ''
         proposal = proposals[variant.id]
         status, note = classify(variant, link, square, duplicate_skus)
         Row.new(
@@ -43,21 +43,22 @@ class SkuMatchReport
           variant: variant.title,
           shopify_sku: shopify_sku,
           square_sku: square_sku,
-          linked: link ? "yes" : "no",
+          linked: link ? 'yes' : 'no',
           status: status,
           proposed_sku: proposal&.proposed_sku.to_s,
-          note: note,
+          note: note
         )
       end
     end
   end
 
   def self.csv
-    require "csv"
+    require 'csv'
     CSV.generate do |out|
-      out << ["Product", "Variant", "Shopify SKU", "Square SKU", "Linked", "Status", "Proposed SKU", "Note"]
+      out << ['Product', 'Variant', 'Shopify SKU', 'Square SKU', 'Linked', 'Status', 'Proposed SKU', 'Note']
       rows.each do |row|
-        out << [row.product, row.variant, row.shopify_sku, row.square_sku, row.linked, row.status, row.proposed_sku, row.note]
+        out << [row.product, row.variant, row.shopify_sku, row.square_sku, row.linked, row.status, row.proposed_sku,
+                row.note]
       end
     end
   end
@@ -66,17 +67,17 @@ class SkuMatchReport
 
   def classify(variant, link, square, duplicate_skus)
     if variant.sku.blank?
-      ["missing-shopify-sku", "Shopify has no SKU — Square can't match it by SKU"]
+      ['missing-shopify-sku', "Shopify has no SKU — Square can't match it by SKU"]
     elsif duplicate_skus.include?(variant.sku)
-      ["duplicate-across-products", "Same SKU is used by another product — rename to keep one SKU per product"]
+      ['duplicate-across-products', 'Same SKU is used by another product — rename to keep one SKU per product']
     elsif link.nil?
-      ["not-linked", "No Square variation is linked to this Shopify variant"]
+      ['not-linked', 'No Square variation is linked to this Shopify variant']
     elsif square.nil? || square.sku.blank?
-      ["square-missing-sku", "Linked Square variation has no SKU"]
+      ['square-missing-sku', 'Linked Square variation has no SKU']
     elsif variant.sku.to_s.downcase != square.sku.to_s.downcase
-      ["sku-mismatch", "Shopify and Square SKUs differ for this product"]
+      ['sku-mismatch', 'Shopify and Square SKUs differ for this product']
     else
-      ["ok", "Shopify and Square share the same SKU"]
+      ['ok', 'Shopify and Square share the same SKU']
     end
   end
 end

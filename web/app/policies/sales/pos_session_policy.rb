@@ -3,7 +3,7 @@
 module Sales
   class PosSessionPolicy < ApplicationPolicy
     def index?
-      module?("sales.read")
+      module?('sales.read')
     end
 
     def show?
@@ -11,7 +11,7 @@ module Sales
     end
 
     def create?
-      module?("sales.write")
+      module?('sales.write')
     end
 
     def new?
@@ -19,15 +19,15 @@ module Sales
     end
 
     def refresh?
-      module?("sales.write") && tenant?
+      module?('sales.write') && tenant?
     end
 
     def close?
-      module?("sales.write") && tenant?
+      module?('sales.write') && tenant?
     end
 
     def reopen?
-      module?("sales.write") && tenant?
+      module?('sales.write') && tenant?
     end
   end
 end

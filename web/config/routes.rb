@@ -1,23 +1,23 @@
 # frozen_string_literal: true
 
 Rails.application.routes.draw do
-  root to: "home#index"
+  root to: 'home#index'
 
-  get "/login", to: "sessions#new", as: :login
-  post "/login", to: "sessions#create"
-  delete "/logout", to: "sessions#destroy", as: :logout
+  get '/login', to: 'sessions#new', as: :login
+  post '/login', to: 'sessions#create'
+  delete '/logout', to: 'sessions#destroy', as: :logout
 
-  get "/auth/google", to: "oauth#authorize", as: :google_auth
-  get "/auth/google/callback", to: "oauth#callback", as: :google_callback
+  get '/auth/google', to: 'oauth#authorize', as: :google_auth
+  get '/auth/google/callback', to: 'oauth#callback', as: :google_callback
 
-  get "/setup", to: "setup#new", as: :setup
-  post "/setup", to: "setup#create"
+  get '/setup', to: 'setup#new', as: :setup
+  post '/setup', to: 'setup#create'
 
-  get "/onboarding", to: "onboarding#index", as: :onboarding
+  get '/onboarding', to: 'onboarding#index', as: :onboarding
 
-  resources :tenants, only: [:index, :new, :create]
+  resources :tenants, only: %i[index new create]
 
-  resources :users, only: [:index, :new, :create, :edit, :update, :destroy] do
+  resources :users, only: %i[index new create edit update destroy] do
     member do
       post :deactivate
       post :activate
@@ -31,23 +31,23 @@ Rails.application.routes.draw do
 
   scope path: :api, format: :json do
     namespace :webhooks do
-      post "/app_uninstalled", to: "app_uninstalled#receive"
-      post "/app_scopes_update", to: "app_scopes_update#receive"
-      post "/customers_data_request", to: "customers_data_request#receive"
-      post "/customers_redact", to: "customers_redact#receive"
-      post "/shop_redact", to: "shop_redact#receive"
+      post '/app_uninstalled', to: 'app_uninstalled#receive'
+      post '/app_scopes_update', to: 'app_scopes_update#receive'
+      post '/customers_data_request', to: 'customers_data_request#receive'
+      post '/customers_redact', to: 'customers_redact#receive'
+      post '/shop_redact', to: 'shop_redact#receive'
     end
   end
 
-  mount ShopifyApp::Engine, at: "/api"
+  mount ShopifyApp::Engine, at: '/api'
 
-  get "/search", to: "search#index", as: :search
-  get "/dashboard", to: "home#index"
-  post "/dashboard/customize", to: "home#customize", as: :customize_dashboard
+  get '/search', to: 'search#index', as: :search
+  get '/dashboard', to: 'home#index'
+  post '/dashboard/customize', to: 'home#customize', as: :customize_dashboard
 
   # ERP modules (registered in ModuleRegistry)
-  get "/sales", to: "sales#index", as: :sales
-  get "/sales/print", to: "sales#print", as: :sales_print
+  get '/sales', to: 'sales#index', as: :sales
+  get '/sales/print', to: 'sales#print', as: :sales_print
   resources :orders, only: [:show] do
     member do
       post :add_tracking
@@ -55,25 +55,25 @@ Rails.application.routes.draw do
       post :refund
     end
   end
-  resources :customers, only: [:index, :show, :new, :create, :edit, :update]
+  resources :customers, only: %i[index show new create edit update]
   namespace :projects do
-    resources :projects, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
+    resources :projects, only: %i[index show new create edit update destroy] do
       member { post :transition }
     end
-    resources :tasks, only: [:index, :create, :update, :destroy] do
+    resources :tasks, only: %i[index create update destroy] do
       member { post :transition }
     end
   end
   namespace :goals do
-    resources :goals, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
+    resources :goals, only: %i[index show new create edit update destroy] do
       member { post :transition }
     end
-    resources :kpis, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
+    resources :kpis, only: %i[index show new create edit update destroy] do
       member { post :reading }
     end
   end
   namespace :sales do
-    resources :pos_sessions, only: [:index, :show, :new, :create] do
+    resources :pos_sessions, only: %i[index show new create] do
       member do
         post :refresh
         post :close
@@ -91,23 +91,23 @@ Rails.application.routes.draw do
   end
   resources :locations
   namespace :finance do
-    get "/accounts", to: "accounts#show", as: :accounts
-    resources :chart_of_accounts, only: [:index, :new, :create, :edit, :update] do
+    get '/accounts', to: 'accounts#show', as: :accounts
+    resources :chart_of_accounts, only: %i[index new create edit update] do
       member do
         post :archive
         post :restore
       end
     end
-    resources :expenses, only: [:index, :new, :create, :edit, :update, :destroy] do
+    resources :expenses, only: %i[index new create edit update destroy] do
       member { post :restore }
     end
-    resources :vendor_payments, only: [:index, :new, :create, :destroy] do
+    resources :vendor_payments, only: %i[index new create destroy] do
       member { post :restore }
     end
   end
   namespace :purchasing do
     resources :vendors
-    resources :purchase_orders, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
+    resources :purchase_orders, only: %i[index show new create edit update destroy] do
       member do
         post :place_order
         post :receive
@@ -118,12 +118,12 @@ Rails.application.routes.draw do
     end
   end
   namespace :people do
-    resources :employees, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
+    resources :employees, only: %i[index show new create edit update destroy] do
       member { post :transition }
     end
-    resources :departments, only: [:index, :new, :create, :edit, :update]
-    resources :positions, only: [:index, :new, :create, :edit, :update]
-    resources :timesheets, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
+    resources :departments, only: %i[index new create edit update]
+    resources :positions, only: %i[index new create edit update]
+    resources :timesheets, only: %i[index show new create edit update destroy] do
       member do
         post :submit
         post :approve
@@ -133,14 +133,14 @@ Rails.application.routes.draw do
         post :remove_entry
       end
     end
-    resources :leave_requests, only: [:index, :show, :new, :create, :destroy] do
+    resources :leave_requests, only: %i[index show new create destroy] do
       member do
         post :approve
         post :deny
         post :cancel
       end
     end
-    resources :pay_runs, only: [:index, :show, :new, :create] do
+    resources :pay_runs, only: %i[index show new create] do
       member do
         post :finalize
         post :pay
@@ -181,7 +181,7 @@ Rails.application.routes.draw do
       post :bulk_update
     end
   end
-  resources :syncs, only: [:index, :create] do
+  resources :syncs, only: %i[index create] do
     collection do
       post :source
       post :import_swipesimple
@@ -190,18 +190,18 @@ Rails.application.routes.draw do
       post :push_guard_unfreeze
     end
   end
-  get "/system", to: "system#index", as: :system
-  get "/connections", to: "connections#index", as: :connections
-  get "/activity", to: "activity#index", as: :activity
+  get '/system', to: 'system#index', as: :system
+  get '/connections', to: 'connections#index', as: :connections
+  get '/activity', to: 'activity#index', as: :activity
   resources :access_logs, only: :index
-  get "/live/sync_status", to: "live#sync_status"
+  get '/live/sync_status', to: 'live#sync_status'
 
   resource :settings, only: :show do
     post :tenant
     post :fulfillment_workflow
     post :oauth_credentials
     post :oauth_domains
-    delete :oauth_domains, to: "settings#oauth_remove_domain"
+    delete :oauth_domains, to: 'settings#oauth_remove_domain'
     get :env, defaults: { format: :json }
     post :env_import, defaults: { format: :json }
     get :env_export
@@ -218,7 +218,7 @@ Rails.application.routes.draw do
     post :buzz_test
   end
 
-  resources :size_families, only: [:index, :new, :create, :edit, :update, :destroy] do
+  resources :size_families, only: %i[index new create edit update destroy] do
     collection do
       post :derive_all
       post :approve_all
@@ -233,28 +233,28 @@ Rails.application.routes.draw do
     end
   end
 
-  get "/warehouse", to: "warehouse#index", as: :warehouse
-  post "/warehouse/tiers", to: "warehouse#update_tiers", as: :update_warehouse_tiers
-  resources :warehouse_shares, only: [:create, :show, :update, :destroy] do
+  get '/warehouse', to: 'warehouse#index', as: :warehouse
+  post '/warehouse/tiers', to: 'warehouse#update_tiers', as: :update_warehouse_tiers
+  resources :warehouse_shares, only: %i[create show update destroy] do
     member do
       post :update_tiers
     end
   end
 
-  get "/w/:token", to: "warehouse_sales#show", as: :warehouse_sale
+  get '/w/:token', to: 'warehouse_sales#show', as: :warehouse_sale
 
-  get "/w/:token/cart", to: "warehouse_carts#show", as: :warehouse_cart
-  post "/w/:token/cart/items", to: "warehouse_carts#add_item", as: :warehouse_cart_add_item
-  patch "/w/:token/cart/items/:item_id", to: "warehouse_carts#update_item", as: :warehouse_cart_item
-  delete "/w/:token/cart/items/:item_id", to: "warehouse_carts#remove_item", as: :warehouse_cart_remove_item
+  get '/w/:token/cart', to: 'warehouse_carts#show', as: :warehouse_cart
+  post '/w/:token/cart/items', to: 'warehouse_carts#add_item', as: :warehouse_cart_add_item
+  patch '/w/:token/cart/items/:item_id', to: 'warehouse_carts#update_item', as: :warehouse_cart_item
+  delete '/w/:token/cart/items/:item_id', to: 'warehouse_carts#remove_item', as: :warehouse_cart_remove_item
 
-  get "/w/:token/checkout", to: "warehouse_checkouts#show", as: :warehouse_checkout
-  post "/w/:token/checkout", to: "warehouse_checkouts#create", as: :warehouse_checkout_submit
+  get '/w/:token/checkout', to: 'warehouse_checkouts#show', as: :warehouse_checkout
+  post '/w/:token/checkout', to: 'warehouse_checkouts#create', as: :warehouse_checkout_submit
 
-  get "/w/:token/orders/:order_number", to: "warehouse_orders#show", as: :warehouse_order
+  get '/w/:token/orders/:order_number', to: 'warehouse_orders#show', as: :warehouse_order
 
-  get "/up", to: proc { [200, { "content-type" => "text/plain" }, ["OK"]] }
+  get '/up', to: proc { [200, { 'content-type' => 'text/plain' }, ['OK']] }
 
   # Any other routes just render the app
-  match "*path" => "home#index", via: [:get, :post]
+  match '*path' => 'home#index', via: %i[get post]
 end

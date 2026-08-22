@@ -2,7 +2,7 @@
 
 class CustomerPolicy < ApplicationPolicy
   def index?
-    module?("customers.read")
+    module?('customers.read')
   end
 
   def show?
@@ -10,7 +10,7 @@ class CustomerPolicy < ApplicationPolicy
   end
 
   def create?
-    module?("customers.write")
+    module?('customers.write')
   end
 
   def new?

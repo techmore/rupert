@@ -10,7 +10,7 @@ class AppScopesUpdateJob < ActiveJob::Base
       return
     end
 
-    shop.access_scopes = webhook["current"].join(",")
+    shop.access_scopes = webhook['current'].join(',')
     shop.save!
   end
 end

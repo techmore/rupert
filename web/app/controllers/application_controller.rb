@@ -24,7 +24,7 @@ class ApplicationController < ActionController::Base
   def require_login
     return redirect_to(setup_path) if Current.user.nil? && !Tenant.exists?
 
-    redirect_to(login_path, alert: "Please sign in") unless Current.user
+    redirect_to(login_path, alert: 'Please sign in') unless Current.user
   end
 
   def load_last_sync

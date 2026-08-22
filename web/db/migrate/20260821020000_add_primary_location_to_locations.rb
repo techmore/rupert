@@ -10,7 +10,7 @@
 class AddPrimaryLocationToLocations < ActiveRecord::Migration[8.1]
   def change
     add_column :Location, :primary_location, :boolean, default: false, null: false
-    add_index :Location, [:tenant_id, :source, :primary_location],
-      name: "idx_locations_tenant_source_primary"
+    add_index :Location, %i[tenant_id source primary_location],
+              name: 'idx_locations_tenant_source_primary'
   end
 end

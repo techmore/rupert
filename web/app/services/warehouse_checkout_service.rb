@@ -7,15 +7,15 @@
 class WarehouseCheckoutService
   Result = Struct.new(:success?, :order, :error, keyword_init: true)
 
-  SHIPPING_FIELDS = [
-    :shipping_name,
-    :shipping_address1,
-    :shipping_address2,
-    :shipping_city,
-    :shipping_province,
-    :shipping_zip,
-    :shipping_country,
-    :shipping_phone,
+  SHIPPING_FIELDS = %i[
+    shipping_name
+    shipping_address1
+    shipping_address2
+    shipping_city
+    shipping_province
+    shipping_zip
+    shipping_country
+    shipping_phone
   ].freeze
 
   class << self
@@ -25,7 +25,7 @@ class WarehouseCheckoutService
         cart: cart,
         shipping: shipping,
         payment_nonce: payment_nonce,
-        data_descriptor: data_descriptor,
+        data_descriptor: data_descriptor
       ).call
     end
   end
@@ -39,9 +39,9 @@ class WarehouseCheckoutService
   end
 
   def call
-    return failure("Your cart is empty.") if @cart.items.empty?
-    return failure("Authorize.net is not configured.") unless AuthorizeNetClient.configured?
-    return failure("Payment details are missing.") if @payment_nonce.blank?
+    return failure('Your cart is empty.') if @cart.items.empty?
+    return failure('Authorize.net is not configured.') unless AuthorizeNetClient.configured?
+    return failure('Payment details are missing.') if @payment_nonce.blank?
 
     # Hard lock: the cart row is locked for the whole checkout so two
     # concurrent POSTs (double-click, refresh, shared cookie) serialize, and a
@@ -50,8 +50,13 @@ class WarehouseCheckoutService
     result = nil
     @cart.with_lock do
       if @cart.checked_out?
-        existing = Core::Order.find_by(tenant_id: @share.tenant_id, source: "online", source_order_id: order_ref_id)
-        result = existing ? Result.new(success?: true, order: existing) : failure("This cart has already been checked out.")
+        existing = Core::Order.find_by(tenant_id: @share.tenant_id, source: 'online', source_order_id: order_ref_id)
+        result = if existing
+                   Result.new(success?: true,
+                              order: existing)
+                 else
+                   failure('This cart has already been checked out.')
+                 end
         next result
       end
 
@@ -65,10 +70,10 @@ class WarehouseCheckoutService
       charge = AuthorizeNetClient.charge!(
         amount_cents: @cart.total_cents,
         payment_nonce: @payment_nonce,
-        data_descriptor: @data_descriptor.presence || "COMMON.ACCEPT.INAPP.PAYMENT",
+        data_descriptor: @data_descriptor.presence || 'COMMON.ACCEPT.INAPP.PAYMENT',
         ref_id: order.source_order_id,
         invoice_number: order.order_number,
-        description: "Warehouse sale · #{@share.name}",
+        description: "Warehouse sale · #{@share.name}"
       )
 
       if charge.approved?
@@ -76,7 +81,8 @@ class WarehouseCheckoutService
         @cart.mark_checked_out!
         result = Result.new(success?: true, order: order)
       else
-        result = Result.new(success?: false, error: "Payment was declined#{": #{charge.message}" if charge.message.present?}")
+        result = Result.new(success?: false,
+                            error: "Payment was declined#{": #{charge.message}" if charge.message.present?}")
         # Roll back the pending order: a declined charge must not leave an
         # order row behind, and the cart stays open for another attempt.
         raise ActiveRecord::Rollback
@@ -97,7 +103,7 @@ class WarehouseCheckoutService
     validated = []
     @cart.items.each do |item|
       variant = item.variant
-      return "#{item.title.presence || "Item"} is no longer available." unless variant
+      return "#{item.title.presence || 'Item'} is no longer available." unless variant
 
       if item.quantity > item.available_quantity
         return "Only #{item.available_quantity} of #{variant.title} are available."
@@ -113,15 +119,15 @@ class WarehouseCheckoutService
   def create_order(lines)
     order = Core::Order.new(
       tenant_id: @share.tenant_id,
-      source: "online",
+      source: 'online',
       source_order_id: order_ref_id,
       order_number: next_order_number,
-      channel: "warehouse",
-      currency: "USD",
+      channel: 'warehouse',
+      currency: 'USD',
       gross_cents: @cart.total_cents,
       tax_cents: 0,
       line_items: lines.sum { |line| line[:item].quantity },
-      occurred_at: Time.current,
+      occurred_at: Time.current
     )
     SHIPPING_FIELDS.each do |field|
       order.send("#{field}=", @shipping[field]) if @shipping[field].present?
@@ -140,23 +146,23 @@ class WarehouseCheckoutService
         name: item.title,
         quantity: item.quantity,
         unit_cents: item.unit_cents,
-        line_cents: item.line_cents,
+        line_cents: item.line_cents
       )
     end
     Core::Payment.create!(
       tenant_id: @share.tenant_id,
       order_id: order.id,
-      method: "card",
+      method: 'card',
       amount_cents: order.gross_cents,
-      status: "completed",
+      status: 'completed',
       reference: charge.transaction_id,
-      paid_at: Time.current,
+      paid_at: Time.current
     )
     order.mark_paid!
   end
 
   def next_order_number
-    "WH-#{Time.current.strftime("%Y%m%d%H%M%S")}-#{SecureRandom.hex(3).upcase}"
+    "WH-#{Time.current.strftime('%Y%m%d%H%M%S')}-#{SecureRandom.hex(3).upcase}"
   end
 
   # Deterministic per cart so a retried checkout (charge succeeded but the
@@ -169,10 +175,10 @@ class WarehouseCheckoutService
 
   def recover_already_processed!
     @cart.reload
-    return failure("This cart has already been checked out.") unless @cart.checked_out?
+    return failure('This cart has already been checked out.') unless @cart.checked_out?
 
-    existing = Core::Order.find_by(tenant_id: @share.tenant_id, source: "online", source_order_id: order_ref_id)
-    existing ? Result.new(success?: true, order: existing) : failure("This order was already processed.")
+    existing = Core::Order.find_by(tenant_id: @share.tenant_id, source: 'online', source_order_id: order_ref_id)
+    existing ? Result.new(success?: true, order: existing) : failure('This order was already processed.')
   end
 
   def failure(error)

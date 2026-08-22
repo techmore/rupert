@@ -6,12 +6,12 @@ module Purchasing
   class PurchaseOrderLine < ApplicationRecord
     include TenantScoped
 
-    self.table_name = "purchase_order_lines"
+    self.table_name = 'purchase_order_lines'
 
     belongs_to :purchase_order,
-      class_name: "Purchasing::PurchaseOrder",
-      foreign_key: :purchase_order_id,
-      inverse_of: :lines
+               class_name: 'Purchasing::PurchaseOrder',
+               foreign_key: :purchase_order_id,
+               inverse_of: :lines
 
     validates :name, presence: true
     validates :quantity, numericality: { greater_than: 0 }

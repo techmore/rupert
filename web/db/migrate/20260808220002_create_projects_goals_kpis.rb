@@ -4,14 +4,14 @@ class CreateProjectsGoalsKpis < ActiveRecord::Migration[8.1]
       t.string :tenant_id, null: false
       t.string :name, null: false
       t.text :description
-      t.string :status, default: "planned", null: false
+      t.string :status, default: 'planned', null: false
       t.string :owner_id
       t.date :due_on
       t.datetime :created_at, null: false
       t.datetime :updated_at, null: false
 
-      t.index [:tenant_id, :status]
-      t.index [:tenant_id, :owner_id]
+      t.index %i[tenant_id status]
+      t.index %i[tenant_id owner_id]
     end
 
     create_table :tasks do |t|
@@ -19,24 +19,24 @@ class CreateProjectsGoalsKpis < ActiveRecord::Migration[8.1]
       t.string :project_id
       t.string :title, null: false
       t.text :description
-      t.string :status, default: "todo", null: false
+      t.string :status, default: 'todo', null: false
       t.string :assignee_id
-      t.string :priority, default: "medium"
+      t.string :priority, default: 'medium'
       t.date :due_on
       t.datetime :completed_at
       t.datetime :created_at, null: false
       t.datetime :updated_at, null: false
 
-      t.index [:tenant_id, :status]
-      t.index [:tenant_id, :project_id]
-      t.index [:tenant_id, :assignee_id]
+      t.index %i[tenant_id status]
+      t.index %i[tenant_id project_id]
+      t.index %i[tenant_id assignee_id]
     end
 
     create_table :goals do |t|
       t.string :tenant_id, null: false
       t.string :name, null: false
       t.text :description
-      t.string :status, default: "active", null: false
+      t.string :status, default: 'active', null: false
       t.string :unit
       t.decimal :target_value, precision: 12, scale: 2
       t.decimal :current_value, precision: 12, scale: 2, default: 0
@@ -44,7 +44,7 @@ class CreateProjectsGoalsKpis < ActiveRecord::Migration[8.1]
       t.datetime :created_at, null: false
       t.datetime :updated_at, null: false
 
-      t.index [:tenant_id, :status]
+      t.index %i[tenant_id status]
     end
 
     create_table :kpis do |t|
@@ -52,11 +52,11 @@ class CreateProjectsGoalsKpis < ActiveRecord::Migration[8.1]
       t.string :name, null: false
       t.string :unit
       t.decimal :target_value, precision: 12, scale: 2
-      t.string :direction, default: "up", null: false
+      t.string :direction, default: 'up', null: false
       t.datetime :created_at, null: false
       t.datetime :updated_at, null: false
 
-      t.index [:tenant_id, :name]
+      t.index %i[tenant_id name]
     end
 
     create_table :kpi_readings do |t|
@@ -67,7 +67,7 @@ class CreateProjectsGoalsKpis < ActiveRecord::Migration[8.1]
       t.datetime :created_at, null: false
       t.datetime :updated_at, null: false
 
-      t.index [:tenant_id, :kpi_id, :measured_at]
+      t.index %i[tenant_id kpi_id measured_at]
     end
   end
 end

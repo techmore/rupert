@@ -18,27 +18,27 @@
 # re-linking run only after a successful dry_run of the whole plan.
 class InventoryDriftMigration
   # sku-suffix suffix applied by SkuRemediationPlanner (e.g. agzoap2.5-PP)
-  SURFIX = { "papaya" => "PP", "trop" => "TZ", "citrus" => "CB", "orange cheesecake" => "OC",
-             "blood orange" => "BO", "blue raspberry" => "TBR" }.freeze
+  SURFIX = { 'papaya' => 'PP', 'trop' => 'TZ', 'citrus' => 'CB', 'orange cheesecake' => 'OC',
+             'blood orange' => 'BO', 'blue raspberry' => 'TBR' }.freeze
 
   STRAIN_KEYS = {
-    "agzoap2.5" => %w[papaya trop citrus orange\ cheesecake],
-    "agzoap10" => %w[papaya trop citrus orange\ cheesecake],
-    "agzoap25" => %w[papaya trop citrus orange\ cheesecake],
-    "agzoap5" => %w[papaya trop citrus orange\ cheesecake],
-    "689745640858" => %w[blood\ orange blue\ raspberry],
+    'agzoap2.5' => ['papaya', 'trop', 'citrus', 'orange cheesecake'],
+    'agzoap10' => ['papaya', 'trop', 'citrus', 'orange cheesecake'],
+    'agzoap25' => ['papaya', 'trop', 'citrus', 'orange cheesecake'],
+    'agzoap5' => ['papaya', 'trop', 'citrus', 'orange cheesecake'],
+    '689745640858' => ['blood orange', 'blue raspberry']
   }.freeze
 
   # Which sku maps to which Square item + home pool for the dry run.
   SHARED_POOLS = {
-    "agzoap2.5" => { square_variation_id: "GQL2WZ7QAODPRYHIAG4SIAW4", home_qty: 180 },
-    "agzoap10" => { square_variation_id: "J7BUE2O7PSQGZAPTVXY3J5ZE", home_qty: 45 },
-    "agzoap25" => { square_variation_id: "EG7YWXKABLHR5PGQXOVQTV37", home_qty: 18 },
-    "689745640858" => { square_variation_id: "M57BLO4XSUGZMPF4BADVNRKR", home_qty: 56 },
+    'agzoap2.5' => { square_variation_id: 'GQL2WZ7QAODPRYHIAG4SIAW4', home_qty: 180 },
+    'agzoap10' => { square_variation_id: 'J7BUE2O7PSQGZAPTVXY3J5ZE', home_qty: 45 },
+    'agzoap25' => { square_variation_id: 'EG7YWXKABLHR5PGQXOVQTV37', home_qty: 18 },
+    '689745640858' => { square_variation_id: 'M57BLO4XSUGZMPF4BADVNRKR', home_qty: 56 }
   }.freeze
 
-  EVENT_LOCATION_EXTERNAL_ID = "L9RQ7FA9YBFWN" # Vendor Events (discontinued)
-  CREAM_SKU = "689745640797"
+  EVENT_LOCATION_EXTERNAL_ID = 'L9RQ7FA9YBFWN' # Vendor Events (discontinued)
+  CREAM_SKU = '689745640797'
 
   class << self
     # Generate the full plan (read-only). Returns a hash describing everything
@@ -50,14 +50,15 @@ class InventoryDriftMigration
         square_creations: square_creation_plans,
         shopify_renames: shopify_rename_plans,
         relinks: relink_plans,
-        summary: summary,
+        summary: summary
       }
     end
 
     # Apply after reviewing the dry plan. Refuses without confirmation + the
     # required push windows, and never partially applies (each phase is gated).
     def apply!(dry_run: true)
-      raise "Applies must be reviewed first (dry_run=true)." unless dry_run
+      raise 'Applies must be reviewed first (dry_run=true).' unless dry_run
+
       # Execution is intentionally not implemented here — see plan output.
       plan
     end
@@ -70,7 +71,7 @@ class InventoryDriftMigration
 
     def event_consolidation_plan
       variation_id = current_square_variation_id(CREAM_SKU)
-      levels = InventoryLevel.where(source: "square", squareVariationId: variation_id)
+      levels = InventoryLevel.where(source: 'square', squareVariationId: variation_id)
       home = levels.find { |l| location_name(l.locationId) == Location.square_primary&.name }
       mobile = levels.find { |l| l.locationId != home&.locationId }
       {
@@ -78,7 +79,7 @@ class InventoryDriftMigration
         square_variation_id: variation_id,
         home_qty: home&.quantity,
         event_qty: mobile&.quantity,
-        action: "move #{mobile&.quantity} units from #{mobile&.locationId} (MOBILE) into home",
+        action: "move #{mobile&.quantity} units from #{mobile&.locationId} (MOBILE) into home"
       }
     end
 
@@ -95,7 +96,7 @@ class InventoryDriftMigration
           per_variant: strains.map do |v|
             { product: v.product&.title.to_s[0, 45], title: v.title, shopify_qty: v.inventoryQuantity,
               new_sku: proposed_sku(sku, v.product&.title) }
-          end,
+          end
         }
       end
     end
@@ -105,6 +106,7 @@ class InventoryDriftMigration
         SkuLink.where(sku: sku).map do |link|
           v = link.shopify_variant
           next if v.nil?
+
           { variant_id: v.id, old_sku: v.sku, new_sku: proposed_sku(sku, v.product&.title) }
         end.compact
       end
@@ -115,21 +117,22 @@ class InventoryDriftMigration
         SkuLink.where(sku: sku).map do |link|
           v = link.shopify_variant
           next if v.nil?
+
           { shopify_variant_id: v.id, old_sku: v.sku, old_square_variation_id: link.squareVariationId }
         end.compact
       end
     end
 
     def summary
-      plan_counts = begin
+      begin
         square_creation_plans.sum { |p| p[:per_variant].length }
       rescue StandardError
-        "?(run within Rails)"
+        '?(run within Rails)'
       end
       {
-        new_square_variations: "computed at apply",
+        new_square_variations: 'computed at apply',
         event_consolidations: 1,
-        sku_renames: "computed at apply",
+        sku_renames: 'computed at apply'
       }
     end
 
@@ -148,7 +151,7 @@ class InventoryDriftMigration
       STRAIN_KEYS.values.flatten.each do |strain|
         return strain if t.include?(strain)
       end
-      "?"
+      '?'
     end
 
     def current_square_variation_id(sku)

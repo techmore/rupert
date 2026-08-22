@@ -2,7 +2,7 @@
 
 module People
   class PositionsController < AuthenticatedController
-    before_action :set_position, only: [:edit, :update]
+    before_action :set_position, only: %i[edit update]
 
     def index
       authorize(:module, :hr_read?)
@@ -20,8 +20,8 @@ module People
       authorize(:module, :hr_write?)
       @position = People::Position.new(position_params)
       if @position.save
-        ActivityLogger.log("position_created", subject: @position)
-        redirect_to(people_positions_path, notice: "Position created.")
+        ActivityLogger.log('position_created', subject: @position)
+        redirect_to(people_positions_path, notice: 'Position created.')
       else
         @departments = People::Department.ordered
         render(:new, status: :unprocessable_entity)
@@ -36,8 +36,8 @@ module People
     def update
       authorize(:module, :hr_write?)
       if @position.update(position_params)
-        ActivityLogger.log("position_updated", subject: @position)
-        redirect_to(people_positions_path, notice: "Position updated.")
+        ActivityLogger.log('position_updated', subject: @position)
+        redirect_to(people_positions_path, notice: 'Position updated.')
       else
         @departments = People::Department.ordered
         render(:edit, status: :unprocessable_entity)

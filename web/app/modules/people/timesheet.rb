@@ -7,20 +7,20 @@ module People
     include TenantScoped
     include AASM
 
-    self.table_name = "timesheets"
+    self.table_name = 'timesheets'
 
-    belongs_to :employee, class_name: "People::Employee"
-    belongs_to :reviewer, class_name: "User", foreign_key: :reviewed_by, optional: true
-    has_many :entries, class_name: "People::TimesheetEntry", dependent: :destroy, inverse_of: :timesheet
+    belongs_to :employee, class_name: 'People::Employee'
+    belongs_to :reviewer, class_name: 'User', foreign_key: :reviewed_by, optional: true
+    has_many :entries, class_name: 'People::TimesheetEntry', dependent: :destroy, inverse_of: :timesheet
 
     validates :period_start, :period_end, presence: true
     validate :period_end_after_start
 
     scope :recent, ->(limit = 200) { order(period_start: :desc).limit(limit) }
-    scope :by_status, ->(status) { status.present? && status != "all" ? where(status: status) : all }
-    scope :awaiting_review, -> { where(status: "submitted") }
+    scope :by_status, ->(status) { status.present? && status != 'all' ? where(status: status) : all }
+    scope :awaiting_review, -> { where(status: 'submitted') }
 
-    aasm column: "status", no_direct_assignment: true do
+    aasm column: 'status', no_direct_assignment: true do
       state :draft, initial: true
       state :submitted
       state :approved
@@ -36,7 +36,7 @@ module People
         transitions from: :submitted, to: :rejected
       end
       event :reopen do
-        transitions from: [:approved, :rejected], to: :draft
+        transitions from: %i[approved rejected], to: :draft
       end
     end
 
@@ -45,15 +45,15 @@ module People
     end
 
     def regular_hours
-      entries.where(work_type: "regular").sum(:hours)
+      entries.where(work_type: 'regular').sum(:hours)
     end
 
     def overtime_hours
-      entries.where(work_type: "overtime").sum(:hours)
+      entries.where(work_type: 'overtime').sum(:hours)
     end
 
     def period_label
-      "#{period_start.strftime("%b %d")} – #{period_end.strftime("%b %d, %Y")}"
+      "#{period_start.strftime('%b %d')} – #{period_end.strftime('%b %d, %Y')}"
     end
 
     private
@@ -61,7 +61,7 @@ module People
     def period_end_after_start
       return if period_start.nil? || period_end.nil?
 
-      errors.add(:period_end, "must be after the start") if period_end < period_start
+      errors.add(:period_end, 'must be after the start') if period_end < period_start
     end
   end
 end

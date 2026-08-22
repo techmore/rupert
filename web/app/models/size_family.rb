@@ -7,29 +7,29 @@
 class SizeFamily < ApplicationRecord
   include TenantScoped
 
-  MODES = ["approval", "auto"].freeze
+  MODES = %w[approval auto].freeze
 
   has_many :members,
-    class_name: "SizeFamilyMember",
-    foreign_key: "family_id",
-    dependent: :destroy,
-    inverse_of: :family
+           class_name: 'SizeFamilyMember',
+           foreign_key: 'family_id',
+           dependent: :destroy,
+           inverse_of: :family
   has_many :size_changes,
-    class_name: "SizeChange",
-    foreign_key: "family_id",
-    dependent: :destroy,
-    inverse_of: :family
+           class_name: 'SizeChange',
+           foreign_key: 'family_id',
+           dependent: :destroy,
+           inverse_of: :family
 
   validates :name, presence: true
   validates :mode, inclusion: { in: MODES }
   validates :root_sku, format: { with: /\A[A-Za-z0-9.\-_]+\z/, allow_blank: true }
 
   def approval?
-    mode == "approval"
+    mode == 'approval'
   end
 
   def auto?
-    mode == "auto"
+    mode == 'auto'
   end
 
   def member_by_sku(sku)

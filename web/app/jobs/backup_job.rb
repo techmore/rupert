@@ -5,11 +5,11 @@ class BackupJob < ApplicationJob
   queue_as :default
 
   def perform
-    Tenant.where(status: "active").find_each do |tenant|
+    Tenant.where(status: 'active').find_each do |tenant|
       Current.tenant = tenant
       next unless GoogleDriveBackupService.connected?
 
-      GoogleDriveBackupService.backup!(actor: "scheduler")
+      GoogleDriveBackupService.backup!(actor: 'scheduler')
     rescue GoogleDriveBackupService::NotConnectedError
       nil
     end

@@ -20,6 +20,6 @@ class AddTenantToOauthAllowedDomains < ActiveRecord::Migration[8.1]
     end
 
     remove_index :oauth_allowed_domains, :domain
-    add_index :oauth_allowed_domains, [:tenant_id, :domain], unique: true
+    add_index :oauth_allowed_domains, %i[tenant_id domain], unique: true
   end
 end

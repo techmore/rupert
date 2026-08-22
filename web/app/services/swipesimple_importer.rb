@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "csv"
+require 'csv'
 
 # Imports sales from a SwipeSimple CSV export (SwipeSimple has no public API,
 # so the Reporting Dashboard's CSV export is the integration seam). Handles
@@ -14,18 +14,20 @@ class SwipesimpleImporter
   Result = Struct.new(:orders, :lines, :payments, :skipped_rows, keyword_init: true)
 
   COLUMN_ALIASES = {
-    order_id: ["orderid", "order", "id", "invoice", "invoiceid", "receipt", "receiptid", "transactionid", "transaction"],
-    order_number: ["ordernumber", "ordernum", "receiptnumber", "invoicenumber"],
-    date: ["date", "datetime", "datetime", "date_time", "saledate", "transactiondate", "paidat", "createdat", "created", "time"],
-    item: ["item", "itemname", "product", "productname", "name", "description", "itemdescription", "title"],
-    sku: ["sku", "itemsku", "productsku", "upc", "itemcode", "code"],
-    quantity: ["quantity", "qty", "count", "qtysold", "units"],
-    unit_price: ["unitprice", "price", "unitcost", "unitamount", "amounteach", "saleprice"],
-    line_total: ["total", "amount", "linetotal", "linetotalamount", "gross", "linamount"],
-    order_total: ["ordertotal", "grandtotal", "totalamount", "receipttotal"],
-    payment: ["payment", "paymentmethod", "method", "tender", "tendertype", "cardbrand", "paymenttype"],
-    customer: ["customer", "customername", "name", "firstname", "lastname"],
-    status: ["status", "salestatus"],
+    order_id: %w[orderid order id invoice invoiceid receipt receiptid transactionid
+                 transaction],
+    order_number: %w[ordernumber ordernum receiptnumber invoicenumber],
+    date: %w[date datetime datetime date_time saledate transactiondate paidat createdat
+             created time],
+    item: %w[item itemname product productname name description itemdescription title],
+    sku: %w[sku itemsku productsku upc itemcode code],
+    quantity: %w[quantity qty count qtysold units],
+    unit_price: %w[unitprice price unitcost unitamount amounteach saleprice],
+    line_total: %w[total amount linetotal linetotalamount gross linamount],
+    order_total: %w[ordertotal grandtotal totalamount receipttotal],
+    payment: %w[payment paymentmethod method tender tendertype cardbrand paymenttype],
+    customer: %w[customer customername name firstname lastname],
+    status: %w[status salestatus]
   }.freeze
 
   class << self
@@ -38,7 +40,9 @@ class SwipesimpleImporter
       summary = Result.new(orders: 0, lines: 0, payments: 0, skipped_rows: 0)
 
       by_order.each do |order_id, order_rows|
-        next summary.skipped_rows += order_rows.length if order_rows.all? { |row| row[headers[:date]].blank? && row[headers[:item]].blank? }
+        next summary.skipped_rows += order_rows.length if order_rows.all? do |row|
+          row[headers[:date]].blank? && row[headers[:item]].blank?
+        end
 
         upsert_order!(order_id, order_rows, headers)
         summary.orders += 1
@@ -66,7 +70,7 @@ class SwipesimpleImporter
     end
 
     def canonical_key(header)
-      normalized = header.to_s.downcase.gsub(/[^a-z0-9]/, "")
+      normalized = header.to_s.downcase.gsub(/[^a-z0-9]/, '')
       COLUMN_ALIASES.each do |key, aliases|
         return key if aliases.include?(normalized)
       end
@@ -100,24 +104,24 @@ class SwipesimpleImporter
       Core::Order.upsert(
         {
           tenant_id: Current.tenant_id,
-          source: "swipesimple",
+          source: 'swipesimple',
           source_order_id: order_id.to_s,
           order_number: order_number,
-          channel: "pos",
+          channel: 'pos',
           customer_id: customer&.id,
           occurred_at: occurred_at,
           gross_cents: gross,
           tax_cents: 0,
-          status: "paid",
+          status: 'paid',
           line_items: order_rows.length,
-          currency: "USD",
+          currency: 'USD',
           created_at: Time.current,
-          updated_at: Time.current,
+          updated_at: Time.current
         },
-        unique_by: [:tenant_id, :source, :source_order_id],
+        unique_by: %i[tenant_id source source_order_id]
       )
 
-      order = Core::Order.find_by(tenant_id: Current.tenant_id, source: "swipesimple", source_order_id: order_id.to_s)
+      order = Core::Order.find_by(tenant_id: Current.tenant_id, source: 'swipesimple', source_order_id: order_id.to_s)
       replace_lines!(order, order_rows, headers)
       replace_payments!(order, order_rows, headers, gross)
       upsert_ledger!(order, order_rows, headers, gross, occurred_at)
@@ -131,17 +135,18 @@ class SwipesimpleImporter
       Core::Customer.upsert(
         {
           tenant_id: Current.tenant_id,
-          source: "swipesimple",
-          external_id: name.downcase.gsub(/\s+/, "-"),
+          source: 'swipesimple',
+          external_id: name.downcase.gsub(/\s+/, '-'),
           first_name: first_name,
           last_name: last_name,
           email: nil,
           created_at: Time.current,
-          updated_at: Time.current,
+          updated_at: Time.current
         },
-        unique_by: [:tenant_id, :source, :external_id],
+        unique_by: %i[tenant_id source external_id]
       )
-      Core::Customer.find_by(tenant_id: Current.tenant_id, source: "swipesimple", external_id: name.downcase.gsub(/\s+/, "-"))
+      Core::Customer.find_by(tenant_id: Current.tenant_id, source: 'swipesimple',
+                             external_id: name.downcase.gsub(/\s+/, '-'))
     end
 
     def replace_lines!(order, rows, headers)
@@ -156,10 +161,10 @@ class SwipesimpleImporter
         order.order_lines.create!(
           tenant_id: Current.tenant_id,
           sku: value(row, headers[:sku]).presence,
-          name: value(row, headers[:item]).presence || "Item",
+          name: value(row, headers[:item]).presence || 'Item',
           quantity: quantity,
           unit_cents: unit_cents,
-          line_cents: line_cents,
+          line_cents: line_cents
         )
       end
     end
@@ -168,15 +173,15 @@ class SwipesimpleImporter
     def replace_payments!(order, rows, headers, gross)
       order.payments.delete_all
       methods = rows.map { |row| normalize_method(value(row, headers[:payment])) }
-      methods = ["card"] if methods.compact.empty?
+      methods = ['card'] if methods.compact.empty?
       methods.uniq.each do |method|
         order.payments.create!(
           tenant_id: Current.tenant_id,
           method: method,
           amount_cents: gross,
-          status: "completed",
+          status: 'completed',
           reference: order.source_order_id,
-          paid_at: order.occurred_at,
+          paid_at: order.occurred_at
         )
       end
     end
@@ -185,18 +190,18 @@ class SwipesimpleImporter
       LedgerEntry.upsert(
         {
           id: "swipesimple:#{order.source_order_id}",
-          source: "swipesimple",
+          source: 'swipesimple',
           sourceOrderId: order.source_order_id,
           orderName: order.order_number,
           occurredAt: occurred_at,
           syncedAt: Time.current,
-          currency: "USD",
+          currency: 'USD',
           grossCents: gross,
-          status: "COMPLETED",
+          status: 'COMPLETED',
           lineItems: rows.sum { |row| [value(row, headers[:quantity]).to_i, 1].max },
-          summary: rows.first(3).filter_map { |row| value(row, headers[:item]).presence }.join(", "),
+          summary: rows.first(3).filter_map { |row| value(row, headers[:item]).presence }.join(', ')
         },
-        unique_by: :id,
+        unique_by: :id
       )
     end
 
@@ -215,15 +220,15 @@ class SwipesimpleImporter
 
     def normalize_method(raw)
       case raw.to_s.strip.downcase
-      when "cash" then "cash"
-      when "gift", "gift card", "giftcard" then "gift_card"
-      when "", "n/a", "na" then nil
-      else "card"
+      when 'cash' then 'cash'
+      when 'gift', 'gift card', 'giftcard' then 'gift_card'
+      when '', 'n/a', 'na' then nil
+      else 'card'
       end
     end
 
     def value(row, header)
-      return "" if header.nil?
+      return '' if header.nil?
 
       row[header]
     end
@@ -239,11 +244,11 @@ class SwipesimpleImporter
 
       text = raw.to_s.strip
       formats = [
-        "%m/%d/%Y %I:%M %p",
-        "%m/%d/%Y %I:%M%p",
-        "%m/%d/%Y",
-        "%m/%d/%y",
-        "%m-%d-%Y",
+        '%m/%d/%Y %I:%M %p',
+        '%m/%d/%Y %I:%M%p',
+        '%m/%d/%Y',
+        '%m/%d/%y',
+        '%m-%d-%Y'
       ]
       formats.each do |format|
         parsed = Time.zone.strptime(text, format)

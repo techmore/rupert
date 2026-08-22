@@ -7,8 +7,8 @@
 # On first run with no watermark, it simply establishes a baseline at the
 # newest existing order so historical sales are never re-announced in bulk.
 class SalesAnnouncer
-  WATERMARK_KEY = "sales_announcer_watermark"
-  REVENUE_STATUSES = ["PAID", "COMPLETED"].freeze
+  WATERMARK_KEY = 'sales_announcer_watermark'
+  REVENUE_STATUSES = %w[PAID COMPLETED].freeze
   BATCH_SIZE = 100
 
   class << self
@@ -40,7 +40,7 @@ class SalesAnnouncer
   private
 
   def announcements_channel
-    EnvStore.fetch("BUZZ_ANNOUNCEMENTS_CHANNEL", "").presence || BuzzAgent.channel_id
+    EnvStore.fetch('BUZZ_ANNOUNCEMENTS_CHANNEL', '').presence || BuzzAgent.channel_id
   end
 
   def baseline_not_established?
@@ -60,18 +60,18 @@ class SalesAnnouncer
 
   def new_entries
     scope = LedgerEntry
-      .where(status: REVENUE_STATUSES)
+            .where(status: REVENUE_STATUSES)
     scope = if watermark_id.present?
-      scope.where(
-        '"occurredAt" > :time OR ("occurredAt" = :time AND "LedgerEntry"."id" > :id)',
-        time: watermark_time,
-        id: watermark_id,
-      )
-    else
-      # Backward compatibility for the timestamp-only watermark already used
-      # by the live branch.
-      scope.where('"occurredAt" > ?', watermark_time)
-    end
+              scope.where(
+                '"occurredAt" > :time OR ("occurredAt" = :time AND "LedgerEntry"."id" > :id)',
+                time: watermark_time,
+                id: watermark_id
+              )
+            else
+              # Backward compatibility for the timestamp-only watermark already used
+              # by the live branch.
+              scope.where('"occurredAt" > ?', watermark_time)
+            end
     scope.order(:occurredAt, :id).limit(BATCH_SIZE)
   end
 
@@ -79,11 +79,11 @@ class SalesAnnouncer
     total = entries.length
     total_cents = entries.sum(&:grossCents)
     lines = entries.map do |entry|
-      amount = format("$%.2f", entry.grossCents.to_f / 100.0)
-      items = entry.summary.presence || "Sale"
+      amount = format('$%.2f', entry.grossCents.to_f / 100.0)
+      items = entry.summary.presence || 'Sale'
       "  • #{items} — #{amount}"
     end
-    total_amt = format("$%.2f", total_cents.to_f / 100.0)
+    total_amt = format('$%.2f', total_cents.to_f / 100.0)
     "#{total} independent sale(s), #{total_amt} total:\n#{lines.join("\n")}"
   end
 
@@ -92,7 +92,7 @@ class SalesAnnouncer
       value = Setting.find_by(key: WATERMARK_KEY, tenant_id: Current.tenant_id)&.value
       if value.present?
         parsed = JSON.parse(value)
-        { time: Time.zone.parse(parsed.fetch("occurred_at")), id: parsed["id"] }
+        { time: Time.zone.parse(parsed.fetch('occurred_at')), id: parsed['id'] }
       end
     rescue JSON::ParserError
       { time: Time.zone.parse(value), id: nil }

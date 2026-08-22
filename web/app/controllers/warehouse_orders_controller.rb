@@ -3,7 +3,7 @@
 # Public order confirmation for a paid warehouse-sale order, keyed by the
 # human-friendly order number shown after checkout.
 class WarehouseOrdersController < ApplicationController
-  layout "warehouse_sale"
+  layout 'warehouse_sale'
   include WarehousePortal
 
   skip_before_action :require_login

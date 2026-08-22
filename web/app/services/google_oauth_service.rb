@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require "signet/oauth_2/client"
-require "net/http"
-require "json"
+require 'signet/oauth_2/client'
+require 'net/http'
+require 'json'
 
 # Google sign-in (OpenID Connect) for the login page. Mirrors the Signet-based
 # flow already used by GoogleDriveBackupService: build an authorization URL,
@@ -20,7 +20,7 @@ class GoogleOauthService
   class NotConfiguredError < StandardError; end
   class ExchangeError < StandardError; end
 
-  SCOPE = "openid email profile"
+  SCOPE = 'openid email profile'
 
   class << self
     def configured?
@@ -31,7 +31,7 @@ class GoogleOauthService
       require_credentials!
       client = signet
       client.redirect_uri = redirect_uri
-      params = { access_type: "online", prompt: "select_account" }
+      params = { access_type: 'online', prompt: 'select_account' }
       params[:state] = state if state.present?
       client.authorization_uri(params).to_s
     end
@@ -53,9 +53,9 @@ class GoogleOauthService
     end
 
     def userinfo(access_token)
-      uri = URI("https://openidconnect.googleapis.com/v1/userinfo")
+      uri = URI('https://openidconnect.googleapis.com/v1/userinfo')
       request = Net::HTTP::Get.new(uri)
-      request["Authorization"] = "Bearer #{access_token}"
+      request['Authorization'] = "Bearer #{access_token}"
       response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(request) }
       raise ExchangeError, "Google userinfo failed (#{response.code})" unless response.is_a?(Net::HTTPSuccess)
 
@@ -65,15 +65,18 @@ class GoogleOauthService
     private
 
     def require_credentials!
-      raise NotConfiguredError, "Google sign-in is not configured (set GOOGLE_OAUTH_CLIENT_ID / CLIENT_SECRET)" unless configured?
+      return if configured?
+
+      raise NotConfiguredError,
+            'Google sign-in is not configured (set GOOGLE_OAUTH_CLIENT_ID / CLIENT_SECRET)'
     end
 
     def client_id
-      EnvStore.fetch("GOOGLE_OAUTH_CLIENT_ID", "")
+      EnvStore.fetch('GOOGLE_OAUTH_CLIENT_ID', '')
     end
 
     def client_secret
-      EnvStore.fetch("GOOGLE_OAUTH_CLIENT_SECRET", "")
+      EnvStore.fetch('GOOGLE_OAUTH_CLIENT_SECRET', '')
     end
 
     def signet
@@ -81,8 +84,8 @@ class GoogleOauthService
         client_id: client_id,
         client_secret: client_secret,
         scope: SCOPE,
-        authorization_uri: "https://accounts.google.com/o/oauth2/auth",
-        token_credential_uri: "https://oauth2.googleapis.com/token",
+        authorization_uri: 'https://accounts.google.com/o/oauth2/auth',
+        token_credential_uri: 'https://oauth2.googleapis.com/token'
       )
     end
   end

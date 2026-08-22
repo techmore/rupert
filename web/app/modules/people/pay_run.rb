@@ -7,18 +7,18 @@ module People
     include TenantScoped
     include AASM
 
-    self.table_name = "pay_runs"
+    self.table_name = 'pay_runs'
 
-    has_many :payslips, class_name: "People::Payslip", dependent: :destroy, inverse_of: :pay_run
+    has_many :payslips, class_name: 'People::Payslip', dependent: :destroy, inverse_of: :pay_run
 
     validates :name, presence: true
     validates :period_start, :period_end, presence: true
     validate :period_end_after_start
 
     scope :recent, ->(limit = 100) { order(period_end: :desc).limit(limit) }
-    scope :by_status, ->(status) { status.present? && status != "all" ? where(status: status) : all }
+    scope :by_status, ->(status) { status.present? && status != 'all' ? where(status: status) : all }
 
-    aasm column: "status", no_direct_assignment: true do
+    aasm column: 'status', no_direct_assignment: true do
       state :draft, initial: true
       state :finalized
       state :paid
@@ -40,11 +40,11 @@ module People
     end
 
     def finalized?
-      status == "finalized"
+      status == 'finalized'
     end
 
     def period_label
-      "#{period_start.strftime("%b %d")} – #{period_end.strftime("%b %d, %Y")}"
+      "#{period_start.strftime('%b %d')} – #{period_end.strftime('%b %d, %Y')}"
     end
 
     private
@@ -52,7 +52,7 @@ module People
     def period_end_after_start
       return if period_start.nil? || period_end.nil?
 
-      errors.add(:period_end, "must be after the start") if period_end < period_start
+      errors.add(:period_end, 'must be after the start') if period_end < period_start
     end
   end
 end

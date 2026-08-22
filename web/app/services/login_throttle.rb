@@ -21,11 +21,11 @@ class LoginThrottle
     def lockout_minutes(ip: nil, email: nil)
       return unless blocked?(ip: ip, email: email)
 
-      scope = AccessLog.where(source: "password", status: "failure")
-        .where.not(detail: "rate limited")
-        .where("created_at >= ?", WINDOW.ago)
+      scope = AccessLog.where(source: 'password', status: 'failure')
+                       .where.not(detail: 'rate limited')
+                       .where('created_at >= ?', WINDOW.ago)
       scope = scope.where(ip: ip) if ip.present?
-      scope = scope.where("lower(email) = ?", email.to_s.downcase) if email.present?
+      scope = scope.where('lower(email) = ?', email.to_s.downcase) if email.present?
 
       latest = scope.maximum(:created_at)
       return LOCKOUT / 60 if latest.nil?
@@ -45,14 +45,14 @@ class LoginThrottle
     def email_blocked?(email)
       return false if email.blank?
 
-      failures(scope: AccessLog.where("lower(email) = ?", email.to_s.downcase)) >= EMAIL_FAILURES
+      failures(scope: AccessLog.where('lower(email) = ?', email.to_s.downcase)) >= EMAIL_FAILURES
     end
 
     def failures(scope:)
-      scope.where(source: "password", status: "failure")
-        .where.not(detail: "rate limited")
-        .where("created_at >= ?", WINDOW.ago)
-        .count
+      scope.where(source: 'password', status: 'failure')
+           .where.not(detail: 'rate limited')
+           .where('created_at >= ?', WINDOW.ago)
+           .count
     end
   end
 end

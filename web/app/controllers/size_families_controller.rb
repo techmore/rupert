@@ -4,9 +4,11 @@
 # is derived from the family's root gram bank instead of Square realtime.
 class SizeFamiliesController < AuthenticatedController
   before_action :authorize_read, only: :index
-  before_action :authorize_manage, except: [:index, :derive, :derive_all, :approve_all, :approve, :add_member, :remove_member]
-  before_action :authorize_apply, only: [:derive, :derive_all, :approve_all, :approve]
-  before_action :set_family, only: [:edit, :update, :destroy, :derive, :set_root, :approve_all, :add_member, :remove_member, :approve]
+  before_action :authorize_manage,
+                except: %i[index derive derive_all approve_all approve add_member remove_member]
+  before_action :authorize_apply, only: %i[derive derive_all approve_all approve]
+  before_action :set_family,
+                only: %i[edit update destroy derive set_root approve_all add_member remove_member approve]
 
   def index
     @families = SizeFamilySnapshot.all.map do |snap|
@@ -15,7 +17,7 @@ class SizeFamiliesController < AuthenticatedController
         root: snap.root_grams,
         members: snap.members,
         pending_count: snap.pending_count,
-        last_derived: snap.last_derived,
+        last_derived: snap.last_derived
       }
     end
     @pending_changes = SizeChange.pending.order(:sku).to_a
@@ -29,7 +31,7 @@ class SizeFamiliesController < AuthenticatedController
     @family = SizeFamily.new(family_params)
     @family.tenant_id = Current.tenant_id
     if @family.save
-      redirect_to(size_families_path, notice: "Size family created — add its sizes next.")
+      redirect_to(size_families_path, notice: 'Size family created — add its sizes next.')
     else
       render(:new, status: :unprocessable_entity)
     end
@@ -39,7 +41,7 @@ class SizeFamiliesController < AuthenticatedController
 
   def update
     if @family.update(family_params)
-      redirect_to(size_families_path, notice: "Size family updated.")
+      redirect_to(size_families_path, notice: 'Size family updated.')
     else
       render(:edit, status: :unprocessable_entity)
     end
@@ -47,7 +49,7 @@ class SizeFamiliesController < AuthenticatedController
 
   def destroy
     @family.destroy
-    redirect_to(size_families_path, notice: "Size family removed.")
+    redirect_to(size_families_path, notice: 'Size family removed.')
   end
 
   # POST /size_families/:id/derive — recompute sizes from the root gram bank now.
@@ -56,7 +58,7 @@ class SizeFamiliesController < AuthenticatedController
     redirect_to(
       size_families_path,
       notice: "Derived #{@family.name}: root #{summary[:build][:root_grams]}g, " \
-              "#{summary[:pending]} pending, #{summary[:applied]} applied, #{summary[:failed]} failed.",
+              "#{summary[:pending]} pending, #{summary[:applied]} applied, #{summary[:failed]} failed."
     )
   rescue StandardError => e
     redirect_to(size_families_path, alert: "Derivation failed for #{@family.name}: #{e.message}")
@@ -68,7 +70,7 @@ class SizeFamiliesController < AuthenticatedController
     redirect_to(
       size_families_path,
       notice: "Derived #{summary[:families]} families: #{summary[:pending]} pending, " \
-              "#{summary[:applied]} applied, #{summary[:failed]} failed.",
+              "#{summary[:applied]} applied, #{summary[:failed]} failed."
     )
   end
 
@@ -76,7 +78,8 @@ class SizeFamiliesController < AuthenticatedController
   def set_root
     grams = params[:base_grams].to_f
     @family.update!(base_grams: grams, sales_watermark: Time.current)
-    redirect_to(size_families_path, notice: "Root for #{@family.name} set to #{grams}g — sales from now on will fold in.")
+    redirect_to(size_families_path,
+                notice: "Root for #{@family.name} set to #{grams}g — sales from now on will fold in.")
   end
 
   # POST /size_families/approve_all (collection) or /size_families/:id/approve_all
@@ -88,7 +91,7 @@ class SizeFamiliesController < AuthenticatedController
     scope.find_each do |change|
       SizeDeriver.apply_change!(change) ? applied += 1 : failed += 1
     end
-    target = @family ? @family.name : "all families"
+    target = @family ? @family.name : 'all families'
     redirect_to(size_families_path, notice: "Approved sizes for #{target}: #{applied} applied, #{failed} failed.")
   end
 
@@ -98,7 +101,7 @@ class SizeFamiliesController < AuthenticatedController
     ok = SizeDeriver.apply_change!(change)
     redirect_to(
       size_families_path,
-      ok ? { notice: "Applied #{change.sku} → #{change.target_quantity}." } : { alert: "Failed #{change.sku}: #{change.error}" },
+      ok ? { notice: "Applied #{change.sku} → #{change.target_quantity}." } : { alert: "Failed #{change.sku}: #{change.error}" }
     )
   end
 

@@ -14,9 +14,9 @@ class LiveController < AuthenticatedController
     @runs = SyncRun.recent(25)
 
     render turbo_stream: [
-      turbo_stream.replace("sync-banner", partial: "syncs/banner"),
-      turbo_stream.replace("last-sync", partial: "shared/last_sync"),
-      turbo_stream.replace("sync-runs", partial: "syncs/runs")
+      turbo_stream.replace('sync-banner', partial: 'syncs/banner'),
+      turbo_stream.replace('last-sync', partial: 'shared/last_sync'),
+      turbo_stream.replace('sync-runs', partial: 'syncs/runs')
     ]
   end
 

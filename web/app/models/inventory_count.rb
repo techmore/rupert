@@ -9,19 +9,19 @@ class InventoryCount < ApplicationRecord
   include TenantScoped
   include AASM
 
-  self.table_name = "InventoryCount"
-  self.primary_key = "id"
+  self.table_name = 'InventoryCount'
+  self.primary_key = 'id'
 
-  has_many :items, class_name: "InventoryCountItem", foreign_key: "countId",
-    dependent: :destroy, inverse_of: :count
-  belongs_to :location, class_name: "Location", foreign_key: "locationId", optional: true
+  has_many :items, class_name: 'InventoryCountItem', foreign_key: 'countId',
+                   dependent: :destroy, inverse_of: :count
+  belongs_to :location, class_name: 'Location', foreign_key: 'locationId', optional: true
 
   validates :countedAt, presence: true
 
   scope :recent, ->(limit = 30) { order(countedAt: :desc).limit(limit) }
   scope :by_status, ->(status) { status.present? ? where(status: status) : all }
 
-  aasm column: "status", no_direct_assignment: true do
+  aasm column: 'status', no_direct_assignment: true do
     state :draft, initial: true
     state :pending
     state :approved
@@ -57,8 +57,11 @@ class InventoryCount < ApplicationRecord
       item.update!(
         shopifyVariantId: link&.shopifyVariantId,
         squareVariationId: link&.squareVariationId,
-        previousQuantity: link&.shopifyVariantId.presence ?
-          InventoryLevel.total_for_variant(link.shopifyVariantId) : 0
+        previousQuantity: if link&.shopifyVariantId.presence
+                            InventoryLevel.total_for_variant(link.shopifyVariantId)
+                          else
+                            0
+                          end
       )
     end
     self
@@ -68,7 +71,7 @@ class InventoryCount < ApplicationRecord
   # over (the roadmap goal), so approving a count is captured as an audit
   # record/worksheet and never mutates mirrored inventory. When Rupert becomes
   # the source of truth, re-enable applying counted quantities here.
-  def apply_override!(actor: "user")
+  def apply_override!(actor: 'user')
     return false unless approved?
 
     update!(appliedAt: Time.current)

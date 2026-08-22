@@ -7,13 +7,13 @@ class AddTrigramSearchIndexes < ActiveRecord::Migration[8.1]
   disable_ddl_transaction!
 
   INDEXES = {
-    "orders" => [["order_number"], ["source_order_id"]],
-    "customers" => [["email"], ["phone"], ["first_name"], ["last_name"]],
-    "ShopifyVariant" => [["sku"], ["title"]],
+    'orders' => [['order_number'], ['source_order_id']],
+    'customers' => [['email'], ['phone'], ['first_name'], ['last_name']],
+    'ShopifyVariant' => [['sku'], ['title']]
   }.freeze
 
   def up
-    enable_extension "pg_trgm" unless extension_enabled?("pg_trgm")
+    enable_extension 'pg_trgm' unless extension_enabled?('pg_trgm')
 
     INDEXES.each do |table, columns|
       columns.each do |column|

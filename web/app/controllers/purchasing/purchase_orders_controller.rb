@@ -4,11 +4,12 @@ module Purchasing
   # Purchase orders: build in draft, place the order, record what arrives, and
   # track what's owed to the vendor.
   class PurchaseOrdersController < AuthenticatedController
-    before_action :set_purchase_order, only: [:show, :edit, :update, :destroy, :place_order, :receive, :cancel, :add_line, :remove_line]
+    before_action :set_purchase_order,
+                  only: %i[show edit update destroy place_order receive cancel add_line remove_line]
 
     def index
       authorize(:module, :purchasing_read?)
-      @status = params[:status].presence || "all"
+      @status = params[:status].presence || 'all'
       @purchase_orders = Purchasing::PurchaseOrder.by_status(@status).recent(200).includes(:vendor)
     end
 
@@ -28,7 +29,7 @@ module Purchasing
       authorize(:module, :purchasing_write?)
       @purchase_order = Purchasing::PurchaseOrder.new(purchase_order_params)
       if @purchase_order.save
-        redirect_to(@purchase_order, notice: "Purchase order created. Add lines to it.")
+        redirect_to(@purchase_order, notice: 'Purchase order created. Add lines to it.')
       else
         @vendors = Purchasing::Vendor.ordered
         render(:new, status: :unprocessable_entity)
@@ -43,7 +44,7 @@ module Purchasing
     def update
       authorize(:module, :purchasing_write?)
       if @purchase_order.update(purchase_order_params)
-        redirect_to(@purchase_order, notice: "Purchase order updated.")
+        redirect_to(@purchase_order, notice: 'Purchase order updated.')
       else
         @vendors = Purchasing::Vendor.ordered
         render(:edit, status: :unprocessable_entity)
@@ -52,20 +53,20 @@ module Purchasing
 
     def destroy
       authorize(:module, :purchasing_write?)
-      return redirect_to(@purchase_order, alert: "Only draft orders can be deleted.") unless @purchase_order.draft?
+      return redirect_to(@purchase_order, alert: 'Only draft orders can be deleted.') unless @purchase_order.draft?
 
       @purchase_order.destroy
-      redirect_to(purchase_orders_path, notice: "Purchase order deleted.")
+      redirect_to(purchase_orders_path, notice: 'Purchase order deleted.')
     end
 
     def place_order
       authorize(:module, :purchasing_write?)
       if @purchase_order.lines.empty?
-        return redirect_to(@purchase_order, alert: "Add at least one line before placing the order.")
+        return redirect_to(@purchase_order, alert: 'Add at least one line before placing the order.')
       end
 
       @purchase_order.place_order!
-      ActivityLogger.log("po_placed", subject: @purchase_order)
+      ActivityLogger.log('po_placed', subject: @purchase_order)
       redirect_to(@purchase_order, notice: "Order placed with #{@purchase_order.vendor.name}.")
     end
 
@@ -83,40 +84,40 @@ module Purchasing
         end
         @purchase_order.mark_received! if @purchase_order.fully_received? && @purchase_order.may_mark_received?
       end
-      ActivityLogger.log("po_received", subject: @purchase_order)
-      redirect_to(@purchase_order, notice: "Received quantities updated.")
+      ActivityLogger.log('po_received', subject: @purchase_order)
+      redirect_to(@purchase_order, notice: 'Received quantities updated.')
     rescue ActiveRecord::RecordInvalid => e
-      redirect_to(@purchase_order, alert: e.record.errors.full_messages.join(", "))
+      redirect_to(@purchase_order, alert: e.record.errors.full_messages.join(', '))
     end
 
     def cancel
       authorize(:module, :purchasing_write?)
       @purchase_order.cancel! if @purchase_order.may_cancel?
-      ActivityLogger.log("po_cancelled", subject: @purchase_order)
-      redirect_to(@purchase_order, notice: "Purchase order cancelled.")
+      ActivityLogger.log('po_cancelled', subject: @purchase_order)
+      redirect_to(@purchase_order, notice: 'Purchase order cancelled.')
     end
 
     # Draft-only: append a line to the order.
     def add_line
       authorize(:module, :purchasing_write?)
-      return redirect_to(@purchase_order, alert: "Only draft orders can be edited.") unless @purchase_order.draft?
+      return redirect_to(@purchase_order, alert: 'Only draft orders can be edited.') unless @purchase_order.draft?
 
       @purchase_order.lines.create!(
         sku: params[:sku].presence,
-        name: params[:name].presence || "Item",
+        name: params[:name].presence || 'Item',
         quantity: params[:quantity].to_i.positive? ? params[:quantity].to_i : 1,
-        unit_cost_cents: (params[:unit_cost].to_f * 100).round,
+        unit_cost_cents: (params[:unit_cost].to_f * 100).round
       )
-      redirect_to(@purchase_order, notice: "Line added.")
+      redirect_to(@purchase_order, notice: 'Line added.')
     end
 
     # Draft-only: remove a line.
     def remove_line
       authorize(:module, :purchasing_write?)
-      return redirect_to(@purchase_order, alert: "Only draft orders can be edited.") unless @purchase_order.draft?
+      return redirect_to(@purchase_order, alert: 'Only draft orders can be edited.') unless @purchase_order.draft?
 
       @purchase_order.lines.find_by(id: params[:line_id])&.destroy
-      redirect_to(@purchase_order, notice: "Line removed.")
+      redirect_to(@purchase_order, notice: 'Line removed.')
     end
 
     private
@@ -130,7 +131,7 @@ module Purchasing
     end
 
     def next_order_number
-      "PO-#{Time.now.strftime("%Y%m")}-#{Purchasing::PurchaseOrder.count + 1}"
+      "PO-#{Time.now.strftime('%Y%m')}-#{Purchasing::PurchaseOrder.count + 1}"
     end
   end
 end

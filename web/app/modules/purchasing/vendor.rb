@@ -6,23 +6,23 @@ module Purchasing
   class Vendor < ApplicationRecord
     include TenantScoped
 
-    self.table_name = "vendors"
+    self.table_name = 'vendors'
 
-    PAYMENT_TERMS = ["net7", "net15", "net30", "net60", "due_on_receipt", "prepaid"].freeze
+    PAYMENT_TERMS = %w[net7 net15 net30 net60 due_on_receipt prepaid].freeze
 
     has_many :purchase_orders,
-      class_name: "Purchasing::PurchaseOrder",
-      foreign_key: :vendor_id,
-      dependent: :restrict_with_exception
+             class_name: 'Purchasing::PurchaseOrder',
+             foreign_key: :vendor_id,
+             dependent: :restrict_with_exception
 
     validates :name, presence: true
     validates :payment_terms, inclusion: { in: PAYMENT_TERMS }, allow_nil: true
 
     scope :ordered, -> { order(:name) }
-    scope :search, ->(q) {
+    scope :search, lambda { |q|
       return all if q.blank?
 
-      where("name ILIKE ? OR email ILIKE ? OR contact_name ILIKE ?", "%#{q}%", "%#{q}%", "%#{q}%")
+      where('name ILIKE ? OR email ILIKE ? OR contact_name ILIKE ?', "%#{q}%", "%#{q}%", "%#{q}%")
     }
 
     def display_name

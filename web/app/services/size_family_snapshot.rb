@@ -33,7 +33,7 @@ class SizeFamilySnapshot
           current: current,
           target: target,
           pending: pending,
-          in_sync: pending.nil? && !target.nil? && target == current,
+          in_sync: pending.nil? && !target.nil? && target == current
         )
       end
     end
@@ -54,7 +54,7 @@ class SizeFamilySnapshot
     variation = SquareVariation.find_by(sku: family.root_sku)
     {
       sku: family.root_sku,
-      current: variation ? InventoryLevel.total_for_variation(variation.id) : nil,
+      current: variation ? InventoryLevel.total_for_variation(variation.id) : nil
     }
   end
 end

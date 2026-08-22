@@ -8,7 +8,7 @@ class CreateSizeFamilies < ActiveRecord::Migration[8.1]
       t.string :root_sku
       t.decimal :base_grams, precision: 12, scale: 3
       t.datetime :sales_watermark
-      t.string :mode, default: "approval", null: false
+      t.string :mode, default: 'approval', null: false
       t.timestamps
     end
     add_index :size_families, :tenant_id
@@ -24,7 +24,7 @@ class CreateSizeFamilies < ActiveRecord::Migration[8.1]
     end
     add_index :size_family_members, :tenant_id
     add_index :size_family_members, :family_id
-    add_index :size_family_members, [:family_id, :sku], unique: true
+    add_index :size_family_members, %i[family_id sku], unique: true
 
     create_table :size_changes do |t|
       t.string :tenant_id
@@ -34,13 +34,13 @@ class CreateSizeFamilies < ActiveRecord::Migration[8.1]
       t.decimal :root_grams, precision: 12, scale: 3
       t.integer :target_quantity
       t.string :square_variation_id
-      t.string :status, default: "pending", null: false
+      t.string :status, default: 'pending', null: false
       t.string :mode
       t.string :error
       t.timestamps
     end
     add_index :size_changes, :tenant_id
     add_index :size_changes, :family_id
-    add_index :size_changes, [:family_id, :sku], unique: true
+    add_index :size_changes, %i[family_id sku], unique: true
   end
 end

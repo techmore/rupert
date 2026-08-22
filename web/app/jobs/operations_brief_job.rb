@@ -6,7 +6,7 @@ class OperationsBriefJob < ApplicationJob
   retry_on StandardError, wait: :polynomially_longer, attempts: 5
 
   def perform(kind)
-    Tenant.where(status: "active").find_each do |tenant|
+    Tenant.where(status: 'active').find_each do |tenant|
       Current.tenant = tenant
       begin
         OperationsBrief.publish!(kind) if BuzzAgent.configured?

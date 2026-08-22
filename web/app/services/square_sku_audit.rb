@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "set"
-
 # Deep audit of Square SKUs against the live Square API and the local mirror.
 # Pure read-only — never writes to Square, Shopify, or the DB. Used by the
 # ops:audit square task and available to call in a controller/report if wanted.
@@ -26,11 +24,17 @@ class SquareSkuAudit
   def run
     live = SquareClient.catalog
     locations = SquareClient.locations
-    location_ids = locations.map { |l| l["id"] }
-    counts = location_ids.any? ? SquareClient.inventory_counts(location_ids, live.map { |v| v[:variationId] })[:counts] : {}
+    location_ids = locations.map { |l| l['id'] }
+    counts = if location_ids.any?
+               SquareClient.inventory_counts(location_ids, live.map do |v|
+                 v[:variationId]
+               end)[:counts]
+             else
+               {}
+             end
 
     live_by_id = live.index_by { |v| v[:variationId] }
-    items = live.group_by { |v| v[:itemId] }
+    live.group_by { |v| v[:itemId] }
     live_ids = live_by_id.keys.to_set
 
     live_skus = Hash.new { |h, k| h[k] = [] }
@@ -55,7 +59,7 @@ class SquareSkuAudit
     sellable_no_sku = missing_sku.select { |v| counts[v[:variationId]].to_i.positive? }
 
     real_unmatched = shopify_variants.reject do |v|
-      v.sku.blank? || v.sku.downcase == "routeins" || live_sku_set.include?(v.sku.downcase)
+      v.sku.blank? || v.sku.downcase == 'routeins' || live_sku_set.include?(v.sku.downcase)
     end
 
     Result.new(
@@ -71,7 +75,7 @@ class SquareSkuAudit
         sellable_unlinked: sellable_unlinked.length,
         sellable_no_sku: sellable_no_sku.length,
         real_unmatched: real_unmatched.length,
-        zero_qty: live.count { |v| counts[v[:variationId]].to_i <= 0 },
+        zero_qty: live.count { |v| counts[v[:variationId]].to_i <= 0 }
       },
       live: live,
       counts: counts,
@@ -83,7 +87,7 @@ class SquareSkuAudit
       sellable_unlinked: sellable_unlinked,
       sellable_no_sku: sellable_no_sku,
       real_unmatched: real_unmatched,
-      zero_qty_count: live.count { |v| counts[v[:variationId]].to_i <= 0 },
+      zero_qty_count: live.count { |v| counts[v[:variationId]].to_i <= 0 }
     )
   end
 end

@@ -2,7 +2,7 @@
 
 module Projects
   class ProjectsController < AuthenticatedController
-    before_action :set_project, only: [:show, :edit, :update, :destroy, :transition]
+    before_action :set_project, only: %i[show edit update destroy transition]
 
     def index
       authorize(:module, :projects_read?)
@@ -26,7 +26,7 @@ module Projects
       @project.owner_id = Current.user.id if params[:assign_self]
 
       if @project.save
-        redirect_to(@project, notice: "Project created.")
+        redirect_to(@project, notice: 'Project created.')
       else
         render(:new, status: :unprocessable_entity)
       end
@@ -39,7 +39,7 @@ module Projects
     def update
       authorize(@project)
       if @project.update(project_params)
-        redirect_to(@project, notice: "Project updated.")
+        redirect_to(@project, notice: 'Project updated.')
       else
         render(:edit, status: :unprocessable_entity)
       end
@@ -48,14 +48,14 @@ module Projects
     def destroy
       authorize(@project)
       @project.destroy
-      redirect_to(projects_path, notice: "Project deleted.")
+      redirect_to(projects_path, notice: 'Project deleted.')
     end
 
     # POST /projects/:id/transition?event=start
     def transition
       authorize(@project)
       event = params[:event]
-      if ["start", "hold", "complete", "archive"].include?(event) && @project.public_send("may_#{event}?")
+      if %w[start hold complete archive].include?(event) && @project.public_send("may_#{event}?")
         @project.send("#{event}!")
         redirect_to(@project, notice: "Project #{event}d.")
       else

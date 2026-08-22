@@ -1,59 +1,59 @@
 # frozen_string_literal: true
 
-require "test_helper"
+require 'test_helper'
 
 class LiveSyncTest < ActionDispatch::IntegrationTest
   setup do
     ShopifyAPI::Context.setup(
-      api_key: "test-key",
-      api_secret_key: "test-secret",
+      api_key: 'test-key',
+      api_secret_key: 'test-secret',
       api_version: ShopifyAPI::AdminVersions::SUPPORTED_ADMIN_VERSIONS.first,
-      host_name: "localhost",
-      scope: "read_products",
+      host_name: 'localhost',
+      scope: 'read_products',
       is_private: false,
       is_embedded: false
     )
-    Shop.create!(shopify_domain: "m11u0i-sb.myshopify.com", shopify_token: "test-token")
+    Shop.create!(shopify_domain: 'm11u0i-sb.myshopify.com', shopify_token: 'test-token')
     Current.tenant = tenants(:default_tenant)
-    EnvStore.set("SHOPIFY_CLIENT_ID", "test-client-id")
-    EnvStore.set("SHOPIFY_CLIENT_SECRET", "test-client-secret")
-    post login_path, params: { email: "admin@example.com", password: "password" }
+    EnvStore.set('SHOPIFY_CLIENT_ID', 'test-client-id')
+    EnvStore.set('SHOPIFY_CLIENT_SECRET', 'test-client-secret')
+    post login_path, params: { email: 'admin@example.com', password: 'password' }
   end
 
   teardown do
     Current.tenant = nil
-    EnvStore.set("SHOPIFY_CLIENT_ID", nil)
-    EnvStore.set("SHOPIFY_CLIENT_SECRET", nil)
+    EnvStore.set('SHOPIFY_CLIENT_ID', nil)
+    EnvStore.set('SHOPIFY_CLIENT_SECRET', nil)
   end
 
-  test "sync_status returns turbo_stream replaces for the live targets" do
-    get live_sync_status_path, headers: { "Accept" => "text/vnd.turbo-stream.html" }
+  test 'sync_status returns turbo_stream replaces for the live targets' do
+    get live_sync_status_path, headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
     assert_response :success
-    assert_equal "text/vnd.turbo-stream.html", response.media_type
+    assert_equal 'text/vnd.turbo-stream.html', response.media_type
     %w[sync-banner last-sync sync-runs].each do |target|
       assert_match(/<turbo-stream action="replace" target="#{target}">/, response.body)
     end
   end
 
-  test "sync page includes the live-sync controller and banner" do
+  test 'sync page includes the live-sync controller and banner' do
     get syncs_path
     assert_response :success
-    assert_select "[data-controller=live-sync]"
-    assert_select "#sync-banner"
-    assert_select "#sync-runs"
+    assert_select '[data-controller=live-sync]'
+    assert_select '#sync-banner'
+    assert_select '#sync-runs'
   end
 
-  test "dashboard includes the live-sync controller, banner, and last-sync line" do
+  test 'dashboard includes the live-sync controller, banner, and last-sync line' do
     get root_path
     assert_response :success
-    assert_select "[data-controller=live-sync]"
-    assert_select "#sync-banner"
-    assert_select "#last-sync"
+    assert_select '[data-controller=live-sync]'
+    assert_select '#sync-banner'
+    assert_select '#last-sync'
   end
 
-  test "sync_status is rejected without a session" do
+  test 'sync_status is rejected without a session' do
     delete logout_path
-    get live_sync_status_path, headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    get live_sync_status_path, headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
     assert_response :redirect
   end
 end

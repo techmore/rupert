@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require "digest"
+require 'digest'
 
 # Reports online paid orders that have remained unfulfilled past the configured
 # threshold. A signature prevents repeating an unchanged exception list.
 class FulfillmentMonitor
-  SIGNATURE_KEY = "fulfillment_monitor_signature"
+  SIGNATURE_KEY = 'fulfillment_monitor_signature'
   DEFAULT_OVERDUE_HOURS = 24
   MAX_ORDERS = 25
 
@@ -37,21 +37,21 @@ class FulfillmentMonitor
 
   def overdue_orders
     Core::Order
-      .where(channel: "online", status: "paid")
-      .where.not(fulfillment_status: ["shipped", "arrived", "completed"])
-      .where("occurred_at < ?", overdue_hours.hours.ago)
+      .where(channel: 'online', status: 'paid')
+      .where.not(fulfillment_status: %w[shipped arrived completed])
+      .where('occurred_at < ?', overdue_hours.hours.ago)
       .where.missing(:fulfillments)
       .order(:occurred_at, :id)
       .limit(MAX_ORDERS)
   end
 
   def overdue_hours
-    value = EnvStore.fetch("FULFILLMENT_ALERT_HOURS", DEFAULT_OVERDUE_HOURS).to_i
+    value = EnvStore.fetch('FULFILLMENT_ALERT_HOURS', DEFAULT_OVERDUE_HOURS).to_i
     value.positive? ? value : DEFAULT_OVERDUE_HOURS
   end
 
   def announcements_channel
-    EnvStore.fetch("BUZZ_ANNOUNCEMENTS_CHANNEL", "").presence || BuzzAgent.channel_id
+    EnvStore.fetch('BUZZ_ANNOUNCEMENTS_CHANNEL', '').presence || BuzzAgent.channel_id
   end
 
   def signature_for(orders)
@@ -71,7 +71,7 @@ class FulfillmentMonitor
   def format_message(orders)
     lines = orders.map do |order|
       age = ((Time.current - order.occurred_at) / 1.hour).floor
-      amount = format("$%.2f", order.gross_cents.to_f / 100.0)
+      amount = format('$%.2f', order.gross_cents.to_f / 100.0)
       "  • #{order.display_number} — #{amount} — #{age}h old"
     end
     "#{orders.length} online order(s) overdue for fulfillment:\n#{lines.join("\n")}"

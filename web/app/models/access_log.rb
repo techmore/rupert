@@ -8,12 +8,12 @@ class AccessLog < ApplicationRecord
 
   belongs_to :user, optional: true
 
-  SOURCES = ["password", "google", "logout"].freeze
-  STATUSES = ["success", "failure", "attempt"].freeze
+  SOURCES = %w[password google logout].freeze
+  STATUSES = %w[success failure attempt].freeze
 
   validates :source, inclusion: { in: SOURCES }, allow_nil: true
   validates :status, inclusion: { in: STATUSES }, allow_nil: true
 
   scope :recent, ->(limit = 100) { order(created_at: :desc).limit(limit) }
-  scope :for_email, ->(q) { where("email ILIKE ?", "%#{q.to_s.strip}%") }
+  scope :for_email, ->(q) { where('email ILIKE ?', "%#{q.to_s.strip}%") }
 end

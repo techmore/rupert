@@ -8,23 +8,23 @@ module Purchasing
     include TenantScoped
     include AASM
 
-    self.table_name = "purchase_orders"
+    self.table_name = 'purchase_orders'
 
-    belongs_to :vendor, class_name: "Purchasing::Vendor", foreign_key: :vendor_id
+    belongs_to :vendor, class_name: 'Purchasing::Vendor', foreign_key: :vendor_id
     has_many :lines,
-      class_name: "Purchasing::PurchaseOrderLine",
-      foreign_key: :purchase_order_id,
-      dependent: :destroy,
-      inverse_of: :purchase_order
+             class_name: 'Purchasing::PurchaseOrderLine',
+             foreign_key: :purchase_order_id,
+             dependent: :destroy,
+             inverse_of: :purchase_order
 
     validates :vendor_id, presence: true
     validates :order_number, presence: true, uniqueness: { scope: :tenant_id }
     validates :status, presence: true
 
-    scope :by_status, ->(status) { status.present? && status != "all" ? where(status: status) : all }
+    scope :by_status, ->(status) { status.present? && status != 'all' ? where(status: status) : all }
     scope :recent, ->(limit = 100) { order(created_at: :desc).limit(limit) }
 
-    aasm column: "status", no_direct_assignment: true do
+    aasm column: 'status', no_direct_assignment: true do
       state :draft, initial: true
       state :ordered
       state :received
@@ -34,19 +34,19 @@ module Purchasing
         transitions from: :draft, to: :ordered
       end
       event :mark_received do
-        transitions from: [:ordered, :draft], to: :received
+        transitions from: %i[ordered draft], to: :received
       end
       event :cancel do
-        transitions from: [:draft, :ordered], to: :cancelled
+        transitions from: %i[draft ordered], to: :cancelled
       end
     end
 
     def total_cents
-      lines.sum("quantity * unit_cost_cents")
+      lines.sum('quantity * unit_cost_cents')
     end
 
     def received_cents
-      lines.sum("received_quantity * unit_cost_cents")
+      lines.sum('received_quantity * unit_cost_cents')
     end
 
     def pending_cents
@@ -58,7 +58,7 @@ module Purchasing
     end
 
     def draft?
-      status == "draft"
+      status == 'draft'
     end
   end
 end

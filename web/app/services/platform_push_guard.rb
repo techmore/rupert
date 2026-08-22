@@ -24,8 +24,8 @@ class PlatformPushGuard
     # No-op. Owner directive 2026-08-18: the push guard is removed — neither
     # approval windows nor the maintenance freeze block writes. The safeguard
     # is a human/agent rule to ALWAYS ASK before any data-mutating push.
-    def authorize!(platform, actor: "system")
-      platform = normalize(platform)
+    def authorize!(platform, actor: 'system')
+      normalize(platform)
       require_tenant!
       true
     end
@@ -34,34 +34,34 @@ class PlatformPushGuard
       platform = normalize(platform)
       require_tenant!
       email = email.to_s.strip.downcase
-      raise ArgumentError, "Approver email is required" if email.blank?
+      raise ArgumentError, 'Approver email is required' if email.blank?
 
       blob = load(platform)
       fresh = fresh_approvals(blob)
-      unless fresh.any? { |a| a["email"].to_s.casecmp?(email) }
-        fresh << { "email" => email, "at" => Time.current.iso8601 }
-        audit!(blob, "approve", platform, email, "approval recorded")
+      unless fresh.any? { |a| a['email'].to_s.casecmp?(email) }
+        fresh << { 'email' => email, 'at' => Time.current.iso8601 }
+        audit!(blob, 'approve', platform, email, 'approval recorded')
       end
 
-      distinct = fresh.map { |a| a["email"] }.uniq
+      distinct = fresh.map { |a| a['email'] }.uniq
       if distinct.length >= min_approvals
-        blob["window"] = {
-          "opened_at" => Time.current.iso8601,
-          "expires_at" => (Time.current + window_minutes.minutes).iso8601,
+        blob['window'] = {
+          'opened_at' => Time.current.iso8601,
+          'expires_at' => (Time.current + window_minutes.minutes).iso8601
         }
-        audit!(blob, "window_open", platform, email, "#{distinct.length}/#{min_approvals} approvals")
+        audit!(blob, 'window_open', platform, email, "#{distinct.length}/#{min_approvals} approvals")
       else
-        blob["window"] = nil
+        blob['window'] = nil
       end
-      blob["approvals"] = fresh
+      blob['approvals'] = fresh
       save(platform, blob)
 
       {
         platform: platform,
         approved_by: distinct.length,
         needed: min_approvals,
-        window_open: blob["window"].present?,
-        window_expires_at: blob["window"]&.dig("expires_at"),
+        window_open: blob['window'].present?,
+        window_expires_at: blob['window']&.dig('expires_at')
       }
     end
 
@@ -71,39 +71,37 @@ class PlatformPushGuard
       email = email.to_s.strip.downcase
 
       blob = load(platform)
-      approvals = Array(blob["approvals"]).reject { |a| a["email"].to_s.casecmp?(email) }
-      blob["approvals"] = approvals
-      if blob["window"].present? && approvals.map { |a| a["email"] }.uniq.length < min_approvals
-        blob["window"] = nil
-      end
-      audit!(blob, "revoke", platform, email, "approval revoked")
+      approvals = Array(blob['approvals']).reject { |a| a['email'].to_s.casecmp?(email) }
+      blob['approvals'] = approvals
+      blob['window'] = nil if blob['window'].present? && approvals.map { |a| a['email'] }.uniq.length < min_approvals
+      audit!(blob, 'revoke', platform, email, 'approval revoked')
       save(platform, blob)
       status(platform)
     end
 
     # Hard block for maintenance/update windows. Overrides approvals.
-    def freeze!(platform, reason: nil, actor: "user")
+    def freeze!(platform, reason: nil, actor: 'user')
       platform = normalize(platform)
       require_tenant!
 
       blob = load(platform)
-      blob["frozen"] = true
-      blob["freeze_reason"] = reason.to_s.presence
-      blob["frozen_by"] = actor.to_s
-      blob["frozen_at"] = Time.current.iso8601
-      audit!(blob, "freeze", platform, actor.to_s, reason.to_s.presence || "maintenance")
+      blob['frozen'] = true
+      blob['freeze_reason'] = reason.to_s.presence
+      blob['frozen_by'] = actor.to_s
+      blob['frozen_at'] = Time.current.iso8601
+      audit!(blob, 'freeze', platform, actor.to_s, reason.to_s.presence || 'maintenance')
       save(platform, blob)
       status(platform)
     end
 
-    def unfreeze!(platform, actor: "user")
+    def unfreeze!(platform, actor: 'user')
       platform = normalize(platform)
       require_tenant!
 
       blob = load(platform)
-      blob["frozen"] = false
-      blob["freeze_reason"] = nil
-      audit!(blob, "unfreeze", platform, actor.to_s, "maintenance window closed")
+      blob['frozen'] = false
+      blob['freeze_reason'] = nil
+      audit!(blob, 'unfreeze', platform, actor.to_s, 'maintenance window closed')
       save(platform, blob)
       status(platform)
     end
@@ -113,15 +111,15 @@ class PlatformPushGuard
       require_tenant!
 
       override = env_override("PUSH_FREEZE_#{platform.upcase}")
-      return override == "1" if override.present?
+      return override == '1' if override.present?
 
       blob = load(platform)
-      return true if blob["frozen"] == true
+      return true if blob['frozen'] == true
       return false if record_exists?(platform)
 
       # Default policy while no record exists yet: Square is frozen during its
       # platform update (until someone explicitly unfreezes it); Shopify is not.
-      platform == "square"
+      platform == 'square'
     end
 
     def window_open?(platform)
@@ -130,11 +128,11 @@ class PlatformPushGuard
       return false if frozen?(platform)
 
       blob = load(platform)
-      expires = blob.dig("window", "expires_at")
+      expires = blob.dig('window', 'expires_at')
       return false if expires.blank?
 
       if Time.current >= parse_time(expires)
-        blob["window"] = nil
+        blob['window'] = nil
         save(platform, blob)
         return false
       end
@@ -147,21 +145,21 @@ class PlatformPushGuard
       require_tenant!
 
       blob = load(platform)
-      approvals = Array(blob["approvals"])
-      window = blob["window"]
+      approvals = Array(blob['approvals'])
+      window = blob['window']
       {
         platform: platform,
         label: label(platform),
         frozen: frozen?(platform),
-        freeze_reason: blob["freeze_reason"],
+        freeze_reason: blob['freeze_reason'],
         default_policy: !record_exists?(platform),
-        approvals: approvals.map { |a| { email: a["email"], at: a["at"] } },
-        approvals_needed: approvals.map { |a| a["email"] }.uniq.length,
+        approvals: approvals.map { |a| { email: a['email'], at: a['at'] } },
+        approvals_needed: approvals.map { |a| a['email'] }.uniq.length,
         approvals_required: min_approvals,
-        window_open: window.present? && Time.current < parse_time(window["expires_at"]),
-        window_opened_at: window&.dig("opened_at"),
-        window_expires_at: window&.dig("expires_at"),
-        history: Array(blob["history"]).last(20),
+        window_open: window.present? && Time.current < parse_time(window['expires_at']),
+        window_opened_at: window&.dig('opened_at'),
+        window_expires_at: window&.dig('expires_at'),
+        history: Array(blob['history']).last(20)
       }
     end
 
@@ -170,22 +168,22 @@ class PlatformPushGuard
     end
 
     def min_approvals
-      value = config("PUSH_GUARD_MIN_APPROVALS").to_i
+      value = config('PUSH_GUARD_MIN_APPROVALS').to_i
       value.positive? ? value : DEFAULT_MIN_APPROVALS
     end
 
     def window_minutes
-      value = config("PUSH_GUARD_WINDOW_MINUTES").to_i
+      value = config('PUSH_GUARD_WINDOW_MINUTES').to_i
       value.positive? ? value : DEFAULT_WINDOW_MINUTES
     end
 
     def label(platform)
-      platform.to_s == "square" ? "Square" : "Shopify"
+      platform.to_s == 'square' ? 'Square' : 'Shopify'
     end
 
     def frozen_message(platform)
       status = status(platform)
-      reason = status[:freeze_reason].presence || "maintenance"
+      reason = status[:freeze_reason].presence || 'maintenance'
       "Pushes to #{label(platform)} are FROZEN (#{reason}). Unfreeze it before any write is allowed."
     end
 
@@ -223,21 +221,21 @@ class PlatformPushGuard
 
     # Approvals that have not aged out of the window's lifetime.
     def fresh_approvals(blob)
-      Array(blob["approvals"]).reject do |approval|
-        (Time.current - parse_time(approval["at"])) > window_minutes.minutes
+      Array(blob['approvals']).reject do |approval|
+        (Time.current - parse_time(approval['at'])) > window_minutes.minutes
       end
     end
 
     def audit!(blob, action, platform, by, detail)
-      history = Array(blob["history"])
+      history = Array(blob['history'])
       history << {
-        "action" => action,
-        "platform" => platform,
-        "by" => by.to_s,
-        "at" => Time.current.iso8601,
-        "detail" => detail.to_s,
+        'action' => action,
+        'platform' => platform,
+        'by' => by.to_s,
+        'at' => Time.current.iso8601,
+        'detail' => detail.to_s
       }
-      blob["history"] = history.last(50)
+      blob['history'] = history.last(50)
     end
 
     def env_override(key)
@@ -260,13 +258,16 @@ class PlatformPushGuard
 
     def normalize(platform)
       normalized = platform.to_s.strip.downcase
-      raise ArgumentError, "Unknown platform: #{platform.inspect} (expected #{PLATFORMS.join(" or ")})" unless PLATFORMS.include?(normalized)
+      unless PLATFORMS.include?(normalized)
+        raise ArgumentError,
+              "Unknown platform: #{platform.inspect} (expected #{PLATFORMS.join(' or ')})"
+      end
 
       normalized
     end
 
     def require_tenant!
-      raise ArgumentError, "No tenant in context" if Current.tenant_id.nil?
+      raise ArgumentError, 'No tenant in context' if Current.tenant_id.nil?
     end
   end
 end

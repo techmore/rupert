@@ -7,7 +7,7 @@ class AddTenantAndPasswordToUsers < ActiveRecord::Migration[7.1]
       t.string :email
       t.string :password_digest
       t.string :name
-      t.string :role, default: "admin"
+      t.string :role, default: 'admin'
       t.change_null :shopify_user_id, true
       t.change_null :shopify_domain, true
       t.change_null :shopify_token, true

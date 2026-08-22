@@ -3,7 +3,7 @@
 module Purchasing
   # Vendor directory: who the shop buys from.
   class VendorsController < AuthenticatedController
-    before_action :set_vendor, only: [:show, :edit, :update, :destroy]
+    before_action :set_vendor, only: %i[show edit update destroy]
 
     def index
       authorize(:module, :purchasing_read?)
@@ -25,7 +25,7 @@ module Purchasing
       authorize(:module, :purchasing_write?)
       @vendor = Purchasing::Vendor.new(vendor_params)
       if @vendor.save
-        redirect_to(@vendor, notice: "Vendor added.")
+        redirect_to(@vendor, notice: 'Vendor added.')
       else
         render(:new, status: :unprocessable_entity)
       end
@@ -38,7 +38,7 @@ module Purchasing
     def update
       authorize(:module, :purchasing_write?)
       if @vendor.update(vendor_params)
-        redirect_to(@vendor, notice: "Vendor updated.")
+        redirect_to(@vendor, notice: 'Vendor updated.')
       else
         render(:edit, status: :unprocessable_entity)
       end
@@ -47,7 +47,7 @@ module Purchasing
     def destroy
       authorize(:module, :purchasing_write?)
       @vendor.destroy
-      redirect_to(vendors_path, notice: "Vendor removed.")
+      redirect_to(vendors_path, notice: 'Vendor removed.')
     rescue ActiveRecord::DeleteRestrictionError
       redirect_to(@vendor, alert: "Vendor has purchase orders and can't be removed.")
     end

@@ -1,34 +1,44 @@
 # frozen_string_literal: true
 
-require "test_helper"
+require 'test_helper'
 
 class InventoryLocationViewTest < ActionDispatch::IntegrationTest
   setup do
     @tenant = tenants(:default_tenant)
     Current.tenant = @tenant
-    Shop.create!(shopify_domain: "m11u0i-sb.myshopify.com", shopify_token: "test-token")
-    EnvStore.set("SHOPIFY_CLIENT_ID", "test-client-id")
-    EnvStore.set("SHOPIFY_CLIENT_SECRET", "test-client-secret")
-    post login_path, params: { email: "admin@example.com", password: "password" }
+    Shop.create!(shopify_domain: 'm11u0i-sb.myshopify.com', shopify_token: 'test-token')
+    EnvStore.set('SHOPIFY_CLIENT_ID', 'test-client-id')
+    EnvStore.set('SHOPIFY_CLIENT_SECRET', 'test-client-secret')
+    post login_path, params: { email: 'admin@example.com', password: 'password' }
 
-    @product = ShopifyProduct.create!(id: "gid://shopify/Product/1", title: "Tea", status: "ACTIVE", tenant_id: @tenant.id)
-    @online = Location.create!(source: "shopify", externalId: "gid://shopify/Location/1", name: "Online store", active: true, tenant_id: @tenant.id)
-    @rig = Location.create!(source: "shopify", externalId: "gid://shopify/Location/2", name: "Market rig", active: true, tenant_id: @tenant.id)
-    @home = Location.create!(source: "square", externalId: "sq-home", name: "Home shop", active: true, tenant_id: @tenant.id)
+    @product = ShopifyProduct.create!(id: 'gid://shopify/Product/1', title: 'Tea', status: 'ACTIVE',
+                                      tenant_id: @tenant.id)
+    @online = Location.create!(source: 'shopify', externalId: 'gid://shopify/Location/1', name: 'Online store',
+                               active: true, tenant_id: @tenant.id)
+    @rig = Location.create!(source: 'shopify', externalId: 'gid://shopify/Location/2', name: 'Market rig',
+                            active: true, tenant_id: @tenant.id)
+    @home = Location.create!(source: 'square', externalId: 'sq-home', name: 'Home shop', active: true,
+                             tenant_id: @tenant.id)
 
-    @item = SquareItem.create!(id: "si1", name: "Tea Item", tenant_id: @tenant.id)
-    @variation = SquareVariation.create!(id: "sv1", itemId: @item.id, sku: "TEA-50", name: "Tea 50g", tenant_id: @tenant.id)
+    @item = SquareItem.create!(id: 'si1', name: 'Tea Item', tenant_id: @tenant.id)
+    @variation = SquareVariation.create!(id: 'sv1', itemId: @item.id, sku: 'TEA-50', name: 'Tea 50g',
+                                         tenant_id: @tenant.id)
 
-    @linked = ShopifyVariant.create!(productId: @product.id, title: "Tea / 50g", sku: "TEA-50",
-      inventoryQuantity: 7, tracked: true, tenant_id: @tenant.id)
-    SkuLink.create!(sku: "TEA-50", shopifyVariantId: @linked.id, squareVariationId: @variation.id, tenant_id: @tenant.id)
-    InventoryLevel.create!(source: "shopify", locationId: @online.id, shopifyVariantId: @linked.id, quantity: 5, available: 5, tenant_id: @tenant.id)
-    InventoryLevel.create!(source: "shopify", locationId: @rig.id, shopifyVariantId: @linked.id, quantity: 2, available: 2, tenant_id: @tenant.id)
-    InventoryLevel.create!(source: "square", locationId: @home.id, squareVariationId: @variation.id, quantity: 4, available: 4, tenant_id: @tenant.id)
+    @linked = ShopifyVariant.create!(productId: @product.id, title: 'Tea / 50g', sku: 'TEA-50',
+                                     inventoryQuantity: 7, tracked: true, tenant_id: @tenant.id)
+    SkuLink.create!(sku: 'TEA-50', shopifyVariantId: @linked.id, squareVariationId: @variation.id,
+                    tenant_id: @tenant.id)
+    InventoryLevel.create!(source: 'shopify', locationId: @online.id, shopifyVariantId: @linked.id, quantity: 5,
+                           available: 5, tenant_id: @tenant.id)
+    InventoryLevel.create!(source: 'shopify', locationId: @rig.id, shopifyVariantId: @linked.id, quantity: 2,
+                           available: 2, tenant_id: @tenant.id)
+    InventoryLevel.create!(source: 'square', locationId: @home.id, squareVariationId: @variation.id, quantity: 4,
+                           available: 4, tenant_id: @tenant.id)
 
-    @unlinked = ShopifyVariant.create!(productId: @product.id, title: "Tea / 100g", sku: "TEA-100",
-      inventoryQuantity: 3, tracked: true, tenant_id: @tenant.id)
-    InventoryLevel.create!(source: "shopify", locationId: @online.id, shopifyVariantId: @unlinked.id, quantity: 3, available: 3, tenant_id: @tenant.id)
+    @unlinked = ShopifyVariant.create!(productId: @product.id, title: 'Tea / 100g', sku: 'TEA-100',
+                                       inventoryQuantity: 3, tracked: true, tenant_id: @tenant.id)
+    InventoryLevel.create!(source: 'shopify', locationId: @online.id, shopifyVariantId: @unlinked.id, quantity: 3,
+                           available: 3, tenant_id: @tenant.id)
   end
 
   teardown do
@@ -36,28 +46,28 @@ class InventoryLocationViewTest < ActionDispatch::IntegrationTest
   end
 
   def get_page(params: {})
-    get inventory_index_path, params: params.merge(shop: "m11u0i-sb.myshopify.com", embedded: "1", host: "test-host")
+    get inventory_index_path, params: params.merge(shop: 'm11u0i-sb.myshopify.com', embedded: '1', host: 'test-host')
   end
 
-  test "renders one stock column per active location plus totals and identity status" do
+  test 'renders one stock column per active location plus totals and identity status' do
     get_page
 
     assert_response :success
-    assert_select "h1", "Inventory"
+    assert_select 'h1', 'Inventory'
 
     # A column header per location, labeled with its source.
-    assert_select "th", text: /Online store/
-    assert_select "th", text: /Market rig/
-    assert_select "th", text: /Home shop/
+    assert_select 'th', text: /Online store/
+    assert_select 'th', text: /Market rig/
+    assert_select 'th', text: /Home shop/
 
     # Per-location quantities for the linked variant.
-    assert_select "td", text: /^5$/
-    assert_select "td", text: /^2$/
-    assert_select "td", text: /^4$/
+    assert_select 'td', text: /^5$/
+    assert_select 'td', text: /^2$/
+    assert_select 'td', text: /^4$/
 
     # Identity chips, not a linked/unlinked binary.
-    assert_select "span.pill-fern", text: "matched"
-    assert_select "span.pill-taupe", text: "unlinked"
-    assert_select "td", text: /not carried/
+    assert_select 'span.pill-fern', text: 'matched'
+    assert_select 'span.pill-taupe', text: 'unlinked'
+    assert_select 'td', text: /not carried/
   end
 end

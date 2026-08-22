@@ -5,16 +5,16 @@ module Core
   class Payment < ApplicationRecord
     include TenantScoped
 
-    self.table_name = "payments"
+    self.table_name = 'payments'
 
-    METHODS = ["card", "cash", "gift_card", "check", "other"].freeze
+    METHODS = %w[card cash gift_card check other].freeze
 
-    belongs_to :order, class_name: "Core::Order", foreign_key: :order_id
+    belongs_to :order, class_name: 'Core::Order', foreign_key: :order_id
 
     validates :method, presence: true
     validates :amount_cents, numericality: { greater_than: 0 }
     validates :paid_at, presence: true
 
-    scope :completed, -> { where(status: "completed") }
+    scope :completed, -> { where(status: 'completed') }
   end
 end

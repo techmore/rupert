@@ -9,115 +9,115 @@ class User < ActiveRecord::Base
   serialize :dashboard_config, coder: JSON
 
   validates :email,
-    presence: true,
-    uniqueness: true,
-    format: { with: URI::MailTo::EMAIL_REGEXP }
+            presence: true,
+            uniqueness: true,
+            format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :password, length: { minimum: 8 }, allow_nil: true
 
   scope :active, -> { where(active: true) }
   scope :ordered, -> { order(:name, :email) }
 
   enum :role,
-    {
-      super_admin: "super_admin",
-      admin: "admin",
-      manager: "manager",
-      cashier: "cashier",
-      reader: "reader",
-    },
-    default: :admin
+       {
+         super_admin: 'super_admin',
+         admin: 'admin',
+         manager: 'manager',
+         cashier: 'cashier',
+         reader: 'reader'
+       },
+       default: :admin
 
   # Permission matrix. "*" grants everything.
   ROLE_PERMISSIONS = {
-    "super_admin" => ["*"],
-    "admin" => [
-      "dashboard.read",
-      "sales.read",
-      "sales.write",
-      "customers.read",
-      "customers.write",
-      "inventory.read",
-      "inventory.write",
-      "reconcile.read",
-      "reconcile.write",
-      "reports.read",
-      "reports.write",
-      "ledger.read",
-      "ledger.write",
-      "projects.read",
-      "projects.write",
-      "alerts.read",
-      "alerts.write",
-      "sync.read",
-      "sync.write",
-      "settings.read",
-      "settings.write",
-      "system.read",
-      "system.write",
-      "users.read",
-      "users.write",
-      "purchasing.read",
-      "purchasing.write",
-      "finance.read",
-      "finance.write",
-      "hr.read",
-      "hr.write",
-      "timesheets.read",
-      "timesheets.write",
-      "leave.read",
-      "leave.write",
-      "payroll.read",
-      "payroll.write",
+    'super_admin' => ['*'],
+    'admin' => [
+      'dashboard.read',
+      'sales.read',
+      'sales.write',
+      'customers.read',
+      'customers.write',
+      'inventory.read',
+      'inventory.write',
+      'reconcile.read',
+      'reconcile.write',
+      'reports.read',
+      'reports.write',
+      'ledger.read',
+      'ledger.write',
+      'projects.read',
+      'projects.write',
+      'alerts.read',
+      'alerts.write',
+      'sync.read',
+      'sync.write',
+      'settings.read',
+      'settings.write',
+      'system.read',
+      'system.write',
+      'users.read',
+      'users.write',
+      'purchasing.read',
+      'purchasing.write',
+      'finance.read',
+      'finance.write',
+      'hr.read',
+      'hr.write',
+      'timesheets.read',
+      'timesheets.write',
+      'leave.read',
+      'leave.write',
+      'payroll.read',
+      'payroll.write'
     ],
-    "manager" => [
-      "dashboard.read",
-      "sales.read",
-      "customers.read",
-      "customers.write",
-      "inventory.read",
-      "inventory.write",
-      "reconcile.read",
-      "ledger.read",
-      "reports.read",
-      "projects.read",
-      "projects.write",
-      "alerts.read",
-      "alerts.write",
-      "sync.read",
-      "hr.read",
-      "timesheets.read",
-      "timesheets.write",
-      "leave.read",
-      "leave.write",
-      "payroll.read",
+    'manager' => [
+      'dashboard.read',
+      'sales.read',
+      'customers.read',
+      'customers.write',
+      'inventory.read',
+      'inventory.write',
+      'reconcile.read',
+      'ledger.read',
+      'reports.read',
+      'projects.read',
+      'projects.write',
+      'alerts.read',
+      'alerts.write',
+      'sync.read',
+      'hr.read',
+      'timesheets.read',
+      'timesheets.write',
+      'leave.read',
+      'leave.write',
+      'payroll.read'
     ],
-    "cashier" => [
-      "dashboard.read",
-      "sales.read",
-      "sales.write",
-      "customers.read",
-      "inventory.read",
-      "alerts.read",
+    'cashier' => [
+      'dashboard.read',
+      'sales.read',
+      'sales.write',
+      'customers.read',
+      'inventory.read',
+      'alerts.read'
     ],
-    "reader" => [
-      "dashboard.read",
-      "sales.read",
-      "customers.read",
-      "inventory.read",
-      "reconcile.read",
-      "reports.read",
-      "ledger.read",
-      "alerts.read",
-      "hr.read",
-      "timesheets.read",
-      "leave.read",
-      "payroll.read",
-    ],
+    'reader' => [
+      'dashboard.read',
+      'sales.read',
+      'customers.read',
+      'inventory.read',
+      'reconcile.read',
+      'reports.read',
+      'ledger.read',
+      'alerts.read',
+      'hr.read',
+      'timesheets.read',
+      'leave.read',
+      'payroll.read'
+    ]
   }.freeze
 
   def can?(permission)
     perms = effective_permissions
-    perms.include?("*") || perms.include?(permission.to_s)
+    perms.include?('*') || perms.include?(permission.to_s)
   end
 
   def active?
@@ -136,7 +136,7 @@ class User < ActiveRecord::Base
   #   3. built-in ROLE_PERMISSIONS matrix
   def effective_permissions
     @effective_permissions ||= begin
-      return ["*"] if super_admin?
+      return ['*'] if super_admin?
 
       person = user_permissions
       if person.any?
@@ -167,7 +167,7 @@ class User < ActiveRecord::Base
   end
 
   def display_name
-    name.presence || email.to_s.split("@").first.to_s.titleize
+    name.presence || email.to_s.split('@').first.to_s.titleize
   end
 
   # Dashboard widget configuration as a hash (see DashboardWidget).
@@ -180,23 +180,27 @@ class User < ActiveRecord::Base
   # and to keep the role matrix in one place.
   def self.permission_catalog
     [
-      { area: "Overview", permissions: ["dashboard.read"] },
+      { area: 'Overview', permissions: ['dashboard.read'] },
       {
-        area: "Commerce",
-        permissions: ["sales.read", "sales.write", "customers.read", "customers.write", "inventory.read", "inventory.write"],
+        area: 'Commerce',
+        permissions: ['sales.read', 'sales.write', 'customers.read', 'customers.write', 'inventory.read',
+                      'inventory.write']
       },
       {
-        area: "Operations",
-        permissions: ["reconcile.read", "reconcile.write", "reports.read", "reports.write", "ledger.read", "ledger.write", "projects.read", "projects.write"],
+        area: 'Operations',
+        permissions: ['reconcile.read', 'reconcile.write', 'reports.read', 'reports.write', 'ledger.read',
+                      'ledger.write', 'projects.read', 'projects.write']
       },
       {
-        area: "System",
-        permissions: ["alerts.read", "alerts.write", "sync.read", "sync.write", "settings.read", "settings.write", "system.read", "system.write", "purchasing.read", "purchasing.write", "finance.read", "finance.write"],
+        area: 'System',
+        permissions: ['alerts.read', 'alerts.write', 'sync.read', 'sync.write', 'settings.read', 'settings.write',
+                      'system.read', 'system.write', 'purchasing.read', 'purchasing.write', 'finance.read', 'finance.write']
       },
       {
-        area: "Team",
-        permissions: ["users.read", "users.write", "hr.read", "hr.write", "timesheets.read", "timesheets.write", "leave.read", "leave.write", "payroll.read", "payroll.write"],
-      },
+        area: 'Team',
+        permissions: ['users.read', 'users.write', 'hr.read', 'hr.write', 'timesheets.read', 'timesheets.write',
+                      'leave.read', 'leave.write', 'payroll.read', 'payroll.write']
+      }
     ]
   end
 

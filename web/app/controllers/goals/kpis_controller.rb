@@ -2,7 +2,7 @@
 
 module Goals
   class KpisController < AuthenticatedController
-    before_action :set_kpi, only: [:show, :update, :destroy]
+    before_action :set_kpi, only: %i[show update destroy]
 
     def index
       authorize(:module, :projects_read?)
@@ -23,7 +23,7 @@ module Goals
       authorize(:module, :projects_write?)
       @kpi = Goals::Kpi.new(kpi_params)
       if @kpi.save
-        redirect_to(@kpi, notice: "KPI created.")
+        redirect_to(@kpi, notice: 'KPI created.')
       else
         render(:new, status: :unprocessable_entity)
       end
@@ -36,7 +36,7 @@ module Goals
     def update
       authorize(@kpi)
       if @kpi.update(kpi_params)
-        redirect_to(@kpi, notice: "KPI updated.")
+        redirect_to(@kpi, notice: 'KPI updated.')
       else
         render(:edit, status: :unprocessable_entity)
       end
@@ -45,7 +45,7 @@ module Goals
     def destroy
       authorize(@kpi)
       @kpi.destroy
-      redirect_to(kpis_path, notice: "KPI deleted.")
+      redirect_to(kpis_path, notice: 'KPI deleted.')
     end
 
     # POST /kpis/:id/reading — record a new measurement
@@ -54,9 +54,9 @@ module Goals
       @kpi = Goals::Kpi.find(params[:id])
       @kpi.readings.create!(
         value: params[:value],
-        measured_at: params[:measured_at].present? ? Time.zone.parse(params[:measured_at]) : Time.current,
+        measured_at: params[:measured_at].present? ? Time.zone.parse(params[:measured_at]) : Time.current
       )
-      redirect_to(@kpi, notice: "Reading recorded.")
+      redirect_to(@kpi, notice: 'Reading recorded.')
     rescue ActiveRecord::RecordInvalid => e
       redirect_to(@kpi, alert: e.message)
     end

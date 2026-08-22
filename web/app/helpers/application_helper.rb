@@ -14,13 +14,13 @@ module ApplicationHelper
   def safe_module_path(entry)
     instance_exec(&entry.path)
   rescue StandardError
-    "#"
+    '#'
   end
 
   def module_match_strength(path)
-    return 0 if path.blank? || path == "#"
+    return 0 if path.blank? || path == '#'
 
-    return request.path == "/" ? 100 : 0 if path == "/"
+    return request.path == '/' ? 100 : 0 if path == '/'
 
     return path.length if request.path == path
     return path.length if request.path.start_with?("#{path}/")
@@ -30,12 +30,12 @@ module ApplicationHelper
 
   def active_module_entry
     @active_module_entry ||= ModuleRegistry.nav_for(Current.user)
-      .max_by { |entry| module_match_strength(safe_module_path(entry)) }
+                                           .max_by { |entry| module_match_strength(safe_module_path(entry)) }
   end
 
   def active_area_key
     @active_area_key ||= ModuleRegistry.area_key_for(active_module_entry&.key) ||
-      nav_areas.first&.dig(:key)
+                         nav_areas.first&.dig(:key)
   end
 
   def active_area_modules
@@ -45,13 +45,13 @@ module ApplicationHelper
   # Chart palette derived from the Tailwind @theme tokens in
   # app/assets/tailwind/application.css. Keep the two in sync.
   CHART_COLORS = {
-    ink: "#1a393d",
-    olive_deep: "#108184",
-    clay: "#7d5449",
-    butter: "#e4be58",
-    rose: "#b05b4f",
-    sage: "#6b7464",
-    fern: "#3e6b5e",
+    ink: '#1a393d',
+    olive_deep: '#108184',
+    clay: '#7d5449',
+    butter: '#e4be58',
+    rose: '#b05b4f',
+    sage: '#6b7464',
+    fern: '#3e6b5e'
   }.freeze
 
   def chart_color(*keys)
@@ -59,11 +59,11 @@ module ApplicationHelper
   end
 
   def vs_yesterday(today_cents, yesterday_cents)
-    return "vs yesterday" if today_cents.nil? || yesterday_cents.nil? || yesterday_cents.zero?
+    return 'vs yesterday' if today_cents.nil? || yesterday_cents.nil? || yesterday_cents.zero?
 
     delta = today_cents - yesterday_cents
     pct = (delta.to_f / yesterday_cents * 100).round
-    "#{pct.positive? ? "+" : ""}#{pct}% vs yesterday"
+    "#{pct.positive? ? '+' : ''}#{pct}% vs yesterday"
   end
 
   def attention_items(presenter)
@@ -73,9 +73,9 @@ module ApplicationHelper
     if mismatches.positive?
       items << {
         label: "#{mismatches} SKU mismatches",
-        note: "Same item, different SKU per platform — review on Catalog Links",
+        note: 'Same item, different SKU per platform — review on Catalog Links',
         value: mismatches.to_s,
-        pill: "pill-clay",
+        pill: 'pill-clay'
       }
     end
 
@@ -85,8 +85,8 @@ module ApplicationHelper
       items << {
         label: alert.sku.presence || alert.id.first(10),
         note: "Low stock · #{alert.quantity} left / threshold #{alert.threshold}",
-        value: alert.quantity <= 0 ? "out" : "low",
-        pill: alert.quantity <= 0 ? "pill-rose" : "pill-clay",
+        value: alert.quantity <= 0 ? 'out' : 'low',
+        pill: alert.quantity <= 0 ? 'pill-rose' : 'pill-clay'
       }
     end
 
@@ -96,15 +96,15 @@ module ApplicationHelper
   # Fragment cache keyed on the tenant's data version so the fragment is served
   # until the next sync/mutation invalidates it. Only wrap content with no
   # per-session forms (CSRF tokens can't be cached).
-  def cached_fragment(name, **params)
-    cache(["page", Current.tenant_id, name, DataCache.version, params].compact) { yield }
+  def cached_fragment(name, **params, &block)
+    cache(['page', Current.tenant_id, name, DataCache.version, params].compact, &block)
   end
 
   def time_based_greeting
     case Time.current.hour
-    when 0...12 then "Good morning"
-    when 12...18 then "Good afternoon"
-    else "Good evening"
+    when 0...12 then 'Good morning'
+    when 12...18 then 'Good afternoon'
+    else 'Good evening'
     end
   end
 end

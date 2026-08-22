@@ -1,49 +1,49 @@
 # frozen_string_literal: true
 
-require "test_helper"
+require 'test_helper'
 
 class BuzzAgentTest < ActiveSupport::TestCase
   setup do
     Current.tenant = tenants(:default_tenant)
     BuzzAgent.generate_keypair!
-    EnvStore.set("BUZZ_RELAY_URL", "wss://relay.test")
-    EnvStore.set("BUZZ_CHANNEL", "channel-id-123")
+    EnvStore.set('BUZZ_RELAY_URL', 'wss://relay.test')
+    EnvStore.set('BUZZ_CHANNEL', 'channel-id-123')
   end
 
   teardown do
     Current.tenant = nil
-    EnvStore.set("BUZZ_RELAY_URL", nil)
-    EnvStore.set("BUZZ_PRIVATE_KEY", nil)
-    EnvStore.set("BUZZ_CHANNEL", nil)
+    EnvStore.set('BUZZ_RELAY_URL', nil)
+    EnvStore.set('BUZZ_PRIVATE_KEY', nil)
+    EnvStore.set('BUZZ_CHANNEL', nil)
   end
 
-  test "generate_keypair stores a private key and exposes the agent npub" do
+  test 'generate_keypair stores a private key and exposes the agent npub' do
     assert_equal 64, BuzzAgent.private_key_hex.length
     assert_match(/\Anpub1/, BuzzAgent.agent_npub)
   end
 
-  test "build_event signs a valid channel message with the channel tag" do
-    event = BuzzAgent.build_event(content: "hello", channel: "channel-id-123")
+  test 'build_event signs a valid channel message with the channel tag' do
+    event = BuzzAgent.build_event(content: 'hello', channel: 'channel-id-123')
     assert_equal 9, event.kind
-    assert_includes event.tags, ["h", "channel-id-123"]
+    assert_includes event.tags, %w[h channel-id-123]
     assert event.verify_signature
     assert_equal BuzzAgent.public_key.to_s, event.pubkey.to_s
   end
 
-  test "build_event defaults to a text note without a channel" do
-    event = BuzzAgent.build_event(content: "hello")
+  test 'build_event defaults to a text note without a channel' do
+    event = BuzzAgent.build_event(content: 'hello')
     assert_equal 1, event.kind
     assert event.verify_signature
   end
 
-  test "notify returns an error when not configured" do
-    EnvStore.set("BUZZ_PRIVATE_KEY", nil)
-    ok, message = BuzzAgent.notify("hi")
+  test 'notify returns an error when not configured' do
+    EnvStore.set('BUZZ_PRIVATE_KEY', nil)
+    ok, message = BuzzAgent.notify('hi')
     refute ok
     assert_match(/not configured/, message)
   end
 
-  test "publish sends the signed event and returns ok" do
+  test 'publish sends the signed event and returns ok' do
     fake = Object.new
     handlers = {}
     fake.define_singleton_method(:on) { |event, &blk| handlers[event] = blk }
@@ -52,42 +52,42 @@ class BuzzAgentTest < ActiveSupport::TestCase
     fake.define_singleton_method(:send) do |data|
       sent = data
       payload = JSON.parse(data)
-      handlers[:message]&.call(Struct.new(:data).new(["OK", payload[1]["id"], true, ""].to_json))
+      handlers[:message]&.call(Struct.new(:data).new(['OK', payload[1]['id'], true, ''].to_json))
     end
     fake.define_singleton_method(:close) {}
 
     WebSocket::Client::Simple.stubs(:connect).returns(fake)
-    ok, message = BuzzAgent.publish(BuzzAgent.build_event(content: "hi", channel: "c"))
+    ok, message = BuzzAgent.publish(BuzzAgent.build_event(content: 'hi', channel: 'c'))
     assert ok
-    assert_includes sent, "EVENT"
-    assert_equal "OK", message
+    assert_includes sent, 'EVENT'
+    assert_equal 'OK', message
   end
 
-  test "publish returns the relay rejection" do
+  test 'publish returns the relay rejection' do
     fake = Object.new
     handlers = {}
     fake.define_singleton_method(:on) { |event, &blk| handlers[event] = blk }
     fake.define_singleton_method(:open?) { true }
     fake.define_singleton_method(:send) do |data|
       payload = JSON.parse(data)
-      handlers[:message]&.call(Struct.new(:data).new(["OK", payload[1]["id"], false, "rate limited"].to_json))
+      handlers[:message]&.call(Struct.new(:data).new(['OK', payload[1]['id'], false, 'rate limited'].to_json))
     end
     fake.define_singleton_method(:close) {}
 
     WebSocket::Client::Simple.stubs(:connect).returns(fake)
-    ok, message = BuzzAgent.publish(BuzzAgent.build_event(content: "hi"))
+    ok, message = BuzzAgent.publish(BuzzAgent.build_event(content: 'hi'))
     refute ok
-    assert_equal "rate limited", message
+    assert_equal 'rate limited', message
   end
 
-  test "publish returns an error when the relay cannot be reached" do
-    WebSocket::Client::Simple.stubs(:connect).raises(StandardError, "connection refused")
-    ok, message = BuzzAgent.publish(BuzzAgent.build_event(content: "hi"))
+  test 'publish returns an error when the relay cannot be reached' do
+    WebSocket::Client::Simple.stubs(:connect).raises(StandardError, 'connection refused')
+    ok, message = BuzzAgent.publish(BuzzAgent.build_event(content: 'hi'))
     refute ok
-    assert_equal "connection refused", message
+    assert_equal 'connection refused', message
   end
 
-  test "register publishes a kind 0 profile event" do
+  test 'register publishes a kind 0 profile event' do
     fake = Object.new
     handlers = {}
     fake.define_singleton_method(:on) { |event, &blk| handlers[event] = blk }
@@ -96,19 +96,19 @@ class BuzzAgentTest < ActiveSupport::TestCase
     fake.define_singleton_method(:send) do |data|
       sent = data
       payload = JSON.parse(data)
-      handlers[:message]&.call(Struct.new(:data).new(["OK", payload[1]["id"], true, ""].to_json))
+      handlers[:message]&.call(Struct.new(:data).new(['OK', payload[1]['id'], true, ''].to_json))
     end
     fake.define_singleton_method(:close) {}
 
     WebSocket::Client::Simple.stubs(:connect).returns(fake)
-    ok, _ = BuzzAgent.register!
+    ok, = BuzzAgent.register!
     assert ok
     event = JSON.parse(sent)[1]
-    assert_equal 0, event["kind"]
-    assert_match(/"name":"Rupert"/, event["content"])
+    assert_equal 0, event['kind']
+    assert_match(/"name":"Rupert"/, event['content'])
   end
 
-  test "publish answers a NIP-42 auth challenge before the event" do
+  test 'publish answers a NIP-42 auth challenge before the event' do
     fake = Object.new
     handlers = {}
     sent = []
@@ -117,28 +117,28 @@ class BuzzAgentTest < ActiveSupport::TestCase
     fake.define_singleton_method(:send) do |data|
       sent << data
       payload = JSON.parse(data)
-      if payload[0] == "AUTH"
-        handlers[:message]&.call(Struct.new(:data).new(["OK", "event-id", true, ""].to_json))
+      if payload[0] == 'AUTH'
+        handlers[:message]&.call(Struct.new(:data).new(['OK', 'event-id', true, ''].to_json))
       else
-        handlers[:message]&.call(Struct.new(:data).new(["AUTH", "challenge-xyz"].to_json))
+        handlers[:message]&.call(Struct.new(:data).new(%w[AUTH challenge-xyz].to_json))
       end
     end
     fake.define_singleton_method(:close) {}
 
     WebSocket::Client::Simple.stubs(:connect).returns(fake)
-    ok, _ = BuzzAgent.publish(BuzzAgent.build_event(content: "hi"))
+    ok, = BuzzAgent.publish(BuzzAgent.build_event(content: 'hi'))
     assert ok
-    auth = sent.find { |m| JSON.parse(m)[0] == "AUTH" }
+    auth = sent.find { |m| JSON.parse(m)[0] == 'AUTH' }
     auth_event = JSON.parse(auth)[1]
-    assert_equal 22242, auth_event["kind"]
-    assert_includes auth_event["tags"], ["challenge", "challenge-xyz"]
+    assert_equal 22_242, auth_event['kind']
+    assert_includes auth_event['tags'], %w[challenge challenge-xyz]
   end
 
-  test "build_auth_event signs a valid NIP-42 event with challenge tag" do
-    event = BuzzAgent.build_auth_event("challenge-xyz")
-    assert_equal 22242, event.kind
-    assert_includes event.tags, ["relay", "wss://relay.test"]
-    assert_includes event.tags, ["challenge", "challenge-xyz"]
+  test 'build_auth_event signs a valid NIP-42 event with challenge tag' do
+    event = BuzzAgent.build_auth_event('challenge-xyz')
+    assert_equal 22_242, event.kind
+    assert_includes event.tags, ['relay', 'wss://relay.test']
+    assert_includes event.tags, %w[challenge challenge-xyz]
     assert event.verify_signature
   end
 end

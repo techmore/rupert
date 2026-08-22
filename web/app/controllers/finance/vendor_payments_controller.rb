@@ -3,16 +3,16 @@
 module Finance
   # Record a payment to a vendor (accounts payable).
   class VendorPaymentsController < AuthenticatedController
-    before_action :set_payment, only: [:destroy, :restore]
+    before_action :set_payment, only: %i[destroy restore]
 
     def index
       authorize(:module, :finance_read?)
       @range_days = params[:days].present? ? params[:days].to_i.clamp(7, 365) : 90
       since = @range_days.days.ago.to_date
       scope = Finance::VendorPayment.since(since)
-      scope = scope.with_discarded if params[:include_deleted] == "1"
+      scope = scope.with_discarded if params[:include_deleted] == '1'
       @payments = scope.recent(200).includes(:vendor)
-      @include_deleted = params[:include_deleted] == "1"
+      @include_deleted = params[:include_deleted] == '1'
       @total_cents = @payments.sum(:amount_cents)
     end
 
@@ -27,9 +27,9 @@ module Finance
       @payment = Finance::VendorPayment.new(payment_params)
       if @payment.save
         ActivityLogger.log(
-          "vendor_payment",
+          'vendor_payment',
           subject: @payment.vendor,
-          details: "$#{format("%.2f", @payment.amount_cents / 100.0)}",
+          details: "$#{format('%.2f', @payment.amount_cents / 100.0)}"
         )
         redirect_to(finance_vendor_payments_path, notice: "Payment to #{@payment.vendor.name} recorded.")
       else
@@ -42,18 +42,18 @@ module Finance
       authorize(:module, :finance_write?)
       @payment.discard
       ActivityLogger.log(
-        "payment_deleted",
+        'payment_deleted',
         subject: @payment.vendor,
-        details: "$#{format("%.2f", @payment.amount_cents / 100.0)}",
+        details: "$#{format('%.2f', @payment.amount_cents / 100.0)}"
       )
-      redirect_to(finance_vendor_payments_path, notice: "Payment removed.")
+      redirect_to(finance_vendor_payments_path, notice: 'Payment removed.')
     end
 
     def restore
       authorize(:module, :finance_write?)
       @payment.undiscard
-      ActivityLogger.log("payment_restored", subject: @payment.vendor)
-      redirect_to(finance_vendor_payments_path, notice: "Payment restored.")
+      ActivityLogger.log('payment_restored', subject: @payment.vendor)
+      redirect_to(finance_vendor_payments_path, notice: 'Payment restored.')
     end
 
     private
@@ -64,10 +64,10 @@ module Finance
 
     def payment_params
       params.require(:vendor_payment).permit(:vendor_id, :amount, :paid_on, :method, :reference, :notes)
-        .tap do |p|
-          amount = p.delete(:amount)
-          p[:amount_cents] = (amount.to_f * 100).round if amount.present?
-        end
+            .tap do |p|
+              amount = p.delete(:amount)
+              p[:amount_cents] = (amount.to_f * 100).round if amount.present?
+            end
     end
   end
 end

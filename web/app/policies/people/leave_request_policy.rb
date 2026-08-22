@@ -3,7 +3,7 @@
 module People
   class LeaveRequestPolicy < ApplicationPolicy
     def index?
-      module?("leave.read")
+      module?('leave.read')
     end
 
     def show?
@@ -11,7 +11,7 @@ module People
     end
 
     def create?
-      module?("leave.write")
+      module?('leave.write')
     end
 
     def new?
@@ -19,19 +19,19 @@ module People
     end
 
     def destroy?
-      module?("leave.write") && tenant?
+      module?('leave.write') && tenant?
     end
 
     def approve?
-      module?("leave.write") && tenant?
+      module?('leave.write') && tenant?
     end
 
     def deny?
-      module?("leave.write") && tenant?
+      module?('leave.write') && tenant?
     end
 
     def cancel?
-      module?("leave.write") && tenant?
+      module?('leave.write') && tenant?
     end
   end
 end

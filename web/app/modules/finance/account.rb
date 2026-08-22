@@ -7,23 +7,23 @@ module Finance
   class Account < ApplicationRecord
     include TenantScoped
 
-    self.table_name = "accounts"
+    self.table_name = 'accounts'
 
-    TYPES = ["asset", "liability", "equity", "revenue", "expense"].freeze
+    TYPES = %w[asset liability equity revenue expense].freeze
     TYPE_LABELS = {
-      "asset" => "Assets",
-      "liability" => "Liabilities",
-      "equity" => "Equity",
-      "revenue" => "Revenue",
-      "expense" => "Expenses",
+      'asset' => 'Assets',
+      'liability' => 'Liabilities',
+      'equity' => 'Equity',
+      'revenue' => 'Revenue',
+      'expense' => 'Expenses'
     }.freeze
     # The side that increases the account's balance, by type.
     NORMAL_BALANCE = {
-      "asset" => "debit",
-      "liability" => "credit",
-      "equity" => "credit",
-      "revenue" => "credit",
-      "expense" => "debit",
+      'asset' => 'debit',
+      'liability' => 'credit',
+      'equity' => 'credit',
+      'revenue' => 'credit',
+      'expense' => 'debit'
     }.freeze
 
     validates :code, presence: true
@@ -32,7 +32,7 @@ module Finance
     validates :normal_balance, inclusion: { in: NORMAL_BALANCE.values }
     validates :code, uniqueness: { scope: :tenant_id, case_sensitive: false }
 
-    scope :by_type, ->(type) { type.present? && type != "all" ? where(account_type: type) : all }
+    scope :by_type, ->(type) { type.present? && type != 'all' ? where(account_type: type) : all }
     scope :active, -> { where(active: true) }
     scope :ordered, -> { order(:code) }
 
@@ -44,7 +44,7 @@ module Finance
     end
 
     def label
-      [code, name].compact.join(" · ")
+      [code, name].compact.join(' · ')
     end
 
     private

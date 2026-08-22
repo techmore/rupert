@@ -7,13 +7,13 @@ class SystemController < AuthenticatedController
 
   def index
     @system = Rails.cache.fetch("system/health/#{Current.tenant_id}", expires_in: 60) { SystemPresenter.new }
-    render("system/index")
+    render('system/index')
   end
 
   private
 
   def require_system_access
-    return if Current.user&.can?("system.read")
+    return if Current.user&.can?('system.read')
 
     redirect_to(root_path, alert: "You don't have permission to view system health.")
   end

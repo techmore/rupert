@@ -4,11 +4,11 @@ module People
   # Leave & PTO: employees request time off, managers approve or deny, and
   # balances track the annual allowance vs used hours.
   class LeaveRequestsController < AuthenticatedController
-    before_action :set_leave_request, only: [:show, :destroy, :approve, :deny, :cancel]
+    before_action :set_leave_request, only: %i[show destroy approve deny cancel]
 
     def index
       authorize(:module, :leave_read?)
-      @status = params[:status].presence || "all"
+      @status = params[:status].presence || 'all'
       @requests = People::LeaveRequest.by_status(@status).recent(200).includes(:employee)
       @by_employee = People::LeaveRequest.pending.group(:employee_id).count
       @balances = People::LeaveBalance.for_year(Date.current.year).ordered.includes(:employee)
@@ -29,8 +29,9 @@ module People
       authorize(:module, :leave_write?)
       @leave_request = People::LeaveRequest.new(leave_request_params)
       if @leave_request.save
-        ActivityLogger.log("leave_requested", subject: @leave_request, details: "#{@leave_request.leave_type} · #{@leave_request.duration_label}")
-        redirect_to(people_leave_request_path(@leave_request), notice: "Leave request created.")
+        ActivityLogger.log('leave_requested', subject: @leave_request,
+                                              details: "#{@leave_request.leave_type} · #{@leave_request.duration_label}")
+        redirect_to(people_leave_request_path(@leave_request), notice: 'Leave request created.')
       else
         @employees = People::Employee.active.ordered
         render(:new, status: :unprocessable_entity)
@@ -39,10 +40,13 @@ module People
 
     def destroy
       authorize(:module, :leave_write?)
-      return redirect_to(people_leave_request_path(@leave_request), alert: "Cancelling is safer than deleting a request.") unless @leave_request.cancelled?
+      unless @leave_request.cancelled?
+        return redirect_to(people_leave_request_path(@leave_request),
+                           alert: 'Cancelling is safer than deleting a request.')
+      end
 
       @leave_request.destroy
-      redirect_to(people_leave_requests_path, notice: "Leave request removed.")
+      redirect_to(people_leave_requests_path, notice: 'Leave request removed.')
     end
 
     def approve
@@ -50,16 +54,16 @@ module People
       @leave_request.approve! if @leave_request.may_approve?
       @leave_request.update!(reviewed_by: Current.user.id, reviewed_at: Time.current)
       apply_balance(@leave_request) if @leave_request.approved?
-      ActivityLogger.log("leave_approved", subject: @leave_request)
-      redirect_to(people_leave_request_path(@leave_request), notice: "Leave approved.")
+      ActivityLogger.log('leave_approved', subject: @leave_request)
+      redirect_to(people_leave_request_path(@leave_request), notice: 'Leave approved.')
     end
 
     def deny
       authorize(:module, :leave_write?)
       @leave_request.deny! if @leave_request.may_deny?
       @leave_request.update!(reviewed_by: Current.user.id, reviewed_at: Time.current)
-      ActivityLogger.log("leave_denied", subject: @leave_request)
-      redirect_to(people_leave_request_path(@leave_request), notice: "Leave denied.")
+      ActivityLogger.log('leave_denied', subject: @leave_request)
+      redirect_to(people_leave_request_path(@leave_request), notice: 'Leave denied.')
     end
 
     def cancel
@@ -68,8 +72,8 @@ module People
         @leave_request.cancel!
         revert_balance(@leave_request)
       end
-      ActivityLogger.log("leave_cancelled", subject: @leave_request)
-      redirect_to(people_leave_request_path(@leave_request), notice: "Leave request cancelled.")
+      ActivityLogger.log('leave_cancelled', subject: @leave_request)
+      redirect_to(people_leave_request_path(@leave_request), notice: 'Leave request cancelled.')
     end
 
     private
@@ -84,7 +88,7 @@ module People
 
     # Approval consumes the employee's balance for the requested period.
     def apply_balance(request)
-      return if request.leave_type == "unpaid"
+      return if request.leave_type == 'unpaid'
 
       balance = request.employee.leave_balance(request.leave_type, request.starts_on.year)
       used = request.hours.presence || request.days * 8
@@ -94,7 +98,7 @@ module People
 
     # Cancelling an approved request gives the hours back.
     def revert_balance(request)
-      return if request.leave_type == "unpaid"
+      return if request.leave_type == 'unpaid'
 
       balance = request.employee.leave_balance(request.leave_type, request.starts_on.year)
       used = request.hours.presence || request.days * 8

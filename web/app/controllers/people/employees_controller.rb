@@ -3,15 +3,19 @@
 module People
   # HR employee records: the directory, org placement, and employment lifecycle.
   class EmployeesController < AuthenticatedController
-    before_action :set_employee, only: [:show, :edit, :update, :destroy, :transition]
-    before_action :set_org_data, only: [:new, :create, :edit, :update]
+    before_action :set_employee, only: %i[show edit update destroy transition]
+    before_action :set_org_data, only: %i[new create edit update]
 
     def index
       authorize(:module, :hr_read?)
       @q = params[:q].to_s.strip
-      @status = params[:status].presence || "all"
+      @status = params[:status].presence || 'all'
       @employees = People::Employee.by_status(@status).ordered
-      @employees = @employees.where("first_name ILIKE :q OR last_name ILIKE :q OR employee_number ILIKE :q OR email ILIKE :q", q: "%#{@q}%") if @q.present?
+      if @q.present?
+        @employees = @employees.where(
+          'first_name ILIKE :q OR last_name ILIKE :q OR employee_number ILIKE :q OR email ILIKE :q', q: "%#{@q}%"
+        )
+      end
       @employees = @employees.includes(:department, :position).limit(200)
       @by_department = People::Employee.active.group(:department_id).count
       @pending_leave = People::LeaveRequest.pending.count
@@ -36,7 +40,7 @@ module People
       authorize(:module, :hr_write?)
       @employee = People::Employee.new(employee_params)
       if @employee.save
-        ActivityLogger.log("employee_hired", subject: @employee, details: @employee.department&.name)
+        ActivityLogger.log('employee_hired', subject: @employee, details: @employee.department&.name)
         redirect_to(people_employee_path(@employee), notice: "#{@employee.name} added.")
       else
         render(:new, status: :unprocessable_entity)
@@ -50,7 +54,7 @@ module People
     def update
       authorize(:module, :hr_write?)
       if @employee.update(employee_params)
-        ActivityLogger.log("employee_updated", subject: @employee, details: @employee.status)
+        ActivityLogger.log('employee_updated', subject: @employee, details: @employee.status)
         redirect_to(people_employee_path(@employee), notice: "#{@employee.name} updated.")
       else
         render(:edit, status: :unprocessable_entity)
@@ -59,24 +63,30 @@ module People
 
     def destroy
       authorize(:module, :hr_write?)
-      return redirect_to(people_employee_path(@employee), alert: "Terminate the employee instead of deleting the record.") if @employee.active?
+      if @employee.active?
+        return redirect_to(people_employee_path(@employee),
+                           alert: 'Terminate the employee instead of deleting the record.')
+      end
 
       @employee.destroy
-      ActivityLogger.log("employee_record_removed", subject: @employee)
-      redirect_to(people_employees_path, notice: "Employee record removed.")
+      ActivityLogger.log('employee_record_removed', subject: @employee)
+      redirect_to(people_employees_path, notice: 'Employee record removed.')
     end
 
     # POST /people/employees/:id/transition?event=place_on_leave|return_to_work|terminate|rehire
     def transition
       authorize(:module, :hr_write?)
       event = params[:event]
-      if ["place_on_leave", "return_to_work", "terminate", "rehire"].include?(event) && @employee.public_send("may_#{event}?")
+      if %w[place_on_leave return_to_work terminate
+            rehire].include?(event) && @employee.public_send("may_#{event}?")
         @employee.send("#{event}!")
-        @employee.update!(termination_date: event == "terminate" ? Date.today : nil) if ["terminate", "rehire"].include?(event)
+        @employee.update!(termination_date: event == 'terminate' ? Date.today : nil) if %w[terminate
+                                                                                           rehire].include?(event)
         ActivityLogger.log("employee_#{event}", subject: @employee)
-        redirect_to(people_employee_path(@employee), notice: "#{@employee.name} #{event.tr("_", " ")}d.")
+        redirect_to(people_employee_path(@employee), notice: "#{@employee.name} #{event.tr('_', ' ')}d.")
       else
-        redirect_to(people_employee_path(@employee), alert: "Cannot #{event.tr("_", " ")} a #{@employee.status} employee.")
+        redirect_to(people_employee_path(@employee),
+                    alert: "Cannot #{event.tr('_', ' ')} a #{@employee.status} employee.")
       end
     end
 
@@ -95,7 +105,7 @@ module People
     def next_employee_number
       year = Time.now.year
       count = People::Employee.unscoped.where(tenant_id: Current.tenant_id).count + 1
-      "E#{year}-#{count.to_s.rjust(3, "0")}"
+      "E#{year}-#{count.to_s.rjust(3, '0')}"
     end
 
     def employee_params
@@ -116,7 +126,7 @@ module People
         :employment_type,
         :emergency_contact_name,
         :emergency_contact_phone,
-        :notes,
+        :notes
       )
     end
   end

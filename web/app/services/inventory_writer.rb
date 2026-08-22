@@ -23,7 +23,7 @@ class InventoryWriter
     }
   GRAPHQL
 
-  SQUARE_COUNT_PATH = "/inventory/changes/batch-create"
+  SQUARE_COUNT_PATH = '/inventory/changes/batch-create'
 
   class << self
     # Adjust one Shopify variant's "available" quantity at a location. Callers
@@ -34,17 +34,17 @@ class InventoryWriter
       change[:changeFromQuantity] = change_from if change_from.present?
 
       response = ShopifyClient.graphql(ADJUST_QUERY, {
-        input: {
-          reason: "correction",
-          name: "available",
-          referenceDocumentUri: "herbal-healers://inventory/#{reference}",
-          changes: [change],
-        },
-        idempotencyKey: idempotency_key,
-      })
+                                         input: {
+                                           reason: 'correction',
+                                           name: 'available',
+                                           referenceDocumentUri: "herbal-healers://inventory/#{reference}",
+                                           changes: [change]
+                                         },
+                                         idempotencyKey: idempotency_key
+                                       })
 
-      user_errors = response.dig("inventoryAdjustQuantities", "userErrors") || []
-      raise ShopifyClient::Error, user_errors.map { |e| e["message"] }.join("; ") if user_errors.any?
+      user_errors = response.dig('inventoryAdjustQuantities', 'userErrors') || []
+      raise ShopifyClient::Error, user_errors.map { |e| e['message'] }.join('; ') if user_errors.any?
 
       true
     end
@@ -54,28 +54,28 @@ class InventoryWriter
     # offending level's own location. Idempotency key + reference_id are
     # caller-chosen so retries within a run stay stable.
     def physical_count!(catalog_object_id:, quantity:, location:, reference_id:, idempotency_key:)
-      SquareClient.request(SQUARE_COUNT_PATH, method: "POST", body: {
-        idempotency_key: idempotency_key,
-        changes: [{
-          type: "PHYSICAL_COUNT",
-          physical_count: {
-            reference_id: reference_id,
-            catalog_object_id: catalog_object_id,
-            state: "IN_STOCK",
-            location_id: location.externalId,
-            quantity: quantity.to_s,
-            occurred_at: Time.current.iso8601,
-          },
-        }],
-        ignore_unchanged_counts: true,
-      })
+      SquareClient.request(SQUARE_COUNT_PATH, method: 'POST', body: {
+                             idempotency_key: idempotency_key,
+                             changes: [{
+                               type: 'PHYSICAL_COUNT',
+                               physical_count: {
+                                 reference_id: reference_id,
+                                 catalog_object_id: catalog_object_id,
+                                 state: 'IN_STOCK',
+                                 location_id: location.externalId,
+                                 quantity: quantity.to_s,
+                                 occurred_at: Time.current.iso8601
+                               }
+                             }],
+                             ignore_unchanged_counts: true
+                           })
     end
 
     # SKU -> URL-safe idempotency slug. Shopify keeps idempotency keys for a
     # long time, so keys must be predictable but distinct per logical write.
     def slugify(sku)
-      slug = sku.to_s.gsub(/[^a-z0-9]/i, "").slice(0, 40)
-      slug.presence || "item"
+      slug = sku.to_s.gsub(/[^a-z0-9]/i, '').slice(0, 40)
+      slug.presence || 'item'
     end
 
     # Idempotency key for a recurring (variant, delta, starting-qty) adjust: a

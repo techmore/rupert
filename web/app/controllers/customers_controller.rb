@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class CustomersController < AuthenticatedController
-  before_action :set_customer, only: [:show, :edit, :update]
+  before_action :set_customer, only: %i[show edit update]
 
   def index
     authorize(:module, :customers_read?)
@@ -10,7 +10,7 @@ class CustomersController < AuthenticatedController
     @pagy, @customers = pagy(@q.result.order(created_at: :desc), items: 25)
     # One grouped SUM for the page instead of a lifetime-value query per row.
     @lifetime_totals = Core::Order.where(customer_id: @customers.map(&:id))
-      .group(:customer_id).sum(:gross_cents)
+                                  .group(:customer_id).sum(:gross_cents)
   end
 
   def show
@@ -20,17 +20,17 @@ class CustomersController < AuthenticatedController
 
   def new
     authorize(:module, :customers_write?)
-    @customer = Core::Customer.new(source: "manual")
+    @customer = Core::Customer.new(source: 'manual')
   end
 
   def create
     authorize(:module, :customers_write?)
     @customer = Core::Customer.new(customer_params)
-    @customer.source = "manual"
+    @customer.source = 'manual'
     @customer.external_id = "manual:#{SecureRandom.hex(8)}"
 
     if @customer.save
-      redirect_to(@customer, notice: "Customer added.")
+      redirect_to(@customer, notice: 'Customer added.')
     else
       render(:new, status: :unprocessable_entity)
     end
@@ -43,7 +43,7 @@ class CustomersController < AuthenticatedController
   def update
     authorize(@customer)
     if @customer.update(customer_params)
-      redirect_to(@customer, notice: "Customer updated.")
+      redirect_to(@customer, notice: 'Customer updated.')
     else
       render(:edit, status: :unprocessable_entity)
     end

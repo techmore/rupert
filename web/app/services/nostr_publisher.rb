@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require "json"
-require "timeout"
+require 'json'
+require 'timeout'
 
 # Generic Nostr publisher: opens a WebSocket to a relay, authenticates with
 # NIP-42, publishes a signed event, and waits for the OK acknowledgement.
@@ -9,7 +9,7 @@ require "timeout"
 # set to the WebSocket client, so module methods are invoked explicitly.
 module NostrPublisher
   def self.publish(relay:, private_key:, public_key:, event:)
-    require "websocket-client-simple"
+    require 'websocket-client-simple'
 
     ack = nil
     authed = false
@@ -17,30 +17,28 @@ module NostrPublisher
     ws = WebSocket::Client::Simple.connect(relay)
 
     ws.on(:message) do |m|
-      begin
-        if m.respond_to?(:type) && m.type == :ping
-          ws.send(m.data.to_s, type: :pong)
-          next
-        end
-        next if m.respond_to?(:type) && m.type != :text
-
-        data = JSON.parse(m.data.to_s)
-        case data[0]
-        when "AUTH"
-          unless authed
-            authed = true
-            auth = NostrPublisher.build_auth_event(relay, data[1], private_key, public_key)
-            ws.send(["AUTH", auth.to_h].to_json)
-            ws.send(["EVENT", event.to_h].to_json) if sent_event
-          end
-        when "OK"
-          ack = data
-        end
-      rescue StandardError
-        nil
+      if m.respond_to?(:type) && m.type == :ping
+        ws.send(m.data.to_s, type: :pong)
+        next
       end
+      next if m.respond_to?(:type) && m.type != :text
+
+      data = JSON.parse(m.data.to_s)
+      case data[0]
+      when 'AUTH'
+        unless authed
+          authed = true
+          auth = NostrPublisher.build_auth_event(relay, data[1], private_key, public_key)
+          ws.send(['AUTH', auth.to_h].to_json)
+          ws.send(['EVENT', event.to_h].to_json) if sent_event
+        end
+      when 'OK'
+        ack = data
+      end
+    rescue StandardError
+      nil
     end
-    ws.on(:error) { |e| ack ||= ["ERROR", e.message.to_s[0, 200]] }
+    ws.on(:error) { |e| ack ||= ['ERROR', e.message.to_s[0, 200]] }
 
     Timeout.timeout(8) { sleep 0.05 until ws.open? || ack }
     raise "could not connect to #{relay}" if ack.nil? && !ws.open?
@@ -52,7 +50,7 @@ module NostrPublisher
     sleep 0.05 until authed || Time.now > deadline
 
     sent_event = true
-    ws.send(["EVENT", event.to_h].to_json)
+    ws.send(['EVENT', event.to_h].to_json)
     begin
       Timeout.timeout(8) { sleep 0.05 until ack }
     rescue Timeout::Error
@@ -71,7 +69,7 @@ module NostrPublisher
     end
 
     ok = ack && ack[2] == true
-    ok ? [true, ack[3].presence || "OK"] : [false, (ack && ack[3]).presence || "no acknowledgement from relay"]
+    ok ? [true, ack[3].presence || 'OK'] : [false, (ack && ack[3]).presence || 'no acknowledgement from relay']
   rescue StandardError => e
     [false, e.message.to_s[0, 200]]
   ensure
@@ -90,8 +88,8 @@ module NostrPublisher
 
   # NIP-42 auth response: signed kind 22242 event echoing the challenge.
   def self.build_auth_event(relay, challenge, private_key, public_key)
-    event = Nostr::Event.new(pubkey: public_key, kind: 22242, content: "",
-      tags: [["relay", relay], ["challenge", challenge.to_s]])
+    event = Nostr::Event.new(pubkey: public_key, kind: 22_242, content: '',
+                             tags: [['relay', relay], ['challenge', challenge.to_s]])
     event.sign(private_key)
     event
   end

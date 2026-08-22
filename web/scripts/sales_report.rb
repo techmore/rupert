@@ -19,12 +19,12 @@
 # Locate the mobile Square location once (kind == "MOBILE").
 def mobile_location_id
   @mobile_location_id ||= ActiveRecord::Base.connection
-    .execute("select \"externalId\" from \"Location\" where source='square' and kind='MOBILE' order by \"syncedAt\" limit 1")
-    .first&.fetch("externalId")
+                                            .execute("select \"externalId\" from \"Location\" where source='square' and kind='MOBILE' order by \"syncedAt\" limit 1")
+                                            .first&.fetch('externalId')
 end
 
 def money(cents)
-  format("$%.2f", (cents || 0) / 100.0)
+  format('$%.2f', (cents || 0) / 100.0)
 end
 
 def parse_day(str)
@@ -39,7 +39,7 @@ def take(args, key)
   return nil if i.nil?
 
   if args[i].start_with?("#{key}=")
-    val = args[i].split("=", 2)[1]
+    val = args[i].split('=', 2)[1]
     args.slice!(i)
   else
     val = args[i + 1]
@@ -50,14 +50,14 @@ end
 
 args = ARGV.dup
 days = args.select { |a| a.match?(/\A\d{4}-\d{2}-\d{2}\z/) }
-args = args - days
+args -= days
 
-mobile = args.include?("--mobile")
-by_day = args.include?("--by-day")
-items_n = (take(args, "--items") || 10).to_i
-orders_n = (take(args, "--orders") || 8).to_i
-source = take(args, "--source")
-channel = take(args, "--channel")
+mobile = args.include?('--mobile')
+by_day = args.include?('--by-day')
+items_n = (take(args, '--items') || 10).to_i
+orders_n = (take(args, '--orders') || 8).to_i
+source = take(args, '--source')
+channel = take(args, '--channel')
 
 if days.empty?
   today = Date.current
@@ -73,20 +73,18 @@ end
 
 loc = mobile ? mobile_location_id : nil
 if mobile && loc.nil?
-  warn "no MOBILE Square location found"
+  warn 'no MOBILE Square location found'
   exit 1
 end
 
 conn = ActiveRecord::Base.connection
 start_ts = "#{start_d}T00:00:00"
-end_ts = "#{(end_d + 1)}T00:00:00"
+end_ts = "#{end_d + 1}T00:00:00"
 
 filters = +"occurred_at >= '#{start_ts}' and occurred_at < '#{end_ts}'"
 filters << " and location_id = '#{loc}'" if loc
 filters << " and source = '#{source}'" if source
 filters << " and channel = '#{channel}'" if channel
-
-scope = "from orders where #{filters}"
 scope2 = "join orders o on o.id = ol.order_id where #{filters}"
 
 puts "== Sales report: #{day_label}#{mobile ? ' (MOBILE location)' : ''} =="
@@ -97,8 +95,8 @@ rows = conn.execute("select source, channel, count(*) n, sum(gross_cents) rev fr
 grand_n = 0
 grand_rev = 0
 rows.each do |r|
-  grand_n += r["n"]
-  grand_rev += r["rev"]
+  grand_n += r['n']
+  grand_rev += r['rev']
   puts "  #{r['source']}/#{r['channel']}: #{r['n']} orders / #{money(r['rev'])}"
 end
 puts "  TOTAL: #{grand_n} orders / #{money(grand_rev)}"

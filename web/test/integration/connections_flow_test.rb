@@ -1,15 +1,15 @@
 # frozen_string_literal: true
 
-require "test_helper"
+require 'test_helper'
 
 class ConnectionsFlowTest < ActionDispatch::IntegrationTest
   module TestShopifySession
     def current_shopify_session
       @test_session ||= ShopifyAPI::Auth::Session.new(
-        shop: "m11u0i-sb.myshopify.com",
-        access_token: "test-token",
+        shop: 'm11u0i-sb.myshopify.com',
+        access_token: 'test-token',
         is_online: false,
-        expires: Time.now + 3600,
+        expires: Time.now + 3600
       )
     end
   end
@@ -18,19 +18,19 @@ class ConnectionsFlowTest < ActionDispatch::IntegrationTest
 
   setup do
     ShopifyAPI::Context.setup(
-      api_key: "test-key",
-      api_secret_key: "test-secret",
+      api_key: 'test-key',
+      api_secret_key: 'test-secret',
       api_version: ShopifyAPI::AdminVersions::SUPPORTED_ADMIN_VERSIONS.first,
-      host_name: "localhost",
-      scope: "read_products",
+      host_name: 'localhost',
+      scope: 'read_products',
       is_private: false,
-      is_embedded: false,
+      is_embedded: false
     )
-    Shop.create!(shopify_domain: "m11u0i-sb.myshopify.com", shopify_token: "test-token")
+    Shop.create!(shopify_domain: 'm11u0i-sb.myshopify.com', shopify_token: 'test-token')
 
-    @tenant = Tenant.create!(name: "Test Co", subdomain: "testco")
-    User.create!(email: "conn@example.com", password: "password123", role: "admin", tenant_id: @tenant.id, name: "Conn")
-    post login_path, params: { email: "conn@example.com", password: "password123" }
+    @tenant = Tenant.create!(name: 'Test Co', subdomain: 'testco')
+    User.create!(email: 'conn@example.com', password: 'password123', role: 'admin', tenant_id: @tenant.id, name: 'Conn')
+    post login_path, params: { email: 'conn@example.com', password: 'password123' }
     Current.tenant = @tenant
   end
 
@@ -39,60 +39,61 @@ class ConnectionsFlowTest < ActionDispatch::IntegrationTest
   end
 
   def get_page(path)
-    get(path, params: { shop: "m11u0i-sb.myshopify.com", embedded: "1", host: "test-host" })
+    get(path, params: { shop: 'm11u0i-sb.myshopify.com', embedded: '1', host: 'test-host' })
   end
 
-  test "connections page lists every service with status" do
+  test 'connections page lists every service with status' do
     get_page connections_path
     assert_response :success
-    assert_select "h1", /Connections/
-    assert_select "h2", /Shopify/
-    assert_select "h2", /Square/
-    assert_select "h2", /Google Drive backup/
-    assert_select "h2", /Buzz agent/
-    assert_select "h2", /Sync schedule/
+    assert_select 'h1', /Connections/
+    assert_select 'h2', /Shopify/
+    assert_select 'h2', /Square/
+    assert_select 'h2', /Google Drive backup/
+    assert_select 'h2', /Buzz agent/
+    assert_select 'h2', /Sync schedule/
 
     # Nothing configured yet → every card shows Not configured and keys masked/missing
-    assert_select "span", /Not configured/
-    assert_select "p", /SHOPIFY_CLIENT_ID/
-    assert_select "p", /SQUARE_ACCESS_TOKEN/
-    assert_select "p", /not set/
+    assert_select 'span', /Not configured/
+    assert_select 'p', /SHOPIFY_CLIENT_ID/
+    assert_select 'p', /SQUARE_ACCESS_TOKEN/
+    assert_select 'p', /not set/
   end
 
-  test "a configured service shows its status and key source" do
-    EnvStore.set("SQUARE_APPLICATION_ID", "sq0idp-example")
-    EnvStore.set("SQUARE_ACCESS_TOKEN", "EAAAsecretvalue123")
-    EnvStore.set("SQUARE_ENVIRONMENT", "production")
-    EnvStore.set("SQUARE_LOCATION_ID", "L4JQ")
+  test 'a configured service shows its status and key source' do
+    EnvStore.set('SQUARE_APPLICATION_ID', 'sq0idp-example')
+    EnvStore.set('SQUARE_ACCESS_TOKEN', 'EAAAsecretvalue123')
+    EnvStore.set('SQUARE_ENVIRONMENT', 'production')
+    EnvStore.set('SQUARE_LOCATION_ID', 'L4JQ')
 
     get_page connections_path
     assert_response :success
 
-    card = css_select("section.card").find { |node| node.text.include?("Square") }
+    card = css_select('section.card').find { |node| node.text.include?('Square') }
     assert card
-    assert_includes card.text, "Configured"
-    assert_includes card.text, "EAAA••••e123"
-    assert_includes card.text, "database"
+    assert_includes card.text, 'Configured'
+    assert_includes card.text, 'EAAA••••e123'
+    assert_includes card.text, 'database'
     assert card.css("a[href*='developer.squareup.com']").present?
   end
 
-  test "partially configured services show as partially set up" do
-    EnvStore.set("SHOPIFY_CLIENT_ID", "abc123")
-    EnvStore.set("SHOPIFY_SHOP_DOMAIN", "test-store.myshopify.com")
+  test 'partially configured services show as partially set up' do
+    EnvStore.set('SHOPIFY_CLIENT_ID', 'abc123')
+    EnvStore.set('SHOPIFY_SHOP_DOMAIN', 'test-store.myshopify.com')
 
     get_page connections_path
     assert_response :success
 
-    card = css_select("section.card").find { |node| node.text.include?("Shopify") }
+    card = css_select('section.card').find { |node| node.text.include?('Shopify') }
     assert card
-    assert_includes card.text, "Partially set up"
-    assert_includes card.text, "not set" # client secret missing
+    assert_includes card.text, 'Partially set up'
+    assert_includes card.text, 'not set' # client secret missing
   end
 
-  test "a cashier cannot view connections" do
-    User.create!(email: "conn-cashier@example.com", password: "password123", role: "cashier", tenant_id: @tenant.id, name: "Cashier")
+  test 'a cashier cannot view connections' do
+    User.create!(email: 'conn-cashier@example.com', password: 'password123', role: 'cashier', tenant_id: @tenant.id,
+                 name: 'Cashier')
     delete logout_path
-    post login_path, params: { email: "conn-cashier@example.com", password: "password123" }
+    post login_path, params: { email: 'conn-cashier@example.com', password: 'password123' }
 
     get_page connections_path
     follow_redirect!

@@ -14,13 +14,13 @@ class CreatePosSessions < ActiveRecord::Migration[8.1]
       t.integer :counted_cash_cents
       t.integer :expected_cash_cents
       t.integer :variance_cents
-      t.string :status, default: "open", null: false
+      t.string :status, default: 'open', null: false
       t.text :notes
       t.datetime :created_at, null: false
       t.datetime :updated_at, null: false
 
-      t.index [:tenant_id, :status]
-      t.index [:tenant_id, :opened_at]
+      t.index %i[tenant_id status]
+      t.index %i[tenant_id opened_at]
     end
   end
 end

@@ -3,11 +3,11 @@
 module People
   class PositionPolicy < ApplicationPolicy
     def index?
-      module?("hr.read")
+      module?('hr.read')
     end
 
     def create?
-      module?("hr.write")
+      module?('hr.write')
     end
 
     def new?
@@ -15,7 +15,7 @@ module People
     end
 
     def update?
-      module?("hr.write") && tenant?
+      module?('hr.write') && tenant?
     end
 
     def edit?

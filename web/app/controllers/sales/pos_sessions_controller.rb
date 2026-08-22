@@ -4,20 +4,20 @@ module Sales
   # POS cash-drawer management: open a register shift, see sales per tender,
   # and settle with a physical cash count at end of day.
   class PosSessionsController < AuthenticatedController
-    before_action :set_session, only: [:show, :close, :reopen, :refresh]
+    before_action :set_session, only: %i[show close reopen refresh]
 
     def index
       authorize(:module, :sales_read?)
       @q = Sales::PosSession.ransack(params[:q])
       @pagy, @sessions = pagy(@q.result.order(opened_at: :desc), items: 20)
-      @open_sessions = Sales::PosSession.where(status: "open").order(opened_at: :asc)
+      @open_sessions = Sales::PosSession.where(status: 'open').order(opened_at: :asc)
     end
 
     def show
       authorize(@session)
-      @orders = Core::Order.where("occurred_at >= ?", @session.opened_at)
-        .where(location_id: @session.location_id)
-        .order(occurred_at: :desc).limit(100)
+      @orders = Core::Order.where('occurred_at >= ?', @session.opened_at)
+                           .where(location_id: @session.location_id)
+                           .order(occurred_at: :desc).limit(100)
     end
 
     def new
@@ -32,7 +32,7 @@ module Sales
       @session.opened_at = Time.current
 
       if @session.save
-        redirect_to(@session, notice: "Register opened.")
+        redirect_to(@session, notice: 'Register opened.')
       else
         render(:new, status: :unprocessable_entity)
       end
@@ -42,7 +42,7 @@ module Sales
       authorize(@session)
       @session.refresh_from_orders!
       DataCache.bump!
-      redirect_to(@session, notice: "Tender totals refreshed from orders.")
+      redirect_to(@session, notice: 'Tender totals refreshed from orders.')
     end
 
     def close
@@ -50,13 +50,13 @@ module Sales
       counted = params[:counted_cents].to_i
       @session.settle!(counted_cents: counted, notes: params[:notes])
       DataCache.bump!
-      redirect_to(@session, notice: "Register settled and closed.")
+      redirect_to(@session, notice: 'Register settled and closed.')
     end
 
     def reopen
       authorize(@session)
       @session.reopen!
-      redirect_to(@session, notice: "Register reopened.")
+      redirect_to(@session, notice: 'Register reopened.')
     end
 
     private
@@ -69,9 +69,7 @@ module Sales
     # here — asking users to type cents was a real wrong-entry source.
     def pos_session_params
       allowed = params.require(:pos_session).permit(:name, :location_id, :opening_cash_cents, :opening_cash)
-      if allowed[:opening_cash].present?
-        allowed[:opening_cash_cents] = (allowed[:opening_cash].to_f * 100).round
-      end
+      allowed[:opening_cash_cents] = (allowed[:opening_cash].to_f * 100).round if allowed[:opening_cash].present?
       allowed.except(:opening_cash)
     end
   end

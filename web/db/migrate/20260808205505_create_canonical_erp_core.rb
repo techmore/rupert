@@ -12,9 +12,9 @@ class CreateCanonicalErpCore < ActiveRecord::Migration[8.1]
       t.datetime :created_at, null: false
       t.datetime :updated_at, null: false
 
-      t.index [:tenant_id, :external_id, :source], unique: true
-      t.index [:tenant_id, :email]
-      t.index [:tenant_id, :phone]
+      t.index %i[tenant_id external_id source], unique: true
+      t.index %i[tenant_id email]
+      t.index %i[tenant_id phone]
     end
 
     create_table :orders do |t|
@@ -26,7 +26,7 @@ class CreateCanonicalErpCore < ActiveRecord::Migration[8.1]
       t.string :channel
       t.string :location_id
       t.string :status, null: false
-      t.string :currency, default: "USD"
+      t.string :currency, default: 'USD'
       t.integer :gross_cents, default: 0
       t.integer :tax_cents, default: 0
       t.integer :line_items, default: 0
@@ -34,10 +34,10 @@ class CreateCanonicalErpCore < ActiveRecord::Migration[8.1]
       t.datetime :created_at, null: false
       t.datetime :updated_at, null: false
 
-      t.index [:tenant_id, :source, :source_order_id], unique: true
-      t.index [:tenant_id, :occurred_at]
-      t.index [:tenant_id, :customer_id]
-      t.index [:tenant_id, :status]
+      t.index %i[tenant_id source source_order_id], unique: true
+      t.index %i[tenant_id occurred_at]
+      t.index %i[tenant_id customer_id]
+      t.index %i[tenant_id status]
     end
 
     create_table :order_lines do |t|
@@ -51,8 +51,8 @@ class CreateCanonicalErpCore < ActiveRecord::Migration[8.1]
       t.datetime :created_at, null: false
       t.datetime :updated_at, null: false
 
-      t.index [:tenant_id, :order_id]
-      t.index [:tenant_id, :sku]
+      t.index %i[tenant_id order_id]
+      t.index %i[tenant_id sku]
     end
 
     create_table :payments do |t|
@@ -60,14 +60,14 @@ class CreateCanonicalErpCore < ActiveRecord::Migration[8.1]
       t.string :order_id, null: false
       t.string :method, null: false
       t.integer :amount_cents, default: 0
-      t.string :status, default: "completed"
+      t.string :status, default: 'completed'
       t.string :reference
       t.datetime :paid_at, null: false
       t.datetime :created_at, null: false
       t.datetime :updated_at, null: false
 
-      t.index [:tenant_id, :order_id]
-      t.index [:tenant_id, :paid_at]
+      t.index %i[tenant_id order_id]
+      t.index %i[tenant_id paid_at]
     end
   end
 end

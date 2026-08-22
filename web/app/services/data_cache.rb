@@ -9,7 +9,7 @@
 # counter itself is read from Rails.cache with a short TTL to avoid a DB hit
 # per request.
 module DataCache
-  VERSION_KEY = "data_version"
+  VERSION_KEY = 'data_version'
   VERSION_TTL = 5.minutes
   DEFAULT_TTL = 15.minutes
 
@@ -49,7 +49,7 @@ module DataCache
         db_version
       end
     rescue StandardError => e
-      cache_store_error(e, "version")
+      cache_store_error(e, 'version')
       db_version
     end
 
@@ -66,7 +66,7 @@ module DataCache
     def clear_version_cache
       Rails.cache.delete(version_cache_key)
     rescue StandardError => e
-      cache_store_error(e, "clear_version_cache")
+      cache_store_error(e, 'clear_version_cache')
     end
 
     def cache_store_error(e, context)

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class InventoryCountsController < AuthenticatedController
-  before_action :require_inventory_write, except: [:index, :show]
+  before_action :require_inventory_write, except: %i[index show]
 
   def index
     @counts = InventoryCount.by_status(params[:status]).recent(30)
@@ -15,7 +15,7 @@ class InventoryCountsController < AuthenticatedController
     @count = InventoryCount.new(countedAt: Time.current, locationId: params[:location_id])
     @locations = Location.order(name: :asc).limit(200)
     @skus = SkuLink.order(:sku).limit(500).pluck(:sku)
-    @prepared = params[:prepared] != "0"
+    @prepared = params[:prepared] != '0'
 
     if @prepared
       @count.items = prepared_sheet_items
@@ -28,7 +28,7 @@ class InventoryCountsController < AuthenticatedController
     @count = InventoryCount.new(count_params.merge(createdBy: Current.user.email))
     build_items(@count)
     if @count.save
-      redirect_to(inventory_count_path(@count), notice: "Draft count created.")
+      redirect_to(inventory_count_path(@count), notice: 'Draft count created.')
     else
       @locations = Location.order(name: :asc).limit(200)
       @skus = SkuLink.order(:sku).limit(500).pluck(:sku)
@@ -48,7 +48,7 @@ class InventoryCountsController < AuthenticatedController
     @count.items.destroy_all
     build_items(@count)
     if @count.save
-      redirect_to(inventory_count_path(@count), notice: "Count updated.")
+      redirect_to(inventory_count_path(@count), notice: 'Count updated.')
     else
       @locations = Location.order(name: :asc).limit(200)
       @skus = SkuLink.order(:sku).limit(500).pluck(:sku)
@@ -62,11 +62,11 @@ class InventoryCountsController < AuthenticatedController
     @count.submit!
     BuzzNotifyJob.perform_later(
       "Manual count submitted for approval · #{@count.items.count} items · total qty #{@count.total_quantity}",
-      tags: [["t", "inventory"]],
+      tags: [%w[t inventory]]
     )
-    redirect_to(inventory_count_path(@count), notice: "Count submitted for approval.")
+    redirect_to(inventory_count_path(@count), notice: 'Count submitted for approval.')
   rescue AASM::InvalidTransition
-    redirect_to(inventory_count_path(@count), alert: "Only draft counts can be submitted.")
+    redirect_to(inventory_count_path(@count), alert: 'Only draft counts can be submitted.')
   end
 
   def approve
@@ -77,9 +77,10 @@ class InventoryCountsController < AuthenticatedController
       @count.update!(approvedAt: Time.current)
     end
     DataCache.bump!
-    redirect_to(inventory_count_path(@count), notice: "Count approved and recorded — overrides are disabled (Square is the source of truth).")
+    redirect_to(inventory_count_path(@count),
+                notice: 'Count approved and recorded — overrides are disabled (Square is the source of truth).')
   rescue AASM::InvalidTransition
-    redirect_to(inventory_count_path(@count), alert: "Only pending counts can be approved.")
+    redirect_to(inventory_count_path(@count), alert: 'Only pending counts can be approved.')
   rescue StandardError => e
     redirect_to(inventory_count_path(@count), alert: "Approval failed: #{e.message}")
   end
@@ -87,29 +88,29 @@ class InventoryCountsController < AuthenticatedController
   def reject
     @count = InventoryCount.find(params[:id])
     @count.reject!
-    redirect_to(inventory_count_path(@count), notice: "Count rejected.")
+    redirect_to(inventory_count_path(@count), notice: 'Count rejected.')
   rescue AASM::InvalidTransition
-    redirect_to(inventory_count_path(@count), alert: "Only pending counts can be rejected.")
+    redirect_to(inventory_count_path(@count), alert: 'Only pending counts can be rejected.')
   end
 
   def reopen
     @count = InventoryCount.find(params[:id])
     @count.reopen!
-    redirect_to(inventory_count_path(@count), notice: "Count reopened as a draft — edit and resubmit it.")
+    redirect_to(inventory_count_path(@count), notice: 'Count reopened as a draft — edit and resubmit it.')
   rescue AASM::InvalidTransition
-    redirect_to(inventory_count_path(@count), alert: "Only rejected counts can be reopened.")
+    redirect_to(inventory_count_path(@count), alert: 'Only rejected counts can be reopened.')
   end
 
   def destroy
     @count = InventoryCount.find(params[:id])
     @count.destroy!
-    redirect_to(inventory_counts_path, notice: "Draft deleted.")
+    redirect_to(inventory_counts_path, notice: 'Draft deleted.')
   end
 
   private
 
   def require_inventory_write
-    return if Current.user.can?("inventory.write")
+    return if Current.user.can?('inventory.write')
 
     redirect_to(inventory_counts_path, alert: "You don't have permission to modify inventory counts.")
   end
@@ -125,7 +126,7 @@ class InventoryCountsController < AuthenticatedController
   def prepared_sheet_items
     links = SkuLink.includes(shopify_variant: :product).order(:sku).to_a
     totals = InventoryLevel.where(shopifyVariantId: links.map(&:shopifyVariantId).compact)
-      .group(:shopifyVariantId).sum(:quantity)
+                           .group(:shopifyVariantId).sum(:quantity)
 
     links.filter_map do |link|
       variant = link.shopify_variant
@@ -135,7 +136,7 @@ class InventoryCountsController < AuthenticatedController
         sku: link.sku,
         shopifyVariantId: link.shopifyVariantId,
         squareVariationId: link.squareVariationId,
-        quantity: totals[link.shopifyVariantId].to_i,
+        quantity: totals[link.shopifyVariantId].to_i
       )
     end
   end

@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module Money
   # Convert a money amount to integer cents.
   #
@@ -10,7 +11,7 @@ module Money
   def self.cents_from_amount(amount)
     return if amount.blank?
 
-    cleaned = amount.to_s.gsub(/[$,\s]/, "")
+    cleaned = amount.to_s.gsub(/[$,\s]/, '')
     (cleaned.to_f * 100).round
   end
 end

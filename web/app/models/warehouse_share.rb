@@ -6,8 +6,8 @@ class WarehouseShare < ApplicationRecord
   include HasCuid
   include TenantScoped
 
-  self.table_name = "WarehouseShare"
-  self.primary_key = "id"
+  self.table_name = 'WarehouseShare'
+  self.primary_key = 'id'
 
   # The legacy schema uses camelCase columns while Rails conventions (and the
   # TenantScoped concern) rely on snake_case attribute names.
@@ -19,9 +19,9 @@ class WarehouseShare < ApplicationRecord
   belongs_to :tenant, optional: true, foreign_key: :tenantId
 
   has_many :tiers,
-    class_name: "WarehouseTier",
-    foreign_key: "shareId",
-    dependent: :destroy
+           class_name: 'WarehouseTier',
+           foreign_key: 'shareId',
+           dependent: :destroy
 
   before_validation :generate_token, on: :create
 
@@ -29,7 +29,7 @@ class WarehouseShare < ApplicationRecord
   validates :token, presence: true, uniqueness: true
   validates :priceMultiplier, numericality: { greater_than_or_equal_to: 0 }
 
-  scope :active, -> { where(status: "active") }
+  scope :active, -> { where(status: 'active') }
   scope :recent, ->(limit = 50) { order(createdAt: :desc).limit(limit) }
 
   def to_param
@@ -37,7 +37,7 @@ class WarehouseShare < ApplicationRecord
   end
 
   def active?
-    status == "active"
+    status == 'active'
   end
 
   # Bulk tier schedule: per-vendor tiers when custom, otherwise the global

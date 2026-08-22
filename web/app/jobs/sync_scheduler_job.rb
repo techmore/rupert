@@ -5,11 +5,11 @@ class SyncSchedulerJob < ApplicationJob
   queue_as :default
 
   def perform
-    Tenant.where(status: "active").find_each do |tenant|
+    Tenant.where(status: 'active').find_each do |tenant|
       Current.tenant = tenant
-      next unless EnvStore.fetch("SHOPIFY_CLIENT_ID", "").present?
+      next unless EnvStore.fetch('SHOPIFY_CLIENT_ID', '').present?
 
-      SyncJob.perform_later(tenant_id: tenant.id, mode: "scheduled", actor: "scheduler")
+      SyncJob.perform_later(tenant_id: tenant.id, mode: 'scheduled', actor: 'scheduler')
     end
   ensure
     Current.tenant = nil

@@ -9,20 +9,20 @@ module Purchasing
       # Per-vendor AP: received PO value minus payments made.
       def by_vendor
         rows = Purchasing::Vendor.left_joins(:purchase_orders)
-          .where(purchase_orders: { status: ["ordered", "received"] })
-          .group("vendors.id", "vendors.name")
-          .select(
-            "vendors.id",
-            "vendors.name",
-            "COALESCE(SUM(CASE WHEN purchase_orders.status = 'received' THEN
+                                 .where(purchase_orders: { status: %w[ordered received] })
+                                 .group('vendors.id', 'vendors.name')
+                                 .select(
+                                   'vendors.id',
+                                   'vendors.name',
+                                   "COALESCE(SUM(CASE WHEN purchase_orders.status = 'received' THEN
                (SELECT COALESCE(SUM(purchase_order_lines.received_quantity * purchase_order_lines.unit_cost_cents), 0)
                 FROM purchase_order_lines
                 WHERE purchase_order_lines.purchase_order_id = purchase_orders.id) ELSE 0 END), 0) AS owed_cents",
-            "COALESCE(SUM(CASE WHEN purchase_orders.status = 'ordered' THEN
+                                   "COALESCE(SUM(CASE WHEN purchase_orders.status = 'ordered' THEN
                (SELECT COALESCE(SUM(purchase_order_lines.quantity * purchase_order_lines.unit_cost_cents), 0)
                 FROM purchase_order_lines
-                WHERE purchase_order_lines.purchase_order_id = purchase_orders.id) ELSE 0 END), 0) AS committed_cents",
-          )
+                WHERE purchase_order_lines.purchase_order_id = purchase_orders.id) ELSE 0 END), 0) AS committed_cents"
+                                 )
 
         payments = Finance::VendorPayment.group(:vendor_id).sum(:amount_cents)
 
@@ -33,7 +33,7 @@ module Purchasing
             owed_cents: row.owed_cents.to_i,
             committed_cents: row.committed_cents.to_i,
             paid_cents: paid,
-            balance_cents: [row.owed_cents.to_i - paid, 0].max,
+            balance_cents: [row.owed_cents.to_i - paid, 0].max
           }
         end.sort_by { |r| -r[:balance_cents] }
       end

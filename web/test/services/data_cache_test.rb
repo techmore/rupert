@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "test_helper"
+require 'test_helper'
 
 class DataCacheTest < ActiveSupport::TestCase
   setup do
@@ -14,10 +14,10 @@ class DataCacheTest < ActiveSupport::TestCase
     Rails.cache = ActiveSupport::Cache::NullStore.new
   end
 
-  test "caches the block result across calls" do
+  test 'caches the block result across calls' do
     calls = 0
     3.times do
-      DataCache.fetch("test/cached") do
+      DataCache.fetch('test/cached') do
         calls += 1
         "value-#{calls}"
       end
@@ -25,22 +25,22 @@ class DataCacheTest < ActiveSupport::TestCase
     assert_equal 1, calls
   end
 
-  test "bump! invalidates cached values" do
-    first = DataCache.fetch("test/versioned") { "v0" }
-    assert_equal "v0", first
+  test 'bump! invalidates cached values' do
+    first = DataCache.fetch('test/versioned') { 'v0' }
+    assert_equal 'v0', first
 
     DataCache.bump!
-    second = DataCache.fetch("test/versioned") { "v1" }
-    assert_equal "v1", second
+    second = DataCache.fetch('test/versioned') { 'v1' }
+    assert_equal 'v1', second
   end
 
-  test "version increments on bump" do
+  test 'version increments on bump' do
     before = DataCache.version
     DataCache.bump!
     assert_equal before + 1, DataCache.version
   end
 
-  test "bump persists and keeps incrementing on repeated bumps" do
+  test 'bump persists and keeps incrementing on repeated bumps' do
     first = DataCache.version
     DataCache.bump!
     DataCache.bump!
@@ -50,13 +50,13 @@ class DataCacheTest < ActiveSupport::TestCase
   end
 
   test "setting upsert updates an existing row's value" do
-    Setting.find_or_create_for("upsert/probe", Current.tenant_id) { |s| s.value = "one" }
-    Setting.find_or_create_for("upsert/probe", Current.tenant_id) { |s| s.value = "two" }
-    assert_equal "two", Setting.find_by(key: "upsert/probe", tenant_id: Current.tenant_id).value
+    Setting.find_or_create_for('upsert/probe', Current.tenant_id) { |s| s.value = 'one' }
+    Setting.find_or_create_for('upsert/probe', Current.tenant_id) { |s| s.value = 'two' }
+    assert_equal 'two', Setting.find_by(key: 'upsert/probe', tenant_id: Current.tenant_id).value
   end
 
-  test "keys are tenant-scoped" do
-    other = Tenant.create!(name: "Other", subdomain: "other")
+  test 'keys are tenant-scoped' do
+    other = Tenant.create!(name: 'Other', subdomain: 'other')
     Current.tenant = other
     DataCache.bump!
 
@@ -65,42 +65,44 @@ class DataCacheTest < ActiveSupport::TestCase
     assert_equal 0, DataCache.version
   end
 
-  test "dashboard presenter reconcile summary is cached" do
-    DataCache.fetch("dashboard/reconcile_summary") { { drift_count: 5, actionable: 2, blocked_adjustments: 0, total: 10 } }
+  test 'dashboard presenter reconcile summary is cached' do
+    DataCache.fetch('dashboard/reconcile_summary') do
+      { drift_count: 5, actionable: 2, blocked_adjustments: 0, total: 10 }
+    end
     calls = 0
-    DataCache.fetch("dashboard/reconcile_summary") do
+    DataCache.fetch('dashboard/reconcile_summary') do
       calls += 1
       :recomputed
     end
     assert_equal 0, calls
   end
 
-  test "version falls back to the DB row when the cache store errors" do
+  test 'version falls back to the DB row when the cache store errors' do
     # Regression: a cache-store failure (e.g. Errno::EACCES on the file store)
     # must not 500 the request — DataCache.version degrades to the DB row.
     raising = Object.new
-    def raising.fetch(*) = raise(Errno::EACCES, "permission denied")
-    def raising.delete(*) = raise(Errno::EACCES, "permission denied")
+    def raising.fetch(*) = raise(Errno::EACCES, 'permission denied')
+    def raising.delete(*) = raise(Errno::EACCES, 'permission denied')
     Rails.cache = raising
 
-    Setting.find_or_create_for(DataCache::VERSION_KEY, Current.tenant_id) { |s| s.value = "7" }
-    assert_equal 7, DataCache.version, "version should fall back to the DB value when the cache store raises"
+    Setting.find_or_create_for(DataCache::VERSION_KEY, Current.tenant_id) { |s| s.value = '7' }
+    assert_equal 7, DataCache.version, 'version should fall back to the DB value when the cache store raises'
   end
 
-  test "fetch falls back to computing the block when the cache store errors" do
+  test 'fetch falls back to computing the block when the cache store errors' do
     raising = Object.new
-    def raising.fetch(*) = raise(Errno::EACCES, "permission denied")
-    def raising.delete(*) = raise(Errno::EACCES, "permission denied")
+    def raising.fetch(*) = raise(Errno::EACCES, 'permission denied')
+    def raising.delete(*) = raise(Errno::EACCES, 'permission denied')
     Rails.cache = raising
 
-    result = DataCache.fetch("test/fallback") { "computed" }
-    assert_equal "computed", result, "fetch should compute and return the block result when the cache store raises"
+    result = DataCache.fetch('test/fallback') { 'computed' }
+    assert_equal 'computed', result, 'fetch should compute and return the block result when the cache store raises'
   end
 
-  test "bump! still succeeds when the cache store delete errors" do
+  test 'bump! still succeeds when the cache store delete errors' do
     raising = Object.new
-    def raising.fetch(*) = raise(Errno::EACCES, "permission denied")
-    def raising.delete(*) = raise(Errno::EACCES, "permission denied")
+    def raising.fetch(*) = raise(Errno::EACCES, 'permission denied')
+    def raising.delete(*) = raise(Errno::EACCES, 'permission denied')
     Rails.cache = raising
 
     before = DataCache.version

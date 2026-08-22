@@ -4,9 +4,9 @@
 # working before any settings are configured.
 class TenantSettings
   DEFAULTS = {
-    business_name: "Herbal Healers",
-    invoice_prefix: "INV",
-    low_stock_threshold: 5,
+    business_name: 'Herbal Healers',
+    invoice_prefix: 'INV',
+    low_stock_threshold: 5
   }.freeze
 
   class << self

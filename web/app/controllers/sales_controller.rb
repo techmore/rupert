@@ -14,8 +14,8 @@ class SalesController < AuthenticatedController
     @window_days = params[:window].present? ? params[:window].to_i.clamp(1, 365) : 30
 
     since = Time.current - @window_days.days
-    @source = params[:source].presence || "all"
-    source_scope = @source == "all" ? nil : @source
+    @source = params[:source].presence || 'all'
+    source_scope = @source == 'all' ? nil : @source
     @sources = Core::Order.since(since).distinct.pluck(:source).sort
 
     sales_scope = Core::Order.since(since).by_source(source_scope)
@@ -23,7 +23,8 @@ class SalesController < AuthenticatedController
     @sales_count = sales_scope.count
 
     @hourly = hourly_pivot(@date, source_scope)
-    @day_sales = Core::Order.on_day(@date).by_source(source_scope).includes(:fulfillments, :location).order(occurred_at: :asc)
+    @day_sales = Core::Order.on_day(@date).by_source(source_scope).includes(:fulfillments,
+                                                                            :location).order(occurred_at: :asc)
     @day_total_cents = @day_sales.sum(:gross_cents)
     @locations = Location.order(:name).pluck(:name, :id)
     presenter = DashboardPresenter.new
@@ -37,11 +38,11 @@ class SalesController < AuthenticatedController
   def print
     authorize(:module, :sales_read?)
     @date = params[:date].present? ? Date.parse(params[:date]) : Time.current.to_date
-    @doc = params[:doc].to_s == "invoice" ? "invoice" : "packing_slip"
+    @doc = params[:doc].to_s == 'invoice' ? 'invoice' : 'packing_slip'
     @orders = Core::Order.on_day(@date).includes(:customer, :order_lines, :fulfillments).order(occurred_at: :asc)
-    render(layout: "print")
+    render(layout: 'print')
   rescue ArgumentError
-    redirect_to(sales_path, alert: "Invalid date.")
+    redirect_to(sales_path, alert: 'Invalid date.')
   end
 
   private
@@ -51,16 +52,18 @@ class SalesController < AuthenticatedController
   # sales happened in the first hour.
   def hourly_pivot(date, source = nil)
     orders = Core::Order.on_day(date).by_source(source).includes(:location)
-    names = orders.map { |o| o.location&.name || "Unknown" }.uniq
+    names = orders.map { |o| o.location&.name || 'Unknown' }.uniq
     rows = (9..21).map do |h|
-      { hour: h, label: Time.zone.parse("#{h}:00").strftime("%-I %p"), cells: names.to_h { |n| [n, { cents: 0, count: 0 }] } }
+      { hour: h, label: Time.zone.parse("#{h}:00").strftime('%-I %p'), cells: names.to_h do |n|
+        [n, { cents: 0, count: 0 }]
+      end }
     end
 
     orders.group_by { |o| o.occurred_at.hour }.each do |hour, bucket|
       row = rows.find { |r| r[:hour] == hour }
       next unless row
 
-      bucket.group_by { |o| o.location&.name || "Unknown" }.each do |name, group|
+      bucket.group_by { |o| o.location&.name || 'Unknown' }.each do |name, group|
         row[:cells][name][:cents] += group.sum(&:gross_cents)
         row[:cells][name][:count] += group.size
       end

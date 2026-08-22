@@ -3,11 +3,11 @@
 module People
   class EmployeePolicy < ApplicationPolicy
     def show?
-      module?("hr.read") && tenant?
+      module?('hr.read') && tenant?
     end
 
     def create?
-      module?("hr.write")
+      module?('hr.write')
     end
 
     def new?
@@ -15,7 +15,7 @@ module People
     end
 
     def update?
-      module?("hr.write") && tenant?
+      module?('hr.write') && tenant?
     end
 
     def edit?
@@ -23,7 +23,7 @@ module People
     end
 
     def destroy?
-      module?("hr.write") && tenant?
+      module?('hr.write') && tenant?
     end
 
     def deactivate?

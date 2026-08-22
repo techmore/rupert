@@ -8,16 +8,16 @@ module Core
     include TenantScoped
     include AASM
 
-    self.table_name = "orders"
+    self.table_name = 'orders'
 
-    CHANNELS = ["online", "pos", "manual"].freeze
+    CHANNELS = %w[online pos manual].freeze
 
-    belongs_to :customer, class_name: "Core::Customer", optional: true
-    belongs_to :location, class_name: "Location", foreign_key: :location_id, primary_key: :externalId, optional: true
-    has_many :order_lines, class_name: "Core::OrderLine", foreign_key: :order_id, dependent: :destroy
-    has_many :payments, class_name: "Core::Payment", foreign_key: :order_id, dependent: :destroy
-    has_many :fulfillments, class_name: "Core::Fulfillment", foreign_key: :order_id, dependent: :destroy
-    has_many :refunds, class_name: "Core::Refund", foreign_key: :order_id, dependent: :destroy
+    belongs_to :customer, class_name: 'Core::Customer', optional: true
+    belongs_to :location, class_name: 'Location', foreign_key: :location_id, primary_key: :externalId, optional: true
+    has_many :order_lines, class_name: 'Core::OrderLine', foreign_key: :order_id, dependent: :destroy
+    has_many :payments, class_name: 'Core::Payment', foreign_key: :order_id, dependent: :destroy
+    has_many :fulfillments, class_name: 'Core::Fulfillment', foreign_key: :order_id, dependent: :destroy
+    has_many :refunds, class_name: 'Core::Refund', foreign_key: :order_id, dependent: :destroy
 
     validates :source, presence: true
     validates :source_order_id, presence: true
@@ -25,11 +25,11 @@ module Core
     validates :status, presence: true
 
     scope :recent, ->(limit = 200) { order(occurred_at: :desc).limit(limit) }
-    scope :since, ->(date) { where("occurred_at >= ?", date) }
+    scope :since, ->(date) { where('occurred_at >= ?', date) }
     scope :on_day, ->(date) { where(occurred_at: date.beginning_of_day...date.end_of_day) }
-    scope :by_source, ->(source) { source.present? && source != "all" ? where(source: source) : all }
+    scope :by_source, ->(source) { source.present? && source != 'all' ? where(source: source) : all }
 
-    aasm column: "status", no_direct_assignment: true do
+    aasm column: 'status', no_direct_assignment: true do
       state :placed, initial: true
       state :paid
       state :fulfilled
@@ -43,7 +43,7 @@ module Core
         transitions from: :paid, to: :fulfilled
       end
       event :refund do
-        transitions from: [:paid, :fulfilled], to: :refunded
+        transitions from: %i[paid fulfilled], to: :refunded
       end
       event :cancel do
         transitions from: :placed, to: :cancelled
@@ -54,7 +54,7 @@ module Core
     # pipeline independent of the financial status above. Kept as a plain
     # validated column (not AASM) so a second state machine doesn't interfere
     # with the financial status machine's initial state.
-    FULFILLMENT_STATUSES = ["pending", "in_transition", "shipped", "arrived", "completed"].freeze
+    FULFILLMENT_STATUSES = %w[pending in_transition shipped arrived completed].freeze
     FULFILLMENT_ORDER = FULFILLMENT_STATUSES.index_by(&:itself)
 
     validates :fulfillment_status, inclusion: { in: FULFILLMENT_STATUSES }, allow_nil: true
@@ -62,7 +62,7 @@ module Core
     def advance_fulfillment_status!(next_status)
       return false unless FULFILLMENT_STATUSES.include?(next_status)
 
-      current = fulfillment_status.presence || "pending"
+      current = fulfillment_status.presence || 'pending'
       current_index = FULFILLMENT_STATUSES.index(current)
       next_index = FULFILLMENT_STATUSES.index(next_status)
       return false if next_index < current_index
@@ -98,19 +98,19 @@ module Core
     # Record a refund (partial or full). When the refunded total reaches the
     # paid total, the order transitions to the refunded financial status.
     # Locked inside a transaction so concurrent refund requests can't over-refund.
-    def record_refund!(amount_cents:, method: "card", reason: nil, reference: nil, refunded_at: Time.current)
-      raise ArgumentError, "amount must be positive" unless amount_cents.to_i.positive?
+    def record_refund!(amount_cents:, method: 'card', reason: nil, reference: nil, refunded_at: Time.current)
+      raise ArgumentError, 'amount must be positive' unless amount_cents.to_i.positive?
 
       transaction do
         with_lock do
-          raise ArgumentError, "refund exceeds paid total" if amount_cents.to_i > refundable_cents
+          raise ArgumentError, 'refund exceeds paid total' if amount_cents.to_i > refundable_cents
 
           refund = refunds.create!(
             amount_cents: amount_cents.to_i,
             method: method,
             reason: reason,
             reference: reference,
-            refunded_at: refunded_at,
+            refunded_at: refunded_at
           )
           refund! if fully_refunded? && may_refund?
           refund
@@ -129,7 +129,7 @@ module Core
         province: shipping_province,
         zip: shipping_zip,
         country: shipping_country,
-        phone: shipping_phone,
+        phone: shipping_phone
       }
     end
 

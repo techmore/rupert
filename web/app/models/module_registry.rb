@@ -13,42 +13,88 @@ class ModuleRegistry
   Entry = Struct.new(:key, :name, :path, :permission, :position, keyword_init: true)
 
   ENTRIES = [
-    Entry.new(key: "dashboard", name: "Dashboard", path: -> { root_path }, permission: nil, position: 10),
-    Entry.new(key: "sales", name: "Sales", path: -> { sales_path }, permission: "sales.read", position: 20),
-    Entry.new(key: "registers", name: "Registers", path: -> { sales_pos_sessions_path }, permission: "sales.read", position: 25),
-    Entry.new(key: "customers", name: "Customers", path: -> { customers_path }, permission: "customers.read", position: 30),
-    Entry.new(key: "inventory", name: "Inventory", path: -> { inventory_index_path }, permission: "inventory.read", position: 40),
-    Entry.new(key: "locations", name: "Locations", path: -> { locations_path }, permission: "inventory.read", position: 42),
-    Entry.new(key: "warehouse", name: "Warehouse", path: -> { warehouse_path }, permission: "settings.read", position: 43),
-    Entry.new(key: "reconcile", name: "Catalog Links", path: -> { reconcile_index_path }, permission: "reconcile.read", position: 50),
-    Entry.new(key: "sizes", name: "Sizes", path: -> { size_families_path }, permission: "reconcile.read", position: 51),
-    Entry.new(key: "reports", name: "Reports", path: -> { reports_path }, permission: "reports.read", position: 55),
-    Entry.new(key: "ledger", name: "Ledger", path: -> { ledger_index_path }, permission: "ledger.read", position: 60),
-    Entry.new(key: "projects", name: "Projects", path: -> { projects_projects_path }, permission: "projects.read", position: 70),
-    Entry.new(key: "tasks", name: "Tasks", path: -> { projects_tasks_path }, permission: "projects.read", position: 71),
-    Entry.new(key: "goals", name: "Goals", path: -> { goals_goals_path }, permission: "projects.read", position: 75),
-    Entry.new(key: "kpis", name: "KPIs", path: -> { goals_kpis_path }, permission: "projects.read", position: 78),
-    Entry.new(key: "alerts", name: "Alerts", path: -> { alerts_path }, permission: "alerts.read", position: 80),
-    Entry.new(key: "activity", name: "Activity", path: -> { activity_path }, permission: "settings.read", position: 82),
-    Entry.new(key: "access_log", name: "Access log", path: -> { access_logs_path }, permission: "settings.read", position: 81),
-    Entry.new(key: "sync", name: "Sync", path: -> { syncs_path }, permission: "sync.read", position: 90),
-    Entry.new(key: "system", name: "System", path: -> { system_path }, permission: "system.read", position: 95),
-    Entry.new(key: "connections", name: "Connections", path: -> { connections_path }, permission: "settings.read", position: 94),
-    Entry.new(key: "settings", name: "Settings", path: -> { settings_path }, permission: "settings.read", position: 100),
-    Entry.new(key: "employees", name: "Employees", path: -> { people_employees_path }, permission: "hr.read", position: 85),
-    Entry.new(key: "departments", name: "Departments", path: -> { people_departments_path }, permission: "hr.read", position: 86),
-    Entry.new(key: "positions", name: "Positions", path: -> { people_positions_path }, permission: "hr.read", position: 87),
-    Entry.new(key: "timesheets", name: "Timesheets", path: -> { people_timesheets_path }, permission: "timesheets.read", position: 88),
-    Entry.new(key: "leave", name: "Leave & PTO", path: -> { people_leave_requests_path }, permission: "leave.read", position: 89),
-    Entry.new(key: "payroll", name: "Payroll", path: -> { people_pay_runs_path }, permission: "payroll.read", position: 90),
-    Entry.new(key: "accounts", name: "Users", path: -> { users_path }, permission: "users.read", position: 84),
-    Entry.new(key: "permissions", name: "Permissions", path: -> { permissions_path }, permission: "users.read", position: 92),
-    Entry.new(key: "vendors", name: "Vendors", path: -> { purchasing_vendors_path }, permission: "purchasing.read", position: 45),
-    Entry.new(key: "purchase_orders", name: "Purchase orders", path: -> { purchasing_purchase_orders_path }, permission: "purchasing.read", position: 46),
-    Entry.new(key: "finance_accounts", name: "Accounts", path: -> { finance_accounts_path }, permission: "finance.read", position: 47),
-    Entry.new(key: "chart_of_accounts", name: "Chart of accounts", path: -> { finance_chart_of_accounts_path }, permission: "finance.read", position: 48),
-    Entry.new(key: "expenses", name: "Expenses", path: -> { finance_expenses_path }, permission: "finance.read", position: 49),
-    Entry.new(key: "payments", name: "Payments", path: -> { finance_vendor_payments_path }, permission: "finance.read", position: 50),
+    Entry.new(key: 'dashboard', name: 'Dashboard', path: -> { root_path }, permission: nil, position: 10),
+    Entry.new(key: 'sales', name: 'Sales', path: -> { sales_path }, permission: 'sales.read', position: 20),
+    Entry.new(key: 'registers', name: 'Registers', path: lambda {
+      sales_pos_sessions_path
+    }, permission: 'sales.read', position: 25),
+    Entry.new(key: 'customers', name: 'Customers', path: lambda {
+      customers_path
+    }, permission: 'customers.read', position: 30),
+    Entry.new(key: 'inventory', name: 'Inventory', path: lambda {
+      inventory_index_path
+    }, permission: 'inventory.read', position: 40),
+    Entry.new(key: 'locations', name: 'Locations', path: lambda {
+      locations_path
+    }, permission: 'inventory.read', position: 42),
+    Entry.new(key: 'warehouse', name: 'Warehouse', path: lambda {
+      warehouse_path
+    }, permission: 'settings.read', position: 43),
+    Entry.new(key: 'reconcile', name: 'Catalog Links', path: lambda {
+      reconcile_index_path
+    }, permission: 'reconcile.read', position: 50),
+    Entry.new(key: 'sizes', name: 'Sizes', path: -> { size_families_path }, permission: 'reconcile.read', position: 51),
+    Entry.new(key: 'reports', name: 'Reports', path: -> { reports_path }, permission: 'reports.read', position: 55),
+    Entry.new(key: 'ledger', name: 'Ledger', path: -> { ledger_index_path }, permission: 'ledger.read', position: 60),
+    Entry.new(key: 'projects', name: 'Projects', path: lambda {
+      projects_projects_path
+    }, permission: 'projects.read', position: 70),
+    Entry.new(key: 'tasks', name: 'Tasks', path: -> { projects_tasks_path }, permission: 'projects.read', position: 71),
+    Entry.new(key: 'goals', name: 'Goals', path: -> { goals_goals_path }, permission: 'projects.read', position: 75),
+    Entry.new(key: 'kpis', name: 'KPIs', path: -> { goals_kpis_path }, permission: 'projects.read', position: 78),
+    Entry.new(key: 'alerts', name: 'Alerts', path: -> { alerts_path }, permission: 'alerts.read', position: 80),
+    Entry.new(key: 'activity', name: 'Activity', path: -> { activity_path }, permission: 'settings.read', position: 82),
+    Entry.new(key: 'access_log', name: 'Access log', path: lambda {
+      access_logs_path
+    }, permission: 'settings.read', position: 81),
+    Entry.new(key: 'sync', name: 'Sync', path: -> { syncs_path }, permission: 'sync.read', position: 90),
+    Entry.new(key: 'system', name: 'System', path: -> { system_path }, permission: 'system.read', position: 95),
+    Entry.new(key: 'connections', name: 'Connections', path: lambda {
+      connections_path
+    }, permission: 'settings.read', position: 94),
+    Entry.new(key: 'settings', name: 'Settings', path: lambda {
+      settings_path
+    }, permission: 'settings.read', position: 100),
+    Entry.new(key: 'employees', name: 'Employees', path: lambda {
+      people_employees_path
+    }, permission: 'hr.read', position: 85),
+    Entry.new(key: 'departments', name: 'Departments', path: lambda {
+      people_departments_path
+    }, permission: 'hr.read', position: 86),
+    Entry.new(key: 'positions', name: 'Positions', path: lambda {
+      people_positions_path
+    }, permission: 'hr.read', position: 87),
+    Entry.new(key: 'timesheets', name: 'Timesheets', path: lambda {
+      people_timesheets_path
+    }, permission: 'timesheets.read', position: 88),
+    Entry.new(key: 'leave', name: 'Leave & PTO', path: lambda {
+      people_leave_requests_path
+    }, permission: 'leave.read', position: 89),
+    Entry.new(key: 'payroll', name: 'Payroll', path: lambda {
+      people_pay_runs_path
+    }, permission: 'payroll.read', position: 90),
+    Entry.new(key: 'accounts', name: 'Users', path: -> { users_path }, permission: 'users.read', position: 84),
+    Entry.new(key: 'permissions', name: 'Permissions', path: lambda {
+      permissions_path
+    }, permission: 'users.read', position: 92),
+    Entry.new(key: 'vendors', name: 'Vendors', path: lambda {
+      purchasing_vendors_path
+    }, permission: 'purchasing.read', position: 45),
+    Entry.new(key: 'purchase_orders', name: 'Purchase orders', path: lambda {
+      purchasing_purchase_orders_path
+    }, permission: 'purchasing.read', position: 46),
+    Entry.new(key: 'finance_accounts', name: 'Accounts', path: lambda {
+      finance_accounts_path
+    }, permission: 'finance.read', position: 47),
+    Entry.new(key: 'chart_of_accounts', name: 'Chart of accounts', path: lambda {
+      finance_chart_of_accounts_path
+    }, permission: 'finance.read', position: 48),
+    Entry.new(key: 'expenses', name: 'Expenses', path: lambda {
+      finance_expenses_path
+    }, permission: 'finance.read', position: 49),
+    Entry.new(key: 'payments', name: 'Payments', path: lambda {
+      finance_vendor_payments_path
+    }, permission: 'finance.read', position: 50)
   ].freeze
 
   class << self
@@ -70,13 +116,17 @@ class ModuleRegistry
     # operator's day (sell / stock / money / work / team), not the org chart.
     # Every registered module must appear in exactly one area.
     AREAS = [
-      { key: "overview", name: "Overview", modules: ["dashboard"] },
-      { key: "sell", name: "Sell", modules: ["sales", "registers", "customers"] },
-      { key: "stock", name: "Stock", modules: ["inventory", "locations", "alerts", "purchase_orders", "vendors", "reconcile", "sizes"] },
-      { key: "money", name: "Money", modules: ["reports", "ledger", "finance_accounts", "chart_of_accounts", "expenses", "payments"] },
-      { key: "work", name: "Work", modules: ["projects", "tasks", "goals", "kpis"] },
-      { key: "team", name: "Team", modules: ["accounts", "employees", "departments", "positions", "timesheets", "leave", "payroll", "permissions"] },
-      { key: "system", name: "System", modules: ["system", "connections", "sync", "settings", "warehouse", "activity", "access_log"] },
+      { key: 'overview', name: 'Overview', modules: ['dashboard'] },
+      { key: 'sell', name: 'Sell', modules: %w[sales registers customers] },
+      { key: 'stock', name: 'Stock',
+        modules: %w[inventory locations alerts purchase_orders vendors reconcile sizes] },
+      { key: 'money', name: 'Money',
+        modules: %w[reports ledger finance_accounts chart_of_accounts expenses payments] },
+      { key: 'work', name: 'Work', modules: %w[projects tasks goals kpis] },
+      { key: 'team', name: 'Team',
+        modules: %w[accounts employees departments positions timesheets leave payroll permissions] },
+      { key: 'system', name: 'System',
+        modules: %w[system connections sync settings warehouse activity access_log] }
     ].freeze
 
     def area_key_for(module_key)

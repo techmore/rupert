@@ -3,15 +3,15 @@
 module Projects
   class TaskPolicy < ApplicationPolicy
     def create?
-      module?("projects.write")
+      module?('projects.write')
     end
 
     def update?
-      module?("projects.write") && tenant?
+      module?('projects.write') && tenant?
     end
 
     def destroy?
-      module?("projects.write") && tenant?
+      module?('projects.write') && tenant?
     end
 
     def transition?

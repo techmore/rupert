@@ -1,127 +1,130 @@
 # frozen_string_literal: true
 
-require "test_helper"
+require 'test_helper'
 
 class ReportsFlowTest < ActionDispatch::IntegrationTest
   setup do
     ShopifyAPI::Context.setup(
-      api_key: "test-key",
-      api_secret_key: "test-secret",
+      api_key: 'test-key',
+      api_secret_key: 'test-secret',
       api_version: ShopifyAPI::AdminVersions::SUPPORTED_ADMIN_VERSIONS.first,
-      host_name: "localhost",
-      scope: "read_products",
+      host_name: 'localhost',
+      scope: 'read_products',
       is_private: false,
-      is_embedded: false,
+      is_embedded: false
     )
-    Shop.create!(shopify_domain: "m11u0i-sb.myshopify.com", shopify_token: "test-token")
+    Shop.create!(shopify_domain: 'm11u0i-sb.myshopify.com', shopify_token: 'test-token')
     Current.tenant = tenants(:default_tenant)
     @tenant = tenants(:default_tenant)
-    EnvStore.set("SHOPIFY_CLIENT_ID", "test-client-id")
-    EnvStore.set("SHOPIFY_CLIENT_SECRET", "test-client-secret")
-    post login_path, params: { email: "admin@example.com", password: "password" }
+    EnvStore.set('SHOPIFY_CLIENT_ID', 'test-client-id')
+    EnvStore.set('SHOPIFY_CLIENT_SECRET', 'test-client-secret')
+    post login_path, params: { email: 'admin@example.com', password: 'password' }
 
-    @loc = Location.create!(source: "square", externalId: "loc1", name: "Main Shop", tenant_id: @tenant.id)
+    @loc = Location.create!(source: 'square', externalId: 'loc1', name: 'Main Shop', tenant_id: @tenant.id)
     order = Core::Order.new(
-      source: "square",
-      source_order_id: "sq-1",
-      channel: "pos",
+      source: 'square',
+      source_order_id: 'sq-1',
+      channel: 'pos',
       gross_cents: 2500,
       tax_cents: 200,
       occurred_at: Time.current,
       tenant_id: @tenant.id,
-      location_id: @loc.externalId,
+      location_id: @loc.externalId
     )
     order.mark_paid!
     order.save!
-    order.order_lines.create!(tenant_id: @tenant.id, sku: "OIL-1", name: "CBD Oil", quantity: 1, line_cents: 2500)
-    order.payments.create!(tenant_id: @tenant.id, method: "card", amount_cents: 2500, status: "completed", paid_at: Time.current)
+    order.order_lines.create!(tenant_id: @tenant.id, sku: 'OIL-1', name: 'CBD Oil', quantity: 1, line_cents: 2500)
+    order.payments.create!(tenant_id: @tenant.id, method: 'card', amount_cents: 2500, status: 'completed',
+                           paid_at: Time.current)
 
     ShopifyVariant.create!(
-      title: "Oil",
-      sku: "OIL-1",
-      productId: "p1",
+      title: 'Oil',
+      sku: 'OIL-1',
+      productId: 'p1',
       price: 25.0,
       inventoryQuantity: 3,
-      tenant_id: @tenant.id,
+      tenant_id: @tenant.id
     )
-    ShopifyProduct.create!(id: "p1", title: "CBD", tenant_id: @tenant.id)
+    ShopifyProduct.create!(id: 'p1', title: 'CBD', tenant_id: @tenant.id)
   end
 
   teardown do
     Current.tenant = nil
-    EnvStore.set("SHOPIFY_CLIENT_ID", nil)
-    EnvStore.set("SHOPIFY_CLIENT_SECRET", nil)
+    EnvStore.set('SHOPIFY_CLIENT_ID', nil)
+    EnvStore.set('SHOPIFY_CLIENT_SECRET', nil)
   end
 
-  test "sales report renders charts and top products" do
+  test 'sales report renders charts and top products' do
     get sales_reports_path
     assert_response :success
-    assert_select "h1", /Sales report/
-    assert_select "td", /CBD Oil/
+    assert_select 'h1', /Sales report/
+    assert_select 'td', /CBD Oil/
   end
 
-  test "financial report renders P&L and tenders" do
+  test 'financial report renders P&L and tenders' do
     get financial_reports_path
     assert_response :success
-    assert_select "h1", /Financial report/
-    assert_select "td", /Net revenue/
-    assert_select "td", /Gross revenue/
-    assert_select "td", /Tax collected/
+    assert_select 'h1', /Financial report/
+    assert_select 'td', /Net revenue/
+    assert_select 'td', /Gross revenue/
+    assert_select 'td', /Tax collected/
   end
 
-  test "inventory report renders valuation and low stock" do
+  test 'inventory report renders valuation and low stock' do
     get inventory_reports_path
     assert_response :success
-    assert_select "h1", /Inventory report/
-    assert_select "td", /OIL-1/
+    assert_select 'h1', /Inventory report/
+    assert_select 'td', /OIL-1/
   end
 
-  test "operations report renders" do
+  test 'operations report renders' do
     get operations_reports_path
     assert_response :success
-    assert_select "h1", /Operations report/
+    assert_select 'h1', /Operations report/
   end
 
-  test "reconciliation report renders side-by-side Shopify vs Square" do
-    SquareItem.create!(id: "sqitem1", name: "CBD", tenant_id: @tenant.id)
-    SquareVariation.create!(id: "sqvar1", itemId: "sqitem1", name: "Oil", sku: "OIL-1", tenant_id: @tenant.id)
-    SkuLink.create!(sku: "OIL-1", shopifyVariantId: ShopifyVariant.last.id, squareVariationId: "sqvar1", tenant_id: @tenant.id)
-    InventoryLevel.create!(source: "square", locationId: @loc.externalId, squareVariationId: "sqvar1", quantity: 5, tenant_id: @tenant.id)
+  test 'reconciliation report renders side-by-side Shopify vs Square' do
+    SquareItem.create!(id: 'sqitem1', name: 'CBD', tenant_id: @tenant.id)
+    SquareVariation.create!(id: 'sqvar1', itemId: 'sqitem1', name: 'Oil', sku: 'OIL-1', tenant_id: @tenant.id)
+    SkuLink.create!(sku: 'OIL-1', shopifyVariantId: ShopifyVariant.last.id, squareVariationId: 'sqvar1',
+                    tenant_id: @tenant.id)
+    InventoryLevel.create!(source: 'square', locationId: @loc.externalId, squareVariationId: 'sqvar1', quantity: 5,
+                           tenant_id: @tenant.id)
 
     get reconciliation_reports_path
     assert_response :success
-    assert_select "h1", /Inventory reconciliation/
-    assert_select "td", /OIL-1/
-    assert_select "td", /CBD/
-    assert_select "td", /linked/
+    assert_select 'h1', /Inventory reconciliation/
+    assert_select 'td', /OIL-1/
+    assert_select 'td', /CBD/
+    assert_select 'td', /linked/
   end
 
-  test "reconciliation report exports CSV" do
+  test 'reconciliation report exports CSV' do
     get reconciliation_reports_path(format: :csv)
     assert_response :success
-    assert_equal "text/csv", response.media_type
-    assert_includes response.body, "SKU"
-    assert_includes response.body, "Square qty"
-    assert_includes response.body, "OIL-1"
+    assert_equal 'text/csv', response.media_type
+    assert_includes response.body, 'SKU'
+    assert_includes response.body, 'Square qty'
+    assert_includes response.body, 'OIL-1'
   end
 
-  test "reports export CSV" do
+  test 'reports export CSV' do
     get sales_reports_path(format: :csv)
     assert_response :success
-    assert_equal "text/csv", response.media_type
-    assert_includes response.body, "Day"
-    assert_includes response.body, "Revenue"
+    assert_equal 'text/csv', response.media_type
+    assert_includes response.body, 'Day'
+    assert_includes response.body, 'Revenue'
   end
 
-  test "readers can view reports" do
+  test 'readers can view reports' do
     User.create!(
-      email: "reporter@example.com",
-      password: "password123",
-      role: "reader",
-      tenant: tenants(:default_tenant),
+      email: 'reporter@example.com',
+      password: 'password123',
+      role: 'reader',
+      tenant: tenants(:default_tenant)
     )
     delete logout_path
-    post login_path, params: { email: "reporter@example.com", password: "password123" }
+    post login_path, params: { email: 'reporter@example.com', password: 'password123' }
 
     get sales_reports_path
     assert_response :success

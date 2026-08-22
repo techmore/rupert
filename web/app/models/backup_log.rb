@@ -6,10 +6,10 @@ class BackupLog < ApplicationRecord
   include HasCuid
   include TenantScoped
 
-  self.table_name = "BackupLog"
-  self.primary_key = "id"
+  self.table_name = 'BackupLog'
+  self.primary_key = 'id'
 
-  STATUSES = ["running", "success", "failed"].freeze
+  STATUSES = %w[running success failed].freeze
 
   validates :status, inclusion: { in: STATUSES }
   validates :startedAt, presence: true
@@ -21,10 +21,10 @@ class BackupLog < ApplicationRecord
   end
 
   def self.latest_success
-    where(status: "success").order(startedAt: :desc).first
+    where(status: 'success').order(startedAt: :desc).first
   end
 
   def success?
-    status == "success"
+    status == 'success'
   end
 end

@@ -17,6 +17,6 @@ Rails.application.configure do
     policy.script_src  :self, :https, :unsafe_inline
     policy.style_src   :self, :https, :unsafe_inline
     policy.connect_src :self, :https
-    policy.frame_ancestors :self, "https://admin.shopify.com", "https://*.myshopify.com"
+    policy.frame_ancestors :self, 'https://admin.shopify.com', 'https://*.myshopify.com'
   end
 end

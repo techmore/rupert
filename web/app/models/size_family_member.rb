@@ -5,9 +5,9 @@ class SizeFamilyMember < ApplicationRecord
   include TenantScoped
 
   belongs_to :family,
-    class_name: "SizeFamily",
-    foreign_key: "family_id",
-    inverse_of: :members
+             class_name: 'SizeFamily',
+             foreign_key: 'family_id',
+             inverse_of: :members
 
   validates :sku, presence: true, uniqueness: { scope: :family_id, case_sensitive: false }
   validates :grams, numericality: { greater_than: 0 }

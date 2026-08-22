@@ -14,9 +14,9 @@ class AddShippingAndFulfillments < ActiveRecord::Migration[8.1]
     create_table(:fulfillments) do |t|
       t.string(:tenant_id, null: false)
       t.bigint(:order_id, null: false)
-      t.string(:source, default: "manual", null: false)
+      t.string(:source, default: 'manual', null: false)
       t.string(:source_fulfillment_id)
-      t.string(:status, default: "pending", null: false)
+      t.string(:status, default: 'pending', null: false)
       t.string(:tracking_company)
       t.string(:tracking_number)
       t.string(:tracking_url)
@@ -24,8 +24,8 @@ class AddShippingAndFulfillments < ActiveRecord::Migration[8.1]
       t.timestamps
 
       t.index([:order_id])
-      t.index([:tenant_id, :order_id])
-      t.index([:source, :source_fulfillment_id], unique: true)
+      t.index(%i[tenant_id order_id])
+      t.index(%i[source source_fulfillment_id], unique: true)
     end
   end
 end

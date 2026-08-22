@@ -8,5 +8,5 @@ class UserPermission < ApplicationRecord
   belongs_to :user, optional: true
 
   validates :permission, presence: true
-  validates :permission, uniqueness: { scope: [:tenant_id, :user_id] }
+  validates :permission, uniqueness: { scope: %i[tenant_id user_id] }
 end

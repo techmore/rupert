@@ -24,7 +24,7 @@ module People
           hours: hours,
           gross_cents: gross_for(employee, hours, overtime, pay_run),
           deductions_cents: 0,
-          net_cents: 0,
+          net_cents: 0
         )
       end
       apply_default_deductions(pay_run)
@@ -39,7 +39,7 @@ module People
         deductions = (slip.gross_cents * TAX_ESTIMATE).round
         slip.update!(
           deductions_cents: deductions,
-          net_cents: slip.gross_cents - deductions,
+          net_cents: slip.gross_cents - deductions
         )
       end
     end
@@ -48,12 +48,12 @@ module People
       rate = employee.current_pay_rate
       return 0 if rate.nil?
 
-      if rate.pay_type == "hourly"
+      if rate.pay_type == 'hourly'
         regular = [hours.to_f - overtime.to_f, 0].max
         ((regular * rate.hourly_rate_cents) + (overtime.to_f * rate.hourly_rate_cents * OVERTIME_MULTIPLIER)).round
       else
         weeks = (pay_run.period_end - pay_run.period_start).to_f / 7.0
-        denominator = { "weekly" => 52.0, "biweekly" => 26.0, "monthly" => 12.0 }.fetch(rate.pay_frequency, 26.0)
+        denominator = { 'weekly' => 52.0, 'biweekly' => 26.0, 'monthly' => 12.0 }.fetch(rate.pay_frequency, 26.0)
         (rate.annual_salary_cents * (weeks / denominator)).round
       end
     end
@@ -61,15 +61,15 @@ module People
     # Approved hours per employee inside the pay window: [total, overtime].
     def self.approved_hours(pay_run)
       rows = People::Timesheet.approved
-        .where("period_start <= ? AND period_end >= ?", pay_run.period_end, pay_run.period_start)
-        .joins(:entries)
-        .group("timesheets.employee_id", "timesheet_entries.work_type")
-        .sum("timesheet_entries.hours")
+                              .where('period_start <= ? AND period_end >= ?', pay_run.period_end, pay_run.period_start)
+                              .joins(:entries)
+                              .group('timesheets.employee_id', 'timesheet_entries.work_type')
+                              .sum('timesheet_entries.hours')
 
       totals = Hash.new { |hash, key| hash[key] = [0.0, 0.0] }
       rows.each do |(employee_id, work_type), hours|
         total, overtime = totals[employee_id]
-        totals[employee_id] = [total + hours, work_type == "overtime" ? overtime + hours : overtime]
+        totals[employee_id] = [total + hours, work_type == 'overtime' ? overtime + hours : overtime]
       end
       totals
     end
