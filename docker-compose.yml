@@ -15,6 +15,18 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    volumes:
+      - rupert-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   web:
     image: ghcr.io/techmore/rupert:latest
     restart: unless-stopped
@@ -29,10 +41,13 @@ services:
       POSTGRES_USER: rupert
       POSTGRES_DB: rupert_production
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rupert}
+      REDIS_URL: redis://redis:6379/1
     volumes:
       - rupert-storage:/app/storage
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/up"]
@@ -52,13 +67,17 @@ services:
       POSTGRES_USER: rupert
       POSTGRES_DB: rupert_production
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rupert}
+      REDIS_URL: redis://redis:6379/1
     volumes:
       - rupert-storage:/app/storage
     command: ["bin/jobs"]
     depends_on:
       web:
         condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   rupert-pg:
+  rupert-redis:
   rupert-storage:

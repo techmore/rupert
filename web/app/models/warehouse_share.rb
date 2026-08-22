@@ -24,20 +24,27 @@ class WarehouseShare < ApplicationRecord
            dependent: :destroy
 
   before_validation :generate_token, on: :create
+  before_validation :set_default_expiry, on: :create
 
   validates :name, presence: true
   validates :token, presence: true, uniqueness: true
   validates :priceMultiplier, numericality: { greater_than_or_equal_to: 0 }
 
-  scope :active, -> { where(status: 'active') }
+  scope :active, -> { where(status: 'active').where('expires_at IS NULL OR expires_at > ?', Time.current) }
   scope :recent, ->(limit = 50) { order(createdAt: :desc).limit(limit) }
+
+  DEFAULT_WINDOW = 30.days
 
   def to_param
     token
   end
 
   def active?
-    status == 'active'
+    status == 'active' && !expired?
+  end
+
+  def expired?
+    expires_at.present? && expires_at <= Time.current
   end
 
   # Bulk tier schedule: per-vendor tiers when custom, otherwise the global
@@ -67,5 +74,9 @@ class WarehouseShare < ApplicationRecord
 
   def generate_token
     self.token ||= SecureRandom.alphanumeric(32)
+  end
+
+  def set_default_expiry
+    self.expires_at ||= DEFAULT_WINDOW.from_now
   end
 end
