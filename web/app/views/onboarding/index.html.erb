@@ -2,44 +2,58 @@
 <div class="mx-auto max-w-xl">
   <div class="mb-6">
     <h1 class="font-display text-3xl text-ink">Connect your accounts</h1>
-    <p class="mt-1 text-sm text-mocha">Before the sync engine can run, link your Shopify and Square credentials. You can edit these anytime from Settings.</p>
+    <p class="mt-1 text-sm text-mocha">Paste the keys from your Shopify and Square developer dashboards. You can edit these anytime from Settings — values are stored encrypted.</p>
   </div>
 
-  <div class="space-y-4">
-    <div class="card card-pad">
+  <%= form_with url: onboarding_connect_path, method: :post, class: "space-y-4" do %>
+    <div class="card card-pad space-y-3">
       <div class="flex items-center justify-between">
-        <div>
-          <h2 class="font-semibold text-ink">Shopify</h2>
-          <p class="text-sm text-mocha">Custom app client ID + secret for <%= EnvStore.fetch("SHOPIFY_SHOP_DOMAIN", "your store") %></p>
-        </div>
+        <h2 class="font-semibold text-ink">Shopify</h2>
         <span class="<%= @required["SHOPIFY_CLIENT_ID"] && @required["SHOPIFY_CLIENT_SECRET"] ? "pill-fern" : "pill-clay" %>">
           <span class="dot <%= @required["SHOPIFY_CLIENT_ID"] && @required["SHOPIFY_CLIENT_SECRET"] ? "bg-fern" : "bg-clay" %>"></span>
           <%= @required["SHOPIFY_CLIENT_ID"] && @required["SHOPIFY_CLIENT_SECRET"] ? "Connected" : "Needed" %>
         </span>
       </div>
+      <% shop_domain = EnvStore.fetch("SHOPIFY_SHOP_DOMAIN", "") %>
+      <p class="text-xs text-taupe">Store admin → Settings → Apps and sales channels → your app. Required to run syncs.</p>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="shopify_client_id">Client ID</label>
+          <input type="text" id="shopify_client_id" name="shopify_client_id" autocomplete="off" class="input font-mono text-sm"
+                 placeholder="<%= @required["SHOPIFY_CLIENT_ID"] ? "Saved — enter a new value to replace" : "e.g. 4a2b9c…" %>">
+        </div>
+        <div>
+          <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="shopify_client_secret">Client secret</label>
+          <input type="password" id="shopify_client_secret" name="shopify_client_secret" autocomplete="new-password" class="input font-mono text-sm"
+                 placeholder="<%= @required["SHOPIFY_CLIENT_SECRET"] ? "Saved — enter a new value to replace" : "" %>">
+        </div>
+      </div>
+      <div>
+        <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="shopify_shop_domain">Shop domain <span class="normal-case font-normal">(optional)</span></label>
+        <input type="text" id="shopify_shop_domain" name="shopify_shop_domain" autocomplete="off" class="input font-mono text-sm"
+               placeholder="your-store.myshopify.com" value="<%= shop_domain %>">
+      </div>
     </div>
 
-    <div class="card card-pad">
+    <div class="card card-pad space-y-3">
       <div class="flex items-center justify-between">
-        <div>
-          <h2 class="font-semibold text-ink">Square</h2>
-          <p class="text-sm text-mocha">Optional — enables Square catalog + order sync</p>
-        </div>
+        <h2 class="font-semibold text-ink">Square</h2>
         <span class="<%= @optional["SQUARE_ACCESS_TOKEN"] ? "pill-fern" : "pill-taupe" %>">
           <span class="dot <%= @optional["SQUARE_ACCESS_TOKEN"] ? "bg-fern" : "bg-taupe" %>"></span>
           <%= @optional["SQUARE_ACCESS_TOKEN"] ? "Connected" : "Optional" %>
         </span>
       </div>
-    </div>
-
-    <div class="card card-pad">
-      <div class="flex items-center justify-between gap-4">
-        <div>
-          <h2 class="font-semibold text-ink">Enter your API keys</h2>
-          <p class="text-sm text-mocha">Paste a <code class="rounded bg-haze px-1.5 py-0.5 text-xs">KEY=VALUE</code> block or upload an .env file.</p>
-        </div>
-        <%= link_to "Open Settings", settings_path, class: "btn-primary" %>
+      <p class="text-xs text-taupe">Optional — enables Square POS catalog + order sync. Developer Dashboard → your app → Authorization.</p>
+      <div>
+        <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="square_access_token">Access token</label>
+        <input type="password" id="square_access_token" name="square_access_token" autocomplete="new-password" class="input font-mono text-sm"
+               placeholder="<%= @optional["SQUARE_ACCESS_TOKEN"] ? "Saved — enter a new value to replace" : "e.g. EAAA…" %>">
       </div>
     </div>
-  </div>
+
+    <div class="flex items-center gap-3">
+      <button type="submit" class="btn-primary">Connect and start first sync</button>
+      <%= link_to "Advanced: paste a full .env file", settings_path, class: "btn-ghost btn-sm" %>
+    </div>
+  <% end %>
 </div>

@@ -46,27 +46,45 @@ export default class extends Controller {
 
   search() {
     const q = this.inputTarget.value.trim()
+    clearTimeout(this.debounceTimer)
     if (q.length < 2) {
+      if (this.controller) this.controller.abort()
       this.rows = []
       this.render([])
       return
     }
-    fetch(`/search?q=${encodeURIComponent(q)}`, {
-      headers: { "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" }
-    })
-      .then(r => (r.ok ? r.json() : []))
-      .then(results => this.render(results))
-      .catch(() => this.render([]))
+    // Debounce so we don't fire a request per keystroke; abort any in-flight
+    // request so slow earlier responses can't overwrite fresher results.
+    this.debounceTimer = setTimeout(() => {
+      if (this.controller) this.controller.abort()
+      this.controller = new AbortController()
+      fetch(`/search?q=${encodeURIComponent(q)}`, {
+        headers: { "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" },
+        signal: this.controller.signal
+      })
+        .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+        .then(results => this.render(results))
+        .catch(err => {
+          if (err.name === "AbortError") return
+          // A network/server failure is not "no matches" — say so.
+          this.render([], { error: true })
+        })
+    }, 150)
   }
 
-  render(results) {
+  render(results, { error = false } = {}) {
     this.rows = results
     this.selected = -1
     this.resultsTarget.innerHTML = ""
 
     if (!results.length) {
       this.resultsTarget.classList.add("hidden")
-      if (this.emptyTarget) this.emptyTarget.classList.remove("hidden")
+      if (this.emptyTarget) {
+        this.emptyTarget.textContent = error
+          ? "Search is having trouble right now — try again in a moment."
+          : "No matches — try an order number, customer, or SKU."
+        this.emptyTarget.classList.remove("hidden")
+      }
       return
     }
 

@@ -27,6 +27,9 @@ class ModuleRegistry
     Entry.new(key: 'locations', name: 'Locations', path: lambda {
       locations_path
     }, permission: 'inventory.read', position: 42),
+    Entry.new(key: 'inventory_counts', name: 'Counts', path: lambda {
+      inventory_counts_path
+    }, permission: 'inventory.read', position: 44),
     Entry.new(key: 'warehouse', name: 'Warehouse', path: lambda {
       warehouse_path
     }, permission: 'settings.read', position: 43),
@@ -119,7 +122,7 @@ class ModuleRegistry
       { key: 'overview', name: 'Overview', modules: ['dashboard'] },
       { key: 'sell', name: 'Sell', modules: %w[sales registers customers] },
       { key: 'stock', name: 'Stock',
-        modules: %w[inventory locations alerts purchase_orders vendors reconcile sizes] },
+        modules: %w[inventory locations inventory_counts alerts purchase_orders vendors reconcile sizes] },
       { key: 'money', name: 'Money',
         modules: %w[reports ledger finance_accounts chart_of_accounts expenses payments] },
       { key: 'work', name: 'Work', modules: %w[projects tasks goals kpis] },

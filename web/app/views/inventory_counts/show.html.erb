@@ -15,9 +15,9 @@
       <% if count.draft? %>
         <%= link_to "Edit", edit_inventory_count_path(count), class: "btn-ghost" %>
         <%= button_to "Submit for approval", submit_inventory_count_path(count), method: :post, class: "btn-primary", data: { turbo: false } %>
-        <%= button_to "Delete", inventory_count_path(count), method: :delete, class: "btn-ghost", data: { turbo: false, confirm: "Delete this draft count?" } %>
+        <%= button_to "Delete", inventory_count_path(count), method: :delete, class: "btn-ghost", data: { confirm: "Delete this draft count?" } %>
       <% elsif count.pending? %>
-        <%= button_to "Approve count", approve_inventory_count_path(count), method: :post, class: "btn-primary", data: { turbo: false, confirm: "Approve this count? It is recorded for audit and does not change inventory — Square is the source of truth." } %>
+        <%= button_to "Approve count", approve_inventory_count_path(count), method: :post, class: "btn-primary", data: { confirm: "Approve this count? It is recorded for audit and does not change inventory — Square is the source of truth." } %>
         <%= button_to "Reject", reject_inventory_count_path(count), method: :post, class: "btn-ghost", data: { turbo: false } %>
       <% elsif count.rejected? %>
         <%= button_to "Reopen as draft", reopen_inventory_count_path(count), method: :post, class: "btn-ghost", data: { turbo: false } %>

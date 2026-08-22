@@ -14,6 +14,7 @@ Rails.application.routes.draw do
   post '/setup', to: 'setup#create'
 
   get '/onboarding', to: 'onboarding#index', as: :onboarding
+  post '/onboarding/connect', to: 'onboarding#connect', as: :onboarding_connect
 
   resources :tenants, only: %i[index new create]
 
@@ -256,6 +257,13 @@ Rails.application.routes.draw do
 
   get '/up', to: proc { [200, { 'content-type' => 'text/plain' }, ['OK']] }
 
-  # Any other routes just render the app
-  match '*path' => 'home#index', via: %i[get post]
+  # Unknown paths get a real 404 (rendering the dashboard for any URL made
+  # broken links invisible). The dashboard stays reachable at / and /dashboard.
+  get '*path', to: ->(_env) { [404, { 'Content-Type' => 'text/html' }, [<<~HTML]] }
+    <!doctype html><html><head><meta charset="utf-8"><title>Page not found — Rupert</title></head>
+    <body style="font-family: system-ui; padding: 3rem;">
+      <h1>Page not found</h1>
+      <p>The page you were looking for doesn't exist. <a href="/">Back to the dashboard</a>.</p>
+    </body></html>
+  HTML
 end
