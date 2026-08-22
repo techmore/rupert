@@ -11,7 +11,10 @@
       </li>
     <% end %>
     <% if attention_items(presenter).empty? %>
-      <li class="py-3 text-sm text-taupe">All quiet — nothing needs attention.</li>
+      <li class="flex items-center gap-3 py-4 text-sm text-taupe">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-fern" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+        <span>All quiet — nothing needs attention.</span>
+      </li>
     <% end %>
   </ul>
 </div>

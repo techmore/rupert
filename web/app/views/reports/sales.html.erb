@@ -21,7 +21,7 @@
   <div class="grid gap-4 lg:grid-cols-2">
     <div class="card card-pad">
       <h2 class="font-display text-lg text-ink">Revenue · daily</h2>
-      <div class="mt-3"><%= area_chart @revenue_daily, height: "220px", colors: chart_color(:ink), legend: false %></div>
+      <div class="mt-3"><%= area_chart @revenue_daily, height: "220px", colors: chart_color(:olive_deep), legend: false %></div>
     </div>
     <div class="card card-pad">
       <h2 class="font-display text-lg text-ink">Revenue · weekly</h2>
@@ -32,7 +32,7 @@
   <div class="grid gap-4 lg:grid-cols-3">
     <div class="card card-pad">
       <h2 class="font-display text-lg text-ink">By source</h2>
-      <div class="mt-3"><%= pie_chart @by_source, height: "220px", colors: chart_color(:ink, :clay) %></div>
+      <div class="mt-3"><%= pie_chart @by_source, height: "220px", colors: chart_color(:fern, :clay) %></div>
     </div>
     <div class="card card-pad">
       <h2 class="font-display text-lg text-ink">By channel</h2>
@@ -42,7 +42,7 @@
       <h2 class="font-display text-lg text-ink">By location</h2>
       <div class="mt-3">
         <% if @by_location.empty? %>
-          <p class="text-sm text-taupe">No location data — synced orders don't carry a location yet.</p>
+          <p class="rounded-xl bg-haze px-4 py-3 text-sm text-taupe">No location data — synced orders don't carry a location yet.</p>
         <% else %>
           <%= bar_chart @by_location, height: "220px", colors: chart_color(:clay), legend: false %>
         <% end %>

@@ -50,8 +50,8 @@ module ApplicationHelper
     clay: '#7d5449',
     butter: '#e4be58',
     rose: '#b05b4f',
-    sage: '#6b7464',
-    fern: '#3e6b5e'
+    sage: '#5c8a72',
+    fern: '#2e7d64'
   }.freeze
 
   def chart_color(*keys)
