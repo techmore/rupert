@@ -5,6 +5,8 @@
 # database, journaling quantity changes as movements.
 class SquareSyncer
   class << self
+    include SyncConcern
+
     # Returns { items:, variations:, levels:, links:, orders:, locations: }
     def sync!(since: nil)
       locations = SquareClient.locations
@@ -20,13 +22,6 @@ class SquareSyncer
 
       sync_locations!(locations, catalog, counts, primary)
       { items: 0, variations: 0, levels: 0, links: 0, orders: orders, locations: locations }
-    end
-
-    # How far back to look for orders. Configurable via SYNC_HISTORY_DAYS
-    # (defaults to 30 days to match the original behavior).
-    def history_lookback
-      days = EnvStore.fetch("SYNC_HISTORY_DAYS", "").to_i
-      days.positive? ? days.days : 30.days
     end
 
     def primary_location_id
@@ -172,17 +167,6 @@ class SquareSyncer
         InventoryLevel.upsert_all(level_rows, unique_by: :idx_inventory_levels_tenant_source_loc_square)
         InventoryMovement.insert_all(movement_rows) if movement_rows.any?
       end
-    end
-
-    def upsert_location(source:, external_id:, name:, kind: nil, timezone: nil)
-      record = Location.find_or_initialize_by(source: source, externalId: external_id)
-      record.name = name
-      record.kind = kind if kind
-      record.timezone = timezone if timezone
-      record.active = true
-      record.syncedAt = Time.current
-      record.save!
-      record
     end
   end
 end

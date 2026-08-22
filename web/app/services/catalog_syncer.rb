@@ -73,6 +73,8 @@ class CatalogSyncer
   THRESHOLD = 5
 
   class << self
+    include SyncConcern
+
     # Returns { products:, variants:, locations:, orders:, shop: }
     def sync!(since: nil)
       since ||= (Time.current - history_lookback).strftime("%Y-%m-%d")
@@ -104,13 +106,6 @@ class CatalogSyncer
     end
 
     private
-
-    # How far back to look for orders. Configurable via the SYNC_HISTORY_DAYS
-    # setting (defaults to 30 days to match the original behavior).
-    def history_lookback
-      days = EnvStore.fetch("SYNC_HISTORY_DAYS", "").to_i
-      days.positive? ? days.days : 30.days
-    end
 
     # Fetches every ACTIVE product, following the cursor until exhausted.
     # Returns the flat array of product nodes for sync_products!.
@@ -192,16 +187,6 @@ class CatalogSyncer
           )
         end
       end
-    end
-
-    def upsert_location(source:, external_id:, name:, kind: nil, active: true)
-      record = Location.find_or_initialize_by(source: source, externalId: external_id)
-      record.name = name
-      record.kind = kind if kind
-      record.active = active
-      record.syncedAt = Time.current
-      record.save!
-      record
     end
 
     # Flags exactly one Shopify location as primary: SHOPIFY_LOCATION_ID if set,
