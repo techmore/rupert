@@ -17,6 +17,9 @@ module PushGuardTestHelper
     PlatformPushGuard.approve!(platform, email: 'approver-a@example.com')
     PlatformPushGuard.approve!(platform, email: 'approver-b@example.com')
     assert PlatformPushGuard.window_open?(platform), "expected a push window to be open for #{platform}"
+    # Writes now require an explicit confirmation (the old window no longer
+    # gates anything); tests opt in once per setup.
+    Current.confirm_push!
   end
 end
 

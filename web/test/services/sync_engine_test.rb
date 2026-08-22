@@ -77,8 +77,11 @@ class SyncEngineTest < ActiveSupport::TestCase
     assert_equal 'square', run.source
   end
 
-  test 'a frozen Square no longer blocks outbound writes (guard removed)' do
+  test 'a frozen Square is reported but writes are gated only by explicit confirmation' do
     assert PlatformPushGuard.frozen?('square')
+    assert_raises(PlatformPushGuard::UnconfirmedError) { PlatformPushGuard.authorize!('square', actor: 'user') }
+
+    Current.confirm_push!
     assert PlatformPushGuard.authorize!('square', actor: 'user')
   end
 

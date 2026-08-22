@@ -270,6 +270,7 @@ namespace :ops do
       desc 'APPLY the Square SKU remediation plan (WRITES to Square; requires CONFIRM_REMEDIATION=yes + TENANT_ID)'
       task apply: :environment do
         load_tenant!(write: true)
+        ENV['PUSH_CONFIRM'] = 'yes' # CONFIRM_REMEDIATION is the task-level gate
         puts JSON.pretty_generate(SquareSkuRemediator.apply!)
       end
     end

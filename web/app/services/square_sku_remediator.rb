@@ -229,7 +229,7 @@ class SquareSkuRemediator
 
   def guard_square!
     PlatformPushGuard.authorize!('square', actor: 'remediator')
-  rescue PlatformPushGuard::LockedError => e
-    raise "Square write blocked by push guard: #{e.message}"
+  rescue PlatformPushGuard::UnconfirmedError => e
+    raise "Square write blocked: #{e.message}"
   end
 end

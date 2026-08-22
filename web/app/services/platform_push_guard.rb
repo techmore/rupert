@@ -1,16 +1,20 @@
 # frozen_string_literal: true
 
-# Gatekeeper for outbound writes to Shopify and Square.
+# Confirmation gate for outbound writes to Shopify and Square.
 #
-# Owner directive 2026-08-18: the push guard is REMOVED. No outbound write is
-# blocked by an approval window or a maintenance freeze. Safety is instead a
-# human/agent rule: ALWAYS ASK before any data-mutating push to Shopify or
-# Square. This class is kept purely as read-only/operator information —
-# freeze!/unfreeze!/approve!/status report state and history but nothing here
-# blocks a write (authorize! is a no-op).
+# Owner directive 2026-08-18: the old push guard (approval windows + freeze)
+# no longer BLOCKS writes. Safety is instead a human/agent rule to ALWAYS ASK
+# before any data-mutating push. This class provides the mechanical half of
+# that rule: `confirm!` refuses to proceed unless an explicit confirmation
+# token accompanies the write attempt, so automated code paths cannot fire
+# platform writes silently.
 #
-# State is stored per tenant as JSON blobs in Setting rows:
-#   push_guard_shopify / push_guard_square
+# Accepted confirmations (any one):
+#   - ENV['PUSH_CONFIRM'] == 'yes'            (rake/console one-offs)
+#   - Current.metadata[:push_confirmed] == true  (set by a controller action
+#     AFTER the user explicitly clicked through a confirmation prompt)
+#
+# Freeze/approve/status remain as read-only operator info.
 class PlatformPushGuard
   PLATFORMS = %w[shopify square].freeze
 
@@ -19,14 +23,27 @@ class PlatformPushGuard
 
   class LockedError < StandardError; end
   class FrozenError < LockedError; end
+  class UnconfirmedError < StandardError; end
 
   class << self
-    # No-op. Owner directive 2026-08-18: the push guard is removed — neither
-    # approval windows nor the maintenance freeze block writes. The safeguard
-    # is a human/agent rule to ALWAYS ASK before any data-mutating push.
+    # Requires an explicit confirmation before any platform write. Raises
+    # UnconfirmedError when neither ENV nor controller-context confirmation is
+    # present — this is what replaces the old blocking gate.
     def authorize!(platform, actor: 'system')
       normalize(platform)
       require_tenant!
+
+      confirmed = env_override('PUSH_CONFIRM') == 'yes' || Current.push_confirmed?
+      blob = load(platform)
+      audit!(blob, 'confirm', platform, actor.to_s,
+             confirmed ? "write confirmed by #{actor}" : 'write REFUSED (unconfirmed)')
+      unless confirmed
+        save(platform, blob)
+        raise UnconfirmedError,
+              "#{label(platform)} write attempted without explicit confirmation. " \
+              'Set PUSH_CONFIRM=yes (ops tasks) or confirm in the UI before writing.'
+      end
+
       true
     end
 
@@ -79,22 +96,19 @@ class PlatformPushGuard
       status(platform)
     end
 
-    # Hard block for maintenance/update windows. Overrides approvals.
-    def freeze!(platform, reason: nil, actor: 'user')
+    def freeze!(platform, reason:, actor:)
       platform = normalize(platform)
       require_tenant!
 
       blob = load(platform)
       blob['frozen'] = true
-      blob['freeze_reason'] = reason.to_s.presence
-      blob['frozen_by'] = actor.to_s
-      blob['frozen_at'] = Time.current.iso8601
-      audit!(blob, 'freeze', platform, actor.to_s, reason.to_s.presence || 'maintenance')
+      blob['freeze_reason'] = reason.to_s
+      audit!(blob, 'freeze', platform, actor.to_s, reason.to_s)
       save(platform, blob)
       status(platform)
     end
 
-    def unfreeze!(platform, actor: 'user')
+    def unfreeze!(platform, actor:)
       platform = normalize(platform)
       require_tenant!
 
@@ -185,12 +199,6 @@ class PlatformPushGuard
       status = status(platform)
       reason = status[:freeze_reason].presence || 'maintenance'
       "Pushes to #{label(platform)} are FROZEN (#{reason}). Unfreeze it before any write is allowed."
-    end
-
-    def locked_message(platform)
-      status = status(platform)
-      "Pushes to #{label(platform)} are locked: #{status[:approvals_needed]} of #{status[:approvals_required]} " \
-        "approvals. A second person must approve (or run `bin/rails ops:push_guard:approve[#{platform},EMAIL]`) to open a push window."
     end
 
     private

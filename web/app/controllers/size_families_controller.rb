@@ -85,6 +85,7 @@ class SizeFamiliesController < AuthenticatedController
   # POST /size_families/approve_all (collection) or /size_families/:id/approve_all
   # (member) — write pending sizes to Square, for one family or all.
   def approve_all
+    Current.confirm_push! # UI actions already require an explicit confirm dialog
     scope = @family ? @family.size_changes.pending : SizeChange.pending
     applied = 0
     failed = 0
@@ -97,6 +98,7 @@ class SizeFamiliesController < AuthenticatedController
 
   # POST /size_families/:id/approve — write one pending size to Square.
   def approve
+    Current.confirm_push! # UI actions already require an explicit confirm dialog
     change = @family.size_changes.find(params[:change_id])
     ok = SizeDeriver.apply_change!(change)
     redirect_to(
