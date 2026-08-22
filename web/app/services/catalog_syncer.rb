@@ -233,7 +233,9 @@ class CatalogSyncer
         }
         Array(product.dig('variants', 'nodes')).each do |node|
           raw_qty = node['inventoryQuantity'].to_i
-          oversold += 1 if raw_qty.negative?
+          # Only TRACKED variants can oversell; untracked items just carry a
+          # stale historical quantity that Shopify keeps reporting.
+          oversold += 1 if raw_qty.negative? && node.dig('inventoryItem', 'tracked')
           variant_rows << build_variant_row(product['id'], node, now)
           variant_nodes << node
         end
