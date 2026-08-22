@@ -3,4 +3,7 @@ webhooks_path = "api/webhooks/app_uninstalled"
 
 [commands]
 dev = "bin/rails server"
-build = "rake build:all"
+# Mirrors CI (.github/workflows/ci.yml): compile Tailwind, then precompile
+# assets. (A single shell string — `a && b` — is passed to bin/rails verbatim,
+# which chokes on the &&, hence the rake wrapper.)
+build = "bin/rake build:all"

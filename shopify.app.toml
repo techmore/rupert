@@ -3,6 +3,16 @@
 client_id = "44770e333ebb5a3f6dacd7a15906f455"
 name = "Rupert"
 embedded = true
+application_url = "https://herbalhealers.cybersecuritypilot.org"
+
+[auth]
+# Matches ShopifyApp's login_callback_url (/api/auth/callback, mounted at /api)
+# and the embedded-app ExitIframe round-trip. Keep in sync with
+# web/config/initializers/shopify_app.rb.
+redirect_urls = [
+  "https://herbalhealers.cybersecuritypilot.org/api/auth",
+  "https://herbalhealers.cybersecuritypilot.org/api/auth/callback"
+]
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
