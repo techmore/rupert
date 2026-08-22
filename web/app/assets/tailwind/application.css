@@ -9,13 +9,13 @@
   --color-taupe: #6b655c; /* darkened for WCAG AA contrast on paper/oat */
   --color-fog: #eae8e6;
   --color-haze: #f0ece7;
-  --color-olive: #1a393d;
-  --color-olive-deep: #108184;
-  --color-sage: #6b7464;
+  --color-olive: #108184; /* site accent teal (herbalhealerscbd.com) */
+  --color-olive-deep: #0b5c5e; /* darker teal for hover states */
+  --color-sage: #5c8a72; /* fresh gray-green */
   --color-clay: #7d5449;
   --color-butter: #e4be58;
   --color-rose: #b05b4f;
-  --color-fern: #3e6b5e;
+  --color-fern: #2e7d64; /* livelier green */
 
   --font-sans: "Barlow Semi Condensed", ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", sans-serif;
@@ -151,6 +151,23 @@
 
   .nav-pill-idle-sm {
     @apply text-mocha hover:bg-haze hover:text-ink;
+  }
+}
+
+/* Respect users who turn off animations at the OS level: kill transitions,
+   smooth scrolling, and Turbo's progress-bar animation. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  turbo-progress-bar {
+    transition: none !important;
   }
 }
 

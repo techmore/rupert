@@ -24,19 +24,7 @@
             <span class="hidden sm:inline">Search</span>
             <kbd class="hidden rounded bg-haze px-1.5 font-mono text-[10px] text-taupe md:inline">/</kbd>
           </button>
-          <% if @last_sync %>
-            <% synced = @last_sync.success? %>
-            <span class="<%= synced ? "pill-fern" : "pill-clay" %>" title="<%= l(@last_sync.startedAt, format: :short) %>">
-              <span class="dot <%= synced ? "bg-fern" : "bg-clay" %>"></span>
-              <%= synced ? "Synced" : "Needs sync" %>
-              <time datetime="<%= @last_sync.startedAt.iso8601 %>"><%= time_ago_in_words(@last_sync.startedAt) %> ago</time>
-            </span>
-          <% else %>
-            <span class="pill-taupe">
-              <span class="dot bg-taupe"></span>
-              Never synced
-            </span>
-          <% end %>
+          <%= render "shared/header_sync_pill", sync: @last_sync %>
 
           <div data-controller="dropdown" class="relative md:absolute md:right-4 md:top-1/2 md:-translate-y-1/2 md:z-30">
             <% initials = Current.user.display_name.split(/\s+/).map { |w| w[0] }.join.upcase[0, 2] %>
@@ -83,8 +71,8 @@
     <% if (guide = PageGuides.for_path(request.path)) %>
       <%= render "shared/page_guide", guide: guide %>
     <% end %>
-    <% if notice %><div role="status" class="mb-4 rounded-xl border border-fern/30 bg-fern/10 px-4 py-2.5 text-sm text-fern"><%= notice %></div><% end %>
-    <% if alert %><div role="alert" class="mb-4 rounded-xl border border-rose/30 bg-rose/10 px-4 py-2.5 text-sm text-rose"><%= alert %></div><% end %>
+    <% if notice %><div aria-live="polite" role="status" class="mb-4 rounded-xl border border-fern/30 bg-fern/10 px-4 py-2.5 text-sm text-fern"><%= notice %></div><% end %>
+    <% if alert %><div aria-live="assertive" role="alert" class="mb-4 rounded-xl border border-rose/30 bg-rose/10 px-4 py-2.5 text-sm text-rose"><%= alert %></div><% end %>
     <%= yield %>
   </main>
 </div>
