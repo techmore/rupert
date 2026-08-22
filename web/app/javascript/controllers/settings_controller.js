@@ -31,9 +31,10 @@ export default class extends Controller {
 
   submitEnv(e) {
     e.preventDefault()
-    if (this.hasEnvResultTarget) this.envResultTarget.textContent = "Importing…"
+    if (this.hasEnvResultTarget) this.envResultTarget.textContent = "Checking…"
     const form = new FormData(this.envFormTarget)
-    fetch("/settings/env_import", {
+    // Preview first: show what would change, then apply on confirmation.
+    fetch("/settings/env_preview", {
       method: "POST",
       body: form,
       headers: { "X-Requested-With": "XMLHttpRequest" },
@@ -41,14 +42,41 @@ export default class extends Controller {
       .then((r) => r.json().then((b) => ({ ok: r.ok, body: b })))
       .then((res) => {
         if (!this.hasEnvResultTarget) return
-        if (res.ok) {
-          this.envResultTarget.textContent = "Imported " + res.body.imported.length + " key(s)."
-          setTimeout(() => { window.location.reload() }, 800)
-        } else {
-          this.envResultTarget.textContent = "Error: " + (res.body.error || "could not import")
+        if (!res.ok) {
+          this.envResultTarget.textContent = "Error: " + (res.body.error || "could not read that .env")
+          return
         }
+        const unknownNote = res.body.unknown.length ? " (" + res.body.unknown.length + " unrecognised key(s) skipped)" : ""
+        const summary =
+          res.body.added + " new key(s), " + res.body.updated + " update(s) to apply." + unknownNote +
+          (res.body.keys.length === 0 ? " Nothing recognisable in this input." : "")
+        if (res.body.keys.length === 0) {
+          this.envResultTarget.textContent = summary
+          return
+        }
+        if (!window.confirm(summary + "\n\nApply these changes now?")) {
+          this.envResultTarget.textContent = "Import cancelled — nothing was changed."
+          return
+        }
+        this.envResultTarget.textContent = "Importing…"
+        fetch("/settings/env_import", {
+          method: "POST",
+          body: form,
+          headers: { "X-Requested-With": "XMLHttpRequest" },
+        })
+          .then((r) => r.json().then((b) => ({ ok: r.ok, body: b })))
+          .then((res2) => {
+            if (!this.hasEnvResultTarget) return
+            if (res2.ok) {
+              this.envResultTarget.textContent = "Imported " + res2.body.imported.length + " key(s)."
+              setTimeout(() => { window.location.reload() }, 800)
+            } else {
+              this.envResultTarget.textContent = "Error: " + (res2.body.error || "could not import")
+            }
+          })
+          .catch(() => { if (this.hasEnvResultTarget) this.envResultTarget.textContent = "Error: import failed" })
       })
-      .catch(() => { if (this.hasEnvResultTarget) this.envResultTarget.textContent = "Error: import failed" })
+      .catch(() => { if (this.hasEnvResultTarget) this.envResultTarget.textContent = "Error: could not read that .env" })
   }
 
   restore(e) {

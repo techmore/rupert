@@ -22,35 +22,37 @@
           <div class="mt-4 grid gap-3 sm:grid-cols-2">
             <div class="sm:col-span-2">
               <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="shipping_name">Name</label>
-              <input type="text" id="shipping_name" name="shipping_name" required class="input w-full">
+              <input type="text" id="shipping_name" name="shipping_name" required autocomplete="name" class="input w-full">
             </div>
             <div class="sm:col-span-2">
               <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="shipping_address1">Address</label>
-              <input type="text" id="shipping_address1" name="shipping_address1" required class="input w-full">
+              <input type="text" id="shipping_address1" name="shipping_address1" required autocomplete="address-line1" class="input w-full">
             </div>
             <div class="sm:col-span-2">
               <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="shipping_address2">Address line 2</label>
-              <input type="text" id="shipping_address2" name="shipping_address2" class="input w-full">
+              <input type="text" id="shipping_address2" name="shipping_address2" autocomplete="address-line2" class="input w-full">
             </div>
             <div>
               <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="shipping_city">City</label>
-              <input type="text" id="shipping_city" name="shipping_city" required class="input w-full">
+              <input type="text" id="shipping_city" name="shipping_city" required autocomplete="address-level2" class="input w-full">
             </div>
             <div>
               <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="shipping_province">State / Province</label>
-              <input type="text" id="shipping_province" name="shipping_province" class="input w-full">
+              <input type="text" id="shipping_province" name="shipping_province" autocomplete="address-level1" class="input w-full">
             </div>
             <div>
               <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="shipping_zip">ZIP / Postal code</label>
-              <input type="text" id="shipping_zip" name="shipping_zip" required class="input w-full">
+              <input type="text" id="shipping_zip" name="shipping_zip" required autocomplete="postal-code" class="input w-full">
             </div>
             <div>
               <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="shipping_country">Country</label>
-              <input type="text" id="shipping_country" name="shipping_country" value="US" class="input w-full">
+              <select id="shipping_country" name="shipping_country" autocomplete="country" class="select w-full">
+                <%= options_for_select({ "United States" => "US", "Canada" => "CA", "United Kingdom" => "GB", "Australia" => "AU", "New Zealand" => "NZ", "Germany" => "DE", "France" => "FR", "Netherlands" => "NL", "Ireland" => "IE", "Mexico" => "MX" }, "US") %>
+              </select>
             </div>
             <div class="sm:col-span-2">
               <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" for="shipping_phone">Phone</label>
-              <input type="tel" id="shipping_phone" name="shipping_phone" class="input w-full">
+              <input type="tel" id="shipping_phone" name="shipping_phone" autocomplete="tel" class="input w-full">
             </div>
           </div>
         </div>

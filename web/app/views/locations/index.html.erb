@@ -42,7 +42,12 @@
         </thead>
         <tbody class="divide-y divide-fog">
           <% if @locations.empty? %>
-            <tr><td colspan="5" class="td py-8 text-center text-taupe">No locations yet.</td></tr>
+            <tr>
+              <td colspan="5" class="td py-8 text-center">
+                <p class="text-taupe">No locations yet.</p>
+                <%= link_to "Add your first location", new_location_path, class: "btn-primary btn-sm mt-2" %>
+              </td>
+            </tr>
           <% end %>
           <% @locations.each do |location| %>
             <tr class="hover:bg-cream">

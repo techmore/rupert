@@ -32,7 +32,10 @@
         <tbody class="divide-y divide-fog">
           <% if @counts.empty? %>
             <tr>
-              <td class="td py-8 text-center text-taupe">No counts yet — start a manual inventory.</td>
+              <td class="td py-8 text-center">
+                <p class="text-taupe">No counts yet.</p>
+                <%= link_to "Start a manual inventory", new_inventory_count_path, class: "btn-primary btn-sm mt-2" %>
+              </td>
             </tr>
           <% end %>
           <% @counts.each do |count| %>

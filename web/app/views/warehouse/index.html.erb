@@ -76,7 +76,10 @@
           <tbody class="divide-y divide-fog">
             <% if @shares.empty? %>
               <tr>
-                <td class="td py-8 text-center text-taupe">No vendor links yet.</td>
+                <td class="td py-8 text-center">
+                  <p class="text-taupe">No vendor links yet.</p>
+                  <p class="mt-1 text-xs text-taupe">Create one with the form on the right.</p>
+                </td>
               </tr>
             <% end %>
             <% @shares.each do |share| %>

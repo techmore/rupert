@@ -22,6 +22,24 @@ class SettingsController < AuthenticatedController
            })
   end
 
+  # POST /settings/env_preview — JSON { text: }: what an import WOULD change,
+  # without writing anything. Lets the admin confirm before applying.
+  def env_preview
+    text = params[:text].presence || (params[:file].read if params[:file].present?)
+    raise ArgumentError, 'Provide .env text or a file' if text.blank?
+
+    known = EnvStore.parse(text).keys & EnvStore::MANAGED_KEYS
+    changes = known.map { |key| preview_entry(key) }
+    render(json: {
+             keys: changes,
+             added: changes.count { |c| !c[:currently_set] },
+             updated: changes.count { |c| c[:currently_set] },
+             unknown: EnvStore.parse(text).keys - EnvStore::MANAGED_KEYS
+           })
+  rescue ArgumentError => e
+    render(json: { error: e.message }, status: :unprocessable_entity)
+  end
+
   # POST /settings/env_import — JSON { text: } or multipart .env upload
   def env_import
     text = if params[:text].present?
@@ -215,6 +233,15 @@ class SettingsController < AuthenticatedController
   end
 
   private
+
+  def preview_entry(key)
+    current = EnvStore.fetch(key, '')
+    {
+      key: key,
+      currently_set: current.present?,
+      from_env_file: !Setting.exists?(key: key, tenant_id: Current.tenant_id) && current.present?
+    }
+  end
 
   def authorize_read
     authorize(:module, :settings_read?)
