@@ -27,6 +27,23 @@ services:
       timeout: 5s
       retries: 5
 
+  # One-shot schema migration: runs before web/jobs start, so neither service
+  # races the other with db:migrate on boot. The entrypoint no longer migrates.
+  migrate:
+    image: ghcr.io/techmore/rupert:latest
+    restart: "no"
+    env_file: .env
+    environment:
+      RAILS_ENV: production
+      POSTGRES_HOST: db
+      POSTGRES_USER: rupert
+      POSTGRES_DB: rupert_production
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rupert}
+    command: ["bin/rails", "db:prepare"]
+    depends_on:
+      db:
+        condition: service_healthy
+
   web:
     image: ghcr.io/techmore/rupert:latest
     restart: unless-stopped
@@ -45,8 +62,8 @@ services:
     volumes:
       - rupert-storage:/app/storage
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     healthcheck:
@@ -72,8 +89,8 @@ services:
       - rupert-storage:/app/storage
     command: ["bin/jobs"]
     depends_on:
-      web:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
 
