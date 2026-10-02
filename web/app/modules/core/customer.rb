@@ -22,7 +22,7 @@ module Core
 
     scope :search, lambda { |term|
       if term.present?
-        where('first_name ILIKE :q OR last_name ILIKE :q OR email ILIKE :q OR phone ILIKE :q', q: "%#{term}%")
+        where(SearchSql.contains_any(%w[first_name last_name email phone]), *Array.new(4, "%#{term}%"))
       end
     }
 

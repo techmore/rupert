@@ -8,6 +8,12 @@ class AddLowerSkuIndexToOrderLines < ActiveRecord::Migration[8.1]
   disable_ddl_transaction!
 
   def change
+    if connection.adapter_name.downcase.include?('sqlite')
+      add_index :order_lines, %i[tenant_id sku],
+                name: 'idx_order_lines_tenant_sku_sqlite'
+      return
+    end
+
     add_index :order_lines, 'tenant_id, lower(sku)',
               name: 'index_order_lines_on_tenant_id_and_lower_sku',
               algorithm: :concurrently

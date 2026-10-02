@@ -1,18 +1,30 @@
-# PostgreSQL. Ensure the pg gem is defined in your Gemfile
-#   gem "pg"
-#
+# PostgreSQL remains the production default. The SQLite mode is for the
+# isolated adapter/performance experiment: `RUPERT_DB_ADAPTER=sqlite3`.
+<% use_sqlite = ENV.fetch("RUPERT_DB_ADAPTER", "postgresql") == "sqlite3" %>
 default: &default
-  adapter: postgresql
-  encoding: unicode
+  adapter: <%= use_sqlite ? "sqlite3" : "postgresql" %>
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+<% if use_sqlite %>
+  timeout: <%= ENV.fetch("SQLITE_BUSY_TIMEOUT_MS", 5000) %>
+  journal_mode: wal
+  synchronous: normal
+  schema_dump: schema_sqlite.rb
+<% else %>
+  encoding: unicode
   username: <%= ENV.fetch("POSTGRES_USER", "rupert") %>
   password: <%= ENV.fetch("POSTGRES_PASSWORD", "rupert") %>
   host: <%= ENV.fetch("POSTGRES_HOST", "localhost") %>
   port: <%= ENV.fetch("POSTGRES_PORT", "5432") %>
+  schema_dump: schema.rb
+<% end %>
 
 development:
   <<: *default
+<% if use_sqlite %>
+  database: <%= ENV.fetch("RUPERT_SQLITE_DATABASE_DEVELOPMENT", "storage/development.sqlite3") %>
+<% else %>
   database: <%= ENV.fetch("POSTGRES_DB", "rupert_development") %>
+<% end %>
 
 # Warning: The database defined as "test" will be erased and
 # re-generated from your development database when you run "rake".
@@ -21,11 +33,19 @@ development:
 # rupert_production, and tests must never run against the production database.
 test:
   <<: *default
+<% if use_sqlite %>
+  database: <%= ENV.fetch("RUPERT_SQLITE_DATABASE_TEST", "storage/test.sqlite3") %>
+<% else %>
   database: rupert_test
+<% end %>
 
 production:
   <<: *default
+<% if use_sqlite %>
+  database: <%= ENV.fetch("RUPERT_SQLITE_DATABASE_PRODUCTION", "storage/production.sqlite3") %>
+<% else %>
   database: <%= ENV.fetch("POSTGRES_DB", "rupert_production") %>
   # The well-known "rupert" default must never run in production. Set
   # POSTGRES_PASSWORD in the droplet .env or the app refuses to boot.
   password: <%= ENV.fetch("POSTGRES_PASSWORD") { raise "POSTGRES_PASSWORD must be set in the production environment" } %>
+<% end %>

@@ -81,7 +81,11 @@
       </div>
       <div class="rounded-xl bg-haze px-4 py-3">
         <dt class="text-xs font-medium text-mocha">Cache hit rate</dt>
-        <dd class="font-display text-2xl <%= @system.db_cache_hit_pct >= 99 ? "text-fern" : "text-clay" %>"><%= @system.db_cache_hit_pct %>%</dd>
+        <% if @system.db_cache_hit_pct %>
+          <dd class="font-display text-2xl <%= @system.db_cache_hit_pct >= 99 ? "text-fern" : "text-clay" %>"><%= @system.db_cache_hit_pct %>%</dd>
+        <% else %>
+          <dd class="font-display text-2xl text-taupe">n/a</dd>
+        <% end %>
       </div>
       <div class="rounded-xl bg-haze px-4 py-3">
         <dt class="text-xs font-medium text-mocha">Size</dt>
@@ -89,7 +93,11 @@
       </div>
       <div class="rounded-xl bg-haze px-4 py-3">
         <dt class="text-xs font-medium text-mocha">Deadlocks</dt>
-        <dd class="font-display text-2xl <%= @system.db_deadlocks.positive? ? "text-rose" : "text-ink" %>"><%= @system.db_deadlocks %></dd>
+        <% if @system.db_deadlocks %>
+          <dd class="font-display text-2xl <%= @system.db_deadlocks.positive? ? "text-rose" : "text-ink" %>"><%= @system.db_deadlocks %></dd>
+        <% else %>
+          <dd class="font-display text-2xl text-taupe">n/a</dd>
+        <% end %>
       </div>
     </dl>
     <div class="mt-4 text-xs text-taupe">

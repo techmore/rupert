@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'timeout'
+require 'etc'
 
 # Collects server + database health metrics for the System (admin) page.
 # All reads are read-only and wrapped in timeouts so a hung metric never
@@ -47,18 +48,27 @@ class SystemPresenter
   private
 
   def collect_os
-    @cpu_count = nproc = `nproc`.to_i
-    @cpu_count = 2 if nproc.zero?
+    @cpu_count = Etc.nprocessors
     @load_averages = read_file('/proc/loadavg').to_s.split.first(3).map(&:to_f)
     mem = read_file('/proc/meminfo').to_s
     @mem_total_mb = kb('MemTotal', mem) / 1024
     @mem_available_mb = kb('MemAvailable', mem) / 1024
+    if @mem_total_mb.zero?
+      total_bytes = `sysctl -n hw.memsize 2>/dev/null`.to_i
+      @mem_total_mb = total_bytes / 1024 / 1024
+      vm = `vm_stat 2>/dev/null`
+      page_size = vm[/page size of (\d+) bytes/, 1].to_i
+      available_pages = %w[Pages_free Pages_inactive Pages_speculative Pages_purgeable].sum do |label|
+        vm[/^#{label.tr('_', ' ')}:\s+(\d+)/, 1].to_i
+      end
+      @mem_available_mb = (available_pages * page_size / 1024.0 / 1024).round if page_size.positive?
+    end
     @mem_used_mb = @mem_total_mb - @mem_available_mb
     @swap_total_mb = kb('SwapTotal', mem) / 1024
     @swap_used_mb = kb('SwapTotal', mem) / 1024 - kb('SwapFree', mem) / 1024
-    disk = `df -B1 / 2>/dev/null`.lines.last.to_s.split
+    disk = `df -k / 2>/dev/null`.lines.last.to_s.split
     @disk_used_pct = disk[4].to_s.delete('%').to_i
-    @disk_free_gb = disk[3].to_i.to_f / 1024**3
+    @disk_free_gb = disk[3].to_i.to_f / 1024**2
     @uptime_seconds = read_file('/proc/uptime').to_s.split.first.to_f.round
   end
 
@@ -70,6 +80,8 @@ class SystemPresenter
 
   def collect_db
     conn = ActiveRecord::Base.connection
+    return collect_sqlite_db(conn) if conn.adapter_name.downcase.include?('sqlite')
+
     @db_connections = conn.select_value('SELECT count(*) FROM pg_stat_activity WHERE datname = current_database()').to_i
     @db_max_connections = conn.select_value('SHOW max_connections').to_i
     stats = conn.select_one(<<~SQL) || {}
@@ -130,6 +142,26 @@ class SystemPresenter
       FROM pg_stat_user_tables
       ORDER BY pg_total_relation_size(relid) DESC LIMIT 10
     SQL
+  end
+
+  # PostgreSQL exposes detailed buffer, lock, and table-bloat statistics.
+  # SQLite has no equivalent pg_stat views, so show the file and pool data
+  # that is available and leave unsupported counters blank in the UI.
+  def collect_sqlite_db(conn)
+    pool = ActiveRecord::Base.connection_pool
+    @db_connections = pool.stat[:connections].to_i
+    @db_max_connections = pool.size
+    @db_cache_hit_pct = nil
+    @db_deadlocks = nil
+    path = conn.pool.db_config.database.to_s
+    path = Rails.root.join(path).to_s unless path.start_with?('/') || path == ':memory:'
+    bytes = [path, "#{path}-wal"].sum { |file| File.file?(file) ? File.size(file) : 0 }
+    @db_size_mb = (bytes / 1024.0 / 1024).round(1)
+    @slow_queries = []
+    @active_queries = []
+    @locked_queries = []
+    @bloat_tables = []
+    @big_tables = []
   end
 
   def collect_jobs

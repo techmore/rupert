@@ -22,7 +22,7 @@ module Purchasing
     scope :search, lambda { |q|
       return all if q.blank?
 
-      where('name ILIKE ? OR email ILIKE ? OR contact_name ILIKE ?', "%#{q}%", "%#{q}%", "%#{q}%")
+      where(SearchSql.contains_any(%w[name email contact_name]), *Array.new(3, "%#{q}%"))
     }
 
     def display_name

@@ -15,5 +15,5 @@ class AccessLog < ApplicationRecord
   validates :status, inclusion: { in: STATUSES }, allow_nil: true
 
   scope :recent, ->(limit = 100) { order(created_at: :desc).limit(limit) }
-  scope :for_email, ->(q) { where('email ILIKE ?', "%#{q.to_s.strip}%") }
+  scope :for_email, ->(q) { where(SearchSql.contains_any(%w[email]), "%#{q.to_s.strip}%") }
 end
