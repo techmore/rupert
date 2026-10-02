@@ -28,7 +28,7 @@ class CatalogLinks
     def rows
       square_totals = InventoryLevel.square_totals
 
-      SkuLink.linked.includes(shopify_variant: [:product]).filter_map do |link|
+      SkuLink.linked.includes(:square_variation, shopify_variant: [:product]).filter_map do |link|
         variant = link.shopify_variant
         variation = link.square_variation
         next if variant.nil? || variation.nil?

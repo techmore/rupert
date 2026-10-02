@@ -8,9 +8,11 @@ class CustomersController < AuthenticatedController
 
     @q = Core::Customer.ransack(params[:q])
     @pagy, @customers = pagy(@q.result.order(created_at: :desc), items: 25)
-    # One grouped SUM for the page instead of a lifetime-value query per row.
-    @lifetime_totals = Core::Order.where(customer_id: @customers.map(&:id))
-                                  .group(:customer_id).sum(:gross_cents)
+    # One grouped SUM + one grouped COUNT for the page instead of a lifetime-
+    # value query and an orders COUNT per row (the view calls orders.size).
+    ids = @customers.map(&:id)
+    @lifetime_totals = Core::Order.where(customer_id: ids).group(:customer_id).sum(:gross_cents)
+    @order_counts = Core::Order.where(customer_id: ids).group(:customer_id).count
   end
 
   def show

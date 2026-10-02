@@ -9,10 +9,12 @@ class ReconcileController < AuthenticatedController
   before_action :authorize_read
 
   def index
-    @summary = CatalogLinks.summary
+    @summary = DataCache.fetch('catalog/summary') { CatalogLinks.summary }
     # Pagy paginates relations; CatalogLinks.rows is a sorted Struct array, so
-    # slice it manually against a count-only Pagy.
-    rows = CatalogLinks.rows
+    # slice it manually against a count-only Pagy. Rows are cached behind the
+    # DataCache version — this audit only changes on sync, but building 563
+    # rows costs ~250ms of AR allocation on every request otherwise.
+    rows = DataCache.fetch('catalog/rows') { CatalogLinks.rows }
     @pagy = Pagy.new(count: rows.length, page: params[:page], items: 50)
     @rows = rows[@pagy.offset, @pagy.items] || []
     @size_groups = size_family_groups

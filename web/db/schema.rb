@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_22_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -527,6 +527,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_010000) do
     t.string "tenant_id", null: false
     t.integer "unit_cents", default: 0
     t.datetime "updated_at", null: false
+    t.index "tenant_id, lower((sku)::text)", name: "index_order_lines_on_tenant_id_and_lower_sku"
     t.index ["tenant_id", "order_id"], name: "index_order_lines_on_tenant_id_and_order_id"
     t.index ["tenant_id", "sku"], name: "index_order_lines_on_tenant_id_and_sku"
   end

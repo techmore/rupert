@@ -46,8 +46,12 @@ module EnvStore
   # Settings (DB) win over ENV. ENV is only consulted as a global fallback
   # when no tenant is in context (platform/setup), so tenant credentials never
   # bleed across tenants.
+  #
+  # All managed keys are loaded once per tenant per request cycle and memoized
+  # (cleared on write), so hot paths like ConnectionsGuide that read dozens of
+  # keys don't issue a query each.
   def self.fetch(key, default = nil)
-    setting = scoped(key)
+    setting = all_scoped[key]
     return setting.value if setting
     return ENV.fetch(key, default) if Current.tenant_id.nil?
 
@@ -58,16 +62,29 @@ module EnvStore
     Setting.find_by(key: key, tenant_id: Current.tenant_id)
   end
 
+  def self.all_scoped
+    RequestStore.fetch(:env_store_all) do
+      Setting.where(key: MANAGED_KEYS, tenant_id: Current.tenant_id)
+             .index_by(&:key)
+    end
+  end
+
+  def self.clear_cache!
+    RequestStore.delete(:env_store_all)
+  end
+
   # Write a managed key into the tenant settings (nil removes it).
   def self.set(key, value)
     raise ArgumentError, 'Key is not managed by the settings store' unless MANAGED_KEYS.include?(key)
 
     if value.nil?
       scoped(key)&.destroy
+      clear_cache!
     else
       setting = Setting.find_or_initialize_by(key: key, tenant_id: Current.tenant_id)
       setting.value = value.to_s
       setting.save!
+      clear_cache!
     end
     value
   end
@@ -81,6 +98,7 @@ module EnvStore
       setting.value = value
       setting.save!
     end
+    clear_cache!
     parsed.keys & MANAGED_KEYS
   end
 

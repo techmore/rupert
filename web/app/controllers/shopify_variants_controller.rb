@@ -28,6 +28,7 @@ class ShopifyVariantsController < AuthenticatedController
     link.auto = false
     link.createdAt ||= Time.current
     link.save!
+    DataCache.bump!
     redirect_to(shopify_variant_path(@variant), notice: "Linked #{@variant.title} to #{square.name}.")
   rescue ActiveRecord::RecordNotFound
     redirect_to(shopify_variant_path(@variant), alert: 'Square variation not found.')
@@ -37,6 +38,7 @@ class ShopifyVariantsController < AuthenticatedController
   def unlink
     authorize(:module, :inventory_write?)
     @variant.sku_links.destroy_all
+    DataCache.bump!
     redirect_to(shopify_variant_path(@variant), notice: 'Link removed.')
   end
 

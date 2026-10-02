@@ -26,6 +26,7 @@
     <%= submit_tag "Filter", class: "btn-ghost btn-sm" %>
   <% end %>
 
+  <% cached_fragment("ledger/table", source: @source, window: @window_days) do %>
   <div class="card overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
@@ -63,4 +64,5 @@
       </table>
     </div>
   </div>
+  <% end %>
 </div>

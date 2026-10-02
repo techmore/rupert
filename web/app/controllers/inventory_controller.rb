@@ -15,12 +15,16 @@ class InventoryController < AuthenticatedController
         "%#{@q}%"
       )
     end
-    scope = scope.includes(variants: [{ sku_links: { square_variation: :levels } }, :levels])
-    # Paginate the whole catalog by product (matching the PDF report's scope,
-    # which covers every product rather than only the first 40).
+    # The old nested includes() here (variants → sku_links → square_variation →
+    # levels) instantiated ~2,000 AR objects per page (~170ms warm on this
+    # droplet). variant_stock_map batches every query it needs; the map only
+    # changes on sync/mutation, so it's cached behind the DataCache version
+    # (the view fragment already is).
     @pagy, @products = pagy(scope, items: 40)
-    @variant_qtys = variant_stock_map(@products)
-    @stock_locations = stock_locations
+    @variant_qtys = DataCache.fetch("inventory/stock_map/#{@pagy.page}") do
+      variant_stock_map(@products)
+    end
+    @stock_locations = DataCache.fetch('inventory/locations') { stock_locations }
   end
 
   # GET /inventory/movements — the full inventory movement ledger: every
@@ -106,18 +110,21 @@ class InventoryController < AuthenticatedController
     shared_square_variations = SkuLink.linked.group(:squareVariationId).count
                                       .select { |_, n| n > 1 }.keys.to_set
 
-    variants = products.flat_map(&:variants)
-    square_variation_ids = variants.filter_map { |v| v.sku_links.find(&:linked?)&.squareVariationId }
+    variants = ShopifyVariant.where(productId: products.map(&:id)).to_a
+    links_by_variant = SkuLink.where(shopifyVariantId: variants.map(&:id))
+                              .linked.includes(:square_variation).index_by(&:shopifyVariantId)
+    square_variation_ids = links_by_variant.values.filter_map(&:squareVariationId)
 
     shopify_by_variant = InventoryLevel.mirrored('shopify')
                                        .where(shopifyVariantId: variants.map(&:id)).group_by(&:shopifyVariantId)
     square_by_variation = InventoryLevel.mirrored('square')
                                         .where(squareVariationId: square_variation_ids).group_by(&:squareVariationId)
+    variants_by_product = variants.group_by(&:productId)
 
     map = {}
     products.each do |product|
-      product.variants.each do |variant|
-        link = variant.sku_links.find(&:linked?)
+      (variants_by_product[product.id] || []).each do |variant|
+        link = links_by_variant[variant.id]
         variation = link&.square_variation
 
         shopify_levels = shopify_by_variant[variant.id] || []
