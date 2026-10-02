@@ -92,7 +92,8 @@ Rails.application.configure do
   # Enable DNS rebinding protection and other `Host` header attacks.
   hostname = URI(ENV.fetch('HOST', '')).host
   base_domain = hostname&.split('.')&.last(2)&.join('.')
-  config.hosts = [hostname, /^.*\.#{Regexp.escape(base_domain)}$/].compact
+  additional_hosts = ENV.fetch('ADDITIONAL_HOSTS', '').split(',').map(&:strip).reject(&:blank?)
+  config.hosts = [hostname, /^.*\.#{Regexp.escape(base_domain)}$/, *additional_hosts].compact
   config.host_authorization = { exclude: ->(request) { request.path == '/up' } }
   # Skip DNS rebinding protection for the default health check endpoint.
   # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
