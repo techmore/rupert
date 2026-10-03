@@ -22,7 +22,7 @@ class OauthFlowTest < ActionDispatch::IntegrationTest
   test 'callback signs in an existing super admin from an allowed domain' do
     host! "#{@tenant.subdomain}.example.com"
     sean = User.create!(email: 'sean.dolbec@cybersecuritypilot.org', name: 'Sean Dolbec', role: 'super_admin',
-                        password: 'password123', tenant_id: @tenant.id)
+      password: 'password123', tenant_id: @tenant.id)
     GoogleOauthService.stubs(:auth_url).returns('https://accounts.google.com/')
     get google_auth_path
     state = session[:oauth_state]
@@ -87,7 +87,7 @@ class OauthFlowTest < ActionDispatch::IntegrationTest
   test "callback doesn't sign into a same-email account that belongs to another tenant" do
     other = Tenant.create!(name: 'Other Co', subdomain: "other#{SecureRandom.hex(4)}")
     other_user = User.create!(email: 'shared@cybersecuritypilot.org', name: 'Shared', role: 'reader',
-                              password: 'password123', tenant_id: other.id)
+      password: 'password123', tenant_id: other.id)
     host! "#{@tenant.subdomain}.example.com"
     GoogleOauthService.stubs(:auth_url).returns('https://accounts.google.com/')
     get google_auth_path
@@ -129,7 +129,7 @@ class OauthFlowTest < ActionDispatch::IntegrationTest
   test 'callback rejects a deactivated user' do
     host! "#{@tenant.subdomain}.example.com"
     inactive = User.create!(email: 'gone@cybersecuritypilot.org', name: 'Gone', role: 'reader',
-                            password: 'password123', active: false, tenant_id: @tenant.id)
+      password: 'password123', active: false, tenant_id: @tenant.id)
     GoogleOauthService.stubs(:auth_url).returns('https://accounts.google.com/')
     get google_auth_path
     state = session[:oauth_state]

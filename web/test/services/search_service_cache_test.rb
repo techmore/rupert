@@ -23,4 +23,17 @@ class SearchServiceCacheTest < ActiveSupport::TestCase
     assert_equal [], SearchService.search('Acme')
     assert_equal [], SearchService.search('acme')
   end
+
+  test 'global search cache is isolated by tenant' do
+    SearchService.expects(:search_orders).twice.returns([])
+    SearchService.expects(:search_customers).twice.returns([])
+    SearchService.expects(:search_variants).twice.returns([])
+    SearchService.expects(:search_employees).never
+
+    Current.tenant = Struct.new(:id).new('tenant-a')
+    assert_equal [], SearchService.search('Acme')
+
+    Current.tenant = Struct.new(:id).new('tenant-b')
+    assert_equal [], SearchService.search('Acme')
+  end
 end

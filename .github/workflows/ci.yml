@@ -2,7 +2,12 @@ on: [push, pull_request]
 name: CI
 jobs:
   CI:
+    name: CI (${{ matrix.adapter }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        adapter: [postgresql, sqlite3]
     # The app requires Ruby ~> 4.0, which the ruby/setup-ruby action does not
     # provide on GitHub-hosted runners (max 3.5). Run inside the official
     # ruby:4.0 image instead.
@@ -15,6 +20,7 @@ jobs:
       HOST: app-host-name.io
       BUNDLE_GEMFILE: ${{ github.workspace }}/web/Gemfile
       RAILS_ENV: test
+      RUPERT_DB_ADAPTER: ${{ matrix.adapter }}
       # Container jobs reach service containers by their label, not localhost.
       POSTGRES_HOST: postgres
       POSTGRES_USER: rupert
@@ -39,9 +45,6 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           submodules: recursive
-
-      - name: Find any lock file
-        run: if test -f ../yarn.lock || test -f ../pnpm-lock.yaml || test -f ../package-lock.json; then echo "Please don't commit lock files" && exit 1; fi
 
       - name: Install dependencies
         run: bundle install

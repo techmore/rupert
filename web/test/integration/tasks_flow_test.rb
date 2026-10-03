@@ -35,7 +35,7 @@ class TasksFlowTest < ActionDispatch::IntegrationTest
 
     @project = Projects::Project.create!(name: 'Cleanup', tenant_id: @tenant.id)
     @task = Projects::Task.create!(project: @project, title: 'Fix duplicate SKUs', priority: 'high',
-                                   tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
   end
 
   def get_page(path, params: {})
@@ -60,7 +60,7 @@ class TasksFlowTest < ActionDispatch::IntegrationTest
     get_page projects_tasks_path
     assert_select 'span', /todo/
     post transition_projects_task_path(@task, event: 'finish'),
-         params: { shop: 'm11u0i-sb.myshopify.com', embedded: '1' }
+      params: { shop: 'm11u0i-sb.myshopify.com', embedded: '1' }
     assert_redirected_to @project
     assert @task.reload.done?
   end

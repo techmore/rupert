@@ -13,7 +13,7 @@ class LoginThrottleTest < ActiveSupport::TestCase
 
   def add_failure(ip:, email:)
     AccessLog.create!(tenant_id: Current.tenant_id, source: 'password', status: 'failure',
-                      ip: ip, email: email, detail: 'invalid password')
+      ip: ip, email: email, detail: 'invalid password')
   end
 
   test 'is not blocked with no failures' do
@@ -36,7 +36,7 @@ class LoginThrottleTest < ActiveSupport::TestCase
   test 'rate-limited rows do not extend the lockout' do
     (LoginThrottle::IP_FAILURES + 5).times do
       AccessLog.create!(tenant_id: Current.tenant_id, source: 'password', status: 'failure',
-                        ip: '7.7.7.7', email: 'x@example.com', detail: 'rate limited')
+        ip: '7.7.7.7', email: 'x@example.com', detail: 'rate limited')
     end
     refute LoginThrottle.blocked?(ip: '7.7.7.7')
   end

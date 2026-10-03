@@ -50,8 +50,8 @@ class InventoryController < AuthenticatedController
   # updating Shopify + Square and re-linking (see ops:sku_remediation_plan).
   def recommended_skus
     send_data SkuMatchReport.csv,
-              filename: "sku-report-#{Date.current.iso8601}.csv",
-              type: 'text/csv'
+      filename: "sku-report-#{Date.current.iso8601}.csv",
+      type: 'text/csv'
   end
 
   # GET /inventory/pdf — printable snapshot of the current inventory across

@@ -6,7 +6,7 @@ class EnvPreviewTest < ActionDispatch::IntegrationTest
   setup do
     @tenant = Tenant.create!(name: 'Preview Co', subdomain: 'previewco')
     User.create!(email: 'prev@example.com', password: 'password123', role: 'admin',
-                 tenant_id: @tenant.id, name: 'Prev')
+      tenant_id: @tenant.id, name: 'Prev')
     post login_path, params: { email: 'prev@example.com', password: 'password123' }
     Current.tenant = @tenant
   end
@@ -20,8 +20,8 @@ class EnvPreviewTest < ActionDispatch::IntegrationTest
     EnvStore.set('SQUARE_ACCESS_TOKEN', 'existing-token')
 
     post env_preview_settings_path,
-         params: { text: "SQUARE_ACCESS_TOKEN=new-token\nBRAND_NEW_KEY=value\nNOT_A_MANAGED_KEY=x" },
-         headers: { 'X-Requested-With' => 'XMLHttpRequest' }
+      params: { text: "SQUARE_ACCESS_TOKEN=new-token\nBRAND_NEW_KEY=value\nNOT_A_MANAGED_KEY=x" },
+      headers: { 'X-Requested-With' => 'XMLHttpRequest' }
     assert_response :success
     body = JSON.parse(response.body)
 

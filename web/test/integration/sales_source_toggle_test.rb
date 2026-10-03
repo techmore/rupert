@@ -6,7 +6,7 @@ class SalesSourceToggleTest < ActionDispatch::IntegrationTest
   setup do
     @tenant = tenants(:default_tenant)
     @admin = User.create!(email: 'sales-admin@example.com', password: 'password123', role: 'admin', name: 'Admin',
-                          tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
     post login_path, params: { email: @admin.email, password: 'password123' }
     Current.tenant = @tenant
   end
@@ -17,9 +17,9 @@ class SalesSourceToggleTest < ActionDispatch::IntegrationTest
 
   test 'sales page shows a source toggle with all available sources' do
     Core::Order.create!(source: 'shopify', source_order_id: 's1', occurred_at: Time.current - 1.hour,
-                        gross_cents: 1000, order_number: 'S1', tenant_id: @tenant.id)
+      gross_cents: 1000, order_number: 'S1', tenant_id: @tenant.id)
     Core::Order.create!(source: 'square', source_order_id: 'sq1', occurred_at: Time.current - 1.hour,
-                        gross_cents: 2000, order_number: 'SQ1', tenant_id: @tenant.id)
+      gross_cents: 2000, order_number: 'SQ1', tenant_id: @tenant.id)
 
     get sales_path
     assert_response :success
@@ -30,9 +30,9 @@ class SalesSourceToggleTest < ActionDispatch::IntegrationTest
 
   test 'the toggle filters the daily breakdown by source' do
     Core::Order.create!(source: 'shopify', source_order_id: 's1', occurred_at: Time.current - 1.hour,
-                        gross_cents: 1000, order_number: 'S1', tenant_id: @tenant.id)
+      gross_cents: 1000, order_number: 'S1', tenant_id: @tenant.id)
     Core::Order.create!(source: 'square', source_order_id: 'sq1', occurred_at: Time.current - 1.hour,
-                        gross_cents: 2000, order_number: 'SQ1', tenant_id: @tenant.id)
+      gross_cents: 2000, order_number: 'SQ1', tenant_id: @tenant.id)
 
     get sales_path, params: { source: 'square' }
     assert_response :success
@@ -43,7 +43,7 @@ class SalesSourceToggleTest < ActionDispatch::IntegrationTest
   test 'hourly by location table titles each location column even with no 9am sales' do
     location = Location.create!(source: 'square', externalId: 'loc-1', name: 'Front Counter', tenant_id: @tenant.id)
     Core::Order.create!(source: 'square', source_order_id: 'sq2', occurred_at: Time.current.change(hour: 11),
-                        gross_cents: 2000, order_number: 'SQ2', location_id: location.externalId, tenant_id: @tenant.id)
+      gross_cents: 2000, order_number: 'SQ2', location_id: location.externalId, tenant_id: @tenant.id)
 
     get sales_path
     assert_response :success

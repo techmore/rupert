@@ -13,7 +13,7 @@ class DashboardWidgetTest < ActiveSupport::TestCase
   test 'default_order lists all widgets' do
     assert_equal 8, DashboardWidget.default_order.length
     assert_equal %w[stats today_channels attention stock_alerts revenue sync_history goals people],
-                 DashboardWidget.default_order
+      DashboardWidget.default_order
   end
 
   test 'entries with no config returns all widgets visible in default order' do
@@ -28,7 +28,7 @@ class DashboardWidgetTest < ActiveSupport::TestCase
                                         'hidden' => ['stats']
                                       })
     assert_equal(%w[revenue stats sync_history today_channels attention stock_alerts goals people],
-                 entries.map { |widget, _| widget.key })
+      entries.map { |widget, _| widget.key })
     visible = entries.select { |_, v| v }.map { |widget, _| widget.key }
     assert_includes visible, 'revenue'
     refute_includes visible, 'stats'

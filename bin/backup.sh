@@ -11,6 +11,7 @@ set -a
 # shellcheck disable=SC1091
 source /root/rupert/.env
 set +a
+: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in /root/rupert/.env}"
 
 OUT="/var/backups/rupert"
 DB="${POSTGRES_DB:-rupert_production}"
@@ -23,12 +24,12 @@ DUMP_TMP="$DUMP.partial"
 SETTINGS_TMP="$OUT/settings-$TS.sql.partial"
 ENV_TMP="$OUT/env-$TS.partial"
 
-PGPASSWORD="${POSTGRES_PASSWORD:-rupert}" \
+PGPASSWORD="$POSTGRES_PASSWORD" \
   pg_dump -h "${POSTGRES_HOST:-localhost}" -p "${POSTGRES_PORT:-5432}" \
   -U "${POSTGRES_USER:-rupert}" -d "$DB" \
   | gzip > "$DUMP_TMP"
 
-PGPASSWORD="${POSTGRES_PASSWORD:-rupert}" \
+PGPASSWORD="$POSTGRES_PASSWORD" \
   pg_dump -h "${POSTGRES_HOST:-localhost}" -p "${POSTGRES_PORT:-5432}" \
   -U "${POSTGRES_USER:-rupert}" -d "$DB" \
   --table=settings --data-only --column-inserts > "$SETTINGS_TMP"

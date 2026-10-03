@@ -9,13 +9,13 @@ class DashboardPresenter
   PAID_STATUSES = %w[paid fulfilled].freeze
 
   attr_reader :product_count,
-              :variant_count,
-              :sku_link_count,
-              :open_alerts,
-              :stockouts,
-              :recent_runs,
-              :recent_syncs,
-              :recent_alerts
+    :variant_count,
+    :sku_link_count,
+    :open_alerts,
+    :stockouts,
+    :recent_runs,
+    :recent_syncs,
+    :recent_alerts
 
   def initialize
     @product_count = DataCache.fetch('dashboard/product_count') { ShopifyProduct.count }

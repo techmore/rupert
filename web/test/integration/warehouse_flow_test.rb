@@ -112,7 +112,7 @@ class WarehouseFlowTest < ActionDispatch::IntegrationTest
     WarehouseTier.create!(shareId: share.id, minQty: 10, discountPercent: 5)
     product = ShopifyProduct.create!(id: 'prod-herbal', title: 'Herbal Tea', status: 'ACTIVE', tenant_id: @tenant.id)
     ShopifyVariant.create!(id: 'var-herbal', productId: product.id, title: '50g', price: 20.0, sku: 'TEA-50',
-                           tracked: true, tenant_id: @tenant.id)
+      tracked: true, tenant_id: @tenant.id)
 
     get warehouse_sale_path(share.token)
     assert_response :success

@@ -12,9 +12,9 @@ class AlertsRestockViewTest < ActionDispatch::IntegrationTest
     post login_path, params: { email: 'admin@example.com', password: 'password' }
 
     @product = ShopifyProduct.create!(id: 'gid://shopify/Product/1', title: 'Tea', status: 'ACTIVE',
-                                      tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
     @variant = ShopifyVariant.create!(productId: @product.id, title: 'Tea / 50g', sku: 'TEA-50',
-                                      inventoryQuantity: 2, tracked: true, tenant_id: @tenant.id)
+      inventoryQuantity: 2, tracked: true, tenant_id: @tenant.id)
     StockAlert.create!(sku: 'TEA-50', quantity: 2, threshold: 5, status: 'open', shopifyVariantId: @variant.id)
   end
 

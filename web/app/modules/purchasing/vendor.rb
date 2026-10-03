@@ -11,9 +11,9 @@ module Purchasing
     PAYMENT_TERMS = %w[net7 net15 net30 net60 due_on_receipt prepaid].freeze
 
     has_many :purchase_orders,
-             class_name: 'Purchasing::PurchaseOrder',
-             foreign_key: :vendor_id,
-             dependent: :restrict_with_exception
+      class_name: 'Purchasing::PurchaseOrder',
+      foreign_key: :vendor_id,
+      dependent: :restrict_with_exception
 
     validates :name, presence: true
     validates :payment_terms, inclusion: { in: PAYMENT_TERMS }, allow_nil: true

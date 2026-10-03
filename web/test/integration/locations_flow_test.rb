@@ -44,12 +44,12 @@ class LocationsFlowTest < ActionDispatch::IntegrationTest
 
   test 'locations index lists synced locations with units' do
     location = Location.create!(source: 'shopify', externalId: 'loc-1', name: 'Main Shop', kind: 'RETAIL',
-                                tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
     product = ShopifyProduct.create!(id: 'prod-loc1', title: 'Tea', tenant_id: @tenant.id)
     variant = ShopifyVariant.create!(id: 'var-loc', productId: product.id, title: 'Tea', sku: 'LOC-TEA',
-                                     tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
     InventoryLevel.create!(source: 'shopify', locationId: location.id, shopifyVariantId: variant.id, quantity: 12,
-                           available: 10, tenant_id: @tenant.id)
+      available: 10, tenant_id: @tenant.id)
 
     get_page locations_path
     assert_response :success
@@ -78,12 +78,12 @@ class LocationsFlowTest < ActionDispatch::IntegrationTest
 
   test 'location show page lists stock at that location' do
     location = Location.create!(source: 'shopify', externalId: 'loc-2', name: 'Warehouse', kind: 'WAREHOUSE',
-                                tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
     product = ShopifyProduct.create!(id: 'prod-loc2', title: 'Bottles', tenant_id: @tenant.id)
     variant = ShopifyVariant.create!(id: 'var-loc2', productId: product.id, title: 'Bottles', sku: 'BTL',
-                                     tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
     InventoryLevel.create!(source: 'shopify', locationId: location.id, shopifyVariantId: variant.id, quantity: 40,
-                           available: 38, tenant_id: @tenant.id)
+      available: 38, tenant_id: @tenant.id)
 
     get_page location_path(location)
     assert_response :success

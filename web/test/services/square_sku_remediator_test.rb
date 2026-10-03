@@ -7,9 +7,9 @@ class SquareSkuRemediatorTest < ActiveSupport::TestCase
     Current.tenant = tenants(:default_tenant)
     @product = ShopifyProduct.create!(id: 'P1', title: 'King Cone Pre-Roll - THCA', tenant_id: Current.tenant_id)
     @short = ShopifyVariant.create!(id: 'SV1', productId: 'P1', title: 'Pineapple Trainwreck (Sativa)', sku: 'PT',
-                                    tracked: true, tenant_id: Current.tenant_id)
+      tracked: true, tenant_id: Current.tenant_id)
     @flower = ShopifyVariant.create!(id: 'SV2', productId: 'P1', title: '3.5 Grams', sku: 'KUSH',
-                                     tracked: true, tenant_id: Current.tenant_id)
+      tracked: true, tenant_id: Current.tenant_id)
     SquareItem.create!(id: 'I1', name: 'King Cone', tenant_id: Current.tenant_id)
   end
 

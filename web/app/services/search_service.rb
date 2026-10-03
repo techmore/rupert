@@ -14,7 +14,7 @@ class SearchService
 
       can_read_hr = Current.user&.can?('hr.read') || false
       user_key = Current.user&.id || 'anonymous'
-      key = "global_search/#{user_key}/hr#{can_read_hr ? 1 : 0}/#{Digest::SHA256.hexdigest(term.downcase)}/#{limit}"
+      key = "global_search/#{Current.tenant_id || 'no-tenant'}/#{user_key}/hr#{can_read_hr ? 1 : 0}/#{Digest::SHA256.hexdigest(term.downcase)}/#{limit}"
       DataCache.fetch(key, ttl: 2.minutes) do
         results = []
         results.concat(search_orders(term))

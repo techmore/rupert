@@ -18,7 +18,7 @@ class SyncRun < ApplicationRecord
   end
 
   has_many :movements,
-           class_name: 'InventoryMovement',
-           foreign_key: 'syncRunId',
-           inverse_of: :sync_run
+    class_name: 'InventoryMovement',
+    foreign_key: 'syncRunId',
+    inverse_of: :sync_run
 end

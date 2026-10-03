@@ -9,9 +9,9 @@ class WarehouseCart < ApplicationRecord
 
   belongs_to :share, class_name: 'WarehouseShare', foreign_key: :share_id
   has_many :items,
-           class_name: 'WarehouseCartItem',
-           foreign_key: :cart_id,
-           dependent: :destroy
+    class_name: 'WarehouseCartItem',
+    foreign_key: :cart_id,
+    dependent: :destroy
 
   validates :token, presence: true, uniqueness: true
   validates :status, inclusion: { in: STATUSES }

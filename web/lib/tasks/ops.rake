@@ -188,7 +188,7 @@ namespace :ops do
         puts "\nSellable (qty>0) but UNLINKED (top 25 by qty):"
         r.sellable_unlinked.sort_by { |v| -r.counts[v[:variationId]].to_i }.first(25).each do |v|
           puts format('  %5d  %-30s  sku=%-14s', r.counts[v[:variationId]].to_i, v[:name][0, 30],
-                      v[:sku].presence || '(none)')
+            v[:sku].presence || '(none)')
         end
       end
       unless r.sellable_no_sku.empty?
@@ -244,14 +244,14 @@ namespace :ops do
       puts "A) LINKS TO CREATE (SkuLink rows -> #{s[:links]})"
       plan[:links_to_create].first(30).each do |rec|
         puts format('  L  %-32s sku=%-14s  ->  $%-10s %s (score=%d)',
-                    rec[:square][:name][0, 32], rec[:square][:sku].presence || '(none)', rec[:shopify].product&.title.to_s[0, 40], rec[:shopify].title.to_s[0, 30], rec[:score])
+          rec[:square][:name][0, 32], rec[:square][:sku].presence || '(none)', rec[:shopify].product&.title.to_s[0, 40], rec[:shopify].title.to_s[0, 30], rec[:score])
       end
       puts "  ... and #{s[:links] - 30} more" if s[:links] > 30
 
       puts "\nB) SQUARE SKU ASSIGNMENTS (UpsertCatalogObject -> #{s[:sku_assignments]})"
       plan[:sku_assignments].each do |w|
         puts format('  S  %5d  %-32s item=%-28s -> SKU %s',
-                    w[:qty], w[:variation][:name][0, 32], w[:item_name][0, 28], w[:proposed_sku])
+          w[:qty], w[:variation][:name][0, 32], w[:item_name][0, 28], w[:proposed_sku])
       end
 
       puts "\nC) DUPLICATE SKU FIX"
@@ -319,9 +319,9 @@ namespace :ops do
       load_tenant!
       PlatformPushGuard.status_all.each do |st|
         state = if st[:frozen]
-                  'FROZEN'
-                else
-                  (st[:window_open] ? "window OPEN until #{st[:window_expires_at]}" : 'LOCKED')
+          'FROZEN'
+        else
+          (st[:window_open] ? "window OPEN until #{st[:window_expires_at]}" : 'LOCKED')
                 end
         puts "#{st[:label].ljust(8)} #{state}"
         puts "  approvals: #{st[:approvals_needed]}/#{st[:approvals_required]} #{st[:approvals].map do |a|

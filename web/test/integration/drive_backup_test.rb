@@ -16,7 +16,7 @@ class DriveBackupTest < ActionDispatch::IntegrationTest
     Shop.create!(shopify_domain: 'm11u0i-sb.myshopify.com', shopify_token: 'test-token')
     host! 'testshop.example.com' # super_admin resolves the tenant via subdomain
     User.create!(email: 'root@example.com', password: 'password123', role: 'super_admin',
-                 tenant_id: tenants(:default_tenant).id, name: 'Root')
+      tenant_id: tenants(:default_tenant).id, name: 'Root')
     post login_path, params: { email: 'root@example.com', password: 'password123' }
     Current.tenant = tenants(:default_tenant)
     EnvStore.set('GOOGLE_DRIVE_CLIENT_ID', 'client-id')

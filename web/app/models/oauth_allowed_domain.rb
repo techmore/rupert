@@ -7,10 +7,10 @@ class OauthAllowedDomain < ApplicationRecord
   include TenantScoped
 
   validates :domain,
-            presence: true,
-            uniqueness: { scope: :tenant_id, case_sensitive: false },
-            format: { with: /\A[a-z0-9][a-z0-9-]*(\.[a-z0-9][a-z0-9-]*)+\.?[a-z]*\z/,
-                      message: 'must look like example.com' }
+    presence: true,
+    uniqueness: { scope: :tenant_id, case_sensitive: false },
+    format: { with: /\A[a-z0-9][a-z0-9-]*(\.[a-z0-9][a-z0-9-]*)+\.?[a-z]*\z/,
+              message: 'must look like example.com' }
 
   before_validation { self.domain = domain.to_s.downcase.strip.sub(/\A@/, '') }
 

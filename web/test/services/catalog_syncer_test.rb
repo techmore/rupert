@@ -78,7 +78,7 @@ class CatalogSyncerTest < ActiveSupport::TestCase
     ShopifyVariant.create!(id: variant['id'], productId: 'gid://shopify/Product/1', title: 'Tea / 50g', sku: 'TEA-50')
 
     CatalogSyncer.send(:sync_levels_batched!, [variant], levels,
-                       { 'gid://shopify/Location/1' => home, 'gid://shopify/Location/2' => rig }, home, Time.current)
+      { 'gid://shopify/Location/1' => home, 'gid://shopify/Location/2' => rig }, home, Time.current)
 
     levels = InventoryLevel.where(source: 'shopify', shopifyVariantId: variant['id'])
     assert_equal 2, levels.count
@@ -142,7 +142,7 @@ class CatalogSyncerTest < ActiveSupport::TestCase
     variant = ShopifyVariant.create!(productId: 'p-x', title: 'X', sku: 'X-1')
     InventoryLevel.create!(source: 'shopify', locationId: known.id, shopifyVariantId: variant.id, quantity: 1)
     stale = InventoryLevel.create!(source: 'shopify', locationId: 'c-gone-location', shopifyVariantId: variant.id,
-                                   quantity: 4)
+      quantity: 4)
 
     assert_equal 1, CatalogSyncer.send(:prune_stale_shopify_levels!)
     assert_not InventoryLevel.exists?(stale.id)

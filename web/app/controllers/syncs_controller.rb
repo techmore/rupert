@@ -34,9 +34,9 @@ class SyncsController < AuthenticatedController
   # POST /syncs/import_swipesimple — upload (or paste) a SwipeSimple CSV export.
   def import_swipesimple
     csv = if params[:file].present?
-            params[:file].read
-          elsif params[:text].present?
-            params[:text]
+      params[:file].read
+    elsif params[:text].present?
+      params[:text]
           end
     raise ArgumentError, 'Attach a CSV file or paste the export text.' if csv.blank?
 
@@ -56,12 +56,12 @@ class SyncsController < AuthenticatedController
     if result[:window_open]
       expires = result[:window_expires_at]
       redirect_to(syncs_path,
-                  notice: "Push window for #{PlatformPushGuard.label(platform)} is OPEN (#{result[:approved_by]}/#{result[:needed]} approvals) until #{I18n.l(
-                    Time.zone.parse(expires), format: :short
-                  )}.")
+        notice: "Push window for #{PlatformPushGuard.label(platform)} is OPEN (#{result[:approved_by]}/#{result[:needed]} approvals) until #{I18n.l(
+          Time.zone.parse(expires), format: :short
+        )}.")
     else
       redirect_to(syncs_path,
-                  notice: "Approval recorded for #{PlatformPushGuard.label(platform)} — #{result[:approved_by]} of #{result[:needed]} approvals still needed before writes unlock.")
+        notice: "Approval recorded for #{PlatformPushGuard.label(platform)} — #{result[:approved_by]} of #{result[:needed]} approvals still needed before writes unlock.")
     end
   rescue PlatformPushGuard::LockedError => e
     redirect_to(syncs_path, alert: e.message)
@@ -76,7 +76,7 @@ class SyncsController < AuthenticatedController
     reason = params[:reason].to_s.presence || 'maintenance'
     PlatformPushGuard.freeze!(platform, reason: reason, actor: Current.user.email)
     redirect_to(syncs_path,
-                notice: "#{PlatformPushGuard.label(platform)} pushes are now FROZEN — no writes or syncs will run against it until unfrozen.")
+      notice: "#{PlatformPushGuard.label(platform)} pushes are now FROZEN — no writes or syncs will run against it until unfrozen.")
   rescue ArgumentError => e
     redirect_to(syncs_path, alert: e.message)
   end
@@ -87,7 +87,7 @@ class SyncsController < AuthenticatedController
     platform = params[:platform].to_s
     PlatformPushGuard.unfreeze!(platform, actor: Current.user.email)
     redirect_to(syncs_path,
-                notice: "#{PlatformPushGuard.label(platform)} is unfrozen. Pushes still need an approved window to run.")
+      notice: "#{PlatformPushGuard.label(platform)} is unfrozen. Pushes still need an approved window to run.")
   rescue ArgumentError => e
     redirect_to(syncs_path, alert: e.message)
   end

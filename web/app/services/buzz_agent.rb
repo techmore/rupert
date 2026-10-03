@@ -63,7 +63,7 @@ class BuzzAgent
       kind ||= channel.present? ? 9 : 1
       h_tag = channel.present? ? [['h', channel]] : []
       event = Nostr::Event.new(pubkey: public_key, kind: kind,
-                               content: content.to_s, tags: h_tag + Array(tags))
+        content: content.to_s, tags: h_tag + Array(tags))
       event.sign(private_key)
       event
     end
@@ -158,7 +158,7 @@ class BuzzAgent
     # thread-local, and the WebSocket handler runs on a different thread.
     def build_auth_event(challenge, relay: relay_url)
       event = Nostr::Event.new(pubkey: public_key, kind: 22_242, content: '',
-                               tags: [['relay', relay], ['challenge', challenge.to_s]])
+        tags: [['relay', relay], ['challenge', challenge.to_s]])
       event.sign(private_key)
       event
     end

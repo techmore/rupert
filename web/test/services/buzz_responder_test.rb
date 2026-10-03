@@ -32,7 +32,7 @@ class BuzzResponderTest < ActiveSupport::TestCase
 
   test 'status reports last sync, pending counts, and alerts' do
     SyncRun.create!(mode: 'manual', status: 'success', source: 'all',
-                    actor: 'tester', startedAt: 1.hour.ago, tenant_id: Current.tenant_id)
+      actor: 'tester', startedAt: 1.hour.ago, tenant_id: Current.tenant_id)
     pending_count
 
     reply = BuzzResponder.respond('status')

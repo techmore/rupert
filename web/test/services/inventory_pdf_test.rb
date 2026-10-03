@@ -115,7 +115,7 @@ class InventoryPdfServiceTest < ActiveSupport::TestCase
       order.mark_paid!
       order.save!
       order.order_lines.create!(tenant_id: @tenant.id, sku: 'PDF-1', name: 'Variant 1', quantity: i + 1,
-                                line_cents: 1000 * (i + 1))
+        line_cents: 1000 * (i + 1))
     end
 
     week = InventoryPdf.new.send(:sales_week_data)
@@ -127,7 +127,7 @@ class InventoryPdfServiceTest < ActiveSupport::TestCase
   test 'shared SKUs flag the sold count as covering multiple variants and transactions show the product name' do
     # A second variant carrying the same SKU as PDF-1.
     ShopifyVariant.create!(title: 'Variant 1 (dup)', sku: 'PDF-1', productId: @product.id, price: 9.0,
-                           inventoryQuantity: 1, tracked: true)
+      inventoryQuantity: 1, tracked: true)
 
     order = Core::Order.new(
       source: 'shopify',
@@ -140,7 +140,7 @@ class InventoryPdfServiceTest < ActiveSupport::TestCase
     order.mark_paid!
     order.save!
     order.order_lines.create!(tenant_id: @tenant.id, sku: 'PDF-1', name: 'CBD Tincture - 1000mg', quantity: 2,
-                              line_cents: 2000)
+      line_cents: 2000)
 
     pdf = InventoryPdf.new
     shared_rows = pdf.rows.select { |r| r.sku == 'PDF-1' }
@@ -156,7 +156,7 @@ class InventoryPdfServiceTest < ActiveSupport::TestCase
   test 'cross-product duplicate SKUs are flagged for rose highlighting' do
     other = ShopifyProduct.create!(id: 'pdf-p2', title: 'Other Tincture')
     ShopifyVariant.create!(title: 'Dup', sku: 'PDF-1', productId: other.id, price: 8.0, inventoryQuantity: 2,
-                           tracked: true)
+      tracked: true)
 
     rows = InventoryPdf.new.rows.select { |r| r.sku == 'PDF-1' }
     assert_equal 2, rows.length
@@ -167,11 +167,11 @@ class InventoryPdfServiceTest < ActiveSupport::TestCase
     # One Square variation linked to two Shopify variants (shared SKU).
     SquareItem.create!(id: 'sq-shared-qty', name: 'Shared Qty')
     sv = SquareVariation.create!(id: 'sq-var-shared-qty', itemId: 'sq-shared-qty', name: 'Shared Qty',
-                                 sku: 'PDF-SHARED')
+      sku: 'PDF-SHARED')
     v1 = ShopifyVariant.create!(title: 'Flavor A', sku: 'PDF-SHARED', productId: @product.id, price: 10.0,
-                                inventoryQuantity: 2, tracked: true)
+      inventoryQuantity: 2, tracked: true)
     v2 = ShopifyVariant.create!(title: 'Flavor B', sku: 'PDF-SHARED', productId: @product.id, price: 10.0,
-                                inventoryQuantity: 3, tracked: true)
+      inventoryQuantity: 3, tracked: true)
     SkuLink.create!(sku: 'PDF-SHARED', shopifyVariantId: v1.id, squareVariationId: sv.id)
     SkuLink.create!(sku: 'PDF-SHARED', shopifyVariantId: v2.id, squareVariationId: sv.id)
     loc = Location.create!(source: 'square', externalId: 'loc-shared-qty', name: 'Main shop')

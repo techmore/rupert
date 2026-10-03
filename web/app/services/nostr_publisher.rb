@@ -89,7 +89,7 @@ module NostrPublisher
   # NIP-42 auth response: signed kind 22242 event echoing the challenge.
   def self.build_auth_event(relay, challenge, private_key, public_key)
     event = Nostr::Event.new(pubkey: public_key, kind: 22_242, content: '',
-                             tags: [['relay', relay], ['challenge', challenge.to_s]])
+      tags: [['relay', relay], ['challenge', challenge.to_s]])
     event.sign(private_key)
     event
   end

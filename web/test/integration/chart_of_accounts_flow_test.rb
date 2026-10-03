@@ -102,7 +102,7 @@ class ChartOfAccountsFlowTest < ActionDispatch::IntegrationTest
 
   test 'reader cannot add accounts' do
     User.create!(email: 'coa-reader@example.com', password: 'password123', role: 'reader',
-                 tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
     post login_path, params: { email: 'coa-reader@example.com', password: 'password123' }
     post finance_chart_of_accounts_path, params: {
       account: { code: '9000', name: 'Nope', account_type: 'expense' },

@@ -116,7 +116,7 @@ class SyncEngine
       raise ArgumentError, 'No tenant in context' if Current.tenant_id.nil?
 
       run = SyncRun.create!(mode: 'csv', status: 'running', source: 'swipesimple', actor: actor,
-                            startedAt: Time.current)
+        startedAt: Time.current)
       summary = SwipesimpleImporter.import!(csv_text_or_path)
       run.update!(status: 'success', finishedAt: Time.current, details: summary.to_h.to_json)
       DataCache.bump!

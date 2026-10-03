@@ -35,7 +35,7 @@ class ReportsFlowTest < ActionDispatch::IntegrationTest
     order.save!
     order.order_lines.create!(tenant_id: @tenant.id, sku: 'OIL-1', name: 'CBD Oil', quantity: 1, line_cents: 2500)
     order.payments.create!(tenant_id: @tenant.id, method: 'card', amount_cents: 2500, status: 'completed',
-                           paid_at: Time.current)
+      paid_at: Time.current)
 
     ShopifyVariant.create!(
       title: 'Oil',
@@ -87,9 +87,9 @@ class ReportsFlowTest < ActionDispatch::IntegrationTest
     SquareItem.create!(id: 'sqitem1', name: 'CBD', tenant_id: @tenant.id)
     SquareVariation.create!(id: 'sqvar1', itemId: 'sqitem1', name: 'Oil', sku: 'OIL-1', tenant_id: @tenant.id)
     SkuLink.create!(sku: 'OIL-1', shopifyVariantId: ShopifyVariant.last.id, squareVariationId: 'sqvar1',
-                    tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
     InventoryLevel.create!(source: 'square', locationId: @loc.externalId, squareVariationId: 'sqvar1', quantity: 5,
-                           tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
 
     get reconciliation_reports_path
     assert_response :success

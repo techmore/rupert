@@ -17,7 +17,7 @@ class ShopifyProductImageTest < ActiveSupport::TestCase
       featuredImageUrl: 'https://cdn.shopify.com/s/files/1/2/x.png?v=1'
     )
     assert_equal 'https://cdn.shopify.com/s/files/1/2/x.png?v=1&width=96&height=96',
-                 product.thumbnail_url
+      product.thumbnail_url
   end
 
   test 'thumbnail_url handles urls without query string' do
@@ -28,7 +28,7 @@ class ShopifyProductImageTest < ActiveSupport::TestCase
       featuredImageUrl: 'https://cdn.shopify.com/s/files/1/2/g.png'
     )
     assert_equal 'https://cdn.shopify.com/s/files/1/2/g.png?width=96&height=96',
-                 product.thumbnail_url
+      product.thumbnail_url
   end
 
   test 'thumbnail_url returns nil without an image' do

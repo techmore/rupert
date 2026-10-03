@@ -9,7 +9,7 @@ class WarehouseCheckoutServiceTest < ActiveSupport::TestCase
     @product = ShopifyProduct.create!(id: 'prod-checkout-1', title: 'Widgets')
     @variant = ShopifyVariant.create!(title: 'Widget', sku: 'WDG-1', price: 10.0, tracked: true, productId: @product.id)
     @cart = WarehouseCart.create!(tenant_id: Current.tenant_id, share_id: @share.id, token: 'cart-token',
-                                  status: 'open')
+      status: 'open')
     @cart.items.create!(
       tenant_id: Current.tenant_id,
       share_id: @share.id,
@@ -21,7 +21,7 @@ class WarehouseCheckoutServiceTest < ActiveSupport::TestCase
       line_cents: 1700
     )
     InventoryLevel.create!(source: 'shopify', locationId: 'loc-1', shopifyVariantId: @variant.id, quantity: 5,
-                           available: 5)
+      available: 5)
   end
 
   teardown do

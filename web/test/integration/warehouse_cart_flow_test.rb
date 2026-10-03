@@ -147,13 +147,13 @@ class WarehouseCartFlowTest < ActionDispatch::IntegrationTest
   test 'declined payment leaves no paid order' do
     stub_request(:post, 'https://apitest.authorize.net/xml/v1/request.api')
       .to_return(status: 200,
-                 body: {
-                   transactionResponse: {
-                     responseCode: '2',
-                     messages: { code: '2', description: 'This transaction has been declined.' }
-                   }
-                 }.to_json,
-                 headers: { 'Content-Type' => 'application/json' })
+        body: {
+          transactionResponse: {
+            responseCode: '2',
+            messages: { code: '2', description: 'This transaction has been declined.' }
+          }
+        }.to_json,
+        headers: { 'Content-Type' => 'application/json' })
 
     post warehouse_cart_add_item_path(@share.token), params: { variant_id: @variant.id, quantity: '2' }
     cart = WarehouseCart.last

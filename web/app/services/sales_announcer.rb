@@ -62,15 +62,15 @@ class SalesAnnouncer
     scope = LedgerEntry
             .where(status: REVENUE_STATUSES)
     scope = if watermark_id.present?
-              scope.where(
-                '"occurredAt" > :time OR ("occurredAt" = :time AND "LedgerEntry"."id" > :id)',
-                time: watermark_time,
-                id: watermark_id
-              )
-            else
-              # Backward compatibility for the timestamp-only watermark already used
-              # by the live branch.
-              scope.where('"occurredAt" > ?', watermark_time)
+      scope.where(
+        '"occurredAt" > :time OR ("occurredAt" = :time AND "LedgerEntry"."id" > :id)',
+        time: watermark_time,
+        id: watermark_id
+      )
+    else
+      # Backward compatibility for the timestamp-only watermark already used
+      # by the live branch.
+      scope.where('"occurredAt" > ?', watermark_time)
             end
     scope.order(:occurredAt, :id).limit(BATCH_SIZE)
   end

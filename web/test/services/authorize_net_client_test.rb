@@ -34,7 +34,7 @@ class AuthorizeNetClientTest < ActiveSupport::TestCase
       .to_return(status: 200, body: gateway_body(response_code: '1'), headers: { 'Content-Type' => 'application/json' })
 
     result = AuthorizeNetClient.charge!(amount_cents: 1000, payment_nonce: 'nonce-1', ref_id: 'r1',
-                                        invoice_number: 'WH-1')
+      invoice_number: 'WH-1')
 
     assert result.approved?
     assert_equal '4000', result.transaction_id
@@ -44,8 +44,8 @@ class AuthorizeNetClientTest < ActiveSupport::TestCase
   test 'charge is declined for other response codes' do
     stub_request(:post, 'https://apitest.authorize.net/xml/v1/request.api')
       .to_return(status: 200,
-                 body: gateway_body(response_code: '2', message: 'This transaction has been declined.'),
-                 headers: { 'Content-Type' => 'application/json' })
+        body: gateway_body(response_code: '2', message: 'This transaction has been declined.'),
+        headers: { 'Content-Type' => 'application/json' })
 
     result = AuthorizeNetClient.charge!(amount_cents: 1000, payment_nonce: 'bad-nonce')
 
@@ -57,9 +57,9 @@ class AuthorizeNetClientTest < ActiveSupport::TestCase
   test 'gateway error surfaces as a message' do
     stub_request(:post, 'https://apitest.authorize.net/xml/v1/request.api')
       .to_return(status: 200,
-                 body: { messages: { resultCode: 'Error',
-                                     message: [{ code: 'E00003', text: 'Invalid credentials' }] } }.to_json,
-                 headers: { 'Content-Type' => 'application/json' })
+        body: { messages: { resultCode: 'Error',
+                            message: [{ code: 'E00003', text: 'Invalid credentials' }] } }.to_json,
+        headers: { 'Content-Type' => 'application/json' })
 
     result = AuthorizeNetClient.charge!(amount_cents: 100, payment_nonce: 'nonce')
 

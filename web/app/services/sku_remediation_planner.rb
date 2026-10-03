@@ -23,9 +23,9 @@ class SkuRemediationPlanner
         primary = variants.first.product.title
         variants.each do |variant|
           proposed = if variant.product.title == primary
-                       sku
-                     else
-                       "#{sku}-#{product_slug(variant.product.title)}"
+            sku
+          else
+            "#{sku}-#{product_slug(variant.product.title)}"
                      end
           plans << Plan.new(
             sku: sku,

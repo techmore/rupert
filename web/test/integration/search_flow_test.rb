@@ -55,7 +55,7 @@ class SearchFlowTest < ActionDispatch::IntegrationTest
     @order.save!
     @product = ShopifyProduct.create!(id: 'prod-search', title: 'Tea', tenant_id: @tenant.id)
     @variant = ShopifyVariant.create!(id: 'var-search', productId: @product.id, title: 'Green', sku: 'GRN-SEARCH',
-                                      tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
   end
 
   teardown do
@@ -95,7 +95,7 @@ class SearchFlowTest < ActionDispatch::IntegrationTest
 
   test 'search returns employees for users with hr.read' do
     People::Employee.create!(tenant_id: @tenant.id, first_name: 'Casey', last_name: 'Adams', employee_number: 'E-SRCH',
-                             email: 'casey@example.com')
+      email: 'casey@example.com')
 
     get search_path, params: { q: 'casey', shop: 'm11u0i-sb.myshopify.com', embedded: '1' }
     assert_response :success

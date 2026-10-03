@@ -33,7 +33,7 @@ class SizeDeriverTest < ActiveSupport::TestCase
     @m7.update!(square_variation_id: 'v7')
 
     order = Core::Order.new(source: 'shopify', source_order_id: 'o-1', channel: 'online', gross_cents: 1000,
-                            occurred_at: 30.minutes.ago, tenant_id: Current.tenant_id)
+      occurred_at: 30.minutes.ago, tenant_id: Current.tenant_id)
     order.mark_paid!
     order.save!
     order.order_lines.create!(tenant_id: Current.tenant_id, sku: 'thash35', name: '3.5g', quantity: 2, line_cents: 500)
@@ -49,7 +49,7 @@ class SizeDeriverTest < ActiveSupport::TestCase
     @m35.update!(square_variation_id: 'v35')
 
     order = Core::Order.new(source: 'shopify', source_order_id: 'o-2', channel: 'online', gross_cents: 1000,
-                            occurred_at: 30.minutes.ago, tenant_id: Current.tenant_id)
+      occurred_at: 30.minutes.ago, tenant_id: Current.tenant_id)
     order.mark_paid!
     order.save!
     order.order_lines.create!(tenant_id: Current.tenant_id, sku: 'thash35', name: '3.5g', quantity: 4, line_cents: 1000)
@@ -67,9 +67,9 @@ class SizeDeriverTest < ActiveSupport::TestCase
     @m35.update!(square_variation_id: 'v35')
     @m7.update!(square_variation_id: 'v7')
     InventoryLevel.create!(source: 'square', locationId: 'L1', squareVariationId: 'v35', quantity: 28,
-                           tenant_id: Current.tenant_id)
+      tenant_id: Current.tenant_id)
     InventoryLevel.create!(source: 'square', locationId: 'L1', squareVariationId: 'v7', quantity: 5,
-                           tenant_id: Current.tenant_id)
+      tenant_id: Current.tenant_id)
 
     result = SizeDeriver.process(@family)
     assert_equal 1, result[:pending]
@@ -101,7 +101,7 @@ class SizeDeriverTest < ActiveSupport::TestCase
     SquareClient.stubs(:request).raises(SquareClient::Error, 'boom')
 
     change = SizeChange.create!(family_id: @family.id, sku: 'thash35', grams: 3.5, root_grams: 100,
-                                target_quantity: 28, square_variation_id: 'v35', tenant_id: Current.tenant_id, mode: 'auto')
+      target_quantity: 28, square_variation_id: 'v35', tenant_id: Current.tenant_id, mode: 'auto')
     refute SizeDeriver.apply_change!(change)
     assert_equal 'failed', change.reload.status
     assert_includes change.error, 'boom'

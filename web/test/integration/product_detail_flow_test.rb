@@ -90,7 +90,7 @@ class ProductDetailFlowTest < ActionDispatch::IntegrationTest
 
   test 'unlink breaks the link' do
     SkuLink.create!(tenant_id: @tenant.id, shopifyVariantId: @variant.id, squareVariationId: @square_variation.id,
-                    sku: 'TEA-50')
+      sku: 'TEA-50')
 
     post unlink_shopify_variant_path(@variant), params: { shop: 'm11u0i-sb.myshopify.com', embedded: '1' }
     follow_redirect!

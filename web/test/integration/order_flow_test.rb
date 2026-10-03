@@ -60,9 +60,9 @@ class OrderFlowTest < ActionDispatch::IntegrationTest
     @order.mark_paid!
     @order.save!
     @order.order_lines.create!(tenant_id: @tenant.id, sku: 'TEA-50', name: 'Honey Sticks', quantity: 2,
-                               unit_cents: 1400, line_cents: 2800)
+      unit_cents: 1400, line_cents: 2800)
     @order.payments.create!(tenant_id: @tenant.id, method: 'card', amount_cents: 3000, status: 'completed',
-                            paid_at: Time.current)
+      paid_at: Time.current)
   end
 
   teardown do

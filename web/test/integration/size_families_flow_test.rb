@@ -6,7 +6,7 @@ class SizeFamiliesFlowTest < ActionDispatch::IntegrationTest
   setup do
     @tenant = Tenant.create!(name: 'SF Co', subdomain: "sfco#{SecureRandom.hex(4)}")
     @admin = User.create!(email: 'sf-admin@example.com', password: 'password123', role: 'admin', name: 'Admin',
-                          tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
     post login_path, params: { email: @admin.email, password: 'password123' }
     Current.tenant = @tenant
     open_push_window!('square')
@@ -58,10 +58,10 @@ class SizeFamiliesFlowTest < ActionDispatch::IntegrationTest
     second = SizeFamily.create!(name: 'Second', mode: 'approval', tenant_id: @tenant.id)
     [first, second].each do |family|
       SquareVariation.create!(id: "v-#{family.id}", itemId: "item-#{family.id}",
-                              sku: "sku-#{family.id}", name: family.name, tenant_id: @tenant.id)
+        sku: "sku-#{family.id}", name: family.name, tenant_id: @tenant.id)
       SizeChange.create!(family_id: family.id, sku: "sku-#{family.id}", grams: 3.5,
-                         root_grams: 10, target_quantity: 2, square_variation_id: "v-#{family.id}",
-                         tenant_id: @tenant.id, status: 'pending')
+        root_grams: 10, target_quantity: 2, square_variation_id: "v-#{family.id}",
+        tenant_id: @tenant.id, status: 'pending')
     end
     home = Location.create!(source: 'square', externalId: 'HOME', name: 'Home')
     SquareSyncer.stubs(:primary_location_id).returns(home)
@@ -87,7 +87,7 @@ class SizeFamiliesFlowTest < ActionDispatch::IntegrationTest
   test 'index shows families and pending changes' do
     family = SizeFamily.create!(name: 'Reader Co', mode: 'approval', tenant_id: @tenant.id)
     SizeChange.create!(family_id: family.id, sku: 'x3', grams: 3.5, root_grams: 10, target_quantity: 2,
-                       square_variation_id: 'v3', tenant_id: @tenant.id, status: 'pending')
+      square_variation_id: 'v3', tenant_id: @tenant.id, status: 'pending')
 
     get size_families_path
     assert_response :success
@@ -97,7 +97,7 @@ class SizeFamiliesFlowTest < ActionDispatch::IntegrationTest
 
   test 'a reader cannot create or approve' do
     reader = User.create!(email: 'sf-reader2@example.com', password: 'password123', role: 'reader', name: 'Reader',
-                          tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
     post login_path, params: { email: reader.email, password: 'password123' }
 
     post size_families_path, params: { size_family: { name: 'Nope' } }

@@ -1,10 +1,10 @@
 # Rupert
 
 Centralized inventory operations: a Shopify + Square sync
-engine with an Oatmeal-styled web dashboard, backed by a single SQLite
-database. Runs as a Ruby on Rails 7.1 app (based on the
+engine with an Oatmeal-styled web dashboard, backed by PostgreSQL. Runs as a
+Ruby on Rails 8.1 app (based on the
 [Shopify Ruby app template](https://github.com/Shopify/shopify-app-template-ruby))
-and deploys to a DigitalOcean droplet (manually — GitHub is a code repo only).
+and is currently hosted at [rupert.stoverparc.org](https://rupert.stoverparc.org/).
 
 ```
 Shopify ──┐                     ┌── Dashboard
@@ -21,7 +21,7 @@ Square ───┼── sync engine ──▶ PostgreSQL DB ──▶ GUI
 | `web/` | The Rails 8.1 app: sync engine services, Oatmeal GUI, JSON APIs |
 | `legacy/` | The original Node/React implementation, kept as reference |
 | `shopify.app.toml` | Shopify app config (scopes, webhooks) |
-| `Dockerfile`, `docker-compose.yml` | Droplet deployment (fallback, unused) |
+| `Dockerfile`, `docker-compose.yml` | Optional container deployment |
 
 ## Local development
 
@@ -44,7 +44,7 @@ The `.env` at the repo root is loaded at boot (Dotenv) and holds the sync
 engine credentials (`SHOPIFY_CLIENT_ID/SECRET`, `SQUARE_ACCESS_TOKEN`, …).
 The Shopify OAuth pair (`SHOPIFY_API_KEY`/`SHOPIFY_API_SECRET`) comes from
 `shopify app info --web-env` when developing through the Shopify CLI, or is
-set on the droplet for production.
+set in the production environment.
 
 ## Operations
 
@@ -134,44 +134,25 @@ manual source (`SwipesimpleImporter`) feeds CSV exports through the same seam.
 - HR: `app/modules/people/` (employees, departments, positions, timesheets,
   leave & PTO, payroll) with `PayrollCalculator` turning approved timesheets
   into payslips
-- DB: PostgreSQL (`pg` gem). SQLite is kept only for the one-time legacy import.
+- DB: PostgreSQL (`pg` gem) is the production default. An opt-in SQLite
+  adapter with FTS5 search is available for local evaluation; set
+  `RUPERT_DB_ADAPTER=sqlite3`. This is experimental and is not the production
+  database.
 
-## Deploying to a droplet
+## Production and deployment
 
-GitHub is used only as the code repository — there is **no automated deploy
-from GitHub to the droplet**. Deploys are manual: commit and push to `main`,
-then SSH to the droplet and pull + restart.
+Production is hosted on SER8 in Incus and served at
+[rupert.stoverparc.org](https://rupert.stoverparc.org/). GitHub is the source
+repository; pushing a commit or creating a GitHub release does not deploy it.
 
-The deploy path is git-pull + systemd (the Docker files are a fallback/
-alternative and are not used for deployment).
+The checked-in `deploy/` systemd units and older droplet instructions are
+from the previous host layout. They do not describe the current Incus
+deployment and must not be used as its runbook. The host's live deployment and
+backup configuration still needs to be reconciled with this repository.
 
-1. Provision a droplet (Ubuntu) with Ruby 4.0 (rbenv), PostgreSQL, and systemd.
-2. On the droplet, clone the repo and create `/root/rupert/.env` (copy from
-   `.env.example`):
-   - `SHOPIFY_API_KEY` / `SHOPIFY_API_SECRET` / `HOST` (public HTTPS URL)
-   - `SQUARE_ACCESS_TOKEN` (+ optional `SQUARE_LOCATION_ID`)
-   - `SECRET_KEY_BASE` (`bin/rails secret`)
-   - `RAILS_ENCRYPTION_PRIMARY_KEY` / `DETERMINISTIC_KEY` / `KEY_DERIVATION_SALT`
-     (`bin/rails db:encryption:init`) — keep these stable, encrypted
-     settings will be unreadable if they change
-   - `POSTGRES_PASSWORD` — a real, random password. The app **refuses to boot
-     in production** without it (no "rupert" default), and the same value must
-     match the local PostgreSQL role.
-3. Install the versioned systemd units from `deploy/`:
-   `rupert-web.service`, `rupert-jobs.service`, and the nightly
-   `rupert-backup.timer`/`rupert-backup.service`.
-4. Deploy a release by SSHing to the droplet and running:
-   ```bash
-   cd /root/rupert && git pull --ff-only origin main && chown -R rupert:rupert web
-   cd web && bundle install --quiet
-   bin/rails tailwindcss:build
-   RAILS_ENV=production bin/rails assets:precompile
-   RAILS_ENV=production bin/rails db:migrate
-   systemctl restart rupert-web rupert-jobs
-   ```
-   Nightly backups land in `/var/backups/rupert` (DB dump + encrypted
-   `settings` dump + `.env`); also keep the Google Drive backup enabled as an
-   off-box copy.
+Keep PostgreSQL as the production database. The SQLite adapter is an
+experimental, opt-in path and should not be enabled on the live instance by
+setting `RUPERT_DB_ADAPTER`.
 
 ## Data model
 

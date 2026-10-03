@@ -127,7 +127,7 @@ class SizeDeriver
               idempotency_key: InventoryWriter.per_run_key('hh-size', variant.sku, variant.id, current, delta)
             )
             journal_movement(change, variant_id: variant.id, before: current, after: target, platform: 'shopify',
-                                     delta: delta)
+              delta: delta)
             notes << "Shopify #{delta.positive? ? '+' : ''}#{delta}"
           rescue StandardError => e
             ok = false
@@ -236,9 +236,9 @@ class SizeDeriver
         grams = member.grams.to_f
         lookup[member.sku.to_s.downcase] = grams
         variation = if member.square_variation_id.present?
-                      SquareVariation.find_by(id: member.square_variation_id)
-                    else
-                      SquareVariation.find_by(sku: member.sku)
+          SquareVariation.find_by(id: member.square_variation_id)
+        else
+          SquareVariation.find_by(sku: member.sku)
                     end
         lookup[variation.name.to_s.downcase] = grams if variation
         lookup[variation.sku.to_s.downcase] = grams if variation && variation.sku.present?

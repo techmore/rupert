@@ -110,7 +110,7 @@ class ErpPagesFlowTest < ActionDispatch::IntegrationTest
     as_user
     project = Projects::Project.find_by(name: 'Spring Sale')
     post transition_projects_project_path(project, event: 'start'),
-         params: { shop: 'm11u0i-sb.myshopify.com', embedded: '1' }
+      params: { shop: 'm11u0i-sb.myshopify.com', embedded: '1' }
     follow_redirect!
     assert_response :success
     assert_equal 'active', project.reload.status

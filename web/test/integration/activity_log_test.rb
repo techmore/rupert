@@ -30,7 +30,7 @@ class ActivityLogTest < ActionDispatch::IntegrationTest
 
     @tenant = Tenant.create!(name: 'Test Co', subdomain: 'testco')
     @user = User.create!(email: 'audit@example.com', password: 'password123', role: 'admin', tenant_id: @tenant.id,
-                         name: 'Auditor')
+      name: 'Auditor')
     post login_path, params: { email: 'audit@example.com', password: 'password123' }
     Current.tenant = @tenant
   end
@@ -57,7 +57,7 @@ class ActivityLogTest < ActionDispatch::IntegrationTest
     order.mark_paid!
     order.save!
     order.payments.create!(tenant_id: @tenant.id, method: 'card', amount_cents: 2000, status: 'completed',
-                           paid_at: Time.current)
+      paid_at: Time.current)
 
     post refund_order_path(order), params: {
       amount: '20.00', method: 'cash', shop: 'm11u0i-sb.myshopify.com', embedded: '1'

@@ -99,7 +99,7 @@ class PagesFlowTest < ActionDispatch::IntegrationTest
     assert_redirected_to(settings_path)
 
     User.create!(email: 'platform@example.com', password: 'password123',
-                 role: 'super_admin', tenant_id: tenants(:default_tenant).id, name: 'Platform')
+      role: 'super_admin', tenant_id: tenants(:default_tenant).id, name: 'Platform')
     delete logout_path
     host! 'testshop.example.com'
     post login_path, params: { email: 'platform@example.com', password: 'password123' }

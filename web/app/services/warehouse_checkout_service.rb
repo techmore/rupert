@@ -52,10 +52,10 @@ class WarehouseCheckoutService
       if @cart.checked_out?
         existing = Core::Order.find_by(tenant_id: @share.tenant_id, source: 'online', source_order_id: order_ref_id)
         result = if existing
-                   Result.new(success?: true,
-                              order: existing)
-                 else
-                   failure('This cart has already been checked out.')
+          Result.new(success?: true,
+            order: existing)
+        else
+          failure('This cart has already been checked out.')
                  end
         next result
       end
@@ -82,7 +82,7 @@ class WarehouseCheckoutService
         result = Result.new(success?: true, order: order)
       else
         result = Result.new(success?: false,
-                            error: "Payment was declined#{": #{charge.message}" if charge.message.present?}")
+          error: "Payment was declined#{": #{charge.message}" if charge.message.present?}")
         # Roll back the pending order: a declined charge must not leave an
         # order row behind, and the cart stays open for another attempt.
         raise ActiveRecord::Rollback

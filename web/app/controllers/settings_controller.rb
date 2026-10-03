@@ -43,9 +43,9 @@ class SettingsController < AuthenticatedController
   # POST /settings/env_import — JSON { text: } or multipart .env upload
   def env_import
     text = if params[:text].present?
-             params[:text]
-           elsif params[:file].present?
-             params[:file].read
+      params[:text]
+    elsif params[:file].present?
+      params[:file].read
            end
     raise ArgumentError, 'Provide .env text or a file' if text.blank?
 
@@ -177,9 +177,9 @@ class SettingsController < AuthenticatedController
   # DELETE /settings/oauth_domains — revoke a domain from Google sign-in
   def oauth_remove_domain
     domain = OauthAllowedDomain.find_by(tenant_id: Current.tenant_id,
-                                        domain: params[:domain].to_s.downcase.strip.sub(
-                                          /\A@/, ''
-                                        ))
+      domain: params[:domain].to_s.downcase.strip.sub(
+        /\A@/, ''
+      ))
     if domain&.destroy
       redirect_to(settings_path, notice: "Removed #{domain.domain} from Google sign-in.")
     else

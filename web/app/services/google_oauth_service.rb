@@ -68,7 +68,7 @@ class GoogleOauthService
       return if configured?
 
       raise NotConfiguredError,
-            'Google sign-in is not configured (set GOOGLE_OAUTH_CLIENT_ID / CLIENT_SECRET)'
+        'Google sign-in is not configured (set GOOGLE_OAUTH_CLIENT_ID / CLIENT_SECRET)'
     end
 
     def client_id

@@ -28,9 +28,9 @@ class SessionsController < ApplicationController
     # resolvable, so fall back to the unscoped email lookup.
     tenant = Current.tenant
     user = if tenant
-             User.find_by(email: params[:email].to_s.downcase, tenant_id: tenant.id)
-           else
-             User.find_by(email: params[:email].to_s.downcase)
+      User.find_by(email: params[:email].to_s.downcase, tenant_id: tenant.id)
+    else
+      User.find_by(email: params[:email].to_s.downcase)
            end
     if user&.active? && user.authenticate(params[:password])
       reset_session # prevent session fixation

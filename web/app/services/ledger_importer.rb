@@ -15,7 +15,7 @@ class LedgerImporter
         occurredAt: Time.zone.parse(order['createdAt']),
         syncedAt: Time.current,
         currency: money&.dig('currencyCode') || 'USD',
-        grossCents: ((money&.dig('amount').to_f || 0) * 100).round,
+        grossCents: (money&.dig('amount').to_f * 100).round,
         status: order['displayFinancialStatus'] || 'ANY',
         lineItems: items.sum { |item| item['quantity'].to_i },
         summary: items.first(3).map { |item| item['title'] }.join(', ')

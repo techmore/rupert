@@ -146,7 +146,7 @@ def cmd_reconcile(_args)
 
   Reconciler.actionable_rows(rows).sort_by { |r| -r.drift.to_i.abs }.first(5).each do |r|
     puts "  #{r.sku} shopify=#{r.shopify_qty} square=#{r.square_qty} drift=#{r.drift > 0 ? '+' : ''}#{r.drift}  #{r.product[0,
-                                                                                                                            48]}"
+      48]}"
   end
 end
 

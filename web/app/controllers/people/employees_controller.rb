@@ -65,7 +65,7 @@ module People
       authorize(:module, :hr_write?)
       if @employee.active?
         return redirect_to(people_employee_path(@employee),
-                           alert: 'Terminate the employee instead of deleting the record.')
+          alert: 'Terminate the employee instead of deleting the record.')
       end
 
       @employee.destroy
@@ -86,7 +86,7 @@ module People
         redirect_to(people_employee_path(@employee), notice: "#{@employee.name} #{event.tr('_', ' ')}d.")
       else
         redirect_to(people_employee_path(@employee),
-                    alert: "Cannot #{event.tr('_', ' ')} a #{@employee.status} employee.")
+          alert: "Cannot #{event.tr('_', ' ')} a #{@employee.status} employee.")
       end
     end
 

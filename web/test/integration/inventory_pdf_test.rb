@@ -69,9 +69,9 @@ class InventoryPdfTest < ActionDispatch::IntegrationTest
   test 'recommended skus CSV downloads the full Shopify vs Square SKU report' do
     ShopifyProduct.create!(id: 'p2', title: 'Other Product')
     ShopifyVariant.create!(title: 'Variant A', sku: 'SHARED-1', productId: 'p1', price: 1.0, inventoryQuantity: 5,
-                           tracked: true)
+      tracked: true)
     ShopifyVariant.create!(title: 'Variant B', sku: 'SHARED-1', productId: 'p2', price: 2.0, inventoryQuantity: 3,
-                           tracked: true)
+      tracked: true)
 
     get recommended_skus_inventory_index_path
 

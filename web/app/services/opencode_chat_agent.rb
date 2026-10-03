@@ -225,9 +225,9 @@ class OpencodeChatAgent
     snapshot = ops_snapshot
     history = @context.last(CONTEXT_WINDOW).join("\n")
     instruction = if mentioned
-                    'The user addressed you directly. Reply to them helpfully and concisely.'
-                  else
-                    'You were not addressed. If a response from you genuinely adds value to this conversation, reply helpfully and concisely. Otherwise reply with exactly: SKIP'
+      'The user addressed you directly. Reply to them helpfully and concisely.'
+    else
+      'You were not addressed. If a response from you genuinely adds value to this conversation, reply helpfully and concisely. Otherwise reply with exactly: SKIP'
                   end
 
     prompt = <<~PROMPT
@@ -292,7 +292,7 @@ class OpencodeChatAgent
 
   def publish_reply(reply, event)
     event = NostrPublisher.build_event(private_key: @priv, public_key: @pub,
-                                       kind: 9, content: reply, tags: reply_tags(event))
+      kind: 9, content: reply, tags: reply_tags(event))
     _, msg = NostrPublisher.publish(relay: @relay, private_key: @priv, public_key: @pub, event: event)
     @last_post_at = Time.now
     Rails.logger.info "[OpencodeAgent] replied to #{event.id.to_s[0, 12]}: #{msg}"

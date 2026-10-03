@@ -58,7 +58,7 @@ module DataCache
     # The authoritative version from the settings row (used as the cache-miss
     # value and as the fallback when the cache store errors).
     def db_version
-      Setting.find_by(key: VERSION_KEY, tenant_id: Current.tenant_id)&.value.to_i || 0
+      Setting.find_by(key: VERSION_KEY, tenant_id: Current.tenant_id)&.value.to_i
     end
 
     # Clear the raw (unversioned) version-cache key so the next version read is

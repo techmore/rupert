@@ -36,12 +36,12 @@ class PlatformPushGuard
       confirmed = env_override('PUSH_CONFIRM') == 'yes' || Current.push_confirmed?
       blob = load(platform)
       audit!(blob, 'confirm', platform, actor.to_s,
-             confirmed ? "write confirmed by #{actor}" : 'write REFUSED (unconfirmed)')
+        confirmed ? "write confirmed by #{actor}" : 'write REFUSED (unconfirmed)')
       unless confirmed
         save(platform, blob)
         raise UnconfirmedError,
-              "#{label(platform)} write attempted without explicit confirmation. " \
-              'Set PUSH_CONFIRM=yes (ops tasks) or confirm in the UI before writing.'
+          "#{label(platform)} write attempted without explicit confirmation. " \
+          'Set PUSH_CONFIRM=yes (ops tasks) or confirm in the UI before writing.'
       end
 
       true
@@ -268,7 +268,7 @@ class PlatformPushGuard
       normalized = platform.to_s.strip.downcase
       unless PLATFORMS.include?(normalized)
         raise ArgumentError,
-              "Unknown platform: #{platform.inspect} (expected #{PLATFORMS.join(' or ')})"
+          "Unknown platform: #{platform.inspect} (expected #{PLATFORMS.join(' or ')})"
       end
 
       normalized

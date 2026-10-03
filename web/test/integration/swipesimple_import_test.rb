@@ -32,7 +32,7 @@ class SwipesimpleImportTest < ActionDispatch::IntegrationTest
 
     @tenant = Tenant.create!(name: 'Test Co', subdomain: 'testco')
     @user = User.create!(email: 'sync@example.com', password: 'password123', role: 'admin', tenant_id: @tenant.id,
-                         name: 'Sync')
+      name: 'Sync')
     post login_path, params: { email: 'sync@example.com', password: 'password123' }
     Current.tenant = @tenant
   end
@@ -119,7 +119,7 @@ class SwipesimpleImportTest < ActionDispatch::IntegrationTest
 
   test 'a reader cannot upload a SwipeSimple import' do
     User.create!(email: 'reader2@example.com', password: 'password123', role: 'reader', tenant_id: @tenant.id,
-                 name: 'Reader')
+      name: 'Reader')
     delete logout_path
     post login_path, params: { email: 'reader2@example.com', password: 'password123' }
 
