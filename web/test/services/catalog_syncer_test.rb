@@ -5,11 +5,13 @@ require 'test_helper'
 class CatalogSyncerTest < ActiveSupport::TestCase
   setup do
     Current.tenant = tenants(:default_tenant)
+    EnvStore.clear_cache!
     EnvStore::MANAGED_KEYS.freeze unless EnvStore::MANAGED_KEYS.frozen?
   end
 
   teardown do
     Setting.where(key: 'SYNC_HISTORY_DAYS').delete_all
+    EnvStore.clear_cache!
     Current.tenant = nil
   end
 
