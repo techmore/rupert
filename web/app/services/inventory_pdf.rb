@@ -335,7 +335,7 @@ class InventoryPdf
       pdf.move_down 2
       list.first(8).each do |r|
         pdf.text "  • #{r.product[0, 34]} — #{r.variant[0, 20]} (#{r.sku})  Sh #{r.shopify_qty.to_i}  Sq #{r.square_qty&.to_s || '—'}",
-                 size: 7, color: MOCHA
+          size: 7, color: MOCHA
       end
       pdf.text("  … +#{list.length - 8} more", size: 6.5, color: TAUPE) if list.length > 8
       pdf.move_down 5
@@ -443,9 +443,9 @@ class InventoryPdf
       bold = bold_cell?(i, row)
       pdf.font('Helvetica', style: :bold) if bold
       x = if RIGHT_ALIGNED.include?(i)
-            LEFT_X[i] + COL_WIDTHS[i] - 3 - pdf.width_of(cell)
-          else
-            LEFT_X[i] + 4
+        LEFT_X[i] + COL_WIDTHS[i] - 3 - pdf.width_of(cell)
+      else
+        LEFT_X[i] + 4
           end
       pdf.draw_text fit_text(pdf, cell, COL_WIDTHS[i] - 7), at: [x, baseline], size: FONT_SIZE
       pdf.font('Helvetica', style: :normal) if bold
@@ -587,9 +587,9 @@ class InventoryPdf
           pdf.fill_color i == 5 ? INK : MOCHA
           pdf.font('Helvetica', style: :bold) if i == 5
           x = if SALES_RIGHT.include?(i)
-                SALES_LEFT_X[i] + SALES_COL_WIDTHS[i] - 3 - pdf.width_of(cell)
-              else
-                SALES_LEFT_X[i] + 4
+            SALES_LEFT_X[i] + SALES_COL_WIDTHS[i] - 3 - pdf.width_of(cell)
+          else
+            SALES_LEFT_X[i] + 4
               end
           pdf.draw_text fit_text(pdf, cell, SALES_COL_WIDTHS[i] - 7), at: [x, baseline], size: FONT_SIZE
           pdf.font('Helvetica', style: :normal) if i == 5

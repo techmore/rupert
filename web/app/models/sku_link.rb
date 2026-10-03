@@ -8,13 +8,13 @@ class SkuLink < ApplicationRecord
   self.primary_key = 'id'
 
   belongs_to :shopify_variant,
-             class_name: 'ShopifyVariant',
-             foreign_key: 'shopifyVariantId',
-             optional: true
+    class_name: 'ShopifyVariant',
+    foreign_key: 'shopifyVariantId',
+    optional: true
   belongs_to :square_variation,
-             class_name: 'SquareVariation',
-             foreign_key: 'squareVariationId',
-             optional: true
+    class_name: 'SquareVariation',
+    foreign_key: 'squareVariationId',
+    optional: true
 
   scope :linked, -> { where.not(shopifyVariantId: nil).where.not(squareVariationId: nil) }
   scope :search, lambda { |q|

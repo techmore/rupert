@@ -5,7 +5,7 @@ module Purchasing
   # track what's owed to the vendor.
   class PurchaseOrdersController < AuthenticatedController
     before_action :set_purchase_order,
-                  only: %i[show edit update destroy place_order receive cancel add_line remove_line]
+      only: %i[show edit update destroy place_order receive cancel add_line remove_line]
 
     def index
       authorize(:module, :purchasing_read?)

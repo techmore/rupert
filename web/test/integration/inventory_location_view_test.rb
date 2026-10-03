@@ -12,33 +12,33 @@ class InventoryLocationViewTest < ActionDispatch::IntegrationTest
     post login_path, params: { email: 'admin@example.com', password: 'password' }
 
     @product = ShopifyProduct.create!(id: 'gid://shopify/Product/1', title: 'Tea', status: 'ACTIVE',
-                                      tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
     @online = Location.create!(source: 'shopify', externalId: 'gid://shopify/Location/1', name: 'Online store',
-                               active: true, tenant_id: @tenant.id)
+      active: true, tenant_id: @tenant.id)
     @rig = Location.create!(source: 'shopify', externalId: 'gid://shopify/Location/2', name: 'Market rig',
-                            active: true, tenant_id: @tenant.id)
+      active: true, tenant_id: @tenant.id)
     @home = Location.create!(source: 'square', externalId: 'sq-home', name: 'Home shop', active: true,
-                             tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
 
     @item = SquareItem.create!(id: 'si1', name: 'Tea Item', tenant_id: @tenant.id)
     @variation = SquareVariation.create!(id: 'sv1', itemId: @item.id, sku: 'TEA-50', name: 'Tea 50g',
-                                         tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
 
     @linked = ShopifyVariant.create!(productId: @product.id, title: 'Tea / 50g', sku: 'TEA-50',
-                                     inventoryQuantity: 7, tracked: true, tenant_id: @tenant.id)
+      inventoryQuantity: 7, tracked: true, tenant_id: @tenant.id)
     SkuLink.create!(sku: 'TEA-50', shopifyVariantId: @linked.id, squareVariationId: @variation.id,
-                    tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
     InventoryLevel.create!(source: 'shopify', locationId: @online.id, shopifyVariantId: @linked.id, quantity: 5,
-                           available: 5, tenant_id: @tenant.id)
+      available: 5, tenant_id: @tenant.id)
     InventoryLevel.create!(source: 'shopify', locationId: @rig.id, shopifyVariantId: @linked.id, quantity: 2,
-                           available: 2, tenant_id: @tenant.id)
+      available: 2, tenant_id: @tenant.id)
     InventoryLevel.create!(source: 'square', locationId: @home.id, squareVariationId: @variation.id, quantity: 4,
-                           available: 4, tenant_id: @tenant.id)
+      available: 4, tenant_id: @tenant.id)
 
     @unlinked = ShopifyVariant.create!(productId: @product.id, title: 'Tea / 100g', sku: 'TEA-100',
-                                       inventoryQuantity: 3, tracked: true, tenant_id: @tenant.id)
+      inventoryQuantity: 3, tracked: true, tenant_id: @tenant.id)
     InventoryLevel.create!(source: 'shopify', locationId: @online.id, shopifyVariantId: @unlinked.id, quantity: 3,
-                           available: 3, tenant_id: @tenant.id)
+      available: 3, tenant_id: @tenant.id)
   end
 
   teardown do

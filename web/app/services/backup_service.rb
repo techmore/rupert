@@ -39,7 +39,7 @@ class BackupService
       raise RestoreError, 'Empty backup file' if source_path.nil? || File.empty?(source_path)
       if File.size(source_path) > MAX_RESTORE_SIZE
         raise RestoreError,
-              "Backup is larger than #{MAX_RESTORE_SIZE / 1.megabyte} MB"
+          "Backup is larger than #{MAX_RESTORE_SIZE / 1.megabyte} MB"
       end
 
       header = File.binread(source_path, 16).to_s

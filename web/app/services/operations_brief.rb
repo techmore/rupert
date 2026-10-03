@@ -59,9 +59,9 @@ class OperationsBrief
     date = Time.zone.today
     last_sync = SyncRun.order(startedAt: :desc).first
     sync_text = if last_sync
-                  "#{last_sync.status} at #{last_sync.startedAt.in_time_zone.strftime('%-I:%M %p')}"
-                else
-                  'no sync recorded'
+      "#{last_sync.status} at #{last_sync.startedAt.in_time_zone.strftime('%-I:%M %p')}"
+    else
+      'no sync recorded'
                 end
     content = [
       "Morning action brief — #{date.strftime('%b %-d')}",

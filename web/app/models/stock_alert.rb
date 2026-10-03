@@ -8,13 +8,13 @@ class StockAlert < ApplicationRecord
   self.primary_key = 'id'
 
   belongs_to :shopify_variant,
-             class_name: 'ShopifyVariant',
-             foreign_key: 'shopifyVariantId',
-             optional: true
+    class_name: 'ShopifyVariant',
+    foreign_key: 'shopifyVariantId',
+    optional: true
   belongs_to :square_variation,
-             class_name: 'SquareVariation',
-             foreign_key: 'squareVariationId',
-             optional: true
+    class_name: 'SquareVariation',
+    foreign_key: 'squareVariationId',
+    optional: true
 
   scope :open, -> { where(status: 'open') }
   scope :by_status, ->(status) { status.present? && status != 'all' ? where(status: status) : all }

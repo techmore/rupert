@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Deployment — Rupert</title>
-  <meta name="description" content="Deploy Rupert to a DigitalOcean droplet with Docker, straight from a push to main.">
+  <meta name="description" content="Current hosting, release, database, and backup notes for Rupert.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Cardo:ital,wght@0,400;0,700;1,400&display=swap">
@@ -27,43 +27,27 @@
 
 <main class="page wrap">
   <h1>Deployment</h1>
-  <p class="lede">Rupert deploys to a DigitalOcean droplet via Docker, straight from a push to <code>main</code>.</p>
+  <p class="lede">Rupert is currently hosted at <a href="https://rupert.stoverparc.org/">rupert.stoverparc.org</a>. The current production host is SER8 in an Incus instance.</p>
 
   <section>
-    <h2>How deploys work</h2>
-    <p>The <code>deploy.yml</code> workflow runs on every push to <code>main</code>: it builds the Docker image, pushes it to GitHub Container Registry, then SSHes into the droplet to <code>docker compose up -d</code>. The PostgreSQL database lives in a Docker volume and survives deploys.</p>
+    <h2>Release and deployment</h2>
+    <p>GitHub Actions runs CI and creates a GitHub release from a version tag. There is no automated production deploy configured in this repository. A release does not update the live instance.</p>
+    <p>The checked-in systemd units describe a previous host layout and are not the live Incus deployment runbook. Confirm the host's release procedure and backup status before promoting a release.</p>
   </section>
 
   <section>
-    <h2>First-time droplet setup</h2>
-    <ol>
-      <li>Create a droplet with Docker (e.g. Ubuntu + the Docker image).</li>
-      <li>Add GitHub secrets to the repo:
-        <ul>
-          <li><code>GHCR_TOKEN</code> — PAT with <code>packages:write</code></li>
-          <li><code>DROPLET_HOST</code>, <code>DROPLET_USER</code>, <code>DROPLET_SSH_KEY</code></li>
-        </ul>
-      </li>
-      <li>On the droplet, create <code>/opt/rupert/.env</code> (copy from <code>.env.example</code>):
-        <ul>
-          <li><code>SHOPIFY_API_KEY</code> / <code>SHOPIFY_API_SECRET</code> / <code>HOST</code> (public HTTPS URL)</li>
-          <li><code>SQUARE_ACCESS_TOKEN</code> (+ optional <code>SQUARE_LOCATION_ID</code>)</li>
-          <li><code>SECRET_KEY_BASE</code> (<code>bin/rails secret</code>)</li>
-          <li><code>RAILS_ENCRYPTION_PRIMARY_KEY</code> / <code>DETERMINISTIC_KEY</code> / <code>KEY_DERIVATION_SALT</code> (<code>bin/rails db:encryption:init</code>) — keep these stable; encrypted settings are unreadable if they change</li>
-        </ul>
-      </li>
-      <li>Push to <code>main</code> — the workflow deploys automatically.</li>
-    </ol>
+    <h2>Database</h2>
+    <p>Production uses PostgreSQL. The optional SQLite adapter is experimental and intended for local evaluation; it is not enabled for the live instance.</p>
   </section>
 
   <section>
     <h2>Backups</h2>
-    <p>Use the Settings page's <strong>Database backup</strong> (download a snapshot) or a volume snapshot. Google Drive backups can also be enabled for automatic snapshots every 6 hours.</p>
+    <p>Rupert includes PostgreSQL backup and Google Drive backup support. The current production backup schedule, off-host copies, and restore procedure still need verification against the live Incus instance; the systemd backup files here are from the older host layout.</p>
   </section>
 
   <section>
     <h2>Continuous integration</h2>
-    <p>CI runs in the official <code>ruby:4.0</code> container against a PostgreSQL service: RuboCop, migrations, Tailwind build, asset precompile, and the full test suite. Every push to <code>main</code> or a pull request triggers it.</p>
+    <p>CI runs in the official <code>ruby:4.0</code> container against PostgreSQL: RuboCop, migrations, Tailwind build, asset precompile, and the full test suite. Every push or pull request triggers it.</p>
   </section>
 </main>
 

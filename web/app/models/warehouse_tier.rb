@@ -12,8 +12,8 @@ class WarehouseTier < ApplicationRecord
 
   validates :minQty, presence: true, numericality: { only_integer: true, greater_than: 0 }
   validates :discountPercent,
-            presence: true,
-            numericality: { greater_than_or_equal_to: 0, less_than: 100 }
+    presence: true,
+    numericality: { greater_than_or_equal_to: 0, less_than: 100 }
 
   def label
     "#{minQty}+ units · #{discountPercent.to_i}% off"

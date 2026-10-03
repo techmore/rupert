@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: rupert_production
       POSTGRES_USER: rupert
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rupert}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the Compose environment}
     volumes:
       - rupert-pg:/var/lib/postgresql/data
     healthcheck:
@@ -38,7 +38,7 @@ services:
       POSTGRES_HOST: db
       POSTGRES_USER: rupert
       POSTGRES_DB: rupert_production
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rupert}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the Compose environment}
     command: ["bin/rails", "db:prepare"]
     depends_on:
       db:
@@ -57,7 +57,7 @@ services:
       POSTGRES_HOST: db
       POSTGRES_USER: rupert
       POSTGRES_DB: rupert_production
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rupert}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the Compose environment}
       REDIS_URL: redis://redis:6379/1
     volumes:
       - rupert-storage:/app/storage
@@ -83,7 +83,7 @@ services:
       POSTGRES_HOST: db
       POSTGRES_USER: rupert
       POSTGRES_DB: rupert_production
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rupert}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the Compose environment}
       REDIS_URL: redis://redis:6379/1
     volumes:
       - rupert-storage:/app/storage

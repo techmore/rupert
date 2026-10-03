@@ -146,7 +146,7 @@ class SwipesimpleImporter
         unique_by: %i[tenant_id source external_id]
       )
       Core::Customer.find_by(tenant_id: Current.tenant_id, source: 'swipesimple',
-                             external_id: name.downcase.gsub(/\s+/, '-'))
+        external_id: name.downcase.gsub(/\s+/, '-'))
     end
 
     def replace_lines!(order, rows, headers)

@@ -9,19 +9,19 @@ class RestockAdvisorTest < ActiveSupport::TestCase
 
     @product = ShopifyProduct.create!(id: 'gid://shopify/Product/1', title: 'Tea', status: 'ACTIVE')
     @variant = ShopifyVariant.create!(productId: @product.id, title: 'Tea / 50g', sku: 'TEA-50',
-                                      inventoryQuantity: 5, tracked: true)
+      inventoryQuantity: 5, tracked: true)
     @online = Location.create!(source: 'shopify', externalId: 'loc-1', name: 'Online')
     InventoryLevel.create!(source: 'shopify', locationId: @online.id, shopifyVariantId: @variant.id,
-                           quantity: 5, available: 5)
+      quantity: 5, available: 5)
 
     @item = SquareItem.create!(id: 'si1', name: 'Tea Item')
     @variation = SquareVariation.create!(id: 'sv1', itemId: @item.id, sku: 'TEA-50', name: 'Tea 50g')
     @home = Location.create!(source: 'square', externalId: 'sq-1', name: 'Home shop')
     @rig = Location.create!(source: 'square', externalId: 'sq-2', name: 'Rig')
     InventoryLevel.create!(source: 'square', locationId: @home.id, squareVariationId: @variation.id, quantity: 3,
-                           available: 3)
+      available: 3)
     InventoryLevel.create!(source: 'square', locationId: @rig.id, squareVariationId: @variation.id, quantity: 4,
-                           available: 4)
+      available: 4)
 
     # 30 units sold over the trailing window => 1/day pace.
     add_sales!('TEA-50', 30, 20.days.ago)
@@ -29,11 +29,11 @@ class RestockAdvisorTest < ActiveSupport::TestCase
     add_sales!('TEA-50', 6, 7.days.ago)
 
     @alert = StockAlert.create!(sku: 'TEA-50', quantity: 5, threshold: 8, status: 'open',
-                                shopifyVariantId: @variant.id)
+      shopifyVariantId: @variant.id)
     @quiet_variant = ShopifyVariant.create!(productId: @product.id, title: 'Incense Stick', sku: 'QUIET-1',
-                                            inventoryQuantity: 2, tracked: true)
+      inventoryQuantity: 2, tracked: true)
     @quiet = StockAlert.create!(sku: 'QUIET-1', quantity: 2, threshold: 5, status: 'open',
-                                shopifyVariantId: @quiet_variant.id)
+      shopifyVariantId: @quiet_variant.id)
   end
 
   teardown { Current.tenant = nil }
@@ -45,7 +45,7 @@ class RestockAdvisorTest < ActiveSupport::TestCase
     )
     order.mark_paid! # status is AASM-managed; no direct assignment
     Core::OrderLine.create!(order_id: order.id, sku: sku.upcase, name: 'Tea', quantity: qty, unit_cents: 0,
-                            line_cents: 0)
+      line_cents: 0)
   end
 
   test 'computes per-location stock, velocity, cover, and a ~30-day suggestion' do

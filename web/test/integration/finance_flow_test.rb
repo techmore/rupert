@@ -83,7 +83,7 @@ class FinanceFlowTest < ActionDispatch::IntegrationTest
     order.mark_paid!
     order.save!
     order.payments.create!(tenant_id: @tenant.id, method: 'card', amount_cents: 3000, status: 'completed',
-                           paid_at: Time.current)
+      paid_at: Time.current)
 
     get_page finance_accounts_path
     assert_response :success
@@ -117,7 +117,7 @@ class FinanceFlowTest < ActionDispatch::IntegrationTest
   test 'vendor payments index lists recent payments' do
     vendor = Purchasing::Vendor.create!(tenant_id: @tenant.id, name: 'Payment Co')
     Finance::VendorPayment.create!(tenant_id: @tenant.id, vendor_id: vendor.id, amount_cents: 2500,
-                                   paid_on: Date.today, method: 'ach')
+      paid_on: Date.today, method: 'ach')
 
     get_page finance_vendor_payments_path
     assert_response :success

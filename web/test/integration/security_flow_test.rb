@@ -30,7 +30,7 @@ class SecurityFlowTest < ActionDispatch::IntegrationTest
 
     @tenant = Tenant.create!(name: 'Test Co', subdomain: 'testco')
     @reader = User.create!(email: 'reader@example.com', password: 'password123', role: 'reader', tenant_id: @tenant.id,
-                           name: 'Reader')
+      name: 'Reader')
     post login_path, params: { email: 'reader@example.com', password: 'password123' }
     Current.tenant = @tenant
   end
@@ -55,7 +55,7 @@ class SecurityFlowTest < ActionDispatch::IntegrationTest
 
   test 'an admin with settings access cannot export environment secrets' do
     User.create!(email: 'admin2@example.com', password: 'password123', role: 'admin',
-                 tenant_id: @tenant.id, name: 'Admin')
+      tenant_id: @tenant.id, name: 'Admin')
     Setting.create!(key: 'SHOPIFY_CLIENT_SECRET', tenant_id: @tenant.id, value: 'super-secret-token')
 
     delete logout_path
@@ -68,7 +68,7 @@ class SecurityFlowTest < ActionDispatch::IntegrationTest
 
   test 'env export requires the current password even for a super admin' do
     User.create!(email: 'boss@example.com', password: 'password123', role: 'super_admin',
-                 tenant_id: @tenant.id, name: 'Boss')
+      tenant_id: @tenant.id, name: 'Boss')
     Setting.create!(key: 'SHOPIFY_CLIENT_SECRET', tenant_id: @tenant.id, value: 'super-secret-token')
 
     delete logout_path
@@ -116,20 +116,20 @@ class SecurityFlowTest < ActionDispatch::IntegrationTest
   test 'a reader cannot update alert status' do
     alert = StockAlert.create!(tenant_id: @tenant.id, sku: 'X-1', quantity: 1, threshold: 5, status: 'open')
     post update_status_alerts_path,
-         params: { id: alert.id, status: 'resolved', shop: 'm11u0i-sb.myshopify.com', embedded: '1' }
+      params: { id: alert.id, status: 'resolved', shop: 'm11u0i-sb.myshopify.com', embedded: '1' }
     assert_redirected_to(root_path)
     assert_equal 'open', alert.reload.status
   end
 
   test 'a reader cannot modify warehouse shares or tiers' do
     post warehouse_shares_path,
-         params: { name: 'Evil', priceMultiplier: '0', shop: 'm11u0i-sb.myshopify.com', embedded: '1' }
+      params: { name: 'Evil', priceMultiplier: '0', shop: 'm11u0i-sb.myshopify.com', embedded: '1' }
     assert_redirected_to(root_path)
     assert_nil WarehouseShare.find_by(name: 'Evil')
 
     post update_warehouse_tiers_path,
-         params: { tiers: { '1' => { minQty: '1', discountPercent: '99' } }, shop: 'm11u0i-sb.myshopify.com',
-                   embedded: '1' }
+      params: { tiers: { '1' => { minQty: '1', discountPercent: '99' } }, shop: 'm11u0i-sb.myshopify.com',
+                embedded: '1' }
     assert_redirected_to(root_path)
   end
 

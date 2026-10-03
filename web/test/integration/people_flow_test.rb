@@ -32,7 +32,7 @@ class PeopleFlowTest < ActionDispatch::IntegrationTest
 
     @tenant = Tenant.create!(name: 'Test Co', subdomain: 'testco')
     @admin = User.create!(email: 'hr@example.com', password: 'password123', role: 'admin', tenant_id: @tenant.id,
-                          name: 'HR Boss')
+      name: 'HR Boss')
     post login_path, params: { email: 'hr@example.com', password: 'password123' }
     Current.tenant = @tenant
   end
@@ -52,7 +52,7 @@ class PeopleFlowTest < ActionDispatch::IntegrationTest
   test 'employees index shows the directory and stats' do
     dept = People::Department.create!(tenant_id: @tenant.id, name: 'Retail')
     People::Employee.create!(tenant_id: @tenant.id, first_name: 'Alex', last_name: 'Morgan', employee_number: 'E1',
-                             hire_date: Date.today, department_id: dept.id)
+      hire_date: Date.today, department_id: dept.id)
 
     get_page people_employees_path
     assert_response :success
@@ -83,7 +83,7 @@ class PeopleFlowTest < ActionDispatch::IntegrationTest
 
   test 'employee lifecycle transitions through the AASM states' do
     employee = People::Employee.create!(tenant_id: @tenant.id, first_name: 'Sam', last_name: 'Lee',
-                                        employee_number: 'E2')
+      employee_number: 'E2')
 
     post_page transition_people_employee_path(employee, event: 'place_on_leave')
     follow_redirect!
@@ -119,7 +119,7 @@ class PeopleFlowTest < ActionDispatch::IntegrationTest
 
   test 'timesheet lifecycle: draft, entries, submit, approve, reject, reopen' do
     employee = People::Employee.create!(tenant_id: @tenant.id, first_name: 'Pat', last_name: 'Kim',
-                                        employee_number: 'E3')
+      employee_number: 'E3')
 
     post_page people_timesheets_path, params: {
       timesheet: { employee_id: employee.id, period_start: '2026-07-27', period_end: '2026-08-02' }
@@ -150,7 +150,7 @@ class PeopleFlowTest < ActionDispatch::IntegrationTest
 
     # A second timesheet that gets rejected and reopened
     other = People::Timesheet.create!(tenant_id: @tenant.id, employee_id: employee.id, period_start: '2026-08-03',
-                                      period_end: '2026-08-09')
+      period_end: '2026-08-09')
     other.entries.create!(tenant_id: @tenant.id, worked_on: '2026-08-03', hours: 8, work_type: 'regular')
     other.submit!
     post_page reject_people_timesheet_path(other)
@@ -163,7 +163,7 @@ class PeopleFlowTest < ActionDispatch::IntegrationTest
 
   test 'leave request: create, approve consumes balance, cancel gives it back' do
     employee = People::Employee.create!(tenant_id: @tenant.id, first_name: 'Riley', last_name: 'Chen',
-                                        employee_number: 'E4')
+      employee_number: 'E4')
 
     post_page people_leave_requests_path, params: {
       leave_request: { employee_id: employee.id, leave_type: 'vacation', starts_on: '2026-09-01', ends_on: '2026-09-05' }
@@ -187,15 +187,15 @@ class PeopleFlowTest < ActionDispatch::IntegrationTest
 
   test 'payroll: pay run generates payslips from approved timesheets, finalizes and pays' do
     employee = People::Employee.create!(tenant_id: @tenant.id, first_name: 'Morgan', last_name: 'Zhao',
-                                        employee_number: 'E5')
+      employee_number: 'E5')
     rate = People::PayRate.create!(tenant_id: @tenant.id, employee_id: employee.id, pay_type: 'hourly',
-                                   hourly_rate_cents: 2000, effective_on: '2026-07-01')
+      hourly_rate_cents: 2000, effective_on: '2026-07-01')
 
     timesheet = People::Timesheet.create!(tenant_id: @tenant.id, employee_id: employee.id, period_start: '2026-07-27',
-                                          period_end: '2026-08-02')
+      period_end: '2026-08-02')
     [27, 28, 29, 30, 31].each do |day|
       timesheet.entries.create!(tenant_id: @tenant.id, worked_on: Date.new(2026, 7, day), hours: 8,
-                                work_type: 'regular')
+        work_type: 'regular')
     end
     timesheet.entries.create!(tenant_id: @tenant.id, worked_on: '2026-07-28', hours: 2, work_type: 'overtime')
     timesheet.submit!
@@ -235,7 +235,7 @@ class PeopleFlowTest < ActionDispatch::IntegrationTest
 
   test 'a cashier cannot reach HR or payroll pages' do
     User.create!(email: 'cashier@example.com', password: 'password123', role: 'cashier', tenant_id: @tenant.id,
-                 name: 'Cashier')
+      name: 'Cashier')
     delete logout_path
     post login_path, params: { email: 'cashier@example.com', password: 'password123' }
 
@@ -253,7 +253,7 @@ class PeopleFlowTest < ActionDispatch::IntegrationTest
     EnvStore.set('SHOPIFY_CLIENT_SECRET', 'client-secret')
     People::Employee.create!(tenant_id: @tenant.id, first_name: 'Dash', last_name: 'Board', employee_number: 'E-W1')
     on_leave = People::Employee.create!(tenant_id: @tenant.id, first_name: 'Away', last_name: 'Today',
-                                        employee_number: 'E-W2')
+      employee_number: 'E-W2')
     on_leave.place_on_leave!
 
     get_page root_path
@@ -267,7 +267,7 @@ class PeopleFlowTest < ActionDispatch::IntegrationTest
     EnvStore.set('SHOPIFY_CLIENT_ID', 'client-id')
     EnvStore.set('SHOPIFY_CLIENT_SECRET', 'client-secret')
     User.create!(email: 'cashier2@example.com', password: 'password123', role: 'cashier', tenant_id: @tenant.id,
-                 name: 'Cashier')
+      name: 'Cashier')
     delete logout_path
     post login_path, params: { email: 'cashier2@example.com', password: 'password123' }
 

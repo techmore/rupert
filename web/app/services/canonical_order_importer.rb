@@ -121,9 +121,9 @@ class CanonicalOrderImporter
     # skipped (the 15-minute sync re-imports the whole window every cycle).
     def replace_order_lines!(order, line_items)
       nodes = if line_items.is_a?(Hash)
-                Array(line_items['nodes'])
-              else
-                Array(line_items)
+        Array(line_items['nodes'])
+      else
+        Array(line_items)
               end
 
       rows = nodes.filter_map do |item|
@@ -140,7 +140,7 @@ class CanonicalOrderImporter
         }
       end
       return if unchanged_records?(order.order_lines, %i[sku name quantity unit_cents line_cents],
-                                   rows.map { |r| [r[:sku], r[:name], r[:quantity], r[:unit_cents], r[:line_cents]] })
+        rows.map { |r| [r[:sku], r[:name], r[:quantity], r[:unit_cents], r[:line_cents]] })
 
       order.order_lines.delete_all
       rows.each do |attrs|
@@ -187,7 +187,7 @@ class CanonicalOrderImporter
 
     def replace_payments!(order, payments)
       return if unchanged_records?(order.payments, %i[method amount_cents reference],
-                                   payments.map { |p| [p[:method], p[:amount_cents], p[:reference]] })
+        payments.map { |p| [p[:method], p[:amount_cents], p[:reference]] })
 
       order.payments.delete_all
       payments.each do |payment|
@@ -216,11 +216,11 @@ class CanonicalOrderImporter
 
       gateways = Array(node['paymentGatewayNames'])
       method = if gateways.any? { |g| g.to_s.downcase.include?('gift') }
-                 'gift_card'
-               elsif gateways.any? { |g| g.to_s.downcase.include?('cash') }
-                 'cash'
-               else
-                 'card'
+        'gift_card'
+      elsif gateways.any? { |g| g.to_s.downcase.include?('cash') }
+        'cash'
+      else
+        'card'
                end
       [{
         method: method,
@@ -236,7 +236,7 @@ class CanonicalOrderImporter
       return [] if tenders.empty?
 
       tenders.filter_map do |tender|
-        amount = (tender.dig('amount_money', 'amount').to_i || 0).abs
+        amount = (tender.dig('amount_money', 'amount').to_i).abs
         next if amount.zero?
 
         {

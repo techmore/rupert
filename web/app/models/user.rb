@@ -9,23 +9,23 @@ class User < ActiveRecord::Base
   serialize :dashboard_config, coder: JSON
 
   validates :email,
-            presence: true,
-            uniqueness: true,
-            format: { with: URI::MailTo::EMAIL_REGEXP }
+    presence: true,
+    uniqueness: true,
+    format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :password, length: { minimum: 8 }, allow_nil: true
 
   scope :active, -> { where(active: true) }
   scope :ordered, -> { order(:name, :email) }
 
   enum :role,
-       {
-         super_admin: 'super_admin',
-         admin: 'admin',
-         manager: 'manager',
-         cashier: 'cashier',
-         reader: 'reader'
-       },
-       default: :admin
+    {
+      super_admin: 'super_admin',
+      admin: 'admin',
+      manager: 'manager',
+      cashier: 'cashier',
+      reader: 'reader'
+    },
+    default: :admin
 
   # Permission matrix. "*" grants everything.
   ROLE_PERMISSIONS = {
@@ -135,17 +135,15 @@ class User < ActiveRecord::Base
   #   2. per-role overrides (role_permissions)       — replaces built-ins for role
   #   3. built-in ROLE_PERMISSIONS matrix
   def effective_permissions
-    @effective_permissions ||= begin
-      return ['*'] if super_admin?
-
+    @effective_permissions ||= if super_admin?
+      ['*']
+    else
       person = user_permissions
       if person.any?
         person.select(&:enabled?).map(&:permission)
       else
         overrides = RolePermission.where(tenant_id: tenant_id, role: role)
-        return ROLE_PERMISSIONS.fetch(role, []) if overrides.empty?
-
-        overrides.select(&:enabled?).map(&:permission)
+        overrides.empty? ? ROLE_PERMISSIONS.fetch(role, []) : overrides.select(&:enabled?).map(&:permission)
       end
     end
   end

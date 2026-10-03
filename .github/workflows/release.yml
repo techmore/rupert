@@ -12,7 +12,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
 
@@ -35,10 +35,14 @@ jobs:
           else
             git log --oneline --no-decorate "${prev}..HEAD" > /tmp/notes.md
           fi
-          echo "notes=$(cat /tmp/notes.md)" >> "$GITHUB_OUTPUT"
+          {
+            echo "notes<<RELEASE_NOTES"
+            cat /tmp/notes.md
+            echo "RELEASE_NOTES"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: "v${{ steps.version.outputs.version }}"
           name: "v${{ steps.version.outputs.version }}"

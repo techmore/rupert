@@ -7,7 +7,7 @@ class AccessLogFlowTest < ActionDispatch::IntegrationTest
     @subdomain = "aclco#{SecureRandom.hex(4)}"
     @tenant = Tenant.create!(name: 'ACL Co', subdomain: @subdomain)
     @admin = User.create!(email: 'acl-admin@example.com', password: 'password123', role: 'admin', name: 'Admin',
-                          tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
     Current.tenant = @tenant
     host!("#{@subdomain}.example.com")
   end
@@ -60,7 +60,7 @@ class AccessLogFlowTest < ActionDispatch::IntegrationTest
 
   test 'a reader cannot view the access log' do
     reader = User.create!(email: 'acl-reader@example.com', password: 'password123', role: 'reader', name: 'Reader',
-                          tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
     post login_path, params: { email: reader.email, password: 'password123' }
 
     get access_logs_path

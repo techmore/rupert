@@ -9,9 +9,9 @@ class SizeChange < ApplicationRecord
   STATUSES = %w[pending applied failed skipped].freeze
 
   belongs_to :family,
-             class_name: 'SizeFamily',
-             foreign_key: 'family_id',
-             inverse_of: :size_changes
+    class_name: 'SizeFamily',
+    foreign_key: 'family_id',
+    inverse_of: :size_changes
 
   validates :sku, presence: true
   validates :status, inclusion: { in: STATUSES }

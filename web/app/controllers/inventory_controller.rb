@@ -33,7 +33,7 @@ class InventoryController < AuthenticatedController
     scope = InventoryMovement.includes(:sync_run).order(createdAt: :desc)
     scope = scope.where(source: params[:source]) if params[:source].present?
     if (q = params[:q].to_s.strip).present?
-      scope = scope.where('sku ILIKE ?', "%#{q}%")
+      scope = scope.where(SearchSql.contains_any(%w[sku]), "%#{q}%")
     end
     days = params[:days].to_i
     days = 30 unless (1..365).cover?(days)
@@ -50,8 +50,8 @@ class InventoryController < AuthenticatedController
   # updating Shopify + Square and re-linking (see ops:sku_remediation_plan).
   def recommended_skus
     send_data SkuMatchReport.csv,
-              filename: "sku-report-#{Date.current.iso8601}.csv",
-              type: 'text/csv'
+      filename: "sku-report-#{Date.current.iso8601}.csv",
+      type: 'text/csv'
   end
 
   # GET /inventory/pdf — printable snapshot of the current inventory across

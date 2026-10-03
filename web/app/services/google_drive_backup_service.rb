@@ -168,11 +168,11 @@ class GoogleDriveBackupService
       query = "name='#{FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
       results = drive.list_files(q: query, fields: 'files(id)', page_size: 1)
       folder = if results.files.any?
-                 results.files.first
-               else
-                 drive.create_file(Google::Apis::DriveV3::File.new(
-                                     name: FOLDER_NAME, mime_type: 'application/vnd.google-apps.folder'
-                                   ))
+        results.files.first
+      else
+        drive.create_file(Google::Apis::DriveV3::File.new(
+          name: FOLDER_NAME, mime_type: 'application/vnd.google-apps.folder'
+        ))
                end
       EnvStore.set('GOOGLE_DRIVE_FOLDER_ID', folder.id)
       folder.id

@@ -24,7 +24,7 @@ class SalesController < AuthenticatedController
 
     @hourly = hourly_pivot(@date, source_scope)
     @day_sales = Core::Order.on_day(@date).by_source(source_scope).includes(:fulfillments,
-                                                                            :location).order(occurred_at: :asc)
+      :location).order(occurred_at: :asc)
     @day_total_cents = @day_sales.sum(:gross_cents)
     @locations = Location.order(:name).pluck(:name, :id)
     presenter = DashboardPresenter.new

@@ -40,7 +40,7 @@ class OnboardingController < ApplicationController
     return first_sync_and_redirect if self.class.configured?
 
     redirect_to(onboarding_path,
-                notice: 'Saved. Add your Shopify client ID and secret to finish connecting.')
+      notice: 'Saved. Add your Shopify client ID and secret to finish connecting.')
   rescue StandardError => e
     redirect_to(onboarding_path, alert: "Could not save credentials: #{e.message}")
   end
@@ -50,7 +50,7 @@ class OnboardingController < ApplicationController
   def first_sync_and_redirect
     SyncJob.perform_later(tenant_id: Current.tenant_id, mode: 'manual', actor: Current.user.email)
     redirect_to(root_path,
-                notice: 'Accounts connected — first sync is running. This page will fill in as data arrives.')
+      notice: 'Accounts connected — first sync is running. This page will fill in as data arrives.')
   end
 
   def save_submitted_keys

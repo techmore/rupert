@@ -13,8 +13,8 @@ module People
       @pay_runs = People::PayRun.by_status(@status).recent(100).includes(:payslips)
       @year = params[:year].presence || Date.current.year.to_s
       @annual_gross = People::PayRun.where(period_start: Date.new(@year.to_i, 1,
-                                                                  1)..Date.new(@year.to_i, 12,
-                                                                               31)).sum(:total_gross_cents)
+        1)..Date.new(@year.to_i, 12,
+          31)).sum(:total_gross_cents)
     end
 
     def show
@@ -47,7 +47,7 @@ module People
       authorize(:module, :payroll_write?)
       unless @pay_run.draft?
         return redirect_to(people_pay_run_path(@pay_run),
-                           alert: 'Only draft pay runs can be regenerated.')
+          alert: 'Only draft pay runs can be regenerated.')
       end
 
       People::PayrollCalculator.generate!(@pay_run)
@@ -59,13 +59,13 @@ module People
       authorize(:module, :payroll_write?)
       unless @pay_run.draft?
         return redirect_to(people_pay_run_path(@pay_run),
-                           alert: 'Only draft pay runs can be edited.')
+          alert: 'Only draft pay runs can be edited.')
       end
 
       @slip = @pay_run.payslips.new(add_payslip_params)
       if @slip.save
         @pay_run.reload.update!(total_gross_cents: @pay_run.total_gross_cents,
-                                total_net_cents: @pay_run.total_net_cents)
+          total_net_cents: @pay_run.total_net_cents)
         redirect_to(people_pay_run_path(@pay_run), notice: 'Payslip added.')
       else
         @pay_run.payslips.reload
@@ -78,7 +78,7 @@ module People
       authorize(:module, :payroll_write?)
       unless @pay_run.draft?
         return redirect_to(people_pay_run_path(@pay_run),
-                           alert: 'Only draft pay runs can be edited.')
+          alert: 'Only draft pay runs can be edited.')
       end
 
       @pay_run.payslips.find_by(id: params[:payslip_id])&.destroy
@@ -90,7 +90,7 @@ module People
       authorize(:module, :payroll_write?)
       if @pay_run.payslips.empty?
         return redirect_to(people_pay_run_path(@pay_run),
-                           alert: 'Add at least one payslip first.')
+          alert: 'Add at least one payslip first.')
       end
 
       People::PayrollCalculator.apply_default_deductions(@pay_run)
@@ -98,7 +98,7 @@ module People
       @pay_run.update!(total_gross_cents: totals[0], total_net_cents: totals[1])
       @pay_run.finalize! if @pay_run.may_finalize?
       ActivityLogger.log('pay_run_finalized', subject: @pay_run,
-                                              details: "$#{format('%.2f', @pay_run.total_net_cents / 100.0)}")
+        details: "$#{format('%.2f', @pay_run.total_net_cents / 100.0)}")
       redirect_to(people_pay_run_path(@pay_run), notice: 'Pay run finalized.')
     end
 
@@ -106,7 +106,7 @@ module People
       authorize(:module, :payroll_write?)
       unless @pay_run.finalized?
         return redirect_to(people_pay_run_path(@pay_run),
-                           alert: 'Finalize the pay run before paying.')
+          alert: 'Finalize the pay run before paying.')
       end
 
       @pay_run.update!(paid_on: Date.today)

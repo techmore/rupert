@@ -9,14 +9,16 @@ class AddRunningSyncRunUniqueIndex < ActiveRecord::Migration[8.1]
   disable_ddl_transaction!
 
   def up
-    add_index '"SyncRun"', :tenant_id,
+    options = {
               name: 'index_SyncRun_on_running_per_tenant',
               where: "status = 'running'",
-              unique: true,
-              algorithm: :concurrently
+              unique: true
+    }
+    options[:algorithm] = :concurrently if connection.adapter_name.downcase.include?('postgres')
+    add_index 'SyncRun', :tenant_id, **options
   end
 
   def down
-    remove_index '"SyncRun"', name: 'index_SyncRun_on_running_per_tenant'
+    remove_index 'SyncRun', name: 'index_SyncRun_on_running_per_tenant'
   end
 end

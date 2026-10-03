@@ -9,7 +9,7 @@ class NegativeInventoryTest < ActiveSupport::TestCase
     @location = Location.create!(source: 'square', externalId: 'LOC1', name: 'Home')
     @variation = SquareVariation.create!(id: 'neg1', itemId: 'i1', sku: 'NEG1', name: 'Neg Item', tenant_id: @tenant.id)
     @level = InventoryLevel.create!(source: 'square', locationId: @location.id, squareVariationId: 'neg1',
-                                    quantity: -5, available: -5, tenant_id: @tenant.id)
+      quantity: -5, available: -5, tenant_id: @tenant.id)
     open_push_window!('square')
   end
 
@@ -38,10 +38,10 @@ class NegativeInventoryTest < ActiveSupport::TestCase
 
   test 'fix! untracks a negative Shopify variant and zeroes its mirror' do
     variant = ShopifyVariant.create!(sku: 'ROUTEINS', title: 'Shipping Protection', tracked: true,
-                                     inventoryQuantity: -4, productId: 'p1', tenant_id: @tenant.id)
+      inventoryQuantity: -4, productId: 'p1', tenant_id: @tenant.id)
     shop_location = Location.create!(source: 'shopify', externalId: 'SHOP', name: 'Shop')
     level = InventoryLevel.create!(source: 'shopify', locationId: shop_location.id, shopifyVariantId: variant.id,
-                                   quantity: -4, available: -4, tenant_id: @tenant.id)
+      quantity: -4, available: -4, tenant_id: @tenant.id)
 
     assert NegativeInventory.fix!(source: 'shopify', id: variant.id)
     assert_equal 0, level.reload.quantity
@@ -51,10 +51,10 @@ class NegativeInventoryTest < ActiveSupport::TestCase
   test 'fix_all! corrects every negative item' do
     SquareClient.stubs(:request).returns({})
     variant = ShopifyVariant.create!(sku: 'ROUTEINS2', title: 'Shipping', tracked: true,
-                                     inventoryQuantity: -2, productId: 'p1', tenant_id: @tenant.id)
+      inventoryQuantity: -2, productId: 'p1', tenant_id: @tenant.id)
     shop_location = Location.create!(source: 'shopify', externalId: 'SHOP2', name: 'Shop')
     InventoryLevel.create!(source: 'shopify', locationId: shop_location.id, shopifyVariantId: variant.id,
-                           quantity: -2, available: -2, tenant_id: @tenant.id)
+      quantity: -2, available: -2, tenant_id: @tenant.id)
 
     results = NegativeInventory.fix_all!
     assert_equal 1, results[:square]

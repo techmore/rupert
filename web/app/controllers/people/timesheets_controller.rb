@@ -5,7 +5,7 @@ module People
   # manager approves or rejects. Entries are edited inline on the show page.
   class TimesheetsController < AuthenticatedController
     before_action :set_timesheet,
-                  only: %i[show edit update destroy submit approve reject reopen add_entry remove_entry]
+      only: %i[show edit update destroy submit approve reject reopen add_entry remove_entry]
 
     def index
       authorize(:module, :timesheets_read?)
@@ -47,7 +47,7 @@ module People
       authorize(:module, :timesheets_write?)
       unless @timesheet.draft?
         return redirect_to(people_timesheet_path(@timesheet),
-                           alert: 'Only draft timesheets can be edited.')
+          alert: 'Only draft timesheets can be edited.')
       end
 
       @employees = People::Employee.active.ordered
@@ -67,7 +67,7 @@ module People
       authorize(:module, :timesheets_write?)
       unless @timesheet.draft?
         return redirect_to(people_timesheet_path(@timesheet),
-                           alert: 'Only draft timesheets can be deleted.')
+          alert: 'Only draft timesheets can be deleted.')
       end
 
       @timesheet.destroy
@@ -112,7 +112,7 @@ module People
       authorize(:module, :timesheets_write?)
       unless @timesheet.draft?
         return redirect_to(people_timesheet_path(@timesheet),
-                           alert: 'Only draft timesheets can be edited.')
+          alert: 'Only draft timesheets can be edited.')
       end
 
       @entry = @timesheet.entries.new(entry_params)
@@ -127,7 +127,7 @@ module People
       authorize(:module, :timesheets_write?)
       unless @timesheet.draft?
         return redirect_to(people_timesheet_path(@timesheet),
-                           alert: 'Only draft timesheets can be edited.')
+          alert: 'Only draft timesheets can be edited.')
       end
 
       @timesheet.entries.find_by(id: params[:entry_id])&.destroy

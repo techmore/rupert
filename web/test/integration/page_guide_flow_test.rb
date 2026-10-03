@@ -6,7 +6,7 @@ class PageGuideFlowTest < ActionDispatch::IntegrationTest
   setup do
     @tenant = tenants(:default_tenant)
     @admin = User.create!(email: 'pg-admin@example.com', password: 'password123', role: 'admin', name: 'Admin',
-                          tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
     post login_path, params: { email: @admin.email, password: 'password123' }
     Current.tenant = @tenant
   end
@@ -28,7 +28,7 @@ class PageGuideFlowTest < ActionDispatch::IntegrationTest
 
   test "pages without a guide don't show a help button" do
     order = Core::Order.create!(source: 'shopify', source_order_id: 'x1', occurred_at: Time.current,
-                                order_number: 'X1', gross_cents: 1000, tenant_id: @tenant.id)
+      order_number: 'X1', gross_cents: 1000, tenant_id: @tenant.id)
     get order_path(order)
     assert_response :success
     assert_not_includes response.body, 'How this page works'

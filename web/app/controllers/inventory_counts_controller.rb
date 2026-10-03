@@ -78,7 +78,7 @@ class InventoryCountsController < AuthenticatedController
     end
     DataCache.bump!
     redirect_to(inventory_count_path(@count),
-                notice: 'Count approved and recorded — overrides are disabled (Square is the source of truth).')
+      notice: 'Count approved and recorded — overrides are disabled (Square is the source of truth).')
   rescue AASM::InvalidTransition
     redirect_to(inventory_count_path(@count), alert: 'Only pending counts can be approved.')
   rescue StandardError => e

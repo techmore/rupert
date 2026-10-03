@@ -34,7 +34,7 @@ class BusinessSettingsTest < ActionDispatch::IntegrationTest
     Current.tenant = @tenant
 
     @customer = Core::Customer.create!(tenant_id: @tenant.id, source: 'shopify', external_id: 'biz-1',
-                                       first_name: 'Ada')
+      first_name: 'Ada')
     @order = Core::Order.new(
       source: 'shopify',
       source_order_id: 'biz-order-1',
@@ -50,7 +50,7 @@ class BusinessSettingsTest < ActionDispatch::IntegrationTest
     @order.mark_paid!
     @order.save!
     @order.order_lines.create!(tenant_id: @tenant.id, sku: 'TEA', name: 'Tea', quantity: 1, unit_cents: 2000,
-                               line_cents: 2000)
+      line_cents: 2000)
   end
 
   teardown do

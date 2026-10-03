@@ -12,10 +12,10 @@ module Purchasing
 
     belongs_to :vendor, class_name: 'Purchasing::Vendor', foreign_key: :vendor_id
     has_many :lines,
-             class_name: 'Purchasing::PurchaseOrderLine',
-             foreign_key: :purchase_order_id,
-             dependent: :destroy,
-             inverse_of: :purchase_order
+      class_name: 'Purchasing::PurchaseOrderLine',
+      foreign_key: :purchase_order_id,
+      dependent: :destroy,
+      inverse_of: :purchase_order
 
     validates :vendor_id, presence: true
     validates :order_number, presence: true, uniqueness: { scope: :tenant_id }

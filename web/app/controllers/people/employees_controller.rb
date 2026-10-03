@@ -13,7 +13,7 @@ module People
       @employees = People::Employee.by_status(@status).ordered
       if @q.present?
         @employees = @employees.where(
-          'first_name ILIKE :q OR last_name ILIKE :q OR employee_number ILIKE :q OR email ILIKE :q', q: "%#{@q}%"
+          SearchSql.contains_any(%w[first_name last_name employee_number email]), *Array.new(4, "%#{@q}%")
         )
       end
       @employees = @employees.includes(:department, :position).limit(200)
@@ -65,7 +65,7 @@ module People
       authorize(:module, :hr_write?)
       if @employee.active?
         return redirect_to(people_employee_path(@employee),
-                           alert: 'Terminate the employee instead of deleting the record.')
+          alert: 'Terminate the employee instead of deleting the record.')
       end
 
       @employee.destroy
@@ -86,7 +86,7 @@ module People
         redirect_to(people_employee_path(@employee), notice: "#{@employee.name} #{event.tr('_', ' ')}d.")
       else
         redirect_to(people_employee_path(@employee),
-                    alert: "Cannot #{event.tr('_', ' ')} a #{@employee.status} employee.")
+          alert: "Cannot #{event.tr('_', ' ')} a #{@employee.status} employee.")
       end
     end
 

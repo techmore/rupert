@@ -6,7 +6,7 @@ class InventoryMovementHistoryFlowTest < ActionDispatch::IntegrationTest
   setup do
     @tenant = Tenant.create!(name: 'Movement Co', subdomain: "movco#{SecureRandom.hex(4)}")
     @admin = User.create!(email: 'mov-admin@example.com', password: 'password123', role: 'admin', name: 'Admin',
-                          tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
     post login_path, params: { email: @admin.email, password: 'password123' }
     Current.tenant = @tenant
   end
@@ -25,9 +25,9 @@ class InventoryMovementHistoryFlowTest < ActionDispatch::IntegrationTest
 
   test 'movements page lists changes with source, reason, actor, and before to after' do
     create_movement!(sku: 'HERB-1', source: 'square', reason: 'Synced from Square',
-                     delta: -1, before: 32, after: 31, actor: 'system', at: 30.minutes.ago)
+      delta: -1, before: 32, after: 31, actor: 'system', at: 30.minutes.ago)
     create_movement!(sku: 'HERB-2', source: 'reconcile', reason: 'Reconciliation applied',
-                     delta: 4, before: 6, after: 10, actor: 'alice@example.com', at: 2.hours.ago)
+      delta: 4, before: 6, after: 10, actor: 'alice@example.com', at: 2.hours.ago)
 
     get movements_inventory_index_path
 
@@ -44,9 +44,9 @@ class InventoryMovementHistoryFlowTest < ActionDispatch::IntegrationTest
 
   test 'SKU filter narrows the ledger' do
     create_movement!(sku: 'HERB-A', source: 'square', reason: 'Synced from Square', delta: 1, before: 0, after: 1,
-                     actor: 'system')
+      actor: 'system')
     create_movement!(sku: 'BALM-B', source: 'shopify', reason: 'Synced from Shopify', delta: 1, before: 0, after: 1,
-                     actor: 'system')
+      actor: 'system')
 
     get movements_inventory_index_path, params: { q: 'HERB-A' }
 
@@ -57,9 +57,9 @@ class InventoryMovementHistoryFlowTest < ActionDispatch::IntegrationTest
 
   test 'source filter narrows the ledger' do
     create_movement!(sku: 'HERB-A', source: 'square', reason: 'Synced from Square', delta: 1, before: 0, after: 1,
-                     actor: 'system')
+      actor: 'system')
     create_movement!(sku: 'HERB-B', source: 'shopify', reason: 'Synced from Shopify', delta: 1, before: 0, after: 1,
-                     actor: 'system')
+      actor: 'system')
 
     get movements_inventory_index_path, params: { source: 'shopify' }
 
@@ -70,7 +70,7 @@ class InventoryMovementHistoryFlowTest < ActionDispatch::IntegrationTest
 
   test 'a negative change is shown as a loss in the ledger' do
     create_movement!(sku: 'HERB-N', source: 'square', reason: 'Synced from Square',
-                     delta: -3, before: 5, after: 2, actor: 'system')
+      delta: -3, before: 5, after: 2, actor: 'system')
 
     get movements_inventory_index_path
 
@@ -81,9 +81,9 @@ class InventoryMovementHistoryFlowTest < ActionDispatch::IntegrationTest
 
   test 'movements captured by a sync show its run id in the ledger' do
     run = SyncRun.create!(mode: 'scheduled', status: 'success', source: 'all',
-                          startedAt: 1.hour.ago, tenant_id: @tenant.id)
+      startedAt: 1.hour.ago, tenant_id: @tenant.id)
     create_movement!(sku: 'HERB-S', source: 'square', reason: 'Synced from Square',
-                     delta: 1, before: 0, after: 1, actor: 'system').update!(syncRunId: run.id)
+      delta: 1, before: 0, after: 1, actor: 'system').update!(syncRunId: run.id)
 
     get movements_inventory_index_path
 

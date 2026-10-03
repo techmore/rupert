@@ -8,19 +8,19 @@ class InventoryCountTest < ActiveSupport::TestCase
     @tenant = tenants(:default_tenant)
     @product = ShopifyProduct.create!(id: 'prod-1', title: 'Widget', tenant_id: @tenant.id)
     @shopify_variant = ShopifyVariant.create!(title: 'Widget - Small', sku: 'WIDGET-S',
-                                              productId: @product.id, tenant_id: @tenant.id)
+      productId: @product.id, tenant_id: @tenant.id)
     @square_item = SquareItem.create!(id: 'sqitem-1', name: 'Widget', tenant_id: @tenant.id)
     @square_variation = SquareVariation.create!(name: 'Small', sku: 'WIDGET-S',
-                                                itemId: @square_item.id, tenant_id: @tenant.id)
+      itemId: @square_item.id, tenant_id: @tenant.id)
     SkuLink.create!(sku: 'WIDGET-S', shopifyVariantId: @shopify_variant.id,
-                    squareVariationId: @square_variation.id, tenant_id: @tenant.id)
+      squareVariationId: @square_variation.id, tenant_id: @tenant.id)
     @location = Location.create!(source: 'shopify', externalId: 'loc-1', name: 'Main',
-                                 tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
     InventoryLevel.create!(source: 'shopify', locationId: @location.id,
-                           shopifyVariantId: @shopify_variant.id, quantity: 10, tenant_id: @tenant.id)
+      shopifyVariantId: @shopify_variant.id, quantity: 10, tenant_id: @tenant.id)
 
     @count = InventoryCount.create!(countedAt: Time.current, createdBy: 'tester',
-                                    tenant_id: @tenant.id)
+      tenant_id: @tenant.id)
     @item = @count.items.create!(sku: 'WIDGET-S', quantity: 7, tenant_id: @tenant.id)
   end
 

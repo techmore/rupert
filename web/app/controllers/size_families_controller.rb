@@ -5,10 +5,10 @@
 class SizeFamiliesController < AuthenticatedController
   before_action :authorize_read, only: :index
   before_action :authorize_manage,
-                except: %i[index derive derive_all approve_all approve add_member remove_member]
+    except: %i[index derive derive_all approve_all approve add_member remove_member]
   before_action :authorize_apply, only: %i[derive derive_all approve_all approve]
   before_action :set_family,
-                only: %i[edit update destroy derive set_root approve_all add_member remove_member approve]
+    only: %i[edit update destroy derive set_root approve_all add_member remove_member approve]
 
   def index
     @families = SizeFamilySnapshot.all.map do |snap|
@@ -79,7 +79,7 @@ class SizeFamiliesController < AuthenticatedController
     grams = params[:base_grams].to_f
     @family.update!(base_grams: grams, sales_watermark: Time.current)
     redirect_to(size_families_path,
-                notice: "Root for #{@family.name} set to #{grams}g — sales from now on will fold in.")
+      notice: "Root for #{@family.name} set to #{grams}g — sales from now on will fold in.")
   end
 
   # POST /size_families/approve_all (collection) or /size_families/:id/approve_all

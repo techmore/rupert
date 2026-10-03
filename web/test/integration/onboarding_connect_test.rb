@@ -6,7 +6,7 @@ class OnboardingConnectTest < ActionDispatch::IntegrationTest
   setup do
     @tenant = Tenant.create!(name: 'Onboard Co', subdomain: 'onboardco')
     User.create!(email: 'ob@example.com', password: 'password123', role: 'admin',
-                 tenant_id: @tenant.id, name: 'OB')
+      tenant_id: @tenant.id, name: 'OB')
     post login_path, params: { email: 'ob@example.com', password: 'password123' }
     Current.tenant = @tenant
   end

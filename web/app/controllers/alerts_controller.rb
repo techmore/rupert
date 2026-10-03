@@ -23,7 +23,7 @@ class AlertsController < AuthenticatedController
         plain = advice.transform_values { |r| [r.shop_qty, r.pos_qty, r.sold_14, r.sold_30, r.days_of_cover, r.suggested_qty] }
         begin
           Rails.cache.write("dc/#{Current.tenant_id}/alerts/plain_open/v#{DataCache.version}", plain,
-                            expires_in: DataCache::DEFAULT_TTL)
+            expires_in: DataCache::DEFAULT_TTL)
         rescue StandardError => e
           Rails.logger.warn("AlertsController: advice cache write failed (#{e.class}: #{e.message})")
         end
@@ -39,8 +39,8 @@ class AlertsController < AuthenticatedController
                           .index_by(&:id).values_at(*sorted_ids).compact
       @advice = plain.transform_values { |shop, pos, s14, s30, cover, suggested|
         RestockAdvisor::Row.new(alert: nil, sku: nil, shop_qty: shop, pos_qty: pos,
-                                sold_14: s14, sold_30: s30, days_of_cover: cover,
-                                suggested_qty: suggested)
+          sold_14: s14, sold_30: s30, days_of_cover: cover,
+          suggested_qty: suggested)
       }
     else
       @alerts = DataCache.fetch("alerts/recent_#{@status}") do

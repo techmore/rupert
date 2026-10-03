@@ -6,17 +6,20 @@
 # disappears so re-syncs can recreate them.
 class AddCoreForeignKeys < ActiveRecord::Migration[8.1]
   def change
-    add_foreign_key '"ReconcileItem"', '"ReconcileRun"', column: :runId, on_delete: :cascade
+    # Pass identifier names without embedded SQL quotes. Active Record quotes
+    # them for each adapter; embedded quotes become part of the identifier on
+    # SQLite and prevent fresh databases from migrating.
+    add_foreign_key 'ReconcileItem', 'ReconcileRun', column: :runId, on_delete: :cascade
 
     %i[order_lines payments fulfillments refunds].each do |table|
       add_foreign_key table, :orders, on_delete: :cascade
     end
 
-    add_foreign_key '"SkuLink"', '"ShopifyVariant"', column: :shopifyVariantId, on_delete: :nullify
-    add_foreign_key '"SkuLink"', '"SquareVariation"', column: :squareVariationId, on_delete: :nullify
+    add_foreign_key 'SkuLink', 'ShopifyVariant', column: :shopifyVariantId, on_delete: :nullify
+    add_foreign_key 'SkuLink', 'SquareVariation', column: :squareVariationId, on_delete: :nullify
 
-    add_foreign_key '"InventoryLevel"', '"ShopifyVariant"', column: :shopifyVariantId, on_delete: :nullify
-    add_foreign_key '"InventoryLevel"', '"SquareVariation"', column: :squareVariationId, on_delete: :nullify
+    add_foreign_key 'InventoryLevel', 'ShopifyVariant', column: :shopifyVariantId, on_delete: :nullify
+    add_foreign_key 'InventoryLevel', 'SquareVariation', column: :squareVariationId, on_delete: :nullify
 
     add_foreign_key :size_family_members, :size_families, column: :family_id, on_delete: :cascade
     add_foreign_key :size_changes, :size_families, column: :family_id, on_delete: :cascade

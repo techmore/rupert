@@ -34,11 +34,11 @@ class SquareSkuAuditTest < ActiveSupport::TestCase
     stub_square_api
     ShopifyProduct.create!(id: 'P1', title: 'Herb', tenant_id: Current.tenant_id)
     variant = ShopifyVariant.create!(id: 'SV1', productId: 'P1', title: 'Herb 1', sku: 'HERB-1', tracked: true,
-                                     tenant_id: Current.tenant_id)
+      tenant_id: Current.tenant_id)
     SquareItem.create!(id: 'I1', name: 'Herb', tenant_id: Current.tenant_id)
     SquareVariation.create!(id: 'V1', itemId: 'I1', name: 'Herb 1', sku: 'HERB-1', tenant_id: Current.tenant_id)
     SkuLink.create!(sku: 'HERB-1', shopifyVariantId: variant.id, squareVariationId: 'V1', auto: true,
-                    tenant_id: Current.tenant_id)
+      tenant_id: Current.tenant_id)
     result = SquareSkuAudit.run!
     # V5 (SOLD, qty 3) is sellable and unlinked; V1 is linked, V2 has no sku (not sellable, qty 0).
     assert_equal 1, result.summary[:sellable_unlinked]

@@ -13,7 +13,7 @@ class InventoryCount < ApplicationRecord
   self.primary_key = 'id'
 
   has_many :items, class_name: 'InventoryCountItem', foreign_key: 'countId',
-                   dependent: :destroy, inverse_of: :count
+    dependent: :destroy, inverse_of: :count
   belongs_to :location, class_name: 'Location', foreign_key: 'locationId', optional: true
 
   validates :countedAt, presence: true

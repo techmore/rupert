@@ -19,9 +19,9 @@ class WarehouseShare < ApplicationRecord
   belongs_to :tenant, optional: true, foreign_key: :tenantId
 
   has_many :tiers,
-           class_name: 'WarehouseTier',
-           foreign_key: 'shareId',
-           dependent: :destroy
+    class_name: 'WarehouseTier',
+    foreign_key: 'shareId',
+    dependent: :destroy
 
   before_validation :generate_token, on: :create
   before_validation :set_default_expiry, on: :create

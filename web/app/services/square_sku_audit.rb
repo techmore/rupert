@@ -26,11 +26,11 @@ class SquareSkuAudit
     locations = SquareClient.locations
     location_ids = locations.map { |l| l['id'] }
     counts = if location_ids.any?
-               SquareClient.inventory_counts(location_ids, live.map do |v|
-                 v[:variationId]
-               end)[:counts]
-             else
-               {}
+      SquareClient.inventory_counts(location_ids, live.map do |v|
+        v[:variationId]
+      end)[:counts]
+    else
+      {}
              end
 
     live_by_id = live.index_by { |v| v[:variationId] }

@@ -13,7 +13,7 @@ class DataRetentionTest < ActiveSupport::TestCase
 
   def backfill_movement!(age:)
     InventoryMovement.create!(sku: 'RET-1', source: 'sync', direction: 'set', delta: 0,
-                              quantityBefore: 0, quantityAfter: 0, createdAt: age.ago)
+      quantityBefore: 0, quantityAfter: 0, createdAt: age.ago)
   end
 
   test 'prunes rows older than the window and keeps fresh ones' do
@@ -30,8 +30,8 @@ class DataRetentionTest < ActiveSupport::TestCase
   test 'prune_all! covers the policy tables' do
     backfill_movement!(age: 400.days)
     LedgerEntry.create!(source: 'shopify', sourceOrderId: 'ord-1', status: 'paid',
-                        currency: 'USD', grossCents: 100, lineItems: 1, occurredAt: 400.days.ago,
-                        syncedAt: 400.days.ago)
+      currency: 'USD', grossCents: 100, lineItems: 1, occurredAt: 400.days.ago,
+      syncedAt: 400.days.ago)
 
     totals = DataRetention.prune_all!
 

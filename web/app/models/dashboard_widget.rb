@@ -12,7 +12,7 @@ class DashboardWidget
     Widget.new(key: 'today_channels', label: 'Today per channel', partial: 'home/widgets/today_channels', position: 20),
     Widget.new(key: 'attention', label: 'Needs attention', partial: 'home/widgets/attention', position: 30),
     Widget.new(key: 'stock_alerts', label: 'Stock alerts · last 14 days', partial: 'home/widgets/stock_alerts',
-               position: 40),
+      position: 40),
     Widget.new(key: 'revenue', label: 'Revenue · last 30 days', partial: 'home/widgets/revenue', position: 50),
     Widget.new(key: 'sync_history', label: 'Sync history', partial: 'home/widgets/sync_history', position: 60),
     Widget.new(key: 'goals', label: 'Goals & KPIs', partial: 'home/widgets/goals', position: 75),

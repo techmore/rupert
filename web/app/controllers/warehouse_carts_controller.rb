@@ -23,7 +23,7 @@ class WarehouseCartsController < ApplicationController
     available = InventoryLevel.unscoped.where(shopifyVariantId: variant.id).sum(:quantity)
     if quantity > available
       return redirect_to(warehouse_sale_path(@share.token),
-                         alert: "Only #{available} of #{variant.title} are available.")
+        alert: "Only #{available} of #{variant.title} are available.")
     end
 
     current_cart.add_item!(variant, quantity: quantity)

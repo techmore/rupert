@@ -7,10 +7,10 @@ class ShopifyProduct < ApplicationRecord
   self.primary_key = 'id'
 
   has_many :variants,
-           class_name: 'ShopifyVariant',
-           foreign_key: 'productId',
-           dependent: :destroy,
-           inverse_of: :product
+    class_name: 'ShopifyVariant',
+    foreign_key: 'productId',
+    dependent: :destroy,
+    inverse_of: :product
 
   scope :active, -> { where(status: 'ACTIVE') }
   scope :search, lambda { |q|

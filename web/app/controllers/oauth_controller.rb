@@ -34,12 +34,12 @@ class OauthController < ApplicationController
     tested_domain = params[:hd].presence
     if params[:error].present?
       AccessLogger.record(source: 'google', status: 'failure', request: request, domain: tested_domain,
-                          detail: 'consent declined')
+        detail: 'consent declined')
       return redirect_to(login_path, alert: 'Google sign-in was declined.')
     end
     if session[:oauth_state].blank? || session[:oauth_state] != params[:state]
       AccessLogger.record(source: 'google', status: 'failure', request: request, domain: tested_domain,
-                          detail: 'state check failed')
+        detail: 'state check failed')
       return redirect_to(login_path, alert: 'Google sign-in failed the state check. Try again.')
     end
 
@@ -59,7 +59,7 @@ class OauthController < ApplicationController
         detail: 'domain not allowed'
       )
       return redirect_to(login_path,
-                         alert: "Your Google account (#{email}) isn't on an allowed domain. Ask an admin to allow #{email.split('@').last}.")
+        alert: "Your Google account (#{email}) isn't on an allowed domain. Ask an admin to allow #{email.split('@').last}.")
     end
 
     user = find_or_create_user!(email, info, tenant)
@@ -78,23 +78,23 @@ class OauthController < ApplicationController
     reset_session # prevent session fixation
     session[:user_id] = user.id
     AccessLogger.record(source: 'google', status: 'success', request: request, user: user, email: email,
-                        domain: tested_domain)
+      domain: tested_domain)
     redirect_to(root_path, notice: 'Signed in with Google.')
   rescue GoogleOauthService::NotConfiguredError, GoogleOauthService::ExchangeError => e
     session.delete(:oauth_state)
     AccessLogger.record(source: 'google', status: 'failure', request: request, email: info&.dig('email'),
-                        domain: tested_domain || info&.dig('email')&.split('@')&.last, detail: e.message.to_s[0, 200])
+      domain: tested_domain || info&.dig('email')&.split('@')&.last, detail: e.message.to_s[0, 200])
     redirect_to(login_path, alert: e.message)
   rescue AccountInAnotherTenant => e
     session.delete(:oauth_state)
     AccessLogger.record(source: 'google', status: 'failure', request: request, email: e.message,
-                        domain: e.message.to_s.split('@').last, detail: 'account belongs to another tenant')
+      domain: e.message.to_s.split('@').last, detail: 'account belongs to another tenant')
     redirect_to(login_path,
-                alert: 'This Google account already belongs to another workspace. Ask the workspace admin to invite you.')
+      alert: 'This Google account already belongs to another workspace. Ask the workspace admin to invite you.')
   rescue StandardError => e
     session.delete(:oauth_state)
     AccessLogger.record(source: 'google', status: 'failure', request: request, email: info&.dig('email'),
-                        domain: tested_domain || info&.dig('email')&.split('@')&.last, detail: "#{e.class}: #{e.message.to_s[0, 160]}")
+      domain: tested_domain || info&.dig('email')&.split('@')&.last, detail: "#{e.class}: #{e.message.to_s[0, 160]}")
     raise
   end
 

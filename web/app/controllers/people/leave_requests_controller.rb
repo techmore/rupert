@@ -30,7 +30,7 @@ module People
       @leave_request = People::LeaveRequest.new(leave_request_params)
       if @leave_request.save
         ActivityLogger.log('leave_requested', subject: @leave_request,
-                                              details: "#{@leave_request.leave_type} · #{@leave_request.duration_label}")
+          details: "#{@leave_request.leave_type} · #{@leave_request.duration_label}")
         redirect_to(people_leave_request_path(@leave_request), notice: 'Leave request created.')
       else
         @employees = People::Employee.active.ordered
@@ -42,7 +42,7 @@ module People
       authorize(:module, :leave_write?)
       unless @leave_request.cancelled?
         return redirect_to(people_leave_request_path(@leave_request),
-                           alert: 'Cancelling is safer than deleting a request.')
+          alert: 'Cancelling is safer than deleting a request.')
       end
 
       @leave_request.destroy

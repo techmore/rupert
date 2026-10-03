@@ -48,7 +48,7 @@ class OrdersController < AuthenticatedController
       reference: params[:reference].presence
     )
     ActivityLogger.log('refund_recorded', subject: @order,
-                                          details: "$#{format('%.2f', cents / 100.0)} · #{refund.method}")
+      details: "$#{format('%.2f', cents / 100.0)} · #{refund.method}")
     redirect_to(order_path(@order), notice: "Refund of $#{format('%.2f', cents / 100.0)} recorded.")
   rescue ArgumentError, ActiveRecord::RecordInvalid => e
     redirect_to(order_path(@order), alert: e.message)
