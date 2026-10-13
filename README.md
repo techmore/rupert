@@ -20,6 +20,9 @@ Square ───┼── sync engine ──▶ PostgreSQL DB ──▶ GUI
 | --- | --- |
 | `web/` | The Rails 8.1 app: sync engine services, Oatmeal GUI, JSON APIs |
 | `legacy/` | The original Node/React implementation, kept as reference |
+| `docs/` | Docs site, plans, audits and research (see `docs/README.md`) |
+| `deploy/` | Old droplet systemd units, kept for reference only (see below) |
+| `bin/` | Host scripts (`backup.sh`) |
 | `shopify.app.toml` | Shopify app config (scopes, webhooks) |
 | `Dockerfile`, `docker-compose.yml` | Optional container deployment |
 
