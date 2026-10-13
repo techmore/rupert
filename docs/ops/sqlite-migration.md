@@ -12,6 +12,9 @@ PostgreSQL on `rupert-db` still holds the pre-cutover data and was never modifie
   cannot signal the process), so restarts collide on port 3000. Stop the app by restarting the container from the
   host: `systemctl disable rupert-web; incus restart rupert; ...; systemctl enable --now rupert-web`.
   `cutover-ser8.sh` cannot do this from inside the container; use it only for the code phase.
+- The container had no job worker: scheduled syncs silently stopped after the 2026-10-02 container reboot and only
+  resumed on 2026-10-13 once `deploy/rupert-jobs-ser8.service` was installed (`systemctl enable --now rupert-jobs`).
+  Check `SolidQueue::Process.count` and the latest `SyncRun` after any container restart.
 - Before this work the container had no database backup at all. It now has `/var/backups/rupert` (SQLite snapshots +
   settings + env copy) on a 6-hourly timer; copy that directory off the host periodically.
 
