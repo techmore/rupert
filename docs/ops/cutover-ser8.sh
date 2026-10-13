@@ -10,7 +10,7 @@
 #   2 cutover  stop app, ./bin/migrate-to-sqlite (verified copy), set RUPERT_DB_ADAPTER=sqlite3, start, health check
 # PostgreSQL (on rupert-db) is never modified except by normal Rails migrations in phase 1.
 # Safety nets that already exist: Incus snapshot `rupert@pre-sqlite-cutover`, and /var/backups/rupert/pre-sqlite-*.dump.
-set -euo pipefail
+set -Eeuo pipefail   # -E so the ERR trap also fires inside functions
 
 REF="${REF:-ui-ux-and-organize}"
 APP=/opt/rupert
@@ -54,8 +54,9 @@ phase="code ($REF)"
 git -C "$APP" fetch -q origin "$REF:refs/remotes/origin/$REF"
 git -C "$APP" checkout -q -B "$REF" "origin/$REF"
 cd "$APP/web"
-bundle install --quiet
-chown -R rupert:rupert tmp log storage public 2>/dev/null || true
+BUNDLE_SILENCE_ROOT_WARNING=1 bundle install --quiet
+chown -R rupert:rupert tmp log storage public app/assets/builds
+chgrp rupert Gemfile.lock && chmod g+rw Gemfile.lock
 as_app bundle exec bin/rails tailwindcss:build >/dev/null
 as_app bundle exec bin/rails assets:precompile >/dev/null
 as_app bundle exec bin/rails db:migrate
