@@ -1,8 +1,19 @@
 # Moving the live Rupert instance (SER8) from PostgreSQL to SQLite
 
-Status: tooling written and rehearsed against synthetic data (every table, 1,245 cells compared, zero differences).
-**Not yet run against the live database.** PostgreSQL is never modified by any step, so rolling back is just switching
-the setting back.
+Status: **DONE on SER8, 2026-10-13.** 78,573 rows in 61 tables copied with every count verified; the app runs on
+SQLite (`/opt/rupert/web/storage/production.sqlite3`) and `rupert-backup.timer` snapshots it every 6 hours.
+PostgreSQL on `rupert-db` still holds the pre-cutover data and was never modified, so rolling back is just removing
+`RUPERT_DB_ADAPTER=sqlite3` from `/etc/rupert.env` and restarting.
+
+### What the live run taught us
+- Row-count verification caught a real bug the synthetic rehearsal could not: one row was dropped per 500-row batch
+  (5 of 2,514 `InventoryLevel` rows). Fixed; the rehearsal now includes a 1,500-row table.
+- In the `rupert` Incus container, `systemctl stop rupert-web` does not kill Puma (cgroup kill is denied and even root
+  cannot signal the process), so restarts collide on port 3000. Stop the app by restarting the container from the
+  host: `systemctl disable rupert-web; incus restart rupert; ...; systemctl enable --now rupert-web`.
+  `cutover-ser8.sh` cannot do this from inside the container; use it only for the code phase.
+- Before this work the container had no database backup at all. It now has `/var/backups/rupert` (SQLite snapshots +
+  settings + env copy) on a 6-hourly timer; copy that directory off the host periodically.
 
 ## What changed in the code
 
