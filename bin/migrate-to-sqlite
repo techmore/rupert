@@ -5,14 +5,16 @@
 #   ./bin/migrate-to-sqlite
 #
 # Run it with the app and job worker STOPPED so the copy is a consistent point in time. Needs the production .env
-# (POSTGRES_* and the RAILS_ENCRYPTION_* keys) at the repo root, the sqlite3 CLI, and free disk for ~2x the database.
+# (POSTGRES_* and the RAILS_ENCRYPTION_* keys), the sqlite3 CLI, and free disk for ~2x the database.
 set -euo pipefail
 umask 077
 
 cd "$(dirname "$0")/../web"
+# Environment comes from ENV_FILE (e.g. /etc/rupert.env) or ../.env; if neither is readable by this user, export
+# the variables yourself (the script then uses what is already in the environment).
 set -a
-# shellcheck disable=SC1091
-[ -f ../.env ] && source ../.env
+# shellcheck disable=SC1090
+for f in "${ENV_FILE:-}" ../.env; do [ -n "$f" ] && [ -r "$f" ] && { source "$f"; break; }; done
 set +a
 
 : "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}"
@@ -24,7 +26,7 @@ PGURL="postgres://${POSTGRES_USER:-rupert}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:
 command -v sqlite3 >/dev/null || { echo "install the sqlite3 CLI first (apt install sqlite3)" >&2; exit 1; }
 [ -e "$TARGET" ] && { echo "$TARGET already exists; move it aside first. Nothing was changed." >&2; exit 1; }
 
-if pgrep -f 'puma|solid_queue|bin/jobs' >/dev/null 2>&1; then
+if pgrep -f '[p]uma|[s]olid_queue|[b]in/jobs' >/dev/null 2>&1; then
   echo "WARNING: Rupert web/job processes appear to be running. Stop them for a consistent copy." >&2
   [ "${ALLOW_RUNNING:-}" = "1" ] || { echo "Re-run with ALLOW_RUNNING=1 to override (rehearsal only)." >&2; exit 1; }
 fi
