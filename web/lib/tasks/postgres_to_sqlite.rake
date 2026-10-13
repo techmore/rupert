@@ -38,48 +38,60 @@ namespace :db do
     counts = {}
     target.execute('PRAGMA foreign_keys = OFF')
     begin
-      target.transaction do
-        tables.each do |table|
-          model = Class.new(ActiveRecord::Base) do
-            self.table_name = table
-            self.inheritance_column = nil
-          end
-          columns = model.columns.map(&:name)
-          source_columns = source.exec_params(
-            "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1", [table]
-          ).map { |r| r['column_name'] }
-          shared = columns & source_columns
-          dropped = source_columns - columns
-          warn "  #{table}: ignoring columns not in the SQLite schema: #{dropped.join(', ')}" if dropped.any?
+      # The app's Time.zone is not UTC; the text read from PostgreSQL is UTC, so parse it as UTC or every
+      # timestamp would shift by the zone offset.
+      Time.use_zone('UTC') do
+        target.transaction do
+          tables.each do |table|
+            model = Class.new(ActiveRecord::Base) do
+              self.table_name = table
+              self.inheritance_column = nil
+            end
+            columns = model.columns.map(&:name)
+            source_columns = source.exec_params(
+              "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1", [table]
+            ).map { |r| r['column_name'] }
+            shared = columns & source_columns
+            dropped = source_columns - columns
+            warn "  #{table}: ignoring columns not in the SQLite schema: #{dropped.join(', ')}" if dropped.any?
 
-          select = shared.map { |c| %("#{c}"::text AS "#{c}") }.join(', ')
-          order = target.primary_key(table) ? %( ORDER BY "#{target.primary_key(table)}") : ''
-          copied = 0
-          rows = []
-          flush = lambda do
-            next if rows.empty?
-
-            model.insert_all!(rows)
-            copied += rows.length
+            select = shared.map { |c| %("#{c}"::text AS "#{c}") }.join(', ')
+            order = target.primary_key(table) ? %( ORDER BY "#{target.primary_key(table)}") : ''
+            copied = 0
             rows = []
-          end
-          source.send_query(%(SELECT #{select} FROM "#{table}"#{order}))
-          source.set_single_row_mode
-          source.get_result.stream_each { |row| rows << row.to_h.tap { flush.call if rows.length >= 500 } }
-          flush.call
-          counts[table] = copied
-          puts format('  %-34s %8d rows', table, copied)
-        end
+            flush = lambda do
+              next if rows.empty?
 
-        tables.each do |table|
-          expected = source.exec(%(SELECT COUNT(*) FROM "#{table}")).getvalue(0, 0).to_i
-          actual = target.select_value("SELECT COUNT(*) FROM #{target.quote_table_name(table)}").to_i
-          raise "Row count mismatch in #{table}: postgres=#{expected} sqlite=#{actual}" unless expected == actual
+              model.insert_all!(rows)
+              copied += rows.length
+              rows = []
+            end
+            source.send_query(%(SELECT #{select} FROM "#{table}"#{order}))
+            source.set_single_row_mode
+            source.get_result.stream_each { |row| rows << row.to_h.tap { flush.call if rows.length >= 500 } }
+            flush.call
+            counts[table] = copied
+            puts format('  %-34s %8d rows', table, copied)
+          end
+
+          tables.each do |table|
+            expected = source.exec(%(SELECT COUNT(*) FROM "#{table}")).getvalue(0, 0).to_i
+            actual = target.select_value("SELECT COUNT(*) FROM #{target.quote_table_name(table)}").to_i
+            raise "Row count mismatch in #{table}: postgres=#{expected} sqlite=#{actual}" unless expected == actual
+          end
         end
       end
     ensure
       target.execute('PRAGMA foreign_keys = ON')
       source.close
+    end
+
+    # Search indexes are external-content FTS5 tables: they are not filled by a plain row copy.
+    SearchSql::SQLITE_FTS.each_key do |fts|
+      next unless target.select_value("SELECT 1 FROM sqlite_master WHERE name = #{target.quote(fts)}")
+
+      target.execute("INSERT INTO #{target.quote_table_name(fts)}(#{target.quote_table_name(fts)}) VALUES('rebuild')")
+      puts "  rebuilt search index #{fts}"
     end
 
     violations = target.select_rows('PRAGMA foreign_key_check')
