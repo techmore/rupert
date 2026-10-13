@@ -29,13 +29,24 @@ healthy() {
   return 1
 }
 
+# systemd cannot kill the cgroup inside this container ("Permission denied"), so a stopped unit can leave Puma
+# running and holding port 3000. Stop it, then make sure no Puma is left.
+stop_app() {
+  systemctl stop rupert-web || true
+  pkill -TERM -u rupert -f '[p]uma' || true
+  for _ in $(seq 1 30); do pgrep -u rupert -f '[p]uma' >/dev/null || return 0; sleep 1; done
+  pkill -KILL -u rupert -f '[p]uma' || true
+  sleep 1
+}
+start_app() { systemctl reset-failed rupert-web 2>/dev/null || true; systemctl start rupert-web; }
+
 rollback() {
   echo "!! FAILED in phase '$phase' - rolling back" >&2
-  systemctl stop rupert-web || true
+  stop_app
   [ -f "$ENV_BACKUP" ] && install -m 600 "$ENV_BACKUP" "$ENVF"
   git -C "$APP" checkout -q "$PREV" || true
   (cd "$APP/web" && bundle install --quiet) || true
-  systemctl start rupert-web || true
+  start_app || true
   healthy && echo "rolled back to $PREV; app is up on PostgreSQL" >&2 || echo "ROLLBACK DID NOT RECOVER THE APP: restore with: incus snapshot restore rupert pre-sqlite-cutover" >&2
   exit 1
 }
@@ -60,17 +71,18 @@ chgrp rupert Gemfile.lock && chmod g+rw Gemfile.lock
 as_app bundle exec bin/rails tailwindcss:build >/dev/null
 as_app bundle exec bin/rails assets:precompile >/dev/null
 as_app bundle exec bin/rails db:migrate
-systemctl restart rupert-web
+stop_app
+start_app
 healthy
 echo "phase 1 ok: new code running on PostgreSQL"
 
 phase=cutover
-systemctl stop rupert-web
+stop_app
 rm -f storage/production.sqlite3 storage/production.sqlite3-wal storage/production.sqlite3-shm
 ENV_FILE="" BACKUP_DIR=/var/backups/rupert runuser -m -u rupert -- env HOME=/tmp/rupert-home "$APP/bin/migrate-to-sqlite"
 grep -q '^RUPERT_DB_ADAPTER=' "$ENVF" && sed -i '/^RUPERT_DB_ADAPTER=/d' "$ENVF"
 echo 'RUPERT_DB_ADAPTER=sqlite3' >> "$ENVF"
-systemctl start rupert-web
+start_app
 healthy
 count=$(RUPERT_DB_ADAPTER=sqlite3 as_app bundle exec bin/rails runner 'puts Core::Customer.count rescue puts ActiveRecord::Base.connection.tables.size')
 echo "app answers on SQLite (sample count: $count)"
