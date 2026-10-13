@@ -68,7 +68,10 @@ namespace :db do
             end
             source.send_query(%(SELECT #{select} FROM "#{table}"#{order}))
             source.set_single_row_mode
-            source.get_result.stream_each { |row| rows << row.to_h.tap { flush.call if rows.length >= 500 } }
+            source.get_result.stream_each do |row|
+            rows << row.to_h
+            flush.call if rows.length >= 500
+          end
             flush.call
             counts[table] = copied
             puts format('  %-34s %8d rows', table, copied)
