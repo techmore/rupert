@@ -8,9 +8,12 @@
 set -euo pipefail
 umask 077
 
+# Env file: ENV_FILE, else /etc/rupert.env (SER8), else the old droplet location.
+for f in "${ENV_FILE:-}" /etc/rupert.env /root/rupert/.env; do [ -n "$f" ] && [ -r "$f" ] && { ENV_SRC="$f"; break; }; done
+: "${ENV_SRC:?no readable env file found}"
 set -a
-# shellcheck disable=SC1091
-source /root/rupert/.env
+# shellcheck disable=SC1090
+source "$ENV_SRC"
 set +a
 
 OUT="/var/backups/rupert"
@@ -26,7 +29,7 @@ ENV_TMP="$OUT/env-$TS.partial"
 
 if [ "${RUPERT_DB_ADAPTER:-postgresql}" = "sqlite3" ]; then
   # Consistent snapshot while the app is writing (VACUUM INTO never blocks readers/writers for long).
-  SQLITE_DB="${RUPERT_SQLITE_DATABASE_PRODUCTION:-/root/rupert/web/storage/production.sqlite3}"
+  SQLITE_DB="${RUPERT_SQLITE_DATABASE_PRODUCTION:-${APP_DIR:-/opt/rupert}/web/storage/production.sqlite3}"
   SNAP="$OUT/.snapshot-$TS.sqlite3"
   rm -f "$SNAP"
   sqlite3 "$SQLITE_DB" "VACUUM INTO '$SNAP'"
@@ -35,7 +38,7 @@ if [ "${RUPERT_DB_ADAPTER:-postgresql}" = "sqlite3" ]; then
   sqlite3 "$SNAP" ".mode insert settings" "SELECT * FROM settings" > "$SETTINGS_TMP"
   rm -f "$SNAP"
 else
-  : "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in /root/rupert/.env}"
+  : "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in $ENV_SRC}"
   PGPASSWORD="$POSTGRES_PASSWORD" \
     pg_dump -h "${POSTGRES_HOST:-localhost}" -p "${POSTGRES_PORT:-5432}" \
     -U "${POSTGRES_USER:-rupert}" -d "$DB" \
@@ -48,7 +51,7 @@ else
 
 fi
 
-cp /root/rupert/.env "$ENV_TMP"
+cp "$ENV_SRC" "$ENV_TMP"
 mv "$DUMP_TMP" "$DUMP"
 mv "$SETTINGS_TMP" "$OUT/settings-$TS.sql"
 mv "$ENV_TMP" "$OUT/env-$TS"
