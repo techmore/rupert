@@ -1,6 +1,6 @@
 {
   "reviewed": "2026-10-14",
-  "method": "Directional capability comparison from the linked official product pages, not a hands-on vendor certification. Advertised means the cited product family explicitly describes the capability, subject to edition, region and plan. Integration / companion means a separate product, connector, or related module. Not established means the reviewed page does not establish the feature; it is not a claim of absence. Rupert Available means code exists, not independently verified live. This is a scoped set of 13 relevant competitors, not an exhaustive inventory of the market.",
+  "method": "Directional capability comparison from the linked official product pages, not a hands-on vendor certification. Advertised means the cited product family explicitly describes the capability, subject to edition, region and plan. Integration / companion means a separate product, connector, or related module. Not established means the reviewed page does not establish the feature; it is not a claim of absence. Rupert Available means code exists, not independently verified live. This is a scoped set of relevant competitors, not an exhaustive inventory of the market.",
   "competitors": [
     {
       "id": "odoo",
