@@ -77,3 +77,16 @@ what is bound to the LAN address or `0.0.0.0`.
 5. Remove or document `tmrootgw`; schedule real Incus snapshots/exports and
    delete the dangling `incus-backup*` timers.
 6. Reboot after upgrades once autostart is confirmed.
+
+## Applied 2026-10-13
+
+- `boot.autostart=true` set on rupert, sonder, swartzit, haven, homeboard and
+  pin-telemetry (rupert-db, swartzit-db and tmrootgw deliberately left off).
+- Host `~/.local/bin/rupert-backup` replaced with `deploy/ser8/rupert-offhost-backup.sh`
+  (pulls the in-container SQLite dump, settings and env off-container, verifies
+  gzip, writes a sha256). The previous script is kept as `rupert-backup.pre-sqlite`.
+  First run succeeded (5.9 MB dump).
+
+Still open (blocked or need an owner decision): stop/retire `rupert-db` and
+`swartzit-db`, homeboard allow-list, MQTT auth, tmrootgw removal, pending apt
+upgrades and reboot, dangling `incus-backup*` timers (need root).
