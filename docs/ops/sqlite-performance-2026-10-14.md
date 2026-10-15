@@ -4,7 +4,7 @@ Measured on SER8 inside the Rupert Incus instance using a private, consistent co
 
 ## Promoted changes
 
-1. Include the search digest in inventory stock-map cache keys. The prior key used only the page number, so a second search could display zeros from a different product set's cached map. Regression tests reproduced the wrong quantity before the fix.
+1. Include the search digest in inventory stock-map cache keys. The prior key used only the page number, so a second search could display zeros from a different product set's cached map. Regression tests reproduced the wrong quantity before the fix. The rendered inventory table uses a new cache namespace so previously cached incorrect HTML is not reused after deployment.
 2. Preload each page's variants once and reuse those objects in stock-map calculation and the view, removing the per-product association queries.
 3. Add `idx_sync_runs_tenant_started_at` on `SyncRun(tenant_id, startedAt)` and `idx_customers_tenant_created_id` on `customers(tenant_id, created_at, id)`.
 4. Order customers by descending creation time and ID so equal timestamps produce stable pagination.
