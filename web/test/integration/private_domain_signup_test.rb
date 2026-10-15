@@ -135,6 +135,48 @@ class PrivateDomainSignupTest < ActionDispatch::IntegrationTest
     assert_redirected_to login_path
   end
 
+  test 'approved owner must use the Google identity reviewed for that workspace' do
+    platform_tenant = Tenant.create!(name: 'Platform', subdomain: "platform#{SecureRandom.hex(4)}")
+    platform_owner = User.create!(tenant: platform_tenant, email: "platform-owner#{SecureRandom.hex(4)}@platform-owner.org",
+      name: 'Platform owner', role: 'super_admin', password: 'password123')
+    signup = WorkspaceSignupProvisioner.request_signup(info: @info, attributes: @attributes)
+    approved = WorkspaceSignupProvisioner.approve(signup: signup, actor: platform_owner, lock_version: 0)
+    owner = User.find_by!(tenant_id: approved.tenant_id, email: @info['email'])
+
+    get google_auth_path
+    assert_no_difference 'User.count' do
+      finish_signup(info: @info.merge('sub' => 'different-google-identity'))
+    end
+    assert_redirected_to login_path
+    assert_nil session[:user_id]
+    assert_includes flash[:alert], 'does not match the approved workspace owner'
+
+    get google_auth_path
+    finish_signup
+    assert_redirected_to root_path
+    assert_equal owner.id, session[:user_id]
+  end
+
+  test 'approved identity binding does not apply to another tenant or unrelated reader' do
+    platform_tenant = Tenant.create!(name: 'Platform', subdomain: "platform#{SecureRandom.hex(4)}")
+    platform_owner = User.create!(tenant: platform_tenant, email: "platform-owner#{SecureRandom.hex(4)}@platform-owner.org",
+      name: 'Platform owner', role: 'super_admin', password: 'password123')
+    signup = WorkspaceSignupProvisioner.request_signup(info: @info, attributes: @attributes)
+    approved = WorkspaceSignupProvisioner.approve(signup: signup, actor: platform_owner, lock_version: 0)
+    other_tenant = Tenant.create!(name: 'Other workspace', subdomain: "other#{SecureRandom.hex(4)}")
+    OauthAllowedDomain.create!(tenant_id: other_tenant.id, domain: @domain)
+    # A legacy account transferred to another workspace is not governed by
+    # a stale approval record belonging to the former workspace.
+    reader = User.find_by!(email: @info['email'])
+    reader.update!(tenant: other_tenant, role: 'reader')
+    host! "#{other_tenant.subdomain}.example.com"
+    get google_auth_path
+    finish_signup(info: @info.merge('sub' => 'reader-google-identity'))
+    assert_redirected_to root_path
+    assert_equal reader.id, session[:user_id]
+    refute_equal approved.tenant_id, reader.tenant_id
+  end
+
   private
 
   def start_signup

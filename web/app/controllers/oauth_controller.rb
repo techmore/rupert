@@ -82,6 +82,13 @@ class OauthController < ApplicationController
         alert: "Your Google account (#{email}) isn't on an allowed domain. Ask an admin to allow #{email.split('@').last}.")
     end
 
+    # Newly approved workspace owners are bound to the verified Google
+    # identity submitted for approval, even if their mailbox is reassigned.
+    approved_signup = WorkspaceSignup.find_by(tenant_id: tenant.id, email: email, status: 'approved')
+    if approved_signup && approved_signup.google_subject != info['sub']
+      raise GoogleOauthService::ExchangeError, 'This Google identity does not match the approved workspace owner. Contact the platform owner.'
+    end
+
     user = find_or_create_user!(email, info, tenant)
     unless user&.active?
       AccessLogger.record(
