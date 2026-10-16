@@ -9,6 +9,9 @@ class SyncFailure
     'configuration' => ['Setup incomplete', 'Review the account, environment and required saved fields. Save only intended changes, then check read access.'],
     'credentials' => ['Credentials rejected', 'Check this connection’s saved login or integration credentials and environment. Do not rotate a shared payment key without coordinating its consumers.'],
     'entitlement' => ['Read permission denied', 'Ask the vendor or account administrator to confirm this account’s reporting scope. A portal login does not establish API entitlement.'],
+    'access' => ['Vendor access denied', 'Review the intended account, environment, saved authentication and granted read scopes with the account administrator. The vendor code alone does not distinguish all of these causes.'],
+    'vendor' => ['Vendor service failure', 'Check the vendor’s service status and retry after recovery. Keep the current credentials and previous snapshots.'],
+    'optional_reports' => ['Some optional reports unavailable', 'Review the report page for unavailable kinds and confirm vendor entitlement or collection compatibility. Missing optional reports do not mean zero activity.'],
     'verification' => ['Additional sign-in verification', 'Complete the vendor’s sign-in verification, check read access, then deliberately review the existing schedule.'],
     'identity' => ['Source account mismatch', 'Review the intended company or merchant in setup. Keep previous snapshots; do not import a different account to clear this failure.'],
     'data_contract' => ['Unexpected or incomplete source data', 'Keep the previous snapshots. Ask the operator to inspect the connector contract, pagination and export validation before retrying.'],
@@ -26,19 +29,27 @@ class SyncFailure
     invalid: 'configuration', login: 'credentials', unauthorized: 'credentials',
     forbidden: 'entitlement', unavailable: 'entitlement', verification: 'verification',
     identity: 'identity', response: 'data_contract', rate_limit: 'rate_limit',
-    limit: 'read_limit', network: 'network', stale: 'setup_changed', changed: 'setup_changed'
+    limit: 'read_limit', network: 'network', stale: 'setup_changed', changed: 'setup_changed',
+    vendor: 'vendor', access: 'access'
   }.freeze
 
   def self.category(error)
     return 'encryption' if error.is_a?(ActiveRecord::Encryption::Errors::Decryption)
     return 'storage' if error.is_a?(ActiveRecord::ActiveRecordError)
     return 'timeout' if error.is_a?(Timeout::Error)
+    return 'data_contract' if error.is_a?(JSON::ParserError)
     return 'network' if error.is_a?(SocketError) || error.is_a?(OpenSSL::SSL::SSLError)
 
     known = [Ctrax::Client::Error, SwipesimpleWeb::Client::Error, IrisReporting::Client::Error,
-      IrisReporting::WebClient::Error, AuthorizeNetReporting::Client::Error]
+      IrisReporting::WebClient::Error, AuthorizeNetReporting::Client::Error, ShopifyClient::Error, SquareClient::Error]
     return REASONS.fetch(error.reason, 'unknown') if known.any? { |type| error.is_a?(type) } && error.respond_to?(:reason)
 
     'unknown'
+  end
+
+  def self.http_reason(code)
+    { '401' => :unauthorized, '403' => :forbidden, '429' => :rate_limit }.fetch(code.to_s) do
+      code.to_i >= 500 ? :vendor : :response
+    end
   end
 end

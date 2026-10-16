@@ -37,15 +37,18 @@ class SourceHealth
     scope = scope.where(source: @source[:key], operation: operation)
     # Queue/start order wins over completion order: a slow older failure must
     # not replace a newer successful acquisition.
-    history = scope.order(queued_at: :desc, id: :desc).limit(5).to_a
+    history = scope.order(Arel.sql('COALESCE(started_at, queued_at) DESC'), id: :desc).limit(5).to_a
     latest = history.find { |attempt| attempt.status != 'skipped' }
-    success = scope.where(status: 'succeeded').order(queued_at: :desc, id: :desc).first
-    success_at = success&.finished_at || legacy_success(operation)
+    success = scope.where(status: 'succeeded').order(Arel.sql('COALESCE(started_at, queued_at) DESC'), id: :desc).first
+    success_at = success&.finished_at
+    legacy_at = legacy_success(operation)
     queue = SyncQueueHealth.execution(latest)
     enabled = enabled?(operation)
     category = latest&.error_category
     category = 'worker' if %w[queued running].include?(latest&.status) && queue[:state] == 'Failed in worker'
-    state = if category && latest && (!success || (order_key(latest) <=> order_key(success)).positive?)
+    failure_current = category && latest && (success ? (order_key(latest) <=> order_key(success)).positive? : legacy_at.nil? || (latest.started_at || latest.queued_at) > legacy_at)
+    category = nil unless failure_current
+    state = if failure_current
       'Failed'
     elsif latest&.status == 'running'
       latest.started_at < 45.minutes.ago ? 'Read stalled' : 'Reading'
@@ -53,12 +56,18 @@ class SourceHealth
       latest.queued_at < 15.minutes.ago && !queue[:retry_at] ? 'Queue delayed' : 'Queued'
     elsif !enabled
       'Automatic reads paused'
+    elsif success_at.nil? && legacy_at && legacy_at < freshness.ago
+      'Historical evidence stale'
     elsif success_at.nil?
       'Awaiting observed success'
     elsif success_at < freshness.ago
       'Stale'
     else
       'Current acquisition'
+    end
+    if state == 'Current acquisition' && @source[:key] == 'bank' && operation == 'reporting' && @connection&.last_report_status == 'partial'
+      state = 'Partial acquisition'
+      category = 'optional_reports'
     end
     # Legacy badges identify symptoms but cannot establish an exact failure
     # reason or attempt timestamp. Never classify saved free-text messages.
@@ -70,15 +79,20 @@ class SourceHealth
     {
       operation: operation, label: label, state: state, category: category,
       reason: title, action: action, enabled: enabled,
-      alert: ['Failed', 'Read stalled', 'Queue delayed', 'Stale', 'Legacy failure · cause unknown'].include?(state),
+      alert: ['Failed', 'Read stalled', 'Queue delayed', 'Stale', 'Partial acquisition', 'Historical evidence stale', 'Legacy failure · cause unknown'].include?(state),
       last_attempt_at: latest&.started_at, queued_at: latest&.queued_at,
-      last_success_at: success_at, source_at: source_time(operation),
+      last_success_at: success_at, legacy_at: legacy_at, source_at: source_time(operation),
       source_event_at: nil, coverage: coverage(operation),
       worker: SyncQueueHealth.worker, queue: queue,
       reference: latest ? "SYNC-#{latest.id}" : nil,
       history: history.map { |attempt| receipt(attempt) },
       transition: transition(history)
     }
+  rescue ActiveRecord::Encryption::Errors::Decryption
+    title, action = SyncFailure::GUIDANCE.fetch('encryption')
+    { operation: operation, label: label, state: 'Saved credentials unreadable', alert: true,
+      reason: title, action: action, history: [],
+      worker: { state: 'Unknown', last_at: nil }, queue: { state: 'Unknown', retry_at: nil } }
   rescue ActiveRecord::ActiveRecordError
     { operation: operation, label: label, state: 'Diagnostics unavailable', alert: true,
       reason: 'Local diagnostic history could not be read',
@@ -87,7 +101,7 @@ class SourceHealth
   end
 
   def order_key(attempt)
-    [attempt.queued_at.to_f, attempt.id]
+    [(attempt.started_at || attempt.queued_at).to_f, attempt.id]
   end
 
   def enabled?(operation)
@@ -139,7 +153,7 @@ class SourceHealth
     return SyncFailure::GUIDANCE.fetch(category) if category
 
     case state
-    when 'Stale' then ['No recent successful acquisition', 'Check the worker heartbeat and queue, then try one read after checking access. Do not change credentials just because source data is stale.']
+    when 'Stale', 'Historical evidence stale' then ['No recent successful acquisition evidence', 'Check the worker heartbeat and queue, then try one read after checking access. Do not change credentials just because source data is stale.']
     when 'Read stalled', 'Queue delayed' then ['Job progress needs review', 'Ask the operator to inspect the worker and queue using the support reference. Do not queue repeated reads or change credentials.']
     when 'Automatic reads paused' then ['Existing schedule is paused', 'Review why it was paused and check read access. Enable its schedule only when intended; this diagnostic page never enables it.']
     when 'Current acquisition' then ['Recent successful acquisition', 'Review source timestamps and coverage separately. A successful replay does not prove new sales or complete history.']

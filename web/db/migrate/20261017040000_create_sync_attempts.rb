@@ -12,7 +12,7 @@ class CreateSyncAttempts < ActiveRecord::Migration[8.1]
       t.datetime :finished_at
       t.timestamps
     end
-    add_foreign_key :sync_attempts, :tenants
+    add_foreign_key :sync_attempts, :tenants, on_delete: :cascade
     add_index :sync_attempts, [:tenant_id, :source, :operation, :queued_at], name: 'idx_sync_attempts_source_history'
     add_index :sync_attempts, :active_job_id
   end

@@ -39,6 +39,16 @@ class DataRetentionTest < ActiveSupport::TestCase
     assert_operator totals['LedgerEntry'], :>=, 1
   end
 
+  test 'diagnostic retention prunes only old receipts in the current workspace' do
+    old = SyncAttempt.create!(source: 'shopify', operation: 'catalog', status: 'succeeded', queued_at: 100.days.ago)
+    fresh = SyncAttempt.create!(source: 'shopify', operation: 'catalog', status: 'succeeded', queued_at: 1.day.ago)
+    platform = SyncAttempt.unscoped.create!(source: 'google_backup', operation: 'backup', status: 'succeeded', queued_at: 100.days.ago)
+    assert_equal 1, DataRetention.prune_all!['SyncAttempt']
+    refute SyncAttempt.exists?(old.id)
+    assert SyncAttempt.exists?(fresh.id)
+    assert SyncAttempt.unscoped.exists?(platform.id)
+  end
+
   test 'respects tenant isolation' do
     other = Tenant.create!(name: 'Other Shop', subdomain: 'other-retention')
     Current.tenant = other

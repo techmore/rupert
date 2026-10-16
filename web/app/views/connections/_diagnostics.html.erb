@@ -3,7 +3,7 @@
     <div class="flex flex-wrap items-center justify-between gap-2"><h4 class="text-sm font-semibold"><%= health[:label] %></h4><span class="<%= health[:alert] ? 'pill-rose' : 'pill-taupe' %>"><%= health[:state] %></span></div>
     <div <%= 'role=alert' if health[:alert] %> class="text-sm text-mocha"><strong><%= health[:reason] %>.</strong> <%= health[:action] %></div>
     <dl class="grid gap-2 text-xs text-mocha">
-      <% { 'Last attempt' => health[:last_attempt_at], 'Last successful acquisition' => health[:last_success_at], 'Stored source / export timestamp' => health[:source_at], 'Source event coverage watermark' => health[:source_event_at] }.each do |label, time| %>
+      <% { 'Last attempt' => health[:last_attempt_at], 'Last successful acquisition' => health[:last_success_at], 'Legacy success evidence · connector timestamp' => health[:legacy_at], 'Stored source / export timestamp' => health[:source_at], 'Source event coverage watermark' => health[:source_event_at] }.each do |label, time| %>
         <div><dt class="font-semibold"><%= label %></dt><dd><% if time %><time datetime="<%= time.iso8601 %>"><%= l(time.in_time_zone, format: :short) %></time><% else %>Not recorded<% end %></dd></div>
       <% end %>
       <div><dt class="font-semibold">Queue</dt><dd><%= health.dig(:queue, :state) %><% if health.dig(:queue, :retry_at) %> · scheduled execution <time datetime="<%= health.dig(:queue, :retry_at).iso8601 %>"><%= l(health.dig(:queue, :retry_at).in_time_zone, format: :short) %></time><% end %></dd></div>

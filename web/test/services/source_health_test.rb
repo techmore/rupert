@@ -79,7 +79,7 @@ class SourceHealthTest < ActiveSupport::TestCase
     receipt('failed', time: 2.minutes.ago, source: 'ctrax', operation: 'sales', category: 'data_contract')
     Ctrax::Client.stubs(:valid_credentials?).returns(true)
     PosConnection.create!(provider: 'ctrax', environment: 'production', vendor_approved: true,
-      hourly_sync_enabled: true, credentials_json: {api_url: 'https://example.api.cannatrax.net', api_username: 'synthetic', api_password: 'synthetic'}.to_json)
+      hourly_sync_enabled: true, credentials_json: { api_url: 'https://example.api.cannatrax.net', api_username: 'synthetic', api_password: 'synthetic' }.to_json)
     states = SourceHealth.for(key: 'ctrax', ready: true)
     assert_equal 'Current acquisition', states.first[:state]
     assert_equal 'Failed', states.last[:state]
@@ -92,5 +92,16 @@ class SourceHealthTest < ActiveSupport::TestCase
     assert_empty health[:history]
     refute_includes health.to_json, "SYNC-#{row.id}"
     assert_empty SourceHealth.for(key: 'google_backup')
+  end
+
+  test 'partial processor acquisition is distinguished from full availability' do
+    connection = Struct.new(:reporting_enabled, :reporting_auth_mode, :last_reported_at, :last_report_status).new(true, 'api_key', Time.current, 'partial')
+    PosConnection.stubs(:find_by).returns(connection)
+    receipt('succeeded', time: 1.minute.ago, source: 'bank', operation: 'reporting')
+    state = health(source: 'bank')
+    assert_equal 'Partial acquisition', state[:state]
+    assert_equal 'optional_reports', state[:category]
+    assert state[:alert]
+    assert_includes state[:action], 'do not mean zero'
   end
 end
