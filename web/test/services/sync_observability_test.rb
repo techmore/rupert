@@ -89,7 +89,7 @@ class SyncObservabilityTest < ActiveSupport::TestCase
     connection = PosConnection.create!(provider: 'swipesimple', environment: 'production', account_reference: '42',
       vendor_approved: true, reporting_enabled: true,
       credentials_json: { web_email: 'synthetic@example.com', web_password: 'synthetic-private-password' }.to_json)
-    before = connection.attributes_before_type_cast
+    before = connection.reload.attributes_before_type_cast
     assert_raises(RuntimeError) { SyncObservability.observe('swipesimple', 'web') { raise 'synthetic-failure' } }
     assert_equal before, connection.reload.attributes_before_type_cast
   end
