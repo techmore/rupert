@@ -1,5 +1,9 @@
 # Shopify app development
 
+## Authorize.net reporting continuity
+
+Read `docs/ops/authorize-net-api-investigation.md` and `docs/ops/authorize-net-reporting.md` before continuing gateway reporting or commission matching. Live setup and syncing remain paused by the owner as of 2026-10-15. Portal PIN verification is distinct from server API authentication; existing keys and live API/webhook access remain unverified. This investigation authorizes no activation, key rotation or payment operation. Keep merchant identifiers, credentials, exports and browser sessions out of public Git.
+
 ## NAB / IRIS reporting continuity
 
 Read `docs/ops/iris-reporting.md` before continuing IRIS work. Use its verified tenant OpenAPI contract, not the older SDK deposit examples. The merchant portal login has no visible API Settings tab; live API access and native Health Center CSV bytes remain unverified. Store secrets only in encrypted connection settings. Keep real MIDs, statements, report exports and session data out of public Git. Reports and monthly summaries are separate tenant-scoped snapshots; never sum overlapping windows or create duplicate sales from them.
