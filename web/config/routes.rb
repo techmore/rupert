@@ -1,6 +1,15 @@
 # frozen_string_literal: true
 
 Rails.application.routes.draw do
+  resources :daily_reconciliations, only: %i[index create] do
+    member { get :document }
+    collection do
+      post :archive
+      post :review
+      post :withdraw
+      get 'native_document/:source/:id', action: :native_document, as: :native_document
+    end
+  end
   root to: 'home#index'
   post '/source_syncs/:source', to: 'source_syncs#create', as: :source_sync
   resources :authorize_net_portal_exports, only: %i[index create] do
@@ -293,6 +302,9 @@ Rails.application.routes.draw do
   get '/activity', to: 'activity#index', as: :activity
   resources :access_logs, only: :index
   get '/live/sync_status', to: 'live#sync_status'
+  resources :authorize_net_sale_links, only: %i[index create] do
+    member { post :revoke }
+  end
   get '/live/commissions', to: 'live_commissions#show', as: :live_commissions
   post '/webhooks/authorize_net/:connection_id', to: 'authorize_net_webhooks#create', as: :authorize_net_webhook
 
