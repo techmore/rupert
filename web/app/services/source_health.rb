@@ -69,6 +69,10 @@ class SourceHealth
       state = 'Partial acquisition'
       category = 'optional_reports'
     end
+    if @source[:badge] == 'Credentials unreadable'
+      state = 'Saved credentials unreadable'
+      category = 'encryption'
+    end
     # Legacy badges identify symptoms but cannot establish an exact failure
     # reason or attempt timestamp. Never classify saved free-text messages.
     if latest.nil? && %w[Error Needs\ login].include?(@source[:badge])
@@ -79,7 +83,7 @@ class SourceHealth
     {
       operation: operation, label: label, state: state, category: category,
       reason: title, action: action, enabled: enabled,
-      alert: ['Failed', 'Read stalled', 'Queue delayed', 'Stale', 'Partial acquisition', 'Historical evidence stale', 'Legacy failure · cause unknown'].include?(state),
+      alert: ['Failed', 'Read stalled', 'Queue delayed', 'Stale', 'Partial acquisition', 'Saved credentials unreadable', 'Historical evidence stale', 'Legacy failure · cause unknown'].include?(state),
       last_attempt_at: latest&.started_at, queued_at: latest&.queued_at,
       last_success_at: success_at, legacy_at: legacy_at, source_at: source_time(operation),
       source_event_at: nil, coverage: coverage(operation),

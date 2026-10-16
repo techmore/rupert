@@ -5,6 +5,7 @@ class ConnectionControlCenter
   SOURCE_SETUP = { 'ctrax' => 'ctrax', 'swipesimple' => 'swipesimple',
     'authorize_net' => 'authorize_net_reporting', 'bank' => 'iris_reporting' }.freeze
   NEXT_STEPS = {
+    'Credentials unreadable' => 'Ask the platform operator to restore the original encryption keys. Keep saved credentials and schedules unchanged.',
     'Needs access' => 'Open setup, obtain the correct account access, save credentials, then check read access.',
     'Needs login' => 'Open login setup, restore website sign-in and complete any additional verification with the vendor.',
     'Needs connection' => 'Ask the platform operator to complete the approved backup connection.',

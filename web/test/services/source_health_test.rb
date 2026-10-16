@@ -115,4 +115,18 @@ class SourceHealthTest < ActiveSupport::TestCase
     assert_nil state[:last_success_at]
     assert_equal connection.last_reported_at, state[:legacy_at]
   end
+
+  test 'one undecryptable source does not hide unrelated source health' do
+    SourceSyncStatus.any_instance.stubs(:ctrax).raises(ActiveRecord::Encryption::Errors::Decryption.new('private-error'))
+    sources = SourceSyncStatus.all(include_platform: false)
+    ctrax = sources.find { |source| source[:key] == 'ctrax' }
+    assert_equal 'Credentials unreadable', ctrax[:badge]
+    assert_equal 5, sources.size
+    assert sources.any? { |source| source[:key] == 'shopify' }
+    refute_includes sources.to_json, 'private-error'
+    state = SourceHealth.for(ctrax).first
+    assert_equal 'encryption', state[:category]
+    assert state[:alert]
+    assert_includes state[:action], 'original encryption keys'
+  end
 end
