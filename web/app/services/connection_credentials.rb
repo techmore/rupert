@@ -19,7 +19,7 @@ class ConnectionCredentials
       ['AUTHORIZE_NET_CLIENT_KEY', 'Public client key', true], ['AUTHORIZE_NET_SANDBOX', 'Sandbox checkout', false]
     ],
     'buzz' => [
-      ['BUZZ_RELAY_URL', 'Relay URL', false], ['BUZZ_CHANNEL', 'Channel', false],
+      ['BUZZ_RELAY_URL', 'Relay URL', true], ['BUZZ_CHANNEL', 'Channel', false],
       ['BUZZ_PRIVATE_KEY', 'Agent private key', true], ['BUZZ_ANNOUNCEMENTS_CHANNEL', 'Announcements channel (optional)', false]
     ],
     'google_sign_in' => [
