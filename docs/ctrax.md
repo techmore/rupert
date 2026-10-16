@@ -2,6 +2,8 @@
 
 The owner selected C-Trax inventory as the retail physical-count reference. C-Trax stock is kept separately from Shopify and Square. Approving a physical count records an audit worksheet and does not modify any platform's stock.
 
+For the broader API surface, sales/register/labor/tip possibilities, merchant-versus-settlement boundaries, evidence catalog and phased acceptance plan, read the [C-Trax integration investigation](ctrax-integration-research.md). Observed routes are not a vendor-supported API specification, and attempted production authentication has not yet produced a successful live import.
+
 ## Set up
 
 1. Open **Settings → POS & payment connections → C-Trax** (`/pos_connections/ctrax`).
