@@ -25,7 +25,7 @@
             <% else %>
               <%= tag.input type: field[:secret] ? 'password' : 'text', name: "connection_credentials[values][#{field[:key]}]", id: "credential_#{field[:key]}", value: '', maxlength: 4096, autocomplete: field[:secret] ? 'new-password' : 'off', class: 'input mt-2', placeholder: field[:saved] ? 'Leave blank to keep saved value' : nil %>
             <% end %>
-            <% if field[:saved] %><label class="mt-2 flex items-center gap-2 text-xs text-mocha"><%= check_box_tag 'connection_credentials[clear_keys][]', field[:key], false %> Remove this saved field</label><% end %>
+            <% if field[:saved] %><label class="mt-2 flex items-center gap-2 text-xs text-mocha"><%= check_box_tag 'connection_credentials[clear_keys][]', field[:key], false, id: "clear_#{field[:key]}" %> Remove saved <%= field[:label] %></label><% end %>
           </div>
         <% end %>
         <%= form.submit 'Save credentials', class: 'btn-primary' %>
