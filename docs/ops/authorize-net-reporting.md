@@ -2,6 +2,8 @@
 
 Investigated 2026-10-15. This draft implements gateway reporting in Rupert. Authenticated portal reporting was inspected: settlement reports and transaction detail screens were accessible. This establishes portal visibility only. Live reporting API access remains **unverified** because the existing Transaction Key has not been supplied. No live reporting API calls, merchant setting changes or payment operations were performed. API Login IDs, merchant identifiers, private transaction samples and credentials are excluded from this public guide. C-Trax remains the retail inventory reference.
 
+The [full integration investigation](https://github.com/techmore/rupert/blob/codex/authorize-net-reporting/docs/ops/authorize-net-integration-investigation.md) records access choices, Shopify continuity, financial coverage, polling limits, security boundaries and remaining acceptance work.
+
 ## Access and credentials
 
 The new **POS & payments → Authorize.net reporting** connection is separate from the existing Valmar credential check and the existing `AuthorizeNetClient` checkout adapter. Reporting never calls that payment adapter and never copies secrets into checkout settings.
@@ -46,7 +48,7 @@ Removing credentials disables daily reporting and retains imported provenance. C
 | Settlement batches | Batch ID, settlement UTC time/state, payment method and allowlisted statistics. Batch settlement is not confirmation of a net bank deposit. |
 | Tips | Official transaction-detail schema includes optional `tip.amount`. Import preserves a returned amount; absence stays NULL/Unknown. Actual account/processor population remains unverified. Never infer a tip by subtracting totals. |
 | Customer surcharge | Preserves optional `surcharge.amount`; docs describe processor-specific support. This is a customer charge, not the merchant's processing fee. |
-| Processing fees / payouts | No transaction-detail processing-fee or net-deposit contract was found in the reviewed schema. Not calculated or imported. Reconcile processor statements separately. |
+| Processing fees / payouts | No transaction-detail processing-fee or net-deposit contract was found in the reviewed schema. Not calculated or imported. Gateway billing statements and processor statements can contain fees; those are separate sources requiring their own verified import contracts. |
 | Currency | Detail lacks a per-payment currency. Uses merchant currency only when exactly one is enabled; otherwise NULL/Unknown, excluded from totals. |
 | Provenance | Tenant + sandbox/production + verified Gateway ID + source transaction/batch ID are uniquely indexed. Retains original refund reference, source type/status, UTC dates, observed time and status-change history. No raw response/customer/card/contact data is stored. |
 | Replay / concurrency | Fetches all requested data before an atomic local write; unchanged replays update existing observations. Setup version guards and unique indexes prevent concurrent/stale duplicate imports. OAuth credential rotation is a separate encrypted write before import. |
@@ -57,7 +59,7 @@ Daily totals reflect the **latest imported state**, not a historical ledger of e
 
 ## Verification
 
-Local validation: 835 SQLite Rails tests / 6,077 assertions passed; all 444 Ruby files passed repository RuboCop. Generated product-site consistency, 19 documentation-page link checks and `git diff --check` passed. PostgreSQL execution is deferred to repository CI.
+Local validation: 835 SQLite Rails tests / 6,077 assertions passed; all 444 Ruby files passed repository RuboCop. Generated product-site consistency, 19 documentation-page link checks and `git diff --check` passed. PostgreSQL and SQLite GitHub CI subsequently passed for the source, combined and current-release guidance drafts.
 
 Official schema and reference were downloaded directly over HTTPS. Synthetic API fixtures test pagination, source IDs, settlement/refund/void transitions, optional tips, exact decimal parsing, merchant mismatch, tenant/environment isolation, atomic failures, setup changes, OAuth read scopes/refresh rotation, bounded TLS transport and sanitized errors. Request/integration tests cover encrypted blank forms, explicit saves, queued imports, read-only permissions and daily totals beyond the display limit. Portal reporting visibility was inspected, but live API entitlement, processor field population, bank deposits and initial OAuth onboarding remain unverified. Existing Transaction Keys are not redisplayed by the portal; obtain the existing key securely from the owner or current checkout integration instead of rotating it during setup.
 

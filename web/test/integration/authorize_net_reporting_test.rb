@@ -30,7 +30,7 @@ class AuthorizeNetReportingIntegrationTest < ActionDispatch::IntegrationTest
     end
     assert_response :redirect
     get @path
-    assert_includes response.body, 'Processing fees are unavailable'
+    assert_includes response.body, 'Processing fees are not imported by this connector'
     post disconnect_pos_connection_path('authorize_net_reporting')
     assert_response :redirect
     connection = PosConnection.find_by!(provider: 'authorize_net_reporting')
