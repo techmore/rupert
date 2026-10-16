@@ -2,6 +2,8 @@
 
 Start here to resume operator rollout: [Derrick's day-to-day readiness and pickup plan](ops/day-to-day-readiness.md). It separates usable daily review workflows from the payment and inventory gates that still block replacing the current systems.
 
+Marketing planning: [Community discovery and influencer CMS](plans/community-and-influencer-marketing.md) covers thread discovery, reply review, group offers, influencer gifting, temporary codes, referral links, and attribution. It is a proposed implementation plan.
+
 | Where | What |
 | --- | --- |
 | `index.html`, `getting-started.html`, `architecture.html`, `modules.html`, `operations.html`, `deployment.html` | The published docs site (GitHub Pages, styled by `assets/style.css`) |
