@@ -1,6 +1,6 @@
 # POS and payment account connections
 
-Reviewed 2026-10-15. This release prepares provider accounts for later setup. It does not claim that any account has been connected or that Rupert can replace the live payment terminal.
+Reviewed 2026-10-15. This release prepares payment-provider accounts and adds a separate read-only C-Trax stock connection. It does not claim that any account has been connected or that Rupert can replace the live payment terminal.
 
 **Start with the plain-English guide:** [who handles a payment, how Valmar and Authorize.net fit, and who to contact](https://techmore.github.io/rupert/payment-basics.html). A gateway is the secure connection from checkout; a processor runs the payment-processing systems. Confirm the existing account arrangement with Valmar before selecting a gateway or buying another service.
 
@@ -14,7 +14,7 @@ The business described C-Trax POS with a PAX terminal and Valmar processing, and
 | --- | --- | --- |
 | Valmar | Select the confirmed Authorize.net or NMI gateway, save encrypted gateway credentials and run an explicit credential/profile check. Other gateway choices retain preparation only. | Confirm the actual Valmar gateway and approved account environment. A check does not enable payment collection or a terminal. |
 | PAX | Terminal model/device reference and developer-access preparation. | Confirm installed payment application, processor and approved SDK/bridge, then use a test terminal. No terminal commands are implemented. |
-| C-Trax | Store/access preparation and official vendor documentation links. | Obtain account-specific Open API authentication, scopes, sample responses and export contract. No speculative endpoint is called. |
+| C-Trax | Encrypted C-Trax user login, optional merchant-list diagnostics, native-ID stock snapshots and opt-in hourly stock reads using the observed Serv 2.0 portal API. See [C-Trax stock setup](https://github.com/techmore/rupert/blob/a48a5977fde56b5892a594d4cd6a3a272c891e1e/docs/ctrax.md). | Verify real account stock access and obtain a supported partner API contract. TRX merchant credentials are separate. Sales, fees and settlements are not imported. |
 | SwipeSimple | Reviewed, validated Rupert line-item CSV import with an exact-file preview and atomic replay-safe local sales. | Convert and reconcile the source report against the supported contract; transaction-only reports may lack item detail. Refunds, split tenders, tax/tips/fees and native API access are not implemented. |
 | KORONA | Encrypted dedicated API credentials and explicit organizational-unit read-access check. | Trial/merchant account, correct region endpoint, approved read permissions; catalog/sales adapters and payment/terminal validation are separate work. |
 | Cova | Encrypted approved integrator onboarding credentials and explicit company-location read-access check. | Approved intended integration use and Onboarding Package; business-data adapters and payment/terminal validation are separate work. |
@@ -51,7 +51,7 @@ A successful check establishes the specific credential or resource access checke
 
 Credential JSON is encrypted with the existing Rails encryption keys and scoped to the tenant. Request logging filters credential containers and raw settings imports; forms and responses prevent caching. Keep existing encryption keys with protected backups so recovery can decrypt saved accounts. The legacy settings cache is keyed by tenant to prevent same-thread context switches from reusing another store's credentials.
 
-The provider request runs outside a database write transaction. Check results use one versioned conditional update, so an in-flight check cannot restore verification after credentials change or are removed. Endpoint restrictions, verified TLS, no proxy/redirect following, short network timeouts and bounded response bodies constrain read checks. No background job or retry silently contacts a provider.
+The provider request runs outside a database write transaction. Check results use one versioned conditional update, so an in-flight check cannot restore verification after credentials change or are removed. Endpoint restrictions, verified TLS, no proxy/redirect following, short network timeouts and bounded response bodies constrain read checks. Saving setup does not run a provider check. C-Trax has a separate, explicitly enabled hourly stock job; its account and permission requirements are documented in the [stock guide](https://github.com/techmore/rupert/blob/a48a5977fde56b5892a594d4cd6a3a272c891e1e/docs/ctrax.md). No automatic payment request or retry is performed.
 
 ## Official provider sources
 

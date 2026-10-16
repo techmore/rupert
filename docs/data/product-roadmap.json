@@ -553,7 +553,7 @@
       "area": "System",
       "name": "POS and payment account setup",
       "status": "Available",
-      "scope": "Tenant-scoped provider setup and encrypted credential/read checks for KORONA/Cova and operator-selected Authorize.net or NMI gateway paths. Valmar is the reported processor; this merchant account's actual gateway is unconfirmed. No payment capture, terminal execution or automatic business-data import.",
+      "scope": "Tenant-scoped encrypted provider setup and credential/read checks for KORONA/Cova, C-Trax user login and operator-selected Authorize.net/NMI paths. C-Trax stock sync is separate from TRX merchant credentials. Payment capture and terminal execution remain unavailable; other provider business-data adapters remain planned.",
       "evidence": "web/app/controllers/pos_connections_controller.rb",
       "phase": "1"
     },
@@ -601,6 +601,15 @@
       "scope": "Named work areas, local accessible icons, permitted-tools disclosures and role-labelled account menus reduce header clutter. Search categories, dashboard widgets/queries and cached responses follow business permissions. Reader defaults exclude personnel/payroll; employee pay/time/leave sections have separate gates. Workspace user/permission administration and host/instance utilities require their respective administrator roles; size-membership edits require settings write. Existing explicit business permission overrides remain supported.",
       "evidence": "web/app/models/module_registry.rb",
       "phase": "0"
+    },
+    {
+      "id": "F64",
+      "area": "Stock",
+      "name": "C-Trax retail stock reference",
+      "status": "Partial",
+      "scope": "Read-only Serv 2.0 portal API connector, native store/variant stock snapshots, missing-SKU count/scanner identity and opt-in hourly production scheduling. Signed, zero and unknown quantities remain distinct. Supported partner API access and real account import verification remain pending; no C-Trax sales, settlement or stock writes.",
+      "evidence": "web/app/services/ctrax/stock_sync.rb",
+      "phase": "1"
     }
   ]
 }
