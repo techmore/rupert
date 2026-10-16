@@ -19,3 +19,6 @@ Rails.application.config.filter_parameters += [/\Aowner_checklist\z/i, /\Aowner_
 
 # Workspace applications contain private organization and applicant references.
 Rails.application.config.filter_parameters += [/\Aworkspace_signup\z/i]
+
+# Uploaded financial reports and merchant references stay out of request logs.
+Rails.application.config.filter_parameters += %i[report_file merchant_number account_reference]
