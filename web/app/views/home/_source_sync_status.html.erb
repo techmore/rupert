@@ -5,7 +5,7 @@
   </div>
   <div class="grid gap-4 md:grid-cols-3">
     <% SourceSyncStatus.all.each do |source| %>
-      <% syncing = %w[Live Syncing Files\ current].include?(source[:badge]) %>
+      <% syncing = %w[Live Healthy Syncing Files\ current].include?(source[:badge]) %>
       <article class="<%= class_names('card card-pad', syncing ? 'source-sync-active' : 'source-sync-inactive') %>" data-source="<%= source[:key] %>">
         <div class="flex items-center justify-between gap-3">
           <h3 class="font-display text-lg text-ink"><%= source[:label] %></h3>
