@@ -36,6 +36,9 @@ class User < ActiveRecord::Base
   ROLE_PERMISSIONS = {
     'super_admin' => ['*'],
     'admin' => [
+      'marketing.read',
+      'marketing.write',
+      'marketing.review',
       'dashboard.read',
       'sales.read',
       'sales.write',
@@ -195,6 +198,7 @@ class User < ActiveRecord::Base
   def self.permission_catalog
     [
       { area: 'Overview', permissions: ['dashboard.read'] },
+      { area: 'Marketing', permissions: ['marketing.read', 'marketing.write', 'marketing.review'] },
       {
         area: 'Commerce',
         permissions: ['sales.read', 'sales.write', 'customers.read', 'customers.write', 'inventory.read',
