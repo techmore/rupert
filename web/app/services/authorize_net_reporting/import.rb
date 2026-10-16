@@ -15,7 +15,9 @@ module AuthorizeNetReporting
       chargeReturnedItemsAmount chargeReturnedItemsCount refundReturnedItemsAmount refundReturnedItemsCount].freeze
 
     def self.call(connection:, from: 7.days.ago, to: Time.current, transaction_id: nil)
-      new(connection).call(from: from, to: to, transaction_id: transaction_id)
+      SyncObservability.observe('authorize_net', transaction_id ? 'events' : 'reporting') do
+        new(connection).call(from: from, to: to, transaction_id: transaction_id)
+      end
     end
 
     def initialize(connection)

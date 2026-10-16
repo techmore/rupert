@@ -2,7 +2,7 @@
 
 class SourceSyncStatus
   FRESH_FOR = 60.minutes
-  ACTIVE_BADGES = ['Live', 'Healthy', 'Syncing', 'Files current', 'Backing up'].freeze
+  ACTIVE_BADGES = ['Live', 'Healthy', 'Syncing', 'Files current', 'Backing up', 'Recent API read'].freeze
 
   def self.all(include_platform: true)
     new.all(include_platform: include_platform)

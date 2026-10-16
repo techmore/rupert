@@ -32,7 +32,8 @@ class ConnectionControlCenter
   def self.sources
     SourceSyncStatus.all(include_platform: platform_admin?).map do |source|
       source.slice(:key, :label, :badge, :last_at, :schedule, :ready, :mode).merge(
-        next_step: NEXT_STEPS.fetch(source[:badge], 'Open setup and review the source before retrying.'))
+        next_step: NEXT_STEPS.fetch(source[:badge], 'Open setup and review the source before retrying.'),
+        diagnostics: SourceHealth.for(source))
     end
   end
 
