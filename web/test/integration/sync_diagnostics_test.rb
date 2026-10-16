@@ -31,4 +31,19 @@ class SyncDiagnosticsTest < ActionDispatch::IntegrationTest
     assert_equal connections, PosConnection.order(:id).map(&:attributes_before_type_cast)
     assert_equal attempts, SyncAttempt.count
   end
+
+  test 'platform backup references are restricted to a freshly authorized operator' do
+    record = SyncAttempt.unscoped.create!(source: 'google_backup', operation: 'backup', status: 'failed',
+      error_category: 'worker', queued_at: 1.minute.ago, started_at: 1.minute.ago, finished_at: Time.current)
+    get connections_path
+    refute_includes response.body, "SYNC-#{record.id}"
+    @user.update!(role: 'super_admin')
+    get connections_path
+    assert_response :success
+    assert_select '[data-connection-source=google_backup]'
+    assert_includes response.body, "SYNC-#{record.id}"
+    @user.update!(role: 'admin')
+    get connections_path
+    refute_includes response.body, "SYNC-#{record.id}"
+  end
 end

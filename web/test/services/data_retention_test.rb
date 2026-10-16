@@ -49,6 +49,16 @@ class DataRetentionTest < ActiveSupport::TestCase
     assert SyncAttempt.unscoped.exists?(platform.id)
   end
 
+  test 'platform diagnostic pruning works on a relation without touching workspace history' do
+    workspace = SyncAttempt.create!(source: 'shopify', operation: 'catalog', status: 'succeeded', queued_at: 100.days.ago)
+    platform = SyncAttempt.unscoped.create!(source: 'google_backup', operation: 'backup', status: 'succeeded', queued_at: 100.days.ago)
+    Current.set(tenant: nil) do
+      assert_equal 1, DataRetention.prune(SyncAttempt.where(source: 'google_backup'), column: 'queued_at', older_than: 90.days.ago)
+    end
+    refute SyncAttempt.unscoped.exists?(platform.id)
+    assert SyncAttempt.exists?(workspace.id)
+  end
+
   test 'respects tenant isolation' do
     other = Tenant.create!(name: 'Other Shop', subdomain: 'other-retention')
     Current.tenant = other

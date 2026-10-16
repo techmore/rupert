@@ -84,4 +84,13 @@ class SyncObservabilityTest < ActiveSupport::TestCase
     assert_nil row.tenant_id
     assert_empty SyncAttempt.where(source: 'google_backup')
   end
+
+  test 'diagnostic failure does not alter encrypted provider credentials setup version or schedule flags' do
+    connection = PosConnection.create!(provider: 'swipesimple', environment: 'production', account_reference: '42',
+      vendor_approved: true, reporting_enabled: true,
+      credentials_json: { web_email: 'synthetic@example.com', web_password: 'synthetic-private-password' }.to_json)
+    before = connection.attributes_before_type_cast
+    assert_raises(RuntimeError) { SyncObservability.observe('swipesimple', 'web') { raise 'synthetic-failure' } }
+    assert_equal before, connection.reload.attributes_before_type_cast
+  end
 end
