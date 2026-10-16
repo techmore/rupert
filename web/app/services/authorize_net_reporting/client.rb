@@ -178,7 +178,7 @@ module AuthorizeNetReporting
       http.start do |session|
         session.request(req) do |res|
           if res.code != '200'
-            reason = { '401' => :unauthorized, '403' => :forbidden, '429' => :rate_limit }.fetch(res.code, :network)
+            reason = SyncFailure.http_reason(res.code)
             raise Error.new('Reporting request failed. Check access and try again.', reason: reason)
           end
           raise Error.new('Reporting response exceeded the size limit.', reason: :limit) if res['Content-Length'].to_i > MAX_BYTES

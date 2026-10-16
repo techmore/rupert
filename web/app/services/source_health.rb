@@ -46,7 +46,7 @@ class SourceHealth
     enabled = enabled?(operation)
     category = latest&.error_category
     category = 'worker' if %w[queued running].include?(latest&.status) && queue[:state] == 'Failed in worker'
-    failure_current = category && latest && (success ? (order_key(latest) <=> order_key(success)).positive? : legacy_at.nil? || (latest.started_at || latest.queued_at) > legacy_at)
+    failure_current = category && latest && (!success || (order_key(latest) <=> order_key(success)).positive?)
     category = nil unless failure_current
     state = if failure_current
       'Failed'

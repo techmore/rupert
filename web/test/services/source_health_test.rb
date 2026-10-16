@@ -104,4 +104,15 @@ class SourceHealthTest < ActiveSupport::TestCase
     assert state[:alert]
     assert_includes state[:action], 'do not mean zero'
   end
+
+  test 'connector timestamps cannot hide a first instrumented failed attempt' do
+    connection = Struct.new(:reporting_enabled, :reporting_auth_mode, :last_reported_at, :last_report_status).new(true, 'api_key', Time.current, 'failed')
+    PosConnection.stubs(:find_by).returns(connection)
+    receipt('failed', time: 1.minute.ago, source: 'bank', operation: 'reporting', category: 'data_contract')
+    state = health(source: 'bank')
+    assert_equal 'Failed', state[:state]
+    assert_equal 'data_contract', state[:category]
+    assert_nil state[:last_success_at]
+    assert_equal connection.last_reported_at, state[:legacy_at]
+  end
 end
