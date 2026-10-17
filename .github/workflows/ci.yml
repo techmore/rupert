@@ -62,7 +62,7 @@ jobs:
         run: bundle install
 
       - name: Run RuboCop
-        run: bundle exec rubocop --parallel -c ./rubocop.yml
+        run: bundle exec rubocop --parallel -c ./rubocop.yml --format github
 
       - name: Prepare test database
         run: bin/rails db:prepare
@@ -74,4 +74,14 @@ jobs:
         run: bin/rails assets:precompile
 
       - name: Run tests
-        run: bin/rails test
+        shell: bash
+        run: |
+          set +e
+          bin/rails test > t.log 2>&1
+          status=$?
+          tail -40 t.log
+          if [ $status -ne 0 ]; then
+            body=$(grep -E -A14 "(Failure|Error):" t.log | head -400 | sed ':a;N;$!ba;s/%/%25/g;s/\r//g;s/\n/%0A/g')
+            echo "::error title=tests::${body}"
+          fi
+          exit $status
