@@ -11,3 +11,5 @@ bundle exec rails 'timesheets:demo[worker@example.com,workspace,reviewer@example
 ```
 
 The task requires existing active accounts and one linked worker. It creates 40-hour and 38-hour fictional weeks, ten labeled entries, an assignment, and submission audit events. Re-running preserves existing demo reviews; an occupied non-demo period or conflicting assignment aborts the whole transaction. It creates no pay rates, payslips, clock shifts, or provider transactions. Neither migrations nor sign-in provision demo data.
+
+The additive migration is intentionally irreversible: removing the marker could turn fictional hours into payable records. Keep the exclusion code in every later release. Before any rollback to older code, remove the explicitly identified demo records under the deployment lock and verify that no demo hours remain.
