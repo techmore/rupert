@@ -25,7 +25,8 @@ class BankConnectionsController < AuthenticatedController
       environment = params.require(:bank_connection).fetch(:environment)
       values = params.require(:bank_connection).permit(:client_id, :secret).to_h.reject { |_, value| value.blank? }
       old = @connection.environment == environment ? @connection.credentials : {}
-      @connection.update!(environment: environment, credentials_json: old.merge(values).to_json, last_error_code: nil)
+      @connection.update!(environment: environment, credentials_json: old.merge(values).to_json, last_error_code: nil,
+        consent_version: @connection.consent_version + 1)
     end
     session.delete(:wells_fargo_link)
     ActivityLogger.log('bank_connection_configured', details: @connection.environment)
@@ -50,7 +51,7 @@ class BankConnectionsController < AuthenticatedController
       result = @connection.client.call('link/token/create', **body)
       session[:wells_fargo_link] = { 'token' => result.fetch('link_token'), 'tenant' => Current.tenant_id,
         'user' => Current.user.id, 'expires' => 30.minutes.from_now.to_i, 'mode' => mode, 'item' => @connection.item_id,
-        'environment' => @connection.environment }
+        'environment' => @connection.environment, 'consent_version' => @connection.consent_version }
       render json: { link_token: result.fetch('link_token') }
     end
   end
@@ -80,6 +81,7 @@ class BankConnectionsController < AuthenticatedController
           raise
         end
       end
+      @connection.update!(consent_version: @connection.consent_version + 1)
     end
     session.delete(:wells_fargo_link)
     BankFeedSyncJob.perform_later(Current.tenant_id)
@@ -96,7 +98,8 @@ class BankConnectionsController < AuthenticatedController
   def disconnect
     # Stop local pulls even if Plaid is temporarily unable to revoke access.
     # Retain the encrypted token on failure so revocation can be retried.
-    @connection.with_lock { @connection.update!(sync_enabled: false) }
+    @connection.with_lock { @connection.update!(sync_enabled: false, consent_version: @connection.consent_version + 1) }
+    session.delete(:wells_fargo_link)
     @connection.with_lock do
       @connection.client.call('item/remove', access_token: @connection.access_token) if @connection.connected?
       @connection.update!(access_token: nil, item_id: nil, cursor: nil, sync_enabled: false, last_error_code: nil)
@@ -128,7 +131,7 @@ class BankConnectionsController < AuthenticatedController
     flow = session[:wells_fargo_link]
     valid = flow.is_a?(Hash) && flow['tenant'] == Current.tenant_id && flow['user'] == Current.user.id &&
       flow['expires'].to_i > Time.current.to_i && flow['environment'] == @connection.environment &&
-      flow['item'] == @connection.item_id
+      flow['item'] == @connection.item_id && flow['consent_version'] == @connection.consent_version
     raise BankFeed::PlaidClient::Error.new('LINK_EXPIRED') unless valid
     flow
   end

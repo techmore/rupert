@@ -37,6 +37,7 @@ class BankConnectionsTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, 'client-private'
     assert_not_includes response.body, 'secret-private'
     assert_equal 'private, no-store', response.headers['Cache-Control']
+    assert_select 'nav[aria-label="Finance workspace"] a[href=?][aria-current="page"]', bank_connection_path
     get bank_statements_path
     assert_select 'a[href=?]', bank_connection_path
   end
@@ -171,5 +172,41 @@ class BankConnectionsTest < ActionDispatch::IntegrationTest
     assert_includes response.parsed_body['error'], 'LINK_EXPIRED'
     assert_not_requested(:post, 'https://sandbox.plaid.com/item/public_token/exchange')
     assert_not @connection.reload.connected?
+  end
+
+  test 'disconnect invalidates a pending connection in another browser session' do
+    begin_link
+    pending_cookie = cookies.to_hash
+    delete disconnect_bank_connection_path
+    pending_cookie.each { |key, value| cookies[key] = value }
+    post exchange_bank_connection_path, params: { public_token: 'public-private' }, as: :json
+    assert_response :unprocessable_entity
+    assert_includes response.parsed_body['error'], 'LINK_EXPIRED'
+    assert_not @connection.reload.connected?
+    assert_not_requested(:post, 'https://sandbox.plaid.com/item/public_token/exchange')
+  end
+
+  test 'failed revocation invalidates an open update-mode flow in another session' do
+    @connection.update!(access_token: 'access-private', item_id: 'item-1', sync_enabled: true)
+    begin_link
+    pending_cookie = cookies.to_hash
+    stub_request(:post, 'https://sandbox.plaid.com/item/remove').to_return(status: 500, body: { error_code: 'INTERNAL_SERVER_ERROR' }.to_json)
+    delete disconnect_bank_connection_path
+    pending_cookie.each { |key, value| cookies[key] = value }
+    post exchange_bank_connection_path, as: :json
+    assert_response :unprocessable_entity
+    assert_includes response.parsed_body['error'], 'LINK_EXPIRED'
+    assert_not @connection.reload.sync_enabled?
+    assert_not_requested(:post, 'https://sandbox.plaid.com/item/get')
+  end
+
+  test 'changing credentials invalidates an open connect flow in another session' do
+    begin_link
+    pending_cookie = cookies.to_hash
+    patch bank_connection_path, params: { bank_connection: { environment: 'sandbox', client_id: 'replacement', secret: 'replacement' } }
+    pending_cookie.each { |key, value| cookies[key] = value }
+    post exchange_bank_connection_path, params: { public_token: 'public-private' }, as: :json
+    assert_response :unprocessable_entity
+    assert_not_requested(:post, 'https://sandbox.plaid.com/item/public_token/exchange')
   end
 end

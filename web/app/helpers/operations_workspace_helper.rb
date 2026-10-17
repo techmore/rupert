@@ -22,6 +22,7 @@ module OperationsWorkspaceHelper
        ['Book approvals', book_approvals_path, 'reports.read', 'book_approvals', 'Daily & weekly'],
        ['Follow-ups', reconciliation_follow_ups_path(day: date), 'reports.read', 'reconciliation_follow_ups', 'Daily & weekly'],
        ['Bank statements', bank_statements_path, 'finance.read', 'bank_statements', 'Records'],
+       ['Wells Fargo', bank_connection_path, 'finance.read', 'bank_connections', 'Records'],
        ['Source documents', reconciliation_documents_path(from: date, to: date, close_day: date), 'reports.read', 'reconciliation_documents', 'Records'],
        ['Accounts', finance_accounts_path, 'finance.read', 'finance/accounts', 'Records'],
        ['Expenses', finance_expenses_path, 'finance.read', 'finance/expenses', 'Records'],
@@ -52,7 +53,7 @@ module OperationsWorkspaceHelper
   end
 
   def operations_workspace_page?
-    controller_path.start_with?('finance/') || %w[books_desks period_locks sales inventory inventory_counts inventory_count_scans inventory_exceptions reconcile ledger financial_close business_snapshots bank_statements book_approvals books_check daily_reconciliations reconciliation_follow_ups reconciliation_documents money_reconciliations cash_forecasts].include?(controller_path)
+    controller_path.start_with?('finance/') || %w[books_desks period_locks sales inventory inventory_counts inventory_count_scans inventory_exceptions reconcile ledger financial_close business_snapshots bank_statements bank_connections book_approvals books_check daily_reconciliations reconciliation_follow_ups reconciliation_documents money_reconciliations cash_forecasts].include?(controller_path)
   end
 
   def operations_source_name(value)
