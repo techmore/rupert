@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Share your screen</title><link rel="stylesheet" href="/share.css"></head>
+<body>
+<div id="banner" role="alert" hidden><span id="bannertext"></span><button id="stop">Stop sharing</button></div>
+<main>
+<h1>Share your screen</h1>
+<p class="mut">Nothing is shared until you click <b>Start sharing</b> and approve your browser's own screen picker. Each viewer must also be approved by you. Stopping ends the share and every link.</p>
+<div id="login" class="card" hidden>
+<b>Sign in</b><label>Email<input id="email" type="email" autocomplete="username"></label>
+<label>Password<input id="pw" type="password" autocomplete="current-password"></label>
+<button id="loginbtn" class="primary">Sign in</button> <span id="loginerr" class="err"></span></div>
+<div id="app" hidden>
+<div class="card"><b>1. Make a link</b>
+<p class="mut">Short-lived and single viewer by default. Send it only to the person you mean to show.</p>
+<button id="mklink">Create link (30 min)</button>
+<div id="links"></div></div>
+<div class="card"><b>2. Start sharing</b>
+<p class="mut">Your browser will ask what to share (screen, window or tab). Choose, or cancel to share nothing.</p>
+<button id="start" class="primary">Start sharing</button> <span id="msg" class="err"></span></div>
+<div class="card"><b>Viewers</b><div id="viewers" class="mut">None yet.</div></div>
+</div></main>
+<script src="/share.js"></script></body></html>

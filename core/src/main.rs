@@ -8,6 +8,7 @@ mod crypto;
 mod feed;
 mod hooks;
 mod migrate;
+mod share;
 mod sync;
 mod tenants;
 mod upstream;
@@ -253,6 +254,9 @@ async fn run() {
     if std::env::var("RUPERT_SCHEDULER").as_deref() != Ok("0") {
         tokio::spawn(sync::scheduler(app.clone()));
     }
+    if share::enabled() {
+        tokio::spawn(share::janitor(app.clone()));
+    }
     let r = Router::new()
         .route("/healthz", get(|| async { "ok" }))
         .route("/api/v1/item", get(get_item).post(put_item))
@@ -293,6 +297,7 @@ async fn run() {
         .route("/api/v1/sync/{source}", post(sync::trigger))
         .route("/api/v1/health", get(sync::health))
         .merge(auth::routes())
+        .merge(share::routes())
         .layer(axum::middleware::from_fn(access_log))
         .with_state(app.clone());
     let addr = std::env::var("RUPERT_LISTEN").unwrap_or_else(|_| "127.0.0.1:8799".into());

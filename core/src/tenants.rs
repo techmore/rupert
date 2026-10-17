@@ -265,6 +265,7 @@ pub struct Registry {
     pub shutdown: tokio::sync::watch::Sender<bool>,
     pub hook_debounce: Mutex<std::collections::HashMap<(String, String), i64>>,
     pub sse_max: usize,
+    pub share: crate::share::ShareState,
     buses: Cache<String, broadcast::Sender<Arc<crate::feed::Ev>>>,
 }
 
@@ -297,6 +298,7 @@ impl Registry {
             hook_sem: Arc::new(Semaphore::new(4)),
             shutdown: tokio::sync::watch::channel(false).0,
             hook_debounce: Mutex::new(Default::default()),
+            share: crate::share::ShareState::new(),
             sse_max: std::env::var("RUPERT_SSE_MAX")
                 .ok()
                 .and_then(|v| v.parse().ok())
