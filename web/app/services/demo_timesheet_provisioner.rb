@@ -25,7 +25,14 @@ class DemoTimesheetProvisioner
           assigned_reviewer: reviewer, notes: 'DEMO: Fictional sample hours for review practice. No work or payroll is represented.')
         hours = weeks_ago == 2 ? [8, 8, 8, 8, 8] : [8, 8, 6, 8, 8]
         hours.each_with_index do |value, day|
-          sheet.entries.create!(worked_on: monday + day, hours: value, work_type: 'regular', notes: 'DEMO: Fictional retail shift for review practice.')
+          worked_on = monday + day
+          clocked_in_at = worked_on.in_time_zone.change(hour: 9)
+          break_started_at = clocked_in_at.change(hour: 12)
+          break_ended_at = break_started_at + 30.minutes
+          sheet.entries.create!(worked_on: worked_on, hours: value, work_type: 'regular',
+            clocked_in_at: clocked_in_at, break_started_at: break_started_at,
+            break_ended_at: break_ended_at, clocked_out_at: clocked_in_at + value.hours + 30.minutes,
+            notes: 'DEMO: Fictional retail shift for review practice.')
         end
         sheet.events.create!(user: actor, action: 'demo_created', details: { assigned_reviewer_id: reviewer.id, fictional: true })
         TimesheetWorkflow.new(user: actor).change(sheet, :submit)

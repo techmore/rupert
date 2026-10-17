@@ -33,6 +33,7 @@ class DemoTimesheetsTest < ActionDispatch::IntegrationTest
     assert_equal [40, 38], @sheets.map(&:total_hours)
     assert @sheets.all? { |sheet| sheet.demo? && sheet.submitted? && sheet.assigned_reviewer_id == @reviewer.id }
     assert_equal 10, @worker.timesheet_entries.count
+    assert @worker.timesheet_entries.all? { |entry| entry.clocked_in_at && entry.break_started_at && entry.break_ended_at && entry.clocked_out_at }
     sign_in(@owner)
     get people_timesheets_path
     assert_response :success
@@ -41,9 +42,25 @@ class DemoTimesheetsTest < ActionDispatch::IntegrationTest
     get people_timesheet_path(@sheets.first)
     assert_response :success
     assert_includes response.body, 'Assigned to Assigned Reviewer'
+    assert_select 'th', text: 'Clock in'
+    assert_select 'th', text: 'Break out'
+    assert_select 'th', text: 'Break in'
+    assert_select 'th', text: 'Clock out'
+    assert_select 'td', text: '9:00 AM', count: 5
+    assert_select 'td', text: '12:00 PM', count: 5
+    assert_select 'td', text: '12:30 PM', count: 5
+    assert_select 'td', text: '5:30 PM', count: 5
     get people_timesheet_path(@sheets.first, format: :csv)
     assert_response :success
     assert_includes response.body, 'DEMO: fictional hours; excluded from payroll'
+    assert_includes response.body, 'Clock_in'
+    assert_includes response.body, '2026-'
+    post '/api/v1/employee/session', params: { email: @owner.email, password: 'password123', device_name: 'Demo test' }, as: :json
+    token = response.parsed_body.fetch('token')
+    get "/api/v1/employee/timesheets/#{@sheets.first.id}", headers: { 'Authorization' => "Bearer #{token}" }
+    assert_response :success
+    punches = response.parsed_body.dig('data', 'entries', 0).values_at('clocked_in_at', 'break_started_at', 'break_ended_at', 'clocked_out_at')
+    assert punches.all?(&:present?)
     get people_timesheet_path(@real_sheet)
     assert_response :not_found
     post approve_people_timesheet_path(@sheets.first)
@@ -57,6 +74,9 @@ class DemoTimesheetsTest < ActionDispatch::IntegrationTest
     get people_timesheets_path
     assert_response :success
     assert_select 'nav[aria-label="Timesheet review"]'
+    assert_select 'a[href=?]', people_timesheet_path(@sheets.first), minimum: 1
+    assert_select 'a[href=?]', people_timesheet_path(@sheets.last), minimum: 1
+    assert_select 'a[href=?]', people_timesheet_path(@real_sheet), count: 0
     get people_timesheet_path(@sheets.first)
     assert_response :success
     assert_select 'form[action=?]', approve_people_timesheet_path(@sheets.first)
@@ -74,6 +94,13 @@ class DemoTimesheetsTest < ActionDispatch::IntegrationTest
     refute @reviewer.can?('timesheets.write')
     get users_path
     assert_response :redirect
+  end
+
+  test 'demo punch duration must match the submitted daily hours' do
+    entry = @sheets.first.entries.first
+    entry.clocked_out_at += 15.minutes
+    refute entry.valid?
+    assert_includes entry.errors[:hours], 'must equal the net punch time'
   end
 
   test 'approved demo hours never enter payroll or actual hours reports' do

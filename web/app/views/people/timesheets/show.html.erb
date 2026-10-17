@@ -37,7 +37,11 @@
   <% if @timesheet.submitted? && policy(@timesheet).approve? %>
     <section class="card card-pad space-y-2" aria-label="Review checklist">
       <h2 class="font-display text-lg">Before approving</h2>
-      <p class="text-sm text-mocha">Check the dates, daily hours, overtime and notes below against the employee's shifts. Approval rechecks entries, imported clock hours and pending corrections. Return the timesheet for correction if anything needs changing.</p>
+      <% if @timesheet.demo? %>
+        <p class="text-sm text-mocha">Check every clock-in, break and clock-out below along with the daily hours and notes. Return the timesheet for correction if anything needs changing.</p>
+      <% else %>
+        <p class="text-sm text-mocha">Check the dates, daily hours, overtime and notes below against the employee's shifts. Approval rechecks entries, imported clock hours and pending corrections. Return the timesheet for correction if anything needs changing.</p>
+      <% end %>
     </section>
   <% end %>
 
@@ -91,6 +95,12 @@
         <thead class="border-b border-fog bg-haze/60">
           <tr>
             <th scope="col" class="th">Date</th>
+            <% if @timesheet.demo? %>
+              <th scope="col" class="th">Clock in</th>
+              <th scope="col" class="th">Break out</th>
+              <th scope="col" class="th">Break in</th>
+              <th scope="col" class="th">Clock out</th>
+            <% end %>
             <th scope="col" class="th">Type</th>
             <th scope="col" class="th text-right">Hours</th>
             <% if @timesheet.draft? && policy(@timesheet).update? %><th scope="col" class="th"></th><% end %>
@@ -98,11 +108,16 @@
         </thead>
         <tbody class="divide-y divide-fog">
           <% if @timesheet.entries.empty? %>
-            <tr><td colspan="<%= @timesheet.draft? ? 4 : 3 %>" class="empty-row">No entries yet.</td></tr>
+            <tr><td colspan="<%= (@timesheet.draft? ? 4 : 3) + (@timesheet.demo? ? 4 : 0) %>" class="empty-row">No entries yet.</td></tr>
           <% end %>
           <% @timesheet.entries.ordered.each do |entry| %>
             <tr class="hover:bg-cream">
               <td class="td text-mocha"><%= l(entry.worked_on, format: :long) %></td>
+              <% if @timesheet.demo? %>
+                <% [entry.clocked_in_at, entry.break_started_at, entry.break_ended_at, entry.clocked_out_at].each do |punch| %>
+                  <td class="td whitespace-nowrap text-mocha"><%= punch ? l(punch.in_time_zone, format: '%-I:%M %p') : '—' %></td>
+                <% end %>
+              <% end %>
               <td class="td"><span class="pill-taupe capitalize"><%= entry.work_type %></span><p class="text-xs"><%= entry.notes %></p></td>
               <td class="td text-right font-medium text-ink"><%= number_with_precision(entry.hours, precision: 2) %></td>
               <% if @timesheet.draft? && policy(@timesheet).update? %>

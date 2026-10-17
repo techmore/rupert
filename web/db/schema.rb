@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_17_230000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_17_231000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2145,6 +2145,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_17_230000) do
     t.date "worked_on", null: false
     t.text "notes"
     t.bigint "clock_shift_id"
+    t.datetime "clocked_in_at"
+    t.datetime "break_started_at"
+    t.datetime "break_ended_at"
+    t.datetime "clocked_out_at"
     t.index ["tenant_id", "clock_shift_id", "worked_on"], name: "idx_timesheet_shift_day", unique: true
     t.index ["tenant_id", "timesheet_id"], name: "index_timesheet_entries_on_tenant_id_and_timesheet_id"
   end

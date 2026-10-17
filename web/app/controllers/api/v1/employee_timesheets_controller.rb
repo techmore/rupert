@@ -57,7 +57,8 @@ module Api
       end
 
       def render_sheet(sheet, status: :ok)
-        render json: { data: summary(sheet).merge(entries: sheet.entries.ordered.as_json(only: %i[id worked_on hours work_type notes clock_shift_id]),
+        render json: { data: summary(sheet).merge(entries: sheet.entries.ordered.as_json(
+          only: %i[id worked_on hours work_type notes clock_shift_id clocked_in_at break_started_at break_ended_at clocked_out_at]),
           history: sheet.events.order(:id).as_json(only: %i[action details created_at])) }, status: status
       end
     end

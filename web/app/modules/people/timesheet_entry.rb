@@ -14,6 +14,7 @@ module People
     belongs_to :clock_shift, optional: true
     validates :notes, length: { maximum: 1000 }
     validate :valid_time_record
+    validate :valid_punch_times
     validate :square_history_overlap
     validates :worked_on, presence: true
     validates :hours, numericality: { greater_than: 0, less_than_or_equal_to: 24 }
@@ -24,6 +25,29 @@ module People
     scope :ordered, -> { order(:worked_on, :id) }
 
     private
+
+    def valid_punch_times
+      punches = [clocked_in_at, break_started_at, break_ended_at, clocked_out_at]
+      if punches.any?(&:present?) && punches.any?(&:blank?)
+        errors.add(:base, 'Clock in, break out, break in and clock out must all be recorded')
+        return
+      end
+      if timesheet&.demo? && punches.any?(&:blank?)
+        errors.add(:base, 'Demo entries must show clock in, break out, break in and clock out')
+        return
+      end
+      return if punches.all?(&:blank?)
+
+      unless punches.each_cons(2).all? { |left, right| left < right }
+        errors.add(:base, 'Punch times must be in clock in, break out, break in and clock out order')
+        return
+      end
+      if worked_on && punches.any? { |punch| punch.in_time_zone.to_date != worked_on }
+        errors.add(:base, 'Punch times must be on the entry date')
+      end
+      net_hours = ((clocked_out_at - clocked_in_at - (break_ended_at - break_started_at)) / 1.hour).round(2)
+      errors.add(:hours, 'must equal the net punch time') if hours && net_hours != hours.to_d
+    end
 
     def square_history_overlap
       return unless timesheet && worked_on && %w[regular overtime].include?(work_type)
