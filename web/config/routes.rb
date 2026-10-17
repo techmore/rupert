@@ -43,6 +43,7 @@ Rails.application.routes.draw do
   resources :ctrax_timesheets, path: 'people/ctrax_timesheets', controller: 'people/ctrax_timesheets', only: %i[index show], as: :people_ctrax_timesheets
   patch '/people/ctrax_timesheets/schedule', to: 'people/ctrax_timesheet_schedules#update', as: :people_ctrax_timesheet_schedule
 
+  get '/people/punch_history', to: 'people/punch_history#index', as: :people_punch_history
   get '/employee', to: 'employee_app#show', as: :employee_app
   scope '/employee/preview', controller: :employee_preview, as: :employee_preview do
     get '/timesheets', action: :timesheets, as: :timesheets
@@ -227,6 +228,7 @@ Rails.application.routes.draw do
     get 'bank_reconciliation', to: 'bank_reconciliations#index', as: :bank_reconciliation
     post 'bank_reconciliation/match', to: 'bank_reconciliations#match', as: :bank_reconciliation_match
     post 'bank_reconciliation/unmatch', to: 'bank_reconciliations#unmatch', as: :bank_reconciliation_unmatch
+    post 'bank_reconciliation/ignore', to: 'bank_reconciliations#ignore', as: :bank_reconciliation_ignore
     get 'ledger_export', to: 'ledger_exports#new', as: :ledger_export
     post 'ledger_export', to: 'ledger_exports#create'
   end
@@ -311,6 +313,7 @@ Rails.application.routes.draw do
   end
   get '/point_of_sale', to: 'point_of_sale#index', as: :point_of_sale
   post '/point_of_sale/quote', to: 'point_of_sale#quote', as: :quote_point_of_sale
+  post '/point_of_sale/lookup', to: 'point_of_sale#lookup', as: :lookup_point_of_sale
   get '/time_clock', to: 'time_clock#index', as: :time_clock
   post '/time_clock/clock_in', to: 'time_clock#clock_in', as: :clock_in_time_clock
   post '/time_clock/clock_out', to: 'time_clock#clock_out', as: :clock_out_time_clock
