@@ -10,10 +10,40 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_17_190000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_17_210000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
+
+  create_table "bank_connections", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "environment", default: "sandbox", null: false
+    t.text "credentials_json"
+    t.text "access_token"
+    t.string "item_id"
+    t.text "cursor"
+    t.boolean "sync_enabled", default: false, null: false
+    t.datetime "last_synced_at"
+    t.string "last_error_code"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id"], name: "index_bank_connections_on_tenant_id", unique: true
+  end
+
+  create_table "bank_feed_entries", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "bank_connection_id", null: false
+    t.string "source_key", null: false
+    t.text "payload_json"
+    t.bigint "bank_statement_line_id"
+    t.string "source_state", default: "active", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["bank_connection_id", "source_key"], name: "index_bank_feed_entries_on_bank_connection_id_and_source_key", unique: true
+    t.index ["bank_connection_id"], name: "index_bank_feed_entries_on_bank_connection_id"
+    t.index ["bank_statement_line_id"], name: "index_bank_feed_entries_on_bank_statement_line_id", unique: true
+    t.index ["tenant_id"], name: "index_bank_feed_entries_on_tenant_id"
+  end
 
   create_table "bank_statement_lines", force: :cascade do |t|
     t.string "tenant_id", null: false
@@ -31,6 +61,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_17_190000) do
     t.string "decided_by_name"
     t.datetime "decided_at"
     t.datetime "created_at", null: false
+    t.string "source_state", default: "active", null: false
     t.index ["tenant_id", "document_id", "status"], name: "idx_bank_lines_document"
     t.index ["tenant_id", "fingerprint"], name: "idx_bank_lines_fingerprint", unique: true
     t.index ["tenant_id"], name: "index_bank_statement_lines_on_tenant_id"
@@ -2357,6 +2388,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_17_190000) do
   add_foreign_key "authorize_net_sale_links", "users", column: "reviewed_by_id"
   add_foreign_key "authorize_net_sale_links", "users", column: "revoked_by_id"
   add_foreign_key "authorize_net_transactions", "tenants"
+  add_foreign_key "bank_feed_entries", "bank_connections"
   add_foreign_key "bulk_consumptions", "bulk_lots"
   add_foreign_key "bulk_consumptions", "bulk_movements"
   add_foreign_key "bulk_consumptions", "bulk_recipes"

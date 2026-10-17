@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 production:
+  bank_feed:
+    class: BankFeedSyncJob
+    queue: default
+    schedule: every hour
   pos_payment_reconciliation:
     class: PosPaymentReconciliationJob
     queue: default

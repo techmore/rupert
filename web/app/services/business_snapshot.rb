@@ -88,7 +88,7 @@ class BusinessSnapshot
       'cash_forecast' => forecast && { 'retained_at' => forecast.created_at.utc.iso8601, 'baseline' => forecast.period_from.to_s },
       'latest_approval' => approval && { 'period' => "#{approval.period_from}..#{approval.period_to}", 'status' => approval.status, 'by' => approval.approved_by_name,
                                         'at' => approval.approved_at.utc.iso8601 },
-      'note' => 'Card and cash receipts here are recorded sales tenders, not bank balances. Rupert has no live bank connection: bank figures exist only if statements were uploaded. Processor deposits are batch reports and are not net bank funding.'
+      'note' => 'Card and cash receipts here are recorded sales tenders, not bank balances. Bank lines come from uploaded statements or a configured Wells Fargo transaction feed and require human review. No live bank balances are included. Processor deposits are batch reports and are not net bank funding.'
     }
   end
 

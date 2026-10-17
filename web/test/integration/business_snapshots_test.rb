@@ -22,7 +22,8 @@ class BusinessSnapshotsIntegrationTest < ActionDispatch::IntegrationTest
     %w[Sales Products Cash vendors].each { |w| assert_includes response.body, w }
     assert_includes response.body, 'Square'
     assert_includes response.body, '$25.00'
-    assert_includes response.body, 'no live connection'
+    assert_includes response.body, 'no live balances'
+    assert_select 'a[href=?]', bank_connection_path
     assert_equal 'private, no-store', response.headers['Cache-Control']
     assert ActivityLog.exists?(tenant_id: @tenant.id, action: 'business_snapshot_viewed')
   end

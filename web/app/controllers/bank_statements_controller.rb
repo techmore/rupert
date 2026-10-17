@@ -52,9 +52,9 @@ class BankStatementsController < AuthenticatedController
   def decide
     document = ReconciliationDocument.find(params[:id])
     decisions = params.fetch(:decisions, {}).permit!.to_h.reject { |_, v| v.blank? || v == 'leave' }
-    lines = BankStatementLine.for_document(document.id).pending.where(id: decisions.keys).index_by { |l| l.id.to_s }
     done = Hash.new(0)
     BankStatementLine.transaction do
+      lines = BankStatementLine.for_document(document.id).pending.where(id: decisions.keys).lock.index_by { |l| l.id.to_s }
       decisions.each do |id, choice|
         line = lines[id] or next
         apply(line, choice, document, done)
@@ -72,6 +72,7 @@ class BankStatementsController < AuthenticatedController
   private
 
   def apply(line, choice, document, done)
+    raise BankStatementImport::Error, 'The bank changed this line. Review the bank connection before recording it.' unless line.source_state == 'active'
     kind, value = choice.split(':', 2)
     note = "From bank statement #{document.filename} line #{line.line_no}"
     case kind

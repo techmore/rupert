@@ -78,7 +78,7 @@
     </table></div>
     <ul class="space-y-1 text-sm">
       <li><strong>Card processor deposits:</strong> <%= c['processor_deposits'] ? "latest report read #{age.call(c['processor_deposits']['observed_at'])}, covering #{c['processor_deposits']['window_from']} to #{c['processor_deposits']['window_to']}" : 'no deposit reports on file' %>.</li>
-      <li><strong>Bank:</strong> no live connection. <%= c['bank']['statements'].zero? ? 'No bank statements uploaded.' : "#{pluralize(c['bank']['statements'], 'statement')} uploaded, latest line #{c['bank']['latest_line_on']}, #{c['bank']['lines_waiting']} line(s) waiting for a decision." %></li>
+      <li><strong>Bank:</strong> uploaded statements or configured Wells Fargo transaction feed; no live balances. <%= c['bank']['statements'].zero? ? 'No bank lines imported.' : "#{pluralize(c['bank']['statements'], 'statement batch')}, latest line #{c['bank']['latest_line_on']}, #{c['bank']['lines_waiting']} line(s) waiting for a decision." %> <%= link_to 'Manage Wells Fargo', bank_connection_path, class: 'underline' %></li>
       <li><strong>Cash forecast:</strong> <%= c['cash_forecast'] ? "scenario retained #{age.call(c['cash_forecast']['retained_at'])} (baseline #{c['cash_forecast']['baseline']})" : 'none retained' %>.</li>
       <li><strong>Last human approval of the books:</strong> <%= c['latest_approval'] ? "#{c['latest_approval']['period']} · #{c['latest_approval']['status'].humanize} by #{c['latest_approval']['by']} #{age.call(c['latest_approval']['at'])}" : 'none yet' %>.</li>
     </ul>

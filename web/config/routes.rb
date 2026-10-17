@@ -1,6 +1,13 @@
 # frozen_string_literal: true
 
 Rails.application.routes.draw do
+  resource :bank_connection, only: %i[show update] do
+    post :link_token
+    post :resume
+    post :exchange
+    post :sync
+    delete :disconnect
+  end
   resource :books_desk, only: :show, path: 'books' do
     get :checks
   end

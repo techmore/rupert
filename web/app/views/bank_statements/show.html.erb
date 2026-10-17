@@ -43,7 +43,9 @@
           <% @lines.each do |line| %>
             <tr>
               <td class="td whitespace-nowrap"><%= line.posted_on.strftime('%b %-d, %Y') %></td>
-              <td class="td max-w-md break-words"><%= line.description %></td>
+              <td class="td max-w-md break-words"><%= line.description %>
+                <% if line.source_state != 'active' %><p class="text-xs font-semibold">Bank source <%= line.source_state %>. <%= link_to 'Review bank changes', bank_connection_path, class: 'underline' %>. Recorded accounting entries are retained.</p><% end %>
+              </td>
               <td class="td text-right"><%= line.money_out? ? money.call(line.amount_cents) : '' %></td>
               <td class="td text-right"><%= line.money_out? ? '' : money.call(line.amount_cents) %></td>
               <td class="td">

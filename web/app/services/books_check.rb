@@ -26,7 +26,7 @@ class BooksCheck
   def checks
     @checks ||= [source_freshness, sync_health, paid_without_payment, payment_mismatch, refund_records,
       orders_without_location, impossible_amounts, missing_controls, unreviewed_days,
-      overdue_follow_ups, evidence_integrity, approval_ledger, locked_periods, unapproved_days, offsite_backup, bank_lines_waiting].compact
+      overdue_follow_ups, evidence_integrity, approval_ledger, locked_periods, unapproved_days, offsite_backup, bank_lines_waiting, bank_feed_changes].compact
   end
 
   def summary
@@ -267,12 +267,21 @@ class BooksCheck
 
   def bank_lines_waiting
     scope = BankStatementLine.pending
-    build('bank_lines_waiting', 'Uploaded bank lines have a decision', count: scope.count, level: :watch,
+    build('bank_lines_waiting', 'Bank lines have a decision', count: scope.count, level: :watch,
       cents: scope.where('amount_cents < 0').sum('-amount_cents'),
       rows: scope.group(:document_id, :account_label).count.map { |(doc, label), n| [label, doc, n] }.first(SAMPLE),
-      detail_ok: 'Every uploaded bank line is recorded or ignored (or none uploaded).',
+      detail_ok: 'Every imported bank line is recorded or ignored (or none imported).',
       detail_bad: 'Bank statement lines are waiting for someone to say what they were. Withdrawals left undecided are missing from money out.',
       action: 'Open Bank statements and decide the waiting lines.', path: routes.bank_statements_path)
+  end
+
+  def bank_feed_changes
+    scope = BankStatementLine.where(status: 'recorded', source_state: %w[changed removed])
+    build('bank_feed_changes', 'Bank changes to recorded lines are reviewed', count: scope.count, level: :watch,
+      rows: scope.limit(SAMPLE).pluck(:account_label, :posted_on, :source_state),
+      detail_ok: 'No bank changes to recorded lines are flagged.',
+      detail_bad: 'The bank changed or removed recorded transactions. Original expenses and payments are retained; compare the latest bank evidence and correct the books if needed.',
+      action: 'Review bank changes.', path: routes.bank_connection_path)
   end
 
   def safe(value)

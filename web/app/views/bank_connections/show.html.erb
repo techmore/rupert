@@ -1,0 +1,66 @@
+<% content_for :title, 'Wells Fargo connection' %>
+<div class="mx-auto max-w-5xl space-y-6 operations-workspace" data-controller="bank-link" data-bank-link-resume-value="<%= !!@resume_link %>"
+     data-bank-link-token-url-value="<%= link_token_bank_connection_path %>" data-bank-link-resume-url-value="<%= resume_bank_connection_path %>"
+     data-bank-link-exchange-url-value="<%= exchange_bank_connection_path %>">
+  <%= render 'shared/operations_navigation', workspace: :finance %>
+  <header>
+    <p class="text-xs font-semibold uppercase tracking-widest text-mocha">Finance · bank feed</p>
+    <h1 class="page-title mt-2">Wells Fargo</h1>
+    <p class="mt-2 text-sm text-mocha">Connect checking and savings accounts through Plaid. Choose Wells Fargo in the bank picker and sign in with your bank. Connecting authorizes hourly transaction sync. Rupert never receives your Wells Fargo password.</p>
+    <%= link_to 'Review bank statements', bank_statements_path, class: 'btn-ghost btn-sm mt-3' %>
+  </header>
+
+  <section class="card card-pad space-y-3">
+    <h2 class="font-display text-xl"><%= @connection.connected? ? 'Connected' : 'Not connected' %> · <%= @connection.environment.capitalize %></h2>
+    <% if @connection.environment == 'sandbox' %>
+      <p class="rounded-xl bg-amber-50 p-3 text-sm font-semibold">Sandbox uses test accounts and test transactions. No real bank account is connected. Test lines are labelled Sandbox; use a separate test workspace.</p>
+    <% end %>
+    <p class="text-sm">Last completed Rupert sync: <%= @connection.last_synced_at ? l(@connection.last_synced_at, format: :long) : 'Never' %>. Bank data may arrive later than a completed sync.</p>
+    <% if @connection.connected? && !@connection.sync_enabled? %><p class="text-sm font-semibold">Automatic sync is paused. Retry Disconnect to revoke bank access, or Reconnect to authorize syncing again.</p><% end %>
+    <% if @connection.last_error_code.present? %>
+      <p role="alert" class="text-sm">Sync needs attention: <%= @connection.last_error_code %>. Reconnect if bank consent expired. For REVIEW_REQUIRED, check for a locked accounting period before retrying.</p>
+    <% end %>
+    <p class="text-sm" role="status" aria-live="polite" data-bank-link-target="status"></p>
+    <% if @can_write && @connection.configured? %>
+      <div class="flex flex-wrap gap-3">
+        <button type="button" class="btn-primary" data-action="bank-link#open" data-bank-link-target="button"><%= @connection.connected? ? 'Reconnect Wells Fargo' : 'Connect Wells Fargo' %></button>
+        <% if @connection.connected? %>
+          <%= button_to 'Sync now', sync_bank_connection_path, class: 'btn-ghost', data: { turbo: false } %>
+          <%= button_to 'Disconnect', disconnect_bank_connection_path, method: :delete, class: 'btn-ghost', data: { turbo_confirm: 'Revoke Wells Fargo access and stop sync? Imported lines and evidence will be kept.' } %>
+        <% end %>
+      </div>
+    <% elsif !@connection.configured? %>
+      <p class="text-sm">A workspace administrator must save Plaid setup below before bank sign-in is available.</p>
+    <% end %>
+    <p class="text-xs text-mocha">The first connection requests up to 90 days of history. Only posted USD transactions enter statement review. Nothing becomes an expense or vendor payment until you choose it. Sync reads the latest data available from Plaid; it does not force a fresh bank download.</p>
+    <p class="text-xs text-mocha">Avoid uploading CSVs covering the same account and dates as the feed. Separate CSV imports and a new connection after disconnect can overlap; review and ignore duplicates before recording. Use Reconnect to renew consent while preserving the existing feed.</p>
+  </section>
+
+  <% if @changes.any? %>
+    <section class="card card-pad space-y-3">
+      <h2 class="font-display text-xl">Bank changes to recorded lines</h2>
+      <p class="text-sm">The bank changed or removed these transactions after they were recorded. Rupert kept your original accounting entries. Compare the latest bank details below and correct the expense or payment through your usual review process. Showing the latest 50.</p>
+      <% @changes.each do |entry| %>
+        <% line = entry.bank_statement_line; latest = entry.payload %>
+        <div class="border-t border-fog pt-3 text-sm">
+          <%= link_to "#{line.account_label} · #{line.posted_on} · #{line.description}", bank_statement_path(line.document_id, show: 'all'), class: 'underline' %>
+          <p>Bank state: <%= line.source_state %>. Latest bank details: <%= latest['date'] %> · <%= latest['description'] %> · <%= number_to_currency(latest['amount_cents'].to_i / 100.0) %> (signed cash movement).</p>
+        </div>
+      <% end %>
+    </section>
+  <% end %>
+
+  <% if @can_configure && !@connection.connected? %>
+    <section class="card card-pad space-y-3">
+      <h2 class="font-display text-xl">Plaid setup</h2>
+      <p class="text-sm">Use this workspace’s Plaid Client ID and environment-specific secret. Production requires Transactions access and approval for Wells Fargo OAuth. Register <code><%= bank_connection_url %></code> as an allowed redirect URI in the Plaid dashboard; production must use HTTPS.</p>
+      <%= form_with url: bank_connection_path, method: :patch, scope: :bank_connection, class: 'space-y-3' do |f| %>
+        <div><%= f.label :environment, 'Environment', class: 'block text-sm font-semibold' %><%= f.select :environment, [['Sandbox (test data)', 'sandbox'], ['Production (real bank)', 'production']], { selected: @connection.environment }, class: 'select' %></div>
+        <div><%= f.label :client_id, 'Plaid Client ID', class: 'block text-sm font-semibold' %><%= f.password_field :client_id, autocomplete: 'off', maxlength: 512, class: 'input', placeholder: @connection.credentials['client_id'].present? ? 'Saved — leave blank to keep' : 'Plaid Client ID' %></div>
+        <div><%= f.label :secret, 'Plaid secret', class: 'block text-sm font-semibold' %><%= f.password_field :secret, autocomplete: 'new-password', maxlength: 512, class: 'input', placeholder: @connection.credentials['secret'].present? ? 'Saved — leave blank to keep' : 'Environment-specific secret' %></div>
+        <p class="text-xs text-mocha">Credentials and bank tokens are encrypted. Blank fields keep saved values in the same environment. Changing environments clears the old credentials; enter both fields.</p>
+        <%= f.submit 'Save Plaid setup', class: 'btn-primary' %>
+      <% end %>
+    </section>
+  <% end %>
+</div>
