@@ -8,6 +8,7 @@ module Ctrax
   # Complete native read, then atomic local publication. No source/payroll writes.
   class LaborImport
     class Error < StandardError; end
+    UNASSIGNED_ISSUE = 'Source store not supplied; unassigned evidence, excluded from payroll.'
     FIELDS = %w[id store_id user_id started_at ended_at number_of_hours is_in_progress is_verified deleted_at
                 updated_at explicitly_verified_at explicitly_verified_by_id].freeze
 
@@ -55,7 +56,10 @@ module Ctrax
         flag_overlaps(plan)
         plan.each { |item| publish(item) }
         CtraxLaborShift.where(source_origin: @origin).where.not(external_id: ids).find_each do |record|
-          record.update!(status: 'missing', issue: 'Not returned by the complete C-Trax read; original history retained.')
+          status = record.store_id.nil? ? 'unassigned' : 'missing'
+          issue = 'Not returned by the complete C-Trax read; original history retained.'
+          issue = UNASSIGNED_ISSUE + ' ' + issue if record.store_id.nil?
+          record.update!(status: status, issue: issue)
           append_observation(record)
         end
         statuses = CtraxLaborShift.where(source_origin: @origin).group(:status).count
@@ -85,12 +89,18 @@ module Ctrax
 
     def validate_shape!(row, stores, in_progress)
       valid_id = ->(value) { value.is_a?(Integer) && value.positive? && value.to_s.length <= 19 }
-      native_identity = row.is_a?(Hash) && %w[id store_id user_id].all? { |key| valid_id.call(row[key]) }
+      native_identity = row.is_a?(Hash) && %w[id user_id].all? { |key| valid_id.call(row[key]) } &&
+        (row['store_id'].nil? || valid_id.call(row['store_id']))
       raise Error, 'Invalid C-Trax labor identity; previous history retained.' unless native_identity
 
       permitted = stores.include?(row['store_id'].to_s)
+      if row['store_id'].nil?
+        identity = EmployeeSourceIdentity.includes(:employee).find_by(source: 'ctrax',
+          external_id: "#{URI(@origin).host}/#{row['user_id']}")
+        permitted = identity&.employee&.tenant_id == Current.tenant_id
+      end
       state_matches = row['is_in_progress'] == in_progress && [true, false].include?(row['is_verified'])
-      user_matches = row['user'].is_a?(Hash) && row.dig('user', 'id') == row['user_id']
+      user_matches = row['user'].nil? || (row['user'].is_a?(Hash) && row.dig('user', 'id') == row['user_id'])
       timestamps_valid = %w[started_at ended_at deleted_at updated_at explicitly_verified_at].all? do |key|
         row[key].nil? || (row[key].is_a?(String) && row[key].valid_encoding? && row[key].bytesize <= 100)
       end
@@ -123,6 +133,13 @@ module Ctrax
             issue: 'Source or worker mapping changed; original history retained for review.')
         elsif !employee
           item.merge!(status: 'unmatched', issue: 'No consolidated employee matches this native C-Trax user.')
+        end
+        if row['store_id'].nil? && employee&.tenant_id != Current.tenant_id
+          raise Error, 'Unassigned C-Trax evidence no longer has an exact workspace employee mapping.'
+        end
+        if (item[:old] && item[:old].store_id.nil?) || (!item[:old] && row['store_id'].nil?)
+          changed = item[:status] == 'changed'
+          item.merge!(status: 'unassigned', issue: UNASSIGNED_ISSUE + (changed ? ' Latest source observation changed; original retained.' : ''))
         end
         item
       end
@@ -198,7 +215,7 @@ module Ctrax
     def publish(item)
       record = item[:old] || CtraxLaborShift.new(source_origin: @origin, external_id: item[:id])
       if record.new_record?
-        record.assign_attributes(item[:attributes].merge(employee: item[:employee], store_id: item[:row]['store_id'].to_s,
+        record.assign_attributes(item[:attributes].merge(employee: item[:employee], store_id: item[:row]['store_id']&.to_s,
           user_external_id: item[:row]['user_id'].to_s, original_digest: item[:digest], source_payload: item[:payload]))
       elsif record.employee_id.nil? && item[:status] != 'changed'
         record.employee = item[:employee]

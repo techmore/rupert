@@ -241,4 +241,34 @@ class CtraxLaborImportTest < ActiveSupport::TestCase
     assert_equal 0, People::TimesheetEntry.count
     assert_equal 0, People::Payslip.count
   end
+  test 'native null store history is quarantined only with exact tenant employee mapping and never assigned a store' do
+    stub_rows([row(1, store_id: nil), row(2, store_id: nil, user: nil)])
+    result = Ctrax::LaborImport.call
+    assert_equal 2, result[:shifts]
+    assert_equal ['unassigned'], CtraxLaborShift.distinct.pluck(:status)
+    assert_equal [nil, nil], CtraxLaborShift.order(:id).pluck(:store_id)
+    assert CtraxLaborShift.all.all? { |record| record.issue.include?('Source store not supplied') && record.employee_id == @employee.id }
+    assert CtraxLaborShift.all.all? { |record| record.latest_record['store_id'].nil? }
+    stub_rows
+    Ctrax::LaborImport.call
+    assert CtraxLaborShift.all.all? { |record| record.status == 'unassigned' && record.issue.include?('Not returned') }
+    stub_rows([row(1, store_id: nil)])
+    Ctrax::LaborImport.call
+    record = CtraxLaborShift.find_by!(external_id: '1')
+    assert_equal 'unassigned', record.status
+    assert_equal 3, record.observations.count
+    assert_equal 0, People::TimesheetEntry.count
+  end
+
+  test 'null store without exact local native employee identity and unknown numeric stores reject whole read' do
+    foreign = Tenant.create!(name: 'Foreign null store', subdomain: 'foreign-null-store')
+    worker = People::Employee.unscoped.create!(tenant: foreign, first_name: 'Private', last_name: 'Worker')
+    EmployeeSourceIdentity.unscoped.create!(tenant: foreign, employee: worker, source: 'ctrax', external_id: 'fixture.api.cannatrax.net/999')
+    [row(1, store_id: nil, user_id: 998, user: nil), row(1, store_id: nil, user_id: 999, user: { 'id' => 999 }), row(1, store_id: 8)].each do |source_row|
+      stub_rows([source_row])
+      assert_raises(Ctrax::LaborImport::Error) { Ctrax::LaborImport.call }
+      assert_equal 0, CtraxLaborShift.count
+      assert_equal 0, CtraxLaborObservation.count
+    end
+  end
 end

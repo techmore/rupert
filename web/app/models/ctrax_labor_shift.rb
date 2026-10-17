@@ -3,15 +3,17 @@
 # Historical observations only. These rows never generate payable time.
 class CtraxLaborShift < ApplicationRecord
   include TenantScoped
-  STATUSES = %w[imported open unmatched conflict invalid changed missing deleted].freeze
+  STATUSES = %w[imported open unmatched conflict invalid changed missing deleted unassigned].freeze
   belongs_to :employee, class_name: 'People::Employee', optional: true
   has_many :observations, class_name: 'CtraxLaborObservation', dependent: :restrict_with_exception
   encrypts :source_payload, :latest_payload
   attr_readonly :tenant_id, :source_origin, :external_id, :source_payload, :original_digest
-  validates :source_origin, :external_id, :store_id, :user_external_id, :status, :last_seen_at,
+  validates :source_origin, :external_id, :user_external_id, :status, :last_seen_at,
     :original_digest, :latest_digest, presence: true
   validates :external_id, uniqueness: { scope: %i[tenant_id source_origin] }
   validates :status, inclusion: { in: STATUSES }
+  validates :store_id, presence: true, unless: -> { status == 'unassigned' }
+  validates :employee, presence: true, if: -> { status == 'unassigned' }
   validate :same_workspace
 
   def latest_record

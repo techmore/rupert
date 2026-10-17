@@ -20,7 +20,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_17_220000) do
     t.bigint "employee_id"
     t.string "source_origin", null: false
     t.string "external_id", null: false
-    t.string "store_id", null: false
+    t.string "store_id"
     t.string "user_external_id", null: false
     t.datetime "started_at"
     t.datetime "ended_at"

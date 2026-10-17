@@ -7,7 +7,7 @@ class CreateCtraxLaborShifts < ActiveRecord::Migration[8.1]
       t.references :employee, foreign_key: true
       t.string :source_origin, null: false
       t.string :external_id, null: false
-      t.string :store_id, null: false
+      t.string :store_id
       t.string :user_external_id, null: false
       t.datetime :started_at
       t.datetime :ended_at
