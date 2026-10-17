@@ -251,6 +251,7 @@ Rails.application.routes.draw do
         post :cancel
       end
     end
+    resources :employee_earnings_periods, only: %i[new create]
     resources :pay_runs, only: %i[index show new create] do
       member do
         post :finalize

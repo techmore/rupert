@@ -42,6 +42,7 @@
     <% if notice %><p role="status" class="flash flash-notice"><%= notice %></p><% end %>
     <% if alert %><p role="alert" class="flash flash-alert"><%= alert %></p><% end %>
     <% if @preview %><p role="status" class="rounded-xl border border-olive/30 bg-olive/10 p-3 text-sm"><strong>Employee preview</strong> · Example data only. Browse freely; saving, clocking and sending are disabled. <%= link_to 'Close preview', employee_app_path, class: 'underline' %></p><% end %>
+    <%= employee_pay_header %>
     <%= yield %>
   </main>
   <footer class="mx-auto flex max-w-3xl flex-wrap gap-4 px-4 pb-8 text-xs text-mocha sm:px-6">

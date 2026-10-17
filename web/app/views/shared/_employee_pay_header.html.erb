@@ -1,0 +1,11 @@
+<section aria-label="My pay" class="card card-pad space-y-3">
+  <div class="flex flex-wrap items-center justify-between gap-2"><h2 class="font-display text-xl">My pay · actual hourly rate</h2><span class="pill-olive"><%= demo ? 'DEMO DATA · fake employee' : period ? 'Reviewed earnings' : 'Awaiting review' %></span></div>
+  <% if period %>
+    <div class="flex flex-wrap items-end justify-between gap-3"><div><p class="text-3xl font-semibold tabular-nums"><%= number_to_currency(period.hourly_cents / 100.0) %><span class="text-lg"> / hour</span></p><p class="text-sm text-mocha">Including tips, commissions and bonuses · before deductions</p></div><p class="text-sm text-mocha"><%= period.period_start.strftime('%b %-d, %Y') %> – <%= period.period_end.strftime('%b %-d, %Y') %></p></div>
+    <dl class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <% EmployeeEarningsPeriod::COMPONENTS.each do |name| %><div><dt class="text-sm text-mocha"><%= { 'base' => 'Base pay', 'tips' => 'Tips', 'store_commission' => 'Store commissions', 'online_commission' => 'Eligible online commissions', 'bonus' => 'Other bonuses' }.fetch(name) %></dt><dd class="font-semibold tabular-nums"><%= number_to_currency(period.public_send("#{name}_cents") / 100.0) %></dd></div><% end %>
+      <div><dt class="text-sm text-mocha">Total earnings</dt><dd class="font-semibold tabular-nums"><%= number_to_currency(period.total_cents / 100.0) %></dd></div>
+    </dl>
+    <p class="text-xs text-mocha"><%= number_to_currency(period.total_cents / 100.0) %> ÷ <%= number_with_precision(period.hours, precision: 2, strip_insignificant_zeros: true) %> hours worked = <%= number_to_currency(period.hourly_cents / 100.0) %>/hour. <%= demo ? 'All figures are synthetic examples. This is not a payslip and does not affect payroll.' : 'Latest reviewed period; this is gross earnings, not take-home pay or confirmation of payment.' %></p>
+  <% else %><p class="text-sm text-mocha">Your actual rate will appear when your manager reviews hours, base pay, tips and commissions for a complete pay period. Current timesheet estimates remain below.</p><% end %>
+</section>

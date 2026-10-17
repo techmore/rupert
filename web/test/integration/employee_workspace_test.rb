@@ -46,6 +46,21 @@ class EmployeeWorkspaceTest < ActionDispatch::IntegrationTest
     assert_select 'nav[aria-label="My workspace"]'
   end
 
+  test 'pay header is private and employees cannot publish earnings' do
+    EmployeeEarningsPeriod.create!(employee: @worker, period_start: @from, period_end: @to, hours: 32, base_cents: 64000, tips_cents: 9600, store_commission_cents: 6400, online_commission_cents: 3200, bonus_cents: 1600, reviewed_at: Time.current)
+    EmployeeEarningsPeriod.create!(employee: @other, period_start: @from, period_end: @to, hours: 1, base_cents: 999999, reviewed_at: Time.current)
+    sign_in
+    get employee_app_path, params: { employee_id: @other.id }
+    assert_response :success
+    assert_includes response.body, '$26.50'
+    assert_includes response.body, '$848.00'
+    refute_includes response.body, '$9,999.99'
+    assert_no_difference 'EmployeeEarningsPeriod.count' do
+      post people_employee_earnings_periods_path, params: { employee_earnings_period: { employee_id: @worker.id } }
+    end
+    assert_response :redirect
+  end
+
   test 'week action forces current ownership and opens the same timesheet on retries' do
     sign_in
     Current.tenant = @tenant
