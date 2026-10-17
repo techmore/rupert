@@ -9,7 +9,11 @@ module People
     def index
       authorize(People::Timesheet, :index?)
       scope = SquareTimecard.visible_to(Current.user)
-      scope = scope.where(employee_id: params[:employee_id]) if params[:employee_id].present? && Current.user.can_manage_accounts?
+      @all_employees = Current.user.can_review_timesheets? || (Current.user.can_manage_accounts? && Current.user.can?('timesheets.read'))
+      @employees = People::Employee.where(id: scope.select(:employee_id)).order(:last_name, :first_name) if @all_employees
+      if @all_employees && params[:employee_id].present?
+        scope = params[:employee_id] == 'unmatched' ? scope.where(employee_id: nil) : scope.where(employee_id: params[:employee_id])
+      end
       scope = scope.where(import_status: params[:status]) if SquareTimecard::STATUSES.include?(params[:status])
       scope = scope.where('started_at >= ?', Date.iso8601(params[:from]).in_time_zone) if params[:from].present?
       scope = scope.where('started_at < ?', (Date.iso8601(params[:to]) + 1).in_time_zone) if params[:to].present?

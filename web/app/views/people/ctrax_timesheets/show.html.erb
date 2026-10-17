@@ -1,0 +1,23 @@
+<% content_for :title, 'C-Trax shift' %>
+<section class="space-y-3">
+  <h1 class="page-title">C-Trax shift</h1>
+  <p class="text-sm text-mocha">Read-only source history · <%= @shift.status.humanize %></p>
+  <%= link_to 'Back to C-Trax history', people_ctrax_timesheets_path, class: 'text-sm text-olive underline' %>
+</section>
+<section class="card card-pad space-y-3">
+  <h2 class="text-lg font-semibold"><%= @shift.employee&.name || 'Employee not matched' %></h2>
+  <dl class="grid gap-3 text-sm sm:grid-cols-2">
+    <div><dt class="text-mocha">C-Trax shift ID</dt><dd><%= @shift.external_id %></dd></div>
+    <div><dt class="text-mocha">Store ID</dt><dd><%= @shift.store_id || 'Not available' %></dd></div>
+    <div><dt class="text-mocha">Clock-in</dt><dd><%= @shift.started_at ? l(@shift.started_at.in_time_zone, format: :long) : 'Not available' %></dd></div>
+    <div><dt class="text-mocha">Clock-out</dt><dd><%= @shift.ended_at ? l(@shift.ended_at.in_time_zone, format: :long) : 'Not available' %></dd></div>
+    <div><dt class="text-mocha">Source-reported hours</dt><dd><%= @shift.reported_hours.nil? ? 'Not available' : number_with_precision(@shift.reported_hours, precision: 2) %></dd></div>
+    <div><dt class="text-mocha">Elapsed hours</dt><dd><%= @shift.elapsed_hours.nil? ? 'Not available' : number_with_precision(@shift.elapsed_hours, precision: 2) %></dd></div>
+    <div><dt class="text-mocha">In progress</dt><dd><%= @shift.in_progress.nil? ? 'Not reported' : @shift.in_progress ? 'Yes' : 'No' %></dd></div>
+    <div><dt class="text-mocha">Verified by source</dt><dd><%= @shift.verified.nil? ? 'Not reported' : @shift.verified ? 'Yes' : 'No' %></dd></div>
+    <div><dt class="text-mocha">Last read</dt><dd><%= @shift.last_seen_at ? l(@shift.last_seen_at.in_time_zone, format: :long) : 'Not available' %></dd></div>
+  </dl>
+  <% if @shift.reported_hours && @shift.elapsed_hours && (@shift.reported_hours - @shift.elapsed_hours).abs > 0.01 %><p class="rounded-xl bg-haze p-3 text-sm">Reported and elapsed hours differ. This may reflect source adjustments; review the source rather than assuming either value is payable.</p><% end %>
+  <% if @shift.issue.present? %><p class="rounded-xl bg-haze p-3 text-sm"><%= @shift.issue %></p><% end %>
+  <p class="text-sm text-mocha">Source verification is not Rupert approval or proof of payment. These hours remain excluded from Rupert payroll and personal hour totals. Do not add them to overlapping Square or Rupert entries.</p>
+</section>
