@@ -4,7 +4,7 @@
   <section class="flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="page-title">Timesheets</h1>
-      <p class="mt-1 text-sm text-mocha"><%= Current.user.employee? ? 'Your hours by week, submitted for review.' : 'Hours by week per employee, submitted for review.' %></p>
+      <p class="mt-1 text-sm text-mocha"><%= Current.user.employee? ? (@reviewer ? 'Your timesheets and assigned demo reviews.' : 'Your hours by week, submitted for review.') : 'Hours by week per employee, submitted for review.' %></p>
     </div>
     <% if policy(People::Timesheet).create? %>
       <%= link_to "New timesheet", new_people_timesheet_path, class: "btn-primary" %>
