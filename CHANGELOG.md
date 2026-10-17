@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Show a **1% commission and employee 50%-off card bonus** on timesheets. Each timesheet now carries credited sales and card-redemption counts; the detail, list and CSV views display commission (1% of credited sales), the card bonus ($10 per redemption) and the compensation total. These are display figures only and are not posted to payroll. Demo timesheets provision fictional sales and redemptions under the existing payroll-excluded demo marker.
+
 - Add the **Books desk** (`/books`), one front door for money cleanup. Each finished day shows six ordered steps (sales in, registers match, follow-ups, reviewed, closed, approved) with a single "do this next" action, oldest day first. Last week gets a chores checklist (bank statement, undecided bank lines, money out, overdue follow-ups, weekly approval). Days of the current week wait for the weekly sign-off instead of asking for daily approvals. The housekeeping audit loads lazily.
 - Add month, quarter and year end checklists and **period locks** (`/books/locks`). Locking a finished period stores a fingerprint of its totals and retains a dated JSON archive. Expenses, vendor payments, bank-line decisions, day reviews, close packages and approvals dated inside a locked period then cannot be added, changed, moved or removed. Locks and reopenings are kept in a hash-chained ledger; reopening needs settings access and a written reason. Source imports that change a locked period are flagged on the lock page and in the books check.
 - Money reconciliation reports add quarterly and yearly periods, retained automatically on the first of each quarter (12:35 a.m.) and on January 1 (12:40 a.m.) Eastern.

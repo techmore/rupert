@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_17_230000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_18_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2164,6 +2164,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_17_230000) do
     t.bigint "assigned_reviewer_id"
     t.datetime "submitted_at"
     t.text "review_note"
+    t.integer "sales_cents", default: 0, null: false
+    t.integer "card_redemptions", default: 0, null: false
     t.index ["assigned_reviewer_id"], name: "index_timesheets_on_assigned_reviewer_id"
     t.index ["tenant_id", "employee_id", "period_start"], name: "index_timesheets_on_tenant_id_and_employee_id_and_period_start", unique: true
     t.index ["tenant_id", "status"], name: "index_timesheets_on_tenant_id_and_status"
