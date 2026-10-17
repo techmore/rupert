@@ -28,8 +28,9 @@ class ApplicationController < ActionController::Base
     when 'employee_access'
       %w[edit update].include?(action_name)
     when 'people/timesheets'
-      %w[index show new create edit update destroy submit reopen import_shifts add_entry update_entry remove_entry].include?(action_name)
-    when 'people/square_timesheets'
+      %w[index show new create edit update destroy submit reopen import_shifts add_entry update_entry remove_entry].include?(action_name) ||
+        (%w[approve reject].include?(action_name) && People::TimesheetPolicy.assigned_demos(Current.user).where(id: params[:id]).exists?)
+    when 'people/square_timesheets', 'people/ctrax_timesheets'
       %w[index show].include?(action_name)
     when 'time_clock'
       %w[index clock_in clock_out request_correction].include?(action_name)
