@@ -13,6 +13,50 @@
     <%= link_to "My time home", employee_app_path, class: "btn-ghost btn-sm" %>
   </section>
 
+  <nav aria-label="Timesheet view" class="flex flex-wrap gap-2">
+    <%= link_to 'Rupert timesheets', people_timesheets_path(request.query_parameters.merge(view: 'list')), class: "nav-pill #{@view == 'list' ? 'nav-pill-active' : 'nav-pill-idle'}" %>
+    <%= link_to 'All sources (unified)', people_timesheets_path(request.query_parameters.merge(view: 'unified')), class: "nav-pill #{@view == 'unified' ? 'nav-pill-active' : 'nav-pill-idle'}" %>
+    <%= link_to 'Calendar', people_timesheets_path(request.query_parameters.merge(view: 'calendar', month: (@month || Date.current).strftime('%Y-%m'))), class: "nav-pill #{@view == 'calendar' ? 'nav-pill-active' : 'nav-pill-idle'}" %>
+  </nav>
+
+  <% if @view == 'calendar' %>
+  <section class="card card-pad space-y-3">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h2 class="text-lg font-semibold"><%= @month.strftime('%B %Y') %></h2>
+      <div class="flex gap-2">
+        <%= link_to 'Previous', people_timesheets_path(request.query_parameters.merge(view: 'calendar', month: @prev_month.strftime('%Y-%m'))), class: 'btn-ghost btn-sm' %>
+        <%= link_to 'Next', people_timesheets_path(request.query_parameters.merge(view: 'calendar', month: @next_month.strftime('%Y-%m'))), class: 'btn-ghost btn-sm' %>
+        <%= link_to 'Today', people_timesheets_path(request.query_parameters.merge(view: 'calendar', month: Date.current.strftime('%Y-%m'))), class: 'btn-ghost btn-sm' %>
+      </div>
+    </div>
+    <div class="grid grid-cols-7 gap-1 text-center text-xs font-semibold uppercase tracking-wide text-mocha">
+      <% Date::DAYNAMES.rotate.each do |day| %><div class="py-1"><%= day %></div><% end %>
+    </div>
+    <div class="grid grid-cols-7 gap-1">
+      <% @calendar_days_range.each do |day| %>
+        <% in_month = day.month == @month.month %>
+        <% bucket = in_month ? @calendar_days[day.iso8601] : nil %>
+        <div class="min-h-24 rounded-xl border p-2 text-left <%= in_month ? (bucket && (bucket[:timesheets].any? || bucket[:punches].positive?) ? 'border-fog bg-haze/40' : 'border-fog bg-cream') : 'border-transparent bg-haze/30' %> <%= day == Date.current ? 'ring-2 ring-olive' : '' %>" role="button" tabindex="0" aria-label="<%= day.strftime('%B %-d, %Y') %>">
+          <p class="text-xs font-semibold <%= in_month ? (day == Date.current ? 'text-olive' : 'text-ink') : 'text-taupe/60' %>"><%= day.day %></p>
+          <% if in_month && bucket && bucket[:timesheets].any? %>
+            <div class="mt-1 space-y-0.5">
+              <% bucket[:timesheets].each do |ts| %>
+                <div class="truncate rounded px-1 py-0.5 text-[10px] font-semibold leading-tight <%= ts.approved? ? 'bg-fern/15 text-fern' : ts.submitted? ? 'bg-olive/15 text-olive-deep' : ts.rejected? ? 'bg-rose/15 text-rose' : 'bg-taupe/15 text-taupe' %>" title="<%= ts.employee&.name %> · <%= ts.period_label %> · #{number_with_precision(ts.total_hours, precision: 1)}h">
+                  <%= ts.employee&.name %> · <%= ts.status %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+          <% if in_month && bucket && bucket[:punches].positive? %>
+            <p class="mt-1 text-[10px] text-mocha"><%= bucket[:punches] %> punch<%= bucket[:punches] == 1 ? '' : 'es' %> · <%= number_with_precision(bucket[:hours], precision: 1) %>h</p>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+    <p class="text-xs text-taupe">Timesheets (weekly periods) and punches (daily) from Rupert, Square and C-Trax. Overlapping hours are never added together.</p>
+  </section>
+
+
   <% if @reviewer %>
     <nav aria-label="Timesheet review" class="flex flex-wrap gap-2">
       <% [['Needs review', 'submitted'], ['All timesheets', 'all'], ['Approved', 'approved'], ['Returned for correction', 'rejected']].each do |label, status| %>
@@ -123,48 +167,6 @@
     <div class="rounded-xl border border-olive/30 bg-olive/10 px-4 py-2.5 text-sm text-olive"><%= @awaiting %> timesheet<%= @awaiting == 1 ? "" : "s" %> awaiting review.</div>
   <% end %>
 
-  <nav aria-label="Timesheet view" class="flex flex-wrap gap-2">
-    <%= link_to 'Rupert timesheets', people_timesheets_path(request.query_parameters.merge(view: 'list')), class: "nav-pill #{@view == 'list' ? 'nav-pill-active' : 'nav-pill-idle'}" %>
-    <%= link_to 'All sources (unified)', people_timesheets_path(request.query_parameters.merge(view: 'unified')), class: "nav-pill #{@view == 'unified' ? 'nav-pill-active' : 'nav-pill-idle'}" %>
-    <%= link_to 'Calendar', people_timesheets_path(request.query_parameters.merge(view: 'calendar', month: (@month || Date.current).strftime('%Y-%m'))), class: "nav-pill #{@view == 'calendar' ? 'nav-pill-active' : 'nav-pill-idle'}" %>
-  </nav>
-
-  <% if @view == 'calendar' %>
-  <section class="card card-pad space-y-3">
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <h2 class="text-lg font-semibold"><%= @month.strftime('%B %Y') %></h2>
-      <div class="flex gap-2">
-        <%= link_to 'Previous', people_timesheets_path(request.query_parameters.merge(view: 'calendar', month: @prev_month.strftime('%Y-%m'))), class: 'btn-ghost btn-sm' %>
-        <%= link_to 'Next', people_timesheets_path(request.query_parameters.merge(view: 'calendar', month: @next_month.strftime('%Y-%m'))), class: 'btn-ghost btn-sm' %>
-        <%= link_to 'Today', people_timesheets_path(request.query_parameters.merge(view: 'calendar', month: Date.current.strftime('%Y-%m'))), class: 'btn-ghost btn-sm' %>
-      </div>
-    </div>
-    <div class="grid grid-cols-7 gap-1 text-center text-xs font-semibold uppercase tracking-wide text-mocha">
-      <% Date::DAYNAMES.rotate.each do |day| %><div class="py-1"><%= day %></div><% end %>
-    </div>
-    <div class="grid grid-cols-7 gap-1">
-      <% @calendar_days_range.each do |day| %>
-        <% in_month = day.month == @month.month %>
-        <% bucket = in_month ? @calendar_days[day.iso8601] : nil %>
-        <div class="min-h-24 rounded-xl border p-2 text-left <%= in_month ? (bucket && (bucket[:timesheets].any? || bucket[:punches].positive?) ? 'border-fog bg-haze/40' : 'border-fog bg-cream') : 'border-transparent bg-haze/30' %> <%= day == Date.current ? 'ring-2 ring-olive' : '' %>" role="button" tabindex="0" aria-label="<%= day.strftime('%B %-d, %Y') %>">
-          <p class="text-xs font-semibold <%= in_month ? (day == Date.current ? 'text-olive' : 'text-ink') : 'text-taupe/60' %>"><%= day.day %></p>
-          <% if in_month && bucket && bucket[:timesheets].any? %>
-            <div class="mt-1 space-y-0.5">
-              <% bucket[:timesheets].each do |ts| %>
-                <div class="truncate rounded px-1 py-0.5 text-[10px] font-semibold leading-tight <%= ts.approved? ? 'bg-fern/15 text-fern' : ts.submitted? ? 'bg-olive/15 text-olive-deep' : ts.rejected? ? 'bg-rose/15 text-rose' : 'bg-taupe/15 text-taupe' %>" title="<%= ts.employee&.name %> · <%= ts.period_label %> · #{number_with_precision(ts.total_hours, precision: 1)}h">
-                  <%= ts.employee&.name&.split&.first %> · <%= ts.status %>
-                </div>
-              <% end %>
-            </div>
-          <% end %>
-          <% if in_month && bucket && bucket[:punches].positive? %>
-            <p class="mt-1 text-[10px] text-mocha"><%= bucket[:punches] %> punch<%= bucket[:punches] == 1 ? '' : 'es' %> · <%= number_with_precision(bucket[:hours], precision: 1) %>h</p>
-          <% end %>
-        </div>
-      <% end %>
-    </div>
-    <p class="text-xs text-taupe">Timesheets (weekly periods) and punches (daily) from Rupert, Square and C-Trax. Overlapping hours are never added together.</p>
-  </section>
   <% elsif @view == 'unified' %>
   <div class="card overflow-hidden">
     <div class="overflow-x-auto">
