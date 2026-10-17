@@ -559,3 +559,7 @@
 .table-filter .input { max-width:22rem; }
 .table-filter-count { font-size:.8rem;color:var(--color-mocha); }
 [data-table-filter-target="row"][hidden] { display:none; }
+
+/* Books desk: findings tuck under the next action; the summary carries the counts. */
+.desk-findings-summary { display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.5rem 1rem;padding:1rem 1.25rem;cursor:pointer; }
+.desk-findings > div > section { box-shadow:none;border:0;background:none;padding:0; }
