@@ -1,0 +1,125 @@
+<%# Week time grid. Past time is faded; each employee can be switched off/on (remembered in this browser). %>
+<% days = (week..(week + 6)).to_a %>
+<% palette = %w[217 340 152 28 265 190 48 310] %>
+<% hue = ->(id) { palette[calendar.employees.index { |eid, _| eid == id }.to_i % palette.size] } %>
+<% hour_px = 48 %>
+<% hours = calendar.hours_by_employee %>
+<% clocked_in = calendar.clocked_in %>
+<% holidays = UsHolidays.between(week, week + 6).to_h %>
+<% upcoming = UsHolidays.between(Date.current, Date.current + 180).first(6) %>
+<section class="space-y-3" data-controller="schedule-filter" aria-label="Week calendar">
+  <% if clocked_in.any? %>
+    <div class="card card-pad flex flex-wrap items-center gap-2 text-sm" aria-label="Clocked in now">
+      <span class="pill-fern">Clocked in now (<%= clocked_in.map(&:employee_id).uniq.size %>)</span>
+      <% clocked_in.each do |b| %><span class="pill-taupe"><%= b.employee_name %> since <%= b.starts_at.strftime('%-l:%M%P') %> · <%= b.source %></span><% end %>
+    </div>
+  <% end %>
+  <div class="grid items-start gap-3 lg:grid-cols-[15rem_minmax(0,1fr)]">
+  <aside class="card card-pad space-y-2 lg:sticky lg:top-24" aria-labelledby="emp-key-title">
+    <div class="flex items-center justify-between gap-2">
+      <h2 id="emp-key-title" class="text-sm font-semibold">Employee key</h2>
+      <span class="text-xs text-mocha" data-schedule-filter-target="count" aria-live="polite"></span>
+    </div>
+    <% if calendar.employees.empty? %>
+      <p class="text-sm text-mocha">No recorded shifts this week.</p>
+    <% else %>
+      <p class="text-xs text-mocha">Tick to show, untick to hide. Remembered in this browser.</p>
+      <ul class="space-y-1">
+        <% calendar.employees.each do |id, name| %>
+          <li>
+            <button type="button" role="switch" data-schedule-filter-target="toggle" data-employee-id="<%= id %>" data-action="schedule-filter#toggle" aria-checked="true" aria-pressed="true"
+              class="emp-key flex w-full items-center gap-2 rounded-lg border border-fog bg-white px-2.5 py-1.5 text-left text-sm">
+              <span class="emp-swatch inline-block size-3.5 flex-none rounded border-2" style="background: hsl(<%= hue.call(id) %> 70% 50%); border-color: hsl(<%= hue.call(id) %> 70% 50%)"></span>
+              <span class="min-w-0 flex-1 truncate"><%= name %></span>
+              <% if hours[id] %><span class="flex-none text-xs text-mocha"><%= number_with_precision(hours[id].values.max, precision: 1, strip_insignificant_zeros: true) %>h</span><% end %>
+            </button>
+          </li>
+        <% end %>
+      </ul>
+      <div class="flex gap-2 pt-1">
+        <button type="button" class="btn-ghost btn-sm flex-1" data-action="schedule-filter#showAll">Show all</button>
+        <button type="button" class="btn-ghost btn-sm flex-1" data-action="schedule-filter#hideAll">Hide all</button>
+      </div>
+    <% end %>
+  </aside>
+  <div class="min-w-0 space-y-3">
+  <div class="card overflow-hidden">
+    <header class="flex flex-wrap items-center justify-between gap-2 border-b border-fog px-4 py-3">
+      <h2 class="text-base font-semibold"><time datetime="<%= week.iso8601 %>"><%= week.strftime('%b %-d') %> – <%= (week + 6).strftime(week.month == (week + 6).month ? '%-d, %Y' : '%b %-d, %Y') %></time></h2>
+      <nav aria-label="Week" class="flex items-center gap-2">
+        <span class="inline-flex overflow-hidden rounded-lg border border-fog bg-white text-sm">
+          <%= link_to people_timesheets_path(view: 'week', status: params[:status], q: params[:q], period: (week - 7).iso8601), class: 'flex h-9 w-9 items-center justify-center hover:bg-haze', title: 'Previous week' do %><span class="sr-only">Previous week</span><span aria-hidden="true">‹</span><% end %>
+          <%= link_to 'Today', people_timesheets_path(view: 'week', status: params[:status], q: params[:q], period: Date.current.beginning_of_week.iso8601), class: 'flex items-center border-x border-fog px-3.5 font-semibold hover:bg-haze' %>
+          <%= link_to people_timesheets_path(view: 'week', status: params[:status], q: params[:q], period: (week + 7).iso8601), class: 'flex h-9 w-9 items-center justify-center hover:bg-haze', title: 'Next week' do %><span class="sr-only">Next week</span><span aria-hidden="true">›</span><% end %>
+        </span>
+      </nav>
+    </header>
+    <div class="grid border-b border-fog bg-haze/60 text-sm" style="grid-template-columns: 3.5rem repeat(7, minmax(0, 1fr))">
+      <div></div>
+      <% days.each do |day| %>
+        <div class="py-2 text-center <%= day < Date.current ? 'text-mocha/60' : 'text-ink' %>">
+          <%= day.strftime('%a') %>
+          <span class="ml-1 inline-flex size-7 items-center justify-center rounded-full font-semibold <%= day == Date.current ? 'bg-olive text-white' : '' %>"><%= day.day %></span>
+          <% if holidays[day] %><p class="truncate px-1 text-xs font-medium text-clay" title="<%= holidays[day] %>">★ <%= holidays[day] %></p><% end %>
+        </div>
+      <% end %>
+    </div>
+    <% if calendar.entries.any? %>
+      <div class="grid border-b border-fog text-xs" style="grid-template-columns: 3.5rem repeat(7, minmax(0, 1fr))">
+        <div class="py-1 pr-2 text-right text-mocha">Logged</div>
+        <% days.each do |day| %>
+          <div class="space-y-0.5 border-l border-fog/70 p-1 <%= day < Date.current ? 'opacity-50' : '' %>">
+            <% calendar.entries_for(day).each do |e| %>
+              <p data-schedule-filter-target="block" data-employee-id="<%= e.employee_id %>" class="truncate rounded px-1" style="background: hsl(<%= hue.call(e.employee_id) %> 80% 92%)" title="<%= e.employee_name %> · <%= e.work_type %> · typed on timesheet">
+                <%= e.employee_name %> <%= number_with_precision(e.hours, precision: 1, strip_insignificant_zeros: true) %>h<%= " #{e.work_type}" unless e.work_type == 'regular' %>
+              </p>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+    <div class="overflow-y-auto" style="max-height: 36rem" data-schedule-filter-target="scroller">
+      <div class="grid" style="grid-template-columns: 3.5rem repeat(7, minmax(0, 1fr)); height: <%= hour_px * 24 %>px">
+        <div class="relative">
+          <% (1..23).each do |h| %>
+            <span class="absolute right-2 -translate-y-1/2 text-xs text-mocha" style="top: <%= h * hour_px %>px"><%= Time.zone.local(2000, 1, 1, h).strftime('%-l%P') %></span>
+          <% end %>
+        </div>
+        <% days.each do |day| %>
+          <div class="relative border-l border-fog/70 <%= day < Date.current ? 'bg-haze/40' : '' %> <%= holidays[day] ? 'bg-amber-50' : '' %>"
+               style="background-image: linear-gradient(to bottom, rgb(0 0 0 / .06) 1px, transparent 1px); background-size: 100% <%= hour_px %>px">
+            <% calendar.blocks_for(day).each do |b| %>
+              <% h = hue.call(b.employee_id) %>
+              <div data-schedule-filter-target="block" data-employee-id="<%= b.employee_id %>"
+                   title="<%= b.employee_name %> · <%= b.source %> · <%= b.label %> (<%= b.hours %>h)<%= ' · not linked to an employee' if b.unmatched %>"
+                   tabindex="0" class="shift absolute overflow-hidden rounded-md border px-1.5 py-1 text-xs leading-tight <%= b.past ? 'opacity-45' : '' %>"
+                   style="top: <%= b.top_percent %>%; height: <%= b.height_percent %>%; left: calc(<%= b.lane %> * 100% / <%= b.lanes %> + 2px); width: calc(100% / <%= b.lanes %> - 4px); background: hsl(<%= h %> 80% 92%); border-color: hsl(<%= h %> 60% 70%); color: hsl(<%= h %> 60% 22%)">
+                <div class="shift-full">
+                  <p class="truncate font-semibold"><%= b.employee_name %></p>
+                  <p class="truncate"><%= b.label %> · <%= number_with_precision(b.hours, precision: 1, strip_insignificant_zeros: true) %>h</p>
+                  <p class="truncate opacity-75"><%= b.source %></p>
+                </div>
+                <div class="shift-compact" aria-hidden="true">
+                  <p class="font-semibold"><%= b.employee_name.to_s.split.map { |w| w[0] }.first(2).join.upcase %></p>
+                  <p><%= b.starts_at.strftime('%-l%P').delete_suffix('m') %></p>
+                </div>
+              </div>
+            <% end %>
+            <% if day == Date.current %>
+              <div class="pointer-events-none absolute inset-x-0 border-t-2 border-rose-500" style="top: <%= (Time.current.seconds_since_midnight / 86_400.0 * 100).round(3) %>%"></div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  </div>
+  </div>
+  <div class="card card-pad">
+    <h2 class="text-sm font-semibold">Upcoming holidays</h2>
+    <ul class="mt-2 grid gap-1 text-sm text-mocha sm:grid-cols-2 lg:grid-cols-3">
+      <% upcoming.each do |day, name| %><li><%= link_to day.strftime('%a, %b %-d'), people_timesheets_path(view: 'week', period: day.beginning_of_week.iso8601), class: 'text-olive hover:underline' %> — <%= name %></li><% end %>
+    </ul>
+  </div>
+  <p class="text-xs text-mocha">Faded blocks are in the past. “Logged” shows hours typed onto a timesheet without clock times. Rupert clock, Square and C-Trax shifts are separate sources and are never added together. Turning an employee off only hides them from this view.</p>
+</section>

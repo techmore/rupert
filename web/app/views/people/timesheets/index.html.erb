@@ -1,7 +1,10 @@
 <% content_for :title, "Timesheets" %>
 <% content_for :head do %><meta name="turbo-cache-control" content="no-cache"><% end %>
 <div class="space-y-6">
-  
+  <% if @view == 'week' %>
+    <%= render 'people/timesheets/calendar', calendar: @calendar, week: @week_start %>
+  <% end %>
+
   <section class="flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="page-title">Timesheets</h1>
@@ -14,9 +17,10 @@
   </section>
 
   <nav aria-label="Timesheet view" class="flex flex-wrap gap-2">
+    <% if @week_view_allowed %><%= link_to 'Week calendar', people_timesheets_path(request.query_parameters.except('month').merge(view: 'week')), class: "nav-pill #{@view == 'week' ? 'nav-pill-active' : 'nav-pill-idle'}" %><% end %>
     <%= link_to 'Rupert timesheets', people_timesheets_path(request.query_parameters.merge(view: 'list')), class: "nav-pill #{@view == 'list' ? 'nav-pill-active' : 'nav-pill-idle'}" %>
     <%= link_to 'All sources (unified)', people_timesheets_path(request.query_parameters.merge(view: 'unified')), class: "nav-pill #{@view == 'unified' ? 'nav-pill-active' : 'nav-pill-idle'}" %>
-    <%= link_to 'Calendar', people_timesheets_path(request.query_parameters.merge(view: 'calendar', month: (@month || Date.current).strftime('%Y-%m'))), class: "nav-pill #{@view == 'calendar' ? 'nav-pill-active' : 'nav-pill-idle'}" %>
+    <%= link_to (@week_view_allowed ? 'Month calendar' : 'Calendar'), people_timesheets_path(request.query_parameters.merge(view: 'calendar', month: (@month || Date.current).strftime('%Y-%m'))), class: "nav-pill #{@view == 'calendar' ? 'nav-pill-active' : 'nav-pill-idle'}" %>
   </nav>
 
   <% if @view == 'calendar' %>

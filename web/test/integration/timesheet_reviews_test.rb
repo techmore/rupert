@@ -129,4 +129,30 @@ class TimesheetReviewsTest < ActionDispatch::IntegrationTest
     assert_nil @sheet.reviewed_by
     assert_match(/no longer active/, flash[:alert])
   end
+  test 'week calendar leads the page with the employee key, holidays and compact overlapping shifts' do
+    ClockShift.create!(employee: @employee, user: @worker, employee_key: @employee.id.to_s, employee_name: @employee.name,
+      employment_type: 'part_time', request_token: 'calendar-token-0001',
+      started_at: Time.zone.parse('2026-09-08 09:00'), ended_at: Time.zone.parse('2026-09-08 13:00'))
+    sign_in
+    get people_timesheets_path(period: '2026-09-07')
+    assert_response :success
+    assert_select 'section[aria-label="Week calendar"]'
+    assert_match 'Labor Day', response.body
+    assert_operator response.body.index('aria-label="Week calendar"'), :<, response.body.index('<h1 class="page-title">Timesheets</h1>')
+    assert_select 'aside[aria-labelledby=emp-key-title] button[role=switch][data-employee-id=?]', @employee.id.to_s
+    assert_select 'section[aria-label="Week calendar"] nav[aria-label=Week] a', text: 'Today'
+    assert_select '.shift .shift-compact', minimum: 1
+  end
+
+  test 'week calendar shows open punches and unlinked source records' do
+    ClockShift.create!(employee: @employee, user: @worker, employee_key: @employee.id.to_s, employee_name: @employee.name,
+      employment_type: 'part_time', request_token: 'calendar-token-0002', started_at: 2.hours.ago)
+    SquareTimecard.create!(external_id: 'sq-1', team_member_id: 'TMXYZ123456', started_at: 3.hours.ago, ended_at: 1.hour.ago,
+      import_status: 'unmatched', last_seen_at: Time.current)
+    sign_in
+    get people_timesheets_path(period: Date.current.beginning_of_week.iso8601)
+    assert_select '[aria-label="Clocked in now"]', text: /Alex Worker/
+    assert_match 'Unmatched Square', response.body
+  end
+
 end

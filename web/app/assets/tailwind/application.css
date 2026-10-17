@@ -568,3 +568,18 @@
 .nav-key { display:none;margin-left:.35rem;min-width:1.1rem;padding:0 .3rem;border:1px solid currentColor;border-radius:.3rem;font:600 .7rem/1.1rem var(--font-sans);text-align:center;text-transform:uppercase; }
 .nav-key::after { content:attr(data-key); }
 .keys-armed .nav-key { display:inline-block; }
+
+/* Timesheet week grid: shifts size their own labels. Narrow (overlapping) blocks
+   show initials and start hour; hovering or focusing one lifts it above its
+   neighbours and shows the full detail. */
+.shift { container-type:inline-size; }
+.shift-compact { display:none;text-align:center; }
+@container (max-width:92px) { .shift-full { display:none; }.shift-compact { display:block; } }
+.shift:hover,.shift:focus-visible { z-index:10;overflow:visible;box-shadow:0 4px 16px #1a393d40; }
+.shift:hover .shift-full,.shift:focus-visible .shift-full { display:block;min-width:10.5rem; }
+.shift:hover .shift-compact,.shift:focus-visible .shift-compact { display:none; }
+.shift:hover,.shift:focus-visible { width:auto !important;min-width:11rem;background:#fff !important; }
+.emp-key[aria-pressed=false] { opacity:.6; }
+.emp-key[aria-pressed=false] .emp-swatch { background:transparent !important; }
+.emp-key[aria-pressed=false] span:nth-child(2) { text-decoration:line-through; }
+.emp-key:focus-visible { outline:2px solid var(--color-olive);outline-offset:2px; }
