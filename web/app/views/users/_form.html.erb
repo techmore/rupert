@@ -11,7 +11,12 @@
 
   <div>
     <%= f.label :role, "Role", class: "mb-1 block text-xs font-semibold uppercase tracking-wide text-mocha" %>
-    <%= f.select :role, @roles, {}, class: "select w-full" %>
+    <% if Current.user.super_admin? %>
+      <%= f.select :role, @roles, {}, class: "select w-full" %>
+    <% else %>
+      <%= f.select :role, @roles, {}, class: "select w-full", disabled: true %>
+      <p class="mt-1 text-xs text-taupe">Only the super admin can set roles; new accounts start as cashier.</p>
+    <% end %>
     <p class="mt-1 text-xs text-taupe">Roles are tuned in the <a href="<%= permissions_path %>" class="text-olive hover:underline">Permissions</a> screen.</p>
   </div>
 

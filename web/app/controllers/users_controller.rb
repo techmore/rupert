@@ -20,6 +20,9 @@ class UsersController < AuthenticatedController
 
   def create
     @user = User.new(user_params.merge(tenant_id: Current.tenant_id))
+    # Only a super admin can choose a role; everyone else's new accounts start
+    # at the least-privileged working role rather than the model default (admin).
+    @user.role = 'cashier' unless Current.user.super_admin?
     if @user.save
       ActivityLogger.log('employee_added', subject: @user, details: @user.role)
       redirect_to(users_path, notice: "#{@user.display_name} added.")
