@@ -552,3 +552,10 @@
 @media(max-width:640px) { .bookkeeping-review-banner .btn-primary { width:100%; }.bookkeeping-header .btn-primary,.bookkeeping-header .btn-ghost { width:100%; }.bookkeeping-header > div { width:100%; }.bookkeeping-stat { padding:1rem; }.bookkeeping-period .operations-filters { flex-basis:100%; } }
 .finance-primary-links { display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.85rem;padding-bottom:.85rem;border-bottom:1px solid var(--color-fog); }
 .finance-primary-links .nav-pill { min-height:40px;display:inline-flex;align-items:center; }
+
+/* Bookkeeper UX: live "narrow these rows" filter and aligned figures. */
+.table-figures { font-variant-numeric:tabular-nums; }
+.table-filter { display:flex;align-items:center;gap:.6rem;flex-wrap:wrap; }
+.table-filter .input { max-width:22rem; }
+.table-filter-count { font-size:.8rem;color:var(--color-mocha); }
+[data-table-filter-target="row"][hidden] { display:none; }
