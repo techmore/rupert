@@ -8,14 +8,34 @@ class PageGuides
   Guide = Struct.new(:key, :title, :summary, :sections, :tips, keyword_init: true)
 
   GUIDES = {
+    'influencers' => Guide.new(
+      key: 'influencers', title: 'Influencer collaborations',
+      summary: 'Track prospects, campaign collaborations, product gifts, temporary code records and documents.',
+      sections: [
+        { heading: 'Directory and follow-up', body: 'Add a prospect, audience topics and relationship owner. Update stages and follow-up dates as you work. Contact details and conversations require the separate Marketing contacts permission. No outreach is sent automatically.' },
+        { heading: 'Collaborations and gifts', body: 'Connect a prospect to a Marketing campaign. Propose products from the mirrored Shopify catalog, record estimated costs, approve the gift and confirm recipient details. Record actual shipment and delivery evidence; this workflow does not reserve stock, create orders or change inventory.' },
+        { heading: 'Offers and documentation', body: 'Create a Shopify discount draft, review its store, dates and full terms, then explicitly create the code. Marketing discounts and review access are required. Copying verifies Shopify and supplies a link that applies the code. Existing-code records and versioned campaign documents remain available; links do not measure conversions or commissions.' }
+      ],
+      tips: ['Do not contact blocks new offer sharing and product handoffs.', 'Document edits create a new revision and reset review.', 'Shopify-created codes enforce their saved expiry; existing-code records need matching expiry in the merchant store.']
+    ),
+    'marketing' => Guide.new(
+      key: 'marketing', title: 'Community marketing',
+      summary: 'Find topic discussions, save thread context and review replies with existing group offers.',
+      sections: [
+        { heading: 'Find and triage', body: 'Create a campaign and group with topic terms and promotion rules. Open the group topic search, save a discussion URL and excerpt, then mark it relevant and confirm current context.' },
+        { heading: 'Review an offer and reply', body: 'Record an existing merchant code and full terms. A reviewer confirms merchant evidence for 24 hours and group rules for 30 days. Save and submit a reply with clear brand affiliation; approve the exact revision before copying it.' },
+        { heading: 'Manual publication', body: 'Publish the approved text yourself and record its URL. Changed context or offers require another review. Rupert does not crawl sources, post replies or create merchant codes in this phase.' }
+      ],
+      tips: ['Thread context expires after 7 days. Confirm it again when needed.', 'Keep a useful contribution in each reply and follow group promotion rules.', 'An approved draft is not evidence of publication or sales.']
+    ),
     'dashboard' => Guide.new(
       key: 'dashboard', title: 'Dashboard',
       summary: "Your at-a-glance store health: today's money, sales volume, and anything needing attention like inventory drift or low stock.",
       sections: [
         { heading: "What you're seeing",
-          body: 'The top cards summarize today and yesterday: gross revenue, sales volume, and attention items. Charts show the trend over the last 30 days. The attention rail lists real problems — SKUs where Shopify and Square disagree, or items near/out of stock — so you act on the exceptions, not the whole list.' },
+          body: 'Sales cards and charts use paid canonical orders and completed native C-Trax orders. Each native C-Trax order is counted once by source, store and order ID. Source pull times and latest sale dates describe different kinds of coverage; a recent pull can contain older sales.' },
         { heading: 'How to read the numbers',
-          body: "Revenue is gross sales (before returns), from orders mirrored by the sync. Volume is order count, not items. 'vs yesterday' compares the same hour-of-day, so morning vs morning. A clay SKU in attention means its SKU differs between Shopify and Square — worth a look on Catalog Links." }
+          body: "Sales are recorded USD totals from paid and fulfilled orders plus completed C-Trax sales. C-Trax tips remain separate. Payment reports, invoices and deposits are never added. Refunds require separate source review. Yesterday is the whole previous day; the last 7 and 30 days include today. Missing imports do not prove zero activity." }
       ],
       tips: [
         "Check the attention rail first every morning — it's ordered by severity.",
@@ -25,12 +45,12 @@ class PageGuides
     ),
     'sales' => Guide.new(
       key: 'sales', title: 'Sales',
-      summary: 'The daily sales journal — every sale in arrival order with where it happened, hourly × location, and revenue trends you can split by source.',
+      summary: 'Recorded sales across channels and a separate canonical order journal, filtered by date and source.',
       sections: [
         { heading: "What you're seeing",
-          body: "Top row: the selected day's total, average sale, busiest hour, and the window total. The charts show daily revenue and the typical hour-by-hour shape. The 'Hourly × location' table is the storefloor ledger for the day. The bottom list is every sale in arrival order — tap one for the full order." },
+          body: "Summary and charts include USD paid/fulfilled canonical orders and completed native C-Trax orders once. The chart period ends on the selected business date. Payments, tips and deposits are separate. The canonical journal shows each order's own currency and selected status; C-Trax receipts stay in daily close." },
         { heading: 'The source toggle',
-          body: 'All / Shopify / Square switches every number, chart, and table to just that channel — useful to see online vs in-store separately. The choice is in the URL, so you can bookmark a filtered view.' }
+          body: 'All / Shopify / C-Trax / Square filters the selected source — useful to see online vs in-store separately. The choice is in the URL, so you can bookmark a filtered view.' }
       ],
       tips: [
         "Use the source toggle to verify a Square outage didn't lose POS sales.",
@@ -38,19 +58,34 @@ class PageGuides
         'Print an invoice or packing slip from this page for the shipping desk.'
       ]
     ),
-    'inventory' => Guide.new(
-      key: 'inventory', title: 'Inventory',
-      summary: 'Your catalog mirrored from Shopify with quantities on both sides — plus size-derived products and a banner when any count is negative.',
+    'inventory_exceptions' => Guide.new(
+      key: 'inventory_exceptions', title: 'Inventory exceptions',
+      summary: 'A read-only review queue for uncertain stock, local hold shortages and catalog conflicts, organized by exact source item and location.',
       sections: [
-        { heading: "What you're seeing",
-          body: "One row per product variant: its Shopify and Square counts side by side. These are two different locations with two different inventories — different numbers are normal, not an error. A 'size 5g' badge means the variant derives from a root gram bank and is managed on the Sizes page. The red banner lists negative counts — oversold or non-inventory SKUs — with one-click corrections." },
-        { heading: 'How to read the numbers',
-          body: 'Shopify is your online stock; Square is what you hold for in-person sales. Compare each against its own reorder point, not against the other column. Search by product title or SKU; the page shows the first 40 matches.' }
+        { heading: 'What needs review',
+          body: 'The queue flags negative, unknown or stale mirrored stock; local holds that exceed available capacity; duplicate SKUs or barcodes; shared or unresolved catalog identities; pending counts; depleted bulk lots; and Shopify orders with incomplete source lines. Shopify and Square hold independent stock. Different channel quantities alone are not an exception.' },
+        { heading: 'Filters and coverage',
+          body: 'Choose a platform, stock location, work type and snapshot age threshold of 1–168 hours. Stock, holds and counts use the platform/location filters. Catalog checks cover all locations, and local bulk lots cover the store because they have no platform/location assignment. Incomplete Shopify order locations are matched by source location ID. Read each coverage note before treating a filtered view as complete.' },
+        { heading: 'Reading limits and next steps',
+          body: 'The queue displays bounded query results and sampled identity members, with additional pages when needed. Counts describe returned exception rows, not a complete audit or unique product count. Unknown quantities and unverifiable hold shortages stay unknown. Follow a review link to inspect the item, catalog decision, local holds, count or lot. The queue does not change stock, SKUs or material balances, and incomplete source lines must be verified before gram deductions.' }
       ],
       tips: [
-        "When the negative-count banner appears, fix items individually (Set to 0 / Untrack) so you don't guess.",
-        'Size-derived SKUs are marked — manage their root grams on the Sizes page, not by editing here.',
-        "Unlinked variants (no Square link) show 'unlinked'; run a sync after creating new SKUs to link them."
+        'Local holds are advisory: Shopify and Square can still sell the same stock, and a later import may reduce capacity.',
+        'Check the exact source item and location before using a physical count; legacy worksheet comparisons may span Shopify locations.',
+        'A recent mirror timestamp and an empty queue do not prove current physical stock. Limits, missing source data and upstream transformations can hide issues.'
+      ]
+    ),
+    'inventory' => Guide.new(
+      key: 'inventory', title: 'Stock comparison',
+      summary: 'Read-only Shopify and C-Trax observations of shared stock, with current catalog coverage and source read times.',
+      sections: [
+        { heading: 'Read the source states', body: 'Select one Shopify location and one C-Trax store. Shopify on-hand, available and committed quantities are separate. C-Trax retains signed stock. These are observations of shared stock; never add their quantities together.' },
+        { heading: 'Review identities and exceptions', body: 'Unique native variant IDs take precedence. Unique SKU/barcode identifiers are candidates, not approved mappings. Exact product words and explicit packages can suggest additional candidates, with both source names and matching evidence. These name/package candidates have no quantity difference. Duplicate or conflicting identities stay unresolved. Historical Shopify candidates explain unmatched C-Trax items without restoring old stock. Unknown stock is not zero; no current match does not mean not carried.' }
+      ],
+      tips: [
+        'Search either source name, SKU, barcode, native ID or investigation note. Attention, unmatched, product/package, saved-findings and historical filters also apply to CSV.',
+        'Older-than-one-hour, unknown, fractional or untracked observations have no numerical difference.',
+        'Current active tracked Shopify variants are shown; archived, absent and unverified historical records are excluded. This page never changes stock, SKUs or mappings.'
       ]
     ),
     'reconcile' => Guide.new(
@@ -58,7 +93,7 @@ class PageGuides
       summary: 'Which items are the same across Shopify and Square — a read-only identity audit. Shopify and Square are separate locations with separate stock, so quantities here are informational, never corrected.',
       sections: [
         { heading: "What you're seeing",
-          body: "A row per linked item with its Shopify and Square names, SKUs, and current counts. 'Matched' means both platforms agree on the SKU. 'Mismatched' means the same item is identified differently on each side — those float to the top. Below, 'Size families' groups each root product with its derived sizes, plus the pending-approval queue." },
+          body: "A row per linked item with its Shopify and Square names, SKUs, and current counts. 'Matched' means both platforms agree on the SKU. 'Mismatched' means the same item is identified differently on each side — those float to the top. Search by product or either source SKU and filter mismatches first. Size families are reference details below; review changes in the Sizes workspace." },
         { heading: 'What to do about mismatches',
           body: "A mismatch is a labeling decision, not an emergency: pick one canonical SKU and apply it on both platforms (SKU writes always get owner sign-off first), or unlink if they're truly different items. Nothing here writes automatically." }
       ],
@@ -136,13 +171,13 @@ class PageGuides
     ),
     'settings' => Guide.new(
       key: 'settings', title: 'Settings',
-      summary: "Your store's configuration — business details, Google sign-in, size families, warehouse links, Drive backups, and the Buzz agent.",
+      summary: "Your store's configuration — business details, Google sign-in, size families, warehouse links and the Buzz agent. Platform administrators also manage instance backups.",
       sections: [
-        { heading: "What's here", body: 'Business name and invoice prefix; Google OAuth (allowed domains + client credentials); size families (root gram products); the wholesale Warehouse link; Google Drive backup connection; and the Buzz agent identity.' }
+        { heading: "What's here", body: 'Business name and invoice prefix; Google OAuth (allowed domains + client credentials); size families (root gram products); the wholesale Warehouse link; and the Buzz agent identity. Google Drive backup controls are restricted to the platform super administrator.' }
       ],
       tips: [
-        'Connect Google Drive here to enable off-site backups — Rupert dumps your database every 6 hours.',
-        'Add every staff email domain to Google sign-in; new people on an allowed domain get a reader account automatically.',
+        'Only the platform super administrator configures Google Drive backups. Every 6 hours, Rupert can copy the entire shared instance database to that approved destination; store credentials cannot authorize this.',
+        'Add every staff email domain to Google sign-in; new people on an allowed domain get a employee account automatically.',
         'Environment secrets (Square/Shopify tokens) live in the .env card and are encrypted at rest.'
       ]
     ),
@@ -181,7 +216,7 @@ class PageGuides
       key: 'users', title: 'Accounts',
       summary: 'Who can sign in and their role. Also the per-person permission overrides.',
       sections: [
-        { heading: "What you're seeing", body: 'The login accounts (which pair with employees) and their roles: super_admin, admin, manager, cashier, reader. Super admin is platform-wide; everything else is scoped to this store.' }
+        { heading: "What you're seeing", body: 'The login accounts (which pair with employees) and their roles: super_admin, admin, manager, shift_leader, cashier, reader. Shift leaders review timesheets without payroll or account administration. Super admin is platform-wide; everything else is scoped to this store.' }
       ],
       tips: [
         'Give the least privilege that works — readers can view, managers can run, admins configure.',
@@ -202,7 +237,7 @@ class PageGuides
       key: 'finance', title: 'Finance',
       summary: 'Chart of accounts, expenses, and vendor payments — the books that tie sales to money out.',
       sections: [
-        { heading: "What you're seeing", body: 'Your chart of accounts, expense records, and vendor payments. Expense entries keep inventory cost and overhead separated so reports reflect true margin.' }
+        { heading: "What you're seeing", body: 'Your chart of accounts, expense records, and vendor payments. Vendor credits, purchase commitments and received balances remain separate. Customer receivables are grouped by currency. These local records do not establish a bank balance or a complete accounting profit.' }
       ],
       tips: [
         'Keep the chart of accounts tidy — reports read straight from it.'
@@ -230,12 +265,12 @@ class PageGuides
     ),
     'ledger' => Guide.new(
       key: 'ledger', title: 'Ledger',
-      summary: 'Every money movement in and out — the source of truth for financials.',
+      summary: 'Imported order ledger observations by source and currency.',
       sections: [
-        { heading: "What you're seeing", body: 'Ledger entries built from sales and expenses: gross, payments, refunds. Reconcile totals against your bank to catch discrepancies.' }
+        { heading: "What you're seeing", body: 'This legacy mirror can describe orders already included in sales. Its currency totals stay separate and are not added to revenue, gateway payments or bank deposits. Financial close retains source controls and reviewer conclusions.' }
       ],
       tips: [
-        'Drill into any entry to see the originating order or expense.'
+        'Use financial close for original evidence and bank verification. Missing imports are not proof of zero activity.'
       ]
     ),
     'alerts' => Guide.new(
@@ -252,20 +287,21 @@ class PageGuides
       key: 'customers', title: 'Customers',
       summary: 'Everyone who buys — orders, contact info, and history in one place.',
       sections: [
-        { heading: "What you're seeing", body: "The customer list, searchable, with their order history. Opening a customer shows the orders they've placed across channels." }
+        { heading: "What you're seeing", body: "The customer list with relationship counts, search, filters and sorting. Opening a customer shows their activity timeline, follow-ups, notes and order history." }
       ],
       tips: [
-        'Search by name, phone, or email — not just order number.'
+        'Search by name, phone, or email — not just order number.',
+        'Use the relationship tabs and removable filter chips to narrow the list; Clear all resets it.'
       ]
     ),
     'connections' => Guide.new(
-      key: 'connections', title: 'Connections',
-      summary: 'The integrations powering Rupert — Shopify, Square, Google Drive, Buzz — and their status.',
+      key: 'connections', title: 'Master credentials & sync',
+      summary: 'One setup desk for saved credentials, source freshness, access checks and repair steps.',
       sections: [
-        { heading: "What you're seeing", body: "Each connected service and whether it's healthy. Reconnect or check credentials here when a sync fails." }
+        { heading: "What you're seeing", body: 'Credential completeness and actual source freshness are separate. Open a connection to replace credentials, explicitly check access, then run a read. Saved secrets stay hidden; backup setup remains with the platform operator.' }
       ],
       tips: [
-        "If a sync fails, check Connections first — it's usually a revoked token, not a code bug."
+        'If access checks pass but data stays stale, review Sync history and Worker status. Do not replace credentials or enable a schedule merely because a source is stale.'
       ]
     ),
     'system' => Guide.new(
@@ -302,13 +338,13 @@ class PageGuides
     ),
     'inventory_counts' => Guide.new(
       key: 'inventory_counts', title: 'Inventory counts',
-      summary: "Physical count sheets — record what's actually on the shelf and push it back as the truth.",
+      summary: "Physical count sheets record what is on the shelf for review and approval.",
       sections: [
-        { heading: "What you're seeing", body: 'Count sheets in draft/submitted/approved states. A count records what you physically have per SKU; approving it becomes the authoritative inventory.' }
+        { heading: "What you're seeing", body: 'Count sheets in draft/submitted/approved states. Approval preserves the reviewed physical count as an audit record; it does not change Shopify or Square quantities.' }
       ],
       tips: [
         'Run a count before trusting the mirror after a big discrepancy.',
-        'Counting the root item of a size family resets its gram bank — do that before deriving sizes.'
+        'Review prepared quantities before scanning: use Set total for the first physical count of each SKU.'
       ]
     ),
     'projects' => Guide.new(
@@ -390,6 +426,7 @@ class PageGuides
     ['/access_logs', 'access_log'],
     ['/sales/pos_sessions', 'registers'],
     ['/inventory_counts', 'inventory_counts'],
+    ['/inventory_exceptions', 'inventory_exceptions'],
     ['/people/employees', 'employees'],
     ['/people/timesheets', 'timesheets'],
     ['/people/pay_runs', 'payroll'],
@@ -403,6 +440,7 @@ class PageGuides
     ['/finance', 'finance'],
     ['/purchasing', 'purchasing'],
     ['/sales', 'sales'],
+    ['/stock_comparison', 'inventory'],
     ['/inventory', 'inventory'],
     ['/reconcile', 'reconcile'],
     ['/warehouse', 'warehouse'],

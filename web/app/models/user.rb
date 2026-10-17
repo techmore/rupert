@@ -1,10 +1,14 @@
 # frozen_string_literal: true
 
+require 'digest'
+
 class User < ActiveRecord::Base
   has_secure_password
 
   belongs_to :tenant, optional: true
   has_many :user_permissions, dependent: :destroy
+  has_many :api_access_tokens, dependent: :destroy
+  has_many :google_login_identities, dependent: :destroy
 
   serialize :dashboard_config, coder: JSON
 
@@ -22,15 +26,24 @@ class User < ActiveRecord::Base
       super_admin: 'super_admin',
       admin: 'admin',
       manager: 'manager',
+      shift_leader: 'shift_leader',
       cashier: 'cashier',
-      reader: 'reader'
+      inventory_employee: 'inventory_employee',
+      reporting: 'reporting',
+      reader: 'reader',
+      employee: 'employee'
     },
-    default: :admin
+    default: :employee
 
   # Permission matrix. "*" grants everything.
   ROLE_PERMISSIONS = {
     'super_admin' => ['*'],
     'admin' => [
+      'marketing.read',
+      'marketing.write',
+      'marketing.review',
+      'marketing.contacts',
+      'marketing.discounts',
       'dashboard.read',
       'sales.read',
       'sales.write',
@@ -70,6 +83,7 @@ class User < ActiveRecord::Base
       'payroll.write'
     ],
     'manager' => [
+      'receipts.review',
       'dashboard.read',
       'sales.read',
       'customers.read',
@@ -88,9 +102,10 @@ class User < ActiveRecord::Base
       'timesheets.read',
       'timesheets.write',
       'leave.read',
-      'leave.write',
-      'payroll.read'
+      'leave.write'
     ],
+    'shift_leader' => %w[dashboard.read pos.use timesheets.read timesheets.review],
+    'employee' => %w[pos.use timesheets.self],
     'cashier' => [
       'dashboard.read',
       'sales.read',
@@ -107,17 +122,39 @@ class User < ActiveRecord::Base
       'reconcile.read',
       'reports.read',
       'ledger.read',
-      'alerts.read',
-      'hr.read',
-      'timesheets.read',
-      'leave.read',
-      'payroll.read'
-    ]
+      'alerts.read'
+    ],
+    'inventory_employee' => %w[dashboard.read inventory.read inventory.write reconcile.read alerts.read alerts.write],
+    'reporting' => %w[dashboard.read sales.read inventory.read reports.read ledger.read]
   }.freeze
 
   def can?(permission)
+    return true if permission.to_s == 'timesheets.self' && (effective_permissions.include?('timesheets.read') || TimeClockService.worker_for(self))
     perms = effective_permissions
     perms.include?('*') || perms.include?(permission.to_s)
+  end
+
+  def can_review_receipts?
+    active? && (can?('receipts.review') || can?('finance.write'))
+  end
+
+  def can_review_timesheets?
+    active? && can?('timesheets.read') && (can?('timesheets.review') || can?('timesheets.write'))
+  end
+
+  # POS access does not grant sales history, reports or inventory management.
+  def can_use_pos?
+    active? && (can?('pos.use') || %w[sales.read sales.write inventory.read].all? { |permission| can?(permission) })
+  end
+
+  def permissions_signature
+    Digest::SHA256.hexdigest(effective_permissions.sort.join('|'))
+  end
+
+  # Account and role administration cannot be delegated to ordinary staff.
+  def can_manage_accounts?
+    actor = User.find_by(id: id, active: true)
+    actor && (actor.admin? || actor.super_admin?) && actor.can?('users.write')
   end
 
   def active?
@@ -135,6 +172,12 @@ class User < ActiveRecord::Base
   #   2. per-role overrides (role_permissions)       — replaces built-ins for role
   #   3. built-in ROLE_PERMISSIONS matrix
   def effective_permissions
+    # Employee sign-in is a self-service boundary, including when stale or
+    # mistaken person/role overrides contain wider permissions or a wildcard.
+    return ROLE_PERMISSIONS.fetch('employee') if employee?
+
+    @effective_permissions = nil if @effective_permissions_role != role
+    @effective_permissions_role = role
     @effective_permissions ||= if super_admin?
       ['*']
     else
@@ -156,6 +199,11 @@ class User < ActiveRecord::Base
   # Replace this user's per-employee permission overrides with the given list.
   # An empty list removes all overrides (falls back to role permissions).
   def update_permission_overrides!(permissions)
+    if employee? && (permissions.to_a - ROLE_PERMISSIONS.fetch('employee')).any?
+      raise ArgumentError, 'Employee access is limited to POS and their own time records.'
+    end
+    @effective_permissions = nil
+    user_permissions.reset
     user_permissions.delete_all
     permissions.to_a.each do |permission|
       next unless User.all_permissions.include?(permission)
@@ -178,10 +226,12 @@ class User < ActiveRecord::Base
   # and to keep the role matrix in one place.
   def self.permission_catalog
     [
+      { area: 'Receipts', permissions: ['receipts.review'] },
       { area: 'Overview', permissions: ['dashboard.read'] },
+      { area: 'Marketing', permissions: ['marketing.read', 'marketing.write', 'marketing.review', 'marketing.contacts', 'marketing.discounts'] },
       {
         area: 'Commerce',
-        permissions: ['sales.read', 'sales.write', 'customers.read', 'customers.write', 'inventory.read',
+        permissions: ['pos.use', 'sales.read', 'sales.write', 'customers.read', 'customers.write', 'inventory.read',
                       'inventory.write']
       },
       {
@@ -196,7 +246,7 @@ class User < ActiveRecord::Base
       },
       {
         area: 'Team',
-        permissions: ['users.read', 'users.write', 'hr.read', 'hr.write', 'timesheets.read', 'timesheets.write',
+        permissions: ['users.read', 'users.write', 'hr.read', 'hr.write', 'timesheets.read', 'timesheets.write', 'timesheets.review', 'timesheets.self',
                       'leave.read', 'leave.write', 'payroll.read', 'payroll.write']
       }
     ]

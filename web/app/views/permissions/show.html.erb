@@ -1,13 +1,17 @@
+<% can_manage_accounts = Current.user.can_manage_accounts? %>
 <% content_for :title, "Permissions" %>
 <div class="space-y-6">
   <section class="flex flex-wrap items-end justify-between gap-4">
     <div>
-      <h1 class="font-display text-3xl text-ink">Permissions</h1>
+      <h1 class="page-title">Permissions</h1>
       <p class="mt-1 text-sm text-mocha">What each role can do. Super admin always has full access; overrides below replace a role's built-in defaults.</p>
+      <p class="mt-1 text-sm text-mocha">Employee access is fixed to POS and their own time records and cannot be expanded by overrides.</p>
     </div>
     <div class="flex gap-2">
+      <% if can_manage_accounts %>
       <%= form_tag reset_permissions_path, method: :post do %>
         <%= submit_tag "Reset to defaults", class: "btn-ghost", data: { confirm: "Clear all role overrides and use the built-in defaults?" } %>
+      <% end %>
       <% end %>
       <%= link_to "Accounts", users_path, class: "btn-ghost btn-sm" %>
     </div>
@@ -43,10 +47,12 @@
                         @builtin.fetch(role, []).include?(permission) || @builtin.fetch(role, []).include?("*")
                       end %>
                     <td class="td text-center">
-                      <% if @builtin.fetch(role, []).include?("*") %>
+                      <% if role == 'employee' %>
+                        <span class="text-taupe" title="Employee — POS and own time records"><%= @builtin.fetch('employee').include?(permission) ? '✓' : '—' %></span>
+                      <% elsif @builtin.fetch(role, []).include?("*") %>
                         <span class="text-taupe" title="Super admin — always allowed">—</span>
                       <% else %>
-                        <input type="checkbox" name="roles[<%= role %>][<%= permission %>]" value="1" <%= checked ? "checked" : "" %> class="accent-olive">
+                        <input type="checkbox" name="roles[<%= role %>][<%= permission %>]" value="1" <%= checked ? "checked" : "" %> class="accent-olive" <%= "disabled" unless can_manage_accounts %>>
                       <% end %>
                     </td>
                   <% end %>
@@ -59,7 +65,9 @@
     </div>
 
     <div class="mt-4 flex items-center gap-3">
+      <% if can_manage_accounts %>
       <%= submit_tag "Save permissions", class: "btn-primary" %>
+      <% end %>
       <span class="text-xs text-taupe">Empty cells mean a role uses its built-in default for that permission.</span>
     </div>
   <% end %>

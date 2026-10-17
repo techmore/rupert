@@ -1,15 +1,35 @@
 <% content_for :title, "Timesheets" %>
 <div class="space-y-6">
+  <%= render 'people/timesheets/demo_header' if @has_demo_timesheets %>
   <section class="flex flex-wrap items-end justify-between gap-4">
     <div>
-      <h1 class="font-display text-3xl text-ink">Timesheets</h1>
-      <p class="mt-1 text-sm text-mocha">Hours by week per employee, submitted for review.</p>
+      <h1 class="page-title">Timesheets</h1>
+      <p class="mt-1 text-sm text-mocha"><%= Current.user.employee? ? (@reviewer ? 'Your timesheets and assigned demo reviews.' : 'Your hours by week, submitted for review.') : 'Hours by week per employee, submitted for review.' %></p>
     </div>
-    <% if Current.user.can?("timesheets.write") %>
+    <% if policy(People::Timesheet).create? %>
       <%= link_to "New timesheet", new_people_timesheet_path, class: "btn-primary" %>
     <% end %>
+    <%= link_to "My time home", employee_app_path, class: "btn-ghost btn-sm" %>
   </section>
 
+  <% if @reviewer %>
+    <nav aria-label="Timesheet review" class="flex flex-wrap gap-2">
+      <% [['Needs review', 'submitted'], ['All timesheets', 'all'], ['Approved', 'approved'], ['Returned for correction', 'rejected']].each do |label, status| %>
+        <%= link_to (status == 'submitted' ? "#{label} (#{@awaiting})" : label), people_timesheets_path(status: status), class: "nav-pill #{@status == status ? 'nav-pill-active' : 'nav-pill-idle'}", aria: { current: (@status == status ? 'page' : nil) } %>
+      <% end %>
+    </nav>
+    <p class="text-sm text-mocha">Review each day's hours and notes, then approve or return for correction. Your own timesheets need another reviewer. Demo hours are always excluded from payroll.</p>
+  <% end %>
+
+  <section class="space-y-3" aria-label="Employee time sources">
+    <h2 class="text-lg font-semibold"><%= Current.user.employee? ? 'Your time sources' : 'All employee time sources' %></h2>
+    <p class="text-sm text-mocha">Rupert submissions, Square timecards and C-Trax shifts are separate records. Review each source; overlapping hours must not be added together. Source records do not approve hours or create a payroll payment.</p>
+    <div class="grid gap-3 sm:grid-cols-3">
+      <article class="card card-pad space-y-2"><h3 class="font-semibold">Rupert timesheets</h3><p class="text-sm text-mocha">Weekly entries and approval history.</p><%= link_to 'View all Rupert timesheets', people_timesheets_path(status: 'all'), class: 'text-sm text-olive underline' %></article>
+      <article class="card card-pad space-y-2"><h3 class="font-semibold">Square timecards</h3><p class="text-sm text-mocha"><%= @square_history.count %> retained records, including open and held history. Counted Square history also appears in personal reports and calendars.</p><%= link_to 'View Square history', people_square_timesheets_path, class: 'text-sm text-olive underline' %></article>
+      <article class="card card-pad space-y-2"><h3 class="font-semibold">C-Trax shifts</h3><p class="text-sm text-mocha"><%= @ctrax_history.count %> retained records. Source-reported hours and elapsed time remain unapproved history.</p><%= link_to 'View C-Trax history', people_ctrax_timesheets_path, class: 'text-sm text-olive underline' %></article>
+    </div>
+  </section>
   <% if @awaiting.positive? %>
     <div class="rounded-xl border border-olive/30 bg-olive/10 px-4 py-2.5 text-sm text-olive"><%= @awaiting %> timesheet<%= @awaiting == 1 ? "" : "s" %> awaiting review.</div>
   <% end %>
@@ -21,7 +41,9 @@
         <option value="<%= status %>" <%= @status == status.to_s ? "selected" : "" %>><%= status.to_s.titleize %></option>
       <% end %>
     </select>
-    <input type="date" name="period" value="<%= params[:period] %>" class="input w-auto" title="Week of">
+    <input type="date" name="period" value="<%= params[:period] %>" class="input w-auto" title="Week of" aria-label="Week of">
+    <%= link_to 'Export Rupert CSV', people_timesheets_path(format: :csv, status: @status, period: @period), class: 'btn-ghost btn-sm' %>
+    <%= submit_tag "Filter", class: "btn-ghost btn-sm" %>
   <% end %>
 
   <div class="card overflow-hidden">
@@ -33,19 +55,25 @@
             <th scope="col" class="th">Period</th>
             <th scope="col" class="th text-right">Hours</th>
             <th scope="col" class="th">Status</th>
+            <th scope="col" class="th">Review</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-fog">
           <% if @timesheets.empty? %>
-            <tr><td colspan="4" class="td py-8 text-center text-taupe">No timesheets found.</td></tr>
+            <tr><td colspan="5" class="empty-row"><%= @status == 'submitted' ? 'No timesheets awaiting review.' : 'No timesheets found.' %></td></tr>
           <% end %>
           <% @timesheets.each do |timesheet| %>
             <tr class="hover:bg-cream">
-              <td class="td font-medium text-ink"><%= link_to timesheet.employee&.name, people_employee_path(timesheet.employee), class: "hover:text-olive hover:underline" %></td>
+              <td class="td font-medium text-ink"><%= timesheet.employee&.name %><% if timesheet.demo? %><span class="ml-2 pill-taupe">DEMO</span><% end %></td>
               <td class="td"><%= link_to timesheet.period_label, people_timesheet_path(timesheet), class: "text-olive hover:underline" %></td>
               <td class="td text-right text-mocha"><%= number_with_precision(timesheet.total_hours, precision: 1) %></td>
               <td class="td">
                 <span class="<%= timesheet.approved? ? "pill-fern" : timesheet.submitted? ? "pill-olive" : timesheet.rejected? ? "pill-rose" : "pill-taupe" %>"><%= timesheet.status %></span>
+              </td>
+              <td class="td">
+                <%= link_to (timesheet.submitted? && policy(timesheet).approve? ? 'Review timesheet' : 'View timesheet'), people_timesheet_path(timesheet), class: 'text-olive underline' %>
+                <% if timesheet.assigned_reviewer %><p class="text-xs text-mocha">Assigned to <%= timesheet.assigned_reviewer.display_name %></p><% end %>
+                <% if @reviewer && timesheet.submitted? && !policy(timesheet).approve? %><p class="text-xs text-mocha">Another reviewer required</p><% end %>
               </td>
             </tr>
           <% end %>
@@ -53,4 +81,5 @@
       </table>
     </div>
   </div>
+  <%== pagy_nav(@pagy) if @pagy.pages > 1 %>
 </div>

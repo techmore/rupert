@@ -2,10 +2,10 @@
 <div class="space-y-6">
   <section class="flex flex-wrap items-end justify-between gap-4">
     <div>
-      <h1 class="font-display text-3xl text-ink">Inventory</h1>
+      <h1 class="page-title">Inventory</h1>
       <p class="mt-1 max-w-2xl text-sm text-mocha">Stock held at each location. Shopify and Square are separate locations with independent inventories — different numbers across columns are normal, not an error.</p>
     </div>
-    <div class="flex gap-2">
+    <div class="flex flex-wrap gap-2">
       <%= link_to "Download PDF", pdf_inventory_index_path, class: "btn-ghost", data: { turbo: false }, title: "Printable snapshot with per-location stock and sync timestamps" %>
       <%= link_to "Recommend SKU download", recommended_skus_inventory_index_path, class: "btn-ghost", data: { turbo: false }, title: "Download proposed unique SKUs for every SKU shared across different products (plan only — no changes made)" %>
       <%= link_to "Movement history", movements_inventory_index_path, class: "btn-ghost" %>
@@ -14,11 +14,19 @@
     </div>
   </section>
 
+  <% if @oversold_variants.to_i.positive? %>
+    <p class="rounded-xl border border-clay/40 bg-clay/10 px-4 py-3 text-sm text-ink" role="status">
+      <strong><%= number_with_delimiter(@oversold_variants) %></strong>
+      <%= "Shopify variant".pluralize(@oversold_variants) %> <%= @oversold_variants == 1 ? "is" : "are" %> oversold: Shopify reports negative stock, shown here as 0.
+      Read-only notice; nothing is changed in Shopify.
+    </p>
+  <% end %>
+
   <%= form_tag inventory_index_path, method: :get, class: "max-w-sm" do %>
     <input type="search" name="q" value="<%= @q %>" placeholder="Search products or SKUs…" aria-label="Search products or SKUs" class="search w-full" autocomplete="off">
   <% end %>
 
-  <% cached_fragment("inventory/table", q: @q, page: @pagy.page) do %>
+  <% cached_fragment("inventory/table/v3", q: @q, page: @pagy.page) do %>
   <div class="card overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
@@ -40,7 +48,7 @@
         <tbody class="divide-y divide-fog">
           <% if @products.empty? %>
             <tr>
-              <td class="td py-8 text-center text-taupe" colspan="<%= 6 + @stock_locations.length %>"><%= @q.present? ? "Nothing matches that search." : "No products mirrored yet — run a sync." %></td>
+              <td class="empty-row" colspan="<%= 6 + @stock_locations.length %>"><%= @q.present? ? "Nothing matches that search." : "No products mirrored yet — run a sync." %></td>
             </tr>
           <% end %>
           <% @products.each do |product| %>
@@ -65,6 +73,11 @@
                     <div class="min-w-0">
                       <p class="truncate font-medium text-ink"><%= link_to variant.title, shopify_variant_path(variant), class: "hover:text-olive hover:underline" %></p>
                       <p class="truncate text-xs text-taupe"><%= product.title %></p>
+                      <%# The table is wider than the page at every size, so the stock columns scroll out of view; repeat the headline counts here. %>
+                      <p class="mt-0.5 text-xs text-ink">
+                        <span class="font-semibold"><%= shopify_qty %></span> shop<% if square_qty.nil? %> · not carried<% else %>
+                        <span class="text-fog">|</span> <span class="font-semibold"><%= square_qty %><%= info[:shared] && square_qty.positive? ? "†" : "" %></span> pos<% end %>
+                      </p>
                       <% if untracked %>
                         <span class="mt-1 inline-flex items-center gap-1">
                           <span class="pill-taupe">untracked</span>

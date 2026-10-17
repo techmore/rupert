@@ -6,10 +6,11 @@
   "reconcile" => "Reconcile",
   "size-derive" => "Size derive",
 } %>
-<div class="space-y-6">
+<div class="space-y-6 operations-workspace">
+  <%= render 'shared/operations_navigation', workspace: :stock %>
   <section class="flex flex-wrap items-end justify-between gap-4">
     <div>
-      <h1 class="font-display text-3xl text-ink">Movement history</h1>
+      <h1 class="page-title">Movement history</h1>
       <p class="mt-1 text-sm text-mocha">Every recorded quantity change — who or what changed it, why, and from → to. Mirrors are read-only snapshots from Square/Shopify.</p>
     </div>
     <div class="flex gap-2">
@@ -35,7 +36,7 @@
   <% end %>
 
   <div class="card overflow-hidden">
-    <div class="overflow-x-auto">
+    <div class="operations-table-region" role="region" tabindex="0" aria-label="Inventory table">
       <table class="w-full text-sm">
         <thead class="border-b border-fog bg-haze/60">
           <tr>
@@ -53,7 +54,7 @@
         <tbody class="divide-y divide-fog">
           <% if @movements.empty? %>
             <tr>
-              <td class="td py-8 text-center text-taupe" colspan="9">No movements match those filters.</td>
+              <td class="empty-row" colspan="9">No movements match those filters.</td>
             </tr>
           <% end %>
           <% @movements.each do |m| %>

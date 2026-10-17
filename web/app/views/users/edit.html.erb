@@ -1,15 +1,23 @@
+<% can_manage_accounts = Current.user.can_manage_accounts? %>
 <% content_for :title, "Edit #{@user.display_name}" %>
 <div class="space-y-6">
   <section>
-    <h1 class="font-display text-3xl text-ink">Edit <%= @user.display_name %></h1>
+    <h1 class="page-title">Edit <%= @user.display_name %></h1>
     <p class="mt-1 text-sm text-mocha"><%= @user.email %> · <span class="capitalize"><%= @user.role %></span> role</p>
   </section>
 
+  <% if can_manage_accounts && (Current.user.super_admin? || !@user.super_admin?) %>
   <div class="card card-pad max-w-xl">
     <%= render "form", user: @user %>
   </div>
 
-  <% unless @user.super_admin? %>
+  <% if @user.employee? %>
+    <section class="card card-pad">
+      <h2 class="font-display text-xl text-ink">Employee-only access</h2>
+      <p class="mt-1 text-sm text-mocha">This account can use POS and its own time clock, timesheets, time off and personal pay reports. It cannot access sales history, reconciliation, company financial reports, customer records or account management. Permission overrides cannot expand the employee role.</p>
+    </section>
+  <% end %>
+  <% unless @user.super_admin? || @user.employee? %>
     <section class="card card-pad">
       <div class="flex flex-wrap items-baseline justify-between gap-2">
         <div>
@@ -60,5 +68,8 @@
         </div>
       <% end %>
     </section>
+  <% end %>
+  <% else %>
+    <p class="text-sm text-mocha">Account access is read-only. An administrator manages roles and permissions.</p>
   <% end %>
 </div>

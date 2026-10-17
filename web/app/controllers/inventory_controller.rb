@@ -1,30 +1,22 @@
 # frozen_string_literal: true
 
 require 'csv'
+require 'digest'
 
 class InventoryController < AuthenticatedController
   before_action :authorize_read, only: %i[index movements pdf recommended_skus]
 
   def index
-    @q = params[:q].to_s.strip
-    scope = ShopifyProduct.order(title: :asc)
-    if @q.present?
-      scope = scope.where(
-        'title LIKE ? OR id IN (SELECT "productId" FROM "ShopifyVariant" WHERE sku LIKE ?)',
-        "%#{@q}%",
-        "%#{@q}%"
-      )
+    response.headers['Cache-Control'] = 'no-store'
+    @comparison = StockComparison.new(shopify_location_id: params[:shopify_location_id],
+      ctrax_location_id: params[:ctrax_location_id], query: params[:q], filter: params[:filter])
+    if request.format.csv?
+      send_data @comparison.csv, filename: "shopify-ctrax-stock-#{Date.current.iso8601}.csv", type: 'text/csv'
+    else
+      @pagy = Pagy.new(count: @comparison.rows.size, page: params[:page], items: 50)
+      @rows = @comparison.rows.slice(@pagy.offset, @pagy.items) || []
+      render 'stock_comparisons/index'
     end
-    # The old nested includes() here (variants → sku_links → square_variation →
-    # levels) instantiated ~2,000 AR objects per page (~170ms warm on this
-    # droplet). variant_stock_map batches every query it needs; the map only
-    # changes on sync/mutation, so it's cached behind the DataCache version
-    # (the view fragment already is).
-    @pagy, @products = pagy(scope, items: 40)
-    @variant_qtys = DataCache.fetch("inventory/stock_map/#{@pagy.page}") do
-      variant_stock_map(@products)
-    end
-    @stock_locations = DataCache.fetch('inventory/locations') { stock_locations }
   end
 
   # GET /inventory/movements — the full inventory movement ledger: every
@@ -110,7 +102,7 @@ class InventoryController < AuthenticatedController
     shared_square_variations = SkuLink.linked.group(:squareVariationId).count
                                       .select { |_, n| n > 1 }.keys.to_set
 
-    variants = ShopifyVariant.where(productId: products.map(&:id)).to_a
+    variants = products.flat_map { |product| product.variants.to_a }
     links_by_variant = SkuLink.where(shopifyVariantId: variants.map(&:id))
                               .linked.includes(:square_variation).index_by(&:shopifyVariantId)
     square_variation_ids = links_by_variant.values.filter_map(&:squareVariationId)

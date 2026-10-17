@@ -41,9 +41,9 @@ class CatalogSyncerTest < ActiveSupport::TestCase
   end
 
   test 'paginate_products walks all pages instead of truncating at 250' do
-    page1 = { 'products' => { 'nodes' => [{ 'id' => 'p1' }, { 'id' => 'p2' }],
+    page1 = { 'products' => { 'nodes' => [{ 'id' => 'p1', 'variants' => { 'nodes' => [], 'pageInfo' => { 'hasNextPage' => false } } }, { 'id' => 'p2', 'variants' => { 'nodes' => [], 'pageInfo' => { 'hasNextPage' => false } } }],
                               'pageInfo' => { 'hasNextPage' => true, 'endCursor' => 'c1' } } }
-    page2 = { 'products' => { 'nodes' => [{ 'id' => 'p3' }],
+    page2 = { 'products' => { 'nodes' => [{ 'id' => 'p3', 'variants' => { 'nodes' => [], 'pageInfo' => { 'hasNextPage' => false } } }],
                               'pageInfo' => { 'hasNextPage' => false, 'endCursor' => 'c2' } } }
 
     ShopifyClient.stubs(:graphql)
@@ -177,5 +177,73 @@ class CatalogSyncerTest < ActiveSupport::TestCase
   ensure
     Setting.where(key: 'SHOPIFY_LOCATION_ID').delete_all
     EnvStore.instance_variable_set(:@cache, {}) if EnvStore.instance_variable_defined?(:@cache)
+  end
+
+  test 'paginate_products follows variants beyond the first 100 of a product' do
+    first_variants = [{ 'id' => 'v1' }, { 'id' => 'v2' }]
+    page = { 'products' => { 'nodes' => [{ 'id' => 'p1', 'variants' => {
+      'nodes' => first_variants, 'pageInfo' => { 'hasNextPage' => true, 'endCursor' => 'vc1' } } }],
+                             'pageInfo' => { 'hasNextPage' => false, 'endCursor' => nil } } }
+    more = { 'product' => { 'variants' => { 'nodes' => [{ 'id' => 'v3' }],
+                                            'pageInfo' => { 'hasNextPage' => false, 'endCursor' => nil } } } }
+    ShopifyClient.stubs(:graphql).returns(page).then.returns(more)
+
+    product = CatalogSyncer.send(:paginate_products).first
+
+    assert_equal(%w[v1 v2 v3], product.dig('variants', 'nodes').map { |v| v['id'] })
+  end
+
+  test 'fetch_locations follows every page instead of stopping at a fixed count' do
+    page1 = { 'locations' => { 'nodes' => [{ 'id' => 'l1' }], 'pageInfo' => { 'hasNextPage' => true, 'endCursor' => 'c1' } } }
+    page2 = { 'locations' => { 'nodes' => [{ 'id' => 'l2' }], 'pageInfo' => { 'hasNextPage' => false, 'endCursor' => nil } } }
+    ShopifyClient.stubs(:graphql).returns(page1).then.returns(page2)
+
+    assert_equal(%w[l1 l2], CatalogSyncer.send(:fetch_locations).map { |l| l['id'] })
+  end
+
+  test 'fetch_inventory_levels follows an items locations past the first page' do
+    item = 'gid://shopify/InventoryItem/1'
+    batch = { 'v0' => { 'id' => item, 'inventoryLevels' => {
+      'nodes' => [{ 'location' => { 'id' => 'l1' } }], 'pageInfo' => { 'hasNextPage' => true, 'endCursor' => 'lc1' } } } }
+    rest = { 'inventoryItem' => { 'inventoryLevels' => {
+      'nodes' => [{ 'location' => { 'id' => 'l2' } }], 'pageInfo' => { 'hasNextPage' => false, 'endCursor' => nil } } } }
+    ShopifyClient.stubs(:graphql).returns(batch).then.returns(rest)
+
+    levels = CatalogSyncer.send(:fetch_inventory_levels, [item])
+
+    assert_equal(%w[l1 l2], levels[item].map { |n| n.dig('location', 'id') })
+  end
+
+  test 'sync_levels_batched! keeps the raw platform quantity when stock is oversold' do
+    home = Location.create!(source: 'shopify', externalId: 'gid://shopify/Location/1', name: 'Online')
+    variant = { 'id' => 'gid://shopify/ProductVariant/7', 'title' => 'Tea', 'sku' => 'TEA-7', 'inventoryQuantity' => -3,
+                'inventoryItem' => { 'id' => 'gid://shopify/InventoryItem/7', 'tracked' => true } }
+    levels = { 'gid://shopify/InventoryItem/7' => [
+      { 'location' => { 'id' => 'gid://shopify/Location/1' }, 'quantities' => [{ 'name' => 'available', 'quantity' => -3 }] }
+    ] }
+    ShopifyProduct.create!(id: 'gid://shopify/Product/7', title: 'Tea')
+    ShopifyVariant.create!(id: variant['id'], productId: 'gid://shopify/Product/7', title: 'Tea', sku: 'TEA-7')
+
+    CatalogSyncer.send(:sync_levels_batched!, [variant], levels, { 'gid://shopify/Location/1' => home }, home, Time.current)
+
+    level = InventoryLevel.find_by!(source: 'shopify', shopifyVariantId: variant['id'])
+    assert_equal 0, level.quantity, 'mirrored count stays clamped for the rest of the app'
+    assert_equal(-3, level.sourceQuantity)
+    assert_predicate level, :oversold?
+    assert_equal [level.id], InventoryLevel.oversold.pluck(:id)
+  end
+
+  test 'sync_levels_batched! stores the variant total as raw when no location data exists' do
+    home = Location.create!(source: 'shopify', externalId: 'gid://shopify/Location/1', name: 'Online')
+    variant = { 'id' => 'gid://shopify/ProductVariant/8', 'title' => 'Tea', 'sku' => 'TEA-8', 'inventoryQuantity' => 4,
+                'inventoryItem' => { 'id' => 'gid://shopify/InventoryItem/8', 'tracked' => false } }
+    ShopifyProduct.create!(id: 'gid://shopify/Product/8', title: 'Tea')
+    ShopifyVariant.create!(id: variant['id'], productId: 'gid://shopify/Product/8', title: 'Tea', sku: 'TEA-8')
+
+    CatalogSyncer.send(:sync_levels_batched!, [variant], {}, {}, home, Time.current)
+
+    level = InventoryLevel.find_by!(source: 'shopify', shopifyVariantId: variant['id'])
+    assert_equal 4, level.sourceQuantity
+    assert_not level.oversold?
   end
 end

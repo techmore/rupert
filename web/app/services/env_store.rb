@@ -21,6 +21,12 @@ module EnvStore
     AUTHORIZE_NET_TRANSACTION_KEY
     AUTHORIZE_NET_CLIENT_KEY
     AUTHORIZE_NET_SANDBOX
+    GOOGLE_PAY_MERCHANT_ID
+    GOOGLE_PAY_MERCHANT_NAME
+    APPLE_PAY_MERCHANT_ID
+    APPLE_PAY_DISPLAY_NAME
+    APPLE_PAY_IDENTITY_CERT
+    APPLE_PAY_IDENTITY_KEY
     SYNC_MINUTES
     SYNC_HISTORY_DAYS
     GOOGLE_DRIVE_CLIENT_ID
@@ -43,6 +49,30 @@ module EnvStore
     PUSH_FREEZE_SQUARE
   ].freeze
 
+  PLATFORM_KEYS = MANAGED_KEYS.grep(/\AGOOGLE_DRIVE_/).freeze
+
+  # Whole-instance backup destinations belong to the platform operator. Never
+  # consult tenant rows: they may have been configured by a store administrator.
+  def self.platform_fetch(key, default = nil)
+    raise ArgumentError, 'Key is not a platform setting' unless PLATFORM_KEYS.include?(key)
+
+    setting = Setting.find_by(key: key, tenant_id: nil)
+    setting ? setting.value : ENV.fetch(key, default)
+  end
+
+  def self.platform_set(key, value)
+    raise ArgumentError, 'Key is not a platform setting' unless PLATFORM_KEYS.include?(key)
+
+    setting = Setting.find_by(key: key, tenant_id: nil)
+    if value.nil?
+      setting&.destroy!
+    else
+      setting ||= Setting.new(key: key, tenant_id: nil)
+      setting.update!(value: value.to_s)
+    end
+    value
+  end
+
   # Settings (DB) win over ENV. ENV is only consulted as a global fallback
   # when no tenant is in context (platform/setup), so tenant credentials never
   # bleed across tenants.
@@ -63,14 +93,15 @@ module EnvStore
   end
 
   def self.all_scoped
-    RequestStore.fetch(:env_store_all) do
-      Setting.where(key: MANAGED_KEYS, tenant_id: Current.tenant_id)
-             .index_by(&:key)
+    tenant_id = Current.tenant_id
+    maps = RequestStore.fetch(:env_store_all_by_tenant) { {} }
+    maps.fetch(tenant_id) do
+      maps[tenant_id] = Setting.where(key: MANAGED_KEYS, tenant_id: tenant_id).index_by(&:key)
     end
   end
 
   def self.clear_cache!
-    RequestStore.delete(:env_store_all)
+    RequestStore.fetch(:env_store_all_by_tenant) { {} }.delete(Current.tenant_id)
   end
 
   # Write a managed key into the tenant settings (nil removes it).
@@ -89,14 +120,21 @@ module EnvStore
     value
   end
 
-  def self.import!(text)
+  def self.import!(text, allow_platform: false)
     parsed = parse(text)
+    if !allow_platform && (parsed.keys & PLATFORM_KEYS).any?
+      raise ArgumentError, 'Google Drive instance backup settings require a platform super administrator'
+    end
     parsed.each do |key, value|
       next unless MANAGED_KEYS.include?(key)
 
-      setting = Setting.find_or_initialize_by(key: key, tenant_id: Current.tenant_id)
-      setting.value = value
-      setting.save!
+      if PLATFORM_KEYS.include?(key)
+        platform_set(key, value)
+      else
+        setting = Setting.find_or_initialize_by(key: key, tenant_id: Current.tenant_id)
+        setting.value = value
+        setting.save!
+      end
     end
     clear_cache!
     parsed.keys & MANAGED_KEYS
@@ -107,7 +145,7 @@ module EnvStore
   end
 
   def self.effective(key)
-    fetch(key, '')
+    PLATFORM_KEYS.include?(key) ? platform_fetch(key, '') : fetch(key, '')
   end
 
   def self.settings_map

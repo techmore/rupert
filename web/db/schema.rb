@@ -10,10 +10,103 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_18_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
+
+  create_table "ctrax_labor_shifts", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "employee_id"
+    t.string "source_origin", null: false
+    t.string "external_id", null: false
+    t.string "store_id"
+    t.string "user_external_id", null: false
+    t.datetime "started_at"
+    t.datetime "ended_at"
+    t.decimal "reported_hours", precision: 20, scale: 8
+    t.decimal "elapsed_hours", precision: 20, scale: 8
+    t.boolean "in_progress", null: false
+    t.boolean "verified", null: false
+    t.string "status", null: false
+    t.string "issue"
+    t.datetime "last_seen_at", null: false
+    t.datetime "source_updated_at"
+    t.string "original_digest", null: false
+    t.string "latest_digest", null: false
+    t.text "source_payload", null: false
+    t.text "latest_payload", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["employee_id"], name: "index_ctrax_labor_shifts_on_employee_id"
+    t.index ["tenant_id", "employee_id", "started_at"], name: "idx_ctrax_labor_worker"
+    t.index ["tenant_id", "source_origin", "external_id"], name: "idx_ctrax_labor_native", unique: true
+    t.index ["tenant_id"], name: "index_ctrax_labor_shifts_on_tenant_id"
+  end
+
+  create_table "ctrax_labor_observations", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "ctrax_labor_shift_id", null: false
+    t.integer "sequence", null: false
+    t.datetime "observed_at", null: false
+    t.string "digest", null: false
+    t.text "payload", null: false
+    t.index ["ctrax_labor_shift_id", "sequence"], name: "idx_ctrax_labor_observation_sequence", unique: true
+    t.index ["ctrax_labor_shift_id"], name: "index_ctrax_labor_observations_on_ctrax_labor_shift_id"
+    t.index ["tenant_id"], name: "index_ctrax_labor_observations_on_tenant_id"
+  end
+
+  create_table "bank_statement_lines", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "document_id", null: false
+    t.string "account_label", null: false
+    t.integer "line_no", null: false
+    t.date "posted_on", null: false
+    t.text "description", null: false
+    t.integer "amount_cents", null: false
+    t.string "fingerprint", null: false
+    t.string "status", default: "pending", null: false
+    t.integer "expense_id"
+    t.integer "vendor_payment_id"
+    t.integer "decided_by_id"
+    t.string "decided_by_name"
+    t.datetime "decided_at"
+    t.datetime "created_at", null: false
+    t.bigint "journal_entry_id"
+    t.index ["journal_entry_id"], name: "idx_bank_lines_journal_entry"
+    t.index ["tenant_id", "document_id", "status"], name: "idx_bank_lines_document"
+    t.index ["tenant_id", "fingerprint"], name: "idx_bank_lines_fingerprint", unique: true
+    t.index ["tenant_id"], name: "index_bank_statement_lines_on_tenant_id"
+  end
+
+  create_table "money_reconciliations", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "period_kind", null: false
+    t.date "period_from", null: false
+    t.date "period_to", null: false
+    t.datetime "generated_at", null: false
+    t.text "payload_json", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "period_kind", "period_from"], name: "idx_money_reconciliation_period", unique: true
+  end
+
+  create_table "iris_reports", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "api_origin", null: false
+    t.string "merchant_number", null: false
+    t.string "report_kind", null: false
+    t.date "window_from", null: false
+    t.date "window_to", null: false
+    t.string "status", null: false
+    t.text "payload_json", null: false
+    t.string "source_digest"
+    t.datetime "observed_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "api_origin", "merchant_number", "report_kind", "window_from", "window_to"], name: "idx_iris_report_window", unique: true
+    t.index ["tenant_id"], name: "index_iris_reports_on_tenant_id"
+  end
 
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
@@ -42,6 +135,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
 
   create_table "InventoryCountItem", id: :string, force: :cascade do |t|
     t.boolean "applied", default: false, null: false
+    t.text "comparison_snapshot"
     t.string "countId", null: false
     t.integer "previousQuantity"
     t.integer "quantity", default: 0, null: false
@@ -59,6 +153,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.integer "quantity", default: 0
     t.string "shopifyVariantId"
     t.string "source", null: false
+    t.integer "sourceQuantity"
     t.string "squareVariationId"
     t.string "tenant_id"
     t.datetime "updatedAt", default: -> { "CURRENT_TIMESTAMP" }, null: false
@@ -178,6 +273,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
   end
 
   create_table "ShopifyProduct", id: :string, force: :cascade do |t|
+    t.boolean "catalog_present"
+    t.datetime "catalog_read_at"
     t.string "featuredImageUrl"
     t.string "handle"
     t.datetime "publishedAt"
@@ -193,6 +290,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
   end
 
   create_table "ShopifyVariant", id: :string, force: :cascade do |t|
+    t.boolean "catalog_present"
+    t.datetime "catalog_read_at"
     t.string "barcode"
     t.float "compareAtPrice"
     t.string "inventoryItemId"
@@ -277,6 +376,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.index ["startedAt"], name: "index_SyncRun_on_startedAt"
     t.index ["status", "finishedAt"], name: "idx_sync_runs_status_finished_at"
     t.index ["status"], name: "index_SyncRun_on_status"
+    t.index ["tenant_id", "startedAt"], name: "idx_sync_runs_tenant_started_at"
     t.index ["tenant_id"], name: "index_SyncRun_on_running_per_tenant", unique: true, where: "((status)::text = 'running'::text)"
     t.index ["tenant_id"], name: "index_SyncRun_on_tenant_id"
   end
@@ -300,8 +400,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.decimal "discountPercent", precision: 10, scale: 4, null: false
     t.integer "minQty", null: false
     t.string "shareId"
+    t.string "tenantId"
     t.index ["shareId", "minQty"], name: "index_WarehouseTier_on_shareId_and_minQty", unique: true
     t.index ["shareId"], name: "index_WarehouseTier_on_shareId"
+    t.index ["tenantId"], name: "index_WarehouseTier_on_tenantId"
   end
 
   create_table "access_logs", force: :cascade do |t|
@@ -350,14 +452,311 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.index ["tenant_id", "subject_type", "subject_id"], name: "idx_on_tenant_id_subject_type_subject_id_034734a708"
   end
 
+  create_table "api_access_tokens", id: :string, force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "user_id", null: false
+    t.string "name", null: false
+    t.string "token_digest", null: false
+    t.string "token_hint", null: false
+    t.text "scopes", null: false
+    t.datetime "expires_at"
+    t.datetime "revoked_at"
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.index ["tenant_id", "created_at"], name: "idx_api_tokens_tenant_created"
+    t.index ["token_digest"], name: "index_api_access_tokens_on_token_digest", unique: true
+    t.index ["user_id"], name: "index_api_access_tokens_on_user_id"
+  end
+
+  create_table "authorize_net_batches", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "environment", null: false
+    t.string "gateway_id", null: false
+    t.string "source_batch_id", null: false
+    t.datetime "settled_at"
+    t.string "settlement_state", null: false
+    t.string "payment_method"
+    t.json "statistics", default: [], null: false
+    t.datetime "observed_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "environment", "gateway_id", "source_batch_id"], name: "idx_anet_batch_source", unique: true
+    t.index ["tenant_id"], name: "index_authorize_net_batches_on_tenant_id"
+  end
+
+  create_table "authorize_net_portal_observations", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "authorize_net_portal_export_id", null: false
+    t.integer "position", null: false
+    t.string "gateway_id", null: false
+    t.string "transaction_id", null: false
+    t.datetime "exported_at", null: false
+    t.datetime "submitted_at"
+    t.datetime "settled_at"
+    t.string "status"
+    t.string "transaction_type"
+    t.string "currency"
+    t.bigint "settlement_cents"
+    t.text "record_json", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["authorize_net_portal_export_id", "position"], name: "idx_anet_portal_obs_row", unique: true
+    t.index ["tenant_id", "settled_at"], name: "idx_anet_portal_obs_settled"
+    t.index ["tenant_id", "submitted_at"], name: "idx_anet_portal_obs_submitted"
+    t.index ["tenant_id", "transaction_id", "gateway_id"], name: "idx_anet_portal_obs_key"
+  end
+
+  create_table "authorize_net_portal_exports", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "gateway_id", null: false
+    t.string "kind", null: false
+    t.string "fingerprint", null: false
+    t.string "sha256", null: false
+    t.datetime "exported_at", null: false
+    t.text "original_csv", null: false
+    t.text "records_json", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "fingerprint"], name: "idx_anet_portal_fingerprint", unique: true
+    t.index ["tenant_id"], name: "index_authorize_net_portal_exports_on_tenant_id"
+  end
+
+  create_table "authorize_net_sale_links", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "authorize_net_transaction_id", null: false
+    t.bigint "order_id", null: false
+    t.bigint "reviewed_by_id", null: false
+    t.text "evidence_note", null: false
+    t.datetime "revoked_at"
+    t.bigint "revoked_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["authorize_net_transaction_id"], name: "idx_anet_link_transaction"
+    t.index ["order_id"], name: "index_authorize_net_sale_links_on_order_id"
+    t.index ["reviewed_by_id"], name: "index_authorize_net_sale_links_on_reviewed_by_id"
+    t.index ["revoked_by_id"], name: "index_authorize_net_sale_links_on_revoked_by_id"
+    t.index ["tenant_id", "authorize_net_transaction_id"], name: "idx_anet_link_active_payment", unique: true, where: "revoked_at IS NULL"
+    t.index ["tenant_id", "order_id"], name: "idx_anet_link_active_order", unique: true, where: "revoked_at IS NULL"
+    t.index ["tenant_id"], name: "index_authorize_net_sale_links_on_tenant_id"
+  end
+
+  create_table "authorize_net_transactions", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "environment", null: false
+    t.string "gateway_id", null: false
+    t.string "source_transaction_id", null: false
+    t.string "reference_transaction_id"
+    t.string "source_batch_id"
+    t.string "transaction_type", null: false
+    t.string "payment_status", null: false
+    t.datetime "submitted_at", null: false
+    t.datetime "settled_at"
+    t.string "settlement_state"
+    t.string "currency"
+    t.decimal "authorized_amount", precision: 19, scale: 4, null: false
+    t.decimal "settled_amount", precision: 19, scale: 4, null: false
+    t.decimal "tip_amount", precision: 19, scale: 4
+    t.decimal "surcharge_amount", precision: 19, scale: 4
+    t.string "market_type"
+    t.string "product"
+    t.datetime "observed_at", null: false
+    t.json "status_history", default: [], null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.text "invoice_number"
+    t.index ["tenant_id", "environment", "gateway_id", "source_transaction_id"], name: "idx_anet_transaction_source", unique: true
+    t.index ["tenant_id"], name: "index_authorize_net_transactions_on_tenant_id"
+  end
+
+  create_table "book_approvals", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "period_kind", null: false
+    t.date "period_from", null: false
+    t.date "period_to", null: false
+    t.string "status", null: false
+    t.string "report_digest", null: false
+    t.text "summary_json", null: false
+    t.text "notes"
+    t.integer "approved_by_id"
+    t.string "approved_by_name", null: false
+    t.datetime "approved_at", null: false
+    t.string "ip"
+    t.string "user_agent"
+    t.string "prev_hash", null: false
+    t.string "entry_hash", null: false
+    t.datetime "created_at", null: false
+    t.index ["approved_by_id"], name: "index_book_approvals_on_approved_by_id"
+    t.index ["entry_hash"], name: "idx_book_approvals_entry_hash", unique: true
+    t.index ["tenant_id", "period_kind", "period_from"], name: "idx_book_approvals_period"
+    t.index ["tenant_id"], name: "index_book_approvals_on_tenant_id"
+  end
+
+  create_table "bulk_consumptions", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "source", null: false
+    t.string "source_order_id", null: false
+    t.string "source_line_id", null: false
+    t.string "source_variant_id", null: false
+    t.string "order_number"
+    t.bigint "quantity", null: false
+    t.bigint "bulk_recipe_id", null: false
+    t.bigint "bulk_lot_id", null: false
+    t.bigint "bulk_movement_id", null: false
+    t.bigint "mg_per_unit", null: false
+    t.bigint "consumed_mg", null: false
+    t.string "source_fingerprint", null: false
+    t.string "request_fingerprint", null: false
+    t.string "request_token", null: false
+    t.string "created_by", null: false
+    t.datetime "created_at", null: false
+    t.index ["bulk_movement_id"], name: "index_bulk_consumptions_on_bulk_movement_id", unique: true
+    t.index ["tenant_id", "bulk_lot_id", "created_at"], name: "idx_bulk_consumption_lot"
+    t.index ["tenant_id", "bulk_recipe_id"], name: "idx_bulk_consumption_recipe"
+    t.index ["tenant_id", "request_token"], name: "idx_bulk_consumption_request", unique: true
+    t.index ["tenant_id", "source", "source_order_id", "source_line_id"], name: "idx_bulk_consumption_source_line", unique: true
+    t.check_constraint "source::text = 'shopify'::text AND quantity > 0 AND mg_per_unit > 0 AND consumed_mg > 0", name: "bulk_consumption_positive"
+  end
+
+  create_table "bulk_lots", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "bulk_material_id", null: false
+    t.string "code", null: false
+    t.string "note"
+    t.string "receipt_token", null: false
+    t.bigint "balance_mg", default: 0, null: false
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "bulk_material_id", "code"], name: "idx_bulk_lots_material_code", unique: true
+    t.index ["tenant_id", "receipt_token"], name: "index_bulk_lots_on_tenant_id_and_receipt_token", unique: true
+    t.check_constraint "balance_mg >= 0", name: "bulk_lots_nonnegative_balance"
+  end
+
+  create_table "bulk_materials", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "name", null: false
+    t.string "unit", default: "g", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "name"], name: "index_bulk_materials_on_tenant_id_and_name", unique: true
+  end
+
+  create_table "bulk_movements", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "bulk_lot_id", null: false
+    t.string "kind", null: false
+    t.bigint "delta_mg", null: false
+    t.string "input_quantity", null: false
+    t.string "input_unit", null: false
+    t.string "reference", null: false
+    t.string "request_token", null: false
+    t.string "created_by", null: false
+    t.datetime "created_at", null: false
+    t.index ["tenant_id", "bulk_lot_id", "created_at", "id"], name: "idx_bulk_movements_lot_timeline"
+    t.index ["tenant_id", "request_token"], name: "index_bulk_movements_on_tenant_id_and_request_token", unique: true
+    t.check_constraint "delta_mg <> 0", name: "bulk_movements_nonzero"
+    t.check_constraint "kind::text = 'receipt'::text AND delta_mg > 0 OR kind::text = 'consume'::text AND delta_mg < 0 OR kind::text = 'adjustment'::text", name: "bulk_movements_kind_sign"
+  end
+
+  create_table "bulk_recipes", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "source", default: "shopify", null: false
+    t.string "source_variant_id", null: false
+    t.bigint "bulk_material_id", null: false
+    t.integer "version", null: false
+    t.bigint "mg_per_unit", null: false
+    t.datetime "effective_from", null: false
+    t.string "catalog_title", null: false
+    t.string "catalog_sku"
+    t.string "created_by", null: false
+    t.datetime "created_at", null: false
+    t.index ["tenant_id", "bulk_material_id"], name: "idx_bulk_recipe_material"
+    t.index ["tenant_id", "source", "source_variant_id", "effective_from"], name: "idx_bulk_recipe_effective"
+    t.index ["tenant_id", "source", "source_variant_id", "version"], name: "idx_bulk_recipe_version", unique: true
+    t.check_constraint "source::text = 'shopify'::text AND version > 0 AND mg_per_unit > 0", name: "bulk_recipe_positive"
+  end
+
+  create_table "clock_corrections", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "clock_shift_id", null: false
+    t.bigint "requested_by_id"
+    t.bigint "reviewed_by_id"
+    t.datetime "original_started_at", null: false
+    t.datetime "original_ended_at"
+    t.datetime "proposed_started_at", null: false
+    t.datetime "proposed_ended_at", null: false
+    t.text "reason", null: false
+    t.string "status", default: "pending", null: false
+    t.datetime "reviewed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["clock_shift_id"], name: "index_clock_corrections_on_clock_shift_id"
+    t.index ["requested_by_id"], name: "index_clock_corrections_on_requested_by_id"
+    t.index ["reviewed_by_id"], name: "index_clock_corrections_on_reviewed_by_id"
+    t.index ["tenant_id", "status", "created_at"], name: "idx_clock_correction_review"
+    t.check_constraint "proposed_ended_at > proposed_started_at", name: "clock_correction_positive_interval"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'approved'::character varying, 'rejected'::character varying]::text[])", name: "clock_correction_status"
+  end
+
+  create_table "clock_shifts", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "user_id"
+    t.bigint "employee_id"
+    t.string "employee_key", null: false
+    t.string "employee_name", null: false
+    t.string "employment_type", null: false
+    t.string "request_token", null: false
+    t.datetime "started_at", null: false
+    t.datetime "ended_at"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["employee_id"], name: "index_clock_shifts_on_employee_id"
+    t.index ["tenant_id", "request_token"], name: "idx_clock_shift_request", unique: true
+    t.index ["tenant_id", "started_at", "ended_at"], name: "idx_clock_shift_window"
+    t.index ["tenant_id", "user_id"], name: "idx_clock_one_open_shift", unique: true, where: "((ended_at IS NULL) AND (user_id IS NOT NULL))"
+    t.index ["user_id"], name: "index_clock_shifts_on_user_id"
+    t.check_constraint "ended_at IS NULL OR ended_at > started_at", name: "clock_positive_interval"
+  end
+
+  create_table "customer_follow_ups", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "customer_id", null: false
+    t.bigint "author_id", null: false
+    t.bigint "owner_id"
+    t.string "title", null: false
+    t.date "due_on", null: false
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["customer_id"], name: "index_customer_follow_ups_on_customer_id"
+    t.index ["tenant_id", "completed_at", "due_on"], name: "idx_customer_follow_ups_due"
+  end
+
+  create_table "customer_interactions", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "customer_id", null: false
+    t.bigint "author_id", null: false
+    t.string "kind", default: "note", null: false
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["customer_id"], name: "index_customer_interactions_on_customer_id"
+    t.index ["tenant_id", "customer_id", "created_at"], name: "idx_customer_interactions_timeline"
+  end
+
   create_table "customers", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "email"
     t.string "external_id", null: false
     t.string "first_name"
     t.string "last_name"
+    t.string "crm_status", default: "customer", null: false
+    t.string "tags"
+    t.string "preferred_name"
+    t.bigint "owner_id"
     t.text "notes"
     t.string "phone"
+    t.datetime "source_synced_at"
     t.string "source", null: false
     t.string "tenant_id", null: false
     t.datetime "updated_at", null: false
@@ -365,9 +764,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.index ["first_name"], name: "idx_trgm_customers_first_name", opclass: :gin_trgm_ops, using: :gin
     t.index ["last_name"], name: "idx_trgm_customers_last_name", opclass: :gin_trgm_ops, using: :gin
     t.index ["phone"], name: "idx_trgm_customers_phone", opclass: :gin_trgm_ops, using: :gin
+    t.index ["tenant_id", "created_at", "id"], name: "idx_customers_tenant_created_id"
     t.index ["tenant_id", "email"], name: "index_customers_on_tenant_id_and_email"
     t.index ["tenant_id", "external_id", "source"], name: "index_customers_on_tenant_id_and_external_id_and_source", unique: true
     t.index ["tenant_id", "phone"], name: "index_customers_on_tenant_id_and_phone"
+    t.index ["tenant_id", "crm_status"], name: "index_customers_on_tenant_id_and_crm_status"
+    t.index ["tenant_id", "owner_id"], name: "index_customers_on_tenant_id_and_owner_id"
+  end
+
+  create_table "daily_reconciliation_reviews", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.date "day", null: false
+    t.string "report_digest", null: false
+    t.string "status", null: false
+    t.text "notes", null: false
+    t.bigint "reviewed_by_id"
+    t.datetime "created_at", null: false
+    t.index ["reviewed_by_id"], name: "index_daily_reconciliation_reviews_on_reviewed_by_id"
+    t.index ["tenant_id", "day"], name: "idx_daily_reconciliation_review_day"
+    t.index ["tenant_id"], name: "index_daily_reconciliation_reviews_on_tenant_id"
   end
 
   create_table "departments", force: :cascade do |t|
@@ -381,6 +796,88 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.index ["tenant_id", "name"], name: "index_departments_on_tenant_id_and_name", unique: true
   end
 
+  create_table "directory_sync_states", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "provider", null: false
+    t.string "kind", null: false
+    t.string "status", default: "pending", null: false
+    t.string "attempt_token"
+    t.integer "record_count"
+    t.datetime "started_at"
+    t.datetime "finished_at"
+    t.datetime "last_success_at"
+    t.string "error"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "provider", "kind"], name: "idx_directory_sync_identity", unique: true
+  end
+
+  create_table "employee_access_grants", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "employee_id", null: false
+    t.string "token_digest", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "used_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["token_digest"], name: "index_employee_access_grants_on_token_digest", unique: true
+  end
+
+  create_table "employee_app_sessions", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "employee_id", null: false
+    t.string "token_digest", null: false
+    t.string "password_fingerprint", null: false
+    t.string "device_name", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "revoked_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "user_id"], name: "index_employee_app_sessions_on_tenant_id_and_user_id"
+    t.index ["token_digest"], name: "index_employee_app_sessions_on_token_digest", unique: true
+  end
+
+  create_table "employee_source_identities", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "employee_id", null: false
+    t.string "source", null: false
+    t.string "external_id", null: false
+    t.string "first_name"
+    t.string "last_name"
+    t.string "email"
+    t.string "phone"
+    t.boolean "source_active"
+    t.datetime "source_synced_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["employee_id"], name: "index_employee_source_identities_on_employee_id"
+    t.index ["tenant_id", "source", "external_id"], name: "idx_employee_native_identity", unique: true
+  end
+
+  create_table "employee_work_reports", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "employee_id", null: false
+    t.bigint "requester_id"
+    t.string "kind", null: false
+    t.text "details", null: false
+    t.string "status", default: "open", null: false
+    t.text "response"
+    t.bigint "reviewer_id"
+    t.datetime "reviewed_at"
+    t.string "request_key", null: false
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["employee_id"], name: "index_employee_work_reports_on_employee_id"
+    t.index ["requester_id"], name: "index_employee_work_reports_on_requester_id"
+    t.index ["reviewer_id"], name: "index_employee_work_reports_on_reviewer_id"
+    t.index ["tenant_id", "employee_id", "request_key"], name: "idx_employee_work_report_request", unique: true
+    t.index ["tenant_id", "status", "created_at"], name: "idx_employee_work_report_queue"
+    t.index ["tenant_id"], name: "index_employee_work_reports_on_tenant_id"
+  end
+
   create_table "employees", force: :cascade do |t|
     t.text "address"
     t.datetime "created_at", null: false
@@ -391,6 +888,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.string "emergency_contact_phone"
     t.string "employee_number"
     t.string "employment_type", default: "full_time"
+    t.string "external_id"
     t.string "first_name", null: false
     t.date "hire_date"
     t.string "last_name", null: false
@@ -398,14 +896,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.text "notes"
     t.string "phone"
     t.bigint "position_id"
+    t.string "source"
+    t.boolean "source_active"
+    t.datetime "source_synced_at"
     t.string "status", default: "active", null: false
     t.string "tenant_id", null: false
     t.date "termination_date"
     t.datetime "updated_at", null: false
     t.bigint "user_id"
+    t.bigint "merged_into_id"
+    t.datetime "merged_at"
+    t.text "merge_snapshot"
+    t.index ["merged_into_id"], name: "index_employees_on_merged_into_id"
     t.index ["tenant_id", "department_id"], name: "index_employees_on_tenant_id_and_department_id"
     t.index ["tenant_id", "employee_number"], name: "index_employees_on_tenant_id_and_employee_number", unique: true
     t.index ["tenant_id", "position_id"], name: "index_employees_on_tenant_id_and_position_id"
+    t.index ["tenant_id", "source", "external_id"], name: "idx_employees_source_identity", unique: true
     t.index ["tenant_id", "status"], name: "index_employees_on_tenant_id_and_status"
     t.index ["tenant_id", "user_id"], name: "index_employees_on_tenant_id_and_user_id"
   end
@@ -423,6 +929,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.string "tenant_id", null: false
     t.datetime "updated_at", null: false
     t.bigint "vendor_id"
+    t.bigint "account_id"
+    t.index ["account_id"], name: "idx_expenses_account"
     t.index ["discarded_at"], name: "index_expenses_on_discarded_at"
     t.index ["tenant_id", "category"], name: "index_expenses_on_tenant_id_and_category"
     t.index ["tenant_id", "incurred_on"], name: "index_expenses_on_tenant_id_and_incurred_on"
@@ -457,6 +965,59 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.string "unit"
     t.datetime "updated_at", null: false
     t.index ["tenant_id", "status"], name: "index_goals_on_tenant_id_and_status"
+  end
+
+  create_table "google_login_identities", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "email", null: false
+    t.string "google_subject"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_google_login_identities_on_email", unique: true
+    t.index ["google_subject"], name: "index_google_login_identities_on_google_subject", unique: true
+    t.index ["user_id"], name: "index_google_login_identities_on_user_id"
+  end
+
+  create_table "inventory_count_scan_receipts", id: :string, force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "count_id", null: false
+    t.string "request_token", null: false
+    t.string "fingerprint", null: false
+    t.string "created_by", null: false
+    t.text "result", null: false
+    t.datetime "created_at", null: false
+    t.index ["tenant_id", "count_id", "request_token"], name: "idx_count_scan_receipts_request", unique: true
+  end
+
+  create_table "journal_entries", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.date "posted_on", null: false
+    t.string "kind", null: false
+    t.string "status", default: "posted", null: false
+    t.string "source_type"
+    t.string "source_id"
+    t.text "memo"
+    t.integer "created_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "posted_on"], name: "idx_journal_entries_posted_on"
+    t.index ["tenant_id", "source_type", "source_id"], name: "idx_journal_entries_source", unique: true, where: "status = 'posted'"
+    t.index ["tenant_id"], name: "index_journal_entries_on_tenant_id"
+  end
+
+  create_table "journal_lines", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "journal_entry_id", null: false
+    t.bigint "account_id", null: false
+    t.integer "debit_cents", default: 0, null: false
+    t.integer "credit_cents", default: 0, null: false
+    t.text "memo"
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["journal_entry_id"], name: "idx_journal_lines_entry"
+    t.index ["tenant_id", "account_id"], name: "idx_journal_lines_account"
+    t.index ["tenant_id"], name: "index_journal_lines_on_tenant_id"
   end
 
   create_table "kpi_readings", force: :cascade do |t|
@@ -517,6 +1078,269 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.index ["tenant_id", "domain"], name: "index_oauth_allowed_domains_on_tenant_id_and_domain", unique: true
   end
 
+  create_table "marketing_influencers", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "name", null: false
+    t.string "platform"
+    t.string "handle"
+    t.string "profile_url"
+    t.text "topics"
+    t.string "stage", default: "prospect", null: false
+    t.bigint "owner_id"
+    t.datetime "next_follow_up_at"
+    t.text "notes"
+    t.text "contact_email"
+    t.text "shipping_details"
+    t.text "private_notes"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "profile_url"], name: "index_marketing_influencers_on_tenant_id_and_profile_url", unique: true
+    t.index ["tenant_id", "stage", "next_follow_up_at"], name: "marketing_influencer_queue"
+    t.index ["tenant_id"], name: "index_marketing_influencers_on_tenant_id"
+  end
+
+  create_table "marketing_engagements", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "influencer_id", null: false
+    t.bigint "campaign_id", null: false
+    t.string "title", null: false
+    t.string "status", default: "draft", null: false
+    t.text "deliverables"
+    t.datetime "due_at"
+    t.string "destination_url", null: false
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["campaign_id"], name: "index_marketing_engagements_on_campaign_id"
+    t.index ["influencer_id"], name: "index_marketing_engagements_on_influencer_id"
+    t.index ["tenant_id"], name: "index_marketing_engagements_on_tenant_id"
+  end
+
+  create_table "marketing_interactions", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "influencer_id", null: false
+    t.bigint "actor_id", null: false
+    t.string "kind", null: false
+    t.text "body", null: false
+    t.datetime "occurred_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["influencer_id"], name: "index_marketing_interactions_on_influencer_id"
+    t.index ["tenant_id"], name: "index_marketing_interactions_on_tenant_id"
+  end
+
+  create_table "marketing_product_gifts", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "engagement_id", null: false
+    t.string "status", default: "proposed", null: false
+    t.string "currency", default: "USD", null: false
+    t.integer "shipping_cost_cents"
+    t.text "note"
+    t.text "shipping_details"
+    t.datetime "recipient_confirmed_at"
+    t.string "carrier"
+    t.text "tracking_number"
+    t.text "tracking_url"
+    t.datetime "shipped_at"
+    t.datetime "delivered_at"
+    t.datetime "returned_at"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["engagement_id"], name: "index_marketing_product_gifts_on_engagement_id"
+    t.index ["tenant_id"], name: "index_marketing_product_gifts_on_tenant_id"
+  end
+
+  create_table "marketing_product_gift_items", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "product_gift_id", null: false
+    t.string "source_variant_id", null: false
+    t.string "product_name", null: false
+    t.string "sku"
+    t.integer "quantity", null: false
+    t.integer "unit_cost_cents"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["product_gift_id", "source_variant_id"], name: "marketing_gift_variant", unique: true
+    t.index ["product_gift_id"], name: "index_marketing_product_gift_items_on_product_gift_id"
+    t.index ["tenant_id"], name: "index_marketing_product_gift_items_on_tenant_id"
+  end
+
+  create_table "marketing_documents", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "engagement_id", null: false
+    t.string "title", null: false
+    t.string "kind", null: false
+    t.string "visibility", default: "internal", null: false
+    t.string "status", default: "draft", null: false
+    t.bigint "reviewed_by_id"
+    t.datetime "reviewed_at"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["engagement_id"], name: "index_marketing_documents_on_engagement_id"
+    t.index ["tenant_id"], name: "index_marketing_documents_on_tenant_id"
+  end
+
+  create_table "marketing_document_revisions", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "document_id", null: false
+    t.bigint "actor_id", null: false
+    t.integer "number", null: false
+    t.string "title", null: false
+    t.string "kind", null: false
+    t.text "body", null: false
+    t.text "source_url"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["document_id", "number"], name: "index_marketing_document_revisions_on_document_id_and_number", unique: true
+    t.index ["document_id"], name: "index_marketing_document_revisions_on_document_id"
+    t.index ["tenant_id"], name: "index_marketing_document_revisions_on_tenant_id"
+  end
+
+  create_table "marketing_cms_events", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "actor_id", null: false
+    t.string "subject_type", null: false
+    t.bigint "subject_id", null: false
+    t.string "action", null: false
+    t.text "payload_json", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "subject_type", "subject_id"], name: "marketing_cms_history"
+    t.index ["tenant_id"], name: "index_marketing_cms_events_on_tenant_id"
+  end
+
+  create_table "marketing_campaigns", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "name", null: false
+    t.string "storefront_url", null: false
+    t.text "topics", null: false
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id"], name: "index_marketing_campaigns_on_tenant_id"
+  end
+
+  create_table "marketing_communities", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "campaign_id", null: false
+    t.string "name", null: false
+    t.string "url", null: false
+    t.text "include_terms", null: false
+    t.text "exclude_terms"
+    t.text "promotion_rules", null: false
+    t.string "rules_url", null: false
+    t.datetime "rules_checked_at"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["campaign_id"], name: "index_marketing_communities_on_campaign_id"
+    t.index ["tenant_id"], name: "index_marketing_communities_on_tenant_id"
+  end
+
+  create_table "marketing_offers", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "community_id"
+    t.string "merchant_host", null: false
+    t.string "code", null: false
+    t.text "terms", null: false
+    t.string "destination_url", null: false
+    t.datetime "starts_at", null: false
+    t.datetime "ends_at", null: false
+    t.string "evidence_url"
+    t.datetime "verified_at"
+    t.bigint "verified_by_id"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "engagement_id"
+    t.index ["community_id"], name: "index_marketing_offers_on_community_id"
+    t.index ["engagement_id"], name: "index_marketing_offers_on_engagement_id"
+    t.index ["tenant_id", "merchant_host", "code"], name: "marketing_offer_codes", unique: true
+    t.index ["tenant_id"], name: "index_marketing_offers_on_tenant_id"
+    t.check_constraint "(community_id IS NOT NULL AND engagement_id IS NULL) OR (community_id IS NULL AND engagement_id IS NOT NULL)", name: "marketing_offer_recipient"
+  end
+
+  create_table "marketing_replies", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "thread_id", null: false
+    t.bigint "offer_id", null: false
+    t.text "body", null: false
+    t.string "affiliation", null: false
+    t.string "status", default: "draft", null: false
+    t.text "snapshot_json"
+    t.string "snapshot_digest"
+    t.string "published_url"
+    t.datetime "published_at"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["offer_id"], name: "index_marketing_replies_on_offer_id"
+    t.index ["tenant_id", "status", "updated_at"], name: "index_marketing_replies_on_tenant_id_and_status_and_updated_at"
+    t.index ["tenant_id"], name: "index_marketing_replies_on_tenant_id"
+    t.index ["thread_id"], name: "index_marketing_replies_on_thread_id", unique: true
+  end
+
+  create_table "marketing_review_events", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "reply_id", null: false
+    t.bigint "actor_id", null: false
+    t.string "action", null: false
+    t.text "payload_json", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["reply_id"], name: "index_marketing_review_events_on_reply_id"
+    t.index ["tenant_id"], name: "index_marketing_review_events_on_tenant_id"
+  end
+
+  create_table "marketing_shopify_discounts", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "offer_id", null: false
+    t.string "shop_domain", null: false
+    t.string "shop_id", null: false
+    t.string "currency", null: false
+    t.string "request_key", null: false
+    t.text "request_json", null: false
+    t.string "status", default: "draft", null: false
+    t.string "remote_id"
+    t.string "remote_status"
+    t.text "remote_json"
+    t.text "last_error"
+    t.bigint "approved_by_id"
+    t.datetime "attempted_at"
+    t.datetime "checked_at"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["offer_id"], name: "index_marketing_shopify_discounts_on_offer_id", unique: true
+    t.index ["request_key"], name: "index_marketing_shopify_discounts_on_request_key", unique: true
+    t.index ["tenant_id"], name: "index_marketing_shopify_discounts_on_tenant_id"
+    t.index ["tenant_id", "shop_domain", "remote_id"], name: "marketing_shopify_remote_discount", unique: true
+    t.check_constraint "status IN ('draft', 'creating', 'created', 'uncertain', 'failed', 'blocked')", name: "marketing_shopify_discount_status"
+  end
+
+  create_table "marketing_threads", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "community_id", null: false
+    t.string "url", null: false
+    t.string "title", null: false
+    t.text "excerpt", null: false
+    t.string "status", default: "new", null: false
+    t.string "availability", default: "open", null: false
+    t.text "triage_note"
+    t.datetime "checked_at"
+    t.datetime "snoozed_until"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["community_id"], name: "index_marketing_threads_on_community_id"
+    t.index ["tenant_id", "status", "created_at"], name: "index_marketing_threads_on_tenant_id_and_status_and_created_at"
+    t.index ["tenant_id", "url"], name: "index_marketing_threads_on_tenant_id_and_url", unique: true
+    t.index ["tenant_id"], name: "index_marketing_threads_on_tenant_id"
+  end
+
   create_table "order_lines", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "line_cents", default: 0
@@ -527,9 +1351,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.string "tenant_id", null: false
     t.integer "unit_cents", default: 0
     t.datetime "updated_at", null: false
+    t.string "source_line_id"
+    t.string "source_variant_id"
     t.index "tenant_id, lower((sku)::text)", name: "index_order_lines_on_tenant_id_and_lower_sku"
+    t.index ["tenant_id", "order_id", "source_line_id"], name: "idx_order_lines_source_identity", unique: true
     t.index ["tenant_id", "order_id"], name: "index_order_lines_on_tenant_id_and_order_id"
     t.index ["tenant_id", "sku"], name: "index_order_lines_on_tenant_id_and_sku"
+    t.index ["tenant_id", "source_variant_id"], name: "idx_order_lines_source_variant"
   end
 
   create_table "orders", force: :cascade do |t|
@@ -557,6 +1385,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.integer "tax_cents", default: 0
     t.string "tenant_id", null: false
     t.datetime "updated_at", null: false
+    t.boolean "source_lines_complete", default: false, null: false
+    t.string "source_financial_status"
     t.index ["location_id"], name: "index_orders_on_location_id"
     t.index ["order_number"], name: "idx_trgm_orders_order_number", opclass: :gin_trgm_ops, using: :gin
     t.index ["source_order_id"], name: "idx_trgm_orders_source_order_id", opclass: :gin_trgm_ops, using: :gin
@@ -565,6 +1395,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.index ["tenant_id", "order_number"], name: "index_orders_on_tenant_id_and_order_number"
     t.index ["tenant_id", "source", "source_order_id"], name: "index_orders_on_tenant_id_and_source_and_source_order_id", unique: true
     t.index ["tenant_id", "status"], name: "index_orders_on_tenant_id_and_status"
+    t.integer "tip_cents", default: 0, null: false
+  end
+
+  create_table "owner_checklist_events", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "owner_checklist_id", null: false
+    t.bigint "actor_id"
+    t.text "payload_json", null: false
+    t.string "action", null: false
+    t.datetime "created_at", null: false
+    t.index ["tenant_id", "owner_checklist_id", "created_at", "id"], name: "idx_owner_checklist_events_timeline"
+  end
+
+  create_table "owner_checklists", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.text "payload_json", null: false
+    t.integer "lock_version", default: 0, null: false
+    t.bigint "created_by_id"
+    t.bigint "updated_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "created_at", "id"], name: "idx_owner_checklists_timeline"
   end
 
   create_table "pay_rates", force: :cascade do |t|
@@ -626,6 +1478,95 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.datetime "updated_at", null: false
     t.index ["tenant_id", "employee_id"], name: "index_payslips_on_tenant_id_and_employee_id"
     t.index ["tenant_id", "pay_run_id"], name: "index_payslips_on_tenant_id_and_pay_run_id"
+  end
+
+  create_table "ctrax_days", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "location_id", null: false
+    t.string "api_origin", null: false
+    t.string "store_id", null: false
+    t.date "business_date", null: false
+    t.string "timezone", null: false
+    t.string "currency", default: "USD", null: false
+    t.text "orders_json", null: false
+    t.text "sessions_json", null: false
+    t.text "controls_json", null: false
+    t.string "source_digest", null: false
+    t.datetime "captured_at", null: false
+    t.integer "reviewed_by_id"
+    t.string "reviewed_digest"
+    t.datetime "reviewed_at"
+    t.string "review_note", limit: 1000
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["reviewed_by_id"], name: "index_ctrax_days_on_reviewed_by_id"
+    t.index ["tenant_id", "location_id", "business_date"], name: "idx_on_tenant_id_location_id_business_date_9a513d6082", unique: true
+    t.index ["tenant_id"], name: "index_ctrax_days_on_tenant_id"
+  end
+
+  create_table "ctrax_stock_snapshots", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "location_id", null: false
+    t.string "api_origin", null: false
+    t.string "store_id", null: false
+    t.text "records_json", null: false
+    t.datetime "captured_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "location_id"], name: "index_ctrax_stock_snapshots_on_tenant_id_and_location_id", unique: true
+    t.index ["tenant_id"], name: "index_ctrax_stock_snapshots_on_tenant_id"
+  end
+
+  create_table "period_locks", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "action", null: false
+    t.string "period_kind", null: false
+    t.date "period_from", null: false
+    t.date "period_to", null: false
+    t.string "fingerprint", null: false
+    t.text "summary_json", null: false
+    t.text "reason"
+    t.integer "archive_document_id"
+    t.integer "actor_id"
+    t.string "actor_name", null: false
+    t.datetime "acted_at", null: false
+    t.string "ip"
+    t.string "user_agent"
+    t.string "prev_hash", null: false
+    t.string "entry_hash", null: false
+    t.datetime "created_at", null: false
+    t.index ["entry_hash"], name: "idx_period_locks_entry_hash", unique: true
+    t.index ["tenant_id", "period_from", "period_to"], name: "idx_period_locks_range"
+    t.index ["tenant_id", "period_kind", "period_from"], name: "idx_period_locks_period"
+    t.index ["tenant_id"], name: "index_period_locks_on_tenant_id"
+  end
+
+  create_table "pos_connections", force: :cascade do |t|
+    t.boolean "hourly_sync_enabled", default: false, null: false
+    t.string "tenant_id", null: false
+    t.string "provider", null: false
+    t.string "environment", default: "sandbox", null: false
+    t.string "account_reference"
+    t.string "gateway", default: "unconfirmed", null: false
+    t.boolean "access_requested", default: false, null: false
+    t.boolean "vendor_approved", default: false, null: false
+    t.text "credentials_json"
+    t.string "last_check_status"
+    t.string "last_check_message"
+    t.datetime "last_checked_at"
+    t.bigint "updated_by_id"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "reporting_auth_mode", default: "api_key", null: false
+    t.boolean "reporting_enabled", default: false, null: false
+    t.datetime "last_reported_at"
+    t.string "last_report_status"
+    t.string "last_report_message"
+    t.index ["tenant_id", "provider"], name: "index_pos_connections_on_tenant_id_and_provider", unique: true
+    t.index ["updated_by_id"], name: "index_pos_connections_on_updated_by_id"
+    t.check_constraint "environment::text = ANY (ARRAY['sandbox'::character varying, 'production'::character varying]::text[])", name: "pos_connection_environment"
+    t.check_constraint "last_check_status IS NULL OR (last_check_status::text = ANY (ARRAY['verified'::character varying, 'failed'::character varying]::text[]))", name: "pos_connection_check_status"
   end
 
   create_table "pos_sessions", force: :cascade do |t|
@@ -704,6 +1645,105 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.index ["tenant_id", "vendor_id"], name: "index_purchase_orders_on_tenant_id_and_vendor_id"
   end
 
+  create_table "reconciliation_follow_up_events", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "reconciliation_follow_up_id", null: false
+    t.text "details_json", null: false
+    t.datetime "created_at", null: false
+    t.index ["reconciliation_follow_up_id"], name: "idx_reconciliation_follow_up_history"
+    t.index ["tenant_id"], name: "index_reconciliation_follow_up_events_on_tenant_id"
+  end
+
+  create_table "reconciliation_follow_ups", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "category", null: false
+    t.string "source", null: false
+    t.string "document_kind", null: false
+    t.date "period_from", null: false
+    t.date "period_to", null: false
+    t.string "currency"
+    t.string "location_id"
+    t.string "metric"
+    t.string "report_digest"
+    t.text "title", null: false
+    t.text "notes", null: false
+    t.string "status", default: "open", null: false
+    t.date "due_on", null: false
+    t.bigint "owner_id"
+    t.bigint "created_by_id"
+    t.bigint "document_id"
+    t.string "submission_key", null: false
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_reconciliation_follow_ups_on_created_by_id"
+    t.index ["document_id"], name: "index_reconciliation_follow_ups_on_document_id"
+    t.index ["owner_id"], name: "index_reconciliation_follow_ups_on_owner_id"
+    t.index ["tenant_id", "period_from", "period_to"], name: "idx_reconciliation_follow_up_period"
+    t.index ["tenant_id", "status", "due_on"], name: "idx_reconciliation_follow_up_queue"
+    t.index ["tenant_id", "submission_key"], name: "idx_reconciliation_follow_up_submission", unique: true
+    t.index ["tenant_id"], name: "index_reconciliation_follow_ups_on_tenant_id"
+  end
+
+  create_table "purchase_receipt_events", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "purchase_receipt_id", null: false
+    t.bigint "actor_id", null: false
+    t.string "action", null: false
+    t.text "snapshot_json", null: false
+    t.text "note"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["actor_id"], name: "index_purchase_receipt_events_on_actor_id"
+    t.index ["purchase_receipt_id"], name: "index_purchase_receipt_events_on_purchase_receipt_id"
+  end
+
+  create_table "purchase_receipts", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "submitted_by_id", null: false
+    t.string "status", default: "draft", null: false
+    t.string "payee", null: false
+    t.date "incurred_on", null: false
+    t.integer "amount_cents", null: false
+    t.string "currency", default: "USD", null: false
+    t.string "category", null: false
+    t.text "notes"
+    t.string "filename", null: false
+    t.string "content_type", null: false
+    t.integer "byte_size", null: false
+    t.string "sha256", null: false
+    t.text "content_base64", null: false
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["submitted_by_id"], name: "index_purchase_receipts_on_submitted_by_id"
+    t.index ["tenant_id", "status", "created_at"], name: "index_purchase_receipts_on_tenant_id_and_status_and_created_at"
+    t.index ["tenant_id", "submitted_by_id", "sha256"], name: "idx_purchase_receipts_duplicate_file", unique: true
+  end
+
+  create_table "reconciliation_documents", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "source", null: false
+    t.string "kind", null: false
+    t.date "period_from", null: false
+    t.date "period_to", null: false
+    t.text "metadata_json", null: false
+    t.text "content_base64", null: false
+    t.string "filename", null: false
+    t.string "content_type", null: false
+    t.string "sha256", null: false
+    t.string "fingerprint", null: false
+    t.integer "byte_size", null: false
+    t.bigint "uploaded_by_id"
+    t.bigint "supersedes_id"
+    t.datetime "created_at", null: false
+    t.index ["tenant_id", "fingerprint"], name: "idx_reconciliation_evidence_replay", unique: true
+    t.index ["tenant_id", "period_from", "period_to"], name: "idx_reconciliation_evidence_period"
+    t.index ["tenant_id", "supersedes_id"], name: "idx_reconciliation_evidence_correction", unique: true
+    t.index ["tenant_id"], name: "index_reconciliation_documents_on_tenant_id"
+    t.index ["uploaded_by_id"], name: "index_reconciliation_documents_on_uploaded_by_id"
+  end
+
   create_table "refunds", force: :cascade do |t|
     t.integer "amount_cents", default: 0, null: false
     t.datetime "created_at", null: false
@@ -718,6 +1758,40 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.index ["discarded_at"], name: "index_refunds_on_discarded_at"
     t.index ["tenant_id", "order_id"], name: "index_refunds_on_tenant_id_and_order_id"
     t.index ["tenant_id", "refunded_at"], name: "index_refunds_on_tenant_id_and_refunded_at"
+  end
+
+  create_table "retention_drive_connections", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.text "refresh_token"
+    t.text "account_email"
+    t.string "generation"
+    t.boolean "enabled", default: false, null: false
+    t.string "sync_lease_token"
+    t.datetime "sync_lease_at"
+    t.datetime "last_synced_at"
+    t.text "last_error"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id"], name: "index_retention_drive_connections_on_tenant_id", unique: true
+  end
+
+  create_table "retention_drive_items", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "generation", null: false
+    t.string "item_key", null: false
+    t.string "remote_id"
+    t.string "status", default: "pending", null: false
+    t.string "sha256"
+    t.bigint "byte_size"
+    t.text "display_name"
+    t.text "folder_path"
+    t.text "last_error"
+    t.datetime "last_attempt_at"
+    t.datetime "verified_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "generation", "item_key"], name: "index_retention_drive_items_identity", unique: true
+    t.index ["tenant_id", "generation", "status"], name: "index_retention_drive_items_status"
   end
 
   create_table "role_permissions", force: :cascade do |t|
@@ -917,6 +1991,131 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.index ["key"], name: "index_solid_queue_semaphores_on_key", unique: true
   end
 
+  create_table "shopify_stock_snapshots", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "location_id", null: false
+    t.string "shop_domain", null: false
+    t.datetime "captured_at", null: false
+    t.text "records_json", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "location_id"], name: "index_shopify_stock_snapshots_on_tenant_id_and_location_id", unique: true
+    t.index ["tenant_id"], name: "index_shopify_stock_snapshots_on_tenant_id"
+  end
+
+  create_table "square_timecard_days", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "square_timecard_id", null: false
+    t.date "worked_on", null: false
+    t.integer "payable_seconds", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["square_timecard_id"], name: "index_square_timecard_days_on_square_timecard_id"
+    t.index ["tenant_id", "square_timecard_id", "worked_on"], name: "idx_square_timecard_day", unique: true
+    t.index ["tenant_id", "worked_on"], name: "index_square_timecard_days_on_tenant_id_and_worked_on"
+    t.index ["tenant_id"], name: "index_square_timecard_days_on_tenant_id"
+  end
+
+  create_table "square_timecards", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "employee_id"
+    t.string "external_id", null: false
+    t.string "team_member_id"
+    t.string "location_id"
+    t.string "timezone"
+    t.datetime "started_at"
+    t.datetime "ended_at"
+    t.bigint "payable_seconds", default: 0, null: false
+    t.bigint "unpaid_break_seconds", default: 0, null: false
+    t.integer "hourly_rate_cents"
+    t.string "currency"
+    t.string "import_status", null: false
+    t.string "issue"
+    t.integer "source_version"
+    t.datetime "source_updated_at"
+    t.string "original_digest"
+    t.text "source_payload"
+    t.text "latest_payload"
+    t.datetime "imported_at"
+    t.datetime "last_seen_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["employee_id"], name: "index_square_timecards_on_employee_id"
+    t.index ["tenant_id", "employee_id", "started_at"], name: "idx_square_timecard_worker"
+    t.index ["tenant_id", "external_id"], name: "idx_square_timecard_native", unique: true
+    t.index ["tenant_id"], name: "index_square_timecards_on_tenant_id"
+  end
+
+  create_table "stock_reservation_pools", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "source", null: false
+    t.string "location_id", null: false
+    t.string "source_item_id", null: false
+    t.string "location_name", null: false
+    t.string "item_label", null: false
+    t.integer "lock_version", default: 0, null: false
+    t.index ["tenant_id", "source", "location_id", "source_item_id"], name: "idx_reservation_pool_identity", unique: true
+    t.check_constraint "source::text = ANY (ARRAY['shopify'::character varying, 'square'::character varying]::text[])", name: "stock_reservation_pools_source"
+  end
+
+  create_table "stock_reservations", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "stock_reservation_pool_id", null: false
+    t.integer "quantity", null: false
+    t.string "reference", null: false
+    t.string "request_token", null: false
+    t.string "status", default: "active", null: false
+    t.datetime "expires_at"
+    t.string "created_by", null: false
+    t.string "released_by"
+    t.datetime "released_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["stock_reservation_pool_id", "status", "expires_at"], name: "idx_reservations_pool_active"
+    t.index ["tenant_id", "created_at", "id"], name: "idx_reservations_tenant_created"
+    t.index ["tenant_id", "request_token"], name: "idx_reservations_request_token", unique: true
+    t.check_constraint "quantity > 0", name: "stock_reservations_positive_quantity"
+    t.check_constraint "status::text = ANY (ARRAY['active'::character varying, 'released'::character varying]::text[])", name: "stock_reservations_status"
+  end
+
+  create_table "swipesimple_exports", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "merchant_account", null: false
+    t.string "kind", null: false
+    t.string "currency", null: false
+    t.string "source_timezone", null: false
+    t.string "fingerprint", null: false
+    t.string "sha256", null: false
+    t.datetime "exported_at", null: false
+    t.text "original_csv", null: false
+    t.bigint "imported_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["imported_by_id"], name: "index_swipesimple_exports_on_imported_by_id"
+    t.index ["tenant_id", "fingerprint"], name: "index_swipesimple_exports_on_tenant_id_and_fingerprint", unique: true
+    t.index ["tenant_id", "merchant_account", "kind", "exported_at", "id"], name: "idx_swipesimple_snapshot_scope"
+  end
+
+  create_table "swipesimple_report_rows", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "swipesimple_export_id", null: false
+    t.string "identity", null: false
+    t.text "source_number", null: false
+    t.string "transaction_type"
+    t.string "status", null: false
+    t.string "tender"
+    t.integer "amount_cents", null: false
+    t.integer "tip_cents"
+    t.datetime "occurred_at", null: false
+    t.text "reference_number"
+    t.date "due_on"
+    t.datetime "last_sent_at"
+    t.integer "source_row", null: false
+    t.index ["swipesimple_export_id", "identity"], name: "idx_swipesimple_export_identity", unique: true
+    t.index ["swipesimple_export_id"], name: "index_swipesimple_report_rows_on_swipesimple_export_id"
+    t.index ["tenant_id", "identity"], name: "idx_swipesimple_tenant_identity"
+  end
+
   create_table "tasks", force: :cascade do |t|
     t.string "assignee_id"
     t.datetime "completed_at"
@@ -934,6 +2133,55 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.index ["tenant_id", "status"], name: "index_tasks_on_tenant_id_and_status"
   end
 
+  create_table "ctrax_image_links", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "location_id", null: false
+    t.string "variant_id", null: false
+    t.string "shopify_product_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "location_id", "variant_id"], name: "idx_on_tenant_id_location_id_variant_id_a6f332d264", unique: true
+    t.index ["tenant_id"], name: "index_ctrax_image_links_on_tenant_id"
+  end
+
+  create_table "pos_display_sessions", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "user_id", null: false
+    t.string "location_id", null: false
+    t.text "display_token", null: false
+    t.string "token_digest", null: false
+    t.text "draft_json", default: "{}", null: false
+    t.string "draft_digest"
+    t.integer "cart_revision", default: 0, null: false
+    t.integer "confirmed_revision"
+    t.integer "chosen_tip_cents"
+    t.boolean "demo", default: false, null: false
+    t.datetime "expires_at", null: false
+    t.datetime "closed_at"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id"], name: "index_pos_display_sessions_on_tenant_id"
+    t.index ["token_digest"], name: "index_pos_display_sessions_on_token_digest", unique: true
+    t.index ["user_id"], name: "index_pos_display_sessions_on_user_id"
+  end
+
+  create_table "sync_attempts", force: :cascade do |t|
+    t.string "tenant_id"
+    t.string "source", null: false
+    t.string "operation", null: false
+    t.string "status", null: false
+    t.string "error_category"
+    t.string "active_job_id"
+    t.datetime "queued_at", null: false
+    t.datetime "started_at"
+    t.datetime "finished_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active_job_id"], name: "index_sync_attempts_on_active_job_id"
+    t.index ["tenant_id", "source", "operation", "queued_at"], name: "idx_sync_attempts_source_history"
+  end
+
   create_table "tenants", id: :string, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "name", null: false
@@ -942,7 +2190,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.string "status", default: "active"
     t.string "subdomain", null: false
     t.datetime "updated_at", null: false
+    t.string "referral_domain"
+    t.index ["referral_domain"], name: "index_tenants_on_referral_domain"
     t.index ["subdomain"], name: "index_tenants_on_subdomain", unique: true
+  end
+
+  create_table "timesheet_events", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "timesheet_id", null: false
+    t.bigint "user_id"
+    t.string "action", null: false
+    t.text "details"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "timesheet_id"], name: "index_timesheet_events_on_tenant_id_and_timesheet_id"
   end
 
   create_table "timesheet_entries", force: :cascade do |t|
@@ -953,6 +2214,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.datetime "updated_at", null: false
     t.string "work_type", default: "regular", null: false
     t.date "worked_on", null: false
+    t.text "notes"
+    t.bigint "clock_shift_id"
+    t.index ["tenant_id", "clock_shift_id", "worked_on"], name: "idx_timesheet_shift_day", unique: true
     t.index ["tenant_id", "timesheet_id"], name: "index_timesheet_entries_on_tenant_id_and_timesheet_id"
   end
 
@@ -967,6 +2231,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.string "status", default: "draft", null: false
     t.string "tenant_id", null: false
     t.datetime "updated_at", null: false
+    t.boolean "demo", default: false, null: false
+    t.bigint "assigned_reviewer_id"
+    t.datetime "submitted_at"
+    t.text "review_note"
+    t.index ["assigned_reviewer_id"], name: "index_timesheets_on_assigned_reviewer_id"
     t.index ["tenant_id", "employee_id", "period_start"], name: "index_timesheets_on_tenant_id_and_employee_id_and_period_start", unique: true
     t.index ["tenant_id", "status"], name: "index_timesheets_on_tenant_id_and_status"
   end
@@ -991,13 +2260,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.datetime "expires_at"
     t.string "name"
     t.string "password_digest"
-    t.string "role", default: "admin"
+    t.string "role", default: "employee"
     t.string "shopify_domain"
     t.string "shopify_token"
     t.bigint "shopify_user_id"
     t.string "tenant_id"
     t.datetime "updated_at", null: false
+    t.string "referral_domain"
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["referral_domain"], name: "index_users_on_referral_domain"
     t.index ["shopify_user_id"], name: "index_users_on_shopify_user_id", unique: true
     t.index ["tenant_id"], name: "index_users_on_tenant_id"
   end
@@ -1059,16 +2330,214 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
     t.index ["token"], name: "index_warehouse_carts_on_token", unique: true
   end
 
+  create_table "workspace_signup_events", force: :cascade do |t|
+    t.bigint "workspace_signup_id", null: false
+    t.bigint "actor_id"
+    t.string "action", null: false
+    t.text "payload_json", null: false
+    t.datetime "created_at", null: false
+    t.index ["actor_id"], name: "index_workspace_signup_events_on_actor_id"
+    t.index ["created_at", "id"], name: "index_workspace_signup_events_on_created_at_and_id"
+    t.index ["workspace_signup_id"], name: "index_workspace_signup_events_on_workspace_signup_id"
+  end
+
+  create_table "workspace_signups", force: :cascade do |t|
+    t.string "google_subject", null: false
+    t.string "applicant_name", null: false
+    t.string "email", null: false
+    t.string "domain", null: false
+    t.string "workspace_name", null: false
+    t.string "requested_subdomain", null: false
+    t.string "referral_domain", default: "herbalhealershcb.com", null: false
+    t.string "status", default: "pending", null: false
+    t.bigint "reviewer_id"
+    t.datetime "reviewed_at"
+    t.string "tenant_id"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["domain"], name: "idx_workspace_signups_approved_domain", unique: true, where: "((status)::text = 'approved'::text)"
+    t.index ["domain"], name: "index_workspace_signups_on_domain"
+    t.index ["email"], name: "index_workspace_signups_on_email", unique: true
+    t.index ["google_subject"], name: "index_workspace_signups_on_google_subject", unique: true
+    t.index ["reviewer_id"], name: "index_workspace_signups_on_reviewer_id"
+    t.index ["status", "created_at", "id"], name: "idx_workspace_signups_queue"
+  end
+
+  create_table "pos_settings", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "location_id", null: false
+    t.boolean "cash_enabled", default: false, null: false
+    t.boolean "stock_writes_enabled", default: false, null: false
+    t.boolean "card_enabled", default: false, null: false
+    t.string "environment", default: "sandbox", null: false
+    t.string "gateway_id"
+    t.text "credentials_json", default: "{}", null: false
+    t.string "public_client_key"
+    t.datetime "verified_at"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "gateway_provider", default: "authorize_net", null: false
+    t.index ["tenant_id", "location_id"], name: "index_pos_settings_on_tenant_id_and_location_id", unique: true
+  end
+
+  create_table "pos_checkouts", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "location_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "pos_display_session_id", null: false
+    t.bigint "pos_session_id"
+    t.integer "cart_revision", null: false
+    t.string "reference", null: false
+    t.string "status", default: "ready", null: false
+    t.string "tender", null: false
+    t.boolean "demo", default: false, null: false
+    t.text "lines_json", null: false
+    t.integer "subtotal_cents", null: false
+    t.integer "tax_cents", null: false
+    t.integer "tip_cents", null: false
+    t.integer "total_cents", null: false
+    t.integer "cash_received_cents"
+    t.integer "change_cents"
+    t.bigint "order_id"
+    t.datetime "paid_at"
+    t.string "gateway_id"
+    t.string "environment"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "gateway_provider", default: "authorize_net", null: false
+    t.string "gateway_fingerprint"
+    t.index ["order_id"], name: "index_pos_checkouts_on_order_id"
+    t.index ["pos_display_session_id"], name: "index_pos_checkouts_on_pos_display_session_id"
+    t.index ["pos_session_id"], name: "index_pos_checkouts_on_pos_session_id"
+    t.index ["reference"], name: "index_pos_checkouts_on_reference", unique: true
+    t.index ["tenant_id", "pos_display_session_id", "cart_revision"], name: "idx_pos_checkout_revision", unique: true
+    t.index ["user_id"], name: "index_pos_checkouts_on_user_id"
+  end
+
+  create_table "pos_stock_allocations", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "location_id", null: false
+    t.bigint "pos_checkout_id", null: false
+    t.string "variant_id", null: false
+    t.integer "quantity", null: false
+    t.string "status", default: "held", null: false
+    t.string "source_adjustment_id"
+    t.datetime "submitted_at"
+    t.datetime "applied_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.integer "source_quantity_before"
+    t.index ["pos_checkout_id", "variant_id"], name: "index_pos_stock_allocations_on_pos_checkout_id_and_variant_id", unique: true
+    t.index ["pos_checkout_id"], name: "index_pos_stock_allocations_on_pos_checkout_id"
+    t.index ["tenant_id", "location_id", "variant_id"], name: "idx_pos_stock_pool"
+  end
+
+  create_table "pos_payment_attempts", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "pos_checkout_id", null: false
+    t.string "invoice", null: false
+    t.string "nonce_digest", null: false
+    t.string "status", default: "submitting", null: false
+    t.string "transaction_id"
+    t.datetime "submitted_at", null: false
+    t.datetime "resolved_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["invoice"], name: "index_pos_payment_attempts_on_invoice", unique: true
+    t.index ["pos_checkout_id"], name: "index_pos_payment_attempts_on_pos_checkout_id"
+    t.index ["tenant_id", "nonce_digest"], name: "index_pos_payment_attempts_on_tenant_id_and_nonce_digest", unique: true
+  end
+
+  add_foreign_key "ctrax_labor_observations", "ctrax_labor_shifts"
+  add_foreign_key "ctrax_labor_observations", "tenants"
+  add_foreign_key "ctrax_labor_shifts", "employees"
+  add_foreign_key "ctrax_labor_shifts", "tenants"
+  add_foreign_key "sync_attempts", "tenants", on_delete: :cascade
   add_foreign_key "InventoryLevel", "ShopifyVariant", column: "shopifyVariantId", on_delete: :nullify
   add_foreign_key "InventoryLevel", "SquareVariation", column: "squareVariationId", on_delete: :nullify
   add_foreign_key "ReconcileItem", "ReconcileRun", column: "runId", on_delete: :cascade
   add_foreign_key "SkuLink", "ShopifyVariant", column: "shopifyVariantId", on_delete: :nullify
   add_foreign_key "SkuLink", "SquareVariation", column: "squareVariationId", on_delete: :nullify
+  add_foreign_key "WarehouseTier", "tenants", column: "tenantId"
+  add_foreign_key "customer_follow_ups", "customers"
+  add_foreign_key "customer_follow_ups", "tenants"
+  add_foreign_key "customer_interactions", "customers"
+  add_foreign_key "customer_interactions", "tenants"
+  add_foreign_key "api_access_tokens", "tenants", on_delete: :cascade
+  add_foreign_key "api_access_tokens", "users", on_delete: :cascade
+  add_foreign_key "authorize_net_batches", "tenants"
+  add_foreign_key "authorize_net_portal_exports", "tenants"
+  add_foreign_key "authorize_net_sale_links", "authorize_net_transactions"
+  add_foreign_key "authorize_net_sale_links", "orders"
+  add_foreign_key "authorize_net_sale_links", "tenants"
+  add_foreign_key "authorize_net_sale_links", "users", column: "reviewed_by_id"
+  add_foreign_key "authorize_net_sale_links", "users", column: "revoked_by_id"
+  add_foreign_key "authorize_net_transactions", "tenants"
+  add_foreign_key "bulk_consumptions", "bulk_lots"
+  add_foreign_key "bulk_consumptions", "bulk_movements"
+  add_foreign_key "bulk_consumptions", "bulk_recipes"
+  add_foreign_key "bulk_lots", "bulk_materials"
+  add_foreign_key "bulk_movements", "bulk_lots"
+  add_foreign_key "bulk_recipes", "bulk_materials"
+  add_foreign_key "clock_corrections", "clock_shifts"
+  add_foreign_key "clock_corrections", "tenants"
+  add_foreign_key "clock_corrections", "users", column: "requested_by_id", on_delete: :nullify
+  add_foreign_key "clock_corrections", "users", column: "reviewed_by_id", on_delete: :nullify
+  add_foreign_key "clock_shifts", "employees", on_delete: :nullify
+  add_foreign_key "clock_shifts", "tenants"
+  add_foreign_key "clock_shifts", "users", on_delete: :nullify
+  add_foreign_key "daily_reconciliation_reviews", "tenants"
+  add_foreign_key "daily_reconciliation_reviews", "users", column: "reviewed_by_id", on_delete: :nullify
+  add_foreign_key "reconciliation_follow_up_events", "reconciliation_follow_ups"
+  add_foreign_key "reconciliation_follow_up_events", "tenants"
+  add_foreign_key "reconciliation_follow_ups", "reconciliation_documents", column: "document_id"
+  add_foreign_key "reconciliation_follow_ups", "tenants"
+  add_foreign_key "reconciliation_follow_ups", "users", column: "created_by_id", on_delete: :nullify
+  add_foreign_key "reconciliation_follow_ups", "users", column: "owner_id", on_delete: :nullify
+  add_foreign_key "purchase_receipt_events", "purchase_receipts"
+  add_foreign_key "purchase_receipt_events", "tenants"
+  add_foreign_key "purchase_receipt_events", "users", column: "actor_id"
+  add_foreign_key "purchase_receipts", "tenants"
+  add_foreign_key "purchase_receipts", "users", column: "submitted_by_id"
+  add_foreign_key "reconciliation_documents", "reconciliation_documents", column: "supersedes_id"
+  add_foreign_key "reconciliation_documents", "tenants"
+  add_foreign_key "reconciliation_documents", "users", column: "uploaded_by_id", on_delete: :nullify
+  add_foreign_key "directory_sync_states", "tenants"
   add_foreign_key "departments", "employees", column: "manager_id"
+  add_foreign_key "employee_source_identities", "employees"
+  add_foreign_key "employee_work_reports", "employees"
+  add_foreign_key "employee_work_reports", "tenants"
+  add_foreign_key "employee_work_reports", "users", column: "requester_id", on_delete: :nullify
+  add_foreign_key "employee_work_reports", "users", column: "reviewer_id", on_delete: :nullify
+  add_foreign_key "employees", "employees", column: "merged_into_id"
   add_foreign_key "fulfillments", "orders", on_delete: :cascade
+  add_foreign_key "ctrax_days", "Location", column: "location_id", on_delete: :cascade
+  add_foreign_key "ctrax_days", "tenants"
+  add_foreign_key "ctrax_days", "users", column: "reviewed_by_id"
+  add_foreign_key "ctrax_image_links", "Location", column: "location_id", on_delete: :cascade
+  add_foreign_key "ctrax_image_links", "ShopifyProduct", column: "shopify_product_id", on_delete: :cascade
+  add_foreign_key "ctrax_image_links", "tenants"
+  add_foreign_key "pos_display_sessions", "Location", column: "location_id", on_delete: :cascade
+  add_foreign_key "pos_display_sessions", "tenants"
+  add_foreign_key "pos_display_sessions", "users"
+  add_foreign_key "google_login_identities", "users", on_delete: :cascade
+  add_foreign_key "inventory_count_scan_receipts", "InventoryCount", column: "count_id", on_delete: :cascade
   add_foreign_key "order_lines", "orders", on_delete: :cascade
+  add_foreign_key "owner_checklist_events", "owner_checklists"
+  add_foreign_key "owner_checklist_events", "users", column: "actor_id", on_delete: :nullify
+  add_foreign_key "owner_checklists", "users", column: "created_by_id", on_delete: :nullify
+  add_foreign_key "owner_checklists", "users", column: "updated_by_id", on_delete: :nullify
   add_foreign_key "payments", "orders", on_delete: :cascade
+  add_foreign_key "ctrax_stock_snapshots", "Location", column: "location_id", on_delete: :cascade
+  add_foreign_key "ctrax_stock_snapshots", "tenants"
+  add_foreign_key "pos_connections", "tenants"
+  add_foreign_key "pos_connections", "users", column: "updated_by_id", on_delete: :nullify
   add_foreign_key "refunds", "orders", on_delete: :cascade
+  add_foreign_key "retention_drive_connections", "tenants"
+  add_foreign_key "retention_drive_items", "tenants"
   add_foreign_key "size_changes", "size_families", column: "family_id", on_delete: :cascade
   add_foreign_key "size_family_members", "size_families", column: "family_id", on_delete: :cascade
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
@@ -1077,4 +2546,70 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_230000) do
   add_foreign_key "solid_queue_ready_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "square_timecard_days", "square_timecards"
+  add_foreign_key "square_timecard_days", "tenants"
+  add_foreign_key "square_timecards", "employees"
+  add_foreign_key "square_timecards", "tenants"
+  add_foreign_key "stock_reservations", "stock_reservation_pools"
+  add_foreign_key "swipesimple_exports", "users", column: "imported_by_id", on_delete: :nullify
+  add_foreign_key "swipesimple_report_rows", "swipesimple_exports"
+  add_foreign_key "workspace_signup_events", "users", column: "actor_id", on_delete: :nullify
+  add_foreign_key "workspace_signup_events", "workspace_signups"
+  add_foreign_key "workspace_signups", "tenants"
+  add_foreign_key "workspace_signups", "users", column: "reviewer_id", on_delete: :nullify
+  add_foreign_key "iris_reports", "tenants"
+
+  add_foreign_key "marketing_campaigns", "tenants"
+  add_foreign_key "marketing_communities", "marketing_campaigns", column: "campaign_id"
+  add_foreign_key "marketing_communities", "tenants"
+  add_foreign_key "marketing_offers", "marketing_communities", column: "community_id"
+  add_foreign_key "marketing_offers", "tenants"
+  add_foreign_key "marketing_offers", "users", column: "verified_by_id"
+  add_foreign_key "marketing_replies", "marketing_offers", column: "offer_id"
+  add_foreign_key "marketing_replies", "marketing_threads", column: "thread_id"
+  add_foreign_key "marketing_replies", "tenants"
+  add_foreign_key "marketing_review_events", "marketing_replies", column: "reply_id"
+  add_foreign_key "marketing_review_events", "tenants"
+  add_foreign_key "marketing_review_events", "users", column: "actor_id"
+  add_foreign_key "marketing_shopify_discounts", "marketing_offers", column: "offer_id"
+  add_foreign_key "marketing_shopify_discounts", "tenants"
+  add_foreign_key "marketing_shopify_discounts", "users", column: "approved_by_id"
+  add_foreign_key "marketing_threads", "marketing_communities", column: "community_id"
+  add_foreign_key "marketing_threads", "tenants"
+  add_foreign_key "pos_checkouts", "Location", column: "location_id"
+  add_foreign_key "pos_checkouts", "orders"
+  add_foreign_key "pos_checkouts", "pos_display_sessions"
+  add_foreign_key "pos_checkouts", "pos_sessions"
+  add_foreign_key "pos_checkouts", "tenants"
+  add_foreign_key "pos_checkouts", "users"
+  add_foreign_key "pos_payment_attempts", "pos_checkouts"
+  add_foreign_key "pos_payment_attempts", "tenants"
+  add_foreign_key "pos_settings", "Location", column: "location_id"
+  add_foreign_key "pos_settings", "tenants"
+  add_foreign_key "pos_stock_allocations", "Location", column: "location_id"
+  add_foreign_key "pos_stock_allocations", "pos_checkouts"
+  add_foreign_key "pos_stock_allocations", "tenants"
+  add_foreign_key "marketing_cms_events", "tenants"
+  add_foreign_key "marketing_cms_events", "users", column: "actor_id"
+  add_foreign_key "marketing_document_revisions", "marketing_documents", column: "document_id"
+  add_foreign_key "marketing_document_revisions", "tenants"
+  add_foreign_key "marketing_document_revisions", "users", column: "actor_id"
+  add_foreign_key "marketing_documents", "marketing_engagements", column: "engagement_id"
+  add_foreign_key "marketing_documents", "tenants"
+  add_foreign_key "marketing_documents", "users", column: "reviewed_by_id"
+  add_foreign_key "marketing_engagements", "marketing_campaigns", column: "campaign_id"
+  add_foreign_key "marketing_engagements", "marketing_influencers", column: "influencer_id"
+  add_foreign_key "marketing_engagements", "tenants"
+  add_foreign_key "marketing_influencers", "tenants"
+  add_foreign_key "marketing_influencers", "users", column: "owner_id"
+  add_foreign_key "marketing_interactions", "marketing_influencers", column: "influencer_id"
+  add_foreign_key "marketing_interactions", "tenants"
+  add_foreign_key "marketing_interactions", "users", column: "actor_id"
+  add_foreign_key "marketing_offers", "marketing_engagements", column: "engagement_id"
+  add_foreign_key "marketing_product_gift_items", "marketing_product_gifts", column: "product_gift_id"
+  add_foreign_key "marketing_product_gift_items", "tenants"
+  add_foreign_key "marketing_product_gifts", "marketing_engagements", column: "engagement_id"
+  add_foreign_key "marketing_product_gifts", "tenants"
+  add_foreign_key "authorize_net_portal_observations", "authorize_net_portal_exports", on_delete: :cascade
+  add_foreign_key "authorize_net_portal_observations", "tenants"
 end

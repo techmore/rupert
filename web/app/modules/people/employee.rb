@@ -10,12 +10,21 @@ module People
 
     self.table_name = 'employees'
 
-    EMPLOYMENT_TYPES = %w[full_time part_time contractor seasonal].freeze
+    # Original profiles remain as private audit records after consolidation.
+    default_scope { where(merged_into_id: nil) }
+    has_many :source_identities, class_name: 'EmployeeSourceIdentity', dependent: :restrict_with_exception
+    before_destroy :protect_consolidation_history, prepend: true
+
+    EMPLOYMENT_TYPES = %w[unspecified full_time part_time contractor seasonal].freeze
 
     belongs_to :user, optional: true
     belongs_to :department, class_name: 'People::Department', optional: true
     belongs_to :position, class_name: 'People::Position', optional: true
+    has_many :work_reports, class_name: 'EmployeeWorkReport', dependent: :restrict_with_exception
     has_many :pay_rates, class_name: 'People::PayRate', dependent: :destroy
+    has_many :square_timecards, dependent: :restrict_with_exception
+    has_many :square_timecard_days, through: :square_timecards, source: :days
+    has_many :ctrax_labor_shifts, dependent: :restrict_with_exception
     has_many :timesheets, class_name: 'People::Timesheet', dependent: :destroy
     has_many :timesheet_entries, through: :timesheets, source: :entries
     has_many :leave_balances, class_name: 'People::LeaveBalance', dependent: :destroy
@@ -28,7 +37,9 @@ module People
     validates :employee_number, presence: true, uniqueness: { scope: :tenant_id }, allow_nil: true
     validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_blank: true
     validates :employment_type, inclusion: { in: EMPLOYMENT_TYPES }
+    validates :user_id, uniqueness: { scope: :tenant_id }, allow_nil: true, if: :user_id_changed?
     validate :termination_after_hire
+    validate :associations_belong_to_workspace
 
     scope :ordered, -> { order(:last_name, :first_name) }
     scope :active, -> { where(status: 'active') }
@@ -64,7 +75,7 @@ module People
     end
 
     def current_pay_rate
-      pay_rates.where('ended_on IS NULL OR ended_on >= ?', Date.current).order(effective_on: :desc).first
+      pay_rates.where('effective_on <= ? AND (ended_on IS NULL OR ended_on >= ?)', Date.current, Date.current).order(effective_on: :desc, id: :desc).first
     end
 
     def on_payroll?
@@ -78,6 +89,23 @@ module People
     end
 
     private
+
+    def protect_consolidation_history
+      return unless self.class.unscoped.where(tenant_id: tenant_id, merged_into_id: id).exists?
+
+      errors.add(:base, 'This employee has consolidated profiles; retain the record and its history.')
+      throw :abort
+    end
+
+    def associations_belong_to_workspace
+      { user: User, department: People::Department, position: People::Position }.each do |association, model|
+        foreign_key = "#{association}_id"
+        next if self[foreign_key].blank?
+        next if model.unscoped.exists?(id: self[foreign_key], tenant_id: tenant_id)
+
+        errors.add(association, 'must belong to this workspace')
+      end
+    end
 
     def termination_after_hire
       return if hire_date.nil? || termination_date.nil?

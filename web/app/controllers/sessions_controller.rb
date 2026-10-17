@@ -4,18 +4,19 @@ class SessionsController < ApplicationController
   skip_before_action :require_login, only: %i[new create]
 
   def new
-    redirect_to(root_path) if Current.user
+    redirect_to(sign_in_landing_path(Current.user)) if Current.user
   end
 
   def create
-    if LoginThrottle.blocked?(ip: request.remote_ip, email: params[:email])
-      minutes = LoginThrottle.lockout_minutes(ip: request.remote_ip, email: params[:email])
+    email = params[:email].to_s.strip.downcase
+    if LoginThrottle.blocked?(ip: request.remote_ip, email: email)
+      minutes = LoginThrottle.lockout_minutes(ip: request.remote_ip, email: email)
       AccessLogger.record(
         source: 'password',
         status: 'failure',
         request: request,
-        email: params[:email],
-        domain: params[:email].to_s.split('@').last,
+        email: email,
+        domain: email.split('@').last,
         detail: 'rate limited'
       )
       flash.now[:alert] = "Too many failed sign-in attempts. Try again in #{minutes} minute#{minutes == 1 ? '' : 's'}."
@@ -28,13 +29,12 @@ class SessionsController < ApplicationController
     # resolvable, so fall back to the unscoped email lookup.
     tenant = Current.tenant
     user = if tenant
-      User.find_by(email: params[:email].to_s.downcase, tenant_id: tenant.id)
+      User.find_by(email: email, tenant_id: tenant.id)
     else
-      User.find_by(email: params[:email].to_s.downcase)
+      User.find_by(email: email)
            end
-    if user&.active? && user.authenticate(params[:password])
-      reset_session # prevent session fixation
-      session[:user_id] = user.id
+    if user&.active? && user.tenant&.status == 'active' && user.authenticate(params[:password])
+      start_browser_session(user, method: 'password')
       AccessLogger.record(
         source: 'password',
         status: 'success',
@@ -42,14 +42,14 @@ class SessionsController < ApplicationController
         user: user,
         domain: user.email.to_s.split('@').last
       )
-      redirect_to(root_path, notice: 'Signed in')
+      redirect_to(sign_in_landing_path(user), notice: 'Signed in')
     else
       AccessLogger.record(
         source: 'password',
         status: 'failure',
         request: request,
-        email: params[:email],
-        domain: params[:email].to_s.split('@').last,
+        email: email,
+        domain: email.split('@').last,
         detail: user ? 'invalid password' : 'unknown email'
       )
       flash.now[:alert] = 'Invalid email or password'

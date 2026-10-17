@@ -16,7 +16,7 @@ class ConnectionsGuide
       keys: %w[SHOPIFY_CLIENT_ID SHOPIFY_CLIENT_SECRET SHOPIFY_SHOP_DOMAIN SHOPIFY_LOCATION_ID],
       find_url: 'https://admin.shopify.com/',
       find_hint: 'Store admin → Settings → Apps and sales channels, or your Partner dashboard → Apps. SHOPIFY_LOCATION_ID is optional — it pins which location counts as your primary selling location; leave it blank and the sync picks the first active one.',
-      renewal_note: 'Secrets can be rotated any time. If a sync reports an invalid token, re-install the app or regenerate the client secret — nothing else changes.'
+      renewal_note: 'Coordinate client changes with every consumer of this app. Verify a fresh read after updating Rupert. A delayed job alone is not a reason to replace credentials.'
     ),
     Service.new(
       key: 'square',
@@ -25,17 +25,26 @@ class ConnectionsGuide
       keys: %w[SQUARE_APPLICATION_ID SQUARE_ACCESS_TOKEN SQUARE_ENVIRONMENT SQUARE_LOCATION_ID],
       find_url: 'https://developer.squareup.com/apps',
       find_hint: 'Square Developer Dashboard → your app → OAuth. The access token is under Authorization.',
-      renewal_note: 'Square OAuth access tokens are short-lived (about 30 days) but renew automatically while the app is used. If syncs start failing with an auth error, re-issue the token in the Developer Dashboard.'
+      renewal_note: 'This connector uses a manually supplied access token. It does not implement OAuth login or automatic token refresh. If the token expires or is revoked, replace it through the Developer Dashboard.'
+    ),
+    Service.new(
+      key: 'google_sign_in',
+      name: 'Google sign-in',
+      description: 'Team sign-in for the allowed workspace email domains.',
+      keys: %w[GOOGLE_OAUTH_CLIENT_ID GOOGLE_OAUTH_CLIENT_SECRET],
+      find_url: 'https://console.cloud.google.com/apis/credentials',
+      find_hint: 'Use the OAuth client configured for Rupert sign-in. Manage allowed email domains separately in Settings.',
+      renewal_note: 'Coordinate client changes with the operator. Google sign-in and Google Drive backups use separate settings.'
     ),
     Service.new(
       key: 'google_drive',
       name: 'Google Drive backup',
-      description: 'Automatic database snapshots to a private Drive folder.',
+      description: 'Platform-only snapshots of the entire shared instance database to an approved private Drive folder.',
       keys: %w[GOOGLE_DRIVE_CLIENT_ID GOOGLE_DRIVE_CLIENT_SECRET GOOGLE_DRIVE_REFRESH_TOKEN
                GOOGLE_DRIVE_FOLDER_ID],
       find_url: 'https://console.cloud.google.com/apis/credentials',
       find_hint: 'Google Cloud Console → APIs & Services → Credentials → your OAuth 2.0 Client ID.',
-      renewal_note: 'The refresh token can lapse after about 6 months of inactivity. If backups stop, run the Connect flow on the Settings page again — no other setup is needed.'
+      renewal_note: 'If authorization fails, the platform operator should review backup status and restore the approved connection through Settings. Verify a new backup and a separate restore drill.'
     ),
     Service.new(
       key: 'buzz',
@@ -44,17 +53,38 @@ class ConnectionsGuide
       keys: %w[BUZZ_RELAY_URL BUZZ_CHANNEL BUZZ_PRIVATE_KEY BUZZ_ANNOUNCEMENTS_CHANNEL],
       find_url: nil,
       find_hint: 'Relay URL and channel ids come from your Buzz workspace. The private key is generated inside Rupert (Settings → Buzz agent).',
-      renewal_note: 'Generate a fresh agent keypair any time from the Settings page. Republish the profile so the relay recognizes the new npub, then re-add it to the channel.'
+      renewal_note: 'Coordinate identity changes with the existing channels before replacing the agent keypair. Review the Settings workflow and verify channel access after an approved change.'
     ),
     Service.new(
       key: 'authorize_net',
-      name: 'Authorize.net',
+      name: 'Authorize.net checkout',
       description: 'Card payments on warehouse-sale vendor links.',
       keys: %w[AUTHORIZE_NET_LOGIN_ID AUTHORIZE_NET_TRANSACTION_KEY AUTHORIZE_NET_CLIENT_KEY
                AUTHORIZE_NET_SANDBOX],
       find_url: 'https://account.authorize.net/',
       find_hint: 'Merchant Interface → Account → API Credentials & Keys. The client key is what the checkout page embeds for Accept.js.',
-      renewal_note: "Rotate the transaction key any time from the Merchant Interface. Keep AUTHORIZE_NET_SANDBOX=1 until you're ready to take real charges."
+      renewal_note: 'Do not generate a new Transaction Key for reporting setup: Shopify and other checkouts may share ' \
+                    'the existing key. Rotation expires the old key immediately or after 24 hours and requires ' \
+                    'coordinated updates to every consumer. Use the existing key securely or approved OAuth read access ' \
+                    'for reporting.'
+    ),
+    Service.new(
+      key: 'apple_pay',
+      name: 'Apple Pay',
+      description: 'Apple Pay button on warehouse checkout. Payments still run through Authorize.net.',
+      keys: %w[APPLE_PAY_MERCHANT_ID APPLE_PAY_DISPLAY_NAME APPLE_PAY_IDENTITY_CERT APPLE_PAY_IDENTITY_KEY],
+      find_url: 'https://developer.apple.com/account/resources/identifiers/list/merchant',
+      find_hint: 'Apple Developer → Identifiers → Merchant IDs. Create a Merchant ID, add your checkout domain, download the domain-association file into web/public/.well-known/, and create a Merchant Identity Certificate (paste its PEM certificate and private key). Separately, in the Authorize.net Merchant Interface (Account → Digital Payment Solutions → Apple Pay) generate the Payment Processing certificate request and upload Apple\'s signed certificate back.',
+      renewal_note: 'Apple certificates expire after about 25 months. Renew both the Merchant Identity and Payment Processing certificates before then or the button stops working.'
+    ),
+    Service.new(
+      key: 'google_pay',
+      name: 'Google Pay',
+      description: 'Google Pay button on warehouse checkout. Payments still run through Authorize.net.',
+      keys: %w[GOOGLE_PAY_MERCHANT_ID GOOGLE_PAY_MERCHANT_NAME],
+      find_url: 'https://pay.google.com/business/console',
+      find_hint: 'Google Pay & Wallet Console → your business profile → Merchant ID. Test mode (Authorize.net sandbox) needs no merchant ID; production needs Google to approve a screenshot of the checkout. No Authorize.net setup is needed: Rupert tells Google to use gateway authorizenet with your API Login ID.',
+      renewal_note: nil
     ),
     Service.new(
       key: 'sync',
@@ -69,24 +99,29 @@ class ConnectionsGuide
 
   class << self
     def services
-      SERVICES.map { |service| decorate(service) }
+      visible_services.map { |service| decorate(service) }
     end
 
     # Overall health: how many services are fully configured.
     def configured_count
-      SERVICES.count { |service| status_for(service) == :configured }
+      visible_services.count { |service| status_for(service) == :configured }
     end
 
     private
 
+    def visible_services
+      platform_admin = User.find_by(id: Current.user&.id, active: true, role: 'super_admin')
+      platform_admin ? SERVICES : SERVICES.reject { |service| service.key == 'google_drive' }
+    end
+
     def decorate(service)
       key_rows = service.keys.map do |key|
-        value = EnvStore.fetch(key, '')
+        value = EnvStore.effective(key)
         {
           key: key,
           set: value.present?,
           masked: value.present? ? EnvStore.mask(value) : nil,
-          source: Setting.exists?(key: key, tenant_id: Current.tenant_id) ? 'database' : 'environment'
+          source: Setting.exists?(key: key, tenant_id: EnvStore::PLATFORM_KEYS.include?(key) ? nil : Current.tenant_id) ? 'database' : 'environment'
         }
       end
       status = status_for(service)
@@ -104,7 +139,7 @@ class ConnectionsGuide
     end
 
     def status_for(service)
-      set_count = service.keys.count { |key| EnvStore.fetch(key, '').present? }
+      set_count = service.keys.count { |key| EnvStore.effective(key).present? }
       case set_count
       when service.keys.length then :configured
       when 0 then :missing

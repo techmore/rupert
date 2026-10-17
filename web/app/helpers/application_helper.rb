@@ -20,17 +20,24 @@ module ApplicationHelper
   def module_match_strength(path)
     return 0 if path.blank? || path == '#'
 
-    return request.path == '/' ? 100 : 0 if path == '/'
+    request_path = request.path == '/stock_comparison' ? '/inventory' : request.path
+    return request_path == '/' ? 100 : 0 if path == '/'
 
-    return path.length if request.path == path
-    return path.length if request.path.start_with?("#{path}/")
+    return path.length if request_path == path
+    return path.length if request_path.start_with?("#{path}/")
 
     0
   end
 
   def active_module_entry
     @active_module_entry ||= ModuleRegistry.nav_for(Current.user)
-                                           .max_by { |entry| module_match_strength(safe_module_path(entry)) }
+      .select { |entry| module_match_strength(safe_module_path(entry)).positive? }
+      .max_by { |entry| module_match_strength(safe_module_path(entry)) }
+  end
+
+  def navigation_start_path
+    entry = ModuleRegistry.nav_for(Current.user).first
+    entry ? safe_module_path(entry) : root_path
   end
 
   def active_area_key
@@ -106,5 +113,14 @@ module ApplicationHelper
     when 12...18 then 'Good afternoon'
     else 'Good evening'
     end
+  end
+
+  # First C-Trax store whose card processing is not verified and enabled, shown
+  # to users who may run the POS setup. Nil when everything is ready.
+  def card_processing_down_location
+    return unless Current.user&.can?('settings.write') && Current.user.can?('sales.write') && Current.user.can?('inventory.write')
+    return if request.path.start_with?('/pos_settings')
+    ready = PosSetting.where(card_enabled: true).where.not(verified_at: nil).pluck(:location_id)
+    Location.where(source: 'ctrax').where.not(id: ready).order(:name).first
   end
 end

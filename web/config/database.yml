@@ -1,5 +1,5 @@
-# PostgreSQL remains the production default. The SQLite mode is for the
-# isolated adapter/performance experiment: `RUPERT_DB_ADAPTER=sqlite3`.
+# PostgreSQL is the code default. SER8/Incus selects SQLite with
+# `RUPERT_DB_ADAPTER=sqlite3`; see docs/sqlite-incus.html for deployment tradeoffs.
 <% use_sqlite = ENV.fetch("RUPERT_DB_ADAPTER", "postgresql") == "sqlite3" %>
 default: &default
   adapter: <%= use_sqlite ? "sqlite3" : "postgresql" %>
@@ -46,6 +46,9 @@ production:
 <% else %>
   database: <%= ENV.fetch("POSTGRES_DB", "rupert_production") %>
   # The well-known "rupert" default must never run in production. Set
-  # POSTGRES_PASSWORD in the droplet .env or the app refuses to boot.
+  # POSTGRES_PASSWORD in the droplet .env or the app refuses to boot. ERB
+  # renders every block, so only raise when production is the running env.
+<% if Rails.env.production? %>
   password: <%= ENV.fetch("POSTGRES_PASSWORD") { raise "POSTGRES_PASSWORD must be set in the production environment" } %>
+<% end %>
 <% end %>

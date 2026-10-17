@@ -9,21 +9,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Cardo:ital,wght@0,400;0,700;1,400&display=swap">
   <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="assets/product.css">
 </head>
 <body>
 
-<header class="site">
-  <div class="wrap">
-    <a class="brand" href="/rupert/"><span class="mark">R</span><strong>Rupert</strong></a>
-    <nav class="desktop">
-      <a href="index.html">Home</a>
-      <a href="modules.html">Modules</a>
-      <a href="architecture.html">Architecture</a>
-      <a href="getting-started.html">Getting started</a>
-      <a href="operations.html">Operations</a>
-    </nav>
-  </div>
-</header>
+<header class="site"><div class="wrap-wide"><a class="brand" href="index.html"><span class="mark">R</span><strong>Rupert</strong></a><nav class="product-nav" aria-label="Documentation"><a href="index.html" class="nav-home" aria-label="Home" title="Home"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/></svg></a><a href="roadmap.html">Roadmap</a><a href="competitors.html">Compare</a><details class="guide-menu"><summary class="guides-current"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 5v15M12 5C9 3 5 3 2 4v15c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-1-10 1Z"/></svg><span>Guides</span></summary><div class="guide-panel"><section class="guide-group"><h2>Operator guides</h2><a href="day-to-day-readiness.html">Daily-use rollout &amp; next steps</a><a href="navigation-access.html">Navigation &amp; access levels</a><a href="payment-basics.html">Payments explained &amp; contacts</a><a href="payment-integrations.html">POS &amp; payment connections</a><a href="inventory-workflows.html">Inventory workflows</a><a href="sales-imports.html">Sales imports &amp; register reports</a><a href="owner-checklists.html">Private owner checklists</a><a href="private-workspaces.html">Private workspaces &amp; instance admin</a><a href="pos-parity.html">POS parity &amp; acceptance</a></section><section class="guide-group"><h2>Developer &amp; operations</h2><a href="api.html">API integration</a><a href="modules.html">Features &amp; modules</a><a href="sqlite-incus.html">SQLite &amp; Incus</a><a href="getting-started.html">Develop locally</a><a href="architecture.html">Architecture</a><a href="operations.html">Operations</a><a href="deployment.html" aria-current="page">Deployment</a></section></div></details></nav></div></header>
 
 <main class="page wrap">
   <h1>Deployment</h1>
@@ -32,22 +22,22 @@
   <section>
     <h2>Release and deployment</h2>
     <p>GitHub Actions runs CI and creates a GitHub release from a version tag. There is no automated production deploy configured in this repository. A release does not update the live instance.</p>
-    <p>The checked-in systemd units describe a previous host layout and are not the live Incus deployment runbook. Confirm the host's release procedure and backup status before promoting a release.</p>
+    <p>Use the SER8-specific worker and backup units plus the host freshness watcher under <code>deploy/</code>. Older droplet units are reference material. Confirm active services before promotion.</p>
   </section>
 
   <section>
     <h2>Database</h2>
-    <p>Production uses PostgreSQL. The optional SQLite adapter is experimental and intended for local evaluation; it is not enabled for the live instance.</p>
+    <p>The October 13, 2026 cutover report records production on SQLite with FTS5 search. The live instance and release <code>11af6b8</code> were verified on October 14; see the <a href="https://github.com/techmore/rupert/blob/main/docs/ops/deployment-2026-10-14.md">deployment receipt</a>. See <a href="sqlite-incus.html">SQLite and Incus operations</a> for tuning, recovery and scaling decisions.</p>
   </section>
 
   <section>
     <h2>Backups</h2>
-    <p>Rupert includes PostgreSQL backup and Google Drive backup support. The current production backup schedule, off-host copies, and restore procedure still need verification against the live Incus instance; the systemd backup files here are from the older host layout.</p>
+    <p>The cutover report records six-hourly local SQLite snapshots and settings/env backups. Verify off-host encrypted copies and a restore drill; local snapshots alone cannot recover from host loss.</p>
   </section>
 
   <section>
     <h2>Continuous integration</h2>
-    <p>CI runs in the official <code>ruby:4.0</code> container against PostgreSQL: RuboCop, migrations, Tailwind build, asset precompile, and the full test suite. Every push or pull request triggers it.</p>
+    <p>CI runs in the official <code>ruby:4.0</code> container against PostgreSQL and SQLite: RuboCop, migrations, Tailwind build, asset precompile, and the full test suite. Every push or pull request triggers it.</p>
   </section>
 </main>
 
@@ -58,5 +48,6 @@
   </div>
 </footer>
 
+<script src="assets/product.js" defer></script>
 </body>
 </html>

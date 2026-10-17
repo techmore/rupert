@@ -1,14 +1,16 @@
 <% count = @count %>
-<div class="max-w-3xl space-y-6">
+<div class="max-w-3xl space-y-6 operations-workspace">
+  <%= render 'shared/operations_navigation', workspace: :stock %>
   <section>
     <div class="flex items-center gap-3">
-      <h1 class="font-display text-3xl text-ink">Edit manual count</h1>
+      <h1 class="page-title">Edit manual count</h1>
       <span class="pill-taupe"><%= count.status %></span>
     </div>
     <p class="mt-1 text-sm text-mocha">Adjust the counted quantities, then submit for approval.</p>
   </section>
 
   <%= form_tag inventory_count_path(count), method: :patch, class: "space-y-6", data: { controller: "count-sheet" } do %>
+    <%= render 'errors', count: count %>
     <div class="card card-pad space-y-4">
       <div class="grid gap-4 sm:grid-cols-2">
         <div>
@@ -20,7 +22,7 @@
           <select name="inventory_count[locationId]" class="input">
             <option value="">— no specific location —</option>
             <% @locations.each do |loc| %>
-              <option value="<%= loc.id %>" <%= "selected" if count.locationId == loc.id %>><%= loc.name %></option>
+              <option value="<%= loc.id %>" <%= "selected" if count.locationId == loc.id %>><%= loc.source.titleize %> · <%= loc.name %></option>
             <% end %>
           </select>
         </div>
@@ -64,4 +66,3 @@
     </div>
   </template>
 </div>
-

@@ -22,19 +22,19 @@ class UserCreationRoleTest < ActionDispatch::IntegrationTest
     post login_path, params: { email: user.email, password: 'password123' }
   end
 
-  test 'admin-created accounts start as cashier even without a role param' do
+  test 'accounts created without a role start as employee, not admin' do
     sign_in(@admin)
     post users_path, params: { user: { name: 'New', email: 'new1@example.com', password: 'password123' } }
 
-    assert_equal 'cashier', User.find_by!(email: 'new1@example.com').role
+    assert_equal 'employee', User.find_by!(email: 'new1@example.com').role
   end
 
-  test 'admin cannot pick a role by posting one' do
+  test 'admin cannot create a super admin' do
     sign_in(@admin)
     post users_path,
       params: { user: { name: 'Sneaky', email: 'new2@example.com', password: 'password123', role: 'super_admin' } }
 
-    assert_equal 'cashier', User.find_by!(email: 'new2@example.com').role
+    assert_nil User.find_by(email: 'new2@example.com')
   end
 
   test 'super admin can choose the role' do

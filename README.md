@@ -1,7 +1,7 @@
 # Rupert
 
 Centralized inventory operations: a Shopify + Square sync
-engine with an Oatmeal-styled web dashboard, backed by PostgreSQL. Runs as a
+engine with an Oatmeal-styled web dashboard, backed by SQLite in production. Runs as a
 Ruby on Rails 8.1 app (based on the
 [Shopify Ruby app template](https://github.com/Shopify/shopify-app-template-ruby))
 and is currently hosted at [rupert.stoverparc.org](https://rupert.stoverparc.org/).
@@ -9,7 +9,7 @@ and is currently hosted at [rupert.stoverparc.org](https://rupert.stoverparc.org
 ```
 Shopify ──┐                     ┌── Dashboard
           │                     ├── Inventory
-Square ───┼── sync engine ──▶ PostgreSQL DB ──▶ GUI
+Square ───┼── sync engine ──▶ SQLite DB     ──▶ GUI
           │   (Rails jobs)     │      (Rails + Tailwind)
           └────────────────────┴── Settings (env, backup/restore)
 ```
@@ -19,26 +19,35 @@ Square ───┼── sync engine ──▶ PostgreSQL DB ──▶ GUI
 | Path | Purpose |
 | --- | --- |
 | `web/` | The Rails 8.1 app: sync engine services, Oatmeal GUI, JSON APIs |
+| `core/` | Parallel Rust implementation that mirrors the Rails app (see `core/docs/SPEC.md`) |
+| `mobile/` | Employee iPhone/Android app (see `mobile/README.md`) |
 | `legacy/` | The original Node/React implementation, kept as reference |
+| `docs/` | Docs site, plans, audits and research (see `docs/README.md`) |
+| `deploy/` | SER8 (Incus) systemd units and host freshness watcher; older droplet units kept for reference (see Production and deployment) |
+| `bin/` | Host scripts (`backup.sh`) |
 | `shopify.app.toml` | Shopify app config (scopes, webhooks) |
 | `Dockerfile`, `docker-compose.yml` | Optional container deployment |
 
 ## Local development
 
-Requirements: Ruby 4.0.6 (rbenv), Bundler, PostgreSQL 16, Node (for the
-Shopify CLI).
+Requirements: Ruby 4.0.6 (rbenv), Bundler, and Node (for the Shopify CLI
+and JavaScript tests). SQLite is the simplest local setup; PostgreSQL 16
+is also supported.
 
 ```bash
-bundle install          # from web/
-cp .env.example .env    # fill in credentials at repo root
-# create the postgres role/db (or set POSTGRES_* env vars):
-#   createuser -s rupert && createdb -O rupert rupert_development
-bin/rails db:create db:migrate   # from web/
-bin/rails db:import_legacy       # one-time: pull data from legacy/prisma/dev.sqlite
-bin/rails db:sqlite_to_postgres  # one-time: migrate production.sqlite3 -> PG
+cp .env.example .env    # from repo root; configure local credentials
+cd web
+bundle install
+export RUPERT_DB_ADAPTER=sqlite3
+bin/rails db:prepare
 bin/rails tailwindcss:build
 bin/rails server        # http://localhost:3000
 ```
+
+For PostgreSQL, set `RUPERT_DB_ADAPTER=postgresql` and `POSTGRES_*`, then
+create a local `rupert_development` database before `db:prepare`. Legacy
+imports and production adapter migrations are separate operations; see
+[SQLite and Incus operations](docs/ops/sqlite-incus.md).
 
 The `.env` at the repo root is loaded at boot (Dotenv) and holds the sync
 engine credentials (`SHOPIFY_CLIENT_ID/SECRET`, `SQUARE_ACCESS_TOKEN`, …).
@@ -46,7 +55,18 @@ The Shopify OAuth pair (`SHOPIFY_API_KEY`/`SHOPIFY_API_SECRET`) comes from
 `shopify app info --web-env` when developing through the Shopify CLI, or is
 set in the production environment.
 
+## Repository checks
+
+[Repository maintenance](docs/ops/repository-maintenance.md) records the
+validation commands, release branch conventions, and current consolidation
+work. Tests skip the repository-root `.env`; use explicit test settings and
+an isolated checkout.
+
 ## Operations
+
+[Purchase receipt uploads and approvals](docs/purchase-receipts.md) are available from the Receipts tab, including employee self-service and an independent review queue.
+
+For the current daily-use limits and the next payment/inventory rollout gates, start with [Derrick's day-to-day pickup plan](docs/ops/day-to-day-readiness.md).
 
 ```bash
 bin/rails ops:sync                    # full Shopify + Square mirror sync
@@ -59,7 +79,7 @@ bin/rails test                        # page + API smoke tests
 ```
 
 Scheduled syncs run through Solid Queue (`bin/jobs`) — every 15 minutes in
-production, configurable via `SYNC_MINUTES` / `config/solid_queue.yml`.
+production, scheduled in `config/recurring.yml`.
 
 ## Write safety
 
@@ -103,7 +123,7 @@ and never write SKUs without explicit sign-off.**
   - `GET /settings/env.json` · masked env keys
   - `POST /settings/env_import` · body `{ "text": "KEY=VALUE\n…" }`
   - `GET /settings/env_export` · full `.env` text
-  - `GET /settings/backup` · consistent snapshot (PostgreSQL `pg_dump`)
+  - `GET /settings/backup` · consistent adapter-aware snapshot (SQLite or PostgreSQL)
   - `POST /settings/restore` · multipart `file` upload
 - **Team / People (HR)** — full employee lifecycle:
   - **Employees** · HR records with department, position, and status lifecycle
@@ -113,7 +133,7 @@ and never write SKUs without explicit sign-off.**
   - **Leave & PTO** · requests, approvals, and annual balances
   - **Payroll** · pay runs built from approved timesheets and pay rates
 
-All pages sit behind Shopify OAuth (the app installs into your store).
+ERP pages require a Rupert login. Password login and configured Google OAuth are supported; Shopify OAuth remains available for store integration.
 
 ## ERP architecture
 
@@ -134,10 +154,7 @@ manual source (`SwipesimpleImporter`) feeds CSV exports through the same seam.
 - HR: `app/modules/people/` (employees, departments, positions, timesheets,
   leave & PTO, payroll) with `PayrollCalculator` turning approved timesheets
   into payslips
-- DB: PostgreSQL (`pg` gem) is the production default. An opt-in SQLite
-  adapter with FTS5 search is available for local evaluation; set
-  `RUPERT_DB_ADAPTER=sqlite3`. This is experimental and is not the production
-  database.
+- DB: SQLite with FTS5 search runs in production as recorded by the October 13 cutover report. PostgreSQL remains the default for unconfigured environments; CI covers both adapters. See `docs/ops/sqlite-incus.md` for tuning, recovery and scaling triggers.
 
 ## Production and deployment
 
@@ -145,14 +162,19 @@ Production is hosted on SER8 in Incus and served at
 [rupert.stoverparc.org](https://rupert.stoverparc.org/). GitHub is the source
 repository; pushing a commit or creating a GitHub release does not deploy it.
 
-The checked-in `deploy/` systemd units and older droplet instructions are
-from the previous host layout. They do not describe the current Incus
-deployment and must not be used as its runbook. The host's live deployment and
-backup configuration still needs to be reconciled with this repository.
+The SER8-specific worker/backup units and host freshness watcher are under `deploy/`. Older droplet units are reference material; do not substitute them for the Incus layout.
 
-Keep PostgreSQL as the production database. The SQLite adapter is an
-experimental, opt-in path and should not be enabled on the live instance by
-setting `RUPERT_DB_ADAPTER`.
+The cutover report records production SQLite as of **2026-10-13** (78,573 rows, 61 tables verified). Live hosting and the October 14 application deployment were verified; see the [deployment receipt](docs/ops/deployment-2026-10-14.md). Read [SQLite and Incus operations](docs/ops/sqlite-incus.md) and the [cutover report](docs/ops/sqlite-migration.md). The PostgreSQL copy is frozen at cutover; switching back after new SQLite writes requires reconciliation.
+
+## Features, roadmap and comparison
+
+- [Master credentials and sync repair](docs/ops/master-credentials-and-sync.md) — central setup, safe credential forms, troubleshooting and the prioritized improvement plan.
+- [Public roadmap](https://techmore.github.io/rupert/roadmap.html) — implemented scope, implementation evidence, delivery phases and acceptance gates.
+- [Competitor matrix](https://techmore.github.io/rupert/competitors.html) — scoped ERP, inventory and POS comparisons, official sources and CSV/JSON downloads.
+- [Private owner checklist guide](https://techmore.github.io/rupert/owner-checklists.html) — administrator-only local attestations, evidence/history and private printing; no checklist contents are published.
+- Signed-in **System → Features & roadmap** (`/roadmap`) shows the same catalog. Planned items are not enabled.
+- `web/config/product_roadmap.json` is the canonical catalog. Run `bin/build-product-site` after changing it; `--check` detects drift in CI.
+- `bin/rails ops:sqlite:report` reads SQLite settings/space metrics; `bin/rails ops:sqlite:optimize` explicitly refreshes planner statistics. SQLite job concurrency defaults to one thread (`JOB_THREADS` can override).
 
 ## Data model
 
@@ -171,10 +193,20 @@ records; no longer written), `Location`,
   rejected (`[API] Invalid API key or access token`), re-install the app on
   the store or regenerate the secret in the Shopify admin — the sync will
   fail loudly in the Sync page until then.
-- **PostgreSQL** is the production database (the legacy SQLite import path is
-  kept only for one-time migrations). Mirror/journal tables are pruned
+- **SQLite** is the recorded production database; PostgreSQL remains supported for development and scaling alternatives. Mirror/journal tables are pruned
   nightly by `DataRetentionJob`; canonical business data is never pruned.
 - **Shopify and Square are separate locations with independent inventories.**
   The sync is a read-only mirror; nothing equalizes quantities across them.
   Outbound stock writes happen only through explicit, owner-approved flows,
   and SKU writes always require owner sign-off first.
+
+- [SwipeSimple reporting investigation and hourly SER8 CSV intake](docs/ops/swipesimple-reporting.md) — verified native formats, encrypted source provenance, invoice identity limits, operational setup and remaining vendor access requirements.
+- [SwipeSimple integration research and long-term Valmar / Authorize.net objective](docs/ops/swipesimple-integration-research.md) — supported-feed options, ACH/reporting gaps, QuickBooks and partner-access limits, source evidence and the vendor questionnaire; roadmap F64 records the owner's direction.
+
+## Employee timesheets
+
+[Employee web/app access and timesheets](docs/employee-timesheets.md) covers setup links, employee permissions, approvals, clock imports, CSV exports, mobile APIs, and deployment. [Native app build and distribution](mobile/README.md) covers iPhone/Android signing and release preparation. The instance serves the installable employee web app at `/employee`.
+
+## Influencer marketing
+
+Use Marketing → Influencers for collaboration, gifting and document records. [Create temporary Shopify codes](docs/ops/shopify-influencer-discounts.md) with reviewed terms and discount-applying referral links. The connected Shopify app needs `write_discounts`; creating a code requires explicit operator confirmation. See the [CMS guide](docs/ops/influencer-cms.md).

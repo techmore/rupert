@@ -1,10 +1,11 @@
 # frozen_string_literal: true
 
 class InventoryCountsController < AuthenticatedController
+  before_action :require_inventory_read
   before_action :require_inventory_write, except: %i[index show]
 
   def index
-    @counts = InventoryCount.by_status(params[:status]).recent(30)
+    @counts = InventoryCount.includes(:location, :items).by_status(params[:status]).recent(30)
   end
 
   def show
@@ -12,7 +13,7 @@ class InventoryCountsController < AuthenticatedController
   end
 
   def new
-    @count = InventoryCount.new(countedAt: Time.current, locationId: params[:location_id])
+    @count = InventoryCount.new(countedAt: Time.current, locationId: params[:location_id], tenant_id: Current.tenant_id)
     @locations = Location.order(name: :asc).limit(200)
     @skus = SkuLink.order(:sku).limit(500).pluck(:sku)
     @prepared = params[:prepared] != '0'
@@ -25,41 +26,49 @@ class InventoryCountsController < AuthenticatedController
   end
 
   def create
-    @count = InventoryCount.new(count_params.merge(createdBy: Current.user.email))
+    @count = InventoryCount.new(count_params.merge(createdBy: Current.user.email, tenant_id: Current.tenant_id))
     build_items(@count)
     if @count.save
-      redirect_to(inventory_count_path(@count), notice: 'Draft count created.')
+      destination = params[:start_scanning] == '1' ? scan_inventory_count_path(@count) : inventory_count_path(@count)
+      redirect_to(destination, notice: 'Draft count created.')
     else
-      @locations = Location.order(name: :asc).limit(200)
-      @skus = SkuLink.order(:sku).limit(500).pluck(:sku)
+      prepare_form
+      @prepared = false
       render(:new, status: :unprocessable_entity)
     end
   end
 
   def edit
     @count = InventoryCount.includes(items: { shopify_variant: :product }).find(params[:id])
-    @locations = Location.order(name: :asc).limit(200)
-    @skus = SkuLink.order(:sku).limit(500).pluck(:sku)
+    return unless require_draft
+
+    prepare_form
   end
 
   def update
     @count = InventoryCount.find(params[:id])
-    @count.assign_attributes(count_params)
-    @count.items.destroy_all
-    build_items(@count)
-    if @count.save
-      redirect_to(inventory_count_path(@count), notice: 'Count updated.')
-    else
-      @locations = Location.order(name: :asc).limit(200)
-      @skus = SkuLink.order(:sku).limit(500).pluck(:sku)
-      render(:edit, status: :unprocessable_entity)
+    @count.with_lock do
+      return unless require_draft
+
+      @count.assign_attributes(count_params)
+      @count.items.destroy_all
+      build_items(@count)
+      @count.save!
     end
+    redirect_to(inventory_count_path(@count), notice: 'Count updated.')
+  rescue ActiveRecord::RecordInvalid
+    prepare_form
+    render(:edit, status: :unprocessable_entity)
   end
 
   def submit
     @count = InventoryCount.find(params[:id])
-    @count.snapshot_previous!
-    @count.submit!
+    @count.with_lock do
+      return unless require_draft
+
+      @count.snapshot_previous!
+      @count.submit!
+    end
     BuzzNotifyJob.perform_later(
       "Manual count submitted for approval · #{@count.items.count} items · total qty #{@count.total_quantity}",
       tags: [%w[t inventory]]
@@ -71,14 +80,14 @@ class InventoryCountsController < AuthenticatedController
 
   def approve
     @count = InventoryCount.find(params[:id])
-    InventoryCount.transaction do
+    @count.with_lock do
       @count.approve!
       @count.apply_override!(actor: Current.user.email)
       @count.update!(approvedAt: Time.current)
     end
     DataCache.bump!
     redirect_to(inventory_count_path(@count),
-      notice: 'Count approved and recorded — overrides are disabled (Square is the source of truth).')
+      notice: 'Count approved and recorded. Platform inventory was not changed.')
   rescue AASM::InvalidTransition
     redirect_to(inventory_count_path(@count), alert: 'Only pending counts can be approved.')
   rescue StandardError => e
@@ -87,7 +96,7 @@ class InventoryCountsController < AuthenticatedController
 
   def reject
     @count = InventoryCount.find(params[:id])
-    @count.reject!
+    @count.with_lock { @count.reject! }
     redirect_to(inventory_count_path(@count), notice: 'Count rejected.')
   rescue AASM::InvalidTransition
     redirect_to(inventory_count_path(@count), alert: 'Only pending counts can be rejected.')
@@ -95,7 +104,7 @@ class InventoryCountsController < AuthenticatedController
 
   def reopen
     @count = InventoryCount.find(params[:id])
-    @count.reopen!
+    @count.with_lock { @count.reopen! }
     redirect_to(inventory_count_path(@count), notice: 'Count reopened as a draft — edit and resubmit it.')
   rescue AASM::InvalidTransition
     redirect_to(inventory_count_path(@count), alert: 'Only rejected counts can be reopened.')
@@ -103,11 +112,33 @@ class InventoryCountsController < AuthenticatedController
 
   def destroy
     @count = InventoryCount.find(params[:id])
-    @count.destroy!
+    @count.with_lock do
+      return unless require_draft
+
+      @count.destroy!
+    end
     redirect_to(inventory_counts_path, notice: 'Draft deleted.')
   end
 
   private
+
+  def require_inventory_read
+    return if Current.user.can?('inventory.read')
+
+    redirect_to root_path, alert: "You don't have permission to view inventory counts."
+  end
+
+  def require_draft
+    return true if @count.draft?
+
+    redirect_to inventory_count_path(@count), alert: 'Only draft counts can be changed.'
+    false
+  end
+
+  def prepare_form
+    @locations = Location.order(name: :asc).limit(200)
+    @skus = SkuLink.order(:sku).limit(500).pluck(:sku)
+  end
 
   def require_inventory_write
     return if Current.user.can?('inventory.write')
@@ -119,34 +150,42 @@ class InventoryCountsController < AuthenticatedController
     params.require(:inventory_count).permit(:locationId, :note, :countedAt)
   end
 
-  # A "prepared sheet": every SKU with a Shopify variant and its current system
-  # total, so a counter only has to fill in the manual override column (what's
-  # actually on hand) and submit the whole sheet at once. Includes SKUs that
-  # aren't yet linked to Square so the sheet is complete.
+  # Prepare only unambiguous stored pools at the selected platform location.
   def prepared_sheet_items
-    links = SkuLink.includes(shopify_variant: :product).order(:sku).to_a
-    totals = InventoryLevel.where(shopifyVariantId: links.map(&:shopifyVariantId).compact)
-                           .group(:shopifyVariantId).sum(:quantity)
-
-    links.filter_map do |link|
-      variant = link.shopify_variant
-      next if variant.nil?
-
-      InventoryCountItem.new(
-        sku: link.sku,
-        shopifyVariantId: link.shopifyVariantId,
-        squareVariationId: link.squareVariationId,
-        quantity: totals[link.shopifyVariantId].to_i
-      )
-    end
+    InventoryCountComparison.prepared_items(@count)
   end
 
   def build_items(count)
-    Array(params[:items]).each do |row|
+    rows = params[:items].is_a?(ActionController::Parameters) ? params[:items].values : Array(params[:items])
+    rows.each do |row|
+      next unless row.respond_to?(:permit)
+
       sku = row[:sku].to_s.strip
       next if sku.blank? && row[:quantity].to_s.blank?
 
-      count.items.build(sku: sku, quantity: row[:quantity].to_i)
+      item = count.items.build(sku: sku, quantity: row[:quantity])
+      restore_shopify_identity(item, row[:source_identity]) if row[:source_identity].present?
     end
+    comparison = case count.location&.source
+    when 'ctrax' then Ctrax::CountComparison.new(count)
+    when 'shopify' then ShopifyCountComparison.new(count, count.items.map(&:sku))
+    end
+    return unless comparison
+    count.items.each do |item|
+      item.sku = comparison.canonical_key(item.sku) if comparison.respond_to?(:canonical_key)
+      item.assign_attributes(comparison.attributes_for(item))
+    end
+  end
+
+  def restore_shopify_identity(item, token)
+    identity = Rails.application.message_verifier('shopify_count_identity').verified(token) if token.is_a?(String)
+    raise ActionController::BadRequest, 'The prepared count identity is invalid. Reload the worksheet.' unless identity.is_a?(Hash) && identity['tenant_id'] == @count.tenant_id
+
+    # Editing a SKU or selecting a different source location is an explicit new
+    # row choice. Unchanged rows retain the original native identity on save.
+    return unless identity['sku'] == item.sku && identity['location_id'] == @count.locationId
+
+    item.shopifyVariantId = identity['source_item_id']
+    item.comparison_snapshot = identity.except('tenant_id', 'sku')
   end
 end

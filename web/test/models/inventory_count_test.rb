@@ -6,6 +6,7 @@ class InventoryCountTest < ActiveSupport::TestCase
   setup do
     Current.tenant = tenants(:default_tenant)
     @tenant = tenants(:default_tenant)
+    EnvStore.set('SHOPIFY_SHOP_DOMAIN', 'count-test.myshopify.com')
     @product = ShopifyProduct.create!(id: 'prod-1', title: 'Widget', tenant_id: @tenant.id)
     @shopify_variant = ShopifyVariant.create!(title: 'Widget - Small', sku: 'WIDGET-S',
       productId: @product.id, tenant_id: @tenant.id)
@@ -19,7 +20,13 @@ class InventoryCountTest < ActiveSupport::TestCase
     InventoryLevel.create!(source: 'shopify', locationId: @location.id,
       shopifyVariantId: @shopify_variant.id, quantity: 10, tenant_id: @tenant.id)
 
-    @count = InventoryCount.create!(countedAt: Time.current, createdBy: 'tester',
+    at = Time.current.change(usec: 0)
+    @product.update!(status: 'ACTIVE', catalog_present: true, catalog_read_at: at)
+    @shopify_variant.update!(tracked: true, catalog_present: true, catalog_read_at: at, inventoryItemId: 'count-native-item')
+    ShopifyStockSnapshot.create!(location: @location, shop_domain: ShopifyClient.shop_domain, captured_at: at,
+      records_json: [{ 'id' => @shopify_variant.id, 'inventory_item_id' => 'count-native-item', 'on_hand' => 10 }])
+
+    @count = InventoryCount.create!(countedAt: Time.current, createdBy: 'tester', locationId: @location.id,
       tenant_id: @tenant.id)
     @item = @count.items.create!(sku: 'WIDGET-S', quantity: 7, tenant_id: @tenant.id)
   end
@@ -43,7 +50,9 @@ class InventoryCountTest < ActiveSupport::TestCase
     @item.reload
     assert_equal 10, @item.previousQuantity
     assert_equal @shopify_variant.id, @item.shopifyVariantId
-    assert_equal @square_variation.id, @item.squareVariationId
+    assert_nil @item.squareVariationId
+    assert_equal @location.id, @item.comparison['location_id']
+    assert_equal 'shopify', @item.comparison['source']
   end
 
   test 'approving a count is record-only: no override, no movements' do
@@ -74,7 +83,9 @@ class InventoryCountTest < ActiveSupport::TestCase
   test 'unlinked skus are snapshotted but not applied' do
     item = @count.items.create!(sku: 'UNLINKED', quantity: 3, tenant_id: @tenant.id)
     @count.snapshot_previous!
-    assert_equal 0, item.reload.previousQuantity
+    assert_nil item.reload.previousQuantity
+    assert_nil item.delta
+    assert_equal 'unavailable', item.comparison['status']
     assert_nil item.shopifyVariantId
 
     @count.submit!
@@ -94,5 +105,17 @@ class InventoryCountTest < ActiveSupport::TestCase
     @item.reload
     assert_equal 'Widget - Small', @item.inventory_title
     assert_includes @item.inventory_thumbnail, 'https://cdn.shopify.com/s/files/1/x/widget.jpg'
+  end
+
+  test 'count quantities validate raw whole numbers and the shared database integer limit' do
+    [nil, '', 'not a number', '1.5', '-1', '2147483648', '999999999999999999999999999999999999'].each do |quantity|
+      @item.quantity = quantity
+      refute @item.valid?, "expected #{quantity.inspect} to be rejected"
+      assert @item.errors.added?(:quantity, :not_a_number) || @item.errors[:quantity].any?
+    end
+    [0, 2_147_483_647].each do |quantity|
+      @item.quantity = quantity
+      assert @item.valid?, @item.errors.full_messages.to_sentence
+    end
   end
 end

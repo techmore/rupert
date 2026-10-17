@@ -40,10 +40,10 @@ class CatalogLinks
           sku: link.sku,
           shopify_title: variant.title,
           product_title: variant.product&.title,
-          shopify_qty: variant.inventoryQuantity.to_i,
+          shopify_qty: variant.inventoryQuantity,
           square_name: variation.name,
           square_sku: square_sku,
-          square_qty: square_totals[variation.id] || 0,
+          square_qty: square_totals[variation.id],
           status: status
         )
       end.sort_by { |row| [row.status == 'matched' ? 1 : 0, row.product_title.to_s.downcase] }
@@ -66,7 +66,7 @@ class CatalogLinks
         matched: matched,
         mismatched: linked - matched,
         shopify_only: ShopifyVariant.joins(:product)
-                                    .where('"ShopifyProduct"."status" = ?', 'ACTIVE')
+                                    .merge(ShopifyProduct.active)
                                     .where.not(sku: [nil, ''])
                                     .where.not(id: linked_shopify_ids).count,
         square_only: SquareVariation.where.not(sku: [nil, ''])

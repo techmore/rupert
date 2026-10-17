@@ -35,21 +35,25 @@ class SyncEngine
 
       begin
         summary = {}
-        shopify = CatalogSyncer.sync!(since: order_since('shopify', history_days))
-        summary[:shopify] = { products: shopify[:products], variants: shopify[:variants] }
-        if (oversold = shopify[:oversold_variants]).to_i.positive?
-          summary[:shopify][:oversold_variants] = oversold
+        SyncObservability.observe('shopify', 'catalog') do
+          shopify = CatalogSyncer.sync!(since: order_since('shopify', history_days))
+          summary[:shopify] = { products: shopify[:products], variants: shopify[:variants] }
+          if (oversold = shopify[:oversold_variants]).to_i.positive?
+            summary[:shopify][:oversold_variants] = oversold
+          end
+          LedgerImporter.from_shopify_orders!(shopify.dig(:orders, 'nodes'))
+          advance_watermark!('shopify', run.startedAt)
         end
-        LedgerImporter.from_shopify_orders!(shopify.dig(:orders, 'nodes'))
-        advance_watermark!('shopify', run.startedAt)
 
         # Square syncs are read-only mirrors (Square -> local DB) and always run
         # when configured; the freeze only blocks *writes* to Square.
         if SquareClient.configured?
-          square = SquareSyncer.sync!(since: order_since('square', history_days))
-          summary[:square] = { locations: square[:locations].length, orders: square[:orders].length }
-          LedgerImporter.from_square_orders!(square[:orders])
-          advance_watermark!('square', run.startedAt)
+          SyncObservability.observe('square', 'catalog') do
+            square = SquareSyncer.sync!(since: order_since('square', history_days))
+            summary[:square] = { locations: square[:locations].length, orders: square[:orders].length }
+            LedgerImporter.from_square_orders!(square[:orders])
+            advance_watermark!('square', run.startedAt)
+          end
         else
           summary[:square] = { status: 'skipped', reason: 'Square is not configured' }
         end
@@ -82,18 +86,20 @@ class SyncEngine
       Current.sync_run = run
 
       begin
-        if source == 'square'
-          raise SquareClient::Error, 'SQUARE_ACCESS_TOKEN is not set' unless SquareClient.configured?
+        SyncObservability.observe(source, 'catalog') do
+          if source == 'square'
+            raise SquareClient::Error, 'SQUARE_ACCESS_TOKEN is not set' unless SquareClient.configured?
 
-          # A Square sync is a read-only mirror and runs even while Square is
-          # frozen (the freeze only blocks outbound writes).
-          square = SquareSyncer.sync!(since: order_since('square', nil))
-          LedgerImporter.from_square_orders!(square[:orders])
-        else
-          shopify = CatalogSyncer.sync!(since: order_since('shopify', nil))
-          LedgerImporter.from_shopify_orders!(shopify.dig(:orders, 'nodes'))
+            # A Square sync is a read-only mirror and runs even while Square is
+            # frozen (the freeze only blocks outbound writes).
+            square = SquareSyncer.sync!(since: order_since('square', nil))
+            LedgerImporter.from_square_orders!(square[:orders])
+          else
+            shopify = CatalogSyncer.sync!(since: order_since('shopify', nil))
+            LedgerImporter.from_shopify_orders!(shopify.dig(:orders, 'nodes'))
+          end
+          advance_watermark!(source, run.startedAt)
         end
-        advance_watermark!(source, run.startedAt)
         run.update!(status: 'success', finishedAt: Time.current, details: { source: source }.to_json)
         bump_cache_logging_only
         run
@@ -111,19 +117,24 @@ class SyncEngine
 
     # One-way import of a SwipeSimple CSV export (SwipeSimple has no public
     # API). Idempotent, synchronous, and recorded as a sync run.
-    def import_swipesimple_csv!(csv_text_or_path, actor: 'user', tenant: nil)
+    def import_swipesimple_csv!(csv_text_or_path, actor: 'user', tenant: nil, expected_fingerprint: nil)
       Current.tenant = tenant if tenant
       raise ArgumentError, 'No tenant in context' if Current.tenant_id.nil?
 
-      run = SyncRun.create!(mode: 'csv', status: 'running', source: 'swipesimple', actor: actor,
-        startedAt: Time.current)
-      summary = SwipesimpleImporter.import!(csv_text_or_path)
-      run.update!(status: 'success', finishedAt: Time.current, details: summary.to_h.to_json)
-      DataCache.bump!
+      recover_stale_runs!
+      run = create_run!(mode: 'csv', source: 'swipesimple', actor: actor)
+      Current.sync_run = run
+      summary = SwipesimpleImporter.import!(csv_text_or_path, expected_fingerprint: expected_fingerprint) do |result|
+        run.update!(status: 'success', finishedAt: Time.current, details: result.to_h.to_json)
+      end
+      bump_cache_logging_only
       summary
     rescue StandardError => e
-      run&.update!(status: 'failed', error: e.message.to_s[0, 2000], finishedAt: Time.current)
+      message = e.is_a?(ArgumentError) || e.is_a?(AlreadyRunning) ? e.message.to_s[0, 2000] : 'The CSV import failed. No sales were saved.'
+      run&.update!(status: 'failed', error: message, finishedAt: Time.current)
       raise
+    ensure
+      Current.sync_run = nil
     end
 
     private
