@@ -61,6 +61,31 @@ class EmployeeWorkspaceTest < ActionDispatch::IntegrationTest
     assert_response :redirect
   end
 
+  test 'demo header is clearly synthetic and has no payroll records' do
+    @worker.update!(source: 'demo_pay')
+    sign_in
+    get employee_app_path
+    assert_response :success
+    assert_includes response.body, 'DEMO DATA · fake employee'
+    assert_includes response.body, '$26.50'
+    assert_includes response.body, 'All figures are synthetic examples'
+    assert_equal 0, EmployeeEarningsPeriod.count
+    assert_equal 0, @worker.payslips.count
+  end
+
+  test 'payroll manager can publish a reviewed period' do
+    sign_in(users(:regular_user))
+    get new_people_employee_earnings_period_path
+    assert_response :success
+    assert_difference 'EmployeeEarningsPeriod.count', 1 do
+      post people_employee_earnings_periods_path, params: { employee_earnings_period: {
+        employee_id: @worker.id, period_start: @from, period_end: @to, hours: 32,
+        base_cents: 64000, tips_cents: 9600, store_commission_cents: 6400, online_commission_cents: 3200, bonus_cents: 1600
+      } }
+    end
+    assert_redirected_to new_people_employee_earnings_period_path
+  end
+
   test 'week action forces current ownership and opens the same timesheet on retries' do
     sign_in
     Current.tenant = @tenant

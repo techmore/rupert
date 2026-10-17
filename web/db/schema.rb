@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_17_190000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_17_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -794,6 +794,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_17_190000) do
     t.datetime "updated_at", null: false
     t.index ["tenant_id", "user_id"], name: "index_employee_app_sessions_on_tenant_id_and_user_id"
     t.index ["token_digest"], name: "index_employee_app_sessions_on_token_digest", unique: true
+  end
+
+  create_table "employee_earnings_periods", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "employee_id", null: false
+    t.date "period_start", null: false
+    t.date "period_end", null: false
+    t.decimal "hours", precision: 8, scale: 2, null: false
+    t.integer "base_cents", default: 0, null: false
+    t.integer "tips_cents", default: 0, null: false
+    t.integer "store_commission_cents", default: 0, null: false
+    t.integer "online_commission_cents", default: 0, null: false
+    t.integer "bonus_cents", default: 0, null: false
+    t.datetime "reviewed_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["employee_id"], name: "index_employee_earnings_periods_on_employee_id"
+    t.index ["tenant_id", "employee_id", "period_start", "period_end"], name: "idx_employee_earnings_period", unique: true
   end
 
   create_table "employee_source_identities", force: :cascade do |t|
@@ -2383,6 +2401,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_17_190000) do
   add_foreign_key "reconciliation_documents", "users", column: "uploaded_by_id", on_delete: :nullify
   add_foreign_key "directory_sync_states", "tenants"
   add_foreign_key "departments", "employees", column: "manager_id"
+  add_foreign_key "employee_earnings_periods", "employees"
   add_foreign_key "employee_source_identities", "employees"
   add_foreign_key "employee_work_reports", "employees"
   add_foreign_key "employee_work_reports", "tenants"
