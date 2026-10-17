@@ -39,6 +39,14 @@ class BooksDesksIntegrationTest < ActionDispatch::IntegrationTest
     assert_select 'details#desk-findings #reconciliation-findings'
   end
 
+  test 'finance links carry unique g-then-letter jump keys' do
+    get books_desk_path
+    assert_select 'nav[data-controller=finance-shortcuts]'
+    assert_select 'nav[data-controller=finance-shortcuts] a[data-shortcut=d][aria-keyshortcuts="g d"]'
+    keys = OperationsWorkspaceHelper::FINANCE_SHORTCUTS.values
+    assert_equal keys.uniq, keys
+  end
+
   test 'an earlier week can be chosen and a future week falls back to last week' do
     get books_desk_path(week: (Date.current - 30).iso8601)
     assert_response :success

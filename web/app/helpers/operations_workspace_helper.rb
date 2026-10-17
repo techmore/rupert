@@ -1,6 +1,24 @@
 # frozen_string_literal: true
 
 module OperationsWorkspaceHelper
+  # "g then letter" jump keys for the Finance workspace links.
+  FINANCE_SHORTCUTS = {
+    'Overview' => 'o', 'Bank transactions' => 'b', 'Expenses' => 'e', 'Vendor payments' => 'v', 'Close & review' => 'd',
+    'Bank reconciliation' => 'k', 'Daily reconciliation' => 'r', 'Day close' => 'c', 'Book approvals' => 'a', 'Follow-ups' => 'f',
+    'Source documents' => 's', 'Accounts' => 'u', 'Receipts' => 'p', 'Chart of accounts' => 't', 'General ledger' => 'l',
+    'Imported orders' => 'i', 'Ledger export' => 'x', 'Financial statements' => 'm', 'Source reports' => 'w',
+    'Cash forecast' => 'z', 'Business snapshot' => 'n', 'Books health' => 'h', 'Period locks' => 'j'
+  }.freeze
+
+  def finance_nav_link(label, path, active)
+    key = FINANCE_SHORTCUTS[label]
+    link_to path, class: "nav-pill workspace-nav-link #{active ? 'nav-pill-active' : 'nav-pill-idle'}",
+                  title: (key ? "#{label} · press g then #{key.upcase}" : nil),
+                  aria: { current: active ? 'page' : nil, keyshortcuts: (key ? "g #{key}" : nil) }, data: { shortcut: key } do
+      safe_join([label, (tag.span('', class: 'nav-key', data: { key: key }, aria: { hidden: true }) if key)].compact)
+    end
+  end
+
   def operations_links(workspace, day: nil)
     date = (day || Date.yesterday).iso8601
     month = controller_path == 'bookkeeping' ? @overview.month.strftime('%Y-%m') : @month

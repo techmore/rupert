@@ -563,3 +563,8 @@
 /* Books desk: findings tuck under the next action; the summary carries the counts. */
 .desk-findings-summary { display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.5rem 1rem;padding:1rem 1.25rem;cursor:pointer; }
 .desk-findings > div > section { box-shadow:none;border:0;background:none;padding:0; }
+
+/* Finance "g then letter" jump keys: badges appear only while armed. */
+.nav-key { display:none;margin-left:.35rem;min-width:1.1rem;padding:0 .3rem;border:1px solid currentColor;border-radius:.3rem;font:600 .7rem/1.1rem var(--font-sans);text-align:center;text-transform:uppercase; }
+.nav-key::after { content:attr(data-key); }
+.keys-armed .nav-key { display:inline-block; }
