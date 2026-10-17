@@ -154,5 +154,4 @@ class TimesheetReviewsTest < ActionDispatch::IntegrationTest
     assert_select '[aria-label="Clocked in now"]', text: /Alex Worker/
     assert_match 'Unmatched Square', response.body
   end
-
 end

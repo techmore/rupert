@@ -13,8 +13,8 @@ module OperationsWorkspaceHelper
   def finance_nav_link(label, path, active)
     key = FINANCE_SHORTCUTS[label]
     link_to path, class: "nav-pill workspace-nav-link #{active ? 'nav-pill-active' : 'nav-pill-idle'}",
-                  title: (key ? "#{label} · press g then #{key.upcase}" : nil),
-                  aria: { current: active ? 'page' : nil, keyshortcuts: (key ? "g #{key}" : nil) }, data: { shortcut: key } do
+      title: (key ? "#{label} · press g then #{key.upcase}" : nil),
+      aria: { current: active ? 'page' : nil, keyshortcuts: (key ? "g #{key}" : nil) }, data: { shortcut: key } do
       safe_join([label, (tag.span('', class: 'nav-key', data: { key: key }, aria: { hidden: true }) if key)].compact)
     end
   end
