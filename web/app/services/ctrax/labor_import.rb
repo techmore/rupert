@@ -54,8 +54,10 @@ module Ctrax
         plan = build_plan(rows)
         flag_overlaps(plan)
         plan.each { |item| publish(item) }
-        CtraxLaborShift.where(source_origin: @origin).where.not(external_id: ids).update_all(status: 'missing',
-          issue: 'Not returned by the complete C-Trax read; original history retained.', updated_at: Time.current)
+        CtraxLaborShift.where(source_origin: @origin).where.not(external_id: ids).find_each do |record|
+          record.update!(status: 'missing', issue: 'Not returned by the complete C-Trax read; original history retained.')
+          append_observation(record)
+        end
         statuses = CtraxLaborShift.where(source_origin: @origin).group(:status).count
         { stores: stores.length, shifts: rows.length, imported: statuses.fetch('imported', 0), open: statuses.fetch('open', 0),
           unmatched: statuses.fetch('unmatched', 0), issues: statuses.except('imported').values.sum,
@@ -203,6 +205,17 @@ module Ctrax
       end
       record.update!(status: item[:status], issue: item[:issue], latest_payload: item[:payload],
         latest_digest: item[:digest], last_seen_at: @started)
+      append_observation(record)
+    end
+
+    def append_observation(record)
+      payload = JSON.generate({ record: record.latest_record, status: record.status, issue: record.issue })
+      digest = Digest::SHA256.hexdigest(payload)
+      previous = record.observations.order(sequence: :desc).first
+      return if previous&.digest == digest
+
+      record.observations.create!(sequence: (previous&.sequence || 0) + 1, observed_at: Time.current,
+        digest: digest, payload: payload)
     end
   end
 end

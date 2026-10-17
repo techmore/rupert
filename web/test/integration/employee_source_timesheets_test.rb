@@ -35,10 +35,13 @@ class EmployeeSourceTimesheetsTest < ActionDispatch::IntegrationTest
   end
 
   def ctrax_shift(id, employee, status = 'imported', **attributes)
+    payload = { started_at: '2026-10-06T09:00:00-04:00', ended_at: attributes.fetch(:ended_at, '2026-10-06T17:00:00-04:00'),
+      number_of_hours: status == 'open' ? nil : 7.0, is_in_progress: attributes.fetch(:in_progress, false), is_verified: false,
+      private_source_marker: 'never-display' }.to_json
     CtraxLaborShift.create!({ source_origin: 'https://source.example.invalid', external_id: id, store_id: 'store-one', user_external_id: "user-#{id}",
       employee: employee, status: status, last_seen_at: Time.current, original_digest: 'original', latest_digest: 'latest',
-      started_at: '2026-10-06T09:00:00-04:00', ended_at: '2026-10-06T17:00:00-04:00', reported_hours: 7, elapsed_hours: 8,
-      in_progress: false, verified: false, source_payload: '{"private_source_marker":"never-display"}', latest_payload: '{"private_source_marker":"never-display"}' }.merge(attributes))
+      started_at: '2026-10-06T09:00:00-04:00', ended_at: '2026-10-06T17:00:00-04:00', reported_hours: status == 'open' ? nil : 7, elapsed_hours: status == 'open' ? nil : 8,
+      in_progress: false, verified: false, source_payload: payload, latest_payload: payload }.merge(attributes))
   end
 
   test 'reviewers find every source including inactive unmatched and open history' do
@@ -101,6 +104,70 @@ class EmployeeSourceTimesheetsTest < ActionDispatch::IntegrationTest
     get people_ctrax_timesheets_path
     assert_response :success
     assert_select 'a[href=?]', people_ctrax_timesheet_path(@other_ctrax)
+  end
+
+  test 'latest closed punches and changed hours are visible alongside immutable original and all observations' do
+    original = @open_ctrax.latest_record
+    latest = original.merge('ended_at' => '2026-10-06T18:00:00-04:00', 'number_of_hours' => 9.0, 'is_in_progress' => false, 'is_verified' => true)
+    @open_ctrax.observations.create!(sequence: 1, observed_at: 1.hour.ago, digest: 'first', payload: { record: original, status: 'open', issue: 'Open source shift' }.to_json)
+    @open_ctrax.update!(latest_payload: latest.to_json, latest_digest: 'changed', status: 'changed')
+    @open_ctrax.observations.create!(sequence: 2, observed_at: Time.current, digest: 'second', payload: { record: latest, status: 'changed', issue: 'Original retained' }.to_json)
+    sign_in
+    get people_ctrax_timesheets_path
+    assert_response :success
+    assert_includes response.body, 'Latest source-reported: 9.00h'
+    assert_select 'section.grid div', text: /In progress\s*0/
+    get people_ctrax_timesheet_path(@open_ctrax)
+    assert_select '[aria-label="Latest source observation"] dd', text: '9.00', count: 2
+    assert_select '[aria-label="Original source observation"] dd', text: 'Not available', minimum: 2
+    assert_select '[data-observation]', count: 2
+    assert_includes response.body, 'Source verification is not Rupert approval'
+    get people_ctrax_timesheet_path(@open_ctrax, format: :csv)
+    assert_response :success
+    rows = CSV.parse(response.body, headers: true)
+    assert_equal 2, rows.length
+    assert_equal %w[open changed], rows.map { |row| row['Status'] }
+    assert_equal '9.0', rows[1]['Source-reported hours']
+    assert_equal '2026-10-06T18:00:00-04:00', rows[1]['Clock-out']
+    refute_includes response.body, 'private_source_marker'
+    sign_in(@user)
+    get people_ctrax_timesheet_path(@open_ctrax, format: :csv)
+    assert_response :not_found
+  end
+
+  test 'open and changed Square punches and breaks display safely without exposing source wage data' do
+    payload = { 'start_at' => '2026-10-07T09:00:00-04:00', 'end_at' => nil, 'timezone' => 'America/New_York', 'status' => 'OPEN',
+      'wage' => { 'hourly_rate' => { 'amount' => 987654, 'currency' => 'USD' } },
+      'breaks' => [{ 'name' => '=PRIVATE <script>break</script>', 'start_at' => '2026-10-07T12:00:00-04:00', 'end_at' => '2026-10-07T12:30:00-04:00', 'is_paid' => false }] }
+    @own_square.update!(started_at: nil, ended_at: nil, imported_at: nil, import_status: 'open', latest_payload: payload.to_json)
+    sign_in
+    get people_square_timesheets_path
+    assert_response :success
+    assert_select 'a[href=?]', people_square_timesheet_path(@own_square), text: /Oct 7, 2026/
+    get people_square_timesheet_path(@own_square)
+    assert_select '[aria-label="Latest Square punches"] dd', text: 'OPEN'
+    assert_select '[data-source-break]', count: 1
+    assert_includes response.body, '&lt;script&gt;break&lt;/script&gt;'
+    refute_includes response.body, '<script>break</script>'
+    refute_includes response.body, '987654'
+    refute_includes response.body, 'hourly_rate'
+    payload.merge!('end_at' => '2026-10-07T18:00:00-04:00', 'status' => 'CLOSED')
+    @own_square.update!(import_status: 'changed', latest_payload: payload.to_json)
+    get people_square_timesheet_path(@own_square, format: :csv)
+    assert_response :success
+    rows = CSV.parse(response.body, headers: true)
+    assert_equal '2026-10-07T18:00:00-04:00', rows[0]['Clock-out']
+    assert_equal 'Latest break punches', rows[1]['Record type']
+    assert_equal "'=PRIVATE <script>break</script>", rows[1]['Break name']
+    assert_equal 'false', rows[1]['Paid break']
+    refute_includes response.body, '987654'
+    get people_square_timesheets_path(format: :csv)
+    assert_includes response.body, 'Latest break punches'
+    assert_includes response.body, '2026-10-07T18:00:00-04:00'
+    refute_includes response.body, 'hourly_rate'
+    sign_in(@user)
+    get people_square_timesheet_path(@other_square, format: :csv)
+    assert_response :not_found
   end
 
   test 'employee history ignores forged employee filters and denies other employees details' do

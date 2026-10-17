@@ -27,5 +27,14 @@ class CreateCtraxLaborShifts < ActiveRecord::Migration[8.1]
       t.index %i[tenant_id source_origin external_id], unique: true, name: 'idx_ctrax_labor_native'
       t.index %i[tenant_id employee_id started_at], name: 'idx_ctrax_labor_worker'
     end
+    create_table :ctrax_labor_observations do |t|
+      t.references :tenant, type: :string, null: false, foreign_key: true
+      t.references :ctrax_labor_shift, null: false, foreign_key: true
+      t.integer :sequence, null: false
+      t.datetime :observed_at, null: false
+      t.string :digest, null: false
+      t.text :payload, null: false
+      t.index %i[ctrax_labor_shift_id sequence], unique: true, name: 'idx_ctrax_labor_observation_sequence'
+    end
   end
 end

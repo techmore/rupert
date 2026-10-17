@@ -5,6 +5,7 @@ class CtraxLaborShift < ApplicationRecord
   include TenantScoped
   STATUSES = %w[imported open unmatched conflict invalid changed missing deleted].freeze
   belongs_to :employee, class_name: 'People::Employee', optional: true
+  has_many :observations, class_name: 'CtraxLaborObservation', dependent: :restrict_with_exception
   encrypts :source_payload, :latest_payload
   attr_readonly :tenant_id, :source_origin, :external_id, :source_payload, :original_digest
   validates :source_origin, :external_id, :store_id, :user_external_id, :status, :last_seen_at,
@@ -12,6 +13,12 @@ class CtraxLaborShift < ApplicationRecord
   validates :external_id, uniqueness: { scope: %i[tenant_id source_origin] }
   validates :status, inclusion: { in: STATUSES }
   validate :same_workspace
+
+  def latest_record
+    JSON.parse(latest_payload)
+  rescue JSON::ParserError, TypeError
+    {}
+  end
 
   def hours
     reported_hours

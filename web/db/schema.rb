@@ -44,6 +44,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_17_220000) do
     t.index ["tenant_id"], name: "index_ctrax_labor_shifts_on_tenant_id"
   end
 
+  create_table "ctrax_labor_observations", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "ctrax_labor_shift_id", null: false
+    t.integer "sequence", null: false
+    t.datetime "observed_at", null: false
+    t.string "digest", null: false
+    t.text "payload", null: false
+    t.index ["ctrax_labor_shift_id", "sequence"], name: "idx_ctrax_labor_observation_sequence", unique: true
+    t.index ["ctrax_labor_shift_id"], name: "index_ctrax_labor_observations_on_ctrax_labor_shift_id"
+    t.index ["tenant_id"], name: "index_ctrax_labor_observations_on_tenant_id"
+  end
+
   create_table "bank_statement_lines", force: :cascade do |t|
     t.string "tenant_id", null: false
     t.integer "document_id", null: false
@@ -2365,6 +2377,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_17_220000) do
     t.index ["tenant_id", "nonce_digest"], name: "index_pos_payment_attempts_on_tenant_id_and_nonce_digest", unique: true
   end
 
+  add_foreign_key "ctrax_labor_observations", "ctrax_labor_shifts"
+  add_foreign_key "ctrax_labor_observations", "tenants"
   add_foreign_key "ctrax_labor_shifts", "employees"
   add_foreign_key "ctrax_labor_shifts", "tenants"
   add_foreign_key "sync_attempts", "tenants", on_delete: :cascade

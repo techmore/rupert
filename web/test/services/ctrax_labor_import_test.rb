@@ -52,7 +52,7 @@ class CtraxLaborImportTest < ActiveSupport::TestCase
     refute_includes first.source_payload, 'PRIVATE'
     refute_includes first.source_payload_before_type_cast, 'started_at'
     original = first.source_payload_before_type_cast
-    assert_no_difference 'CtraxLaborShift.count' do
+    assert_no_difference ['CtraxLaborShift.count', 'CtraxLaborObservation.count'] do
       assert_equal 1, Ctrax::LaborImport.call[:shifts]
     end
     assert_equal original, first.reload.source_payload_before_type_cast
@@ -192,5 +192,53 @@ class CtraxLaborImportTest < ActiveSupport::TestCase
     assert_equal 1, Ctrax::LaborImport.call[:unmatched]
     assert_nil CtraxLaborShift.first.employee_id
     assert_equal 0, CtraxLaborShift.unscoped.where(tenant: other).count
+  end
+  test 'append only observations preserve every correction reversal and missing transition' do
+    stub_rows([row])
+    Ctrax::LaborImport.call
+    record = CtraxLaborShift.first
+    original = record.source_payload
+    [9.0, 10.0, 8.0].each do |hours|
+      end_at = Time.iso8601('2026-10-05T09:00:00Z') + hours.hours
+      stub_rows([row(1, ended_at: end_at.iso8601, number_of_hours: hours)])
+      Ctrax::LaborImport.call
+    end
+    assert_equal [8.0, 9.0, 10.0, 8.0], record.observations.order(:sequence).map { |event| event.record_data['number_of_hours'] }
+    assert_equal [1, 2, 3, 4], record.observations.order(:sequence).pluck(:sequence)
+    assert_equal original, record.reload.source_payload
+    assert_equal BigDecimal('8'), record.reported_hours
+    stub_rows
+    Ctrax::LaborImport.call
+    assert_equal 'missing', record.observations.order(:sequence).last.status
+    assert_no_difference 'CtraxLaborObservation.count' do
+      Ctrax::LaborImport.call
+    end
+    stub_rows([row])
+    Ctrax::LaborImport.call
+    assert_equal 'imported', record.observations.order(:sequence).last.status
+    assert_equal 6, record.observations.count
+    event = record.observations.first
+    refute_includes event.payload_before_type_cast, 'number_of_hours'
+    assert_raises(ActiveRecord::ReadOnlyRecord) { event.update!(payload: '{}') }
+    assert_raises(ActiveRecord::ReadOnlyRecord) { event.destroy! }
+  end
+
+  test 'open closure retains original unknown hours and exposes current clock evidence in ledger' do
+    stub_rows([], open: [row(1, ended_at: nil, is_in_progress: true, number_of_hours: nil)])
+    Ctrax::LaborImport.call
+    record = CtraxLaborShift.first
+    assert_nil record.reported_hours
+    assert_nil record.ended_at
+    stub_rows([row])
+    Ctrax::LaborImport.call
+    assert_equal 'changed', record.reload.status
+    assert_nil record.reported_hours
+    assert_nil record.ended_at
+    assert_equal 8.0, record.latest_record['number_of_hours']
+    assert_equal false, record.latest_record['is_in_progress']
+    assert_equal 2, record.observations.count
+    assert_equal [nil, '2026-10-05T17:00:00Z'], record.observations.order(:sequence).map { |event| event.record_data['ended_at'] }
+    assert_equal 0, People::TimesheetEntry.count
+    assert_equal 0, People::Payslip.count
   end
 end

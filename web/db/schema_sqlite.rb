@@ -675,6 +675,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_17_220000) do
     t.index ["tenant_id"], name: "index_ctrax_image_links_on_tenant_id"
   end
 
+  create_table "ctrax_labor_observations", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "ctrax_labor_shift_id", null: false
+    t.integer "sequence", null: false
+    t.datetime "observed_at", null: false
+    t.string "digest", null: false
+    t.text "payload", null: false
+    t.index ["ctrax_labor_shift_id", "sequence"], name: "idx_ctrax_labor_observation_sequence", unique: true
+    t.index ["ctrax_labor_shift_id"], name: "index_ctrax_labor_observations_on_ctrax_labor_shift_id"
+    t.index ["tenant_id"], name: "index_ctrax_labor_observations_on_tenant_id"
+  end
+
   create_table "ctrax_labor_shifts", force: :cascade do |t|
     t.string "tenant_id", null: false
     t.integer "employee_id"
@@ -2390,6 +2402,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_17_220000) do
   add_foreign_key "ctrax_image_links", "Location", column: "location_id", on_delete: :cascade
   add_foreign_key "ctrax_image_links", "ShopifyProduct", column: "shopify_product_id", on_delete: :cascade
   add_foreign_key "ctrax_image_links", "tenants"
+  add_foreign_key "ctrax_labor_observations", "ctrax_labor_shifts"
+  add_foreign_key "ctrax_labor_observations", "tenants"
   add_foreign_key "ctrax_labor_shifts", "employees"
   add_foreign_key "ctrax_labor_shifts", "tenants"
   add_foreign_key "ctrax_stock_snapshots", "Location", column: "location_id", on_delete: :cascade
