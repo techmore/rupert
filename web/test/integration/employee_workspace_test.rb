@@ -84,6 +84,13 @@ class EmployeeWorkspaceTest < ActionDispatch::IntegrationTest
       } }
     end
     assert_redirected_to new_people_employee_earnings_period_path
+    period = EmployeeEarningsPeriod.last
+    get edit_people_employee_earnings_period_path(period)
+    assert_response :success
+    patch people_employee_earnings_period_path(period), params: { employee_earnings_period: { bonus_cents: 3200, employee_id: @other.id } }
+    assert_redirected_to new_people_employee_earnings_period_path
+    assert_equal 3200, period.reload.bonus_cents
+    assert_equal @worker.id, period.employee_id
   end
 
   test 'week action forces current ownership and opens the same timesheet on retries' do

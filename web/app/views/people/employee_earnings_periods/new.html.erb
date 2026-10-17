@@ -1,11 +1,13 @@
 <h1 class="page-title">Review employee earnings</h1>
 <p class="text-sm text-mocha">Publish a complete, reviewed pay period to the employee’s private pay header. Enter dollar amounts as whole cents (64000 = $640.00). This does not create a payslip, send Zelle or update QuickBooks. Include only eligible commissions; use zero for components that do not apply.</p>
 <% if @period.errors.any? %><p role="alert"><%= @period.errors.full_messages.to_sentence %></p><% end %>
-<%= form_with model: @period, url: people_employee_earnings_periods_path, class: 'card card-pad space-y-4' do |f| %>
-  <div><%= f.label :employee_id %><%= f.collection_select :employee_id, @employees, :id, :name, { prompt: 'Choose employee' }, required: true %></div>
-  <div><%= f.label :period_start %><%= f.date_field :period_start, required: true %></div>
-  <div><%= f.label :period_end %><%= f.date_field :period_end, required: true %></div>
+<%= form_with model: @period, url: (@period.persisted? ? people_employee_earnings_period_path(@period) : people_employee_earnings_periods_path), class: 'card card-pad space-y-4' do |f| %>
+  <div><%= f.label :employee_id %><%= f.collection_select :employee_id, @employees, :id, :name, { prompt: 'Choose employee' }, required: true, disabled: @period.persisted? %></div>
+  <div><%= f.label :period_start %><%= f.date_field :period_start, required: true, disabled: @period.persisted? %></div>
+  <div><%= f.label :period_end %><%= f.date_field :period_end, required: true, disabled: @period.persisted? %></div>
   <div><%= f.label :hours, 'Hours worked (same period as earnings)' %><%= f.number_field :hours, min: 0.01, step: 0.01, required: true %></div>
   <% EmployeeEarningsPeriod::COMPONENTS.each do |name| %><div><%= f.label "#{name}_cents", "#{name.humanize} (cents)" %><%= f.number_field "#{name}_cents", min: 0, step: 1, required: true %></div><% end %>
   <%= f.submit 'Publish reviewed earnings', class: 'btn-primary' %>
 <% end %>
+
+<% if @recent.present? %><section class="card card-pad space-y-3"><h2 class="text-lg font-semibold">Recent reviewed periods</h2><% @recent.each do |period| %><p><%= period.employee.name %> · <%= period.period_start %> – <%= period.period_end %> · <%= link_to 'Review / correct', edit_people_employee_earnings_period_path(period), class: 'underline' %></p><% end %></section><% end %>

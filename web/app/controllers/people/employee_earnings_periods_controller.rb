@@ -5,7 +5,25 @@ module People
 
     def new
       @period = EmployeeEarningsPeriod.new(period_start: Date.current.beginning_of_week - 7, period_end: Date.current.beginning_of_week - 1)
+      @recent = EmployeeEarningsPeriod.includes(:employee).order(period_end: :desc).limit(30)
       @employees = People::Employee.where.not(source: 'demo_pay').or(People::Employee.where(source: nil)).ordered
+    end
+
+    def edit
+      @period = EmployeeEarningsPeriod.find(params[:id])
+      @employees = People::Employee.ordered
+      render :new
+    end
+
+    def update
+      @period = EmployeeEarningsPeriod.find(params[:id])
+      if @period.update(params.require(:employee_earnings_period).permit(:hours, *EmployeeEarningsPeriod::COMPONENTS.map { |name| "#{name}_cents" }).merge(reviewed_at: Time.current))
+        ActivityLogger.log('employee_earnings_corrected', subject: @period, details: 'Reviewed earnings corrected.')
+        redirect_to new_people_employee_earnings_period_path, notice: 'Reviewed earnings corrected.'
+      else
+        @employees = People::Employee.ordered
+        render :new, status: :unprocessable_entity
+      end
     end
 
     def create
