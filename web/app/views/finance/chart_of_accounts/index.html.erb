@@ -1,5 +1,5 @@
 <% content_for :title, "Chart of accounts" %>
-<div class="space-y-6 operations-workspace">
+<div class="space-y-6 operations-workspace" data-controller="table-filter">
   <%= render 'shared/operations_navigation', workspace: :money %>
 
   <%= render layout: 'finance/page_header', locals: { title: 'Chart of accounts', currency: nil, print: true,
@@ -8,6 +8,12 @@
       <%= link_to "Add account", new_finance_chart_of_account_path, class: "btn-primary" %>
     <% end %>
   <% end %>
+
+  <div class="table-filter">
+    <input type="search" class="input" placeholder="Find an account by code, name or description…" aria-label="Filter accounts" data-table-filter-target="input" data-action="input->table-filter#filter keydown.esc->table-filter#clear">
+    <span class="table-filter-count" data-table-filter-target="count" aria-live="polite"></span>
+  </div>
+  <p class="card card-pad text-sm text-mocha" data-table-filter-target="empty" hidden>No accounts match. <button type="button" class="font-semibold text-olive-deep underline" data-action="table-filter#clear">Clear filter</button></p>
 
   <% Finance::Account::TYPE_LABELS.each do |type, label| %>
     <% accounts = @grouped.fetch(type, []) %>
@@ -32,7 +38,7 @@
               <tr><td colspan="5" class="empty-row">No <%= label.downcase %> accounts.</td></tr>
             <% end %>
             <% accounts.each do |account| %>
-              <tr class="<%= "row-removed" unless account.active %>">
+              <tr data-table-filter-target="row" class="<%= "row-removed" unless account.active %>">
                 <td class="td font-mono text-mocha"><%= link_to account.code, finance_chart_of_account_path(account), class: "link", aria: { label: "Ledger lines for #{finance_account_label(account)}" } %></td>
                 <td class="td font-medium text-ink">
                   <%= account.name %>
