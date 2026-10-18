@@ -25,7 +25,7 @@ async function onSignal(m, ice) {
   if (m.kind === 'offer') {
     pc = new RTCPeerConnection({ iceServers: ice });
     pc.onicecandidate = (e) => { if (e.candidate) post('signal', { vid, kind: 'ice', data: e.candidate.toJSON() }); };
-    pc.ontrack = (e) => { $('video').srcObject = e.streams[0]; $('stage').hidden = false; document.querySelector('main').hidden = true; startStats(); $('video').play().catch(() => {});
+    pc.ontrack = (e) => { $('video').srcObject = e.streams[0]; $('stage').hidden = false; document.querySelector('main').hidden = true; startStats(); playNow();
        $('video').onclick = () => $('video').play().catch(() => {}); };
     pc.onconnectionstatechange = () => {
       document.body.dataset.pc = pc.connectionState;
@@ -81,6 +81,7 @@ function startStats() {
     if (frames === 0) status('Connected, but no picture has arrived yet. On the host, share the whole screen or move the shared window.');
     else if (frames === lastFrames) status('Live (' + w + '×' + h + '), the shared window is not changing');
     else status('Live (view only) ' + w + '×' + h);
+    if (frames > 0 && $('video').paused) { $('tap').hidden = false; status('Picture is arriving. Tap the screen to start it.'); }
     lastFrames = frames;
     let cand = '';
     (await pc.getStats()).forEach((r) => { if (r.type === 'candidate-pair' && r.nominated) cand = r.state + ' rtt=' + r.currentRoundTripTime; });
@@ -90,3 +91,15 @@ function startStats() {
 $('fs').onclick = () => { const s = $('stage'); (s.requestFullscreen || s.webkitRequestFullscreen || (() => { $('video').webkitEnterFullscreen && $('video').webkitEnterFullscreen(); })).call(s); };
 $('leave2').onclick = () => $('leave').click();
 $('stage').addEventListener('click', () => { $('stage').classList.remove('idle'); clearTimeout(idleTimer); idleTimer = setTimeout(() => $('stage').classList.add('idle'), 4000); });
+
+// iOS Safari often refuses to start a video without a tap: try, then offer a one-tap button.
+function playNow() {
+  const vd = $('video');
+  vd.muted = true; vd.setAttribute('playsinline', ''); vd.setAttribute('webkit-playsinline', '');
+  const ok = () => { $('tap').hidden = true; };
+  const p = vd.play();
+  if (p && p.then) p.then(ok).catch(() => { $('tap').hidden = false; });
+  setTimeout(() => { if (vd.paused || !vd.videoWidth) $('tap').hidden = false; }, 1200);
+  vd.onloadedmetadata = () => vd.play().then(ok).catch(() => { $('tap').hidden = false; });
+}
+$('tap').onclick = (e) => { e.stopPropagation(); const vd = $('video'); vd.muted = true; vd.play().then(() => { $('tap').hidden = true; }).catch(() => status('This browser will not play the picture. Try Safari or Chrome.', 'err')); };
