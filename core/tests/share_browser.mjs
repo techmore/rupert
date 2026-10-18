@@ -77,6 +77,14 @@ try {
   await owner.until(`document.querySelector('.linkurl')`);
   const link = await owner.eval(`document.querySelector('.linkurl').textContent`);
   check('the link on the owner page uses the address buddies can reach', link.startsWith((PUBLIC || BASE) + '/v#'), link.replace(/rshare_.+/, 'rshare_…'));
+  { // login link from the eyes menu: prefilled through the URL fragment, signs in, fragment cleared
+    const lg = await launch(9333, 'login');
+    await lg.goto(BASE + '/share#u=o%40x.test&p=correct-horse-battery');
+    const ok = await lg.until(`!document.getElementById('app').hidden`).then(() => true, () => false);
+    check('login link: page signs in from the URL fragment', ok, ok ? '' : await lg.eval(`JSON.stringify({href:location.href,em:document.getElementById('email').value,err:document.getElementById('loginerr').textContent,login:document.getElementById('login').hidden})`));
+    check('login link: fragment (with the password) is cleared from the address bar', !(await lg.eval('location.href')).includes('correct-horse'));
+    await lg.close?.();
+  }
   check('owner page shows a /v#rshare_ link', /\/v#rshare_[A-Za-z0-9_-]{22}$/.test(link), link.replace(/rshare_.+/, 'rshare_…'));
 
   // --- before consent: viewer opens link, gets nothing

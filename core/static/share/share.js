@@ -105,5 +105,11 @@ $('loginbtn').onclick = async () => {
   if (r.ok) { $('pw').value = ''; if (await refresh()) openEvents(); } else $('loginerr').textContent = 'Sign-in failed.';
 };
 window.addEventListener('pagehide', () => { if (state.live) fetch('/api/v1/share/stop', { method: 'POST', headers: H, keepalive: true }); });
-refresh().then((ok) => ok && openEvents());
+// Login link from the eyes menu: /share#u=<email>&p=<password>. The fragment never reaches the server or its logs; it is cleared at once.
+const fragLogin = new URLSearchParams(location.hash.slice(1));
+if (fragLogin.has('u') && fragLogin.has('p')) {
+  $('email').value = fragLogin.get('u'); $('pw').value = fragLogin.get('p');
+  history.replaceState(null, '', location.pathname);
+}
+refresh().then((ok) => { if (ok) openEvents(); else if ($('pw').value && $('email').value) $('loginbtn').click(); });
 setInterval(() => { if (!$('app').hidden) refresh(); }, 10000);
