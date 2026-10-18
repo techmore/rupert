@@ -138,6 +138,7 @@ try {
     if (round === 0) {
       const a = await frames(viewer); await sleep(1200); const b = await frames(viewer);
       check('viewer receives live frames (counter advances)', b > a + 5, `frames ${a} -> ${b}`);
+      check('viewer stage is actually visible on screen (not inside a hidden container)', await viewer.eval(`(() => { const r = document.getElementById('video').getBoundingClientRect(); return r.width > 100 && r.height > 100; })()`));
       check('video has real dimensions', (await viewer.eval(`document.getElementById('video').videoWidth`)) === 640);
       check('owner banner counts 1 viewer', await owner.until(`document.getElementById('banner').dataset.viewers==='1'`).then(() => true, () => false));
     }
