@@ -2,7 +2,8 @@
 const $ = (id) => document.getElementById(id);
 const token = location.hash.slice(1);
 history.replaceState(null, '', location.pathname); // keep the secret out of the address bar, history and screenshots
-const status = (t, cls) => { $('vstat').textContent = t; $('vstat').className = cls || ''; };
+const status = (t, cls) => { $('vstat').textContent = t; $('vstat').className = cls || ''; $('vstat2').textContent = t; };
+let statsTimer = null, lastFrames = -1, idleTimer = null;
 const auth = { authorization: 'Bearer ' + token, 'content-type': 'application/json' };
 const post = (p, b) => fetch('/api/v1/share/view/' + p, { method: 'POST', headers: auth, body: JSON.stringify(b), keepalive: true });
 let vid = null, pc = null, ended = false;
@@ -20,8 +21,8 @@ async function onSignal(m, ice) {
   if (m.kind === 'offer') {
     pc = new RTCPeerConnection({ iceServers: ice });
     pc.onicecandidate = (e) => { if (e.candidate) post('signal', { vid, kind: 'ice', data: e.candidate.toJSON() }); };
-    pc.ontrack = (e) => { $('video').srcObject = e.streams[0]; $('video').hidden = false; $('video').play().catch(() => {});
-      $('video').onplaying = () => status('Live (view only)'); $('video').onclick = () => $('video').play().catch(() => {}); };
+    pc.ontrack = (e) => { $('video').srcObject = e.streams[0]; $('stage').hidden = false; document.querySelector('main').hidden = true; startStats(); $('video').play().catch(() => {});
+       $('video').onclick = () => $('video').play().catch(() => {}); };
     pc.onconnectionstatechange = () => {
       document.body.dataset.pc = pc.connectionState;
       if (pc.connectionState === 'failed') status('Could not connect to the host (the network blocked the direct path). Try the host\'s tailnet link.', 'err');
@@ -34,7 +35,7 @@ async function onSignal(m, ice) {
 }
 
 function finish(why) {
-  ended = true; if (pc) pc.close(); $('video').srcObject = null; $('video').hidden = true; $('leave').hidden = true;
+  ended = true; if (pc) pc.close(); $('video').srcObject = null; $('stage').hidden = true; document.querySelector('main').hidden = false; $('leave').hidden = true; clearInterval(statsTimer);
   status({ stopped: 'The host stopped sharing.', denied: 'The host declined.', removed: 'The host removed you.', link_revoked: 'The link was revoked.', timeout: 'The host did not respond in time.', owner_disconnected: 'The host went away.', time_limit: 'The share reached its time limit.' }[why] || 'The share ended.');
 }
 
@@ -65,3 +66,20 @@ async function run() {
 $('leave').onclick = async () => { if (vid) await post('leave', { vid }); finish('left'); status('You left.'); };
 addEventListener('pagehide', () => { if (vid && !ended) post('leave', { vid }); });
 run();
+
+// Say what the connection is actually doing: a black picture with 'Live' hides whether frames arrive at all.
+function startStats() {
+  clearInterval(statsTimer);
+  statsTimer = setInterval(async () => {
+    if (!pc) return;
+    let frames = 0, w = 0, h = 0;
+    (await pc.getStats()).forEach((r) => { if (r.type === 'inbound-rtp' && r.kind === 'video') { frames = r.framesDecoded || 0; w = r.frameWidth || 0; h = r.frameHeight || 0; } });
+    if (frames === 0) status('Connected, but no picture has arrived yet. On the host, share the whole screen or move the shared window.');
+    else if (frames === lastFrames) status('Live (' + w + '×' + h + '), the shared window is not changing');
+    else status('Live (view only) ' + w + '×' + h);
+    lastFrames = frames;
+  }, 2000);
+}
+$('fs').onclick = () => { const s = $('stage'); (s.requestFullscreen || s.webkitRequestFullscreen || (() => { $('video').webkitEnterFullscreen && $('video').webkitEnterFullscreen(); })).call(s); };
+$('leave2').onclick = () => $('leave').click();
+$('stage').addEventListener('click', () => { $('stage').classList.remove('idle'); clearTimeout(idleTimer); idleTimer = setTimeout(() => $('stage').classList.add('idle'), 4000); });

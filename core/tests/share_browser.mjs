@@ -101,7 +101,7 @@ try {
   await sleep(1500);
   check('picker open, no consent yet: banner hidden', await owner.eval(`document.getElementById('banner').hidden`));
   check('picker open, no consent yet: server not live', !(await srv('/status', COOKIE)).live);
-  check('picker open, no consent yet: viewer has no video', (await viewer.eval(`document.getElementById('video').hidden`)) && !(await viewer.eval(`!!document.getElementById('video').srcObject`)));
+  check('picker open, no consent yet: viewer has no video', (await viewer.eval(`document.getElementById('stage').hidden`)) && !(await viewer.eval(`!!document.getElementById('video').srcObject`)));
 
   // --- owner denies once: still nothing
   await owner.eval(`window.__deny()`);
