@@ -57,8 +57,11 @@ DATA=$(mktemp -d /tmp/rupert-share-demo.XXXXXX); chmod 700 "$DATA"
 CODE=$(python3 -I -c 'import secrets; print(secrets.token_urlsafe(18))')
 PASS=$(python3 -I -c 'import secrets; print(secrets.token_urlsafe(15))')
 EMAIL="demo@rupert.local"
-SERVER_PID=""
+SERVER_PID=""; STATE_PID=""
+STATE_DIR="${XDG_RUNTIME_DIR:-/tmp}/rupert-share"; STATE="$STATE_DIR/state.json"
 cleanup() {
+  if [ -n "$STATE_PID" ]; then kill "$STATE_PID" 2>/dev/null; wait "$STATE_PID" 2>/dev/null || true; fi
+  rm -f "$STATE" "$STATE.tmp" 2>/dev/null || true
   if [ -n "$SERVER_PID" ] && kill -0 "$SERVER_PID" 2>/dev/null; then kill -TERM "$SERVER_PID" 2>/dev/null; wait "$SERVER_PID" 2>/dev/null || true; fi
   if [ "$KEEP" = 1 ]; then echo "data kept in $DATA"; else rm -rf "$DATA"; fi
   echo; echo "demo stopped; every share and every link has ended."
@@ -76,6 +79,24 @@ curl -fs -m 5 "http://127.0.0.1:$PORT/auth/signup" -H 'content-type: application
   -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\",\"org_name\":\"Share demo\",\"subdomain\":\"demo\",\"signup_code\":\"$CODE\"}" >/dev/null \
   || { echo "could not create the demo owner"; tail -5 "$DATA/server.log"; exit 1; }
 printf 'email: %s\npassword: %s\n' "$EMAIL" "$PASS" > "$DATA/owner.txt"; chmod 600 "$DATA/owner.txt"
+
+# Keep $STATE fresh (live? viewers?) for the menu-bar eyes (mseries/share-eyes-wingpanel). Owner-only file, no secrets in it.
+mkdir -p "$STATE_DIR"; chmod 700 "$STATE_DIR"
+(
+  JAR="$DATA/state.jar"
+  curl -fs -m 5 -c "$JAR" "http://127.0.0.1:$PORT/auth/login" -H 'content-type: application/json' \
+    -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}" >/dev/null 2>&1 || exit 0
+  while kill -0 "$SERVER_PID" 2>/dev/null; do
+    curl -fs -m 3 -b "$JAR" "http://127.0.0.1:$PORT/api/v1/share/status" 2>/dev/null | python3 -I -c '
+import json,sys,time
+try: d=json.load(sys.stdin)
+except Exception: sys.exit(0)
+print(json.dumps({"live":bool(d.get("live")),"viewers":len(d.get("viewers") or []),"updated":int(time.time())}))' > "$STATE.tmp" \
+      && chmod 600 "$STATE.tmp" && mv -f "$STATE.tmp" "$STATE"
+    sleep 2
+  done
+) &
+STATE_PID=$!
 
 cat <<EOF
 
