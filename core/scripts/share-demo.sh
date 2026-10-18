@@ -4,6 +4,8 @@
 #   core/scripts/share-demo.sh                 loopback only: you plus a second browser on THIS machine
 #   core/scripts/share-demo.sh --lan           also reachable from other devices on your Wi-Fi/LAN
 #   core/scripts/share-demo.sh --tailnet       also reachable from devices on your tailnet
+#   --public https://host     also offer an internet link through a reverse proxy you set up (see docs/PUBLIC-SHARE.md); the
+#                             local-network link keeps working. Nothing is registered by this script.
 #   options: --port N (default 8799)  --max-viewers N (1..8, default 1)  --keep (keep the data dir on exit)
 #
 # What it does: builds the release binary if needed, starts the server (NOT in dev mode) with RUPERT_SHARE=1 on a throwaway
@@ -18,7 +20,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-PORT=8799; MODE=local; MAXV=1; KEEP=0
+PORT=8799; MODE=local; MAXV=1; KEEP=0; PUBLIC_WEB=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --lan) MODE=lan ;;
@@ -26,6 +28,7 @@ while [ $# -gt 0 ]; do
     --port) PORT="${2:?--port needs a number}"; shift ;;
     --max-viewers) MAXV="${2:?--max-viewers needs a number}"; shift ;;
     --keep) KEEP=1 ;;
+    --public) PUBLIC_WEB="${2:?--public needs an https address}"; shift ;;
     -h|--help) sed -n '2,19p' "$0"; exit 0 ;;
     *) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
   esac
@@ -41,6 +44,7 @@ if [ ! -x "$BIN" ] || [ -n "$(find src static Cargo.toml Cargo.lock -newer "$BIN
   RUPERT_GIT_REV="$(git rev-parse --short HEAD 2>/dev/null || echo demo)" cargo build --release >/dev/null
 fi
 
+case "$PUBLIC_WEB" in https://*) PUBLIC_WEB="${PUBLIC_WEB%/}" ;; "") ;; *) echo "--public must be an https:// address" >&2; exit 2 ;; esac
 LISTEN=127.0.0.1; PUBLIC=""
 case "$MODE" in
   lan)
@@ -53,6 +57,8 @@ case "$MODE" in
     LISTEN=0.0.0.0; PUBLIC="http://$IP:$PORT" ;;
 esac
 
+LAN_URL="$PUBLIC"
+[ -n "$PUBLIC_WEB" ] && { PUBLIC="$PUBLIC_WEB"; LISTEN=0.0.0.0; }
 DATA=$(mktemp -d /tmp/rupert-share-demo.XXXXXX); chmod 700 "$DATA"
 CODE=$(python3 -I -c 'import secrets; print(secrets.token_urlsafe(18))')
 # The sign-in password is kept (mode 0600) so restarting the demo does not change it. Only this user can read it.
@@ -76,7 +82,7 @@ trap cleanup EXIT
 trap 'exit 0' INT TERM
 
 env RUPERT_SHARE=1 RUPERT_DATA="$DATA/data" RUPERT_LISTEN="$LISTEN:$PORT" RUPERT_COOKIE_SECURE=0 RUPERT_SCHEDULER=0 \
-    RUPERT_SIGNUP_CODE="$CODE" RUPERT_SHARE_MAX_VIEWERS="$MAXV" ${PUBLIC:+RUPERT_SHARE_PUBLIC_URL="$PUBLIC"} \
+    RUPERT_SIGNUP_CODE="$CODE" ${PUBLIC_WEB:+RUPERT_TRUST_PROXY=1} RUPERT_SHARE_MAX_VIEWERS="$MAXV" ${PUBLIC:+RUPERT_SHARE_PUBLIC_URL="$PUBLIC"} \
     "$BIN" >"$DATA/server.log" 2>&1 &
 SERVER_PID=$!
 
@@ -93,13 +99,13 @@ mkdir -p "$STATE_DIR"; chmod 700 "$STATE_DIR"
   curl -fs -m 5 -c "$JAR" "http://127.0.0.1:$PORT/auth/login" -H 'content-type: application/json' \
     -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}" >/dev/null 2>&1 || exit 0
   while kill -0 "$SERVER_PID" 2>/dev/null; do
-    curl -fs -m 3 -b "$JAR" "http://127.0.0.1:$PORT/api/v1/share/status" 2>/dev/null | S_PORT="$PORT" S_EMAIL="$EMAIL" S_PASS="$PASS" S_PUBLIC="$PUBLIC" python3 -I -c '
+    curl -fs -m 3 -b "$JAR" "http://127.0.0.1:$PORT/api/v1/share/status" 2>/dev/null | S_PORT="$PORT" S_EMAIL="$EMAIL" S_PASS="$PASS" S_PUBLIC="$PUBLIC" S_LAN="$LAN_URL" python3 -I -c '
 import json,os,sys,time
 try: d=json.load(sys.stdin)
 except Exception: sys.exit(0)
 e=os.environ
 print(json.dumps({"live":bool(d.get("live")),"viewers":len(d.get("viewers") or []),"updated":int(time.time()),
-  "port":int(e["S_PORT"]),"email":e["S_EMAIL"],"password":e["S_PASS"],"public_url":e["S_PUBLIC"]}))' > "$STATE.tmp" \
+  "port":int(e["S_PORT"]),"email":e["S_EMAIL"],"password":e["S_PASS"],"public_url":e["S_PUBLIC"],"lan_url":e["S_LAN"]}))' > "$STATE.tmp" \
       && chmod 600 "$STATE.tmp" && mv -f "$STATE.tmp" "$STATE"
     sleep 2
   done
