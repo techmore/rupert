@@ -27,7 +27,7 @@ function render() {
   for (const l of state.links) {
     const sec = state.secrets.get(l.id);
     const d = document.createElement('div'); d.className = 'row';
-    const url = sec ? (state.publicUrl || location.origin) + '/v#' + sec : null;
+    const url = sec ? (state.publicUrl || location.origin) + '/v/' + sec : null;
     d.innerHTML = '<span>' + (url ? '<code class="linkurl">' + esc(url) + '</code>' : '<span class="mut">link created elsewhere</span>') + '<br><span class="mut">expires ' + new Date(l.expires_at * 1000).toLocaleString() + '</span></span><span></span>';
     const box = d.lastChild;
     if (url) { const c = document.createElement('button'); c.textContent = 'Copy'; c.onclick = () => navigator.clipboard && navigator.clipboard.writeText(url); box.append(c, ' '); }
@@ -93,6 +93,7 @@ $('start').onclick = async () => {
   const r = await api('POST', '/start');
   if (!r.ok) { endLocal(); $('msg').textContent = 'Could not start sharing (' + r.status + ').'; return; }
   state.live = true; await refresh();
+  if (state.secrets.size === 0) $('mklink').click();
 };
 $('stop').onclick = stopSharing;
 $('mklink').onclick = async () => {

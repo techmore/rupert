@@ -630,7 +630,7 @@ async fn create_link(
     Ok((
         StatusCode::CREATED,
         Json(
-            json!({ "id": id, "token": secret, "expires_at": exp, "path": format!("/v#{secret}") }),
+            json!({ "id": id, "token": secret, "expires_at": exp, "path": format!("/v/{secret}") }),
         ),
     )
         .into_response())
@@ -914,6 +914,10 @@ pub fn routes() -> Router<Arc<Registry>> {
         )
         .route(
             "/v",
+            get(|| async { asset(HTML, include_str!("../static/share/view.html")) }),
+        )
+        .route(
+            "/v/{tok}",
             get(|| async { asset(HTML, include_str!("../static/share/view.html")) }),
         )
         .route(

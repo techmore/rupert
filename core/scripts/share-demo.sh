@@ -55,7 +55,13 @@ esac
 
 DATA=$(mktemp -d /tmp/rupert-share-demo.XXXXXX); chmod 700 "$DATA"
 CODE=$(python3 -I -c 'import secrets; print(secrets.token_urlsafe(18))')
-PASS=$(python3 -I -c 'import secrets; print(secrets.token_urlsafe(15))')
+# The sign-in password is kept (mode 0600) so restarting the demo does not change it. Only this user can read it.
+LOGIN_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/rupert-share/password"
+if [ -s "$LOGIN_FILE" ]; then PASS=$(cat "$LOGIN_FILE")
+else
+  PASS=$(python3 -I -c 'import secrets; print(secrets.token_urlsafe(15))')
+  mkdir -p "$(dirname "$LOGIN_FILE")"; chmod 700 "$(dirname "$LOGIN_FILE")"; (umask 077; printf '%s' "$PASS" > "$LOGIN_FILE")
+fi
 EMAIL="demo@rupert.local"
 SERVER_PID=""; STATE_PID=""
 STATE_DIR="${XDG_RUNTIME_DIR:-/tmp}/rupert-share"; STATE="$STATE_DIR/state.json"

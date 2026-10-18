@@ -1,7 +1,11 @@
 'use strict';
 const $ = (id) => document.getElementById(id);
-const token = location.hash.slice(1);
-history.replaceState(null, '', location.pathname); // keep the secret out of the address bar, history and screenshots
+// The key comes from /v/<key> (or the older /v#<key>), is remembered for this tab so a reload still works, and is then
+// removed from the address bar so it is not left in screenshots.
+const fromUrl = location.pathname.startsWith('/v/') ? decodeURIComponent(location.pathname.slice(3)) : location.hash.slice(1);
+let token = fromUrl;
+try { if (token) sessionStorage.setItem('rshare_key', token); else token = sessionStorage.getItem('rshare_key') || ''; } catch (_) {}
+history.replaceState(null, '', '/v');
 const status = (t, cls) => { $('vstat').textContent = t; $('vstat').className = cls || ''; $('vstat2').textContent = t; };
 let statsTimer = null, lastFrames = -1, idleTimer = null;
 const auth = { authorization: 'Bearer ' + token, 'content-type': 'application/json' };
@@ -40,7 +44,7 @@ function finish(why) {
 }
 
 async function run() {
-  if (!token) return status('This link is incomplete.', 'err');
+  if (!token) return status('This link is missing its key. Ask the host to copy the link again from the eyes menu, and open the whole link.', 'err');
   const j = await join(); if (!j) return;
   vid = j.vid; status('Waiting for the host to allow you…'); $('leave').hidden = false;
   const r = await fetch('/api/v1/share/view/events?vid=' + vid, { headers: auth });

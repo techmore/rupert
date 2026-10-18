@@ -66,7 +66,7 @@ try:
     s, pg, h = call(PORT, "GET", "/share"); check("owner page", (s, b"Start sharing" in pg), (200, True))
     check("page CSP", "script-src 'self'" in h["Content-Security-Policy"] and "frame-ancestors 'none'" in h["Content-Security-Policy"], True)
     check("page no-referrer", h["Referrer-Policy"], "no-referrer")
-    check("viewer page", call(PORT, "GET", "/v")[0], 200); check("js", call(PORT, "GET", "/v.js")[0], 200)
+    check("viewer page", call(PORT, "GET", "/v")[0], 200); check("viewer page via /v/<key>", call(PORT, "GET", "/v/rshare_" + "A" * 22)[0], 200); check("js", call(PORT, "GET", "/v.js")[0], 200)
 
     # owner API: refused without auth / with API token / without the anti-CSRF header
     check("status unauth", call(PORT, "GET", "/api/v1/share/status")[0], 401)
@@ -76,7 +76,7 @@ try:
     check("start no csrf header", call(PORT, "POST", "/api/v1/share/start", {}, O)[0], 403)
 
     s, l, _ = call(PORT, "POST", "/api/v1/share/links", {"ttl_secs": 600}, {**O, **X})
-    check("link created", (s, l["token"].startswith("rshare_"), len(l["token"]), l["path"]), (201, True, 29, "/v#" + l["token"]))
+    check("link created", (s, l["token"].startswith("rshare_"), len(l["token"]), l["path"]), (201, True, 29, "/v/" + l["token"]))
     check("an explicit shorter lifetime is honoured", abs(l["expires_at"] - int(time.time()) - 600) < 10, True)
     TOK, LID = l["token"], l["id"]; V = {"Authorization": "Bearer " + TOK}
     row = sqlite3.connect(os.path.join(data, "central.db")).execute("select count(*) from audit where detail like ?", (f"%{TOK}%",)).fetchone()[0]

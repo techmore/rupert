@@ -76,7 +76,7 @@ try {
   await owner.eval(`document.getElementById('mklink').click()`);
   await owner.until(`document.querySelector('.linkurl')`);
   const link = await owner.eval(`document.querySelector('.linkurl').textContent`);
-  check('the link on the owner page uses the address buddies can reach', link.startsWith((PUBLIC || BASE) + '/v#'), link.replace(/rshare_.+/, 'rshare_…'));
+  check('the link on the owner page uses the address buddies can reach', link.startsWith((PUBLIC || BASE) + '/v/'), link.replace(/rshare_.+/, 'rshare_…'));
   { // login link from the eyes menu: prefilled through the URL fragment, signs in, fragment cleared
     const lg = await launch(9333, 'login');
     await lg.goto(BASE + '/share#u=o%40x.test&p=correct-horse-battery');
@@ -85,13 +85,15 @@ try {
     check('login link: fragment (with the password) is cleared from the address bar', !(await lg.eval('location.href')).includes('correct-horse'));
     await lg.close?.();
   }
-  check('owner page shows a /v#rshare_ link', /\/v#rshare_[A-Za-z0-9_-]{22}$/.test(link), link.replace(/rshare_.+/, 'rshare_…'));
+  check('owner page shows a /v/rshare_ link', /\/v\/rshare_[A-Za-z0-9_-]{22}$/.test(link), link.replace(/rshare_.+/, 'rshare_…'));
 
   // --- before consent: viewer opens link, gets nothing
   await viewer.goto(forViewer(link));
   await viewer.until(`/Waiting for the host to start/.test(document.getElementById('vstat').textContent)`);
   check('viewer waits while owner has not started', true);
   check(`viewer page was served from ${VHOST}, not just loopback`, (await viewer.eval('location.hostname')) === VHOST);
+  await viewer.eval('location.reload()'); await sleep(1500);
+  check('viewer reload keeps working (no "link is missing its key")', !/missing its key|incomplete/.test(await status(viewer)), await status(viewer));
   check('viewer URL bar no longer carries the secret', !(await viewer.eval('location.href')).includes('rshare_'));
   { const s0 = await srv('/status', COOKIE); check('server: not live, no viewers before consent', !s0.live && s0.viewers.length === 0); }
 

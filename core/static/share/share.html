@@ -4,21 +4,24 @@
 <body>
 <div id="banner" role="alert" hidden><span id="bannertext"></span><button id="stop">Stop sharing</button></div>
 <main>
-<h1>Share your screen</h1>
-<p class="mut">Nothing is shared until you click <b>Start sharing</b> and approve your browser's own screen picker. Each viewer must also be approved by you. Stopping ends the share and every link.</p>
+<h1><svg viewBox="0 0 16 16" aria-hidden="true"><g fill="currentColor"><path fill-rule="evenodd" d="M0.2 8a3.9 5 0 1 0 7.8 0a3.9 5 0 1 0-7.8 0zM1.5 8a2.6 3.7 0 1 1 5.2 0a2.6 3.7 0 1 1-5.2 0z"/><path fill-rule="evenodd" d="M8 8a3.9 5 0 1 0 7.8 0a3.9 5 0 1 0-7.8 0zM9.3 8a2.6 3.7 0 1 1 5.2 0a2.6 3.7 0 1 1-5.2 0z"/><circle cx="5.2" cy="9" r="1.5"/><circle cx="13" cy="9" r="1.5"/></g></svg>Share your screen</h1>
+<p class="lede">Nothing is shared until you pick a window in your browser's own picker, and every viewer needs your OK.</p>
 <div id="login" class="card" hidden>
-<b>Sign in</b><label>Email<input id="email" type="email" autocomplete="username"></label>
-<label>Password<input id="pw" type="password" autocomplete="current-password"></label>
-<button id="loginbtn" class="primary">Sign in</button> <span id="loginerr" class="err"></span></div>
+<b>Sign in</b>
+<p class="mut" style="margin:0 0 6px">Easiest: open the eyes menu in the top-right Quick Settings and choose <b>Open share page and sign in</b>.</p>
+<label for="email">Email</label><input id="email" type="email" autocomplete="username">
+<label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password">
+<div class="row"><span id="loginerr" class="err"></span><button id="loginbtn" class="primary">Sign in</button></div></div>
 <div id="app" hidden>
-<div class="card"><b>1. Make a link</b>
-<p class="mut">Valid for 24 hours and one viewer by default. Send it only to the person you mean to show.</p>
-<button id="mklink">Create link</button>
-<div id="links"></div></div>
-<div class="card"><b>2. Start sharing</b>
-<p class="mut">Your browser will ask what to share (screen, window or tab). Choose, or cancel to share nothing.</p>
-<button id="start" class="primary">Start sharing</button> <span id="msg" class="err"></span></div>
-<div class="card" id="diagcard" hidden><b>Capture diagnostics</b><pre id="diag" class="mut" style="white-space:pre-wrap;margin:6px 0 0"></pre></div>
-<div class="card"><b>Viewers</b><div id="viewers" class="mut">None yet.</div></div>
+<div class="card"><b>1 · Start</b>
+<button id="start" class="primary big">Start sharing</button>
+<p id="msg" class="err" style="margin:8px 0 0"></p>
+<p class="mut" style="margin:8px 0 0;font-size:.85rem">Choose <b>Entire Screen</b> if a single window shows up black for your viewer.</p></div>
+<div class="card"><b>2 · Send the link</b>
+<div id="links"></div>
+<button id="mklink" class="big">Create viewer link</button>
+<p class="mut" style="margin:8px 0 0;font-size:.85rem">Valid for 24 hours, one viewer, and you approve them below. Open the whole link on the other device.</p></div>
+<div class="card"><b>3 · Viewers</b><div id="viewers" class="mut">None yet.</div></div>
+<div class="card" id="diagcard" hidden><details><summary>Capture diagnostics</summary><pre id="diag" class="mut" style="white-space:pre-wrap;margin:8px 0 0"></pre></details></div>
 </div></main>
 <script src="/share.js"></script></body></html>
