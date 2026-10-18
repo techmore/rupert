@@ -27,7 +27,7 @@ function render() {
   for (const l of state.links) {
     const sec = state.secrets.get(l.id);
     const d = document.createElement('div'); d.className = 'row';
-    const url = sec ? location.origin + '/v#' + sec : null;
+    const url = sec ? (state.publicUrl || location.origin) + '/v#' + sec : null;
     d.innerHTML = '<span>' + (url ? '<code class="linkurl">' + esc(url) + '</code>' : '<span class="mut">link created elsewhere</span>') + '<br><span class="mut">expires ' + new Date(l.expires_at * 1000).toLocaleTimeString() + '</span></span><span></span>';
     const box = d.lastChild;
     if (url) { const c = document.createElement('button'); c.textContent = 'Copy'; c.onclick = () => navigator.clipboard && navigator.clipboard.writeText(url); box.append(c, ' '); }
@@ -41,7 +41,7 @@ async function refresh() {
   if (r.status === 401) { $('login').hidden = false; $('app').hidden = true; return false; }
   if (!r.ok) { $('msg').textContent = 'Screen sharing is not available (' + r.status + ').'; return false; }
   const s = await r.json();
-  state.ice = s.ice; state.links = s.links; state.viewers = s.viewers; state.live = s.live && !!state.stream;
+  state.ice = s.ice; state.publicUrl = s.public_url || ''; state.links = s.links; state.viewers = s.viewers; state.live = s.live && !!state.stream;
   $('login').hidden = true; $('app').hidden = false; render(); return true;
 }
 

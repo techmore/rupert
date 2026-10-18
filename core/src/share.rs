@@ -76,6 +76,26 @@ pub struct ShareState {
     live_max: i64,
     stun: Vec<String>,
     turn: Option<(String, String, String)>,
+    /// Origin buddies should use in links (`RUPERT_SHARE_PUBLIC_URL`). The owner page itself must be opened on a secure
+    /// origin (127.0.0.1 or https), which is usually not an address anyone else can reach.
+    public_url: Option<String>,
+}
+
+/// Accepts only a bare http(s) origin: no path, query, fragment, userinfo or whitespace.
+pub fn parse_public_url(raw: &str) -> Option<String> {
+    let v = raw.trim().trim_end_matches('/');
+    let rest = v
+        .strip_prefix("https://")
+        .or_else(|| v.strip_prefix("http://"))?;
+    let ok_chars = rest
+        .bytes()
+        .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-' | b':' | b'[' | b']'));
+    (v.len() <= 200
+        && !rest.is_empty()
+        && ok_chars
+        && !rest.starts_with(':')
+        && !rest.contains("::-"))
+    .then(|| v.to_string())
 }
 
 /// What the state machine asks the caller to record in the central audit table.
@@ -130,7 +150,18 @@ impl ShareState {
             live_max: env_num("RUPERT_SHARE_MAX_SECS", 7_200i64).max(60),
             stun,
             turn,
+            public_url: std::env::var("RUPERT_SHARE_PUBLIC_URL").ok().and_then(|v| {
+                let parsed = parse_public_url(&v);
+                if parsed.is_none() && !v.trim().is_empty() {
+                    eprintln!("{{\"level\":\"warn\",\"msg\":\"RUPERT_SHARE_PUBLIC_URL ignored: it must be a bare http(s) origin such as https://host or http://192.168.1.5:8799\"}}");
+                }
+                parsed
+            }),
         }
+    }
+
+    pub fn public_url(&self) -> Option<&str> {
+        self.public_url.as_deref()
     }
 
     pub fn ice(&self) -> Value {
@@ -602,6 +633,11 @@ async fn status(
     let k = owner(&p, &h, false)?;
     let mut s = reg.share.status(&k);
     s["ice"] = reg.share.ice();
+    s["public_url"] = reg
+        .share
+        .public_url()
+        .map(Value::from)
+        .unwrap_or(Value::Null);
     Ok(Json(s).into_response())
 }
 
@@ -899,6 +935,37 @@ mod tests {
     }
     fn key() -> RoomKey {
         ("t1".into(), 1)
+    }
+
+    #[test]
+    fn public_url_accepts_only_bare_origins() {
+        for ok in [
+            "https://rrupert.stoverparc.org",
+            "http://192.168.222.104:8799",
+            "http://100.115.140.33:8799/",
+            "https://[fd00::1]:8443",
+        ] {
+            assert!(parse_public_url(ok).is_some(), "{ok}");
+        }
+        assert_eq!(
+            parse_public_url(" https://a.example/ ").as_deref(),
+            Some("https://a.example")
+        );
+        for bad in [
+            "",
+            "a.example",
+            "ftp://a.example",
+            "https://",
+            "https://a.example/path",
+            "https://a.example?x=1",
+            "https://u:p@a.example",
+            "https://a b.example",
+            "javascript:alert(1)",
+            "https://a.example#frag",
+            "http://:80",
+        ] {
+            assert!(parse_public_url(bad).is_none(), "{bad}");
+        }
     }
 
     #[test]

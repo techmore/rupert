@@ -107,6 +107,6 @@ Only one process; state is in memory, so it is not horizontally scalable (fine f
 
 ## Verification (what was and was not tested)
 
-See the README. Short version: 9 Rust unit tests on the state machine, 47 black-box HTTP checks, and an 18-check
+See the README. Short version: 10 Rust unit tests on the state machine, 47 black-box HTTP checks, and a 20-check
 headless two-browser run in which frames arrive only after consent + Allow and stop on Stop. The native screen picker,
 real screen contents, TURN, NAT traversal across the internet, Firefox/Safari, and the Caddy/oauth2 path were **not** tested.

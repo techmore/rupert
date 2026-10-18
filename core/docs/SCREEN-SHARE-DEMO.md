@@ -2,7 +2,12 @@
 
 Design, consent model and threat model: [SCREEN-SHARE.md](SCREEN-SHARE.md). The feature is **off unless `RUPERT_SHARE=1`**.
 
-## Run it locally
+## Run it locally (one command)
+
+```bash
+core/scripts/share-demo.sh [--lan | --tailnet] [--port N] [--max-viewers N]
+```
+Builds if needed, starts the server (not in dev mode), creates a throwaway owner with a one-time signup code, prints the login and the address buddies should use, and deletes everything on Ctrl-C. The live-test checklist is [SCREEN-SHARE-TEST-TODAY.md](SCREEN-SHARE-TEST-TODAY.md). The manual way, step by step:
 
 ```bash
 cd core && cargo build            # or: cargo build --release
@@ -24,16 +29,19 @@ curl -s localhost:8799/auth/signup -H 'content-type: application/json' \
 5. **Stop sharing** (or the browser's own Stop button, or close the tab) ends it and kills every link.
 
 Knobs (env): `RUPERT_SHARE_MAX_VIEWERS` (1), `RUPERT_SHARE_LINK_TTL_MAX` (86400), `RUPERT_SHARE_MAX_SECS` (7200),
-`RUPERT_SHARE_STUN` (Google's public STUN; empty for none), `RUPERT_SHARE_TURN` / `_TURN_USER` / `_TURN_CRED` (optional).
+`RUPERT_SHARE_STUN` (Google's public STUN; empty for none), `RUPERT_SHARE_TURN` / `_TURN_USER` / `_TURN_CRED` (optional),
+`RUPERT_SHARE_PUBLIC_URL` (a bare `http(s)://host[:port]` origin; links shown on the owner page use it instead of the page's own address, which matters because the owner page must be opened on 127.0.0.1 or HTTPS while buddies need an address they can reach).
 Browsers need a secure context for `getDisplayMedia`: `http://127.0.0.1` and `localhost` count; any other host needs HTTPS.
 
 ## Tests
 
 ```bash
 cd core
-cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test   # 9 share unit tests among the rest
+cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test   # 10 share unit tests among the rest
 python3 -I tests/share_smoke.py                                                  # 47 HTTP checks (auth, caps, revoke, rate limit, audit, logs)
-bun tests/share_browser.mjs                                                      # 18 checks, two headless browsers, no window shown
+bun tests/share_browser.mjs                                                      # 20 checks, two headless browsers, no window shown
+# same checks through a real network address (a second device's path); MDNS_MASK=1 keeps the browser's default WebRTC privacy:
+LISTEN_HOST=0.0.0.0 VIEWER_HOST=<this machine's LAN or tailnet IP> MDNS_MASK=1 bun tests/share_browser.mjs
 ```
 
 `share_browser.mjs` starts its own throwaway server and two **separate headless Chromium-family browsers** (default

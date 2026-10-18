@@ -11,6 +11,16 @@ import { join } from 'node:path';
 const BIN = process.argv[2] || new URL('../target/debug/rupert-core', import.meta.url).pathname;
 const BROWSER = process.env.BROWSER_BIN || '/opt/brave.com/brave/brave';
 const PORT = 8794, BASE = `http://127.0.0.1:${PORT}`;
+// Network modes (all optional; the default is everything on loopback with mDNS masking off, as before):
+//   LISTEN_HOST=0.0.0.0        make the server reachable on the machine's real addresses
+//   VIEWER_HOST=192.168.x.y    the viewer opens the link through that address instead of 127.0.0.1 (how a second device connects;
+//                              the OWNER page stays on 127.0.0.1, which browsers treat as a secure context for screen capture)
+//   MDNS_MASK=1                keep Chromium's default WebRTC privacy (local addresses hidden behind mDNS names)
+const LISTEN = process.env.LISTEN_HOST || '127.0.0.1', VHOST = process.env.VIEWER_HOST || '127.0.0.1', MDNS_MASK = process.env.MDNS_MASK === '1';
+// When the viewer is not on loopback the server is told its public origin, and the link is used EXACTLY as the owner page shows it.
+const PUBLIC = VHOST !== '127.0.0.1' ? `http://${VHOST}:${PORT}` : '';
+const forViewer = (l) => l;
+console.log(`# mode: server on ${LISTEN}, viewer via ${VHOST}, mDNS masking ${MDNS_MASK ? 'ON (browser default)' : 'off'}`);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const fails = []; let total = 0;
 const check = (name, ok, extra = '') => { total++; if (!ok) fails.push(name + (extra ? ' :: ' + extra : '')); console.log((ok ? 'ok   ' : 'FAIL ') + name + (extra ? '  ' + extra : '')); };
@@ -18,7 +28,7 @@ const median = (a) => { const s = [...a].sort((x, y) => x - y); return s[Math.fl
 
 const tmp = mkdtempSync(join(tmpdir(), 'share-e2e-'));
 const procs = [];
-const server = spawn(BIN, [], { env: { ...process.env, RUPERT_DATA: join(tmp, 'data'), RUPERT_LISTEN: `127.0.0.1:${PORT}`, RUPERT_COOKIE_SECURE: '0', RUPERT_SIGNUP: 'open', RUPERT_SCHEDULER: '0', RUPERT_SHARE: '1', RUPERT_SHARE_STUN: '' }, stdio: 'ignore' });
+const server = spawn(BIN, [], { env: { ...process.env, RUPERT_DATA: join(tmp, 'data'), RUPERT_LISTEN: `${LISTEN}:${PORT}`, RUPERT_COOKIE_SECURE: '0', RUPERT_SIGNUP: 'open', RUPERT_SCHEDULER: '0', RUPERT_SHARE: '1', RUPERT_SHARE_STUN: '', ...(PUBLIC ? { RUPERT_SHARE_PUBLIC_URL: PUBLIC } : {}) }, stdio: 'ignore' });
 procs.push(server);
 
 class Page {
@@ -31,7 +41,7 @@ class Page {
 
 async function launch(port, name) {
   const dir = join(tmp, name);
-  const p = spawn(BROWSER, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, '--no-first-run', '--no-default-browser-check', '--disable-gpu', '--autoplay-policy=no-user-gesture-required', '--disable-features=WebRtcHideLocalIpsWithMdns', 'about:blank'], { stdio: 'ignore' });
+  const p = spawn(BROWSER, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, '--no-first-run', '--no-default-browser-check', '--disable-gpu', '--autoplay-policy=no-user-gesture-required', ...(MDNS_MASK ? [] : ['--disable-features=WebRtcHideLocalIpsWithMdns']), 'about:blank'], { stdio: 'ignore' });
   procs.push(p);
   for (let i = 0; i < 100; i++) { try { const l = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json(); const t = l.find((x) => x.type === 'page'); if (t) { const ws = new WebSocket(t.webSocketDebuggerUrl); await new Promise((r) => (ws.onopen = r)); const pg = new Page(ws); await pg.send('Page.enable'); await pg.send('Runtime.enable'); return pg; } } catch {} await sleep(100); }
   throw new Error('browser did not start: ' + name);
@@ -66,12 +76,14 @@ try {
   await owner.eval(`document.getElementById('mklink').click()`);
   await owner.until(`document.querySelector('.linkurl')`);
   const link = await owner.eval(`document.querySelector('.linkurl').textContent`);
+  check('the link on the owner page uses the address buddies can reach', link.startsWith((PUBLIC || BASE) + '/v#'), link.replace(/rshare_.+/, 'rshare_…'));
   check('owner page shows a /v#rshare_ link', /\/v#rshare_[A-Za-z0-9_-]{22}$/.test(link), link.replace(/rshare_.+/, 'rshare_…'));
 
   // --- before consent: viewer opens link, gets nothing
-  await viewer.goto(link);
+  await viewer.goto(forViewer(link));
   await viewer.until(`/Waiting for the host to start/.test(document.getElementById('vstat').textContent)`);
   check('viewer waits while owner has not started', true);
+  check(`viewer page was served from ${VHOST}, not just loopback`, (await viewer.eval('location.hostname')) === VHOST);
   check('viewer URL bar no longer carries the secret', !(await viewer.eval('location.href')).includes('rshare_'));
   { const s0 = await srv('/status', COOKIE); check('server: not live, no viewers before consent', !s0.live && s0.viewers.length === 0); }
 
@@ -106,7 +118,7 @@ try {
   for (let round = 0; round < 5; round++) {
     if (round > 0) { // fresh viewer page on the same link
       await owner.until(`document.querySelectorAll('#viewers .row').length===0`, 15000);
-      await viewer.goto(link);
+      await viewer.goto(forViewer(link));
       await owner.until(`document.querySelector('#viewers [data-state=pending]')`, 12000);
     }
     const t0 = Date.now();
@@ -130,7 +142,7 @@ try {
   const f1 = await frames(viewer); await sleep(1200); const f2 = await frames(viewer);
   check('after Stop: viewer frames stop and video is released', pre > 5 && f2 === f1 && !(await viewer.eval(`!!document.getElementById('video').srcObject`)), `frames before Stop ${pre}, after ${f1} -> ${f2}`);
   check('after Stop: owner banner hidden, server not live', (await owner.eval(`document.getElementById('banner').hidden`)) && !(await srv('/status', COOKIE)).live);
-  await viewer.goto(link);
+  await viewer.goto(forViewer(link));
   await viewer.until(`/invalid, expired/.test(document.getElementById('vstat').textContent)`);
   check('after Stop: the old link is refused', true);
 
@@ -140,7 +152,7 @@ try {
   const link2 = await owner.eval(`document.querySelector('.linkurl').textContent`);
   await owner.eval(`document.getElementById('start').click()`); await owner.until(`window.__gdmPending === true`); await owner.eval(`window.__grant()`);
   await owner.until(`!document.getElementById('banner').hidden`);
-  await viewer.goto(link2);
+  await viewer.goto(forViewer(link2));
   await owner.until(`document.querySelector('#viewers [data-state=pending]')`, 12000);
   await owner.eval(`document.querySelector('#viewers [data-state=pending] button.primary').click()`);
   await viewer.until(`document.getElementById('video').getVideoPlaybackQuality().totalVideoFrames >= 1`, 15000);
