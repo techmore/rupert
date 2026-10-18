@@ -103,3 +103,18 @@ function playNow() {
   vd.onloadedmetadata = () => vd.play().then(ok).catch(() => { $('tap').hidden = false; });
 }
 $('tap').onclick = (e) => { e.stopPropagation(); const vd = $('video'); vd.muted = true; vd.play().then(() => { $('tap').hidden = true; }).catch(() => status('This browser will not play the picture. Try Safari or Chrome.', 'err')); };
+
+// Picture in picture: standard API (Chrome, Edge, desktop Safari) or Safari's presentation mode (iPhone/iPad).
+// It has to start from a tap, so it is a button; Safari and Chrome also enter it on their own when you leave the page if allowed.
+const vdPip = $('video');
+const canPip = () => (document.pictureInPictureEnabled && !vdPip.disablePictureInPicture) || (vdPip.webkitSupportsPresentationMode && vdPip.webkitSupportsPresentationMode('picture-in-picture'));
+$('pip').hidden = !canPip();
+$('pip').onclick = async (e) => {
+  e.stopPropagation();
+  try {
+    if (document.pictureInPictureElement) await document.exitPictureInPicture();
+    else if (vdPip.requestPictureInPicture) await vdPip.requestPictureInPicture();
+    else if (vdPip.webkitSetPresentationMode) vdPip.webkitSetPresentationMode(vdPip.webkitPresentationMode === 'picture-in-picture' ? 'inline' : 'picture-in-picture');
+  } catch (_) { status('Picture in picture is not available here.', 'err'); }
+};
+if ('mediaSession' in navigator) { try { navigator.mediaSession.setActionHandler('enterpictureinpicture', () => vdPip.requestPictureInPicture && vdPip.requestPictureInPicture().catch(() => {})); } catch (_) {} }
