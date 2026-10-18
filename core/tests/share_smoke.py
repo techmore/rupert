@@ -77,6 +77,7 @@ try:
 
     s, l, _ = call(PORT, "POST", "/api/v1/share/links", {"ttl_secs": 600}, {**O, **X})
     check("link created", (s, l["token"].startswith("rshare_"), len(l["token"]), l["path"]), (201, True, 29, "/v#" + l["token"]))
+    check("an explicit shorter lifetime is honoured", abs(l["expires_at"] - int(time.time()) - 600) < 10, True)
     TOK, LID = l["token"], l["id"]; V = {"Authorization": "Bearer " + TOK}
     row = sqlite3.connect(os.path.join(data, "central.db")).execute("select count(*) from audit where detail like ?", (f"%{TOK}%",)).fetchone()[0]
     check("secret not in audit", row, 0)
@@ -117,6 +118,9 @@ try:
 
     # stop kills every link
     s, l2, _ = call(PORT, "POST", "/api/v1/share/links", {}, {**O, **X}); V2 = {"Authorization": "Bearer " + l2["token"]}
+    check("default link lifetime is 24 hours", abs(l2["expires_at"] - int(time.time()) - 86400) < 10, True)
+    s, l3, _ = call(PORT, "POST", "/api/v1/share/links", {"ttl_secs": 864000}, {**O, **X})
+    check("a request for longer than the maximum is clamped to 24 hours", (s, abs(l3["expires_at"] - int(time.time()) - 86400) < 10), (201, True))
     check("join live", call(PORT, "POST", "/api/v1/share/view/join", hdrs=V2)[0], 200)
     check("stop", call(PORT, "POST", "/api/v1/share/stop", {}, {**O, **X})[0], 200)
     check("join after stop", call(PORT, "POST", "/api/v1/share/view/join", hdrs=V2)[0], 401)

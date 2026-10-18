@@ -21,21 +21,21 @@ Sharing needs **three separate yeses**, none of which can be given by the viewer
 2. **Per-viewer admission.** A buddy who opens the link becomes *pending*. No offer is sent, and the server refuses
    signaling in either direction, until the owner clicks **Allow** for that specific viewer (shown with their IP).
    A leaked link therefore cannot silently attach to a live share. **Deny** and **Remove** are always available.
-3. **A link the owner made on purpose**, short-lived (default 30 min), revocable, capped viewers (default 1).
+3. **A link the owner made on purpose**, long-lived by default (24 h, `RUPERT_SHARE_LINK_TTL`), revocable, capped viewers (default 1).
 
 Visible indicators while live: a red sticky banner **"You are sharing your screen with N viewer(s)"** with a **Stop
 sharing** button, the tab title `● SHARING — N viewer(s)`, and the browser/portal's own "sharing" indicator (Chromium
 and Firefox show one; on Pantheon the portal also shows a panel indicator on recent versions, not verified here).
 
 Ends when any of: owner clicks Stop; the browser's own Stop sharing (track `ended`); the owner page closes or loses its
-event stream for more than 15 s; the max duration is reached (default 2 h, `RUPERT_SHARE_MAX_SECS`); the server restarts.
+event stream for more than 15 s; the max duration is reached (default 24 h, `RUPERT_SHARE_MAX_SECS`); the server restarts.
 Stopping **kills every link** for that owner, so a re-share needs a fresh link.
 
 ## Link lifecycle
 
 | Step | Detail |
 | --- | --- |
-| Create | `POST /api/v1/share/links` (owner session). 128-bit random, `rshare_` + 22 base64url chars. TTL default 1800 s, clamp 60..`RUPERT_SHARE_LINK_TTL_MAX` (86400). At most 5 active links per owner; 10 creations/min. |
+| Create | `POST /api/v1/share/links` (owner session). 128-bit random, `rshare_` + 22 base64url chars. TTL default 86400 s (`RUPERT_SHARE_LINK_TTL`), clamp 60..`RUPERT_SHARE_LINK_TTL_MAX` (86400). At most 5 active links per owner; 10 creations/min. |
 | Store | Only the SHA-256 digest is held (in memory). The secret is shown once in the response and kept by the owner page. It is not in the central audit table either. |
 | Carry | Link is `https://host/v#<secret>`. The secret is in the **URL fragment**, which browsers never send to the server, to Caddy logs, in `Referer`, or to any proxy. The viewer page moves it into an `Authorization: Bearer` header and immediately scrubs it from the address bar (`history.replaceState`). |
 | Use | Join needs: link valid and unexpired, owner live, viewer slots free (`RUPERT_SHARE_MAX_VIEWERS`, default 1, max 8; pending viewers count). |

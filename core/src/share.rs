@@ -73,6 +73,7 @@ pub struct ShareState {
     inner: Mutex<Inner>,
     max_viewers: usize,
     ttl_max: i64,
+    ttl_default: i64,
     live_max: i64,
     stun: Vec<String>,
     turn: Option<(String, String, String)>,
@@ -143,11 +144,15 @@ impl ShareState {
             (Some(u), Some(n), Some(c)) if !u.is_empty() => Some((u, n, c)),
             _ => None,
         };
+        let ttl_max = env_num("RUPERT_SHARE_LINK_TTL_MAX", 86_400i64).max(60);
         Self {
             inner: Mutex::new(Inner::default()),
             max_viewers: env_num("RUPERT_SHARE_MAX_VIEWERS", 1usize).clamp(1, 8),
-            ttl_max: env_num("RUPERT_SHARE_LINK_TTL_MAX", 86_400i64).max(60),
-            live_max: env_num("RUPERT_SHARE_MAX_SECS", 7_200i64).max(60),
+            ttl_max,
+            // Defaults are 24 hours for both a link's lifetime and a share's maximum running time (the owner's decision);
+            // both stay configurable, and a link can still ask for something shorter.
+            ttl_default: env_num("RUPERT_SHARE_LINK_TTL", 86_400i64).clamp(60, ttl_max),
+            live_max: env_num("RUPERT_SHARE_MAX_SECS", 86_400i64).max(60),
             stun,
             turn,
             public_url: std::env::var("RUPERT_SHARE_PUBLIC_URL").ok().and_then(|v| {
@@ -158,6 +163,10 @@ impl ShareState {
                 parsed
             }),
         }
+    }
+
+    pub fn ttl_default(&self) -> i64 {
+        self.ttl_default
     }
 
     pub fn public_url(&self) -> Option<&str> {
@@ -613,7 +622,9 @@ async fn create_link(
 ) -> Result<Response, Response> {
     let k = owner(&p, &h, true)?;
     limit(&reg, format!("share-link|{}|{}", k.0, k.1), 10)?;
-    let ttl = body.and_then(|b| b.0["ttl_secs"].as_i64()).unwrap_or(1800);
+    let ttl = body
+        .and_then(|b| b.0["ttl_secs"].as_i64())
+        .unwrap_or_else(|| reg.share.ttl_default());
     let (secret, id, exp) = reg.share.create_link(&k, ttl, crate::now()).map_err(fail)?;
     audit(&reg, &k, "share_link_create", id.clone());
     Ok((
@@ -935,6 +946,16 @@ mod tests {
     }
     fn key() -> RoomKey {
         ("t1".into(), 1)
+    }
+
+    #[test]
+    fn defaults_are_24_hours() {
+        // Assumes the test environment does not set the RUPERT_SHARE_* overrides (CI does not).
+        let s = ShareState::new();
+        assert_eq!(
+            (s.ttl_default(), s.ttl_max, s.live_max),
+            (86_400, 86_400, 86_400)
+        );
     }
 
     #[test]

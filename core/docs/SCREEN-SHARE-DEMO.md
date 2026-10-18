@@ -28,7 +28,7 @@ curl -s localhost:8799/auth/signup -H 'content-type: application/json' \
 4. Owner: the buddy shows up as "Someone wants to watch": click **Allow**. The buddy's video starts in about 0.1-0.2 s locally.
 5. **Stop sharing** (or the browser's own Stop button, or close the tab) ends it and kills every link.
 
-Knobs (env): `RUPERT_SHARE_MAX_VIEWERS` (1), `RUPERT_SHARE_LINK_TTL_MAX` (86400), `RUPERT_SHARE_MAX_SECS` (7200),
+Knobs (env): `RUPERT_SHARE_MAX_VIEWERS` (1), `RUPERT_SHARE_LINK_TTL_MAX` (86400), `RUPERT_SHARE_MAX_SECS` (86400), `RUPERT_SHARE_LINK_TTL` (86400),
 `RUPERT_SHARE_STUN` (Google's public STUN; empty for none), `RUPERT_SHARE_TURN` / `_TURN_USER` / `_TURN_CRED` (optional),
 `RUPERT_SHARE_PUBLIC_URL` (a bare `http(s)://host[:port]` origin; links shown on the owner page use it instead of the page's own address, which matters because the owner page must be opened on 127.0.0.1 or HTTPS while buddies need an address they can reach).
 Browsers need a secure context for `getDisplayMedia`: `http://127.0.0.1` and `localhost` count; any other host needs HTTPS.

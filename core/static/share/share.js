@@ -28,7 +28,7 @@ function render() {
     const sec = state.secrets.get(l.id);
     const d = document.createElement('div'); d.className = 'row';
     const url = sec ? (state.publicUrl || location.origin) + '/v#' + sec : null;
-    d.innerHTML = '<span>' + (url ? '<code class="linkurl">' + esc(url) + '</code>' : '<span class="mut">link created elsewhere</span>') + '<br><span class="mut">expires ' + new Date(l.expires_at * 1000).toLocaleTimeString() + '</span></span><span></span>';
+    d.innerHTML = '<span>' + (url ? '<code class="linkurl">' + esc(url) + '</code>' : '<span class="mut">link created elsewhere</span>') + '<br><span class="mut">expires ' + new Date(l.expires_at * 1000).toLocaleString() + '</span></span><span></span>';
     const box = d.lastChild;
     if (url) { const c = document.createElement('button'); c.textContent = 'Copy'; c.onclick = () => navigator.clipboard && navigator.clipboard.writeText(url); box.append(c, ' '); }
     const r = document.createElement('button'); r.textContent = 'Revoke'; r.className = 'danger'; r.onclick = async () => { await api('DELETE', '/links/' + l.id); refresh(); }; box.append(r);
@@ -96,7 +96,7 @@ $('start').onclick = async () => {
 };
 $('stop').onclick = stopSharing;
 $('mklink').onclick = async () => {
-  const r = await api('POST', '/links', { ttl_secs: 1800 });
+  const r = await api('POST', '/links', {});
   if (r.ok) { const l = await r.json(); state.secrets.set(l.id, l.token); } else $('msg').textContent = r.status === 429 ? 'Slow down.' : 'Could not create a link (' + r.status + ').';
   refresh();
 };
