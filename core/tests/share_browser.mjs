@@ -115,7 +115,7 @@ try {
   await owner.until(`window.__gdmPending === true`);
   await owner.eval(`window.__grant()`);
   await owner.until(`!document.getElementById('banner').hidden`);
-  check('banner visible after grant', /You are sharing your screen with 0 viewer/.test(await owner.eval(`document.getElementById('bannertext').textContent`)));
+  check('banner visible after grant', /Sharing your screen · 0 people watching/.test(await owner.eval(`document.getElementById('bannertext').textContent`)));
   check('tab title marks sharing', /SHARING/.test(await owner.eval('document.title')));
 
   // viewer (still polling) joins, but is only pending until the owner allows

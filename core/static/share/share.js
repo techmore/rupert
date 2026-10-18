@@ -8,15 +8,20 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 function render() {
   const n = state.viewers.filter((v) => v.state === 'admitted').length;
   $('banner').hidden = !state.live;
+  $('app').dataset.live = state.live ? '1' : '0';
+  const waiting = state.viewers.filter((v) => v.state === 'pending').length;
+  $('viewcard').classList.toggle('attn', waiting > 0);
+  $('mklink').textContent = state.links.length ? 'Create another link' : 'Create viewer link';
+  $('mklink').className = state.links.length ? 'flat' : 'big';
   document.title = state.live ? '● SHARING — ' + n + ' viewer(s)' : 'Share your screen';
-  $('bannertext').textContent = 'You are sharing your screen with ' + n + ' viewer(s)';
+  $('bannertext').textContent = 'Sharing your screen · ' + (n === 1 ? '1 person watching' : n + ' people watching');
   $('banner').dataset.viewers = n;
   $('start').disabled = state.live;
   $('viewers').innerHTML = state.viewers.length ? '' : 'None yet.';
   for (const v of state.viewers) {
     const d = document.createElement('div');
-    d.className = 'row';
-    d.innerHTML = '<span>' + (v.state === 'pending' ? 'Someone wants to watch' : 'Watching') + ' <span class="mut">(' + esc(v.ip) + ')</span></span><span></span>';
+    d.className = 'row viewer';
+    d.innerHTML = '<span>' + (v.state === 'pending' ? '<b>Someone wants to watch</b>' : '<b>Watching</b>') + ' <span class="mut">(' + esc(v.ip) + ')</span></span><span></span>';
     const box = d.lastChild;
     const mk = (label, act, cls) => { const b = document.createElement('button'); b.textContent = label; if (cls) b.className = cls; b.onclick = () => api('POST', '/viewers/' + v.vid + '/' + act); box.append(b, ' '); };
     if (v.state === 'pending') { mk('Allow', 'admit', 'primary'); mk('Deny', 'deny'); } else mk('Remove', 'kick', 'danger');
@@ -30,7 +35,7 @@ function render() {
     const url = sec ? (state.publicUrl || location.origin) + '/v/' + sec : null;
     d.innerHTML = '<span>' + (url ? '<code class="linkurl">' + esc(url) + '</code>' : '<span class="mut">link created elsewhere</span>') + '<br><span class="mut">expires ' + new Date(l.expires_at * 1000).toLocaleString() + '</span></span><span></span>';
     const box = d.lastChild;
-    if (url) { const c = document.createElement('button'); c.textContent = 'Copy'; c.onclick = () => navigator.clipboard && navigator.clipboard.writeText(url); box.append(c, ' '); }
+    if (url) { const c = document.createElement('button'); c.textContent = 'Copy'; c.className = 'primary'; c.onclick = () => { navigator.clipboard && navigator.clipboard.writeText(url); toast('Link copied'); }; box.append(c, ' '); }
     const r = document.createElement('button'); r.textContent = 'Revoke'; r.className = 'danger'; r.onclick = async () => { await api('DELETE', '/links/' + l.id); refresh(); }; box.append(r);
     $('links').append(d);
   }
@@ -129,3 +134,5 @@ setInterval(async () => {
   }
   $('diag').textContent = lines.join('\n');
 }, 2000);
+
+function toast(t) { const e = document.createElement('div'); e.className = 'toast'; e.textContent = t; document.body.append(e); setTimeout(() => e.remove(), 1800); }

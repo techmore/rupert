@@ -13,15 +13,15 @@
 <label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password">
 <div class="row"><span id="loginerr" class="err"></span><button id="loginbtn" class="primary">Sign in</button></div></div>
 <div id="app" hidden>
-<div class="card"><b>1 · Start</b>
+<div class="card" id="startcard"><b>1 · Start</b>
 <button id="start" class="primary big">Start sharing</button>
 <p id="msg" class="err" style="margin:8px 0 0"></p>
 <p class="mut" style="margin:8px 0 0;font-size:.85rem">Choose <b>Entire Screen</b> if a single window shows up black for your viewer.</p></div>
-<div class="card"><b>2 · Send the link</b>
+<div class="card" id="linkcard"><b>2 · Send the link</b>
 <div id="links"></div>
 <button id="mklink" class="big">Create viewer link</button>
 <p class="mut" style="margin:8px 0 0;font-size:.85rem">Valid for 24 hours, one viewer, and you approve them below. Open the whole link on the other device.</p></div>
-<div class="card"><b>3 · Viewers</b><div id="viewers" class="mut">None yet.</div></div>
+<div class="card" id="viewcard"><b>3 · Viewers</b><div id="viewers" class="mut">None yet.</div></div>
 <div class="card" id="diagcard" hidden><details><summary>Capture diagnostics</summary><pre id="diag" class="mut" style="white-space:pre-wrap;margin:8px 0 0"></pre></details></div>
 </div></main>
 <script src="/share.js"></script></body></html>
