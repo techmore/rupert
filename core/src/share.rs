@@ -80,6 +80,8 @@ pub struct ShareState {
     /// Origin buddies should use in links (`RUPERT_SHARE_PUBLIC_URL`). The owner page itself must be opened on a secure
     /// origin (127.0.0.1 or https), which is usually not an address anyone else can reach.
     public_url: Option<String>,
+    /// Last connection diagnostics each side reported (owner page / viewer page), for troubleshooting only.
+    diag: Mutex<[(i64, String); 2]>,
 }
 
 /// Accepts only a bare http(s) origin: no path, query, fragment, userinfo or whitespace.
@@ -128,6 +130,15 @@ pub fn enabled() -> bool {
 }
 
 impl ShareState {
+    pub fn set_diag(&self, side: usize, text: &str) {
+        let t: String = text.chars().take(1500).collect();
+        self.diag.lock()[side.min(1)] = (crate::now(), t);
+    }
+    pub fn diag(&self) -> Value {
+        let d = self.diag.lock().clone();
+        json!({ "owner": { "at": d[0].0, "text": d[0].1 }, "viewer": { "at": d[1].0, "text": d[1].1 } })
+    }
+
     pub fn new() -> Self {
         let stun = std::env::var("RUPERT_SHARE_STUN")
             .unwrap_or_else(|_| "stun:stun.l.google.com:19302".into())
@@ -147,6 +158,7 @@ impl ShareState {
         let ttl_max = env_num("RUPERT_SHARE_LINK_TTL_MAX", 86_400i64).max(60);
         Self {
             inner: Mutex::new(Inner::default()),
+            diag: Mutex::new([(0, String::new()), (0, String::new())]),
             max_viewers: env_num("RUPERT_SHARE_MAX_VIEWERS", 1usize).clamp(1, 8),
             ttl_max,
             // Defaults are 24 hours for both a link's lifetime and a share's maximum running time (the owner's decision);
@@ -644,6 +656,7 @@ async fn status(
     let k = owner(&p, &h, false)?;
     let mut s = reg.share.status(&k);
     s["ice"] = reg.share.ice();
+    s["diag"] = reg.share.diag();
     s["public_url"] = reg
         .share
         .public_url()
@@ -855,6 +868,35 @@ async fn view_signal(
     Ok(Json(json!({ "ok": true })).into_response())
 }
 
+#[derive(Deserialize)]
+struct DiagBody {
+    text: String,
+}
+
+async fn owner_diag(
+    State(reg): State<Arc<Registry>>,
+    p: Principal,
+    h: HeaderMap,
+    Json(b): Json<DiagBody>,
+) -> Result<Response, Response> {
+    let k = owner(&p, &h, true)?;
+    limit(&reg, format!("share-odiag|{}|{}", k.0, k.1), 120)?;
+    reg.share.set_diag(0, &b.text);
+    Ok(Json(json!({ "ok": true })).into_response())
+}
+
+async fn view_diag(
+    State(reg): State<Arc<Registry>>,
+    ConnectInfo(ci): ConnectInfo<SocketAddr>,
+    h: HeaderMap,
+    Json(b): Json<DiagBody>,
+) -> Result<Response, Response> {
+    let (ip, _dig) = viewer_ctx(&reg, ci, &h)?;
+    limit(&reg, format!("share-vdiag|{ip}"), 120)?;
+    reg.share.set_diag(1, &b.text);
+    Ok(Json(json!({ "ok": true })).into_response())
+}
+
 async fn view_leave(
     State(reg): State<Arc<Registry>>,
     ConnectInfo(ci): ConnectInfo<SocketAddr>,
@@ -936,6 +978,8 @@ pub fn routes() -> Router<Arc<Registry>> {
         .route("/api/v1/share/view/events", get(view_events))
         .route("/api/v1/share/view/signal", post(view_signal))
         .route("/api/v1/share/view/leave", post(view_leave))
+        .route("/api/v1/share/diag", post(owner_diag))
+        .route("/api/v1/share/view/diag", post(view_diag))
         .layer(DefaultBodyLimit::max(64 * 1024))
 }
 

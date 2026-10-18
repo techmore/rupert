@@ -82,6 +82,9 @@ function startStats() {
     else if (frames === lastFrames) status('Live (' + w + '×' + h + '), the shared window is not changing');
     else status('Live (view only) ' + w + '×' + h);
     lastFrames = frames;
+    let cand = '';
+    (await pc.getStats()).forEach((r) => { if (r.type === 'candidate-pair' && r.nominated) cand = r.state + ' rtt=' + r.currentRoundTripTime; });
+    post('diag', { text: 'viewer: pc=' + pc.connectionState + ' ice=' + pc.iceConnectionState + ' framesDecoded=' + frames + ' ' + w + 'x' + h + ' video=' + $('video').videoWidth + 'x' + $('video').videoHeight + ' paused=' + $('video').paused + ' pair=' + cand + ' ua=' + navigator.userAgent.slice(0, 90) }).catch(() => {});
   }, 2000);
 }
 $('fs').onclick = () => { const s = $('stage'); (s.requestFullscreen || s.webkitRequestFullscreen || (() => { $('video').webkitEnterFullscreen && $('video').webkitEnterFullscreen(); })).call(s); };

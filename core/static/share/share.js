@@ -133,6 +133,7 @@ setInterval(async () => {
     lines.push('viewer ' + vid.slice(0, 6) + ': ' + pc.connectionState + (o ? ', encoded ' + (o.framesEncoded || 0) + ', sent ' + (o.framesSent || 0) + ' frames, ' + Math.round((o.bytesSent || 0) / 1024) + ' KiB' + (o.qualityLimitationReason && o.qualityLimitationReason !== 'none' ? ', limited by ' + o.qualityLimitationReason : '') : ', no video stats yet') + (pair ? ', path ok' : ''));
   }
   $('diag').textContent = lines.join('\n');
+  api('POST', '/diag', { text: lines.join(' | ') }).catch(() => {});
 }, 2000);
 
 function toast(t) { const e = document.createElement('div'); e.className = 'toast'; e.textContent = t; document.body.append(e); setTimeout(() => e.remove(), 1800); }
