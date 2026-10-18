@@ -1,0 +1,25 @@
+<div class="max-w-3xl space-y-5">
+  <%= link_to 'Email campaigns', marketing_email_path, class: 'btn-ghost' %>
+  <h1 class="text-2xl font-semibold"><%= @campaign.name %> · <%= @campaign.status.humanize %></h1>
+  <section class="card card-pad space-y-2">
+    <p><strong>From:</strong> <%= @campaign.sender.from_header %></p>
+    <p><strong>Subject:</strong> <%= @campaign.subject %></p>
+    <pre class="whitespace-pre-wrap text-sm"><%= @campaign.body %></pre>
+    <p class="text-xs">Footer added at send: <%= @postal_address.presence || 'no mailing address saved yet' %> and an unsubscribe link.</p>
+    <p class="text-sm"><strong>Audience:</strong> status <%= @campaign.segment_status.presence || 'any' %>, source <%= @campaign.segment_source.presence || 'any' %>, tag <%= @campaign.segment_tag.presence || 'any' %>.</p>
+  </section>
+  <% if @campaign.last_error.present? %><p class="text-sm"><%= @campaign.last_error %></p><% end %>
+  <% if @campaign.status == 'draft' %>
+    <p><strong><%= @audience %></strong> consented customers match right now. Recipients are fixed when you approve.</p>
+    <% if Current.user.can?('marketing.review') %>
+      <%= form_with url: approve_marketing_email_campaign_path(@campaign), class: 'card card-pad space-y-3' do |f| %>
+        <%= hidden_field_tag :lock_version, @campaign.lock_version %>
+        <label class="block text-sm"><%= check_box_tag :confirmed, '1' %> I checked the sender, message and audience. Send this to the customers above.</label>
+        <%= f.submit 'Approve and send', class: 'btn-primary' %>
+      <% end %>
+    <% end %>
+  <% else %>
+    <p class="text-sm"><%= @counts.map { |status, n| "#{n} #{status}" }.join(' · ').presence || 'No recipients.' %></p>
+    <% if %w[approved sending].include?(@campaign.status) && Current.user.can?('marketing.review') %><%= button_to 'Pause', pause_marketing_email_campaign_path(@campaign), class: 'btn-ghost' %><% end %>
+  <% end %>
+</div>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_18_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_18_300000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -777,6 +777,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_200000) do
     t.string "tags"
     t.string "preferred_name"
     t.bigint "owner_id"
+    t.datetime "marketing_consent_at"
+    t.string "marketing_consent_source"
+    t.datetime "marketing_unsubscribed_at"
     t.index ["tenant_id", "created_at", "id"], name: "idx_customers_tenant_created_id"
     t.index ["tenant_id", "crm_status"], name: "index_customers_on_tenant_id_and_crm_status"
     t.index ["tenant_id", "email"], name: "index_customers_on_tenant_id_and_email"
@@ -1171,6 +1174,90 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_200000) do
     t.datetime "updated_at", null: false
     t.index ["engagement_id"], name: "index_marketing_documents_on_engagement_id"
     t.index ["tenant_id"], name: "index_marketing_documents_on_tenant_id"
+  end
+
+  create_table "marketing_email_campaigns", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "sender_id", null: false
+    t.string "name", null: false
+    t.string "subject", null: false
+    t.text "body", null: false
+    t.string "segment_status"
+    t.string "segment_source"
+    t.string "segment_tag"
+    t.string "status", default: "draft", null: false
+    t.datetime "scheduled_at"
+    t.datetime "sent_at"
+    t.bigint "approved_by_id"
+    t.text "last_error"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["sender_id"], name: "index_marketing_email_campaigns_on_sender_id"
+    t.index ["tenant_id", "status"], name: "index_marketing_email_campaigns_on_tenant_id_and_status"
+    t.index ["tenant_id"], name: "index_marketing_email_campaigns_on_tenant_id"
+    t.check_constraint "status IN ('draft', 'approved', 'sending', 'sent', 'paused', 'failed')", name: "marketing_email_campaign_status"
+  end
+
+  create_table "marketing_email_domains", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "domain", null: false
+    t.string "kind", default: "custom", null: false
+    t.string "status", default: "pending", null: false
+    t.string "provider_id"
+    t.text "dns_records_json"
+    t.text "last_error"
+    t.datetime "verified_at"
+    t.datetime "checked_at"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "domain"], name: "index_marketing_email_domains_on_tenant_id_and_domain", unique: true
+    t.index ["tenant_id"], name: "index_marketing_email_domains_on_tenant_id"
+    t.check_constraint "kind IN ('custom', 'shared')", name: "marketing_email_domain_kind"
+    t.check_constraint "status IN ('pending', 'verified', 'failed')", name: "marketing_email_domain_status"
+  end
+
+  create_table "marketing_email_recipients", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "campaign_id", null: false
+    t.bigint "customer_id", null: false
+    t.string "email", null: false
+    t.string "status", default: "queued", null: false
+    t.string "provider_message_id"
+    t.text "last_error"
+    t.datetime "sent_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["campaign_id", "customer_id"], name: "idx_on_campaign_id_customer_id_ca96e3818e", unique: true
+    t.index ["campaign_id"], name: "index_marketing_email_recipients_on_campaign_id"
+    t.index ["provider_message_id"], name: "index_marketing_email_recipients_on_provider_message_id"
+    t.index ["tenant_id"], name: "index_marketing_email_recipients_on_tenant_id"
+    t.check_constraint "status IN ('queued', 'sent', 'bounced', 'complained', 'failed', 'skipped')", name: "marketing_email_recipient_status"
+  end
+
+  create_table "marketing_email_senders", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "email_domain_id", null: false
+    t.string "from_name", null: false
+    t.string "local_part", null: false
+    t.string "reply_to"
+    t.boolean "is_default", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email_domain_id"], name: "index_marketing_email_senders_on_email_domain_id"
+    t.index ["tenant_id", "email_domain_id", "local_part"], name: "marketing_email_sender_address", unique: true
+    t.index ["tenant_id"], name: "index_marketing_email_senders_on_tenant_id"
+  end
+
+  create_table "marketing_email_suppressions", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "email", null: false
+    t.string "reason", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "email"], name: "index_marketing_email_suppressions_on_tenant_id_and_email", unique: true
+    t.index ["tenant_id"], name: "index_marketing_email_suppressions_on_tenant_id"
   end
 
   create_table "marketing_engagements", force: :cascade do |t|
@@ -2532,6 +2619,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_200000) do
   add_foreign_key "marketing_documents", "marketing_engagements", column: "engagement_id"
   add_foreign_key "marketing_documents", "tenants"
   add_foreign_key "marketing_documents", "users", column: "reviewed_by_id"
+  add_foreign_key "marketing_email_campaigns", "marketing_email_senders", column: "sender_id"
+  add_foreign_key "marketing_email_campaigns", "tenants"
+  add_foreign_key "marketing_email_campaigns", "users", column: "approved_by_id"
+  add_foreign_key "marketing_email_domains", "tenants"
+  add_foreign_key "marketing_email_recipients", "customers"
+  add_foreign_key "marketing_email_recipients", "marketing_email_campaigns", column: "campaign_id"
+  add_foreign_key "marketing_email_recipients", "tenants"
+  add_foreign_key "marketing_email_senders", "marketing_email_domains", column: "email_domain_id"
+  add_foreign_key "marketing_email_senders", "tenants"
+  add_foreign_key "marketing_email_suppressions", "tenants"
   add_foreign_key "marketing_engagements", "marketing_campaigns", column: "campaign_id"
   add_foreign_key "marketing_engagements", "marketing_influencers", column: "influencer_id"
   add_foreign_key "marketing_engagements", "tenants"

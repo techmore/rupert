@@ -1,0 +1,16 @@
+<div class="max-w-3xl space-y-5">
+  <%= link_to 'Email campaigns', marketing_email_path, class: 'btn-ghost' %>
+  <h1 class="text-2xl font-semibold">New email campaign</h1>
+  <%= form_with url: marketing_email_campaigns_path, scope: :campaign, class: 'card card-pad space-y-4' do |f| %>
+    <div><%= f.label :name, 'Internal name', class: 'block text-sm' %><%= f.text_field :name, required: true, maxlength: 200, class: 'input w-full' %></div>
+    <div><%= f.label :sender_id, 'Send from', class: 'block text-sm' %><%= f.select :sender_id, @senders.map { |s| [s.from_header, s.id] }, {}, class: 'input w-full' %></div>
+    <div><%= f.label :subject, 'Subject', class: 'block text-sm' %><%= f.text_field :subject, required: true, maxlength: 200, class: 'input w-full' %></div>
+    <div><%= f.label :body, 'Message (plain text; the unsubscribe link and mailing address are added automatically)', class: 'block text-sm' %><%= f.text_area :body, required: true, rows: 10, maxlength: 20_000, class: 'input w-full' %></div>
+    <fieldset class="space-y-2"><legend class="text-sm font-semibold">Audience (consented customers only; leave blank for all)</legend>
+      <%= f.select :segment_status, Core::Customer::CRM_STATUSES.map { |s| [s.humanize, s] }, { include_blank: 'Any status' }, 'aria-label': 'Customer status', class: 'input' %>
+      <%= f.select :segment_source, Core::Customer::SOURCES.map { |s| [s.humanize, s] }, { include_blank: 'Any source' }, 'aria-label': 'Source', class: 'input' %>
+      <%= f.text_field :segment_tag, placeholder: 'Tag contains…', 'aria-label': 'Tag', class: 'input' %>
+    </fieldset>
+    <%= f.submit 'Save draft', class: 'btn-primary' %>
+  <% end %>
+</div>

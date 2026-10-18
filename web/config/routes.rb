@@ -522,6 +522,19 @@ Rails.application.routes.draw do
       post :review, on: :member
     end
     resources :campaigns, only: %i[new create edit update]
+    get 'email', to: 'email#index', as: :email
+    patch 'email/postal_address', to: 'email#postal_address', as: :email_postal_address
+    resources :email_domains, only: [:create] do
+      post :shared, on: :collection
+      post :check, on: :member
+    end
+    resources :email_senders, only: [:create]
+    resources :email_campaigns, only: %i[new create show] do
+      member do
+        post :approve
+        post :pause
+      end
+    end
     resources :communities, only: %i[new create edit update] do
       post :check_rules, on: :member
     end
@@ -535,6 +548,10 @@ Rails.application.routes.draw do
       post :transition, on: :member
     end
   end
+
+  get '/unsubscribe/:token', to: 'email_unsubscribes#show', as: :email_unsubscribe
+  post '/unsubscribe/:token', to: 'email_unsubscribes#create'
+  post '/webhooks/postmark', to: 'postmark_webhooks#create'
 
   get '/up', to: proc { [200, { 'content-type' => 'text/plain' }, ['OK']] }
 

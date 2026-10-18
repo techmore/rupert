@@ -1,0 +1,56 @@
+<div class="space-y-6 max-w-4xl">
+  <%= link_to 'Marketing', marketing_path, class: 'btn-ghost' %>
+  <h1 class="text-2xl font-semibold">Email campaigns</h1>
+  <p class="text-sm text-mocha">Send to customers who agreed to marketing email. Each message carries an unsubscribe link and your mailing address. <%= @consented %> customers can currently receive campaigns.</p>
+
+  <section class="card card-pad space-y-3"><h2 class="text-lg font-semibold">Mailing address</h2>
+    <p class="text-sm">Required in every message by email law. Shown in the footer.</p>
+    <% if Current.user.can?('marketing.review') %>
+      <%= form_with url: marketing_email_postal_address_path, method: :patch, class: 'space-y-2' do |f| %>
+        <%= f.text_area :postal_address, value: @postal_address, rows: 3, maxlength: 500, 'aria-label': 'Mailing address', class: 'input w-full' %>
+        <%= f.submit 'Save address', class: 'btn-ghost' %>
+      <% end %>
+    <% else %><p class="whitespace-pre-wrap"><%= @postal_address.presence || 'Not set' %></p><% end %>
+  </section>
+
+  <section class="card card-pad space-y-4"><h2 class="text-lg font-semibold">Sending domains</h2>
+    <% @domains.each do |domain| %>
+      <article class="border-b border-sand pb-3 space-y-2">
+        <h3 class="font-semibold"><%= domain.domain %> · <%= domain.verified? ? 'Verified' : domain.status.humanize %><%= ' · shared' if domain.kind == 'shared' %></h3>
+        <% unless domain.verified? %>
+          <p class="text-sm">Add these DNS records at your domain host, then check again. This is a one-time setup and does not affect your existing email.</p>
+          <table class="text-sm w-full"><thead><tr><th class="text-left">Purpose</th><th class="text-left">Type</th><th class="text-left">Host</th><th class="text-left">Value</th><th class="text-left">Found</th></tr></thead>
+            <tbody><% domain.dns_records.each do |r| %><tr><td><%= r['purpose'] %></td><td><%= r['type'] %></td><td class="break-all"><code><%= r['host'] %></code></td><td class="break-all"><code><%= r['value'] %></code></td><td><%= r['verified'] ? 'Yes' : 'No' %></td></tr><% end %></tbody></table>
+          <% if Current.user.can?('marketing.review') && domain.kind == 'custom' %><%= button_to 'Check DNS records', check_marketing_email_domain_path(domain), class: 'btn-ghost' %><% end %>
+        <% end %>
+      </article>
+    <% end %>
+    <% if @domains.empty? %><p>No sending domain yet. Add your own or use the shared one.</p><% end %>
+    <% if Current.user.can?('marketing.write') && Current.user.can?('marketing.review') %>
+      <%= form_with url: marketing_email_domains_path, class: 'flex flex-wrap gap-2' do |f| %>
+        <%= f.text_field :domain, placeholder: 'mail.yourshop.com', required: true, 'aria-label': 'Your domain', class: 'input' %><%= f.submit 'Add my domain', class: 'btn-primary' %>
+      <% end %>
+      <% if @shared_available && @domains.none? { |d| d.kind == 'shared' } %><%= button_to 'Use a shared Rupert domain (no DNS setup)', shared_marketing_email_domains_path, class: 'btn-ghost' %><% end %>
+    <% end %>
+  </section>
+
+  <section class="card card-pad space-y-4"><h2 class="text-lg font-semibold">Senders</h2>
+    <% @senders.each do |s| %><p><%= s.from_header %><%= " · replies to #{s.reply_to}" if s.reply_to.present? %></p><% end %>
+    <% verified = @domains.select(&:verified?) %>
+    <% if verified.any? && Current.user.can?('marketing.write') && Current.user.can?('marketing.review') %>
+      <%= form_with url: marketing_email_senders_path, scope: :sender, class: 'flex flex-wrap gap-2 items-end' do |f| %>
+        <%= f.text_field :from_name, placeholder: 'Shop name', required: true, 'aria-label': 'From name', class: 'input' %>
+        <%= f.text_field :local_part, placeholder: 'hello', required: true, 'aria-label': 'Address before @', class: 'input' %>
+        <%= f.select :email_domain_id, verified.map { |d| ["@#{d.domain}", d.id] }, {}, 'aria-label': 'Domain', class: 'input' %>
+        <%= f.email_field :reply_to, placeholder: 'Reply-to (optional)', 'aria-label': 'Reply-to', class: 'input' %>
+        <%= f.submit 'Add sender', class: 'btn-primary' %>
+      <% end %>
+    <% elsif verified.empty? %><p class="text-sm">Verify a domain to add a sender.</p><% end %>
+  </section>
+
+  <section class="card card-pad space-y-3"><h2 class="text-lg font-semibold">Campaigns</h2>
+    <% if Current.user.can?('marketing.write') && @senders.any? { |s| s.email_domain.verified? } %><%= link_to 'New email campaign', new_marketing_email_campaign_path, class: 'btn-primary' %><% end %>
+    <% @campaigns.each do |c| %><p><%= link_to c.name, marketing_email_campaign_path(c), class: 'underline' %> · <%= c.status.humanize %> · <%= c.updated_at.to_fs(:short) %></p><% end %>
+    <% if @campaigns.empty? %><p>No campaigns yet.</p><% end %>
+  </section>
+</div>
