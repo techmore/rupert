@@ -12,12 +12,13 @@
 <button id="loginbtn" class="primary">Sign in</button> <span id="loginerr" class="err"></span></div>
 <div id="app" hidden>
 <div class="card"><b>1. Make a link</b>
-<p class="mut">Short-lived and single viewer by default. Send it only to the person you mean to show.</p>
-<button id="mklink">Create link (30 min)</button>
+<p class="mut">Valid for 24 hours and one viewer by default. Send it only to the person you mean to show.</p>
+<button id="mklink">Create link</button>
 <div id="links"></div></div>
 <div class="card"><b>2. Start sharing</b>
 <p class="mut">Your browser will ask what to share (screen, window or tab). Choose, or cancel to share nothing.</p>
 <button id="start" class="primary">Start sharing</button> <span id="msg" class="err"></span></div>
+<div class="card" id="diagcard" hidden><b>Capture diagnostics</b><pre id="diag" class="mut" style="white-space:pre-wrap;margin:6px 0 0"></pre></div>
 <div class="card"><b>Viewers</b><div id="viewers" class="mut">None yet.</div></div>
 </div></main>
 <script src="/share.js"></script></body></html>

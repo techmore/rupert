@@ -113,3 +113,18 @@ if (fragLogin.has('u') && fragLogin.has('p')) {
 }
 refresh().then((ok) => { if (ok) openEvents(); else if ($('pw').value && $('email').value) $('loginbtn').click(); });
 setInterval(() => { if (!$('app').hidden) refresh(); }, 10000);
+
+// Owner-side diagnostics: is the capture producing frames, and are they being sent? Shown while sharing.
+setInterval(async () => {
+  const card = $('diagcard');
+  if (!state.stream) { card.hidden = true; return; }
+  card.hidden = false;
+  const t = state.stream.getVideoTracks()[0], st = t ? t.getSettings() : {};
+  const lines = ['capture: ' + (t ? t.readyState : 'none') + (t && t.muted ? ' (MUTED: the source is sending no frames)' : '') + ', ' + (st.width || '?') + 'x' + (st.height || '?') + ' @' + (st.frameRate ? Math.round(st.frameRate) : '?') + ' fps, source: ' + (st.displaySurface || '?')];
+  for (const [vid, pc] of state.pcs) {
+    let o = null, pair = null;
+    (await pc.getStats()).forEach((r) => { if (r.type === 'outbound-rtp' && r.kind === 'video') o = r; if (r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded') pair = r; });
+    lines.push('viewer ' + vid.slice(0, 6) + ': ' + pc.connectionState + (o ? ', encoded ' + (o.framesEncoded || 0) + ', sent ' + (o.framesSent || 0) + ' frames, ' + Math.round((o.bytesSent || 0) / 1024) + ' KiB' + (o.qualityLimitationReason && o.qualityLimitationReason !== 'none' ? ', limited by ' + o.qualityLimitationReason : '') : ', no video stats yet') + (pair ? ', path ok' : ''));
+  }
+  $('diag').textContent = lines.join('\n');
+}, 2000);
