@@ -75,3 +75,11 @@ Base: [PUBLIC-STEP-RUNBOOK.md](PUBLIC-STEP-RUNBOOK.md) steps must be done first.
 6. **Roll back**: remove `RUPERT_SHARE=1` and restart (routes vanish, all shares end); revert the Caddy matcher lines.
 
 Not covered: the Caddy/oauth2 path, real internet NAT traversal and TURN were not tested here.
+
+## Measured (2026-10-18, Asahi aarch64 laptop, loopback, one run each, not a benchmark)
+
+- Release binary idle RSS with `RUPERT_SHARE=1`: about 7 MB (one reading, empty data dir; the service as a whole is ~36 MB RSS under load per the spec).
+- Owner clicks Allow to first decoded frame in the viewer: two runs of 5 gave medians of 153 ms and 104 ms (loopback, canvas
+  source, no STUN, same machine; says nothing about internet latency, quality, or CPU, which were **not** measured).
+- Not run: `tests/adjust_consistency.py` (needs `oha` and a seeded dir; unrelated to this change). `ops_smoke.py` passes 21/21 with a
+  binary built with `RUPERT_GIT_REV` set; the 1 failure on my plain debug build is the unset git rev check.
