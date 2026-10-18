@@ -65,10 +65,10 @@ async function run() {
       else if (ev === 'ended') { finish(d.reason); return; }
     }
   }
-  if (!ended) finish('');
+  if (!ended) { status('Reconnecting…'); setTimeout(() => { if (!ended) location.reload(); }, 1000); }
 }
 $('leave').onclick = async () => { if (vid) await post('leave', { vid }); finish('left'); status('You left.'); };
-addEventListener('pagehide', () => { if (vid && !ended) post('leave', { vid }); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && !ended && (!pc || ['failed', 'disconnected', 'closed'].includes(pc.connectionState))) location.reload(); });
 run();
 
 // Say what the connection is actually doing: a black picture with 'Live' hides whether frames arrive at all.

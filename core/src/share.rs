@@ -28,6 +28,9 @@ type RoomKey = (String, i64); // (tenant, owner user): one room per signed-in ow
 type Msg = (String, String); // (SSE event name, JSON data)
 
 const PENDING_SECS: i64 = 60;
+/// A viewer the host already approved may come back (phone locked, app switched) within this long without a new approval,
+/// from the same address and the same link. Removing or denying them, stopping, or revoking the link ends it.
+const RESUME_SECS: i64 = 600;
 const OWNER_GRACE_SECS: i64 = 15;
 const MAX_LINKS: usize = 5;
 const MAX_OWNER_STREAMS: usize = 3;
@@ -55,6 +58,7 @@ struct Room {
     gone_at: i64,
     tx: broadcast::Sender<Msg>,
     viewers: HashMap<String, Viewer>,
+    resume: HashMap<(String, String), i64>,
 }
 
 struct Link {
@@ -204,6 +208,7 @@ impl ShareState {
             gone_at: 0,
             tx: broadcast::channel(256).0,
             viewers: HashMap::new(),
+            resume: HashMap::new(),
         })
     }
 
@@ -211,6 +216,9 @@ impl ShareState {
         let Some(v) = room.viewers.remove(vid) else {
             return false;
         };
+        if matches!(reason, "removed" | "denied") {
+            room.resume.remove(&(v.link.clone(), v.ip.clone()));
+        }
         let _ =
             v.tx.try_send(("ended".into(), json!({ "reason": reason }).to_string()));
         let _ = room.tx.send((
@@ -318,6 +326,7 @@ impl ShareState {
         };
         let was = r.live;
         r.live = false;
+        r.resume.clear();
         let vids: Vec<String> = r.viewers.keys().cloned().collect();
         for v in vids {
             Self::end_viewer(r, &v, reason);
@@ -350,21 +359,40 @@ impl ShareState {
         }
         let vid = rand_hex(16);
         let (tx, rx) = mpsc::channel(64);
+        r.resume.retain(|_, until| *until > now);
+        let resumed = r
+            .resume
+            .get(&(lid.clone(), ip.to_string()))
+            .is_some_and(|until| *until > now);
+        if resumed {
+            let _ = tx.try_send(("admitted".into(), "{}".into()));
+        }
         r.viewers.insert(
             vid.clone(),
             Viewer {
                 link: lid.clone(),
-                state: VState::Pending,
+                state: if resumed {
+                    VState::Admitted
+                } else {
+                    VState::Pending
+                },
                 since: now,
                 ip: ip.to_string(),
                 tx,
                 rx: Some(rx),
             },
         );
-        let _ = r.tx.send((
-            "viewer_request".into(),
-            json!({ "vid": vid, "ip": ip, "since": now }).to_string(),
-        ));
+        if resumed {
+            r.resume
+                .insert((lid.clone(), ip.to_string()), now + RESUME_SECS);
+            let _ =
+                r.tx.send(("viewer_admitted".into(), json!({ "vid": vid }).to_string()));
+        } else {
+            let _ = r.tx.send((
+                "viewer_request".into(),
+                json!({ "vid": vid, "ip": ip, "since": now }).to_string(),
+            ));
+        }
         Ok((vid, rk, lid))
     }
 
@@ -458,6 +486,9 @@ impl ShareState {
                 }
                 let v = r.viewers.get_mut(vid).unwrap();
                 v.state = VState::Admitted;
+                let key = (v.link.clone(), v.ip.clone());
+                r.resume.insert(key, crate::now() + RESUME_SECS);
+                let v = r.viewers.get_mut(vid).unwrap();
                 let _ = v.tx.try_send(("admitted".into(), "{}".into()));
                 let _ =
                     r.tx.send(("viewer_admitted".into(), json!({ "vid": vid }).to_string()));
@@ -994,6 +1025,30 @@ mod tests {
     }
     fn key() -> RoomKey {
         ("t1".into(), 1)
+    }
+
+    #[test]
+    fn approved_viewer_can_resume_but_removed_cannot() {
+        let s = st(1);
+        let (sec, _id, _) = s.create_link(&key(), 3600, 100).unwrap();
+        let dig = sha_hex(&sec);
+        s.start(&key(), 100);
+        let (vid, _, _) = s.join(&dig, "1.2.3.4", 100).unwrap();
+        s.owner_viewer_action(&key(), &vid, "admit").unwrap();
+        s.viewer_dropped(&vid); // phone locked / app switched
+        let (v2, _, _) = s.join(&dig, "1.2.3.4", 101).unwrap();
+        let snap = s.status(&key());
+        assert_eq!(snap["viewers"][0]["state"], "admitted", "{snap}");
+        // another address still needs approval once this one leaves
+        s.viewer_dropped(&v2);
+        let (v3, _, _) = s.join(&dig, "5.6.7.8", 102).unwrap();
+        assert_eq!(s.status(&key())["viewers"][0]["state"], "pending");
+        s.viewer_dropped(&v3);
+        // removing the approved viewer revokes the resume right
+        let (v4, _, _) = s.join(&dig, "1.2.3.4", 103).unwrap();
+        s.owner_viewer_action(&key(), &v4, "kick").unwrap();
+        let (_v5, _, _) = s.join(&dig, "1.2.3.4", 104).unwrap();
+        assert_eq!(s.status(&key())["viewers"][0]["state"], "pending");
     }
 
     #[test]
