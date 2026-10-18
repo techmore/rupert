@@ -138,6 +138,20 @@ try {
     if (round === 0) {
       const a = await frames(viewer); await sleep(1200); const b = await frames(viewer);
       check('viewer receives live frames (counter advances)', b > a + 5, `frames ${a} -> ${b}`);
+      { // zoom: wheel (desktop) and a real touch pinch (phone) both scale the picture, and it stays inside bounds
+        await viewer.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: 300, y: 200, deltaX: 0, deltaY: -300 });
+        const zw = parseFloat(await viewer.eval(`document.getElementById('stage').dataset.zoom || '1'`));
+        check('viewer zooms in with the wheel', zw > 1.2, 'zoom ' + zw);
+        await viewer.eval(`document.getElementById('stage').dataset.zoom='1'`);
+        const before = parseFloat(await viewer.eval(`document.getElementById('stage').dataset.zoom || '1'`));
+        await viewer.send('Input.synthesizePinchGesture', { x: 300, y: 200, scaleFactor: 2.2, relativeSpeed: 400, gestureSourceType: 'touch' });
+        await sleep(300);
+        const zp = parseFloat(await viewer.eval(`document.getElementById('stage').dataset.zoom || '1'`));
+        check('viewer zooms with a touch pinch', zp > 1.3 && zp <= 6, `zoom ${before} -> ${zp}`);
+        const tf = await viewer.eval(`document.getElementById('video').style.transform`);
+        check('zoomed picture has a transform and is not off screen', /scale\(/.test(tf), tf);
+        await viewer.eval(`document.getElementById('stage').dispatchEvent(new WheelEvent('wheel', { deltaY: 3000, clientX: 300, clientY: 200, cancelable: true }))`);
+      }
       check('viewer stage is actually visible on screen (not inside a hidden container)', await viewer.eval(`(() => { const r = document.getElementById('video').getBoundingClientRect(); return r.width > 100 && r.height > 100; })()`));
       check('video has real dimensions', (await viewer.eval(`document.getElementById('video').videoWidth`)) === 640);
       check('owner banner counts 1 viewer', await owner.until(`document.getElementById('banner').dataset.viewers==='1'`).then(() => true, () => false));

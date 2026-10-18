@@ -118,3 +118,46 @@ $('pip').onclick = async (e) => {
   } catch (_) { status('Picture in picture is not available here.', 'err'); }
 };
 if ('mediaSession' in navigator) { try { navigator.mediaSession.setActionHandler('enterpictureinpicture', () => vdPip.requestPictureInPicture && vdPip.requestPictureInPicture().catch(() => {})); } catch (_) {} }
+
+// Pinch to zoom, drag to pan, double-tap to toggle zoom. The picture is the full-resolution screen, so zooming shows real detail.
+const zoom = { s: 1, x: 0, y: 0 };
+const stageEl = $('stage'), vz = $('video');
+function fitted() { // the video's on-screen box at scale 1 (object-fit: contain)
+  const W = stageEl.clientWidth, H = stageEl.clientHeight, vw = vz.videoWidth || W, vh = vz.videoHeight || H;
+  const r = Math.min(W / vw, H / vh); return { w: vw * r, h: vh * r, W, H };
+}
+function applyZoom() {
+  const f = fitted();
+  zoom.s = Math.min(6, Math.max(1, zoom.s));
+  const mw = Math.max(0, (f.w * zoom.s - f.W) / 2), mh = Math.max(0, (f.h * zoom.s - f.H) / 2);
+  const cx = (f.W - f.w) / 2, cy = (f.H - f.h) / 2;           // top-left of the fitted picture
+  // keep the picture covering the screen along any axis where it is larger than the screen, centred otherwise
+  const minX = f.w * zoom.s > f.W ? f.W - (cx + f.w) * zoom.s : (f.W - f.w * zoom.s) / 2 - cx * zoom.s;
+  const maxX = f.w * zoom.s > f.W ? -cx * zoom.s : minX;
+  const minY = f.h * zoom.s > f.H ? f.H - (cy + f.h) * zoom.s : (f.H - f.h * zoom.s) / 2 - cy * zoom.s;
+  const maxY = f.h * zoom.s > f.H ? -cy * zoom.s : minY;
+  zoom.x = Math.min(maxX, Math.max(minX, zoom.x)); zoom.y = Math.min(maxY, Math.max(minY, zoom.y));
+  vz.style.transform = 'translate(' + zoom.x + 'px,' + zoom.y + 'px) scale(' + zoom.s + ')';
+  stageEl.dataset.zoom = zoom.s.toFixed(2);
+}
+function zoomAt(px, py, ns) { // keep the point under the fingers fixed while changing scale
+  const k = ns / zoom.s; zoom.x = px - (px - zoom.x) * k; zoom.y = py - (py - zoom.y) * k; zoom.s = ns; applyZoom();
+}
+const ptrs = new Map(); let pinch0 = null, lastTap = 0, moved = false;
+stageEl.addEventListener('pointerdown', (e) => { if (e.target.closest('#bar,#tap')) return; stageEl.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); moved = false;
+  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = { d: Math.hypot(a.x - b.x, a.y - b.y), s: zoom.s }; } });
+stageEl.addEventListener('pointermove', (e) => {
+  const p = ptrs.get(e.pointerId); if (!p) return;
+  const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+  if (Math.abs(dx) + Math.abs(dy) > 1) moved = true;
+  if (ptrs.size >= 2 && pinch0) { const [a, b] = [...ptrs.values()]; zoomAt((a.x + b.x) / 2, (a.y + b.y) / 2, pinch0.s * Math.hypot(a.x - b.x, a.y - b.y) / pinch0.d); }
+  else if (ptrs.size === 1 && zoom.s > 1) { zoom.x += dx; zoom.y += dy; applyZoom(); }
+});
+const up = (e) => { if (!ptrs.has(e.pointerId)) return; ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch0 = null;
+  if (ptrs.size === 0 && !moved && e.type === 'pointerup') { const now = Date.now();
+    if (now - lastTap < 300) { if (zoom.s > 1.05) { zoom.s = 1; zoom.x = 0; zoom.y = 0; applyZoom(); } else zoomAt(e.clientX, e.clientY, 2.5); lastTap = 0; } else lastTap = now; } };
+stageEl.addEventListener('pointerup', up); stageEl.addEventListener('pointercancel', up);
+stageEl.addEventListener('wheel', (e) => { e.preventDefault(); zoomAt(e.clientX, e.clientY, zoom.s * Math.exp(-Math.max(-400, Math.min(400, e.deltaY)) * 0.0025)); }, { passive: false });
+addEventListener('resize', applyZoom); addEventListener('orientationchange', () => setTimeout(applyZoom, 300));
+// iOS Safari's own page-zoom gesture would fight ours.
+['gesturestart', 'gesturechange'].forEach((n) => stageEl.addEventListener(n, (e) => e.preventDefault()));
