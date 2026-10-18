@@ -87,11 +87,13 @@ mkdir -p "$STATE_DIR"; chmod 700 "$STATE_DIR"
   curl -fs -m 5 -c "$JAR" "http://127.0.0.1:$PORT/auth/login" -H 'content-type: application/json' \
     -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}" >/dev/null 2>&1 || exit 0
   while kill -0 "$SERVER_PID" 2>/dev/null; do
-    curl -fs -m 3 -b "$JAR" "http://127.0.0.1:$PORT/api/v1/share/status" 2>/dev/null | python3 -I -c '
-import json,sys,time
+    curl -fs -m 3 -b "$JAR" "http://127.0.0.1:$PORT/api/v1/share/status" 2>/dev/null | S_PORT="$PORT" S_EMAIL="$EMAIL" S_PASS="$PASS" S_PUBLIC="$PUBLIC" python3 -I -c '
+import json,os,sys,time
 try: d=json.load(sys.stdin)
 except Exception: sys.exit(0)
-print(json.dumps({"live":bool(d.get("live")),"viewers":len(d.get("viewers") or []),"updated":int(time.time())}))' > "$STATE.tmp" \
+e=os.environ
+print(json.dumps({"live":bool(d.get("live")),"viewers":len(d.get("viewers") or []),"updated":int(time.time()),
+  "port":int(e["S_PORT"]),"email":e["S_EMAIL"],"password":e["S_PASS"],"public_url":e["S_PUBLIC"]}))' > "$STATE.tmp" \
       && chmod 600 "$STATE.tmp" && mv -f "$STATE.tmp" "$STATE"
     sleep 2
   done

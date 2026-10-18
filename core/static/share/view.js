@@ -20,8 +20,13 @@ async function onSignal(m, ice) {
   if (m.kind === 'offer') {
     pc = new RTCPeerConnection({ iceServers: ice });
     pc.onicecandidate = (e) => { if (e.candidate) post('signal', { vid, kind: 'ice', data: e.candidate.toJSON() }); };
-    pc.ontrack = (e) => { $('video').srcObject = e.streams[0]; $('video').hidden = false; status('Live (view only)'); };
-    pc.onconnectionstatechange = () => { document.body.dataset.pc = pc.connectionState; };
+    pc.ontrack = (e) => { $('video').srcObject = e.streams[0]; $('video').hidden = false; $('video').play().catch(() => {});
+      $('video').onplaying = () => status('Live (view only)'); $('video').onclick = () => $('video').play().catch(() => {}); };
+    pc.onconnectionstatechange = () => {
+      document.body.dataset.pc = pc.connectionState;
+      if (pc.connectionState === 'failed') status('Could not connect to the host (the network blocked the direct path). Try the host\'s tailnet link.', 'err');
+      else if (pc.connectionState === 'connected') status('Connected. Waiting for the first picture… (a window that is not changing sends nothing)');
+    };
     await pc.setRemoteDescription(m.data);
     await pc.setLocalDescription(await pc.createAnswer());
     await post('signal', { vid, kind: 'answer', data: pc.localDescription.toJSON() });
