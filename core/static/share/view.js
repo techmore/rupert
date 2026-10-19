@@ -81,7 +81,7 @@ function startStats() {
     if (frames === 0) status('Connected, but no picture has arrived yet. On the host, share the whole screen or move the shared window.');
     else if (frames === lastFrames) status('Live (' + w + '×' + h + '), the shared window is not changing');
     else status('Live (view only) ' + w + '×' + h);
-    if (frames > 0 && $('video').paused) { $('tap').hidden = false; status('Picture is arriving. Tap the screen to start it.'); }
+    if (frames > 0 && $('video').paused) { const p = $('video').play(); if (p && p.catch) p.catch((e) => { if (e && e.name === 'NotAllowedError') { $('tap').hidden = false; status('Picture is arriving. Tap the screen to start it.'); } }); }
     lastFrames = frames;
     let cand = '';
     (await pc.getStats()).forEach((r) => { if (r.type === 'candidate-pair' && r.nominated) cand = r.state + ' rtt=' + r.currentRoundTripTime; });
@@ -96,11 +96,15 @@ $('stage').addEventListener('click', () => { $('stage').classList.remove('idle')
 function playNow() {
   const vd = $('video');
   vd.muted = true; vd.setAttribute('playsinline', ''); vd.setAttribute('webkit-playsinline', '');
+  // Muted inline autoplay is allowed, so retry quietly as data arrives; the button shows only if the browser actually refuses.
   const ok = () => { $('tap').hidden = true; };
-  const p = vd.play();
-  if (p && p.then) p.then(ok).catch(() => { $('tap').hidden = false; });
-  setTimeout(() => { if (vd.paused || !vd.videoWidth) $('tap').hidden = false; }, 1200);
-  vd.onloadedmetadata = () => vd.play().then(ok).catch(() => { $('tap').hidden = false; });
+  const refused = () => { $('tap').hidden = false; };
+  const attempt = () => { const p = vd.play(); if (p && p.then) p.then(ok).catch((e) => { if (e && e.name === 'NotAllowedError') refused(); }); };
+  vd.onplaying = ok;
+  vd.onloadedmetadata = attempt; vd.onloadeddata = attempt; vd.oncanplay = attempt;
+  attempt();
+  let tries = 0;
+  const t = setInterval(() => { if (!vd.paused || ++tries > 20) { clearInterval(t); return; } attempt(); }, 500);
 }
 $('tap').onclick = (e) => { e.stopPropagation(); const vd = $('video'); vd.muted = true; vd.play().then(() => { $('tap').hidden = true; }).catch(() => status('This browser will not play the picture. Try Safari or Chrome.', 'err')); };
 
