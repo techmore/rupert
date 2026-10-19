@@ -65,6 +65,8 @@ struct Link {
     id: String,
     room: RoomKey,
     expires: i64,
+    /// The owner chose, when making this link, to let whoever opens it watch without a per-viewer Allow.
+    auto_admit: bool,
 }
 
 #[derive(Default)]
@@ -246,7 +248,7 @@ impl ShareState {
             .links
             .values()
             .filter(|l| &l.room == k)
-            .map(|l| json!({ "id": l.id, "expires_at": l.expires }))
+            .map(|l| json!({ "id": l.id, "expires_at": l.expires, "auto_admit": l.auto_admit }))
             .collect();
         links.sort_by_key(|l| l["expires_at"].as_i64());
         let mut s = i
@@ -258,11 +260,22 @@ impl ShareState {
         s
     }
 
+    #[cfg(test)]
     pub fn create_link(
         &self,
         k: &RoomKey,
         ttl: i64,
         now: i64,
+    ) -> Result<(String, String, i64), (u16, &'static str)> {
+        self.create_link_opts(k, ttl, now, false)
+    }
+
+    pub fn create_link_opts(
+        &self,
+        k: &RoomKey,
+        ttl: i64,
+        now: i64,
+        auto_admit: bool,
     ) -> Result<(String, String, i64), (u16, &'static str)> {
         let ttl = ttl.clamp(60, self.ttl_max);
         let mut i = self.inner.lock();
@@ -278,6 +291,7 @@ impl ShareState {
                 id: id.clone(),
                 room: k.clone(),
                 expires: exp,
+                auto_admit,
             },
         );
         Ok((secret, id, exp))
@@ -350,7 +364,7 @@ impl ShareState {
         if l.expires <= now {
             return Err((401, "invalid or expired link"));
         }
-        let (rk, lid) = (l.room.clone(), l.id.clone());
+        let (rk, lid, auto) = (l.room.clone(), l.id.clone(), l.auto_admit);
         let Some(r) = i.rooms.get_mut(&rk).filter(|r| r.live) else {
             return Err((409, "the host is not sharing right now"));
         };
@@ -360,10 +374,10 @@ impl ShareState {
         let vid = rand_hex(16);
         let (tx, rx) = mpsc::channel(64);
         r.resume.retain(|_, until| *until > now);
-        let resumed = r
-            .resume
-            .get(&(lid.clone(), ip.to_string()))
-            .is_some_and(|until| *until > now);
+        let resumed = auto
+            || r.resume
+                .get(&(lid.clone(), ip.to_string()))
+                .is_some_and(|until| *until > now);
         if resumed {
             let _ = tx.try_send(("admitted".into(), "{}".into()));
         }
@@ -665,10 +679,17 @@ async fn create_link(
 ) -> Result<Response, Response> {
     let k = owner(&p, &h, true)?;
     limit(&reg, format!("share-link|{}|{}", k.0, k.1), 10)?;
+    let body_auto = body
+        .as_ref()
+        .is_some_and(|b| b.0["auto_admit"].as_bool() == Some(true));
     let ttl = body
         .and_then(|b| b.0["ttl_secs"].as_i64())
         .unwrap_or_else(|| reg.share.ttl_default());
-    let (secret, id, exp) = reg.share.create_link(&k, ttl, crate::now()).map_err(fail)?;
+    let auto = body_auto;
+    let (secret, id, exp) = reg
+        .share
+        .create_link_opts(&k, ttl, crate::now(), auto)
+        .map_err(fail)?;
     audit(&reg, &k, "share_link_create", id.clone());
     Ok((
         StatusCode::CREATED,
@@ -1048,6 +1069,21 @@ mod tests {
         let (v4, _, _) = s.join(&dig, "1.2.3.4", 103).unwrap();
         s.owner_viewer_action(&key(), &v4, "kick").unwrap();
         let (_v5, _, _) = s.join(&dig, "1.2.3.4", 104).unwrap();
+        assert_eq!(s.status(&key())["viewers"][0]["state"], "pending");
+    }
+
+    #[test]
+    fn auto_admit_link_admits_without_allow_but_normal_links_do_not() {
+        let s = st(2);
+        let (auto_sec, _, _) = s.create_link_opts(&key(), 3600, 100, true).unwrap();
+        let (norm_sec, _, _) = s.create_link(&key(), 3600, 100).unwrap();
+        s.start(&key(), 100);
+        let (v1, _, _) = s.join(&sha_hex(&auto_sec), "1.1.1.1", 101).unwrap();
+        let snap = s.status(&key());
+        assert_eq!(snap["viewers"][0]["state"], "admitted", "{snap}");
+        assert_eq!(snap["links"][0]["auto_admit"].as_bool().is_some(), true);
+        s.viewer_dropped(&v1);
+        let (_v2, _, _) = s.join(&sha_hex(&norm_sec), "2.2.2.2", 102).unwrap();
         assert_eq!(s.status(&key())["viewers"][0]["state"], "pending");
     }
 

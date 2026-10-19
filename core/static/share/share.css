@@ -45,3 +45,4 @@ details summary{cursor:pointer;color:var(--mut);font-size:.85rem}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:99px;font-weight:600;box-shadow:var(--sh);z-index:9}
 #tap{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:auto;padding:16px 26px;font-size:1.1rem;z-index:2}
 #stage{touch-action:none;overflow:hidden}#stage video{transform-origin:0 0;will-change:transform}
+label.check{display:flex;gap:8px;align-items:flex-start;margin:0 0 10px;color:var(--fg);font-size:.9rem}label.check input{width:auto;margin:3px 0 0}

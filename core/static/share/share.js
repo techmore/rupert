@@ -102,7 +102,7 @@ $('start').onclick = async () => {
 };
 $('stop').onclick = stopSharing;
 $('mklink').onclick = async () => {
-  const r = await api('POST', '/links', {});
+  const r = await api('POST', '/links', { auto_admit: $('autoadmit').checked });
   if (r.ok) { const l = await r.json(); state.secrets.set(l.id, l.token); } else $('msg').textContent = r.status === 429 ? 'Slow down.' : 'Could not create a link (' + r.status + ').';
   refresh();
 };
