@@ -25,8 +25,12 @@ class JournalLedgerIntegrityTest < ActiveSupport::TestCase
 
   def raw_line(entry_id:, account_id:, debit: 0, credit: 0)
     now = Time.current
-    Finance::JournalLine.insert_all!([{ tenant_id: @tenant.id, journal_entry_id: entry_id, account_id: account_id,
-      debit_cents: debit, credit_cents: credit, position: 9, created_at: now, updated_at: now }])
+    # Savepoint so a rejected insert does not abort the surrounding test
+    # transaction on PostgreSQL.
+    Finance::JournalLine.transaction(requires_new: true) do
+      Finance::JournalLine.insert_all!([{ tenant_id: @tenant.id, journal_entry_id: entry_id, account_id: account_id,
+        debit_cents: debit, credit_cents: credit, position: 9, created_at: now, updated_at: now }])
+    end
   end
 
   test 'posted legs cannot be edited or deleted' do
@@ -54,9 +58,13 @@ class JournalLedgerIntegrityTest < ActiveSupport::TestCase
     assert_raises(ActiveRecord::StatementInvalid) { raw_line(entry_id: entry.id, account_id: @cash.id) }
   end
 
-  test 'database rejects a leg pointing at a missing entry or account' do
+  test 'database rejects a leg pointing at a missing entry' do
     entry = post_entry
     assert_raises(ActiveRecord::InvalidForeignKey) { raw_line(entry_id: entry.id + 10_000, account_id: @cash.id, debit: 5) }
+  end
+
+  test 'database rejects a leg pointing at a missing account' do
+    entry = post_entry
     assert_raises(ActiveRecord::InvalidForeignKey) { raw_line(entry_id: entry.id, account_id: @cash.id + 10_000, debit: 5) }
   end
 
