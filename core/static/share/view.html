@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Screen"><meta name="theme-color" content="#000000">
 <title>Watch a shared screen</title><link rel="stylesheet" href="/share.css"></head>
 <body><main>
 <h1><svg viewBox="0 0 16 16" aria-hidden="true"><g fill="currentColor"><path fill-rule="evenodd" d="M0.2 8a3.9 5 0 1 0 7.8 0a3.9 5 0 1 0-7.8 0zM1.5 8a2.6 3.7 0 1 1 5.2 0a2.6 3.7 0 1 1-5.2 0z"/><path fill-rule="evenodd" d="M8 8a3.9 5 0 1 0 7.8 0a3.9 5 0 1 0-7.8 0zM9.3 8a2.6 3.7 0 1 1 5.2 0a2.6 3.7 0 1 1-5.2 0z"/><circle cx="5.2" cy="9" r="1.5"/><circle cx="13" cy="9" r="1.5"/></g></svg>Watch a shared screen</h1>
@@ -7,5 +8,5 @@
 <div id="vstat" role="status">Connecting…</div>
 <p><button id="leave" hidden>Leave</button></p>
 </main>
-<div id="stage" hidden><video id="video" autoplay playsinline muted autopictureinpicture></video><button id="tap" class="primary big" hidden>Tap to show the screen</button><div id="bar"><span id="vstat2"></span><button id="pip" hidden>Picture in picture</button><button id="fs">Full screen</button><button id="leave2">Leave</button></div></div>
+<div id="stage" hidden><video id="video" autoplay playsinline muted autopictureinpicture x-webkit-airplay="allow" disableremoteplayback="false"></video><button id="tap" class="primary big" hidden>Tap to show the screen</button><div id="bar"><span id="vstat2"></span><button id="airplay" hidden>AirPlay</button><button id="native" hidden>Native player</button><button id="pip" hidden>Picture in picture</button><button id="fs">Full screen</button><button id="leave2">Leave</button></div></div>
 <script src="/v.js"></script></body></html>

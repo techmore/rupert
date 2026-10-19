@@ -161,3 +161,23 @@ stageEl.addEventListener('wheel', (e) => { e.preventDefault(); zoomAt(e.clientX,
 addEventListener('resize', applyZoom); addEventListener('orientationchange', () => setTimeout(applyZoom, 300));
 // iOS Safari's own page-zoom gesture would fight ours.
 ['gesturestart', 'gesturechange'].forEach((n) => stageEl.addEventListener(n, (e) => e.preventDefault()));
+
+// iPhone/iPad niceties, each only when the browser offers it.
+// 1. Keep the screen awake while watching (a locked phone would drop the stream).
+let wake = null;
+async function keepAwake() { try { if ('wakeLock' in navigator && !wake) { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => { wake = null; }); } } catch (_) {} }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && !$('stage').hidden) keepAwake(); });
+new MutationObserver(() => { if (!$('stage').hidden) keepAwake(); }).observe($('stage'), { attributes: true, attributeFilter: ['hidden'] });
+// 2. AirPlay: send the picture to an Apple TV / HomePod-with-screen from Safari's own target picker.
+if (vdPip.webkitShowPlaybackTargetPicker) {
+  vdPip.addEventListener('webkitplaybacktargetavailabilitychanged', (e) => { $('airplay').hidden = e.availability !== 'available'; });
+  $('airplay').onclick = (e) => { e.stopPropagation(); vdPip.webkitShowPlaybackTargetPicker(); };
+}
+// 3. iOS's real fullscreen player (hides Safari's bars; has its own pinch zoom and PiP). Zoom in this page is for the inline view.
+if (vdPip.webkitEnterFullscreen && !document.fullscreenEnabled) {
+  $('native').hidden = false;
+  $('native').onclick = (e) => { e.stopPropagation(); try { vdPip.webkitEnterFullscreen(); } catch (_) {} };
+  $('fs').hidden = true;
+}
+// 4. Lock-screen / Control Center card instead of a blank player.
+if ('mediaSession' in navigator && window.MediaMetadata) { try { navigator.mediaSession.metadata = new MediaMetadata({ title: 'Shared screen', artist: 'Screen Share (view only)' }); } catch (_) {} }
