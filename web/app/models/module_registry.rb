@@ -160,6 +160,9 @@ class ModuleRegistry
     Entry.new(key: 'finance_reports', name: 'Financial reports', path: lambda {
       finance_reports_path
     }, permission: 'finance.read', position: 52),
+    Entry.new(key: 'payees', name: 'By payee', path: lambda {
+      finance_payees_path
+    }, permission: 'finance.read', position: 49),
     Entry.new(key: 'bank_reconciliation', name: 'Bank reconciliation', path: lambda {
       finance_bank_reconciliation_path
     }, permission: 'finance.read', position: 53),
@@ -209,15 +212,17 @@ class ModuleRegistry
       { key: 'stock', name: 'Stock',
         modules: %w[inventory inventory_exceptions locations inventory_counts stock_requests stock_reservations bulk_materials bulk_recipes bulk_consumptions alerts purchase_orders vendors reconcile sizes] },
       { key: 'money', name: 'Bookkeeping',
-        modules: %w[bookkeeping books_desk book_approvals bank_statements business_snapshot books_check period_locks source_reports financial_close reports daily_reconciliation reconciliation_documents reconciliation_overview reconciliation_follow_ups retention_drive register_summary cash_forecast ledger finance_accounts chart_of_accounts expenses payments journal_entries finance_reports bank_reconciliation ledger_export],
-        # Optional sub-sections for long menus. Order here is display order; every
-        # module of the area must appear in exactly one group.
+        modules: %w[bookkeeping books_desk book_approvals bank_statements business_snapshot books_check period_locks source_reports financial_close reports daily_reconciliation reconciliation_documents reconciliation_overview reconciliation_follow_ups retention_drive register_summary cash_forecast ledger finance_accounts chart_of_accounts expenses payments payees journal_entries finance_reports bank_reconciliation ledger_export],
+        # Optional sub-sections, the single source for both the header tools menu and
+        # the in-page Bookkeeping navigation. Order here is display order. Every
+        # module of the area must appear in exactly one group; a group may also name
+        # in-page-only links from other areas (receipts), which the menu ignores.
         groups: [
-          { name: 'Overview', modules: %w[bookkeeping business_snapshot books_check] },
+          { name: 'Everyday', modules: %w[bookkeeping bank_statements expenses payments payees] },
           { name: 'Daily close', modules: %w[financial_close daily_reconciliation register_summary reconciliation_overview reconciliation_follow_ups reconciliation_documents] },
-          { name: 'Books & review', modules: %w[books_desk book_approvals period_locks bank_statements bank_reconciliation source_reports retention_drive] },
-          { name: 'Ledger & accounts', modules: %w[ledger journal_entries chart_of_accounts finance_accounts expenses payments ledger_export] },
-          { name: 'Reports & planning', modules: %w[reports finance_reports cash_forecast] }
+          { name: 'Books & review', modules: %w[books_desk book_approvals bank_reconciliation period_locks books_check source_reports retention_drive] },
+          { name: 'Ledger & accounts', modules: %w[finance_accounts chart_of_accounts journal_entries ledger ledger_export receipts] },
+          { name: 'Reports & planning', modules: %w[reports finance_reports business_snapshot cash_forecast] }
         ] },
       { key: 'work', name: 'Work', modules: %w[projects tasks goals kpis] },
       # Personal staff self-service (own receipts, own hours). Receipts has no permission, so
@@ -228,6 +233,13 @@ class ModuleRegistry
       { key: 'system', name: 'System',
         modules: %w[system platform connections pos_connections sync settings warehouse activity access_log api_access_tokens roadmap owner_checklists] }
     ].freeze
+
+    # Group index and name for a module of a grouped area; nil when ungrouped.
+    def group_for(area_key, module_key)
+      area = AREAS.find { |a| a[:key] == area_key.to_s }
+      index = Array(area&.dig(:groups)).index { |group| group[:modules].include?(module_key.to_s) }
+      index && [index, area[:groups][index][:name]]
+    end
 
     # Sub-sections of an area with only the visible modules; empty groups drop out.
     def groups_for(area, modules)
