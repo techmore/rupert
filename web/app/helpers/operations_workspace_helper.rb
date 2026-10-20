@@ -21,34 +21,34 @@ module OperationsWorkspaceHelper
        ['Movements', movements_inventory_index_path, 'inventory.read', 'inventory/movements'],
        ['Catalog links', reconcile_index_path, 'reconcile.read', 'reconcile']]
     when :money, :finance
-      [['Overview', bookkeeping_path(month: month), 'finance.read', 'bookkeeping', 'Bookkeeping'],
-       ['Bank transactions', bank_statements_path, 'finance.read', 'bank_statements', 'Bookkeeping'],
-       ['Expenses', finance_expenses_path(month: month), 'finance.read', 'finance/expenses', 'Bookkeeping'],
-       ['Vendor payments', finance_vendor_payments_path(month: month), 'finance.read', 'finance/vendor_payments', 'Bookkeeping'],
-       ['By payee', finance_payees_path, 'finance.read', 'finance/payees', 'Bookkeeping'],
-       ['Close & review', books_desk_path, 'reports.read', 'books_desks', 'Reconcile & close'],
-       ['Bank reconciliation', finance_bank_reconciliation_path, 'finance.read', 'finance/bank_reconciliations', 'Reconcile & close'],
-       ['Daily reconciliation', daily_reconciliations_path(day: date), 'reports.read', 'daily_reconciliations', 'Reconcile & close'],
-       ['Day close', financial_close_path(day: date), 'reports.read', 'financial_close', 'Reconcile & close'],
-       ['Book approvals', book_approvals_path, 'reports.read', 'book_approvals', 'Reconcile & close'],
-       ['Follow-ups', reconciliation_follow_ups_path(day: date), 'reports.read', 'reconciliation_follow_ups', 'Reconcile & close'],
-       ['Source documents', reconciliation_documents_path(from: date, to: date, close_day: date), 'reports.read', 'reconciliation_documents', 'Records'],
-       ['Accounts', finance_accounts_path, 'finance.read', 'finance/accounts', 'Records'],
-       ['Receipts', receipts_path, 'finance.read', 'receipts', 'Records'],
-       ['Chart of accounts', finance_chart_of_accounts_path, 'finance.read', 'finance/chart_of_accounts', 'Records'],
-       ['General ledger', finance_journal_entries_path, 'finance.read', 'finance/journal_entries', 'Records'],
-       ['Imported orders', ledger_index_path, 'ledger.read', 'ledger', 'Records'],
-       ['Ledger export', finance_ledger_export_path, 'finance.read', 'finance/ledger_exports', 'Reports & control'],
-       ['Financial statements', finance_reports_path, 'finance.read', 'finance/reports', 'Reports & control'],
-       ['Source reports', money_reconciliations_path(date: date), 'reports.read', 'money_reconciliations', 'Reports & control'],
-       ['Cash forecast', cash_forecast_path(day: date), 'reports.read', 'cash_forecasts', 'Reports & control'],
-       ['Business snapshot', business_snapshot_path, 'finance.read', 'business_snapshots', 'Reports & control'],
-       ['Books health', books_check_path, 'reports.read', 'books_check', 'Reports & control'],
-       ['Period locks', period_locks_path, 'reports.read', 'period_locks', 'Reports & control']]
+      [['Overview', bookkeeping_path(month: month), 'finance.read', 'bookkeeping', 'bookkeeping'],
+       ['Bank transactions', bank_statements_path, 'finance.read', 'bank_statements', 'bank_statements'],
+       ['Expenses', finance_expenses_path(month: month), 'finance.read', 'finance/expenses', 'expenses'],
+       ['Vendor payments', finance_vendor_payments_path(month: month), 'finance.read', 'finance/vendor_payments', 'payments'],
+       ['By payee', finance_payees_path, 'finance.read', 'finance/payees', 'payees'],
+       ['Close & review', books_desk_path, 'reports.read', 'books_desks', 'books_desk'],
+       ['Bank reconciliation', finance_bank_reconciliation_path, 'finance.read', 'finance/bank_reconciliations', 'bank_reconciliation'],
+       ['Daily reconciliation', daily_reconciliations_path(day: date), 'reports.read', 'daily_reconciliations', 'daily_reconciliation'],
+       ['Day close', financial_close_path(day: date), 'reports.read', 'financial_close', 'financial_close'],
+       ['Book approvals', book_approvals_path, 'reports.read', 'book_approvals', 'book_approvals'],
+       ['Follow-ups', reconciliation_follow_ups_path(day: date), 'reports.read', 'reconciliation_follow_ups', 'reconciliation_follow_ups'],
+       ['Source documents', reconciliation_documents_path(from: date, to: date, close_day: date), 'reports.read', 'reconciliation_documents', 'reconciliation_documents'],
+       ['Accounts', finance_accounts_path, 'finance.read', 'finance/accounts', 'finance_accounts'],
+       ['Receipts', receipts_path, 'finance.read', 'receipts', 'receipts'],
+       ['Chart of accounts', finance_chart_of_accounts_path, 'finance.read', 'finance/chart_of_accounts', 'chart_of_accounts'],
+       ['General ledger', finance_journal_entries_path, 'finance.read', 'finance/journal_entries', 'journal_entries'],
+       ['Imported orders', ledger_index_path, 'ledger.read', 'ledger', 'ledger'],
+       ['Ledger export', finance_ledger_export_path, 'finance.read', 'finance/ledger_exports', 'ledger_export'],
+       ['Financial statements', finance_reports_path, 'finance.read', 'finance/reports', 'finance_reports'],
+       ['Source reports', money_reconciliations_path(date: date), 'reports.read', 'money_reconciliations', 'source_reports'],
+       ['Cash forecast', cash_forecast_path(day: date), 'reports.read', 'cash_forecasts', 'cash_forecast'],
+       ['Business snapshot', business_snapshot_path, 'finance.read', 'business_snapshots', 'business_snapshot'],
+       ['Books health', books_check_path, 'reports.read', 'books_check', 'books_check'],
+       ['Period locks', period_locks_path, 'reports.read', 'period_locks', 'period_locks']]
     else
       []
     end
-    entries.filter_map do |label, path, permission, key, group|
+    entries.filter_map do |label, path, permission, key, module_key|
       allowed = permission == 'pos' ? Current.user&.can_use_pos? : retail_business_access?(permission)
       next unless allowed
 
@@ -59,8 +59,18 @@ module OperationsWorkspaceHelper
       else
         controller_path
       end
-      [label, path, key == active_key || (key.end_with?('/*') && active_key.start_with?(key.delete_suffix('*'))), group]
-    end
+      [label, path, key == active_key || (key.end_with?('/*') && active_key.start_with?(key.delete_suffix('*'))), module_key]
+    end.then { |links| group_money_links(workspace, links) }
+  end
+
+  # Bookkeeping links take their group name and order from ModuleRegistry so the
+  # in-page navigation and the header tools menu never drift apart. Other
+  # workspaces carry no module key and stay in one unlabelled group.
+  def group_money_links(workspace, links)
+    return links.map { |label, path, active, _| [label, path, active, nil] } unless %i[money finance].include?(workspace.to_sym)
+
+    links.each_with_index.sort_by { |(_, _, _, module_key), i| [ModuleRegistry.group_for('money', module_key)&.first || 99, i] }
+      .map { |(label, path, active, module_key), _| [label, path, active, ModuleRegistry.group_for('money', module_key)&.last] }
   end
 
   # "g then letter" jump keys for the Finance workspace links.
@@ -71,7 +81,7 @@ module OperationsWorkspaceHelper
     'Cash forecast' => 'w', 'Business snapshot' => 'n', 'Books health' => 'h', 'Period locks' => 'k'
   }.freeze
 
-  # The same links split into labelled groups (Routine / Records / Reports)
+  # The same links split into labelled groups (see ModuleRegistry::AREAS)
   # where the workspace defines them; one unlabelled group otherwise.
   def operations_link_groups(workspace, day: nil)
     operations_links(workspace, day: day).chunk_while { |a, b| a[3] == b[3] }.map { |links| [links.first[3], links] }

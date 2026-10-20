@@ -27,7 +27,7 @@ class BooksDesksIntegrationTest < ActionDispatch::IntegrationTest
     assert_select 'article[aria-labelledby=close-yearly]'
     assert_select 'turbo-frame#books-desk-checks[src=?]', checks_books_desk_path
     assert_select 'nav[aria-label="Bookkeeping workspace"] a[aria-current=page]', text: 'Close & review'
-    assert_select 'nav[aria-label="Bookkeeping workspace"] .workspace-nav-group', text: 'Reconcile & close'
+    assert_select 'nav[aria-label="Bookkeeping workspace"] .workspace-nav-group', text: 'Books & review'
   end
 
   test 'an earlier week can be chosen and a future week falls back to last week' do
@@ -68,9 +68,9 @@ class BooksDesksIntegrationTest < ActionDispatch::IntegrationTest
       assert_response :success
       assert_select 'nav[aria-label="Bookkeeping workspace"]', count: 1
       assert_select 'nav[aria-label="Bookkeeping workspace"] a[aria-current="page"]', count: 1
-      assert_select 'nav[aria-label="Bookkeeping workspace"] .workspace-nav-group', text: 'Reconcile & close'
-      assert_select 'nav[aria-label="Bookkeeping workspace"] .workspace-nav-group', text: 'Records'
-      assert_select 'nav[aria-label="Bookkeeping workspace"] .workspace-nav-group', text: 'Reports & control'
+      ['Daily close', 'Books & review', 'Ledger & accounts', 'Reports & planning'].each do |group|
+        assert_select 'nav[aria-label="Bookkeeping workspace"] .workspace-nav-group', text: group
+      end
       assert_select 'nav[aria-label="Module areas"] a.nav-pill-active', text: 'Bookkeeping'
     end
   end
