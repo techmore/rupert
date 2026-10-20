@@ -5,16 +5,12 @@
     <%= render 'people/timesheets/calendar', calendar: @calendar, week: (@week_start || Date.current.beginning_of_week) %>
   <% end %>
 
-  <section class="flex flex-wrap items-end justify-between gap-4">
-    <div>
-      <h1 class="page-title">Timesheets</h1>
-      <p class="mt-1 text-sm text-mocha"><%= Current.user.employee? ? (@reviewer ? 'Your timesheets and assigned demo reviews.' : 'Your hours by week, submitted for review.') : 'Hours by week per staff member, submitted for review.' %></p>
-    </div>
+  <%= page_header 'Timesheets', subtitle: Current.user.employee? ? (@reviewer ? 'Your timesheets and assigned demo reviews.' : 'Your hours by week, submitted for review.') : 'Hours by week per staff member, submitted for review.' do %>
     <% if policy(People::Timesheet).create? %>
       <%= link_to "New timesheet", new_people_timesheet_path, class: "btn-primary" %>
     <% end %>
     <%= link_to "My time home", employee_app_path, class: "btn-ghost btn-sm" %>
-  </section>
+  <% end %>
 
   <% if @reviewer %>
     <nav aria-label="Timesheet review" class="flex flex-wrap gap-2" <%= tour_anchor('tabs') %>>
