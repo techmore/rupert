@@ -7,11 +7,15 @@ Two kinds of configuration exist. **Boot-time variables** live in `/etc/rupert.e
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `RAILS_ENV` | yes | `production` |
-| `HOST` | yes | Public origin, e.g. `https://rupert.stoverparc.org`. Enables host authorization (the app refuses to boot without it) and builds OAuth callbacks |
+| `HOST` | yes | Public origin, e.g. `https://herbalhealers.rupertpos.com`. Enables host authorization (the app refuses to boot without it) and builds OAuth callbacks |
 | `ADDITIONAL_HOSTS` | no | Comma-separated extra hostnames allowed by host authorization |
+| `RUPERT_LEGACY_HOSTS` | no | Comma-separated retired hostnames (production: `rupert.stoverparc.org,rupert.cybersecuritypilot.org,herbalhealers.cybersecuritypilot.org`). Requests to them are redirected to `HOST` with the same path (301 for GET/HEAD, 308 otherwise); `/up` health checks are still answered. They do not need to be in `ADDITIONAL_HOSTS` |
 | `SECRET_KEY_BASE` | yes | Session/cookie signing. `bin/rails secret` |
 | `RAILS_ENCRYPTION_PRIMARY_KEY`, `RAILS_ENCRYPTION_DETERMINISTIC_KEY`, `RAILS_ENCRYPTION_KEY_DERIVATION_SALT` | yes | Active Record encryption for every credential and document column. Generate once with `bin/rails db:encryption:init`; **never change without re-encrypting** |
 | `RUPERT_SQLITE_DATABASE_PRODUCTION` | no | Path of the SQLite file (default `storage/production.sqlite3`) |
+| `RUPERT_SQLITE_DATABASE_DEVELOPMENT`, `RUPERT_SQLITE_DATABASE_TEST` | no | Per-environment SQLite paths; defaults are under `storage/` |
+| `DATABASE_URL` | must be unset | Any nonempty value is rejected, including a SQLite URL. Configure the database with the `RUPERT_SQLITE_DATABASE_*` path variables instead. |
+| `RUPERT_DB_ADAPTER` | no | Omit it; legacy value `sqlite3` is accepted. Any other explicit adapter value is rejected. |
 | `SQLITE_BUSY_TIMEOUT_MS` | no | Writer wait before `SQLITE_BUSY` (default 5000) |
 | `RAILS_MAX_THREADS` / `RAILS_MIN_THREADS` | no | Puma threads and AR pool (default 5) |
 | `WEB_CONCURRENCY` | no | Puma workers (unset: single process, right for SER8) |
@@ -26,7 +30,10 @@ Two kinds of configuration exist. **Boot-time variables** live in `/etc/rupert.e
 | `SHOP_CUSTOM_DOMAIN`, `SHOPIFY_APP_PRIVATE_SHOP` | no | Shopify app template options; unused on SER8 |
 | `SENTRY_DSN` | no | Enables error tracking; `SENTRY_ENVIRONMENT` (default `production`), `SENTRY_TRACES_SAMPLE_RATE` (default 0) |
 | `RUPERT_UPDATE_CHECK` | no | `off` disables the in-app "update available" banner |
+| `RUPERT_AUTODEPLOY_STATE` | no | Where System → Updates reads the updater's `status.json` (default `/var/lib/rupert-autodeploy`); must match the updater's |
+| `RUPERT_AUTODEPLOY_INBOX` | no | Where System → Updates leaves install requests and the manual-mode flag (default `web/storage/autodeploy`); must match the updater's and `rupert-autodeploy.path` |
 | `RUPERT_BUILD_SHA`, `RUPERT_BUILT_AT` | Docker only | Build identity for git-free deployments |
+| `RUPERT_INITIALIZE_DATABASE` | Compose first start only | Set to `1` only to explicitly initialize a genuinely new empty SQLite database; remove it after successful initialization. Otherwise Compose requires a nonempty existing SQLite file. |
 | `REDIS_URL` | compose only | Action Cable in the optional Docker Compose layout |
 | `SECRET_KEY_BASE_DUMMY` | build only | Set by the Dockerfile during asset precompile; never at runtime |
 
