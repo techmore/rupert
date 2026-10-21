@@ -11,14 +11,11 @@ gem "rails", "~> 8.1.3"
 # The original asset pipeline for Rails [https://github.com/rails/sprockets-rails]
 gem "sprockets-rails"
 
-# Use PostgreSQL as the database for Active Record
-gem "pg", "~> 1.5"
-
-# SQLite is the recorded SER8 production adapter and supports legacy imports
+# SQLite is the only supported database (production, CI, development, test)
 gem "sqlite3", "~> 2.1"
 
 # Use the Puma web server [https://github.com/puma/puma]
-gem "puma", "~> 7.2"
+gem "puma", "~> 8.0"
 
 # Use JavaScript with ESM import maps [https://github.com/rails/importmap-rails]
 gem "importmap-rails"
@@ -33,7 +30,7 @@ gem "stimulus-rails"
 gem "jbuilder"
 
 # Use Redis adapter to run Action Cable in production
-gem "redis", "~> 4.0"
+gem "redis", "~> 6.0"
 
 # Use Kredis to get higher-level data types in Redis [https://github.com/rails/kredis]
 # gem "kredis"
@@ -96,6 +93,10 @@ gem "oj"
 # Request throttling (login, webhooks, API, settings) — config/initializers/rack_attack.rb
 gem "rack-attack", "~> 6.7"
 
+# Blocks risky migrations (table rewrites, long locks, data loss) when they are
+# written; auto-deploy migrates unattended — config/initializers/strong_migrations.rb
+gem "strong_migrations", "~> 2.5"
+
 # Error tracking; inert unless SENTRY_DSN is set — config/initializers/sentry.rb
 gem "sentry-ruby", "~> 5.22"
 gem "sentry-rails", "~> 5.22"
@@ -133,7 +134,8 @@ group :test do
   gem "selenium-webdriver", ">= 4.14"
   gem "webmock"
   gem "mocha"
-  gem "minitest", "~> 5.25"
+  gem "minitest", "~> 6.0"
+  gem "minitest-mock"
   gem "factory_bot_rails"
   gem "faker"
 end

@@ -56,8 +56,8 @@ class JournalLedgerIntegrityTest < ActiveSupport::TestCase
 
   test 'database rejects a leg pointing at a missing entry or account' do
     entry = post_entry
-    # Each violation in its own savepoint: PostgreSQL aborts the enclosing
-    # transaction after the first error, which would mask the second check.
+    # Each violation in its own savepoint so the first error cannot mask
+    # the second check.
     assert_raises(ActiveRecord::InvalidForeignKey) do
       Finance::JournalLine.transaction(requires_new: true) { raw_line(entry_id: entry.id + 10_000, account_id: @cash.id, debit: 5) }
     end
@@ -96,7 +96,9 @@ class JournalLedgerIntegrityTest < ActiveSupport::TestCase
     day = Date.current - 40
     entry = post_entry(on: day)
     before = PeriodSnapshot.new(from: day, to: day)
-    assert_equal [['posted', @cash.id.to_s, '1', '1000', '0'], ['posted', @sales.id.to_s, '1', '0', '1000']], before.totals['ledger']
+    # Rows are ordered by their text form, so which account comes first depends on the IDs the database assigned.
+    expected = [['posted', @cash.id.to_s, '1', '1000', '0'], ['posted', @sales.id.to_s, '1', '0', '1000']].sort_by { |row| row.map(&:to_s) }
+    assert_equal expected, before.totals['ledger']
 
     entry.void!
     after = PeriodSnapshot.new(from: day, to: day)

@@ -171,12 +171,31 @@ Rails.application.routes.draw do
   resources :api_access_tokens, only: %i[index create] do
     member { post :revoke }
   end
+  # Model Context Protocol endpoint for external AI assistants (docs/mcp.md).
+  post '/mcp', to: 'mcp#create', as: :mcp
+  match '/mcp', to: 'mcp#method_not_allowed', via: %i[get put patch delete]
+  resources :agent_feedbacks, path: 'ai_feedback', only: %i[index update]
+  # The ladybug in the header: any signed-in staff member files a report and follows its status.
+  resources :feedback_reports, only: %i[index show create] do
+    get :screenshot, on: :member
+  end
+  # Ask Rupert: the in-app help chat (docs/ops/ask-rupert.md).
+  get '/ask_rupert', to: 'ask_rupert#show', as: :ask_rupert
+  get '/ask_rupert/usage', to: 'ask_rupert_usage#show', as: :ask_rupert_usage
+  patch '/ask_rupert/usage', to: 'ask_rupert_usage#update'
+  get '/ask_rupert/conversations', to: 'ask_rupert#conversations', as: :ask_rupert_conversations
+  post '/ask_rupert/conversations', to: 'ask_rupert#create_conversation', as: nil
+  get '/ask_rupert/conversations/:id', to: 'ask_rupert#conversation', as: :ask_rupert_conversation
+  delete '/ask_rupert/conversations/:id', to: 'ask_rupert#destroy'
+  post '/ask_rupert/conversations/:id/messages', to: 'ask_rupert#ask', as: :ask_rupert_messages
+  post '/ask_rupert/conversations/:id/report', to: 'ask_rupert#report', as: :ask_rupert_report
 
   mount ShopifyApp::Engine, at: '/api'
 
   get '/search', to: 'search#index', as: :search
   get '/dashboard', to: 'home#index'
   get '/roadmap', to: 'roadmap#index', as: :roadmap
+  get '/buzz', to: 'buzz#show', as: :buzz
   post '/dashboard/customize', to: 'home#customize', as: :customize_dashboard
 
   # ERP modules (registered in ModuleRegistry)
@@ -227,6 +246,9 @@ Rails.application.routes.draw do
   end
 
   get 'stock_comparison', to: 'inventory#comparison'
+  resources :product_names, only: :index do
+    collection { get :pdf }
+  end
   resources :inventory, only: :index do
     collection do
       get :pdf
@@ -254,6 +276,7 @@ Rails.application.routes.draw do
         post :restore
       end
     end
+    resources :expense_categories, only: %i[index new create edit update]
     resources :expenses, only: %i[index new create edit update destroy] do
       member { post :restore }
     end
@@ -403,11 +426,18 @@ Rails.application.routes.draw do
       post :push_guard_unfreeze
     end
   end
+  resources :swipesimple_items, only: %i[index create]
   resources :swipesimple_reports, only: %i[index create] do
     collection { post :preview }
     member { get :document }
   end
   get '/system', to: 'system#index', as: :system
+  post '/system/ai_health/check', to: 'system#check_ai_health', as: :check_system_ai_health
+  get '/system/updates', to: 'updates#show', as: :system_updates
+  post '/system/updates/check', to: 'updates#check', as: :check_system_updates
+  post '/system/updates/install', to: 'updates#install', as: :install_system_updates
+  delete '/system/updates/install', to: 'updates#cancel', as: :cancel_system_updates
+  patch '/system/updates/mode', to: 'updates#mode', as: :system_updates_mode
   get '/connections', to: 'connections#index', as: :connections
   get '/connections/:service/edit', to: 'connections#edit', as: :edit_connection
   patch '/connections/:service', to: 'connections#update', as: :connection
@@ -441,6 +471,13 @@ Rails.application.routes.draw do
   post '/customer_display/pay', to: 'customer_displays#pay', as: :customer_pay
   resources :ctrax_days, only: %i[index show create] do
     member { post :review }
+    collection { get :items }
+  end
+  resources :swipesimple_days, only: :index do
+    collection do
+      post :review
+      post :deposit_merchant
+    end
   end
   get '/ctrax_pos', to: 'ctrax_pos#index', as: :ctrax_pos
   post '/ctrax_pos/:location_id/quote', to: 'ctrax_pos#quote', as: :quote_ctrax_pos
@@ -494,6 +531,7 @@ Rails.application.routes.draw do
     post :buzz_generate
     post :buzz_register
     post :buzz_test
+    post :buzz_status
   end
 
   resources :size_families, only: %i[index new create edit update destroy] do
