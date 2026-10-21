@@ -129,6 +129,15 @@ class UploadsIntakeTest < ActiveSupport::TestCase
     end
   end
 
+  test 'a new original cannot overrun a partially used storage allowance' do
+    stub_const(Uploads::Intake, :STORAGE_LIMIT, BANK_CSV.bytesize + UNKNOWN_CSV.bytesize - 1) do
+      intake(BANK_CSV)
+      assert_raises(Uploads::Intake::Error) { intake(UNKNOWN_CSV, 'more.csv') }
+      assert_equal 1, Upload.count
+      assert_equal BANK_CSV.bytesize, Upload.where(retained: true).sum(:byte_size)
+    end
+  end
+
   test 'capacity consumed during validation is rechecked before retaining a file' do
     assert_capacity_rechecked(nil)
   end
