@@ -1,0 +1,85 @@
+{
+  "models": [
+    {
+      "id": "gemma4-e4b",
+      "repo": "unsloth/gemma-4-E4B-it-GGUF",
+      "revision": "bfc15c382204943c3a8fff0c750b94ae2364d7a3",
+      "file": "gemma-4-E4B-it-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "bytes": 4977171584,
+      "sha256": "85a896a047553e842f25297ee5b031d64ff30147d9c4af17b1e4b394cd1fab87",
+      "note": "baseline; over the 4 GB cap"
+    },
+    {
+      "id": "gemma4-e2b",
+      "repo": "unsloth/gemma-4-E2B-it-GGUF",
+      "revision": "0314792d7f1f7e229411f620751375812bb9faf2",
+      "file": "gemma-4-E2B-it-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "bytes": 3106738272,
+      "sha256": "740185b21d22ceb83a11c3aa62ad5842ef32c70f6096d756bbee85a1e4ec34b8",
+      "note": ""
+    },
+    {
+      "id": "phi4-mini",
+      "repo": "unsloth/Phi-4-mini-instruct-GGUF",
+      "revision": "78eb92a46fc37e6b524df991ed9aca9bc6aa7b80",
+      "file": "Phi-4-mini-instruct-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "bytes": 2491874272,
+      "sha256": "88c00229914083cd112853aab84ed51b87bdf6b9ce42f532d8c85c7c63b1730a",
+      "note": ""
+    },
+    {
+      "id": "qwen35-4b",
+      "repo": "unsloth/Qwen3.5-4B-GGUF",
+      "revision": "e87f176479d0855a907a41277aca2f8ee7a09523",
+      "file": "Qwen3.5-4B-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "bytes": 2740937888,
+      "sha256": "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4",
+      "note": "thinking disabled per request"
+    },
+    {
+      "id": "llama32-3b",
+      "repo": "bartowski/Llama-3.2-3B-Instruct-GGUF",
+      "revision": "5ab33fa94d1d04e903623ae72c95d1696f09f9e8",
+      "file": "Llama-3.2-3B-Instruct-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "bytes": 2019377696,
+      "sha256": "6c1a2b41161032677be168d354123594c0e6e67d2b9227c84f296ad037c728ff",
+      "note": ""
+    },
+    {
+      "id": "bonsai-8b-1bit",
+      "repo": "prism-ml/Bonsai-8B-gguf",
+      "revision": "48516770dd04643643e9f9019a2a349cf26c5dbd",
+      "file": "Bonsai-8B-Q1_0.gguf",
+      "quant": "Q1_0 (1-bit)",
+      "bytes": 1158654496,
+      "sha256": "284a335aa3fb2ced3b1b01fcb40b08aa783e3b70832767f0dd2e3fdfa134bd54",
+      "note": ""
+    },
+    {
+      "id": "lfm25-2.6b",
+      "repo": "LiquidAI/LFM2.5-2.6B-GGUF",
+      "revision": "e7caca5d835a3901a8e0d63e94009429bafafdfc",
+      "file": "LFM2.5-2.6B-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "bytes": 1674455040,
+      "sha256": "02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed",
+      "note": "template always opens <think>; run with thinking and 1536 max tokens",
+      "thinking": "native"
+    },
+    {
+      "id": "lfm25-1.2b",
+      "repo": "LiquidAI/LFM2.5-1.2B-Instruct-GGUF",
+      "revision": "8ed288026e23958ad9dfa92d53ed773a8eee7125",
+      "file": "LFM2.5-1.2B-Instruct-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "bytes": 730895168,
+      "sha256": "b1b3de114215d9507409a662a501a631095a479a419584e8a2ded6304b19b4f5",
+      "note": ""
+    }
+  ]
+}

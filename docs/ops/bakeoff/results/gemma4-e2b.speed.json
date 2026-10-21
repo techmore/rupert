@@ -1,0 +1,248 @@
+{
+ "model": {
+  "id": "gemma4-e2b",
+  "repo": "unsloth/gemma-4-E2B-it-GGUF",
+  "revision": "0314792d7f1f7e229411f620751375812bb9faf2",
+  "file": "gemma-4-E2B-it-Q4_K_M.gguf",
+  "quant": "Q4_K_M",
+  "bytes": 3106738272,
+  "sha256": "740185b21d22ceb83a11c3aa62ad5842ef32c70f6096d756bbee85a1e4ec34b8",
+  "note": ""
+ },
+ "mode": "speed",
+ "runs": 2,
+ "harness": {
+  "threads": 8,
+  "cpus": "2-9",
+  "ctx": 4096,
+  "temperature": 0.2,
+  "thinking": "disabled",
+  "backend": "llama.cpp CPU only (-ngl 0 -dev none)"
+ },
+ "env": {
+  "loadavg_start": [
+   7.1494140625,
+   15.8662109375,
+   23.533203125
+  ],
+  "waited_for_quiet_s": 885,
+  "loadavg_end": [
+   31.220703125,
+   24.77734375,
+   24.15234375
+  ]
+ },
+ "bench": {
+  "pp512": {
+   "mean_tps": 26.06672,
+   "std_tps": 4.775644
+  },
+  "tg128": {
+   "mean_tps": 2.532459,
+   "std_tps": 0.475462
+  }
+ },
+ "load_s": 2.95,
+ "mem_after_load": {
+  "VmHWM": 3177.625,
+  "VmRSS": 3177.625,
+  "RssAnon": 156.515625,
+  "RssFile": 73.359375
+ },
+ "generations": [
+  {
+   "text": "{\"label\": \"bug\"}",
+   "reasoning_chars": 0,
+   "ttft_s": 9.81925155799945,
+   "ttft_answer_s": 9.819252683000741,
+   "wall_s": 12.410748570000578,
+   "timings": {
+    "cache_n": 0,
+    "prompt_n": 265,
+    "prompt_ms": 9815.524,
+    "prompt_per_token_ms": 37.039713207547166,
+    "prompt_per_second": 26.998049212655385,
+    "predicted_n": 7,
+    "predicted_ms": 2591.37,
+    "predicted_per_token_ms": 431.895,
+    "predicted_per_second": 2.3153775801988914
+   },
+   "usage": null,
+   "prompt_id": "c1",
+   "kind": "classify",
+   "run": 1,
+   "score": {
+    "pass": 1,
+    "parts": {
+     "label_correct": 1
+    },
+    "format_ok": true
+   },
+   "loadavg_1m": 16.537109375
+  },
+  {
+   "text": "{\"label\": \"bug\"}",
+   "reasoning_chars": 0,
+   "ttft_s": 9.735194597998998,
+   "ttft_answer_s": 9.735195389999717,
+   "wall_s": 11.840902521998942,
+   "timings": {
+    "cache_n": 0,
+    "prompt_n": 265,
+    "prompt_ms": 9731.36,
+    "prompt_per_token_ms": 36.722113207547174,
+    "prompt_per_second": 27.231548313904735,
+    "predicted_n": 7,
+    "predicted_ms": 2105.659,
+    "predicted_per_token_ms": 350.9431666666667,
+    "predicted_per_second": 2.8494642294882504
+   },
+   "usage": null,
+   "prompt_id": "c1",
+   "kind": "classify",
+   "run": 2,
+   "score": {
+    "pass": 1,
+    "parts": {
+     "label_correct": 1
+    },
+    "format_ok": true
+   },
+   "loadavg_1m": 16.984375
+  },
+  {
+   "text": "<message>\nI have logged this issue for the team to look into right away. They will take a look at the scanner at register 2.\n</message>",
+   "reasoning_chars": 0,
+   "ttft_s": 10.921723352001209,
+   "ttft_answer_s": 10.921724101999644,
+   "wall_s": 52.40217995900093,
+   "timings": {
+    "cache_n": 0,
+    "prompt_n": 218,
+    "prompt_ms": 10518.292,
+    "prompt_per_token_ms": 48.24904587155963,
+    "prompt_per_second": 20.725798447124305,
+    "predicted_n": 36,
+    "predicted_ms": 41878.722,
+    "predicted_per_token_ms": 1196.5349142857144,
+    "predicted_per_second": 0.8357466113698502
+   },
+   "usage": null,
+   "prompt_id": "r2",
+   "kind": "reply",
+   "run": 1,
+   "score": {
+    "pass": 1,
+    "parts": {
+     "length_ok": 1,
+     "required_ok": 1,
+     "no_overclaim": 1
+    },
+    "format_ok": true
+   },
+   "loadavg_1m": 25.94580078125
+  },
+  {
+   "text": "<message>\nI have logged this issue for the team to look into right away.\n</message>",
+   "reasoning_chars": 0,
+   "ttft_s": 22.74109069500082,
+   "ttft_answer_s": 22.741091445001075,
+   "wall_s": 46.152087646001746,
+   "timings": {
+    "cache_n": 0,
+    "prompt_n": 218,
+    "prompt_ms": 21660.353,
+    "prompt_per_token_ms": 99.35941743119265,
+    "prompt_per_second": 10.064471248460263,
+    "predicted_n": 23,
+    "predicted_ms": 24486.697,
+    "predicted_per_token_ms": 1113.0316818181818,
+    "predicted_per_second": 0.8984470220708003
+   },
+   "usage": null,
+   "prompt_id": "r2",
+   "kind": "reply",
+   "run": 2,
+   "score": {
+    "pass": 1,
+    "parts": {
+     "length_ok": 1,
+     "required_ok": 1,
+     "no_overclaim": 1
+    },
+    "format_ok": true
+   },
+   "loadavg_1m": 31.8125
+  },
+  {
+   "text": "* Label printer is down; spare is insufficient.\n* Decision: Order a new Zebra ZD-410 printer ($289).\n* Omar owns ordering by Thursday; Priya will handle setup upon arrival.",
+   "reasoning_chars": 0,
+   "ttft_s": 19.89313604199924,
+   "ttft_answer_s": 19.893136917000447,
+   "wall_s": 64.07419784999911,
+   "timings": {
+    "cache_n": 0,
+    "prompt_n": 299,
+    "prompt_ms": 19889.402,
+    "prompt_per_token_ms": 66.51973913043477,
+    "prompt_per_second": 15.033131715071173,
+    "predicted_n": 46,
+    "predicted_ms": 44180.815,
+    "predicted_per_token_ms": 981.795888888889,
+    "predicted_per_second": 1.0185416452820075
+   },
+   "usage": null,
+   "prompt_id": "s1",
+   "kind": "summarize",
+   "run": 1,
+   "score": {
+    "pass": 1,
+    "parts": {
+     "fact_recall": 1.0,
+     "length_ok": 1,
+     "no_forbidden": 1
+    },
+    "format_ok": true
+   },
+   "loadavg_1m": 31.24755859375
+  },
+  {
+   "text": "* Label printer is down; spare is inadequate.\n* Decision: Order a new Zebra ZD-410 printer ($289).\n* Omar will order by Thursday; Priya will set up upon arrival.",
+   "reasoning_chars": 0,
+   "ttft_s": 17.170324077998885,
+   "ttft_answer_s": 17.170325118999244,
+   "wall_s": 59.246396462998746,
+   "timings": {
+    "cache_n": 0,
+    "prompt_n": 299,
+    "prompt_ms": 17164.419,
+    "prompt_per_token_ms": 57.40608361204014,
+    "prompt_per_second": 17.419756532394132,
+    "predicted_n": 46,
+    "predicted_ms": 42078.539,
+    "predicted_per_token_ms": 935.0786444444444,
+    "predicted_per_second": 1.0694287651004233
+   },
+   "usage": null,
+   "prompt_id": "s1",
+   "kind": "summarize",
+   "run": 2,
+   "score": {
+    "pass": 1,
+    "parts": {
+     "fact_recall": 1.0,
+     "length_ok": 1,
+     "no_forbidden": 1
+    },
+    "format_ok": true
+   },
+   "loadavg_1m": 31.220703125
+  }
+ ],
+ "mem_peak": {
+  "VmHWM": 3258.984375,
+  "VmRSS": 3258.984375,
+  "RssAnon": 237.84375,
+  "RssFile": 73.390625
+ }
+}

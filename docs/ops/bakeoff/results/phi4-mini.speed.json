@@ -1,0 +1,248 @@
+{
+ "model": {
+  "id": "phi4-mini",
+  "repo": "unsloth/Phi-4-mini-instruct-GGUF",
+  "revision": "78eb92a46fc37e6b524df991ed9aca9bc6aa7b80",
+  "file": "Phi-4-mini-instruct-Q4_K_M.gguf",
+  "quant": "Q4_K_M",
+  "bytes": 2491874272,
+  "sha256": "88c00229914083cd112853aab84ed51b87bdf6b9ce42f532d8c85c7c63b1730a",
+  "note": ""
+ },
+ "mode": "speed",
+ "runs": 2,
+ "harness": {
+  "threads": 8,
+  "cpus": "2-9",
+  "ctx": 4096,
+  "temperature": 0.2,
+  "thinking": "disabled",
+  "backend": "llama.cpp CPU only (-ngl 0 -dev none)"
+ },
+ "env": {
+  "loadavg_start": [
+   13.79541015625,
+   17.02734375,
+   20.87939453125
+  ],
+  "waited_for_quiet_s": 120,
+  "loadavg_end": [
+   13.8408203125,
+   17.61376953125,
+   20.380859375
+  ]
+ },
+ "bench": {
+  "pp512": {
+   "mean_tps": 14.080062,
+   "std_tps": 1.226556
+  },
+  "tg128": {
+   "mean_tps": 5.137614,
+   "std_tps": 0.58759
+  }
+ },
+ "load_s": 1.5,
+ "mem_after_load": {
+  "VmHWM": 3033.03125,
+  "VmRSS": 3033.03125,
+  "RssAnon": 591.0625,
+  "RssFile": 73.390625
+ },
+ "generations": [
+  {
+   "text": "{\"label\": \"bug\"}",
+   "reasoning_chars": 0,
+   "ttft_s": 8.0770818889996,
+   "ttft_answer_s": 8.077082763998988,
+   "wall_s": 9.155405489000259,
+   "timings": {
+    "cache_n": 0,
+    "prompt_n": 247,
+    "prompt_ms": 8073.741,
+    "prompt_per_token_ms": 32.68721052631579,
+    "prompt_per_second": 30.593005150895973,
+    "predicted_n": 7,
+    "predicted_ms": 1078.186,
+    "predicted_per_token_ms": 179.69766666666666,
+    "predicted_per_second": 5.564902530732175
+   },
+   "usage": null,
+   "prompt_id": "c1",
+   "kind": "classify",
+   "run": 1,
+   "score": {
+    "pass": 1,
+    "parts": {
+     "label_correct": 1
+    },
+    "format_ok": true
+   },
+   "loadavg_1m": 15.5546875
+  },
+  {
+   "text": "{\"label\": \"bug\"}",
+   "reasoning_chars": 0,
+   "ttft_s": 8.68545606799853,
+   "ttft_answer_s": 8.685457276998932,
+   "wall_s": 9.89376665799864,
+   "timings": {
+    "cache_n": 0,
+    "prompt_n": 247,
+    "prompt_ms": 8682.472,
+    "prompt_per_token_ms": 35.15170850202429,
+    "prompt_per_second": 28.448119383511976,
+    "predicted_n": 7,
+    "predicted_ms": 1208.303,
+    "predicted_per_token_ms": 201.38383333333334,
+    "predicted_per_second": 4.965641896113805
+   },
+   "usage": null,
+   "prompt_id": "c1",
+   "kind": "classify",
+   "run": 2,
+   "score": {
+    "pass": 1,
+    "parts": {
+     "label_correct": 1
+    },
+    "format_ok": true
+   },
+   "loadavg_1m": 15.4501953125
+  },
+  {
+   "text": "Buzz has logged a request for a team member to inspect the barcode scanner at register 2.",
+   "reasoning_chars": 0,
+   "ttft_s": 8.167257903998689,
+   "ttft_answer_s": 8.167259195999577,
+   "wall_s": 13.225555989998611,
+   "timings": {
+    "cache_n": 0,
+    "prompt_n": 200,
+    "prompt_ms": 8155.97,
+    "prompt_per_token_ms": 40.77985,
+    "prompt_per_second": 24.52191462204986,
+    "predicted_n": 20,
+    "predicted_ms": 5058.165,
+    "predicted_per_token_ms": 266.2192105263158,
+    "predicted_per_second": 3.7563029280381324
+   },
+   "usage": null,
+   "prompt_id": "r2",
+   "kind": "reply",
+   "run": 1,
+   "score": {
+    "pass": 1,
+    "parts": {
+     "length_ok": 1,
+     "required_ok": 1,
+     "no_overclaim": 1
+    },
+    "format_ok": true
+   },
+   "loadavg_1m": 15.04833984375
+  },
+  {
+   "text": "Buzz has logged the issue with the barcode scanner at register 2 for the team to investigate.",
+   "reasoning_chars": 0,
+   "ttft_s": 6.9040649279995705,
+   "ttft_answer_s": 6.904066053000861,
+   "wall_s": 11.203881043000365,
+   "timings": {
+    "cache_n": 0,
+    "prompt_n": 200,
+    "prompt_ms": 6901.502,
+    "prompt_per_token_ms": 34.50751,
+    "prompt_per_second": 28.979199020734903,
+    "predicted_n": 20,
+    "predicted_ms": 4299.753,
+    "predicted_per_token_ms": 226.3027894736842,
+    "predicted_per_second": 4.4188584786149345
+   },
+   "usage": null,
+   "prompt_id": "r2",
+   "kind": "reply",
+   "run": 2,
+   "score": {
+    "pass": 1,
+    "parts": {
+     "length_ok": 1,
+     "required_ok": 1,
+     "no_overclaim": 1
+    },
+    "format_ok": true
+   },
+   "loadavg_1m": 15.1884765625
+  },
+  {
+   "text": "- Label printer malfunctioned; Omar to borrow a 4-inch label printer from the warehouse.\n- Decision: Order a new Zebra ZD-410 printer for $289.\n- Ownership: Omar to order by Thursday; Priya to set up upon arrival.",
+   "reasoning_chars": 0,
+   "ttft_s": 9.237801110000873,
+   "ttft_answer_s": 9.237802068000747,
+   "wall_s": 20.317645095001353,
+   "timings": {
+    "cache_n": 0,
+    "prompt_n": 272,
+    "prompt_ms": 9235.05,
+    "prompt_per_token_ms": 33.952389705882354,
+    "prompt_per_second": 29.45300783428352,
+    "predicted_n": 53,
+    "predicted_ms": 11079.443,
+    "predicted_per_token_ms": 213.06621153846152,
+    "predicted_per_second": 4.693376733830393
+   },
+   "usage": null,
+   "prompt_id": "s1",
+   "kind": "summarize",
+   "run": 1,
+   "score": {
+    "pass": 1,
+    "parts": {
+     "fact_recall": 1.0,
+     "length_ok": 1,
+     "no_forbidden": 1
+    },
+    "format_ok": true
+   },
+   "loadavg_1m": 15.10107421875
+  },
+  {
+   "text": "- Label printer down; spare available but insufficient for shelf tags.\n- Decision: Order new Zebra ZD-410 printer for $289.\n- Omar to order by Thursday; Priya to set up upon arrival.",
+   "reasoning_chars": 0,
+   "ttft_s": 8.221808956001041,
+   "ttft_answer_s": 8.221810206001464,
+   "wall_s": 15.702180902000691,
+   "timings": {
+    "cache_n": 0,
+    "prompt_n": 272,
+    "prompt_ms": 8218.606,
+    "prompt_per_token_ms": 30.215463235294116,
+    "prompt_per_second": 33.09563689998036,
+    "predicted_n": 44,
+    "predicted_ms": 7480.32,
+    "predicted_per_token_ms": 173.96093023255813,
+    "predicted_per_second": 5.74841718001369
+   },
+   "usage": null,
+   "prompt_id": "s1",
+   "kind": "summarize",
+   "run": 2,
+   "score": {
+    "pass": 1,
+    "parts": {
+     "fact_recall": 1.0,
+     "length_ok": 1,
+     "no_forbidden": 1
+    },
+    "format_ok": true
+   },
+   "loadavg_1m": 13.8408203125
+  }
+ ],
+ "mem_peak": {
+  "VmHWM": 3099.890625,
+  "VmRSS": 3099.890625,
+  "RssAnon": 657.859375,
+  "RssFile": 73.453125
+ }
+}
