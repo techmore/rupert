@@ -143,7 +143,7 @@ class UploadsIntakeTest < ActiveSupport::TestCase
   end
 
   test 'capacity consumed during validation is rechecked before recording a rejection' do
-    assert_capacity_rechecked('Refused fixture')
+    assert_capacity_rechecked(['not_text', 'Refused fixture'])
   end
 
   def assert_capacity_rechecked(validation_result)
@@ -154,7 +154,7 @@ class UploadsIntakeTest < ActiveSupport::TestCase
         Upload.create!(filename: 'other.txt', origin: 'web', status: 'rejected', byte_size: 0)
         validation_result
       end
-      Uploads::Validator.stub(:check, validation) do
+      Uploads::Validator.stub(:problem, validation) do
         assert_raises(Uploads::Intake::Error) { intake(BANK_CSV) }
       end
       assert_equal 1, Upload.count
