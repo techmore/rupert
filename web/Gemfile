@@ -135,6 +135,7 @@ group :test do
   gem "webmock"
   gem "mocha"
   gem "minitest", "~> 6.0"
+  gem "minitest-mock"
   gem "factory_bot_rails"
   gem "faker"
 end
