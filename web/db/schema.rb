@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_21_060000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_21_220000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -372,9 +372,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_060000) do
     t.datetime "triaged_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "source", default: "agent", null: false
+    t.string "source_ref"
+    t.string "source_sender"
+    t.bigint "task_id"
+    t.boolean "ready_for_development", default: false, null: false
+    t.datetime "ready_marked_at"
+    t.string "ready_marked_by"
     t.index ["api_access_token_id"], name: "index_agent_feedbacks_on_api_access_token_id"
+    t.index ["task_id"], name: "index_agent_feedbacks_on_task_id"
     t.index ["tenant_id", "created_at"], name: "index_agent_feedbacks_on_tenant_id_and_created_at"
+    t.index ["tenant_id", "source_ref"], name: "idx_agent_feedbacks_source_ref"
     t.index ["tenant_id", "status"], name: "index_agent_feedbacks_on_tenant_id_and_status"
+    t.index ["tenant_id", "user_id", "created_at"], name: "idx_agent_feedbacks_reporter"
   end
 
   create_table "agent_tool_issues", force: :cascade do |t|
@@ -390,6 +400,48 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_060000) do
     t.datetime "updated_at", null: false
     t.index ["tenant_id", "last_seen_at"], name: "index_agent_tool_issues_on_tenant_id_and_last_seen_at"
     t.index ["tenant_id", "tool_name", "error_kind"], name: "idx_agent_tool_issues_unique", unique: true
+  end
+
+  create_table "ai_agent_runs", force: :cascade do |t|
+    t.string "agent", default: "buzz", null: false
+    t.string "model"
+    t.string "outcome", null: false
+    t.string "error_type"
+    t.integer "tokens_in", default: 0, null: false
+    t.integer "tokens_out", default: 0, null: false
+    t.integer "tokens_reasoning", default: 0, null: false
+    t.integer "cache_read_tokens", default: 0, null: false
+    t.integer "cache_write_tokens", default: 0, null: false
+    t.decimal "cost_usd", precision: 12, scale: 6
+    t.integer "steps", default: 0, null: false
+    t.integer "duration_ms"
+    t.datetime "occurred_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["occurred_at"], name: "index_ai_agent_runs_on_occurred_at"
+  end
+
+  create_table "ai_health_checks", force: :cascade do |t|
+    t.string "provider", default: "opencode", null: false
+    t.string "triggered_by", default: "scheduled", null: false
+    t.string "status", null: false
+    t.string "key_state", default: "unchecked", null: false
+    t.string "error_type"
+    t.string "error_code"
+    t.integer "http_status"
+    t.integer "latency_ms"
+    t.integer "catalog_latency_ms"
+    t.boolean "rate_limited", default: false, null: false
+    t.integer "retry_after_seconds"
+    t.string "configured_model"
+    t.string "model_state", default: "unknown", null: false
+    t.text "free_models"
+    t.integer "free_model_count", default: 0, null: false
+    t.integer "catalog_size"
+    t.datetime "checked_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["checked_at"], name: "index_ai_health_checks_on_checked_at"
   end
 
   create_table "api_access_tokens", id: :string, force: :cascade do |t|
@@ -1069,6 +1121,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_060000) do
     t.index ["discarded_at"], name: "index_expenses_on_discarded_at"
     t.index ["tenant_id", "category"], name: "index_expenses_on_tenant_id_and_category"
     t.index ["tenant_id", "incurred_on"], name: "index_expenses_on_tenant_id_and_incurred_on"
+  end
+
+  create_table "feedback_attachments", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "agent_feedback_id", null: false
+    t.string "kind", null: false
+    t.string "content_type", default: "text/plain", null: false
+    t.text "text_body"
+    t.binary "binary_body"
+    t.integer "byte_size", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_feedback_id", "kind"], name: "idx_feedback_attachments_kind", unique: true
+    t.index ["agent_feedback_id"], name: "index_feedback_attachments_on_agent_feedback_id"
+    t.index ["tenant_id"], name: "index_feedback_attachments_on_tenant_id"
   end
 
   create_table "fulfillments", force: :cascade do |t|
@@ -2817,11 +2884,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_060000) do
     t.index ["status", "created_at", "id"], name: "idx_workspace_signups_queue"
   end
 
-  add_foreign_key "workspace_deployments", "tenants"
-  add_foreign_key "workspace_deployments", "users", column: "owner_id"
-  add_foreign_key "workspace_handoffs", "support_access_grants"
-  add_foreign_key "workspace_handoffs", "users"
-  add_foreign_key "workspace_handoffs", "workspace_deployments"
   create_table "zelle_entries", force: :cascade do |t|
     t.string "tenant_id", null: false
     t.integer "zelle_export_id", null: false
@@ -2860,6 +2922,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_060000) do
     t.index ["tenant_id", "fingerprint"], name: "index_zelle_exports_on_tenant_id_and_fingerprint", unique: true
   end
 
+  add_foreign_key "feedback_attachments", "agent_feedbacks"
+  add_foreign_key "workspace_deployments", "tenants"
+  add_foreign_key "workspace_deployments", "users", column: "owner_id"
+  add_foreign_key "workspace_handoffs", "support_access_grants"
+  add_foreign_key "workspace_handoffs", "users"
+  add_foreign_key "workspace_handoffs", "workspace_deployments"
   add_foreign_key "InventoryLevel", "ShopifyVariant", column: "shopifyVariantId", on_delete: :nullify
   add_foreign_key "InventoryLevel", "SquareVariation", column: "squareVariationId", on_delete: :nullify
   add_foreign_key "ReconcileItem", "ReconcileRun", column: "runId", on_delete: :cascade

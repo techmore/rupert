@@ -57,3 +57,6 @@ Rails.application.config.filter_parameters += %i[handoff lease instance_secret o
 
 # Manual Zelle bank CSVs: the file, account label, counterparties and memos stay out of request logs.
 Rails.application.config.filter_parameters += [/\Azelle_export\z/i, :counterparty, :memo, :bank_reference]
+
+# Ladybug reports carry what a person typed plus page snapshots and screenshots.
+Rails.application.config.filter_parameters += [/\Afeedback_report\z/i]

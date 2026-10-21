@@ -175,6 +175,10 @@ Rails.application.routes.draw do
   post '/mcp', to: 'mcp#create', as: :mcp
   match '/mcp', to: 'mcp#method_not_allowed', via: %i[get put patch delete]
   resources :agent_feedbacks, path: 'ai_feedback', only: %i[index update]
+  # The ladybug in the header: any signed-in staff member files a report and follows its status.
+  resources :feedback_reports, only: %i[index show create] do
+    get :screenshot, on: :member
+  end
 
   mount ShopifyApp::Engine, at: '/api'
 
@@ -421,6 +425,7 @@ Rails.application.routes.draw do
     member { get :document }
   end
   get '/system', to: 'system#index', as: :system
+  post '/system/ai_health/check', to: 'system#check_ai_health', as: :check_system_ai_health
   get '/system/updates', to: 'updates#show', as: :system_updates
   post '/system/updates/check', to: 'updates#check', as: :check_system_updates
   post '/system/updates/install', to: 'updates#install', as: :install_system_updates
