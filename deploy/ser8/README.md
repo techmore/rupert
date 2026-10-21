@@ -17,6 +17,12 @@ systemctl --user daemon-reload && systemctl --user enable --now rupert-sync-watc
 
 Check by hand: `~/.local/bin/rupert-sync-watch.sh` (exit 0 = fresh). `MAX_AGE_MIN=0` forces a failure to test alerting.
 
+## Backups
+
+Five layers (5-minute rolling snapshot and 6-hourly sets inside the container, an encrypted copy on the host, a mirror on
+another machine and a weekly restore drill), each reporting to **System → Backups**. Scripts, units, install steps and the
+restore procedure are in [docs/ops/backups.md](../../docs/ops/backups.md).
+
 ## Auto-deploy (`rupert-autodeploy`)
 
 Runs **inside the `rupert` Incus container** as root. Every 5 minutes it fetches `origin/main` and deploys it to
@@ -68,3 +74,17 @@ Check by hand: `DRY_RUN=1 /usr/local/sbin/rupert-autodeploy.sh`. Logs: `journalc
 Stop it with `systemctl disable --now rupert-autodeploy.timer`.
 
 When updating an installed watcher, replace the copied `/usr/local/sbin/rupert-autodeploy.sh` with the current repository version before re-enabling the timer. Older copies may still require the retired PostgreSQL CI check and otherwise keep deployments blocked. The source script now gates on `CI (sqlite3)` only.
+
+## Buzz relay and the @rupert agent
+
+The self-hosted Buzz relay is an Incus container (`buzz`) on SER8; its files are not installed from this directory.
+This directory holds what runs around it:
+
+- `rupert-buzz.service`: the one `@rupert` agent (buzz-acp driving opencode), inside the `rupert` container.
+- `buzz/opencode.json`: the opencode config (agent `buzz` limited to the buzz CLI and Rupert's report scripts; agent
+  `chat` with every tool denied). Install as `/etc/rupert-buzz/opencode.json`.
+- `buzz/backup-buzz.sh`, `buzz-backup.service`, `buzz-backup.timer`: encrypted off-container backup of the relay's
+  Postgres, media and secrets (host user timer, same key as `rupert-offhost-backup.sh`).
+- `buzz/permission-test/`: mock-model check that the agent's permission rules hold.
+
+Full runbook, install steps, rollback and what is unverified: [docs/ops/buzz-relay-ser8.md](../../docs/ops/buzz-relay-ser8.md).

@@ -166,6 +166,7 @@ Rails.application.routes.draw do
       get :catalog, to: 'catalog#index'
       get :inventory, to: 'inventory#index'
       get :roadmap, to: 'roadmap#index'
+      resources :uploads, only: %i[index show create]
     end
   end
   resources :api_access_tokens, only: %i[index create] do
@@ -175,12 +176,33 @@ Rails.application.routes.draw do
   post '/mcp', to: 'mcp#create', as: :mcp
   match '/mcp', to: 'mcp#method_not_allowed', via: %i[get put patch delete]
   resources :agent_feedbacks, path: 'ai_feedback', only: %i[index update]
+  # The ladybug in the header: any signed-in staff member files a report and follows its status.
+  resources :feedback_reports, only: %i[index show create] do
+    get :screenshot, on: :member
+  end
+  # Ask Rupert: the in-app help chat (docs/ops/ask-rupert.md).
+  get '/ask_rupert', to: 'ask_rupert#show', as: :ask_rupert
+  get '/ask_rupert/usage', to: 'ask_rupert_usage#show', as: :ask_rupert_usage
+  patch '/ask_rupert/usage', to: 'ask_rupert_usage#update'
+  get '/ask_rupert/conversations', to: 'ask_rupert#conversations', as: :ask_rupert_conversations
+  post '/ask_rupert/conversations', to: 'ask_rupert#create_conversation', as: nil
+  get '/ask_rupert/conversations/:id', to: 'ask_rupert#conversation', as: :ask_rupert_conversation
+  delete '/ask_rupert/conversations/:id', to: 'ask_rupert#destroy'
+  post '/ask_rupert/conversations/:id/messages', to: 'ask_rupert#ask', as: :ask_rupert_messages
+  post '/ask_rupert/conversations/:id/report', to: 'ask_rupert#report', as: :ask_rupert_report
 
   mount ShopifyApp::Engine, at: '/api'
 
   get '/search', to: 'search#index', as: :search
   get '/dashboard', to: 'home#index'
   get '/roadmap', to: 'roadmap#index', as: :roadmap
+  get '/buzz', to: 'buzz#show', as: :buzz
+  get '/buzz/chat', to: 'buzz_chat#show', as: :buzz_chat
+  get '/buzz/chat/messages', to: 'buzz_chat#messages', as: :buzz_chat_messages
+  post '/buzz/chat/messages', to: 'buzz_chat#create'
+  post '/buzz/link', to: 'buzz_links#create', as: :buzz_link
+  post '/buzz/link/:id/confirm', to: 'buzz_links#confirm', as: :confirm_buzz_link
+  delete '/buzz/link/:id', to: 'buzz_links#destroy', as: :remove_buzz_link
   post '/dashboard/customize', to: 'home#customize', as: :customize_dashboard
 
   # ERP modules (registered in ModuleRegistry)
@@ -254,6 +276,7 @@ Rails.application.routes.draw do
   end
 
   namespace :finance do
+    get 'cash_flow', to: 'cash_flow#show', as: :cash_flow
     get '/accounts', to: 'accounts#show', as: :accounts
     resources :chart_of_accounts, only: %i[index show new create edit update] do
       member do
@@ -411,12 +434,28 @@ Rails.application.routes.draw do
       post :push_guard_unfreeze
     end
   end
+  resources :uploads, only: %i[index show create] do
+    collection do
+      post :recognize_all
+      get :insights
+    end
+    member do
+      patch :choose
+      post :dry_run
+      post :approve
+      post :discard
+      post :reopen
+      post :recognize
+      get :original
+    end
+  end
   resources :swipesimple_items, only: %i[index create]
   resources :swipesimple_reports, only: %i[index create] do
     collection { post :preview }
     member { get :document }
   end
   get '/system', to: 'system#index', as: :system
+  post '/system/ai_health/check', to: 'system#check_ai_health', as: :check_system_ai_health
   get '/system/updates', to: 'updates#show', as: :system_updates
   post '/system/updates/check', to: 'updates#check', as: :check_system_updates
   post '/system/updates/install', to: 'updates#install', as: :install_system_updates
@@ -515,6 +554,7 @@ Rails.application.routes.draw do
     post :buzz_generate
     post :buzz_register
     post :buzz_test
+    post :buzz_status
   end
 
   resources :size_families, only: %i[index new create edit update destroy] do

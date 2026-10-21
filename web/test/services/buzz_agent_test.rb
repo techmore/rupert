@@ -112,15 +112,18 @@ class BuzzAgentTest < ActiveSupport::TestCase
     fake = Object.new
     handlers = {}
     sent = []
+    events_sent = 0
     fake.define_singleton_method(:on) { |event, &blk| handlers[event] = blk }
     fake.define_singleton_method(:open?) { true }
     fake.define_singleton_method(:send) do |data|
       sent << data
       payload = JSON.parse(data)
       if payload[0] == 'AUTH'
-        handlers[:message]&.call(Struct.new(:data).new(['OK', 'event-id', true, ''].to_json))
-      else
+        handlers[:message]&.call(Struct.new(:data).new(['OK', 'auth-event-id', true, ''].to_json))
+      elsif (events_sent += 1) == 1
         handlers[:message]&.call(Struct.new(:data).new(%w[AUTH challenge-xyz].to_json))
+      else
+        handlers[:message]&.call(Struct.new(:data).new(['OK', payload[1]['id'], true, ''].to_json))
       end
     end
     fake.define_singleton_method(:close) {}
@@ -134,11 +137,66 @@ class BuzzAgentTest < ActiveSupport::TestCase
     assert_includes auth_event['tags'], %w[challenge challenge-xyz]
   end
 
+  test 'publish waits for the relay to acknowledge the event, not the AUTH reply' do
+    fake = Object.new
+    handlers = {}
+    order = []
+    challenged = false
+    fake.define_singleton_method(:on) { |event, &blk| handlers[event] = blk }
+    fake.define_singleton_method(:open?) { true }
+    fake.define_singleton_method(:send) do |data|
+      payload = JSON.parse(data)
+      if payload[0] == 'AUTH'
+        order << :auth_ok
+        handlers[:message]&.call(Struct.new(:data).new(['OK', 'auth-event-id', true, ''].to_json))
+      elsif !challenged
+        challenged = true
+        handlers[:message]&.call(Struct.new(:data).new(%w[AUTH challenge-xyz].to_json))
+      else
+        Thread.new do
+          sleep 0.3
+          order << :event_ok
+          handlers[:message]&.call(Struct.new(:data).new(['OK', payload[1]['id'], true, ''].to_json))
+        end
+      end
+    end
+    fake.define_singleton_method(:close) { order << :close }
+
+    WebSocket::Client::Simple.stubs(:connect).returns(fake)
+    ok, = BuzzAgent.publish(BuzzAgent.build_event(content: 'hi'))
+    assert ok
+    assert_equal :close, order.last, "closed before the event was acknowledged: #{order.inspect}"
+    assert_includes order, :event_ok
+  end
+
   test 'build_auth_event signs a valid NIP-42 event with challenge tag' do
     event = BuzzAgent.build_auth_event('challenge-xyz')
     assert_equal 22_242, event.kind
     assert_includes event.tags, ['relay', 'wss://relay.test']
     assert_includes event.tags, %w[challenge challenge-xyz]
     assert event.verify_signature
+  end
+
+  test 'check_status reports not configured without probing' do
+    EnvStore.set('BUZZ_PRIVATE_KEY', nil)
+    BuzzAgent.expects(:probe_relay).never
+    status = BuzzAgent.check_status
+    refute status[:configured]
+    assert_nil status[:relay_reachable]
+  end
+
+  test 'check_status records the probe result and exposes it as last_status' do
+    store = ActiveSupport::Cache::MemoryStore.new
+    Rails.stubs(:cache).returns(store)
+    BuzzAgent.expects(:probe_relay).returns([true, false])
+    status = BuzzAgent.check_status
+    assert status[:relay_reachable]
+    assert_equal false, status[:registered]
+    assert_equal false, BuzzAgent.last_status[:registered]
+  end
+
+  test 'probe_relay reports an unreachable relay without raising' do
+    WebSocket::Client::Simple.stubs(:connect).raises(Errno::ECONNREFUSED)
+    assert_equal [false, nil], BuzzAgent.probe_relay
   end
 end

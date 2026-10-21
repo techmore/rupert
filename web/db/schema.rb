@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_21_050000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_22_150000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -282,6 +282,55 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_050000) do
     t.index ["tenant_id"], name: "index_SyncRun_on_tenant_id"
   end
 
+  create_table "uploads", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "status", default: "received", null: false
+    t.string "origin", default: "web", null: false
+    t.string "filename", null: false
+    t.string "client_content_type"
+    t.string "file_format"
+    t.integer "byte_size", default: 0, null: false
+    t.string "sha256"
+    t.boolean "retained", default: false, null: false
+    t.text "content_base64"
+    t.integer "duplicate_of_id"
+    t.string "detected_type"
+    t.string "detected_label"
+    t.integer "confidence"
+    t.text "detected_reason"
+    t.string "source_guess"
+    t.text "candidates_json"
+    t.string "importer_key"
+    t.boolean "operator_chosen", default: false, null: false
+    t.text "params_json"
+    t.integer "row_count"
+    t.text "reason"
+    t.text "summary_json"
+    t.string "dry_run_digest"
+    t.datetime "dry_run_at"
+    t.string "dry_run_by_name"
+    t.string "recognizer_version"
+    t.datetime "recognized_at"
+    t.integer "uploaded_by_id"
+    t.string "uploaded_by_name"
+    t.string "via_token_label"
+    t.datetime "imported_at"
+    t.integer "imported_by_id"
+    t.string "imported_by_name"
+    t.string "result_path"
+    t.datetime "discarded_at"
+    t.string "discarded_by_name"
+    t.string "reason_code"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["duplicate_of_id"], name: "index_uploads_on_duplicate_of_id"
+    t.index ["tenant_id", "created_at"], name: "idx_uploads_recent"
+    t.index ["tenant_id", "reason_code"], name: "idx_uploads_reason_code"
+    t.index ["tenant_id", "sha256"], name: "idx_uploads_retained_replay", unique: true, where: "retained = 1"
+    t.index ["tenant_id", "status"], name: "idx_uploads_status"
+    t.index ["tenant_id"], name: "index_uploads_on_tenant_id"
+  end
+
   create_table "WarehouseShare", id: :string, force: :cascade do |t|
     t.datetime "createdAt", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.datetime "expires_at"
@@ -372,9 +421,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_050000) do
     t.datetime "triaged_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "source", default: "agent", null: false
+    t.string "source_ref"
+    t.string "source_sender"
+    t.bigint "task_id"
+    t.boolean "ready_for_development", default: false, null: false
+    t.datetime "ready_marked_at"
+    t.string "ready_marked_by"
     t.index ["api_access_token_id"], name: "index_agent_feedbacks_on_api_access_token_id"
+    t.index ["task_id"], name: "index_agent_feedbacks_on_task_id"
     t.index ["tenant_id", "created_at"], name: "index_agent_feedbacks_on_tenant_id_and_created_at"
+    t.index ["tenant_id", "source_ref"], name: "idx_agent_feedbacks_source_ref"
     t.index ["tenant_id", "status"], name: "index_agent_feedbacks_on_tenant_id_and_status"
+    t.index ["tenant_id", "user_id", "created_at"], name: "idx_agent_feedbacks_reporter"
   end
 
   create_table "agent_tool_issues", force: :cascade do |t|
@@ -392,6 +451,48 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_050000) do
     t.index ["tenant_id", "tool_name", "error_kind"], name: "idx_agent_tool_issues_unique", unique: true
   end
 
+  create_table "ai_agent_runs", force: :cascade do |t|
+    t.string "agent", default: "buzz", null: false
+    t.string "model"
+    t.string "outcome", null: false
+    t.string "error_type"
+    t.integer "tokens_in", default: 0, null: false
+    t.integer "tokens_out", default: 0, null: false
+    t.integer "tokens_reasoning", default: 0, null: false
+    t.integer "cache_read_tokens", default: 0, null: false
+    t.integer "cache_write_tokens", default: 0, null: false
+    t.decimal "cost_usd", precision: 12, scale: 6
+    t.integer "steps", default: 0, null: false
+    t.integer "duration_ms"
+    t.datetime "occurred_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["occurred_at"], name: "index_ai_agent_runs_on_occurred_at"
+  end
+
+  create_table "ai_health_checks", force: :cascade do |t|
+    t.string "provider", default: "opencode", null: false
+    t.string "triggered_by", default: "scheduled", null: false
+    t.string "status", null: false
+    t.string "key_state", default: "unchecked", null: false
+    t.string "error_type"
+    t.string "error_code"
+    t.integer "http_status"
+    t.integer "latency_ms"
+    t.integer "catalog_latency_ms"
+    t.boolean "rate_limited", default: false, null: false
+    t.integer "retry_after_seconds"
+    t.string "configured_model"
+    t.string "model_state", default: "unknown", null: false
+    t.text "free_models"
+    t.integer "free_model_count", default: 0, null: false
+    t.integer "catalog_size"
+    t.datetime "checked_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["checked_at"], name: "index_ai_health_checks_on_checked_at"
+  end
+
   create_table "api_access_tokens", id: :string, force: :cascade do |t|
     t.string "tenant_id", null: false
     t.integer "user_id", null: false
@@ -405,6 +506,52 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_050000) do
     t.index ["tenant_id", "created_at"], name: "idx_api_tokens_tenant_created"
     t.index ["token_digest"], name: "index_api_access_tokens_on_token_digest", unique: true
     t.index ["user_id"], name: "index_api_access_tokens_on_user_id"
+  end
+
+  create_table "ask_rupert_conversations", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "user_id", null: false
+    t.string "title"
+    t.datetime "last_message_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "user_id", "last_message_at"], name: "idx_ask_rupert_conversations_owner"
+  end
+
+  create_table "ask_rupert_messages", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "user_id", null: false
+    t.integer "conversation_id", null: false
+    t.string "role", null: false
+    t.string "status", default: "done", null: false
+    t.text "content", default: "", null: false
+    t.text "links"
+    t.text "report_draft"
+    t.string "provider"
+    t.string "model"
+    t.string "page_path"
+    t.integer "tokens_in", default: 0, null: false
+    t.integer "tokens_out", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["conversation_id", "id"], name: "idx_ask_rupert_messages_thread"
+    t.index ["conversation_id"], name: "index_ask_rupert_messages_on_conversation_id"
+  end
+
+  create_table "ask_rupert_usages", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "user_id", null: false
+    t.string "outcome", default: "pending", null: false
+    t.string "provider"
+    t.string "model"
+    t.integer "tokens_in", default: 0, null: false
+    t.integer "tokens_out", default: 0, null: false
+    t.integer "tool_calls", default: 0, null: false
+    t.integer "duration_ms"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "created_at"], name: "idx_ask_rupert_usages_tenant"
+    t.index ["tenant_id", "user_id", "created_at"], name: "idx_ask_rupert_usages_user"
   end
 
   create_table "authorize_net_batches", force: :cascade do |t|
@@ -570,6 +717,44 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_050000) do
     t.index ["tenant_id"], name: "index_book_approvals_on_tenant_id"
   end
 
+  create_table "buzz_chat_states", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.datetime "last_attempt_at"
+    t.datetime "last_success_at"
+    t.string "last_error"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id"], name: "idx_buzz_chat_states_tenant", unique: true
+  end
+
+  create_table "buzz_messages", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "event_id", limit: 64, null: false
+    t.string "pubkey", limit: 64, null: false
+    t.integer "kind", null: false
+    t.string "channel", null: false
+    t.text "content", default: "", null: false
+    t.string "reply_to", limit: 64
+    t.string "client", limit: 40
+    t.bigint "rupert_user_id"
+    t.bigint "posted_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "channel", "posted_at", "event_id"], name: "idx_buzz_messages_timeline"
+    t.index ["tenant_id", "event_id"], name: "idx_buzz_messages_event", unique: true
+  end
+
+  create_table "buzz_profiles", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "pubkey", limit: 64, null: false
+    t.string "name", limit: 100
+    t.string "display_name", limit: 100
+    t.datetime "fetched_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "pubkey"], name: "idx_buzz_profiles_pubkey", unique: true
+  end
+
   create_table "bulk_consumptions", force: :cascade do |t|
     t.string "tenant_id", null: false
     t.string "source", null: false
@@ -653,6 +838,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_050000) do
     t.index ["tenant_id", "source", "source_variant_id", "effective_from"], name: "idx_bulk_recipe_effective"
     t.index ["tenant_id", "source", "source_variant_id", "version"], name: "idx_bulk_recipe_version", unique: true
     t.check_constraint "source = 'shopify' AND version > 0 AND mg_per_unit > 0", name: "bulk_recipe_positive"
+  end
+
+  create_table "buzz_identities", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "user_id", null: false
+    t.string "status", default: "code", null: false
+    t.string "pubkey"
+    t.string "code_digest"
+    t.datetime "code_expires_at"
+    t.datetime "claimed_at"
+    t.datetime "linked_at"
+    t.datetime "last_used_at"
+    t.datetime "disclosed_at"
+    t.datetime "revoked_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "code_digest"], name: "idx_buzz_identities_code"
+    t.index ["tenant_id", "pubkey"], name: "idx_buzz_identities_live_pubkey", unique: true, where: "pubkey IS NOT NULL AND status IN ('pending', 'active')"
+    t.index ["tenant_id", "user_id"], name: "idx_buzz_identities_user"
   end
 
   create_table "clock_corrections", force: :cascade do |t|
@@ -1069,6 +1273,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_050000) do
     t.index ["discarded_at"], name: "index_expenses_on_discarded_at"
     t.index ["tenant_id", "category"], name: "index_expenses_on_tenant_id_and_category"
     t.index ["tenant_id", "incurred_on"], name: "index_expenses_on_tenant_id_and_incurred_on"
+  end
+
+  create_table "feedback_attachments", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "agent_feedback_id", null: false
+    t.string "kind", null: false
+    t.string "content_type", default: "text/plain", null: false
+    t.text "text_body"
+    t.binary "binary_body"
+    t.integer "byte_size", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_feedback_id", "kind"], name: "idx_feedback_attachments_kind", unique: true
+    t.index ["agent_feedback_id"], name: "index_feedback_attachments_on_agent_feedback_id"
+    t.index ["tenant_id"], name: "index_feedback_attachments_on_tenant_id"
   end
 
   create_table "fulfillments", force: :cascade do |t|
@@ -2817,6 +3036,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_050000) do
     t.index ["status", "created_at", "id"], name: "idx_workspace_signups_queue"
   end
 
+  add_foreign_key "feedback_attachments", "agent_feedbacks"
   add_foreign_key "workspace_deployments", "tenants"
   add_foreign_key "workspace_deployments", "users", column: "owner_id"
   add_foreign_key "workspace_handoffs", "support_access_grants"
