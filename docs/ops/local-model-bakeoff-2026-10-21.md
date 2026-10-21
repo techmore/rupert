@@ -1,5 +1,7 @@
 # Local-model bake-off for Rupert's agents (2026-10-21)
 
+**Scope warning:** this ran on an Apple M1 Pro (ARM, GPU), not on SER8's x86 Ryzen. Only the *quality* results (same GGUF weights, same prompts) carry over. Nothing about speed, load time or memory on the laptop applies to SER8, and none of it is used for the recommendation.
+
 Purpose: pick a small model for a local-AI tier on SER8 (Buzz `@rupert` agent, planned text/bug intake) and decide which tasks stay on the free cloud model (opencode + deepseek-v4-flash). This was a short, partial bake-off on a developer laptop. **Read "What was and was not measured" before using any number.**
 
 Harness, prompts and raw results: [`bakeoff/`](bakeoff/README.md). Nothing was run on, or deployed to, SER8.
@@ -10,7 +12,7 @@ Harness, prompts and raw results: [`bakeoff/`](bakeoff/README.md). Nothing was r
 | --- | --- |
 | Local tier model on SER8 | **Qwen3.5 4B, Q4_K_M** (unsloth GGUF, 2.74 GB file, licence not re-checked here). Best automatic score of the six models that finished (0.89 of 21 prompts, 3 runs each), the only one to get every severity right, and a strong free-text grade. Run it with thinking **off**. |
 | Fallback if it is too slow or too big | **Gemma 4 E2B, Q4_K_M** (3.11 GB file): 0.86 overall and perfectly repeatable, but it gets one severity wrong and is larger on disk than Qwen3.5 4B. |
-| RAM budget alongside Rupert | Plan on **about 3.5 GB resident** for the model and a 4096-token context (file 2.74 GB, plus KV cache and runtime). Only Gemma 4 E2B, Phi-4-mini and LFM2.5 2.6B had their RSS recorded (1.8 to 3.3 GiB, see below); Qwen3.5 4B's was not, so 3.5 GB is an estimate. Compare the 9.6 GB `gemma4:e4b` already on SER8. |
+| RAM budget alongside Rupert | Unmeasured on SER8. The file is 2.74 GB; budget roughly 3.5 GB resident with a 4096-token context as a guess, to be confirmed on SER8. Compare the 9.6 GB `gemma4:e4b` already on SER8. |
 | Keep on the free cloud model | Anything that can act: tool use, shell or repo access, deploys, refunds, Shopify or Square writes; anything needing broad reasoning (diagnosing a bug from logs or code); long-context work; and anything where being talked into obeying message text is costly. See "Prompt injection" below. |
 | Good fit for the local tier | Classifying inbound messages (bug / request / question / direction / chitchat), extracting a one-line title and severity from a bug report, short friendly Buzz acknowledgements, and short thread summaries, **always with output validation and no tools**. |
 
@@ -27,7 +29,7 @@ Measured, on this laptop (Apple M1 Pro 32 GB, Linux, llama.cpp build 7182ef7 fro
 Not measured or not trustworthy:
 
 - **Speed on the target CPU.** The laptop was running other sessions' Rails test suites throughout (1-minute load average 14 to 60 on 10 cores). Tokens/sec and time to first token from those runs (for example 1 to 5 tokens/s generation, 8 to 15 s to first token) reflect the load, not the models, and are not reported as results. The raw files are kept in `bakeoff/results/*.speed.json` with the load average recorded. No public llama.cpp number for a Ryzen 7 8745HS with these models turned up in a quick search, so SER8 speed is **unknown**. A rough ceiling comes from memory bandwidth (dual-channel DDR5-5600 is about 90 GB/s peak, and a Q4 4B model reads about 2.7 GB per token), which suggests low double digits of tokens/s at best; treat that as an estimate to confirm.
-- **Peak RAM** was recorded for Gemma 4 E2B (3259 MiB), Phi-4-mini (3100 MiB) and LFM2.5 2.6B (1846 MiB) at 4096 context, all under the same load; not for the others.
+- **Peak RAM and load time** from the laptop are in the raw files but are not used: different CPU architecture and memory system, and measured under heavy load.
 - **Not run at all:** Gemma 4 E4B baseline (a 4.98 GB Q4_K_M; the run was stopped before it started) and Bonsai 8B 1-bit (1.16 GB Q1_0; the GGUF loaded and answered a test prompt on CPU in an earlier smoke test, but no bake-off run was made). The MLX runtime and the Ollama build on SER8 were not tested. The cloud model (deepseek-v4-flash) was not run on these prompts either, so "stays on the cloud" rests on the injection and capability reasoning here, not on a head-to-head result.
 - Sample size is small: 21 prompts, 3 runs, one synthetic phrasing per case. A difference of one prompt moves a score by about 5 points. Differences under about 0.1 are noise.
 
