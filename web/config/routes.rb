@@ -171,6 +171,14 @@ Rails.application.routes.draw do
   resources :api_access_tokens, only: %i[index create] do
     member { post :revoke }
   end
+  # Model Context Protocol endpoint for external AI assistants (docs/mcp.md).
+  post '/mcp', to: 'mcp#create', as: :mcp
+  match '/mcp', to: 'mcp#method_not_allowed', via: %i[get put patch delete]
+  resources :agent_feedbacks, path: 'ai_feedback', only: %i[index update]
+  # The ladybug in the header: any signed-in staff member files a report and follows its status.
+  resources :feedback_reports, only: %i[index show create] do
+    get :screenshot, on: :member
+  end
 
   mount ShopifyApp::Engine, at: '/api'
 
@@ -227,6 +235,9 @@ Rails.application.routes.draw do
   end
 
   get 'stock_comparison', to: 'inventory#comparison'
+  resources :product_names, only: :index do
+    collection { get :pdf }
+  end
   resources :inventory, only: :index do
     collection do
       get :pdf
@@ -254,6 +265,7 @@ Rails.application.routes.draw do
         post :restore
       end
     end
+    resources :expense_categories, only: %i[index new create edit update]
     resources :expenses, only: %i[index new create edit update destroy] do
       member { post :restore }
     end
@@ -316,6 +328,7 @@ Rails.application.routes.draw do
       end
     end
     get 'team_schedule', to: 'team_schedule#index', as: :team_schedule
+    get 'time_keeping', to: 'time_keeping#index', as: :time_keeping
     resources :leave_requests, only: %i[index show new create destroy] do
       member do
         post :approve
@@ -378,6 +391,7 @@ Rails.application.routes.draw do
     collection do
       get :register_summary
       get :sales
+      get :sales_tax
       get :financial
       get :inventory
       get :operations
@@ -401,11 +415,17 @@ Rails.application.routes.draw do
       post :push_guard_unfreeze
     end
   end
+  resources :swipesimple_items, only: %i[index create]
   resources :swipesimple_reports, only: %i[index create] do
     collection { post :preview }
     member { get :document }
   end
   get '/system', to: 'system#index', as: :system
+  get '/system/updates', to: 'updates#show', as: :system_updates
+  post '/system/updates/check', to: 'updates#check', as: :check_system_updates
+  post '/system/updates/install', to: 'updates#install', as: :install_system_updates
+  delete '/system/updates/install', to: 'updates#cancel', as: :cancel_system_updates
+  patch '/system/updates/mode', to: 'updates#mode', as: :system_updates_mode
   get '/connections', to: 'connections#index', as: :connections
   get '/connections/:service/edit', to: 'connections#edit', as: :edit_connection
   patch '/connections/:service', to: 'connections#update', as: :connection
@@ -439,6 +459,13 @@ Rails.application.routes.draw do
   post '/customer_display/pay', to: 'customer_displays#pay', as: :customer_pay
   resources :ctrax_days, only: %i[index show create] do
     member { post :review }
+    collection { get :items }
+  end
+  resources :swipesimple_days, only: :index do
+    collection do
+      post :review
+      post :deposit_merchant
+    end
   end
   get '/ctrax_pos', to: 'ctrax_pos#index', as: :ctrax_pos
   post '/ctrax_pos/:location_id/quote', to: 'ctrax_pos#quote', as: :quote_ctrax_pos

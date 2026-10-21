@@ -31,6 +31,11 @@ hostnames and query parameters cannot change the token's tenant.
 | `inventory:read` | `GET /api/v1/inventory` | `inventory.read` |
 | `roadmap:read` | `GET /api/v1/roadmap` | Active owner |
 
+The scopes `reports:read`, `timesheets:read`, `tasks:read`, `alerts:read` and
+`tasks:write` currently gate only tools on the MCP server for AI assistants
+(`POST /mcp`). See [docs/mcp.md](mcp.md) for connecting Claude, ChatGPT and
+other assistants with the same tokens, the tool list and the feedback channel.
+
 Invalid, revoked and expired tokens receive JSON `401` with a
 `WWW-Authenticate: Bearer` header. Valid tokens without the required scope or
 current owner permission receive JSON `403`. Invalid list parameters receive
@@ -38,10 +43,10 @@ JSON `400`. Responses use `Cache-Control: no-store`.
 
 ```sh
 curl -H "Authorization: Bearer $RUPERT_API_TOKEN" \
-  'https://rupert.stoverparc.org/api/v1/catalog?source=shopify&per_page=50'
+  'https://herbalhealers.rupertpos.com/api/v1/catalog?source=shopify&per_page=50'
 
 curl -H "Authorization: Bearer $RUPERT_API_TOKEN" \
-  'https://rupert.stoverparc.org/api/v1/inventory?source=square&per_page=50'
+  'https://herbalhealers.rupertpos.com/api/v1/inventory?source=square&per_page=50'
 ```
 
 ## List contract

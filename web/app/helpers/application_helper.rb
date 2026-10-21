@@ -9,6 +9,12 @@ module ApplicationHelper
     @nav_areas ||= ModuleRegistry.areas_for(Current.user)
   end
 
+  # Whether the header already offers this area. Account-menu shortcuts that an
+  # area tab would repeat (My time clock, Features & roadmap) show only without it.
+  def nav_area?(key)
+    nav_areas.any? { |area| area[:key] == key.to_s }
+  end
+
   # Safely evaluate a module's lazy path; "#" keeps the nav alive if a route
   # helper is missing (e.g. mid-development).
   def safe_module_path(entry)
@@ -20,7 +26,7 @@ module ApplicationHelper
   def module_match_strength(path)
     return 0 if path.blank? || path == '#'
 
-    request_path = request.path == '/stock_comparison' ? '/inventory' : request.path
+    request_path = request.path
     return request_path == '/' ? 100 : 0 if path == '/'
 
     return path.length if request_path == path
@@ -139,6 +145,22 @@ module ApplicationHelper
     return if session[:dismissed_update_for] == BuildInfo.current.revision
 
     UpdateChecker.pending
+  end
+
+  # What the server's updater will do with the pending update, when it has one.
+  def update_install_hint
+    return @update_install_hint if defined?(@update_install_hint)
+
+    @update_install_hint = install_hint_for(AutoUpdate.status)
+  end
+
+  def install_hint_for(status)
+    return if status.nil? || AutoUpdate.stale?(status)
+    return 'Installing now.' if status.busy?
+    return 'The last install failed and was rolled back.' if status.failed?
+    return 'It installs when an operator clicks Install.' if AutoUpdate.manual?
+
+    'It installs automatically once its checks pass.'
   end
 
   # Long explanatory copy shows its first sentence and keeps the rest one tap
