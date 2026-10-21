@@ -54,3 +54,6 @@ Rails.application.config.filter_parameters += %i[registration reason referral_co
 Rails.application.config.filter_parameters += [/\Adata\z/i]
 
 Rails.application.config.filter_parameters += %i[handoff lease instance_secret owner_email owner_name google_subject]
+
+# Manual Zelle bank CSVs: the file, account label, counterparties and memos stay out of request logs.
+Rails.application.config.filter_parameters += [/\Azelle_export\z/i, :counterparty, :memo, :bank_reference]

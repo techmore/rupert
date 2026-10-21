@@ -416,6 +416,10 @@ Rails.application.routes.draw do
     collection { post :preview }
     member { get :document }
   end
+  resources :zelle_reports, only: %i[index create] do
+    collection { post :preview }
+    member { get :document }
+  end
   get '/system', to: 'system#index', as: :system
   get '/connections', to: 'connections#index', as: :connections
   get '/connections/:service/edit', to: 'connections#edit', as: :edit_connection
