@@ -131,6 +131,8 @@ class McpServerTest < ActionDispatch::IntegrationTest
       when 'metric' then { name: 'gross_sales', period: 'last_month' }
       when 'update_task' then { task_id: Projects::Task.find_by!(title: 'Check the tea shelf').id, assignee: 'me', status: 'in_progress', note: 'Started' }
       when 'report_context' then { report_id: AgentFeedback.create!(kind: 'bug', summary: 'Smoke report').id }
+      when 'customer_lookup' then { query: Core::Customer.create!(source: 'manual', external_id: 'manual:smoke', first_name: 'Smoke', last_name: 'Test').first_name }
+      when 'marketing_records' then { kind: 'offers' }
       else {}
       end
       result = call_tool(full, tool.tool_name, arguments)
