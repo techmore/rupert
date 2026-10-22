@@ -68,7 +68,8 @@ permissions, or save behavior changed.
   comparison rows).
 - Documentation links passed across 21 pages.
 - JavaScript tests passed (45 tests).
-- `git diff --check` passed before report creation; rerun before commit.
+- `git diff --check` passed before report creation; the staged diff was checked
+  again before commit.
 
 The Rails render assertions exercise the changed UI with synthetic fixtures;
 there was no separate browser screenshot, physical scanner, production page, or
