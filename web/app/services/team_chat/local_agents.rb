@@ -64,7 +64,13 @@ module TeamChat
       Agent.new(handle: 'gemma-26b', name: 'Gemma 26B', model: 'gemma-4-26b-a4b', color: '#6b21a8',
         about: 'Google Gemma 4 26B-A4B (QAT Q4_0), local'),
       Agent.new(handle: 'qwen-2b', name: 'Qwen 2B', model: 'qwen3.5-2b', color: '#fb923c',
-        about: 'Alibaba Qwen3.5 2B (Unsloth UD-Q4_K_XL), local: tested for Liquid-like speed')
+        about: 'Alibaba Qwen3.5 2B (Unsloth UD-Q4_K_XL), local: tested for Liquid-like speed'),
+      # Recursive Flint (2026-10-21): 40B mixture of experts, ~2.5B active, trained for coding agents; always reasons
+      # first, so it is tested with thinking cut off and with a short thinking budget.
+      Agent.new(handle: 'flint', name: 'Flint', model: 'flint-40b-a2.5b', color: '#475569',
+        about: 'Recursive Flint 40B-A2.5B (Unsloth UD-IQ3_XXS), local, thinking off'),
+      Agent.new(handle: 'flint-think', name: 'Flint (thinking)', model: 'flint-40b-a2.5b-think', color: '#334155',
+        about: 'Recursive Flint 40B-A2.5B (Unsloth UD-IQ3_XXS), local, up to 512 tokens of thinking')
     ].freeze
 
     def self.trial(handle) = (TRIALS.find { |agent| agent.handle == handle.to_s } if enabled?)
