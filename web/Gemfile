@@ -15,7 +15,7 @@ gem "sprockets-rails"
 gem "sqlite3", "~> 2.1"
 
 # Use the Puma web server [https://github.com/puma/puma]
-gem "puma", "~> 7.2"
+gem "puma", "~> 8.0"
 
 # Use JavaScript with ESM import maps [https://github.com/rails/importmap-rails]
 gem "importmap-rails"
@@ -30,7 +30,7 @@ gem "stimulus-rails"
 gem "jbuilder"
 
 # Use Redis adapter to run Action Cable in production
-gem "redis", "~> 4.0"
+gem "redis", "~> 6.0"
 
 # Use Kredis to get higher-level data types in Redis [https://github.com/rails/kredis]
 # gem "kredis"
@@ -59,9 +59,8 @@ gem "solid_queue"
 gem "google-apis-drive_v3"
 gem "signet"
 
-# Buzz (Nostr) agent integration — Rupert publishes signed events to the relay
+# Nostr key decoding (npub) for the feedback ready-for-development allow-list
 gem "nostr"
-gem "websocket-client-simple"
 
 # --- ERP framework gems ---
 # Fast pagination
@@ -134,9 +133,13 @@ group :test do
   gem "selenium-webdriver", ">= 4.14"
   gem "webmock"
   gem "mocha"
-  gem "minitest", "~> 5.25"
+  gem "minitest", "~> 6.0"
+  gem "minitest-mock"
   gem "factory_bot_rails"
   gem "faker"
 end
 
 gem "shopify_app", "~> 23.0"
+
+# In-app team chat: model client with native tool calling (Ollama, OpenAI-compatible endpoints).
+gem "ruby_llm", "~> 2.1"
