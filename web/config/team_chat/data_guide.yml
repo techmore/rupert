@@ -142,7 +142,7 @@ topics:
       Link the page rather than rebuilding a report from other tools.
   - key: comparison
     title: Comparing periods
-    keywords: [compare, compared, comparison, versus, vs, up or down, growth, grew, change, trend, week over week, month over month, year over year, the week before, the month before, the quarter before, the day before, year to date, ytd]
+    keywords: [compare, compared, comparison, versus, vs, up or down, growth, grew, change, trend, week over week, month over month, year over year, the week before, the month before, the quarter before, the day before, year to date, ytd, this week, this month, this quarter, last week, last month, last quarter, last year, month, quarter, week]
     tools: [metric, period_review, stock_comparison]
     card: >-
       metric with compare previous or last_year gives one figure's change already worked out (change_percent, direction);
@@ -162,7 +162,7 @@ topics:
       Days are business days in the workspace time zone. No stored orders for a day does not prove zero sales.
   - key: briefing
     title: Briefings and overviews
-    keywords: [briefing, brief, brief me, rundown, recap, overview, snapshot, summary, wrap up, wrap-up, how are we doing, how r we doing, how is the business, focus, on fire, outstanding, anything i should know, morning, end of day, eod, status, catch me up, what changed, anything unusual, plan today, worry, need to know, going on, happened, daily brief, handoff, hand off, first thing, this week, this month, this quarter, last week, last month, last quarter, last year, month, quarter, week]
+    keywords: [briefing, brief, brief me, rundown, recap, overview, snapshot, summary, wrap up, wrap-up, how are we doing, how r we doing, how is the business, focus, on fire, outstanding, anything i should know, morning, end of day, eod, status, catch me up, what changed, anything unusual, plan today, worry, need to know, going on, happened, daily brief, handoff, hand off, first thing]
     tools: [period_review, metric, compliance_check, order_queues, sync_health, list_tasks, list_alerts, recent_errors]
     card: >-
       For a briefing: period_review for the period's sales with the change worked out, compliance_check for what
