@@ -47,12 +47,13 @@ topics:
       review, warehouse holds, unresolved card payments, follow-ups.
   - key: stock
     title: Stock and inventory
-    keywords: [stock, inventory, low stock, out of stock, alert, alerts, sku, skus, count, counts, on hand, available, reorder, left, run out, running low, low, sold out, warehouse, bin, shelf, back room, bulk, materials, raw material, recipe, recipes, sizes, variant, variants, reserved, movements, do we have, in stock, restock, overstock, slow moving, dead stock, catalog, item list, items, oversold, mismatch, mismatched, out of sync, not matched, dont match, differ, different]
-    tools: [list_alerts, inventory_search, stock_comparison, swipesimple_items, metric, order_queues, purchase_orders]
+    keywords: [stock, inventory, low stock, out of stock, alert, alerts, sku, skus, count, counts, on hand, available, reorder, left, run out, running low, low, sold out, warehouse, bin, shelf, back room, bulk, materials, raw material, recipe, recipes, sizes, variant, variants, reserved, movements, movement, moved, adjusted, adjustment, adjustments, shrink, shrinkage, missing stock, lot, lots, do we have, in stock, restock, overstock, slow moving, dead stock, catalog, item list, items, oversold, mismatch, mismatched, out of sync, not matched, dont match, differ, different]
+    tools: [list_alerts, inventory_search, stock_comparison, stock_movements, swipesimple_items, metric, order_queues, purchase_orders]
     card: >-
       Stock levels per platform and location are separate observations: never add or "fix" them. list_alerts gives
       open low-stock alerts (paginated: say how many there are in total), inventory_search finds an item,
-      stock_comparison compares platforms for one SKU.
+      stock_comparison compares platforms for one SKU. stock_movements lists stock changes (what moved, why, before
+      and after) and bulk material lots in grams.
   - key: tasks
     title: Tasks
     keywords: [task, tasks, todo, to do, assign, assigned, due, overdue tasks, recount, remind, my plate, on my plate, my list, blocked, backlog, unassigned, urgent, high priority, priority, snooze, reminder, reminders, assignee, working on, slipping, mark it done, mark done, in progress, to-do, todos, jot down, add to my list, got done, finish, finished, completed, close it out, close out]
@@ -73,17 +74,21 @@ topics:
     keywords: [customer, customers, client, clients, regular, regulars, repeat, lapsed, lifetime, lifetime value, ltv, subscription, subscriptions, subscriber, subscribers, referral, referrals, referred, loyalty, points, vip, wholesale customer, shopper, shoppers, buyer, buyers, mrs, mr, ms]
     tools: [customer_lookup, customer_insights, order_queues, metric, update_task, create_task]
     card: >-
-      customer_lookup finds one customer (by name) with their orders, spend per currency, follow-ups, notes,
-      subscriptions and referrals. customer_insights lists customers: top spenders, new, repeat, lapsed, follow-ups
-      due and subscriptions. Contact details are never shown to bots. Spend is per currency; never add currencies.
+      customer_lookup finds one customer (by name, id or order number) with lifetime spend per currency, recent
+      orders, top products, open follow-ups and logged calls and notes. customer_insights lists customers: top
+      spenders, new, repeat, lapsed, follow-ups due, segments (CRM status, tag, source) and interactions. Spend
+      counts paid orders linked to a customer; walk-in sales have no customer. Rupert stores no customer
+      subscriptions, referrals or loyalty points, and bots never see contact details: say so.
   - key: marketing
     title: Marketing
-    keywords: [marketing, campaign, campaigns, promo, promos, promotion, promotions, offer, offers, discount, discounts, discount code, coupon, coupons, code, codes, influencer, influencers, gift, gifts, gifted, giveaway, event, events, community, communities, rating, ratings, star, stars, customer reviews, google reviews, testimonial, newsletter, email blast]
+    keywords: [marketing, campaign, campaigns, promo, promos, promotion, promotions, offer, offers, discount, discounts, discount code, coupon, coupons, code, codes, influencer, influencers, gift, gifts, gifted, giveaway, event, events, community, communities, engagement, engagements, collaboration, collaborations, rating, ratings, star, stars, customer reviews, google reviews, testimonial, newsletter, email blast]
     tools: [marketing_records, marketing_summary, metric, sales_summary]
     card: >-
-      marketing_records lists campaigns, offers, Shopify discounts, review events, influencers, gifted products,
-      events and communities with their status and dates. Rupert stores what was recorded on the Marketing pages;
-      it has no web analytics or email open rates: say so instead of guessing.
+      marketing_summary answers "how is marketing doing" for a period: replies drafted and approved, offers live and
+      ending, Shopify codes, gifts shipped with cost, influencer stages and follow-ups. marketing_records lists one
+      kind at a time (campaigns, offers, discounts, reviews, influencers, engagements, gifts, communities, events).
+      "Reviews" are approvals of our own community replies, not customer product reviews; Rupert has no star
+      ratings, discount usage counts, campaign budgets or results, or web and email analytics: say so plainly.
   - key: schedule
     title: Schedule and staff list
     keywords: [schedule, scheduled, scheduling, roster, rota, who is working, whos working, who's working, working today, working tomorrow, on shift, coverage, covered, staff list, team list, who works here, call out, called out]
@@ -110,8 +115,9 @@ topics:
     keywords: [who changed, who did, who approved, who edited, who deleted, who made, who added, who updated, who moved, activity, activity log, audit log, audit trail, changed, edited, deleted]
     tools: [activity_log, deploy_status]
     card: >-
-      activity_log lists recorded actions in Rupert (who, what, which record, when), newest first. It covers changes
-      made in Rupert, not changes made directly in Shopify or Square.
+      activity_log lists recorded actions in Rupert (who, what, which record, when), newest first, with counts by
+      action and person. It covers changes made in Rupert, not in Shopify or Square, and Rupert does not log
+      sign-ins (only when someone was last active).
   - key: uploads
     title: Uploads and imported history
     keywords: [upload, uploads, uploaded, inbox, file, files, csv, import, imported, imports, history, how far back, coverage, missing days, gap, gaps, behind, up to date, earliest, loaded, in total, how much data, data before, came in, went through, go through, did it land]
@@ -134,15 +140,6 @@ topics:
     card: >-
       list_reports lists Rupert's report pages with what each covers; report_context gives one report's notes.
       Link the page rather than rebuilding a report from other tools.
-  - key: briefing
-    title: Briefings and overviews
-    keywords: [briefing, brief, brief me, rundown, recap, overview, snapshot, summary, wrap up, wrap-up, how are we doing, how r we doing, how is the business, focus, on fire, outstanding, anything i should know, morning, end of day, eod, status, catch me up, what changed, anything unusual, plan today, worry, need to know, going on, happened, daily brief, handoff, hand off, first thing]
-    tools: [period_review, metric, compliance_check, order_queues, sync_health, list_tasks, list_alerts, recent_errors]
-    card: >-
-      For a briefing: period_review for the period's sales with the change worked out, compliance_check for what
-      needs fixing, order_queues for what is waiting or late, sync_health for stale sources and list_tasks for what
-      is due. Lead with what needs action; quote figures as given.
-
   - key: comparison
     title: Comparing periods
     keywords: [compare, compared, comparison, versus, vs, up or down, growth, grew, change, trend, week over week, month over month, year over year, the week before, the month before, the quarter before, the day before, year to date, ytd]
@@ -154,7 +151,7 @@ topics:
       (gross_change_percent). Quote that change; do not compute your own.
   - key: sales
     title: Sales and orders
-    keywords: [sales, sold, sell, revenue, gross, orders, order value, average order, aov, top products, best day, best seller, takings, shopify, square, rupert pos, today, yesterday, sellers, selling, best sellers, top sellers, busiest, this week, this month, this quarter, last week, last month, last quarter, last year, month, quarter, week, money came in, take in, took in, channel, channels, swipesimple, c-trax, ctrax, c trax, salez, sale]
+    keywords: [sales, sold, sell, revenue, gross, orders, order value, average order, aov, top products, best day, best seller, takings, shopify, square, rupert pos, today, yesterday, sellers, selling, best sellers, top sellers, busiest, money came in, take in, took in, channel, channels, swipesimple, c-trax, ctrax, c trax, salez, sale]
     tools: [metric, sales_summary, period_review, sync_health, order_queues]
     card: >-
       For a single figure use metric (gross_sales, orders, average_order_value, best_day, sales_by_source, top_products,
@@ -163,3 +160,11 @@ topics:
       sales. Money is in cents with a ready *_dollars value beside it. Totals are per currency, never added across
       currencies. C-Trax and SwipeSimple are separate snapshots, not orders: never add them to order totals.
       Days are business days in the workspace time zone. No stored orders for a day does not prove zero sales.
+  - key: briefing
+    title: Briefings and overviews
+    keywords: [briefing, brief, brief me, rundown, recap, overview, snapshot, summary, wrap up, wrap-up, how are we doing, how r we doing, how is the business, focus, on fire, outstanding, anything i should know, morning, end of day, eod, status, catch me up, what changed, anything unusual, plan today, worry, need to know, going on, happened, daily brief, handoff, hand off, first thing, this week, this month, this quarter, last week, last month, last quarter, last year, month, quarter, week]
+    tools: [period_review, metric, compliance_check, order_queues, sync_health, list_tasks, list_alerts, recent_errors]
+    card: >-
+      For a briefing: period_review for the period's sales with the change worked out, compliance_check for what
+      needs fixing, order_queues for what is waiting or late, sync_health for stale sources and list_tasks for what
+      is due. Lead with what needs action; quote figures as given.

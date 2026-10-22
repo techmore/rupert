@@ -75,7 +75,7 @@ class TeamChatLocalAgentsTest < ActiveSupport::TestCase
     assert_includes tools, 'where_is'
     assert_not_includes tools, 'list_alerts'
     assert_not_includes tools, 'create_task'
-    assert_operator tools.size, :<, 12
+    assert_operator tools.size, :<, Mcp::Registry.tools.size / 2
     system = requests.first['messages'].first['content']
     assert_includes system, '## About this question'
     assert_match(/Sales tax \(tools: sales_tax_report\): .*never add sources together/, system)

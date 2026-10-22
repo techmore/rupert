@@ -13,8 +13,8 @@ class WorkTeamToolsTest < ActiveSupport::TestCase
 
   teardown { Current.reset }
 
-  def projects(args = {}, token: @token) = Mcp::Tools::ListProjects.new(token: token).call(args)
-  def schedule(args = {}, token: @token) = Mcp::Tools::StaffSchedule.new(token: token).call(args)
+  def projects(args = {}, token = @token) = Mcp::Tools::ListProjects.new(token: token).call(args)
+  def schedule(args = {}, token = @token) = Mcp::Tools::StaffSchedule.new(token: token).call(args)
 
   def person(email, role: 'reader')
     User.create!(tenant: @tenant, email: email, password: 'password123', role: role, name: email.split('@').first.titleize)
@@ -27,7 +27,6 @@ class WorkTeamToolsTest < ActiveSupport::TestCase
 
   test 'list_projects shows status, people, task counts and the linked goal' do
     goal = Goals::Goal.create!(name: 'Wholesale growth', target_value: 100, current_value: 40, unit: 'accounts', due_on: Date.current + 60)
-    goal.activate!
     member = person('pat-member@example.invalid')
     project = Projects::Project.create!(name: 'Fall launch', owner_id: @user.id.to_s, due_on: Date.current + 10, goal: goal)
     project.start!
@@ -94,7 +93,7 @@ class WorkTeamToolsTest < ActiveSupport::TestCase
     assert_raises(Mcp::ToolError) { schedule('from' => today.iso8601, 'to' => (today + 40).iso8601) }
 
     staff = schedule('view' => 'staff')
-    assert_equal [['Bob Closer', 0.0 + 5], ['Ann Opener', 12.0]].sort, staff.data[:rows].map { |r| r.values_at(:name, :scheduled_hours_in_range) }.sort
+    assert_equal [['Bob Closer', 5.0], ['Ann Opener', 12.0]].sort, staff.data[:rows].map { |r| r.values_at(:name, :scheduled_hours_in_range) }.sort
     assert_match(/2 current staff \(all staff\)/, staff.text)
     assert_no_match(/555-0100|ann@example/, staff.data.to_json)
   end
@@ -109,10 +108,10 @@ class WorkTeamToolsTest < ActiveSupport::TestCase
     token = TeamChat::Token.new(viewer)
     assert Mcp::Tools::StaffSchedule.available_to?(token)
 
-    data = schedule({}, token: token).data
+    data = schedule({}, token).data
     assert_equal ['own shifts only', 1], [data[:scope], data[:totals][:shifts]]
     assert_no_match(/PRIVATE/, data.to_json)
-    assert_equal ['Own Shifter'], schedule({ 'view' => 'staff' }, token: token).data[:rows].map { |row| row[:name] }
+    assert_equal ['Own Shifter'], schedule({ 'view' => 'staff' }, token).data[:rows].map { |row| row[:name] }
 
     nobody = person('no-time@example.invalid')
     nobody.update_permission_overrides!(['projects.read'])

@@ -246,7 +246,7 @@ module Mcp
           product = gift.estimated_product_cents
           { id: gift.id, status: gift.status, influencer: gift.engagement.influencer.name, engagement: gift.engagement.title,
             items: gift.items.map { |item| { product: item.product_name, sku: item.sku, quantity: item.quantity, unit_cost_cents: item.unit_cost_cents } },
-            units: gift.items.sum(&:quantity), currency: gift.currency,
+            units: gift.items.to_a.sum(&:quantity), currency: gift.currency,
             product_cost_cents: product, product_cost_dollars: (money(product) if product),
             shipping_cost_cents: gift.shipping_cost_cents, shipping_cost_dollars: (money(gift.shipping_cost_cents) if gift.shipping_cost_cents),
             carrier: gift.carrier, shipped_at: iso(gift.shipped_at), delivered_at: iso(gift.delivered_at), returned_at: iso(gift.returned_at),
@@ -325,7 +325,7 @@ module Mcp
         scope.includes(:items).find_each do |gift|
           row = totals[gift.currency]
           row[:gifts] += 1
-          row[:units] += gift.items.sum(&:quantity)
+          row[:units] += gift.items.to_a.sum(&:quantity)
           product = gift.estimated_product_cents
           product ? row[:product_cost_cents] += product : row[:gifts_missing_cost] += 1
           row[:shipping_cost_cents] += gift.shipping_cost_cents.to_i
