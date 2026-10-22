@@ -19,6 +19,9 @@ class ApiAccessToken < ApplicationRecord
     'timesheets:read' => 'timesheets.read',
     'tasks:read' => 'projects.read',
     'alerts:read' => 'alerts.read',
+    'customers:read' => 'customers.read',
+    'marketing:read' => 'marketing.read',
+    'purchasing:read' => 'purchasing.read',
     'system:read' => 'system.read',
     'tasks:write' => 'projects.write',
     # Ladybug reports with their attachments: needs settings.read and an administrator owner.
