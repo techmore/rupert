@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_22_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_22_200000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -280,6 +280,80 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_150000) do
     t.index ["tenant_id", "startedAt"], name: "idx_sync_runs_tenant_started_at"
     t.index ["tenant_id"], name: "index_SyncRun_on_running_per_tenant", unique: true, where: "status = 'running'"
     t.index ["tenant_id"], name: "index_SyncRun_on_tenant_id"
+  end
+
+  create_table "chat_attachments", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "room_id", null: false
+    t.integer "message_id", null: false
+    t.string "filename", null: false
+    t.string "content_type", null: false
+    t.integer "byte_size", default: 0, null: false
+    t.binary "data", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["message_id"], name: "index_chat_attachments_on_message_id"
+    t.index ["room_id"], name: "index_chat_attachments_on_room_id"
+  end
+
+  create_table "chat_memberships", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "room_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "last_read_message_id", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["room_id", "user_id"], name: "index_chat_memberships_on_room_id_and_user_id", unique: true
+    t.index ["room_id"], name: "index_chat_memberships_on_room_id"
+    t.index ["tenant_id", "user_id"], name: "index_chat_memberships_on_tenant_id_and_user_id"
+  end
+
+  create_table "chat_messages", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "room_id", null: false
+    t.bigint "user_id"
+    t.string "author_kind", default: "person", null: false
+    t.text "body", default: "", null: false
+    t.bigint "parent_id"
+    t.string "status", default: "done", null: false
+    t.string "activity"
+    t.text "actions"
+    t.text "mentions"
+    t.text "meta"
+    t.datetime "deleted_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["room_id", "id"], name: "index_chat_messages_on_room_id_and_id"
+    t.index ["room_id", "parent_id", "id"], name: "index_chat_messages_on_room_id_and_parent_id_and_id"
+    t.index ["room_id", "status"], name: "index_chat_messages_on_room_id_and_status"
+    t.index ["room_id"], name: "index_chat_messages_on_room_id"
+  end
+
+  create_table "chat_reactions", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "message_id", null: false
+    t.bigint "user_id", null: false
+    t.string "emoji", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["message_id", "user_id", "emoji"], name: "index_chat_reactions_on_message_id_and_user_id_and_emoji", unique: true
+    t.index ["message_id"], name: "index_chat_reactions_on_message_id"
+  end
+
+  create_table "chat_rooms", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.string "topic"
+    t.string "kind", default: "channel", null: false
+    t.string "assistant_mode", default: "mentions", null: false
+    t.bigint "created_by_id"
+    t.datetime "last_message_at"
+    t.datetime "archived_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "kind", "created_by_id"], name: "index_chat_rooms_on_tenant_id_and_kind_and_created_by_id"
+    t.index ["tenant_id", "slug"], name: "index_chat_rooms_on_tenant_id_and_slug", unique: true
   end
 
   create_table "uploads", force: :cascade do |t|
@@ -734,6 +808,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_150000) do
     t.integer "kind", null: false
     t.string "channel", null: false
     t.text "content", default: "", null: false
+    t.text "attachments"
     t.string "reply_to", limit: 64
     t.string "client", limit: 40
     t.bigint "rupert_user_id"
@@ -742,6 +817,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_150000) do
     t.datetime "updated_at", null: false
     t.index ["tenant_id", "channel", "posted_at", "event_id"], name: "idx_buzz_messages_timeline"
     t.index ["tenant_id", "event_id"], name: "idx_buzz_messages_event", unique: true
+  end
+
+  create_table "buzz_person_keys", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "user_id", null: false
+    t.string "pubkey", limit: 64, null: false
+    t.text "private_key", null: false
+    t.datetime "profile_published_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["pubkey"], name: "idx_buzz_person_keys_pubkey", unique: true
+    t.index ["tenant_id", "user_id"], name: "idx_buzz_person_keys_user", unique: true
+    t.index ["user_id"], name: "index_buzz_person_keys_on_user_id"
   end
 
   create_table "buzz_profiles", force: :cascade do |t|
@@ -1330,6 +1418,147 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_150000) do
     t.index ["email"], name: "index_google_login_identities_on_email", unique: true
     t.index ["google_subject"], name: "index_google_login_identities_on_google_subject", unique: true
     t.index ["user_id"], name: "index_google_login_identities_on_user_id"
+  end
+
+  create_table "import_batches", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "source", null: false
+    t.string "kind", null: false
+    t.string "status", default: "staged", null: false
+    t.integer "source_document_id", null: false
+    t.string "filename", null: false
+    t.date "date_from"
+    t.date "date_to"
+    t.date "as_of"
+    t.integer "row_count", default: 0, null: false
+    t.integer "transaction_count", default: 0, null: false
+    t.integer "accepted_count", default: 0, null: false
+    t.integer "duplicate_count", default: 0, null: false
+    t.integer "rejected_count", default: 0, null: false
+    t.text "summary_json", null: false
+    t.date "post_through"
+    t.integer "created_by_id"
+    t.string "created_by_name"
+    t.integer "approved_by_id"
+    t.string "approved_by_name"
+    t.datetime "approved_at"
+    t.string "closed_by_name"
+    t.datetime "closed_at"
+    t.text "closed_reason"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["source_document_id"], name: "index_import_batches_on_source_document_id"
+    t.index ["tenant_id", "created_at"], name: "idx_import_batches_recent"
+    t.index ["tenant_id", "source", "status"], name: "idx_import_batches_status"
+    t.index ["tenant_id"], name: "index_import_batches_on_tenant_id"
+  end
+
+  create_table "import_drive_connections", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.text "refresh_token"
+    t.text "account_email"
+    t.string "folder_id"
+    t.text "folder_name"
+    t.integer "connected_by_id"
+    t.datetime "last_listed_at"
+    t.text "last_error"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id"], name: "index_import_drive_connections_on_tenant_id", unique: true
+  end
+
+  create_table "import_entity_mappings", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "source", null: false
+    t.string "entity_type", null: false
+    t.string "source_key", null: false
+    t.string "source_name", null: false
+    t.string "source_number"
+    t.string "source_type"
+    t.string "decision", default: "unmapped", null: false
+    t.integer "target_id"
+    t.string "proposed_code"
+    t.string "proposed_type"
+    t.integer "first_batch_id"
+    t.integer "decided_by_id"
+    t.string "decided_by_name"
+    t.datetime "decided_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "entity_type", "target_id"], name: "idx_import_mappings_target"
+    t.index ["tenant_id", "source", "entity_type", "source_key"], name: "idx_import_mappings_key", unique: true
+    t.index ["tenant_id"], name: "index_import_entity_mappings_on_tenant_id"
+  end
+
+  create_table "import_lines", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "batch_id", null: false
+    t.integer "transaction_id"
+    t.integer "row_no", null: false
+    t.string "record_type", null: false
+    t.string "fingerprint", null: false
+    t.string "status", default: "staged", null: false
+    t.text "reason"
+    t.date "txn_date"
+    t.string "txn_type"
+    t.string "doc_number"
+    t.text "name"
+    t.text "memo"
+    t.string "account_name"
+    t.string "account_number"
+    t.string "account_type"
+    t.string "class_name"
+    t.string "location_name"
+    t.bigint "debit_cents", default: 0, null: false
+    t.bigint "credit_cents", default: 0, null: false
+    t.text "raw_json"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "batch_id", "row_no"], name: "idx_import_lines_row"
+    t.index ["tenant_id", "batch_id", "status"], name: "idx_import_lines_batch"
+    t.index ["tenant_id", "fingerprint"], name: "idx_import_lines_live_fingerprint", unique: true, where: "status IN ('staged', 'posted')"
+    t.index ["tenant_id"], name: "index_import_lines_on_tenant_id"
+    t.index ["transaction_id"], name: "index_import_lines_on_transaction_id"
+  end
+
+  create_table "import_source_documents", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "source", null: false
+    t.string "kind", null: false
+    t.string "filename", null: false
+    t.string "content_type", null: false
+    t.integer "byte_size", null: false
+    t.string "sha256", null: false
+    t.text "content_base64", null: false
+    t.integer "uploaded_by_id"
+    t.datetime "created_at", null: false
+    t.index ["tenant_id", "source", "sha256"], name: "idx_import_documents_replay", unique: true
+    t.index ["tenant_id"], name: "index_import_source_documents_on_tenant_id"
+  end
+
+  create_table "import_transactions", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "batch_id", null: false
+    t.string "txn_key", null: false
+    t.date "txn_date", null: false
+    t.string "txn_type"
+    t.string "doc_number"
+    t.text "name"
+    t.integer "line_count", default: 0, null: false
+    t.bigint "debit_cents", default: 0, null: false
+    t.bigint "credit_cents", default: 0, null: false
+    t.string "fingerprint", null: false
+    t.string "status", default: "staged", null: false
+    t.text "reason"
+    t.bigint "journal_entry_id"
+    t.datetime "posted_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["journal_entry_id"], name: "index_import_transactions_on_journal_entry_id"
+    t.index ["tenant_id", "batch_id", "status"], name: "idx_import_txn_batch"
+    t.index ["tenant_id", "fingerprint"], name: "idx_import_txn_live_fingerprint", unique: true, where: "status IN ('staged', 'posted')"
+    t.index ["tenant_id", "txn_date"], name: "idx_import_txn_date"
+    t.index ["tenant_id"], name: "index_import_transactions_on_tenant_id"
   end
 
   create_table "inventory_count_scan_receipts", id: :string, force: :cascade do |t|
@@ -3036,6 +3265,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_150000) do
     t.index ["status", "created_at", "id"], name: "idx_workspace_signups_queue"
   end
 
+  add_foreign_key "buzz_person_keys", "users", on_delete: :cascade
+  add_foreign_key "chat_attachments", "chat_messages", column: "message_id"
+  add_foreign_key "chat_attachments", "chat_rooms", column: "room_id"
+  add_foreign_key "chat_memberships", "chat_rooms", column: "room_id"
+  add_foreign_key "chat_messages", "chat_rooms", column: "room_id"
+  add_foreign_key "chat_reactions", "chat_messages", column: "message_id"
   add_foreign_key "feedback_attachments", "agent_feedbacks"
   add_foreign_key "workspace_deployments", "tenants"
   add_foreign_key "workspace_deployments", "users", column: "owner_id"

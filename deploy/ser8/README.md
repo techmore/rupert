@@ -75,16 +75,13 @@ Stop it with `systemctl disable --now rupert-autodeploy.timer`.
 
 When updating an installed watcher, replace the copied `/usr/local/sbin/rupert-autodeploy.sh` with the current repository version before re-enabling the timer. Older copies may still require the retired PostgreSQL CI check and otherwise keep deployments blocked. The source script now gates on `CI (sqlite3)` only.
 
-## Buzz relay and the @rupert agent
+## Team chat (Buzz retired)
 
-The self-hosted Buzz relay is an Incus container (`buzz`) on SER8; its files are not installed from this directory.
-This directory holds what runs around it:
+Team chat now runs inside Rupert at `/chat`, with no relay or agent container. See
+[docs/ops/team-chat.md](../../docs/ops/team-chat.md). `team-chat/setup-local-model.sh` sets up the optional local
+model container.
 
-- `rupert-buzz.service`: the one `@rupert` agent (buzz-acp driving opencode), inside the `rupert` container.
-- `buzz/opencode.json`: the opencode config (agent `buzz` limited to the buzz CLI and Rupert's report scripts; agent
-  `chat` with every tool denied). Install as `/etc/rupert-buzz/opencode.json`.
-- `buzz/backup-buzz.sh`, `buzz-backup.service`, `buzz-backup.timer`: encrypted off-container backup of the relay's
-  Postgres, media and secrets (host user timer, same key as `rupert-offhost-backup.sh`).
-- `buzz/permission-test/`: mock-model check that the agent's permission rules hold.
-
-Full runbook, install steps, rollback and what is unverified: [docs/ops/buzz-relay-ser8.md](../../docs/ops/buzz-relay-ser8.md).
+The old Buzz relay (`buzz`) and the sandboxed `@rupert` agent (`rupert-agent`) Incus containers are no longer used.
+Their files (`agent/`, `buzz/`) and runbook were removed from `main` and are kept on the `archive/buzz` branch.
+After this change deploys, stop both containers (`incus stop buzz rupert-agent`) and, if it was installed, the host's
+Buzz backup timer (`systemctl --user disable --now buzz-backup.timer`). Do not delete the containers yet.
