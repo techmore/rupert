@@ -1,0 +1,1557 @@
+questions:
+- id: bookkeeping-001
+  module: bookkeeping
+  question: whats our cash flow looking like this month
+  tools: []
+  answerable: 'no'
+  gap: no cash flow tool; cash_flow page data (inflows/outflows by account) is not exposed to the bot
+- id: bookkeeping-002
+  module: bookkeeping
+  question: how much money came in last week
+  tools:
+  - sales_summary
+  - where_is
+  answerable: partial
+  gap: only sales are available, not actual cash received after refunds, fees and deposits
+- id: bookkeeping-003
+  module: bookkeeping
+  question: net cash flow for last quarter
+  tools: []
+  answerable: 'no'
+  gap: no cash flow tool
+- id: bookkeeping-004
+  module: bookkeeping
+  question: r we cash flow positive this month
+  tools: []
+  answerable: 'no'
+  gap: no cash flow or cash balance tool
+- id: bookkeeping-005
+  module: bookkeeping
+  question: where is the cash flow page
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-006
+  module: bookkeeping
+  question: cash out vs cash in this week
+  tools: []
+  answerable: 'no'
+  gap: no cash in/out tool; only sales and expenses totals via period_review
+- id: bookkeeping-007
+  module: bookkeeping
+  question: whats our cash bal rn
+  tools: []
+  answerable: 'no'
+  gap: no cash balance tool
+- id: bookkeeping-008
+  module: bookkeeping
+  question: how much $ in the bank
+  tools: []
+  answerable: 'no'
+  gap: no bank balance tool
+- id: bookkeeping-009
+  module: bookkeeping
+  question: did cash flow dip in august
+  tools: []
+  answerable: 'no'
+  gap: no historical cash flow tool
+- id: bookkeeping-010
+  module: bookkeeping
+  question: cash flow this month vs last month
+  tools:
+  - period_review
+  answerable: partial
+  gap: period_review gives sales and expenses only, no true cash flow or deposits
+- id: bookkeeping-011
+  module: bookkeeping
+  question: are we spending more than we take in
+  tools:
+  - metric
+  - period_review
+  answerable: partial
+  gap: sales and expenses totals only; no bank-based inflow/outflow tool
+- id: bookkeeping-012
+  module: bookkeeping
+  question: biz snapshot pls
+  tools: []
+  answerable: 'no'
+  gap: no snapshot tool; page not exposed
+- id: bookkeeping-013
+  module: bookkeeping
+  question: give me a quick overview of how the business is doing
+  tools:
+  - period_review
+  - compliance_check
+  answerable: partial
+  gap: period_review covers sales/refunds/tasks/stock but no balances, receivables or profit
+- id: bookkeeping-014
+  module: bookkeeping
+  question: business snapshot for last month
+  tools:
+  - period_review
+  answerable: partial
+  gap: snapshot page figures like cash and payables are not exposed
+- id: bookkeeping-015
+  module: bookkeeping
+  question: how are we doing vs last year
+  tools:
+  - period_review
+  - metric
+  answerable: partial
+  gap: sales comparisons available; profit and cash are not
+- id: bookkeeping-016
+  module: bookkeeping
+  question: snapshot of the week
+  tools:
+  - period_review
+  answerable: partial
+  gap: no snapshot tool; period_review covers sales and operations only
+- id: bookkeeping-017
+  module: bookkeeping
+  question: what are our biggest numbers on the snapshot page right now
+  tools: []
+  answerable: 'no'
+  gap: snapshot page not exposed
+- id: bookkeeping-018
+  module: bookkeeping
+  question: books check clean?
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-019
+  module: bookkeeping
+  question: books check?
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-020
+  module: bookkeeping
+  question: anything red on books chk
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-021
+  module: bookkeeping
+  question: what do I need to fix in the books
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-022
+  module: bookkeeping
+  question: are all the sales records in the books
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-023
+  module: bookkeeping
+  question: any refunds missing from the books
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-024
+  module: bookkeeping
+  question: is the ledger balanced
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-025
+  module: bookkeeping
+  question: books check - bank lines ok?
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-026
+  module: bookkeeping
+  question: is offsite backup ok for the books
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-027
+  module: bookkeeping
+  question: are payments all matched in the books check
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-028
+  module: bookkeeping
+  question: did we finish month close
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-029
+  module: bookkeeping
+  question: whats left for month end
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-030
+  module: bookkeeping
+  question: are we ready to file taxes
+  tools:
+  - compliance_check
+  answerable: partial
+  gap: sales tax filings are reported as unknown; no filing status tool
+- id: bookkeeping-031
+  module: bookkeeping
+  question: did we close yesterday?
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-032
+  module: bookkeeping
+  question: which days havent been closed this month
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-033
+  module: bookkeeping
+  question: where do I close the day
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-034
+  module: bookkeeping
+  question: did yesterdays close match what we sold
+  tools:
+  - compliance_check
+  - sales_summary
+  answerable: partial
+  gap: compliance_check shows close status; the close totals themselves are not exposed
+- id: bookkeeping-035
+  module: bookkeeping
+  question: what was the cash drawer over/short yesterday
+  tools: []
+  answerable: 'no'
+  gap: no register/cash drawer variance tool
+- id: bookkeeping-036
+  module: bookkeeping
+  question: where is the daily reconciliation
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-037
+  module: bookkeeping
+  question: is the daily reconciliation up to date
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-038
+  module: bookkeeping
+  question: which day had a variance in reconciliation
+  tools: []
+  answerable: 'no'
+  gap: no reconciliation variance tool
+- id: bookkeeping-039
+  module: bookkeeping
+  question: show me yesterdays reconciliation
+  tools: []
+  answerable: 'no'
+  gap: reconciliation detail not exposed
+- id: bookkeeping-040
+  module: bookkeeping
+  question: where is the register summary
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-041
+  module: bookkeeping
+  question: how much cash did the register take in today
+  tools: []
+  answerable: 'no'
+  gap: no register cash tool
+- id: bookkeeping-042
+  module: bookkeeping
+  question: how much did the retail registers sell today
+  tools:
+  - sales_summary
+  answerable: partial
+  gap: sales per source available but not per register or tender
+- id: bookkeeping-043
+  module: bookkeeping
+  question: card vs cash split this week
+  tools:
+  - metric
+  answerable: partial
+  gap: metric has sales_by_source but not tender types
+- id: bookkeeping-044
+  module: bookkeeping
+  question: any reconciliation follow-ups open
+  tools:
+  - order_queues
+  answerable: 'yes'
+- id: bookkeeping-045
+  module: bookkeeping
+  question: who is assigned to the reconciliation follow ups
+  tools:
+  - order_queues
+  - search
+  answerable: partial
+  gap: order_queues lists counts; assignee detail may not be exposed
+- id: bookkeeping-046
+  module: bookkeeping
+  question: how do I attach a source document to a reconciliation
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-047
+  module: bookkeeping
+  question: did the document I uploaded for friday go through
+  tools:
+  - list_uploads
+  answerable: partial
+  gap: list_uploads shows outcomes for the uploads inbox only, not downstream import detail
+- id: bookkeeping-048
+  module: bookkeeping
+  question: which reconciliation days are missing documents
+  tools: []
+  answerable: 'no'
+  gap: no document coverage tool
+- id: bookkeeping-049
+  module: bookkeeping
+  question: where is the books desk
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-050
+  module: bookkeeping
+  question: whats on the books desk right now
+  tools: []
+  answerable: 'no'
+  gap: books desk items not exposed
+- id: bookkeeping-051
+  module: bookkeeping
+  question: where do I approve book entries
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-052
+  module: bookkeeping
+  question: what approvals are waiting in the books
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-053
+  module: bookkeeping
+  question: who approved last mondays books
+  tools: []
+  answerable: 'no'
+  gap: no approval history tool
+- id: bookkeeping-054
+  module: bookkeeping
+  question: is last mo locked
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-055
+  module: bookkeeping
+  question: q3 locked??
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-056
+  module: bookkeeping
+  question: are any periods still open
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-057
+  module: bookkeeping
+  question: where do I lock a period
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-058
+  module: bookkeeping
+  question: is it ok to close the quarter
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-059
+  module: bookkeeping
+  question: whats blocking the month from being closed
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-060
+  module: bookkeeping
+  question: where do I upload a bank statement
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-061
+  module: bookkeeping
+  question: which bank stmts do we have
+  tools:
+  - history_summary
+  answerable: partial
+  gap: history_summary may cover statements; per-statement listing may be limited
+- id: bookkeeping-062
+  module: bookkeeping
+  question: any months missing a bank statement
+  tools:
+  - history_summary
+  answerable: partial
+  gap: history_summary gives date coverage and counts per source, not per-file or per-month detail
+- id: bookkeeping-063
+  module: bookkeeping
+  question: where is bank reconciliation
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-064
+  module: bookkeeping
+  question: how do i reconcile the bnak
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-065
+  module: bookkeeping
+  question: any bank lines unmatched
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-066
+  module: bookkeeping
+  question: which bank transactions arent matched yet
+  tools: []
+  answerable: 'no'
+  gap: no bank lines listing tool
+- id: bookkeeping-067
+  module: bookkeeping
+  question: ending balance on the september statement
+  tools: []
+  answerable: 'no'
+  gap: no statement data tool
+- id: bookkeeping-068
+  module: bookkeeping
+  question: how do I match a bank line to a deposit
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-069
+  module: bookkeeping
+  question: where are the source reports
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-070
+  module: bookkeeping
+  question: swipesimple reprt page where
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-071
+  module: bookkeeping
+  question: how much did swipesimple charge in fees last month
+  tools: []
+  answerable: 'no'
+  gap: no processor fees tool
+- id: bookkeeping-072
+  module: bookkeeping
+  question: are swipesimple reports up to date
+  tools:
+  - compliance_check
+  - list_uploads
+  answerable: 'yes'
+- id: bookkeeping-073
+  module: bookkeeping
+  question: how much did we take in on swipesimple last month
+  tools:
+  - sales_summary
+  answerable: partial
+  gap: sales_summary may cover SwipeSimple as a source; settlement amounts are not available
+- id: bookkeeping-074
+  module: bookkeeping
+  question: swipesimple sales this week
+  tools:
+  - sales_summary
+  answerable: partial
+  gap: sales_summary shows SwipeSimple sales as a source but not settlement or fee detail
+- id: bookkeeping-075
+  module: bookkeeping
+  question: where is the zelle report
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-076
+  module: bookkeeping
+  question: how do I import zelle
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-077
+  module: bookkeeping
+  question: how much came in through zelle this month
+  tools: []
+  answerable: 'no'
+  gap: no zelle totals tool
+- id: bookkeeping-078
+  module: bookkeeping
+  question: zelle last wk
+  tools: []
+  answerable: 'no'
+  gap: no zelle tool
+- id: bookkeeping-079
+  module: bookkeeping
+  question: did the zelle from the wholesale customer arrive
+  tools: []
+  answerable: 'no'
+  gap: no zelle tool
+- id: bookkeeping-080
+  module: bookkeeping
+  question: what deposits are expected this week
+  tools: []
+  answerable: 'no'
+  gap: no deposit tracking tool
+- id: bookkeeping-081
+  module: bookkeeping
+  question: list the deposits for september
+  tools: []
+  answerable: 'no'
+  gap: no deposit tracking tool
+- id: bookkeeping-082
+  module: bookkeeping
+  question: are we missing any deposits
+  tools: []
+  answerable: 'no'
+  gap: no deposit tracking tool
+- id: bookkeeping-083
+  module: bookkeeping
+  question: where do I see deposits
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-084
+  module: bookkeeping
+  question: where is the drive retention page
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-085
+  module: bookkeeping
+  question: drive retention ok?
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-086
+  module: bookkeeping
+  question: are the books backed up to drive
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-087
+  module: bookkeeping
+  question: whens the last verified backup
+  tools:
+  - backup_freshness
+  answerable: 'yes'
+- id: bookkeeping-088
+  module: bookkeeping
+  question: latest backup status
+  tools:
+  - backup_freshness
+  answerable: 'yes'
+- id: bookkeeping-089
+  module: bookkeeping
+  question: where's the ledger at
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-090
+  module: bookkeeping
+  question: whats in the ledger for sales tax payable
+  tools: []
+  answerable: 'no'
+  gap: no ledger tool
+- id: bookkeeping-091
+  module: bookkeeping
+  question: ledger balance for the checking account
+  tools: []
+  answerable: 'no'
+  gap: no ledger tool
+- id: bookkeeping-092
+  module: bookkeeping
+  question: is the ledger in balance
+  tools:
+  - compliance_check
+  answerable: partial
+  gap: only a balanced/not status
+- id: bookkeeping-093
+  module: bookkeeping
+  question: where are journal entries
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-094
+  module: bookkeeping
+  question: how do i make a journel entry
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-095
+  module: bookkeeping
+  question: list journal entries for september
+  tools: []
+  answerable: 'no'
+  gap: no journal entry tool
+- id: bookkeeping-096
+  module: bookkeeping
+  question: who posted the last journal entry
+  tools: []
+  answerable: 'no'
+  gap: no journal tool
+- id: bookkeeping-097
+  module: bookkeeping
+  question: where is the chart of accounts
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-098
+  module: bookkeeping
+  question: how do I add an account to the chart of accounts
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-099
+  module: bookkeeping
+  question: list all the expense accounts
+  tools: []
+  answerable: 'no'
+  gap: no chart of accounts tool
+- id: bookkeeping-100
+  module: bookkeeping
+  question: whats the account number for utilities
+  tools: []
+  answerable: 'no'
+  gap: no chart of accounts tool
+- id: bookkeeping-101
+  module: bookkeeping
+  question: how is the chart of accounts set up
+  tools:
+  - data_guide
+  answerable: 'yes'
+- id: bookkeeping-102
+  module: bookkeeping
+  question: wheres expenses
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-103
+  module: bookkeeping
+  question: how do i add an expens
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-104
+  module: bookkeeping
+  question: how do I attach a receipt to an expense
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-105
+  module: bookkeeping
+  question: how do I edit an expense category
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-106
+  module: bookkeeping
+  question: where are expense categories
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-107
+  module: bookkeeping
+  question: how do I add an expense category
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-108
+  module: bookkeeping
+  question: how do I merge two expense categories
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-109
+  module: bookkeeping
+  question: spend this month?
+  tools:
+  - period_review
+  answerable: partial
+  gap: period_review shows expenses only if allowed and only the total
+- id: bookkeeping-110
+  module: bookkeeping
+  question: expenses last month vs the month before
+  tools:
+  - period_review
+  answerable: partial
+  gap: total only, no category breakdown
+- id: bookkeeping-111
+  module: bookkeeping
+  question: expenses by cat q3
+  tools: []
+  answerable: 'no'
+  gap: no expense category breakdown tool
+- id: bookkeeping-112
+  module: bookkeeping
+  question: biggest expense this month
+  tools: []
+  answerable: 'no'
+  gap: no expense listing tool
+- id: bookkeeping-113
+  module: bookkeeping
+  question: how much did we spend on shipping supplies
+  tools: []
+  answerable: 'no'
+  gap: no expense category tool
+- id: bookkeeping-114
+  module: bookkeeping
+  question: what did we spend on rent this year
+  tools: []
+  answerable: 'no'
+  gap: no expense category tool
+- id: bookkeeping-115
+  module: bookkeeping
+  question: whos the biggest vendor we paid this quarter
+  tools: []
+  answerable: 'no'
+  gap: no payments by vendor tool
+- id: bookkeeping-116
+  module: bookkeeping
+  question: find the expense from the uline order
+  tools:
+  - search
+  answerable: partial
+  gap: search may cover expenses
+- id: bookkeeping-117
+  module: bookkeeping
+  question: uncategorised expenses?
+  tools: []
+  answerable: 'no'
+  gap: no expense tool
+- id: bookkeeping-118
+  module: bookkeeping
+  question: any expenses missing receipts
+  tools: []
+  answerable: 'no'
+  gap: no expense receipts tool
+- id: bookkeeping-119
+  module: bookkeeping
+  question: receipts to review
+  tools:
+  - order_queues
+  answerable: partial
+  gap: order_queues lists receipts awaiting review but not expense lines
+- id: bookkeeping-120
+  module: bookkeeping
+  question: how many receipts are waiting for review
+  tools:
+  - order_queues
+  answerable: 'yes'
+- id: bookkeeping-121
+  module: bookkeeping
+  question: which expenses are over 500
+  tools: []
+  answerable: 'no'
+  gap: no expense tool
+- id: bookkeeping-122
+  module: bookkeeping
+  question: expenses by employee this month
+  tools: []
+  answerable: 'no'
+  gap: no expense tool
+- id: bookkeeping-123
+  module: bookkeeping
+  question: how much have we spent year to date
+  tools:
+  - period_review
+  answerable: partial
+  gap: totals only
+- id: bookkeeping-124
+  module: bookkeeping
+  question: where are payments
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-125
+  module: bookkeeping
+  question: where do I manage payees
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-126
+  module: bookkeeping
+  question: how do I add a payee
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-127
+  module: bookkeeping
+  question: how do I merge duplicate payees
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-128
+  module: bookkeeping
+  question: how do I record a payment to a vendor
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-129
+  module: bookkeeping
+  question: payments this wk
+  tools: []
+  answerable: 'no'
+  gap: no payments tool
+- id: bookkeeping-130
+  module: bookkeeping
+  question: who did we pay the most last quarter
+  tools: []
+  answerable: 'no'
+  gap: no payments tool
+- id: bookkeeping-131
+  module: bookkeeping
+  question: how much do we owe vendors
+  tools: []
+  answerable: 'no'
+  gap: no accounts payable tool
+- id: bookkeeping-132
+  module: bookkeeping
+  question: any bills due this week
+  tools: []
+  answerable: 'no'
+  gap: no bills tool
+- id: bookkeeping-133
+  module: bookkeeping
+  question: did we pay the shipping carrier invoice
+  tools: []
+  answerable: 'no'
+  gap: no payments tool
+- id: bookkeeping-134
+  module: bookkeeping
+  question: how many payees do we have
+  tools: []
+  answerable: 'no'
+  gap: no payees tool
+- id: bookkeeping-135
+  module: bookkeeping
+  question: find payee for the packaging supplier
+  tools:
+  - search
+  answerable: partial
+  gap: no payee tool; search may not index payees
+- id: bookkeeping-136
+  module: bookkeeping
+  question: how are payments stored
+  tools:
+  - data_guide
+  answerable: 'yes'
+- id: bookkeeping-137
+  module: bookkeeping
+  question: unresolved card pmts
+  tools:
+  - order_queues
+  answerable: 'yes'
+- id: bookkeeping-138
+  module: bookkeeping
+  question: any unresolved pmts left
+  tools:
+  - order_queues
+  answerable: 'yes'
+- id: bookkeeping-139
+  module: bookkeeping
+  question: where is the quickbooks import
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-140
+  module: bookkeeping
+  question: how do I import from quickbooks
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-141
+  module: bookkeeping
+  question: what file does the quickbooks import need
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-142
+  module: bookkeeping
+  question: how much quickbooks history do we have
+  tools:
+  - history_summary
+  answerable: partial
+  gap: history_summary gives date coverage and counts per source, not per-file or per-month detail
+- id: bookkeeping-143
+  module: bookkeeping
+  question: what years of quickbooks are loaded
+  tools:
+  - history_summary
+  answerable: partial
+  gap: history_summary gives date coverage and counts per source, not per-file or per-month detail
+- id: bookkeeping-144
+  module: bookkeeping
+  question: did my quickbooks csv import go through
+  tools:
+  - list_uploads
+  answerable: partial
+  gap: list_uploads shows outcomes for the uploads inbox only, not downstream import detail
+- id: bookkeeping-145
+  module: bookkeeping
+  question: what happened to my last import
+  tools:
+  - list_uploads
+  answerable: 'yes'
+- id: bookkeeping-146
+  module: bookkeeping
+  question: where is finance history
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-147
+  module: bookkeeping
+  question: what history do we hold for finance
+  tools:
+  - history_summary
+  answerable: 'yes'
+- id: bookkeeping-148
+  module: bookkeeping
+  question: whats our earliest financial record
+  tools:
+  - history_summary
+  answerable: partial
+  gap: history_summary gives date coverage and counts per source, not per-file or per-month detail
+- id: bookkeeping-149
+  module: bookkeeping
+  question: what was our income in 2023 from quickbooks
+  tools: []
+  answerable: 'no'
+  gap: no QuickBooks history query tool
+- id: bookkeeping-150
+  module: bookkeeping
+  question: quickbooks expenses for last year
+  tools: []
+  answerable: 'no'
+  gap: no historical expense tool
+- id: bookkeeping-151
+  module: bookkeeping
+  question: how is quickbooks history stored
+  tools:
+  - data_guide
+  answerable: 'yes'
+- id: bookkeeping-152
+  module: bookkeeping
+  question: how do I undo a quickbooks import
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-153
+  module: bookkeeping
+  question: were there any rejected rows in the last import
+  tools: []
+  answerable: 'no'
+  gap: no import detail tool
+- id: bookkeeping-154
+  module: bookkeeping
+  question: where is the cash forecast
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-155
+  module: bookkeeping
+  question: how does the cash forecast work
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-156
+  module: bookkeeping
+  question: cash forecast nxt month
+  tools: []
+  answerable: 'no'
+  gap: no cash forecast tool
+- id: bookkeeping-157
+  module: bookkeeping
+  question: will we run outta cash
+  tools: []
+  answerable: 'no'
+  gap: no forecast tool
+- id: bookkeeping-158
+  module: bookkeeping
+  question: projected cash at end of quarter
+  tools: []
+  answerable: 'no'
+  gap: no forecast tool
+- id: bookkeeping-159
+  module: bookkeeping
+  question: how much cash will we have in 30 days
+  tools: []
+  answerable: 'no'
+  gap: no forecast tool
+- id: bookkeeping-160
+  module: bookkeeping
+  question: forecast sales for next month
+  tools:
+  - period_review
+  - metric
+  answerable: partial
+  gap: no forecasting; only historical sales
+- id: bookkeeping-161
+  module: bookkeeping
+  question: how do I add an expected payment to the forecast
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-162
+  module: bookkeeping
+  question: can I change forecast assumptions
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-163
+  module: bookkeeping
+  question: sales tax collected last month?
+  tools:
+  - sales_tax_report
+  answerable: 'yes'
+- id: bookkeeping-164
+  module: bookkeeping
+  question: q3 sales tax
+  tools:
+  - sales_tax_report
+  answerable: 'yes'
+- id: bookkeeping-165
+  module: bookkeeping
+  question: sales tax collected this quarter by source
+  tools:
+  - sales_tax_report
+  answerable: 'yes'
+- id: bookkeeping-166
+  module: bookkeeping
+  question: whats the sales tax for september on shopify
+  tools:
+  - sales_tax_report
+  answerable: 'yes'
+- id: bookkeeping-167
+  module: bookkeeping
+  question: tax collected on in store sales last month
+  tools:
+  - sales_tax_report
+  answerable: 'yes'
+- id: bookkeeping-168
+  module: bookkeeping
+  question: sales tx yesterday
+  tools:
+  - sales_tax_report
+  answerable: 'yes'
+- id: bookkeeping-169
+  module: bookkeeping
+  question: how much tax did square collect in august
+  tools:
+  - sales_tax_report
+  answerable: 'yes'
+- id: bookkeeping-170
+  module: bookkeeping
+  question: ytd sales tax
+  tools:
+  - sales_tax_report
+  answerable: 'yes'
+- id: bookkeeping-171
+  module: bookkeeping
+  question: sales tax for last quarter, split by source
+  tools:
+  - sales_tax_report
+  answerable: 'yes'
+- id: bookkeeping-172
+  module: bookkeeping
+  question: how much tax from c-trax this month
+  tools:
+  - sales_tax_report
+  answerable: 'yes'
+- id: bookkeeping-173
+  module: bookkeeping
+  question: how much sales tax do I owe the state
+  tools:
+  - sales_tax_report
+  answerable: partial
+  gap: report shows collected tax only; no liability, payments made or jurisdictions
+- id: bookkeeping-174
+  module: bookkeeping
+  question: sales tax by county for last quarter
+  tools:
+  - sales_tax_report
+  answerable: partial
+  gap: no per-jurisdiction breakdown tool
+- id: bookkeeping-175
+  module: bookkeeping
+  question: taxable vs non taxable sales last month
+  tools:
+  - sales_tax_report
+  answerable: partial
+  gap: only tax collected per source, no taxable/exempt split
+- id: bookkeeping-176
+  module: bookkeeping
+  question: have we filed sales tax for q2
+  tools: []
+  answerable: 'no'
+  gap: filing status unknown; no filing tool
+- id: bookkeeping-177
+  module: bookkeeping
+  question: when is sales tax due
+  tools: []
+  answerable: 'no'
+  gap: no filing calendar tool
+- id: bookkeeping-178
+  module: bookkeeping
+  question: how much sales tax have we paid this year
+  tools: []
+  answerable: 'no'
+  gap: no tax payments tool
+- id: bookkeeping-179
+  module: bookkeeping
+  question: where is the sales tax report
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-180
+  module: bookkeeping
+  question: how do I export the sales tax report
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-181
+  module: bookkeeping
+  question: why dont the sales tax sources add up
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-182
+  module: bookkeeping
+  question: how is sales tax stored on an order
+  tools:
+  - data_guide
+  answerable: 'yes'
+- id: bookkeeping-183
+  module: bookkeeping
+  question: sales tax as a percent of sales last month
+  tools:
+  - sales_tax_report
+  - sales_summary
+  answerable: partial
+  gap: derivable from the two tools but needs computing per source
+- id: bookkeeping-184
+  module: bookkeeping
+  question: sales tax for 10/1 to 10/15
+  tools:
+  - sales_tax_report
+  answerable: 'yes'
+- id: bookkeeping-185
+  module: bookkeeping
+  question: tax collected lst week
+  tools:
+  - sales_tax_report
+  answerable: 'yes'
+- id: bookkeeping-186
+  module: bookkeeping
+  question: did the sales tax drop vs last month
+  tools:
+  - sales_tax_report
+  answerable: partial
+  gap: no built-in comparison; needs two calls
+- id: bookkeeping-187
+  module: bookkeeping
+  question: refund rate this mnth?
+  tools:
+  - metric
+  answerable: 'yes'
+- id: bookkeeping-188
+  module: bookkeeping
+  question: refund rate lq vs the quarter b4
+  tools:
+  - metric
+  answerable: 'yes'
+- id: bookkeeping-189
+  module: bookkeeping
+  question: refunds last wk (count)
+  tools:
+  - sales_summary
+  answerable: 'yes'
+- id: bookkeeping-190
+  module: bookkeeping
+  question: refunded orders this month
+  tools:
+  - sales_summary
+  answerable: 'yes'
+- id: bookkeeping-191
+  module: bookkeeping
+  question: how much money did we refund yesterday
+  tools:
+  - sales_summary
+  answerable: partial
+  gap: counts of refunded orders available; refund dollar amounts may not be
+- id: bookkeeping-192
+  module: bookkeeping
+  question: total refunds this quarter in dollars
+  tools:
+  - metric
+  - sales_summary
+  answerable: partial
+  gap: refund amounts not exposed, only counts and rate
+- id: bookkeeping-193
+  module: bookkeeping
+  question: refunds this week vs last week
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: bookkeeping-194
+  module: bookkeeping
+  question: are all refunds recorded in the books
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-195
+  module: bookkeeping
+  question: any refunds that arent booked
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: bookkeeping-196
+  module: bookkeeping
+  question: find the refund for order 1234
+  tools:
+  - search
+  answerable: partial
+  gap: search finds orders; refund detail may be limited
+- id: bookkeeping-197
+  module: bookkeeping
+  question: which product gets refunded most
+  tools: []
+  answerable: 'no'
+  gap: no refund-by-product tool
+- id: bookkeeping-198
+  module: bookkeeping
+  question: refund reasons this month
+  tools: []
+  answerable: 'no'
+  gap: no refund reasons tool
+- id: bookkeeping-199
+  module: bookkeeping
+  question: how long do refunds take to hit the bank
+  tools: []
+  answerable: 'no'
+  gap: no refund timing tool
+- id: bookkeeping-200
+  module: bookkeeping
+  question: how do I record a refund in the books
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-201
+  module: bookkeeping
+  question: where do I see refunds
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-202
+  module: bookkeeping
+  question: income stmt for last mo
+  tools: []
+  answerable: 'no'
+  gap: no financial reports tool
+- id: bookkeeping-203
+  module: bookkeeping
+  question: p&l q3
+  tools: []
+  answerable: 'no'
+  gap: no P&L tool
+- id: bookkeeping-204
+  module: bookkeeping
+  question: profit and loss year to date
+  tools: []
+  answerable: 'no'
+  gap: no P&L tool
+- id: bookkeeping-205
+  module: bookkeeping
+  question: income statement for this year vs last
+  tools: []
+  answerable: 'no'
+  gap: no P&L tool
+- id: bookkeeping-206
+  module: bookkeeping
+  question: balance sheet end of sept
+  tools: []
+  answerable: 'no'
+  gap: no balance sheet tool
+- id: bookkeeping-207
+  module: bookkeeping
+  question: trial balance for october
+  tools: []
+  answerable: 'no'
+  gap: no trial balance tool
+- id: bookkeeping-208
+  module: bookkeeping
+  question: where are the financial reports
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-209
+  module: bookkeeping
+  question: what financial reports do we have
+  tools:
+  - list_reports
+  answerable: 'yes'
+- id: bookkeeping-210
+  module: bookkeeping
+  question: which reports exist for the books
+  tools:
+  - list_reports
+  answerable: 'yes'
+- id: bookkeeping-211
+  module: bookkeeping
+  question: how do I run a trial balance
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-212
+  module: bookkeeping
+  question: how do I export the balance sheet
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-213
+  module: bookkeeping
+  question: how do I print the income statement
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-214
+  module: bookkeeping
+  question: what is the difference between the income statement and balance sheet
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-215
+  module: bookkeeping
+  question: does the trial balance balance
+  tools: []
+  answerable: 'no'
+  gap: no trial balance tool; only compliance_check ledger balance status
+- id: bookkeeping-216
+  module: bookkeeping
+  question: total assets right now
+  tools: []
+  answerable: 'no'
+  gap: no balance sheet tool
+- id: bookkeeping-217
+  module: bookkeeping
+  question: how much do we owe in total
+  tools: []
+  answerable: 'no'
+  gap: no balance sheet / liabilities tool
+- id: bookkeeping-218
+  module: bookkeeping
+  question: what is our net income this year
+  tools: []
+  answerable: 'no'
+  gap: no P&L tool
+- id: bookkeeping-219
+  module: bookkeeping
+  question: total revenue per the books for q3
+  tools: []
+  answerable: 'no'
+  gap: books revenue not exposed, only Shopify/POS sales
+- id: bookkeeping-220
+  module: bookkeeping
+  question: profit this month?
+  tools:
+  - metric
+  - period_review
+  answerable: partial
+  gap: sales and expenses totals only; no cost of goods or P&L
+- id: bookkeeping-221
+  module: bookkeeping
+  question: are we profitable this quarter
+  tools:
+  - metric
+  - period_review
+  answerable: partial
+  gap: no P&L; sales vs expenses only
+- id: bookkeeping-222
+  module: bookkeeping
+  question: whats our margin
+  tools: []
+  answerable: 'no'
+  gap: needs cost of goods sold; no COGS or margin tool
+- id: bookkeeping-223
+  module: bookkeeping
+  question: gross margin on gummies
+  tools: []
+  answerable: 'no'
+  gap: needs product cost; no COGS tool
+- id: bookkeeping-224
+  module: bookkeeping
+  question: which products have the best margin
+  tools: []
+  answerable: 'no'
+  gap: needs product cost; no margin tool
+- id: bookkeeping-225
+  module: bookkeeping
+  question: what is our net margin for the year
+  tools: []
+  answerable: 'no'
+  gap: no P&L or COGS tool
+- id: bookkeeping-226
+  module: bookkeeping
+  question: how much did we make after expenses last month
+  tools: []
+  answerable: 'no'
+  gap: no P&L; expenses total partly via period_review but not COGS or payroll tax
+- id: bookkeeping-227
+  module: bookkeeping
+  question: sales minus expenses last month
+  tools:
+  - period_review
+  answerable: partial
+  gap: derivable roughly; excludes COGS and non-expense costs
+- id: bookkeeping-228
+  module: bookkeeping
+  question: cost of goods sold this quarter
+  tools: []
+  answerable: 'no'
+  gap: no COGS tool
+- id: bookkeeping-229
+  module: bookkeeping
+  question: what is our markup on tea
+  tools: []
+  answerable: 'no'
+  gap: no cost data tool
+- id: bookkeeping-230
+  module: bookkeeping
+  question: break even sales per month
+  tools: []
+  answerable: 'no'
+  gap: needs costs and margins; no tool
+- id: bookkeeping-231
+  module: bookkeeping
+  question: how much did we sell this month
+  tools:
+  - metric
+  answerable: 'yes'
+- id: bookkeeping-232
+  module: bookkeeping
+  question: gross sales last month vs same month last year
+  tools:
+  - metric
+  answerable: 'yes'
+- id: bookkeeping-233
+  module: bookkeeping
+  question: sales by source for september
+  tools:
+  - sales_summary
+  answerable: 'yes'
+- id: bookkeeping-234
+  module: bookkeeping
+  question: how did last month compare to the month before
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: bookkeeping-235
+  module: bookkeeping
+  question: do the sales in the books match shopify for last month
+  tools:
+  - compliance_check
+  - sales_summary
+  answerable: partial
+  gap: books totals not exposed to compare
+- id: bookkeeping-236
+  module: bookkeeping
+  question: what financial data do you have
+  tools:
+  - history_summary
+  answerable: 'yes'
+- id: bookkeeping-237
+  module: bookkeeping
+  question: where do I do bookkeeping
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: bookkeeping-238
+  module: bookkeeping
+  question: how do I get started with bookkeeping
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-239
+  module: bookkeeping
+  question: what should I do each day for the books
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-240
+  module: bookkeeping
+  question: whats the month end process
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-241
+  module: bookkeeping
+  question: what do I send the accountant at year end
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: bookkeeping-242
+  module: bookkeeping
+  question: is everything ready for the accountant
+  tools:
+  - compliance_check
+  - list_reports
+  answerable: 'yes'
+- id: bookkeeping-243
+  module: bookkeeping
+  question: what is the books time zone
+  tools:
+  - get_workspace_info
+  answerable: 'yes'
+- id: bookkeeping-244
+  module: bookkeeping
+  question: whats todays date for the books
+  tools:
+  - get_workspace_info
+  answerable: 'yes'
+- id: bookkeeping-245
+  module: bookkeeping
+  question: any open bookkeeping tasks
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: list_tasks has no bookkeeping-area filter; text filter only
+- id: bookkeeping-246
+  module: bookkeeping
+  question: overdue tasks about reconciliation
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: bookkeeping-247
+  module: bookkeeping
+  question: make a task to reconcile the bank by friday
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: bookkeeping-248
+  module: bookkeeping
+  question: remind me to lock september on the 5th
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: bookkeeping-249
+  module: bookkeeping
+  question: add a task for Jo to upload the swipesimple report
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: bookkeeping-250
+  module: bookkeeping
+  question: move the reconcile bank task to done
+  tools:
+  - update_task
+  answerable: 'yes'

@@ -6,8 +6,8 @@ module TeamChat
   # that cross modules, and for honesty (questions with no data behind them), plus an overall score.
   # A score is the average grade (1–5) as a percentage: 4.6/5 is 92/100.
   module Leaderboard
-    MODULES = { 'sell' => 'Sell', 'stock' => 'Stock', 'bookkeeping' => 'Bookkeeping', 'work' => 'Work', 'team' => 'Team',
-                'system' => 'System' }.freeze
+    MODULES = { 'sell' => 'Sell', 'crm' => 'Customers', 'marketing' => 'Marketing', 'stock' => 'Stock', 'bookkeeping' => 'Bookkeeping', 'work' => 'Work',
+                'team' => 'Team', 'system' => 'System' }.freeze
     COLUMNS = MODULES.merge('cross' => 'Cross-discipline', 'honesty' => 'Honesty').freeze
     # A model needs this many graded questions to hold the trophy.
     MIN_QUESTIONS = 20
