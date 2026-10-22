@@ -107,3 +107,10 @@ namespace :team_chat do
     end
   end
 end
+
+namespace :team_chat do
+  desc 'Score the question bank (config/team_chat/question_bank): routing and coverage per module, misses and gaps. No model is called.'
+  task question_bank: :environment do
+    puts TeamChat::QuestionBank.report(limit: ENV.fetch('LIMIT', 15).to_i)
+  end
+end

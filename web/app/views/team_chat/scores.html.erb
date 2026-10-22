@@ -62,6 +62,46 @@
   <% end %>
 </section>
 
+<% if @bank_scores.any? %>
+  <section class="mb-6" id="question-bank">
+    <div class="flex flex-wrap items-baseline gap-2">
+      <h2 class="font-display text-lg text-ink">Question bank</h2>
+      <span class="text-sm text-mocha">Hundreds of questions per part of Rupert, the way you ask them. <strong>Routing</strong>: how often a question reaches the tools that answer it. <strong>Coverage</strong>: how much of it Rupert can answer at all. Scored without any model.</span>
+    </div>
+    <div class="card mt-2 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="border-b border-fog bg-haze/60">
+            <tr>
+              <th scope="col" class="th">Part of Rupert</th>
+              <th scope="col" class="th text-right">Questions</th>
+              <th scope="col" class="th text-right">Routing /100</th>
+              <th scope="col" class="th text-right">Coverage /100</th>
+              <th scope="col" class="th text-right" title="Needed a tool the question's keywords did not offer">Missed</th>
+              <th scope="col" class="th text-right" title="Matched no topic, so a bot gets every tool unguided">Unguided</th>
+              <th scope="col" class="th text-right" title="Rupert can only partly answer, or not at all">Gaps</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-fog">
+            <% @bank_scores.each do |row| %>
+              <tr class="<%= row.module == 'all' ? 'font-semibold bg-haze/40' : 'hover:bg-cream' %>">
+                <td class="td text-ink"><%= row.module == 'all' ? 'All' : (TeamChat::Leaderboard::COLUMNS[row.module] || row.module.humanize) %></td>
+                <td class="td text-right"><%= row.questions %></td>
+                <td class="td text-right <%= 'text-rose' if row.routing && row.routing < 70 %>"><%= row.routing || '—' %></td>
+                <td class="td text-right <%= 'text-rose' if row.coverage < 60 %>"><%= row.coverage %></td>
+                <td class="td text-right"><%= row.misses %></td>
+                <td class="td text-right"><%= row.fallbacks %></td>
+                <td class="td text-right"><%= row.gaps %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="mt-2 text-xs text-taupe">Details: <code>bin/rails team_chat:question_bank</code> lists every miss and the most common gaps per part.</p>
+  </section>
+<% end %>
+
 <div class="card overflow-hidden">
   <div class="overflow-x-auto">
     <table class="w-full text-sm">

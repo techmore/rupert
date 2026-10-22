@@ -1,0 +1,1370 @@
+questions:
+  - id: stock-001
+    module: stock
+    question: how many Calm Gummies 30ct do we have
+    tools: [inventory_search]
+    answerable: "yes"
+  - id: stock-002
+    module: stock
+    question: stock on the sleep tincture?
+    tools: [inventory_search]
+    answerable: "yes"
+  - id: stock-003
+    module: stock
+    question: do we have any peppermint tea left
+    tools: [inventory_search]
+    answerable: "yes"
+  - id: stock-004
+    module: stock
+    question: whats our inventory on the 500mg oil
+    tools: [inventory_search]
+    answerable: "yes"
+  - id: stock-005
+    module: stock
+    question: how much Calm Gummies 30ct is in the back room vs on the shelf
+    tools: [inventory_search]
+    answerable: "yes"
+  - id: stock-006
+    module: stock
+    question: check SKU TIN-500-PEP stock
+    tools: [inventory_search]
+    answerable: "yes"
+  - id: stock-007
+    module: stock
+    question: whats the count on SKU GUM-CALM-30 in Shopify
+    tools: [inventory_search]
+    answerable: "yes"
+  - id: stock-008
+    module: stock
+    question: is the lavender balm in stock online
+    tools: [inventory_search]
+    answerable: "yes"
+  - id: stock-009
+    module: stock
+    question: how many units of the 1oz dropper bottle are in stock
+    tools: [inventory_search]
+    answerable: "yes"
+  - id: stock-010
+    module: stock
+    question: do we have any of the sleep gummies in the warehouse
+    tools: [inventory_search]
+    answerable: "yes"
+  - id: stock-011
+    module: stock
+    question: stock level for everything with "relief" in the name
+    tools: [inventory_search, search]
+    answerable: "yes"
+  - id: stock-012
+    module: stock
+    question: invetory for the tea shelf
+    tools: [inventory_search]
+    answerable: "yes"
+  - id: stock-013
+    module: stock
+    question: what do we have in stock for the pet tincture line
+    tools: [inventory_search]
+    answerable: "yes"
+  - id: stock-014
+    module: stock
+    question: Is the Focus Capsules 60ct sold out
+    tools: [inventory_search]
+    answerable: "yes"
+  - id: stock-015
+    module: stock
+    question: how many of the gift sets can we still sell
+    tools: [inventory_search]
+    answerable: "yes"
+  - id: stock-016
+    module: stock
+    question: show me everything that is out of stock
+    tools: [inventory_search, list_alerts]
+    answerable: "partial"
+    gap: inventory_search is item lookup; no "all items at zero" listing tool
+  - id: stock-017
+    module: stock
+    question: list all items with zero on hand
+    tools: [inventory_search]
+    answerable: "partial"
+    gap: no bulk/filtered inventory listing tool; only lookup by item or SKU
+  - id: stock-018
+    module: stock
+    question: what is our total inventory value
+    tools: []
+    answerable: "no"
+    gap: no inventory valuation tool (cost x quantity)
+  - id: stock-019
+    module: stock
+    question: how many total units do we have across all products
+    tools: []
+    answerable: "no"
+    gap: no aggregate inventory totals tool
+  - id: stock-020
+    module: stock
+    question: which products have the most stock sitting around
+    tools: [inventory_search, metric]
+    answerable: "partial"
+    gap: no ranking of on-hand quantity; only per-item lookup
+  - id: stock-021
+    module: stock
+    question: how many days of stock left on the Calm Gummies
+    tools: [inventory_search, metric]
+    answerable: "partial"
+    gap: no days-of-cover calculation; would need sales velocity vs on-hand combined
+  - id: stock-022
+    module: stock
+    question: will we run out of the sleep tincture before the weekend
+    tools: [inventory_search, metric]
+    answerable: "partial"
+    gap: no stockout forecast tool
+  - id: stock-023
+    module: stock
+    question: which items are overstocked
+    tools: []
+    answerable: "no"
+    gap: no overstock or excess-inventory analysis
+  - id: stock-024
+    module: stock
+    question: what's our slowest moving inventory
+    tools: [metric]
+    answerable: "partial"
+    gap: top_products ranks sellers but nothing ranks slow movers or sell-through
+  - id: stock-025
+    module: stock
+    question: sell through rate on the new gummies
+    tools: []
+    answerable: "no"
+    gap: no sell-through metric
+  - id: stock-026
+    module: stock
+    question: is the stock count the same in the store and online for Calm Gummies
+    tools: [inventory_search, stock_comparison]
+    answerable: "yes"
+  - id: stock-027
+    module: stock
+    question: how many bottles of the 2oz amber glass do we have
+    tools: [inventory_search]
+    answerable: "yes"
+  - id: stock-028
+    module: stock
+    question: anything in stock under 10 units
+    tools: [list_alerts, inventory_search]
+    answerable: "partial"
+    gap: alerts use configured thresholds, not an ad hoc quantity filter
+  - id: stock-029
+    module: stock
+    question: what colors of the logo tee do we have left
+    tools: [inventory_search]
+    answerable: "yes"
+  - id: stock-030
+    module: stock
+    question: what is our cost per unit on the sleep tincture
+    tools: [inventory_search]
+    answerable: "partial"
+    gap: stock quantity only; unit cost not exposed by tools
+  - id: stock-031
+    module: stock
+    question: low stock?
+    tools: [list_alerts]
+    answerable: "yes"
+  - id: stock-032
+    module: stock
+    question: whats running low
+    tools: [list_alerts]
+    answerable: "yes"
+  - id: stock-033
+    module: stock
+    question: any low stock alerts open
+    tools: [list_alerts]
+    answerable: "yes"
+  - id: stock-034
+    module: stock
+    question: how many open stock alerts are there
+    tools: [list_alerts]
+    answerable: "yes"
+  - id: stock-035
+    module: stock
+    question: what do we need to reorder
+    tools: [list_alerts]
+    answerable: "partial"
+    gap: alerts show low items but no reorder quantity suggestions
+  - id: stock-036
+    module: stock
+    question: what should I order this week
+    tools: [list_alerts, order_queues]
+    answerable: "partial"
+    gap: no reorder suggestion tool; can show low items and what is already on order
+  - id: stock-037
+    module: stock
+    question: list the low stock items with their thresholds
+    tools: [list_alerts]
+    answerable: "yes"
+  - id: stock-038
+    module: stock
+    question: which low stock alerts have been open the longest
+    tools: [list_alerts]
+    answerable: "partial"
+    gap: alert age/opened date may not be exposed
+  - id: stock-039
+    module: stock
+    question: did we clear any low stock alerts last week
+    tools: [period_review]
+    answerable: "yes"
+  - id: stock-040
+    module: stock
+    question: how many low stock alerts opened this month vs last month
+    tools: [period_review]
+    answerable: "yes"
+  - id: stock-041
+    module: stock
+    question: what's the threshold for the tea tins alert
+    tools: [list_alerts]
+    answerable: "yes"
+  - id: stock-042
+    module: stock
+    question: change the low stock threshold on the sleep tincture to 12
+    tools: [how_do_i]
+    answerable: "partial"
+    gap: no tool to edit thresholds; can only explain how
+  - id: stock-043
+    module: stock
+    question: how do I set up a low stock alert for a new item
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: stock-044
+    module: stock
+    question: where do I see low stock alerts
+    tools: [where_is]
+    answerable: "yes"
+  - id: stock-045
+    module: stock
+    question: alerts for gummies only
+    tools: [list_alerts]
+    answerable: "partial"
+    gap: list_alerts has no category filter; can scan results for gummies
+  - id: stock-046
+    module: stock
+    question: low stock on the stuff we sell most
+    tools: [list_alerts, metric]
+    answerable: "partial"
+    gap: no joined view of alerts against top sellers; two calls compared by hand
+  - id: stock-047
+    module: stock
+    question: why is the Focus Capsules alert still open when we got a delivery
+    tools: [list_alerts, order_queues, inventory_search]
+    answerable: "partial"
+    gap: no alert history or explanation of why an alert did not auto-resolve
+  - id: stock-048
+    module: stock
+    question: can you make a task to reorder everything on the low stock list
+    tools: [list_alerts, create_task]
+    answerable: "yes"
+  - id: stock-049
+    module: stock
+    question: remind me to check low stock friday
+    tools: [create_task]
+    answerable: "yes"
+  - id: stock-050
+    module: stock
+    question: stock alerts page is empty is that good
+    tools: [list_alerts]
+    answerable: "yes"
+  - id: stock-051
+    module: stock
+    question: are we about to stock out of anything
+    tools: [list_alerts]
+    answerable: "partial"
+    gap: alerts only reflect crossed thresholds; no forecasting of near stockouts
+  - id: stock-052
+    module: stock
+    question: which low items are already on a purchase order
+    tools: [list_alerts, order_queues]
+    answerable: "partial"
+    gap: order_queues lists POs awaiting delivery but not their line items per SKU
+  - id: stock-053
+    module: stock
+    question: shopify vs ctrax counts
+    tools: [stock_comparison]
+    answerable: "yes"
+  - id: stock-054
+    module: stock
+    question: do shopify and ctrax match
+    tools: [stock_comparison]
+    answerable: "yes"
+  - id: stock-055
+    module: stock
+    question: which items dont match between online and the store
+    tools: [stock_comparison]
+    answerable: "yes"
+  - id: stock-056
+    module: stock
+    question: biggest stock differences between shopify and c-trax
+    tools: [stock_comparison]
+    answerable: "yes"
+  - id: stock-057
+    module: stock
+    question: is the Calm Gummies count off between systems
+    tools: [stock_comparison, inventory_search]
+    answerable: "yes"
+  - id: stock-058
+    module: stock
+    question: how many items are out of sync between the stores
+    tools: [stock_comparison]
+    answerable: "yes"
+  - id: stock-059
+    module: stock
+    question: online says 5 but store says 0 for the lavender balm whats going on
+    tools: [stock_comparison, inventory_search, sync_health]
+    answerable: "partial"
+    gap: can show the mismatch and sync status but not the cause of the difference
+  - id: stock-060
+    module: stock
+    question: when did ctrax inventory last sync
+    tools: [sync_health]
+    answerable: "yes"
+  - id: stock-061
+    module: stock
+    question: did the shopify stock sync fail last night
+    tools: [sync_health]
+    answerable: "yes"
+  - id: stock-062
+    module: stock
+    question: items oversold online because the store sold the last one
+    tools: [stock_comparison]
+    answerable: "partial"
+    gap: comparison shows current mismatch, not which sale caused it
+  - id: stock-063
+    module: stock
+    question: fix the mismatches on the comparison page
+    tools: [how_do_i]
+    answerable: "partial"
+    gap: no tool to adjust counts; can explain how
+  - id: stock-064
+    module: stock
+    question: how do i push ctrax counts to shopify
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: stock-065
+    module: stock
+    question: where is the stock comparison page
+    tools: [where_is]
+    answerable: "yes"
+  - id: stock-066
+    module: stock
+    question: which platform is the source of truth for stock
+    tools: [data_guide]
+    answerable: "yes"
+  - id: stock-067
+    module: stock
+    question: list items where shopify is higher than ctrax
+    tools: [stock_comparison]
+    answerable: "yes"
+  - id: stock-068
+    module: stock
+    question: how long have the counts been different on the sleep tincture
+    tools: [stock_comparison]
+    answerable: "partial"
+    gap: no mismatch history; only current difference
+  - id: stock-069
+    module: stock
+    question: total units difference between shopify and ctrax
+    tools: [stock_comparison]
+    answerable: "partial"
+    gap: per-item differences only; summing is left to the reader
+  - id: stock-070
+    module: stock
+    question: show stock movements for Calm Gummies this week
+    tools: [inventory_search]
+    answerable: "partial"
+    gap: inventory_search gives current levels; movement ledger not exposed
+  - id: stock-071
+    module: stock
+    question: where did the 20 missing tincture bottles go
+    tools: [inventory_search]
+    answerable: "partial"
+    gap: no stock movement history tool
+  - id: stock-072
+    module: stock
+    question: what moved yesterday
+    tools: []
+    answerable: "no"
+    gap: no stock movements listing tool
+  - id: stock-073
+    module: stock
+    question: last time we received the peppermint tea
+    tools: [order_queues]
+    answerable: "partial"
+    gap: order_queues shows open POs, not received history
+  - id: stock-074
+    module: stock
+    question: when was the sleep tincture last adjusted
+    tools: []
+    answerable: "no"
+    gap: no adjustment history tool
+  - id: stock-075
+    module: stock
+    question: who adjusted the lavender balm count
+    tools: []
+    answerable: "no"
+    gap: no movement audit trail with user attribution
+  - id: stock-076
+    module: stock
+    question: all stock movements for last month
+    tools: []
+    answerable: "no"
+    gap: no stock movements listing tool
+  - id: stock-077
+    module: stock
+    question: how many units sold of the Focus Capsules last month
+    tools: [metric, sales_summary]
+    answerable: "yes"
+  - id: stock-078
+    module: stock
+    question: net change in inventory for the quarter
+    tools: []
+    answerable: "no"
+    gap: no inventory roll-forward report
+  - id: stock-079
+    module: stock
+    question: shrinkage this month
+    tools: []
+    answerable: "no"
+    gap: no shrinkage or write-off reporting tool
+  - id: stock-080
+    module: stock
+    question: how many units were written off
+    tools: []
+    answerable: "no"
+    gap: no write-off tool
+  - id: stock-081
+    module: stock
+    question: what does the movements page show
+    tools: [where_is, data_guide]
+    answerable: "yes"
+  - id: stock-082
+    module: stock
+    question: how are stock movements recorded
+    tools: [data_guide]
+    answerable: "yes"
+  - id: stock-083
+    module: stock
+    question: inventory received last week
+    tools: [period_review]
+    answerable: "partial"
+    gap: period_review counts POs received but not item level receipts
+  - id: stock-084
+    module: stock
+    question: did we get a delivery today
+    tools: [order_queues]
+    answerable: "partial"
+    gap: order_queues shows what is awaiting delivery; recent receipts not itemized
+  - id: stock-085
+    module: stock
+    question: what's the product names page for
+    tools: [where_is, how_do_i]
+    answerable: "yes"
+  - id: stock-086
+    module: stock
+    question: rename the Calm Gummies listing so it matches in both systems
+    tools: [how_do_i]
+    answerable: "partial"
+    gap: no tool to edit names; can explain how
+  - id: stock-087
+    module: stock
+    question: which products have different names in shopify and ctrax
+    tools: [stock_comparison, search]
+    answerable: "partial"
+    gap: no tool surfaces name mismatches specifically
+  - id: stock-088
+    module: stock
+    question: find product named "sleepy"
+    tools: [search]
+    answerable: "yes"
+  - id: stock-089
+    module: stock
+    question: how do I merge two names for the same product
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: stock-090
+    module: stock
+    question: where do i fix a typo in a product name
+    tools: [where_is, how_do_i]
+    answerable: "yes"
+  - id: stock-091
+    module: stock
+    question: are there any duplicate product names
+    tools: [search]
+    answerable: "partial"
+    gap: no duplicate detection tool
+  - id: stock-092
+    module: stock
+    question: what's on the stock review page
+    tools: [where_is, data_guide]
+    answerable: "yes"
+  - id: stock-093
+    module: stock
+    question: any inventory exceptions
+    tools: [inventory_search]
+    answerable: "partial"
+    gap: no tool listing inventory exceptions
+  - id: stock-094
+    module: stock
+    question: how many exceptions need review
+    tools: []
+    answerable: "no"
+    gap: no inventory exceptions tool
+  - id: stock-095
+    module: stock
+    question: negative stock items
+    tools: [inventory_search]
+    answerable: "partial"
+    gap: no tool filtering to negative on-hand counts
+  - id: stock-096
+    module: stock
+    question: anything with negative inventory
+    tools: [inventory_search]
+    answerable: "partial"
+    gap: lookup only; negative stock cannot be listed
+  - id: stock-097
+    module: stock
+    question: what does stock review flag
+    tools: [data_guide]
+    answerable: "yes"
+  - id: stock-098
+    module: stock
+    question: how do I clear an exception on stock review
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: stock-099
+    module: stock
+    question: where are the inventory exceptions
+    tools: [where_is]
+    answerable: "yes"
+  - id: stock-100
+    module: stock
+    question: which exceptions are the oldest
+    tools: []
+    answerable: "no"
+    gap: no exceptions tool
+  - id: stock-101
+    module: stock
+    question: items that sold but had zero stock
+    tools: []
+    answerable: "no"
+    gap: no exceptions tool; sales vs stock not joined
+  - id: stock-102
+    module: stock
+    question: who reviewed the stock exceptions last
+    tools: []
+    answerable: "no"
+    gap: no review history tool
+  - id: stock-103
+    module: stock
+    question: make a task for me to go through the stock review
+    tools: [create_task]
+    answerable: "yes"
+  - id: stock-104
+    module: stock
+    question: when was the last physical count
+    tools: [period_review]
+    answerable: "partial"
+    gap: period_review shows counts in a period, not a last-count date
+  - id: stock-105
+    module: stock
+    question: how many inventory counts did we do this month
+    tools: [period_review]
+    answerable: "yes"
+  - id: stock-106
+    module: stock
+    question: did we count the stockroom last week
+    tools: [period_review]
+    answerable: "partial"
+    gap: counts totals only; not by location
+  - id: stock-107
+    module: stock
+    question: how do i start a physical count
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: stock-108
+    module: stock
+    question: where do I enter counts
+    tools: [where_is]
+    answerable: "yes"
+  - id: stock-109
+    module: stock
+    question: count variance from the last count
+    tools: []
+    answerable: "no"
+    gap: no count variance tool
+  - id: stock-110
+    module: stock
+    question: how far off was our last count
+    tools: []
+    answerable: "no"
+    gap: no count results exposed
+  - id: stock-111
+    module: stock
+    question: which items had the biggest count discrepancies
+    tools: []
+    answerable: "no"
+    gap: no count variance tool
+  - id: stock-112
+    module: stock
+    question: is there a count in progress
+    tools: []
+    answerable: "no"
+    gap: no count status tool
+  - id: stock-113
+    module: stock
+    question: who did the last count
+    tools: []
+    answerable: "no"
+    gap: no count history with users
+  - id: stock-114
+    module: stock
+    question: schedule a stockroom count for next monday
+    tools: [create_task]
+    answerable: "yes"
+  - id: stock-115
+    module: stock
+    question: remind sean to count tinctures friday
+    tools: [create_task]
+    answerable: "yes"
+  - id: stock-116
+    module: stock
+    question: counts compared to last quarter
+    tools: [period_review]
+    answerable: "yes"
+  - id: stock-117
+    module: stock
+    question: what happens to stock when i finish a count
+    tools: [how_do_i, data_guide]
+    answerable: "yes"
+  - id: stock-118
+    module: stock
+    question: any transfer requests waiting
+    tools: [order_queues]
+    answerable: "yes"
+  - id: stock-119
+    module: stock
+    question: whats waiting in stock requests
+    tools: [order_queues]
+    answerable: "yes"
+  - id: stock-120
+    module: stock
+    question: open stock requests
+    tools: [order_queues]
+    answerable: "yes"
+  - id: stock-121
+    module: stock
+    question: how many transfers are pending
+    tools: [order_queues]
+    answerable: "yes"
+  - id: stock-122
+    module: stock
+    question: how do I request stock from the warehouse
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: stock-123
+    module: stock
+    question: backorders?
+    tools: [order_queues]
+    answerable: "partial"
+    gap: order_queues lists stock requests; backorder specifics unclear
+  - id: stock-124
+    module: stock
+    question: how old is the oldest stock request
+    tools: [order_queues]
+    answerable: "yes"
+  - id: stock-125
+    module: stock
+    question: who requested the stock transfer for gummies
+    tools: [order_queues]
+    answerable: "partial"
+    gap: summary counts and age; requester detail may be missing
+  - id: stock-126
+    module: stock
+    question: approve the request for tincture transfer
+    tools: [how_do_i]
+    answerable: "partial"
+    gap: tools are read only; cannot approve requests
+  - id: stock-127
+    module: stock
+    question: where do i create a transfer request
+    tools: [where_is]
+    answerable: "yes"
+  - id: stock-128
+    module: stock
+    question: any item on backorder from our suppliers
+    tools: [order_queues]
+    answerable: "partial"
+    gap: stock requests and POs shown; no per-item backorder status from vendors
+  - id: stock-129
+    module: stock
+    question: how long do transfers take on average
+    tools: []
+    answerable: "no"
+    gap: no transfer lead time metric
+  - id: stock-130
+    module: stock
+    question: cancel the stock request for the sleep gummies
+    tools: [how_do_i]
+    answerable: "partial"
+    gap: no tool to cancel; can explain only
+  - id: stock-131
+    module: stock
+    question: remind me to follow up on the open stock requests
+    tools: [create_task, order_queues]
+    answerable: "yes"
+  - id: stock-132
+    module: stock
+    question: whats reserved
+    tools: [inventory_search]
+    answerable: "partial"
+    gap: no reservations listing tool; item lookup may show committed quantity
+  - id: stock-133
+    module: stock
+    question: how many Calm Gummies are on hold for orders
+    tools: [inventory_search]
+    answerable: "partial"
+    gap: reserved vs available quantity detail may not be exposed
+  - id: stock-134
+    module: stock
+    question: what's the stock reservations page
+    tools: [where_is, data_guide]
+    answerable: "yes"
+  - id: stock-135
+    module: stock
+    question: how do I reserve stock for a customer
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: stock-136
+    module: stock
+    question: release the reservation on the gift sets
+    tools: [how_do_i]
+    answerable: "partial"
+    gap: tools are read only; cannot release reservations
+  - id: stock-137
+    module: stock
+    question: why does the sleep tincture show 4 available but 9 on hand
+    tools: [inventory_search, data_guide]
+    answerable: "partial"
+    gap: available vs on hand can be explained, but specific reservations not listed
+  - id: stock-138
+    module: stock
+    question: reservations older than 30 days
+    tools: []
+    answerable: "no"
+    gap: no reservations listing tool
+  - id: stock-139
+    module: stock
+    question: who reserved the focus capsules
+    tools: []
+    answerable: "no"
+    gap: no reservation detail tool
+  - id: stock-140
+    module: stock
+    question: how much bulk hemp extract do we have
+    tools: [inventory_search]
+    answerable: "partial"
+    gap: bulk materials may not be covered by item search
+  - id: stock-141
+    module: stock
+    question: bulk materials running low
+    tools: [list_alerts]
+    answerable: "partial"
+    gap: alerts cover items; bulk material levels may not be included
+  - id: stock-142
+    module: stock
+    question: what is in the recipe for the sleep tincture
+    tools: [data_guide, search]
+    answerable: "partial"
+    gap: no recipe retrieval tool; only documentation of the data
+  - id: stock-143
+    module: stock
+    question: list bulk recipes
+    tools: [search]
+    answerable: "partial"
+    gap: records searchable by text but no recipe listing tool
+  - id: stock-144
+    module: stock
+    question: how much carrier oil did we use last month
+    tools: []
+    answerable: "no"
+    gap: no material consumption report
+  - id: stock-145
+    module: stock
+    question: bulk consumption this week
+    tools: []
+    answerable: "no"
+    gap: no consumption tool
+  - id: stock-146
+    module: stock
+    question: how many bottles can we make with the current bulk stock
+    tools: []
+    answerable: "no"
+    gap: no yield calculation across recipe and materials
+  - id: stock-147
+    module: stock
+    question: what is the yield on the 500mg recipe
+    tools: [search]
+    answerable: "partial"
+    gap: recipe yield not available through tools
+  - id: stock-148
+    module: stock
+    question: add a new bulk material
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: stock-149
+    module: stock
+    question: where do I log material use
+    tools: [where_is]
+    answerable: "yes"
+  - id: stock-150
+    module: stock
+    question: how are bulk recipes tied to finished goods
+    tools: [data_guide]
+    answerable: "yes"
+  - id: stock-151
+    module: stock
+    question: how do i create a recipe
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: stock-152
+    module: stock
+    question: cost of materials per bottle
+    tools: []
+    answerable: "no"
+    gap: no costing tool for recipes
+  - id: stock-153
+    module: stock
+    question: when do we need to reorder carrier oil
+    tools: []
+    answerable: "no"
+    gap: no material forecast; no reorder dates
+  - id: stock-154
+    module: stock
+    question: how much raw material is on order
+    tools: [order_queues]
+    answerable: "partial"
+    gap: open POs shown, not line item materials
+  - id: stock-155
+    module: stock
+    question: did the last batch use the right amount of material
+    tools: []
+    answerable: "no"
+    gap: no batch variance or recipe vs actual check
+  - id: stock-156
+    module: stock
+    question: which material do we use the most of
+    tools: []
+    answerable: "no"
+    gap: no consumption ranking
+  - id: stock-157
+    module: stock
+    question: what does the materials page do
+    tools: [where_is, data_guide]
+    answerable: "yes"
+  - id: stock-158
+    module: stock
+    question: make a task to count bulk materials on friday
+    tools: [create_task]
+    answerable: "yes"
+  - id: stock-159
+    module: stock
+    question: any POs late
+    tools: [order_queues]
+    answerable: "yes"
+  - id: stock-160
+    module: stock
+    question: what purchase orders are waiting for delivery
+    tools: [order_queues]
+    answerable: "yes"
+  - id: stock-161
+    module: stock
+    question: what did we order last week
+    tools: [order_queues]
+    answerable: "partial"
+    gap: open orders shown; full PO history by date not available
+  - id: stock-162
+    module: stock
+    question: open purchase orders
+    tools: [order_queues]
+    answerable: "yes"
+  - id: stock-163
+    module: stock
+    question: how many POs did we receive this month
+    tools: [period_review]
+    answerable: "yes"
+  - id: stock-164
+    module: stock
+    question: purchase orders received vs last month
+    tools: [period_review]
+    answerable: "yes"
+  - id: stock-165
+    module: stock
+    question: what are we waiting on from vendors
+    tools: [order_queues]
+    answerable: "yes"
+  - id: stock-166
+    module: stock
+    question: is the bottle shipment late
+    tools: [order_queues]
+    answerable: "partial"
+    gap: late POs listed; per-PO line detail is not
+  - id: stock-167
+    module: stock
+    question: which vendor has the oldest open order
+    tools: [order_queues]
+    answerable: "yes"
+  - id: stock-168
+    module: stock
+    question: when is the tea order supposed to arrive
+    tools: [order_queues]
+    answerable: "partial"
+    gap: expected dates may not be per-order in summary
+  - id: stock-169
+    module: stock
+    question: how much have we spent with our top vendor
+    tools: []
+    answerable: "no"
+    gap: no vendor spend report
+  - id: stock-170
+    module: stock
+    question: total spend on purchase orders this quarter
+    tools: []
+    answerable: "no"
+    gap: no PO spend tool
+  - id: stock-171
+    module: stock
+    question: vendor lead times
+    tools: []
+    answerable: "no"
+    gap: no lead time metric by vendor
+  - id: stock-172
+    module: stock
+    question: how long does the packaging vendor usually take
+    tools: []
+    answerable: "no"
+    gap: no lead time metric by vendor
+  - id: stock-173
+    module: stock
+    question: who do we buy droppers from
+    tools: [search]
+    answerable: "yes"
+  - id: stock-174
+    module: stock
+    question: vendor contact for the label printer
+    tools: [search]
+    answerable: "partial"
+    gap: search finds records; contact fields may not be returned
+  - id: stock-175
+    module: stock
+    question: list all vendors
+    tools: [search]
+    answerable: "partial"
+    gap: no vendor listing tool; text search only
+  - id: stock-176
+    module: stock
+    question: how do I create a purchase order
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: stock-177
+    module: stock
+    question: where do i receive a PO
+    tools: [where_is, how_do_i]
+    answerable: "yes"
+  - id: stock-178
+    module: stock
+    question: receive the bottle order
+    tools: [how_do_i]
+    answerable: "partial"
+    gap: tools are read only; cannot receive POs
+  - id: stock-179
+    module: stock
+    question: did the bottle order get received
+    tools: [order_queues, period_review]
+    answerable: "partial"
+    gap: open and received counts shown; individual PO status not
+  - id: stock-180
+    module: stock
+    question: what's the total on PO 1042
+    tools: [search]
+    answerable: "partial"
+    gap: search may find the PO; totals may not be returned
+  - id: stock-181
+    module: stock
+    question: we got shorted on the last delivery, what was ordered vs received
+    tools: []
+    answerable: "no"
+    gap: no PO line item ordered versus received tool
+  - id: stock-182
+    module: stock
+    question: do any POs have partial deliveries
+    tools: [order_queues]
+    answerable: "partial"
+    gap: no partial receipt indicator in the queue
+  - id: stock-183
+    module: stock
+    question: PO cost vs invoice
+    tools: []
+    answerable: "no"
+    gap: no PO to bill matching tool
+  - id: stock-184
+    module: stock
+    question: which vendors are active
+    tools: [search]
+    answerable: "partial"
+    gap: no vendor status listing tool
+  - id: stock-185
+    module: stock
+    question: add a new vendor
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: stock-186
+    module: stock
+    question: suggest purchase orders for low items
+    tools: [list_alerts]
+    answerable: "partial"
+    gap: no auto reorder tool; low items listable only
+  - id: stock-187
+    module: stock
+    question: what is the min order qty for the jar vendor
+    tools: []
+    answerable: "no"
+    gap: vendor terms not exposed
+  - id: stock-188
+    module: stock
+    question: make a task to chase the late PO
+    tools: [order_queues, create_task]
+    answerable: "yes"
+  - id: stock-189
+    module: stock
+    question: remind jan to approve the packaging order
+    tools: [create_task]
+    answerable: "yes"
+  - id: stock-190
+    module: stock
+    question: whats unlinked in the catalog
+    tools: []
+    answerable: "no"
+    gap: no catalog link status tool
+  - id: stock-191
+    module: stock
+    question: items not matched between shopify and ctrax
+    tools: [stock_comparison]
+    answerable: "partial"
+    gap: comparison covers matched items; unlinked items not called out
+  - id: stock-192
+    module: stock
+    question: how do i link a ctrax item to a shopify product
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: stock-193
+    module: stock
+    question: where is the reconcile page
+    tools: [where_is]
+    answerable: "yes"
+  - id: stock-194
+    module: stock
+    question: how many items need linking
+    tools: []
+    answerable: "no"
+    gap: no unlinked count tool
+  - id: stock-195
+    module: stock
+    question: what does reconcile do
+    tools: [data_guide]
+    answerable: "yes"
+  - id: stock-196
+    module: stock
+    question: unlink two products that were matched wrong
+    tools: [how_do_i]
+    answerable: "partial"
+    gap: no tool to unlink; explanation only
+  - id: stock-197
+    module: stock
+    question: why isnt a new product showing in both systems
+    tools: [stock_comparison, sync_health]
+    answerable: "partial"
+    gap: can check sync and comparison; link cause not available
+  - id: stock-198
+    module: stock
+    question: which swipesimple items are not linked to the catalog
+    tools: [swipesimple_items]
+    answerable: "yes"
+  - id: stock-199
+    module: stock
+    question: duplicate sku across platforms
+    tools: [search]
+    answerable: "partial"
+    gap: text search only; no duplicate detection
+  - id: stock-200
+    module: stock
+    question: any products missing a sku
+    tools: [search]
+    answerable: "no"
+    gap: no filter for missing SKU
+  - id: stock-201
+    module: stock
+    question: did the catalog sync finish today
+    tools: [sync_health]
+    answerable: "yes"
+  - id: stock-202
+    module: stock
+    question: swipesimple item list
+    tools: [swipesimple_items]
+    answerable: "yes"
+  - id: stock-203
+    module: stock
+    question: which swipesimple items match the catalog
+    tools: [swipesimple_items]
+    answerable: "yes"
+  - id: stock-204
+    module: stock
+    question: items in swipesimple but not in the catalog
+    tools: [swipesimple_items]
+    answerable: "yes"
+  - id: stock-205
+    module: stock
+    question: how many swipesimple items do we have
+    tools: [swipesimple_items]
+    answerable: "yes"
+  - id: stock-206
+    module: stock
+    question: is the lavender balm in swipesimple
+    tools: [swipesimple_items, search]
+    answerable: "yes"
+  - id: stock-207
+    module: stock
+    question: swipesimple price for Calm Gummies
+    tools: [swipesimple_items]
+    answerable: "partial"
+    gap: list is matched to catalog; price may not be included
+  - id: stock-208
+    module: stock
+    question: where do I update swipesimple items
+    tools: [where_is, how_do_i]
+    answerable: "yes"
+  - id: stock-209
+    module: stock
+    question: swipesimple items with no match
+    tools: [swipesimple_items]
+    answerable: "yes"
+  - id: stock-210
+    module: stock
+    question: do swipesimple sales reduce stock
+    tools: [data_guide]
+    answerable: "yes"
+  - id: stock-211
+    module: stock
+    question: how does a swipesimple sale affect inventory
+    tools: [data_guide]
+    answerable: "yes"
+  - id: stock-212
+    module: stock
+    question: what sizes do we carry for the tincture
+    tools: [inventory_search]
+    answerable: "yes"
+  - id: stock-213
+    module: stock
+    question: how many size options does the logo tee have
+    tools: [inventory_search]
+    answerable: "yes"
+  - id: stock-214
+    module: stock
+    question: what does the sizes page do
+    tools: [where_is, data_guide]
+    answerable: "yes"
+  - id: stock-215
+    module: stock
+    question: add a new size
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: stock-216
+    module: stock
+    question: which size sells best
+    tools: [metric]
+    answerable: "partial"
+    gap: top products by item; no size-level breakdown guaranteed
+  - id: stock-217
+    module: stock
+    question: size variants out of stock for the hoodie
+    tools: [inventory_search]
+    answerable: "yes"
+  - id: stock-218
+    module: stock
+    question: what locations do we track stock in
+    tools: [data_guide]
+    answerable: "yes"
+  - id: stock-219
+    module: stock
+    question: where is the sleep tincture stored
+    tools: [inventory_search]
+    answerable: "yes"
+  - id: stock-220
+    module: stock
+    question: how much stock is in the warehouse vs the shop
+    tools: [inventory_search]
+    answerable: "partial"
+    gap: per item only; no location total
+  - id: stock-221
+    module: stock
+    question: how do i add a new location
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: stock-222
+    module: stock
+    question: where do I see locations
+    tools: [where_is]
+    answerable: "yes"
+  - id: stock-223
+    module: stock
+    question: move stock from the back room to the shelf
+    tools: [how_do_i]
+    answerable: "partial"
+    gap: tools are read only; cannot move stock
+  - id: stock-224
+    module: stock
+    question: what bin is the peppermint tea in
+    tools: [inventory_search]
+    answerable: "partial"
+    gap: location detail only at the level stored; bin may not be tracked
+  - id: stock-225
+    module: stock
+    question: wholesale orders on hold
+    tools: [order_queues]
+    answerable: "yes"
+  - id: stock-226
+    module: stock
+    question: any warehouse holds
+    tools: [order_queues]
+    answerable: "yes"
+  - id: stock-227
+    module: stock
+    question: how many wholesale orders are waiting
+    tools: [order_queues]
+    answerable: "partial"
+    gap: holds shown; wholesale orders not on hold may not be
+  - id: stock-228
+    module: stock
+    question: wholesale sales this month
+    tools: [sales_summary, metric]
+    answerable: "partial"
+    gap: sources split by channel; wholesale only if it is its own source
+  - id: stock-229
+    module: stock
+    question: wholesale vs retail sales last quarter
+    tools: [sales_summary, metric]
+    answerable: "partial"
+    gap: depends on wholesale being a distinct source
+  - id: stock-230
+    module: stock
+    question: how do i release a warehouse hold
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: stock-231
+    module: stock
+    question: where is the warehouse page
+    tools: [where_is]
+    answerable: "yes"
+  - id: stock-232
+    module: stock
+    question: which wholesale customer has the biggest order
+    tools: [search]
+    answerable: "partial"
+    gap: no wholesale order ranking tool
+  - id: stock-233
+    module: stock
+    question: oldest warehouse hold
+    tools: [order_queues]
+    answerable: "yes"
+  - id: stock-234
+    module: stock
+    question: why is the wholesale order on hold
+    tools: [order_queues]
+    answerable: "partial"
+    gap: holds listed; reason may be limited
+  - id: stock-235
+    module: stock
+    question: wholesale stock available
+    tools: [inventory_search]
+    answerable: "partial"
+    gap: available stock per item; wholesale allocation not shown
+  - id: stock-236
+    module: stock
+    question: top wholesale products
+    tools: [metric]
+    answerable: "partial"
+    gap: top_products not split by wholesale channel unless source filter exists
+  - id: stock-237
+    module: stock
+    question: wholesale accounts that haven't ordered in 90 days
+    tools: []
+    answerable: "no"
+    gap: no wholesale customer recency tool
+  - id: stock-238
+    module: stock
+    question: create a task to follow up on wholesale holds
+    tools: [order_queues, create_task]
+    answerable: "yes"
+  - id: stock-239
+    module: stock
+    question: where do I manage inventory
+    tools: [where_is]
+    answerable: "yes"
+  - id: stock-240
+    module: stock
+    question: how do i adjust stock
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: stock-241
+    module: stock
+    question: how do I add a new product
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: stock-242
+    module: stock
+    question: where do I see everything stock related
+    tools: [where_is]
+    answerable: "yes"
+  - id: stock-243
+    module: stock
+    question: how do I print a stock report
+    tools: [how_do_i, list_reports]
+    answerable: "partial"
+    gap: no stock reports listed; how to export is explained
+  - id: stock-244
+    module: stock
+    question: is there an inventory report
+    tools: [list_reports]
+    answerable: "yes"
+  - id: stock-245
+    module: stock
+    question: what's in the stock area of rupert
+    tools: [where_is, data_guide]
+    answerable: "yes"
+  - id: stock-246
+    module: stock
+    question: how is inventory stored
+    tools: [data_guide]
+    answerable: "yes"
+  - id: stock-247
+    module: stock
+    question: how do i transfer stock between stores
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: stock-248
+    module: stock
+    question: how do I handle damaged goods
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: stock-249
+    module: stock
+    question: what history of stock do we have
+    tools: [history_summary]
+    answerable: "yes"
+  - id: stock-250
+    module: stock
+    question: how far back does our inventory data go
+    tools: [history_summary]
+    answerable: "yes"
