@@ -200,6 +200,9 @@ Rails.application.routes.draw do
   get '/buzz/chat', to: 'buzz_chat#show', as: :buzz_chat
   get '/buzz/chat/messages', to: 'buzz_chat#messages', as: :buzz_chat_messages
   post '/buzz/chat/messages', to: 'buzz_chat#create'
+  get  '/admin/buzz',          to: 'admin/buzz_mirror#show',     as: :admin_buzz_mirror
+  get  '/admin/buzz/messages', to: 'admin/buzz_mirror#messages', as: :admin_buzz_mirror_messages
+  post '/admin/buzz/messages', to: 'admin/buzz_mirror#create'
   post '/buzz/link', to: 'buzz_links#create', as: :buzz_link
   post '/buzz/link/:id/confirm', to: 'buzz_links#confirm', as: :confirm_buzz_link
   delete '/buzz/link/:id', to: 'buzz_links#destroy', as: :remove_buzz_link
@@ -305,6 +308,16 @@ Rails.application.routes.draw do
     post 'bank_reconciliation/unmatch', to: 'bank_reconciliations#unmatch', as: :bank_reconciliation_unmatch
     post 'bank_reconciliation/ignore', to: 'bank_reconciliations#ignore', as: :bank_reconciliation_ignore
     post 'bank_reconciliation/account', to: 'bank_reconciliations#map_account', as: :bank_reconciliation_account
+    get 'history', to: 'history#show', as: :history
+    resources :quickbooks_imports, only: %i[index show create] do
+      member do
+        patch :mappings
+        post :approve
+        post :discard
+        post :reverse
+        get :rejected
+      end
+    end
     get 'ledger_export', to: 'ledger_exports#new', as: :ledger_export
     post 'ledger_export', to: 'ledger_exports#create'
   end
@@ -433,6 +446,12 @@ Rails.application.routes.draw do
       post :push_guard_freeze
       post :push_guard_unfreeze
     end
+  end
+  resource :uploads_drive, path: 'uploads/drive', controller: 'uploads_drive', only: :show do
+    post :connect
+    post :folder
+    post :import
+    post :disconnect
   end
   resources :uploads, only: %i[index show create] do
     collection do
