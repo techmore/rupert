@@ -81,7 +81,7 @@ class TeamChatLocalAgentsTest < ActiveSupport::TestCase
     assert_match(/Sales tax \(tools: sales_tax_report\): .*never add sources together/, system)
     last_month = Date.current.prev_month
     assert_includes system, "last month = #{last_month.beginning_of_month.iso8601} to #{last_month.end_of_month.iso8601}"
-    assert_equal %w[tax sales], reply.reload.meta['topics']
+    assert_equal %w[tax comparison sales], reply.reload.meta['topics']
   end
 
   test 'a question with no topic keeps every tool' do
