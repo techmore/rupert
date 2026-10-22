@@ -333,9 +333,9 @@ questions:
 - id: bookkeeping-053
   module: bookkeeping
   question: who approved last mondays books
-  tools: []
-  answerable: 'no'
-  gap: no approval history tool
+  tools:
+  - activity_log
+  answerable: 'yes'
 - id: bookkeeping-054
   module: bookkeeping
   question: is last mo locked
@@ -597,9 +597,10 @@ questions:
 - id: bookkeeping-096
   module: bookkeeping
   question: who posted the last journal entry
-  tools: []
-  answerable: 'no'
-  gap: no journal tool
+  tools:
+  - activity_log
+  answerable: partial
+  gap: activity_log shows who acted on a journal entry and when; the entries themselves (lines, amounts) are not exposed
 - id: bookkeeping-097
   module: bookkeeping
   question: where is the chart of accounts
@@ -713,9 +714,10 @@ questions:
 - id: bookkeeping-115
   module: bookkeeping
   question: whos the biggest vendor we paid this quarter
-  tools: []
-  answerable: 'no'
-  gap: no payments by vendor tool
+  tools:
+  - purchase_orders
+  answerable: partial
+  gap: purchase_orders ranks vendors by spend on POs placed in the range; actual payments and bills paid are not exposed
 - id: bookkeeping-116
   module: bookkeeping
   question: find the expense from the uline order
@@ -806,15 +808,17 @@ questions:
 - id: bookkeeping-130
   module: bookkeeping
   question: who did we pay the most last quarter
-  tools: []
-  answerable: 'no'
-  gap: no payments tool
+  tools:
+  - purchase_orders
+  answerable: partial
+  gap: purchase_orders ranks vendors by PO spend; payments actually made (and to non-PO payees) are not exposed
 - id: bookkeeping-131
   module: bookkeeping
   question: how much do we owe vendors
-  tools: []
-  answerable: 'no'
-  gap: no accounts payable tool
+  tools:
+  - purchase_orders
+  answerable: partial
+  gap: purchase_orders shows still-due amounts on open POs; invoices, bills and total payables are not exposed
 - id: bookkeeping-132
   module: bookkeeping
   question: any bills due this week
@@ -837,9 +841,10 @@ questions:
   module: bookkeeping
   question: find payee for the packaging supplier
   tools:
+  - purchase_orders
   - search
   answerable: partial
-  gap: no payee tool; search may not index payees
+  gap: purchase_orders finds the vendor and payment terms; payee records are not exposed
 - id: bookkeeping-136
   module: bookkeeping
   question: how are payments stored

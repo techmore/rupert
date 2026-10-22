@@ -27,9 +27,10 @@ questions:
   tools:
   - sales_summary
   - inventory_search
-  - order_queues
+  - purchase_orders
+  - stock_movements
   answerable: partial
-  gap: no sell-through rate or days-of-cover tool; no vendor lead time or reorder point recommendation
+  gap: vendor lead time, open PO lines and movement history are available; there is no sell-through rate, days-of-cover or reorder-point tool
 - id: cross-005
   module: cross
   question: do we need to reorder the tea shelf stuff
@@ -109,16 +110,17 @@ questions:
   tools:
   - list_alerts
   - sales_summary
+  - stock_movements
   answerable: partial
-  gap: no sold-out-event history; only current alerts
+  gap: stock_movements shows quantity after each change so zero-stock events can be found; there is no dedicated sold-out report
 - id: cross-015
   module: cross
   question: what's selling fast but not on any purchase order
   tools:
   - metric
-  - order_queues
+  - purchase_orders
   answerable: partial
-  gap: order_queues lists POs awaiting delivery without line items for matching
+  gap: top sellers and open PO lines (by item and SKU) are each available; matching them is left to the bot
 - id: cross-016
   module: cross
   question: slow movers vs overstocked items
@@ -140,9 +142,10 @@ questions:
   question: did the promo sell down stock on the gummies
   tools:
   - metric
-  - inventory_search
+  - stock_movements
+  - marketing_records
   answerable: partial
-  gap: no stock history or movement trend by item; marketing promo dates not tied to stock
+  gap: stock movement history and offer dates are available; there is no link between a promo and stock sell-down
 - id: cross-019
   module: cross
   question: how much inventory value do we have in our top 10 sellers
@@ -359,9 +362,9 @@ questions:
   question: any orders from the last 3 days we haven't shipped, and was there a stockout then
   tools:
   - order_queues
-  - list_alerts
+  - stock_movements
   answerable: partial
-  gap: no historical alert timeline
+  gap: unshipped orders and stock movement history are available; there is no stockout timeline or order-to-item link
 - id: cross-047
   module: cross
   question: cancelled orders because of stock?
@@ -481,8 +484,9 @@ questions:
   tools:
   - time_keeping_report
   - sales_summary
+  - staff_schedule
   answerable: partial
-  gap: needs daily series join; no staffing target
+  gap: needs a daily series join of sales and scheduled hours; no staffing target
 - id: cross-064
   module: cross
   question: sales by day vs hours worked by day last week
@@ -511,8 +515,9 @@ questions:
   tools:
   - metric
   - time_keeping_report
+  - staff_schedule
   answerable: partial
-  gap: busiest day via best_day; no coverage requirement defined
+  gap: busiest day via best_day and who was scheduled that day via staff_schedule; no coverage requirement defined
 - id: cross-068
   module: cross
   question: labor cost vs sales this month
@@ -573,9 +578,10 @@ questions:
   question: did the schedule change line up with a sales drop
   tools:
   - time_keeping_report
+  - staff_schedule
   - period_review
   answerable: partial
-  gap: no schedule change history
+  gap: scheduled shifts per day are available; there is no history of schedule edits
 - id: cross-076
   module: cross
   question: is anyone missing hours that affect payroll this week
@@ -698,8 +704,9 @@ questions:
   tools:
   - stock_comparison
   - sync_health
+  - stock_movements
   answerable: partial
-  gap: cannot tell stale sync from real count difference without movements history
+  gap: stock_movements shows recent sync and user changes per SKU, but there is no automatic verdict on stale sync versus a real count difference
 - id: cross-093
   module: cross
   question: can I trust the stock comparison page today
@@ -931,9 +938,9 @@ questions:
   question: which tasks mention a vendor that has a late order
   tools:
   - list_tasks
-  - order_queues
+  - purchase_orders
   answerable: partial
-  gap: order_queues does not list vendor per PO reliably
+  gap: vendors with overdue POs are available from purchase_orders; matching them to task text is left to the bot
 - id: cross-125
   module: cross
   question: make a task to fix the stock mismatch between shopify and c-trax
@@ -1248,10 +1255,10 @@ questions:
   module: cross
   question: customers who got refunds more than once
   tools:
+  - customer_lookup
   - search
-  - sales_summary
-  answerable: 'no'
-  gap: no customer refund history tool
+  answerable: partial
+  gap: customer_lookup shows refunds for one named customer, but there is no list of customers ranked by refund count
 - id: cross-168
   module: cross
   question: refund rate by product line
@@ -1295,34 +1302,33 @@ questions:
   module: cross
   question: which POs are late and what's out of stock because of it
   tools:
-  - order_queues
+  - purchase_orders
   - list_alerts
   answerable: partial
-  gap: late POs without item lines; join manual
+  gap: overdue PO lines (item, SKU, short quantity) and low stock alerts are each available; matching them is left to the bot
 - id: cross-174
   module: cross
   question: late purchase orders vs low stock
   tools:
-  - order_queues
+  - purchase_orders
   - list_alerts
   answerable: partial
-  gap: no item-level PO lines
+  gap: overdue PO lines (item, SKU) and low stock alerts are each available; matching them is left to the bot
 - id: cross-175
   module: cross
   question: is anything on the low stock list already on order?
   tools:
   - list_alerts
-  - order_queues
+  - purchase_orders
   answerable: partial
-  gap: order_queues does not list PO lines by SKU
+  gap: low stock alerts and open PO lines by SKU are each available; matching them is left to the bot
 - id: cross-176
   module: cross
   question: when is the gummy order arriving
   tools:
-  - order_queues
+  - purchase_orders
   - inventory_search
-  answerable: partial
-  gap: order_queues lists POs but not ETAs by item
+  answerable: 'yes'
 - id: cross-177
   module: cross
   question: POs received this week and stock alerts cleared
@@ -1340,26 +1346,25 @@ questions:
   module: cross
   question: vendor delivery late, what stock runs out first
   tools:
-  - order_queues
+  - purchase_orders
   - metric
   - inventory_search
   answerable: partial
-  gap: no vendor-level PO detail or run-out projection
+  gap: late PO lines by vendor are available; the run-out order is estimated by hand from sales pace, there is no projection tool
 - id: cross-180
   module: cross
   question: how many purchase orders are waiting and what do they cover
   tools:
-  - order_queues
-  answerable: partial
-  gap: counts and age only; no line detail
+  - purchase_orders
+  answerable: 'yes'
 - id: cross-181
   module: cross
   question: whats on order vs whats low
   tools:
-  - order_queues
+  - purchase_orders
   - list_alerts
   answerable: partial
-  gap: no SKU on PO lines
+  gap: open PO lines by SKU and low stock alerts are each available; matching them is left to the bot
 - id: cross-182
   module: cross
   question: late POs and the tasks to chase them
@@ -1378,17 +1383,17 @@ questions:
   module: cross
   question: which vendor is always late
   tools:
-  - order_queues
-  answerable: 'no'
-  gap: no vendor delivery performance history
+  - purchase_orders
+  answerable: 'yes'
 - id: cross-185
   module: cross
   question: PO received but stock not updated?
   tools:
-  - period_review
+  - purchase_orders
+  - stock_movements
   - inventory_search
   answerable: partial
-  gap: no PO-to-inventory receipt tie-out tool
+  gap: PO received quantities and stock movements are each visible; there is no automatic receipt-to-inventory tie-out
 - id: cross-186
   module: cross
   question: how many POs did we receive this month vs last
@@ -1400,56 +1405,60 @@ questions:
   question: stock requests pending and POs pending - are those the same items
   tools:
   - order_queues
+  - purchase_orders
   answerable: partial
-  gap: no line items
+  gap: PO lines are available but open stock requests have no line items, so the items cannot be compared
 - id: cross-188
   module: cross
   question: are we waiting on a PO for items that are already backordered online
   tools:
-  - order_queues
+  - purchase_orders
   - sales_summary
   answerable: partial
-  gap: no backorder list
+  gap: open PO lines are available; there is no backorder item list to match them against
 - id: cross-189
   module: cross
   question: expected stock arrival vs sales pace
   tools:
-  - order_queues
+  - purchase_orders
   - metric
   answerable: partial
-  gap: no ETA or velocity tool
+  gap: PO expected dates and lines are available; there is no sales-velocity forecast, so the pace comparison is by hand
 - id: cross-190
   module: cross
   question: any items out of stock with no PO
   tools:
   - list_alerts
-  - order_queues
+  - purchase_orders
   answerable: partial
-  gap: alerts without PO line mapping
+  gap: out-of-stock alerts and open PO lines by SKU are each available; matching them is left to the bot
 - id: cross-191
   module: cross
   question: did the campaign increase sales?
   tools:
   - metric
   - period_review
+  - marketing_records
   answerable: partial
-  gap: no campaign dates tool; compare periods manually
+  gap: offer start and end dates (marketing_records) can mark the window; campaigns themselves have no dates or results, so compare periods by hand
 - id: cross-192
   module: cross
   question: sales lift during last week's promo
   tools:
   - metric
   - sales_summary
+  - marketing_records
   answerable: partial
-  gap: promo/offer dates not available through tools
+  gap: offer dates are available from marketing_records; no usage counts or attribution, so lift is a before/after comparison
 - id: cross-193
   module: cross
   question: did the discount code drive orders
   tools:
   - sales_summary
   - search
+  - marketing_records
   answerable: partial
-  gap: search finds records by text but no discount code attribution report
+  gap: code terms and dates are visible in marketing_records; discount usage counts and revenue are not stored
 - id: cross-194
   module: cross
   question: how did we do the week of the newsletter vs the week before
@@ -1463,8 +1472,9 @@ questions:
   tools:
   - metric
   - sales_summary
+  - marketing_records
   answerable: partial
-  gap: influencer activity not exposed
+  gap: influencer gift and collaboration dates are available; post performance and attributed sales are not stored
 - id: cross-196
   module: cross
   question: best campaign this quarter by sales
@@ -1478,24 +1488,27 @@ questions:
   tools:
   - inventory_search
   - list_alerts
+  - marketing_records
   answerable: partial
-  gap: marketing offers not exposed
+  gap: active offers (marketing_records) and stock are available; there is no attribution of stock draw to the offer
 - id: cross-198
   module: cross
   question: did the sale make us run low on anything
   tools:
   - metric
   - list_alerts
+  - marketing_records
   answerable: partial
-  gap: no sale event dates
+  gap: offer dates are available from marketing_records; there is no sale-to-stock attribution
 - id: cross-199
   module: cross
   question: marketing spend vs sales
   tools:
   - period_review
   - metric
+  - marketing_summary
   answerable: partial
-  gap: expenses available only in total, not by marketing category
+  gap: influencer gift product and shipping cost are available; ad spend and campaign budgets are not stored
 - id: cross-200
   module: cross
   question: what was ad spend last month vs the sales
@@ -1508,8 +1521,9 @@ questions:
   question: did our top products change during the campaign
   tools:
   - metric
+  - marketing_records
   answerable: partial
-  gap: compare two periods by hand; campaign window not known
+  gap: offer dates are available to set the window; compare the two periods by hand
 - id: cross-202
   module: cross
   question: which discount got used the most
@@ -1528,31 +1542,35 @@ questions:
   module: cross
   question: is the offer still live and how many sold
   tools:
+  - marketing_records
   - sales_summary
   answerable: partial
-  gap: offers not exposed; user must name the product
+  gap: offer status and dates are available; how many were sold through the code is not stored, so use sales of the named product for those dates
 - id: cross-205
   module: cross
   question: average order value before and after the promo
   tools:
   - metric
+  - marketing_records
   answerable: partial
-  gap: needs user supplied dates; tool compares standard periods
+  gap: offer dates are available; the before and after periods must be compared by hand
 - id: cross-206
   module: cross
   question: did reviews or community posts bring in more sales
   tools:
+  - marketing_records
   - metric
-  answerable: 'no'
-  gap: no reviews or community data in tools
+  answerable: partial
+  gap: community reply dates are available; customer reviews and any attribution to sales are not stored
 - id: cross-207
   module: cross
   question: influencer sales vs cost
   tools:
-  - period_review
-  - metric
-  answerable: 'no'
-  gap: no influencer data tools
+  - marketing_summary
+  - marketing_records
+  - sales_summary
+  answerable: partial
+  gap: influencer gift product and shipping cost are available; sales attributed to influencers and code usage are not stored
 - id: cross-208
   module: cross
   question: holiday campaign vs last year's sales
@@ -1570,16 +1588,18 @@ questions:
   question: best day this month and was there a campaign
   tools:
   - metric
+  - marketing_records
   answerable: partial
-  gap: campaign dates unavailable
+  gap: offer and code dates are available; campaigns have no dates
 - id: cross-211
   module: cross
   question: online sales trend since we changed the offer
   tools:
   - metric
   - sales_summary
+  - marketing_records
   answerable: partial
-  gap: offer change date unknown
+  gap: the marketing change history gives when an offer changed; the trend is a manual before/after comparison
 - id: cross-212
   module: cross
   question: did the promo hurt margin

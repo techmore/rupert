@@ -132,7 +132,7 @@ class TeamChatLocalAgentsTest < ActiveSupport::TestCase
     assert_not_includes requests.first['messages'].first['content'], 'Sales tax (tools', 'per-question notes stay out of the cached instructions'
     last_month = Date.current.prev_month
     assert_includes question, "last month = #{last_month.beginning_of_month.iso8601} to #{last_month.end_of_month.iso8601}"
-    assert_equal %w[tax sales], reply.reload.meta['topics']
+    assert_equal %w[tax comparison sales], reply.reload.meta['topics']
   end
 
   test 'a question with no topic keeps every tool' do

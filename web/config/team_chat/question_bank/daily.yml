@@ -125,8 +125,9 @@ questions:
   question: what changed since yesterday
   tools:
   - period_review
+  - activity_log
   answerable: partial
-  gap: period_review compares periods but does not produce a change log since the owner last looked
+  gap: period_review compares periods and activity_log lists who did what in a date range, but there is no automatic change log since the owner last looked
 - id: daily-020
   module: daily
   question: good morning, whats the plan today
@@ -275,8 +276,9 @@ questions:
   question: how many customers came in today
   tools:
   - sales_summary
+  - customer_insights
   answerable: partial
-  gap: order counts only, not visitors or unique customers
+  gap: order counts and new vs returning buyers (customers linked to a profile) are available, not visitors or walk-ins
 - id: daily-042
   module: daily
   question: store sales today
@@ -319,16 +321,16 @@ questions:
   module: daily
   question: who's working today
   tools:
-  - time_keeping_report
-  answerable: partial
-  gap: scheduled hours per staff are reported but not a shift roster with start and end times
+  - staff_schedule
+  answerable: 'yes'
 - id: daily-049
   module: daily
   question: whos in
   tools:
+  - staff_schedule
   - time_keeping_report
   answerable: partial
-  gap: no live clocked-in status
+  gap: staff_schedule shows who is scheduled; live clocked-in state is only the still-clocked-in status in time_keeping_report
 - id: daily-050
   module: daily
   question: is Jo clocked in
@@ -340,28 +342,30 @@ questions:
   module: daily
   question: who's on tomorrow
   tools:
-  - time_keeping_report
-  answerable: partial
-  gap: schedule hours per person only, no shift times
+  - staff_schedule
+  answerable: 'yes'
 - id: daily-052
   module: daily
   question: anyone call out today?
-  tools: []
-  answerable: 'no'
-  gap: no call-out or absence reporting tool
+  tools:
+  - staff_schedule
+  - time_keeping_report
+  answerable: partial
+  gap: approved leave and no-punch days are visible, but a same-day call-out is not recorded anywhere
 - id: daily-053
   module: daily
   question: who's off this week
-  tools: []
-  answerable: 'no'
-  gap: leave and PTO have no chat tool
+  tools:
+  - staff_schedule
+  answerable: 'yes'
 - id: daily-054
   module: daily
   question: who has pto coming up
   tools:
+  - staff_schedule
   - compliance_check
   answerable: partial
-  gap: only leave awaiting approval is flagged, not a calendar of upcoming time off
+  gap: staff_schedule lists approved leave up to 31 days at a time; leave balances are not stored and pending requests are only flagged by compliance_check
 - id: daily-055
   module: daily
   question: how many hours has the team worked today
@@ -392,21 +396,25 @@ questions:
   module: daily
   question: are we fully staffed today
   tools:
+  - staff_schedule
   - time_keeping_report
   answerable: partial
-  gap: no required-staffing target to compare against
+  gap: the schedule shows who is on and for how many hours, but there is no required-staffing target to compare against
 - id: daily-060
   module: daily
   question: who closes tonight
-  tools: []
-  answerable: 'no'
-  gap: no shift roster with closing assignments
+  tools:
+  - staff_schedule
+  answerable: partial
+  gap: staff_schedule shows shift end times and roles, but there is no explicit closing assignment
 - id: daily-061
   module: daily
   question: who opened today
-  tools: []
-  answerable: 'no'
-  gap: no first-punch or opening-person lookup
+  tools:
+  - staff_schedule
+  - time_keeping_report
+  answerable: partial
+  gap: staff_schedule shows who is scheduled to start first; there is no first-punch lookup
 - id: daily-062
   module: daily
   question: how many hours is Sam scheduled this week
@@ -460,16 +468,14 @@ questions:
   module: daily
   question: do we have POs coming today
   tools:
-  - order_queues
-  answerable: partial
-  gap: shows POs awaiting delivery and late ones but expected-delivery date by day may not be filterable
+  - purchase_orders
+  answerable: 'yes'
 - id: daily-071
   module: daily
   question: any deliveries expected this week
   tools:
-  - order_queues
-  answerable: partial
-  gap: depends on POs having an expected date entered
+  - purchase_orders
+  answerable: 'yes'
 - id: daily-072
   module: daily
   question: what do I need to approve today
@@ -638,16 +644,16 @@ questions:
   question: what's my day look like
   tools:
   - list_tasks
-  - time_keeping_report
+  - staff_schedule
   answerable: partial
-  gap: calendar events and appointments are not in Rupert
+  gap: tasks and your scheduled shift are available; calendar events and appointments are not in Rupert
 - id: daily-097
   module: daily
   question: who needs a call back
   tools:
+  - customer_insights
   - order_queues
-  answerable: partial
-  gap: customer follow-ups are listed but no phone call-back queue
+  answerable: 'yes'
 - id: daily-098
   module: daily
   question: anything the accountant is waiting on
@@ -1245,8 +1251,9 @@ questions:
   tools:
   - metric
   - sales_summary
+  - marketing_records
   answerable: partial
-  gap: discount/campaign attribution is not available, only sales for the dates
+  gap: sales for the dates and the offers or codes live then (marketing_records) are available; discount usage counts and campaign results are not stored
 - id: daily-189
   module: daily
   question: did the farmers market event bring in sales
@@ -1357,21 +1364,23 @@ questions:
   tools:
   - period_review
   - list_tasks
+  - activity_log
   answerable: partial
-  gap: period comparisons exist but no personal "since last login" digest
+  gap: period comparisons and activity_log cover dates the user names; there is no personal since-last-login digest
 - id: daily-205
   module: daily
   question: what did Sean do today
   tools:
+  - activity_log
   - list_tasks
-  answerable: partial
-  gap: tasks completed by person only, other actions are in the activity log without a chat tool
+  answerable: 'yes'
 - id: daily-206
   module: daily
   question: who changed that
-  tools: []
-  answerable: 'no'
-  gap: activity log has no chat tool
+  tools:
+  - activity_log
+  answerable: partial
+  gap: activity_log covers logged actions; vendor edits, stock counts and who changed a Shopify or Square level are not logged, and the bot needs to know which record or person
 - id: daily-207
   module: daily
   question: catch me up
@@ -1379,8 +1388,9 @@ questions:
   - period_review
   - order_queues
   - list_tasks
+  - activity_log
   answerable: partial
-  gap: no catch-up digest tool
+  gap: no single catch-up digest tool; the bot combines period_review, queues, tasks and activity_log
 - id: daily-208
   module: daily
   question: anything Jan flagged
@@ -1536,9 +1546,8 @@ questions:
   module: daily
   question: did the shipment come in
   tools:
-  - order_queues
-  answerable: partial
-  gap: shows POs awaiting or late, not a live delivery confirmation
+  - purchase_orders
+  answerable: 'yes'
 - id: daily-233
   module: daily
   question: what vendor orders are open
@@ -1599,20 +1608,19 @@ questions:
   question: did we get any good reviews today
   tools: []
   answerable: 'no'
-  gap: reviews and community data have no chat tool
+  gap: customer product reviews and star ratings are not stored; marketing_records reviews are only our own community replies
 - id: daily-243
   module: daily
   question: any new customers today
   tools:
-  - search
-  answerable: partial
-  gap: no new-customer count tool
+  - customer_insights
+  answerable: 'yes'
 - id: daily-244
   module: daily
   question: how many new customers this week
-  tools: []
-  answerable: 'no'
-  gap: no customer acquisition metric
+  tools:
+  - customer_insights
+  answerable: 'yes'
 - id: daily-245
   module: daily
   question: any wholesale inquiries
