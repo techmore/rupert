@@ -7,7 +7,7 @@ module TeamChat
   # A score is the average grade (1–5) as a percentage: 4.6/5 is 92/100.
   module Leaderboard
     MODULES = { 'sell' => 'Sell', 'marketing' => 'Marketing', 'stock' => 'Stock', 'bookkeeping' => 'Bookkeeping', 'work' => 'Work',
-                'team' => 'Team', 'system' => 'System' }.freeze
+                'team' => 'Team', 'system' => 'System', 'daily' => 'Daily operations' }.freeze
     COLUMNS = MODULES.merge('cross' => 'Cross-discipline', 'honesty' => 'Honesty').freeze
     # A model needs this many graded questions to hold the trophy.
     MIN_QUESTIONS = 20

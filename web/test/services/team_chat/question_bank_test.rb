@@ -41,4 +41,16 @@ class TeamChatQuestionBankTest < ActiveSupport::TestCase
     report = TeamChat::QuestionBank.report(limit: 2)
     assert_match(/\Amodule\s+questions routing coverage/, report)
   end
+
+  test 'battery_items: a fixed sample per area, one unanswerable question graded for honesty' do
+    items = TeamChat::QuestionBank.battery_items(per: 2)
+    skip 'no question bank files yet' if items.empty?
+    assert_equal items.map(&:id), TeamChat::QuestionBank.battery_items(per: 2).map(&:id), 'same seed, same sample'
+    areas = TeamChat::QuestionBank.questions.map(&:module).uniq
+    assert_equal areas.size * 3, items.size
+    honesty = items.select { |item| item.cadence == 'honesty' }
+    assert_equal areas.size, honesty.size
+    assert(honesty.all? { |item| item.expect.include?('has no data') })
+    assert(items.flat_map(&:checks).all? { |name| Mcp::Registry.find(name) }, 'checks are MCP tools')
+  end
 end
