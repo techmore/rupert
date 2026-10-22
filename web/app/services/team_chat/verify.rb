@@ -124,7 +124,7 @@ module TeamChat
       response = @chat_factory.call(CHECK_PROMPT).with_schema(SCHEMA).ask("DATA:\n#{@evidence}\n\nSENTENCES:\n#{numbered}")
       content = response.content
       content = JSON.parse(content.to_s) unless content.is_a?(Hash)
-      Array(content['checks']).select { |row| row.is_a?(Hash) }.index_by { |row| row['id'].to_i }
+      Array(content['checks']).grep(Hash).index_by { |row| row['id'].to_i }
     rescue JSON::ParserError
       {}
     end
@@ -152,7 +152,7 @@ module TeamChat
       words.count { |word| known.include?(word) } >= (words.size * 0.9).ceil
     end
 
-    def normalize(text) = text.to_s.downcase.gsub(/[^[:alnum:].$%\-]+/, ' ').gsub(/(?<!\d)\.|\.(?!\d)/, ' ').squish
+    def normalize(text) = text.to_s.downcase.gsub(/[^[:alnum:].$%-]+/, ' ').gsub(/(?<!\d)\.|\.(?!\d)/, ' ').squish
 
     # [text, fixed?, which answer was kept]
     def fix(claims)

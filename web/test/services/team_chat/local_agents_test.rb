@@ -100,7 +100,10 @@ class TeamChatLocalAgentsTest < ActiveSupport::TestCase
     outcome = TeamChat::Verify::Outcome.new(text: 'There were 14 orders.', claims: [], fixed: true, kept: 'fixed', draft: 'There were 12 orders.', ms: 900)
     checker = Object.new
     checker.define_singleton_method(:call) { outcome }
-    TeamChat::Verify.stub(:new, ->(**args) { given = args; checker }) { TeamChat::Agent.new(reply).run }
+    TeamChat::Verify.stub(:new, lambda { |**args|
+      given = args
+      checker
+    }) { TeamChat::Agent.new(reply).run }
     reply.reload
 
     assert_equal 'There were 12 orders.', given[:draft]
