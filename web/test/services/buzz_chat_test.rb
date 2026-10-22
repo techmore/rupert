@@ -253,5 +253,4 @@ class BuzzChatTest < ActiveSupport::TestCase
     assert_match(/thread is no longer available/, error.message)
     assert_empty @relay.published
   end
-
 end

@@ -267,5 +267,4 @@ class BuzzChatFlowTest < ActionDispatch::IntegrationTest
     assert_select '.buzz-member-avatar[title=?]', 'Sean'
     assert_select '.buzz-member-avatar[title=?]', 'Derek'
   end
-
 end
