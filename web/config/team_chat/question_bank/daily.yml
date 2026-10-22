@@ -1,0 +1,1653 @@
+questions:
+- id: daily-001
+  module: daily
+  question: anything I should know?
+  tools:
+  - system_status
+  - sync_health
+  - order_queues
+  - list_tasks
+  answerable: partial
+  gap: no single "daily briefing" tool; bot must combine several calls and has no notion of what changed since last visit
+- id: daily-002
+  module: daily
+  question: morning, anything broken overnight?
+  tools:
+  - system_status
+  - sync_health
+  - recent_errors
+  answerable: 'yes'
+- id: daily-003
+  module: daily
+  question: all systems ok?
+  tools:
+  - system_status
+  answerable: 'yes'
+- id: daily-004
+  module: daily
+  question: did the overnight syncs run?
+  tools:
+  - sync_health
+  answerable: 'yes'
+- id: daily-005
+  module: daily
+  question: any errors since yesterday
+  tools:
+  - recent_errors
+  answerable: 'yes'
+- id: daily-006
+  module: daily
+  question: is shopify syncing ok today
+  tools:
+  - sync_health
+  answerable: 'yes'
+- id: daily-007
+  module: daily
+  question: is the register data coming in this morning
+  tools:
+  - sync_health
+  answerable: 'yes'
+- id: daily-008
+  module: daily
+  question: did last night's backup run
+  tools:
+  - backup_freshness
+  answerable: 'yes'
+- id: daily-009
+  module: daily
+  question: any alerts this morning
+  tools:
+  - list_alerts
+  - order_queues
+  answerable: partial
+  gap: '"alerts" is ambiguous: tools cover low-stock alerts and queues but not system or security alerts feed'
+- id: daily-010
+  module: daily
+  question: anything red on the dashboard?
+  tools:
+  - system_status
+  - sync_health
+  - compliance_check
+  answerable: partial
+  gap: no tool returns the dashboard cards as shown on screen; bot approximates from health and close checks
+- id: daily-011
+  module: daily
+  question: did the deploy go through ok
+  tools:
+  - deploy_status
+  answerable: 'yes'
+- id: daily-012
+  module: daily
+  question: is the site up
+  tools:
+  - instance_status
+  answerable: 'yes'
+- id: daily-013
+  module: daily
+  question: is the AI working? chat felt slow
+  tools:
+  - ai_health
+  answerable: 'yes'
+- id: daily-014
+  module: daily
+  question: any failed card payments overnight
+  tools:
+  - order_queues
+  answerable: 'yes'
+- id: daily-015
+  module: daily
+  question: any new orders overnight?
+  tools:
+  - sales_summary
+  - order_queues
+  answerable: 'yes'
+- id: daily-016
+  module: daily
+  question: how many orders came in overnight
+  tools:
+  - sales_summary
+  answerable: partial
+  gap: sales_summary works by date, not by hour range, so "overnight" needs an hourly breakdown
+- id: daily-017
+  module: daily
+  question: did anyone send anything to the uploads inbox
+  tools:
+  - list_uploads
+  answerable: 'yes'
+- id: daily-018
+  module: daily
+  question: new feedback or bug reports?
+  tools:
+  - list_feedback
+  answerable: 'yes'
+- id: daily-019
+  module: daily
+  question: what changed since yesterday
+  tools:
+  - period_review
+  answerable: partial
+  gap: period_review compares periods but does not produce a change log since the owner last looked
+- id: daily-020
+  module: daily
+  question: good morning, whats the plan today
+  tools:
+  - list_tasks
+  - order_queues
+  - list_alerts
+  answerable: partial
+  gap: no tool builds a plan; bot summarizes tasks, queues and alerts
+- id: daily-021
+  module: daily
+  question: quick health check before we open
+  tools:
+  - system_status
+  - sync_health
+  - backup_freshness
+  answerable: 'yes'
+- id: daily-022
+  module: daily
+  question: is the pos connected
+  tools:
+  - sync_health
+  answerable: partial
+  gap: sync_health shows last sync per source but not live POS terminal connectivity
+- id: daily-023
+  module: daily
+  question: are the card readers working
+  tools: []
+  answerable: 'no'
+  gap: no tool for hardware or terminal status
+- id: daily-024
+  module: daily
+  question: whats today's date and are we on the right time zone
+  tools:
+  - get_workspace_info
+  answerable: 'yes'
+- id: daily-025
+  module: daily
+  question: how's today
+  tools:
+  - metric
+  - sales_summary
+  answerable: 'yes'
+- id: daily-026
+  module: daily
+  question: sales so far today
+  tools:
+  - metric
+  answerable: 'yes'
+- id: daily-027
+  module: daily
+  question: how did yesterday go
+  tools:
+  - metric
+  - sales_summary
+  answerable: 'yes'
+- id: daily-028
+  module: daily
+  question: yesterday's sales vs the day before
+  tools:
+  - metric
+  answerable: 'yes'
+- id: daily-029
+  module: daily
+  question: did we have a good day yesterday?
+  tools:
+  - metric
+  - period_review
+  answerable: partial
+  gap: '"good" has no target to compare against; only vs prior period or same date last year'
+- id: daily-030
+  module: daily
+  question: are we ahead of yesterday at this time
+  tools:
+  - metric
+  answerable: partial
+  gap: no hour-by-hour cut so cannot compare same time of day
+- id: daily-031
+  module: daily
+  question: how many orders today
+  tools:
+  - metric
+  answerable: 'yes'
+- id: daily-032
+  module: daily
+  question: orders today vs same day last week
+  tools:
+  - metric
+  answerable: partial
+  gap: metric compares to the previous period or same dates last year, not same weekday last week
+- id: daily-033
+  module: daily
+  question: did we have any big order today
+  tools:
+  - search
+  - sales_summary
+  answerable: partial
+  gap: no tool lists largest orders for a day
+- id: daily-034
+  module: daily
+  question: biggest sale yesterday
+  tools:
+  - search
+  answerable: partial
+  gap: no tool sorts orders by amount
+- id: daily-035
+  module: daily
+  question: slow day or busy day?
+  tools:
+  - metric
+  answerable: partial
+  gap: no baseline for "normal day"; only comparisons to prior period
+- id: daily-036
+  module: daily
+  question: how are we doing vs last year today
+  tools:
+  - metric
+  answerable: 'yes'
+- id: daily-037
+  module: daily
+  question: is today better than last friday
+  tools:
+  - metric
+  answerable: partial
+  gap: metric does not compare to same weekday last week; bot can fetch both days separately
+- id: daily-038
+  module: daily
+  question: what time did we get our first sale today
+  tools: []
+  answerable: 'no'
+  gap: no order timestamps by hour or first/last sale lookup
+- id: daily-039
+  module: daily
+  question: which hour is our busiest
+  tools: []
+  answerable: 'no'
+  gap: no hourly sales breakdown
+- id: daily-040
+  module: daily
+  question: how many walk-ins today
+  tools: []
+  answerable: 'no'
+  gap: no foot traffic counter or door data
+- id: daily-041
+  module: daily
+  question: how many customers came in today
+  tools:
+  - sales_summary
+  answerable: partial
+  gap: order counts only, not visitors or unique customers
+- id: daily-042
+  module: daily
+  question: store sales today
+  tools:
+  - metric
+  answerable: 'yes'
+- id: daily-043
+  module: daily
+  question: how much did we make yesterday after refunds
+  tools:
+  - sales_summary
+  answerable: partial
+  gap: gross sales only; no net-of-refund total
+- id: daily-044
+  module: daily
+  question: what was yesterdays tax
+  tools:
+  - sales_tax_report
+  answerable: 'yes'
+- id: daily-045
+  module: daily
+  question: did we take any gift cards yesterday
+  tools: []
+  answerable: 'no'
+  gap: no gift card sales or redemptions tool
+- id: daily-046
+  module: daily
+  question: any discounts used today
+  tools: []
+  answerable: 'no'
+  gap: no discount usage per day tool
+- id: daily-047
+  module: daily
+  question: whats wrong with today's numbers it looks low
+  tools:
+  - metric
+  - sync_health
+  answerable: 'yes'
+- id: daily-048
+  module: daily
+  question: who's working today
+  tools:
+  - time_keeping_report
+  answerable: partial
+  gap: scheduled hours per staff are reported but not a shift roster with start and end times
+- id: daily-049
+  module: daily
+  question: whos in
+  tools:
+  - time_keeping_report
+  answerable: partial
+  gap: no live clocked-in status
+- id: daily-050
+  module: daily
+  question: is Jo clocked in
+  tools:
+  - time_keeping_report
+  answerable: partial
+  gap: report covers hours for a range, not live punch state
+- id: daily-051
+  module: daily
+  question: who's on tomorrow
+  tools:
+  - time_keeping_report
+  answerable: partial
+  gap: schedule hours per person only, no shift times
+- id: daily-052
+  module: daily
+  question: anyone call out today?
+  tools: []
+  answerable: 'no'
+  gap: no call-out or absence reporting tool
+- id: daily-053
+  module: daily
+  question: who's off this week
+  tools: []
+  answerable: 'no'
+  gap: leave and PTO have no chat tool
+- id: daily-054
+  module: daily
+  question: who has pto coming up
+  tools:
+  - compliance_check
+  answerable: partial
+  gap: only leave awaiting approval is flagged, not a calendar of upcoming time off
+- id: daily-055
+  module: daily
+  question: how many hours has the team worked today
+  tools:
+  - time_keeping_report
+  answerable: 'yes'
+- id: daily-056
+  module: daily
+  question: hours worked yesterday by person
+  tools:
+  - time_keeping_report
+  answerable: 'yes'
+- id: daily-057
+  module: daily
+  question: did everyone clock out last night
+  tools:
+  - compliance_check
+  answerable: partial
+  gap: flags clock corrections but not who is still punched in
+- id: daily-058
+  module: daily
+  question: anyone forgot to clock out
+  tools:
+  - compliance_check
+  answerable: partial
+  gap: clock corrections are flagged; no list of open punches
+- id: daily-059
+  module: daily
+  question: are we fully staffed today
+  tools:
+  - time_keeping_report
+  answerable: partial
+  gap: no required-staffing target to compare against
+- id: daily-060
+  module: daily
+  question: who closes tonight
+  tools: []
+  answerable: 'no'
+  gap: no shift roster with closing assignments
+- id: daily-061
+  module: daily
+  question: who opened today
+  tools: []
+  answerable: 'no'
+  gap: no first-punch or opening-person lookup
+- id: daily-062
+  module: daily
+  question: how many hours is Sam scheduled this week
+  tools:
+  - time_keeping_report
+  answerable: 'yes'
+- id: daily-063
+  module: daily
+  question: overtime so far this week?
+  tools:
+  - time_keeping_report
+  answerable: partial
+  gap: hours per person are available but no overtime threshold calculation
+- id: daily-064
+  module: daily
+  question: where do I see the schedule
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: daily-065
+  module: daily
+  question: can you check if Derek worked saturday
+  tools:
+  - time_keeping_report
+  answerable: 'yes'
+- id: daily-066
+  module: daily
+  question: whats waiting
+  tools:
+  - order_queues
+  answerable: 'yes'
+- id: daily-067
+  module: daily
+  question: whats waiting to ship
+  tools:
+  - order_queues
+  answerable: 'yes'
+- id: daily-068
+  module: daily
+  question: oldest unshipped order?
+  tools:
+  - order_queues
+  answerable: 'yes'
+- id: daily-069
+  module: daily
+  question: any unpaid orders hanging around
+  tools:
+  - order_queues
+  answerable: 'yes'
+- id: daily-070
+  module: daily
+  question: do we have POs coming today
+  tools:
+  - order_queues
+  answerable: partial
+  gap: shows POs awaiting delivery and late ones but expected-delivery date by day may not be filterable
+- id: daily-071
+  module: daily
+  question: any deliveries expected this week
+  tools:
+  - order_queues
+  answerable: partial
+  gap: depends on POs having an expected date entered
+- id: daily-072
+  module: daily
+  question: what do I need to approve today
+  tools:
+  - order_queues
+  - compliance_check
+  answerable: partial
+  gap: approvals are spread across pages and no single approvals inbox tool exists
+- id: daily-073
+  module: daily
+  question: anything waiting on me
+  tools:
+  - order_queues
+  - list_tasks
+  - compliance_check
+  answerable: partial
+  gap: no unified "waiting on this user" view
+- id: daily-074
+  module: daily
+  question: receipts to review?
+  tools:
+  - order_queues
+  answerable: 'yes'
+- id: daily-075
+  module: daily
+  question: what's low
+  tools:
+  - list_alerts
+  answerable: 'yes'
+- id: daily-076
+  module: daily
+  question: what do we need to reorder today
+  tools:
+  - list_alerts
+  - order_queues
+  answerable: partial
+  gap: alerts show low items but no suggested order quantities
+- id: daily-077
+  module: daily
+  question: tasks for today
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: daily-078
+  module: daily
+  question: whats due today
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: daily-079
+  module: daily
+  question: whats overdue
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: daily-080
+  module: daily
+  question: what's on the board right now
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: daily-081
+  module: daily
+  question: what is Sean working on
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: daily-082
+  module: daily
+  question: what did Jan assign to me
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: can filter tasks assigned to me but not who created them
+- id: daily-083
+  module: daily
+  question: unassigned tasks?
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: assignee filter exists for me only; unassigned would need scanning results
+- id: daily-084
+  module: daily
+  question: what got done yesterday
+  tools:
+  - period_review
+  - list_tasks
+  answerable: 'yes'
+- id: daily-085
+  module: daily
+  question: how many tasks did we finish this week
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: daily-086
+  module: daily
+  question: reconciliation follow ups open?
+  tools:
+  - order_queues
+  answerable: 'yes'
+- id: daily-087
+  module: daily
+  question: what needs to be counted today
+  tools: []
+  answerable: 'no'
+  gap: no schedule for physical counts or count assignments tool
+- id: daily-088
+  module: daily
+  question: is a count due this week
+  tools:
+  - period_review
+  answerable: partial
+  gap: shows counts done in a period, not a count schedule
+- id: daily-089
+  module: daily
+  question: anything on hold in the warehouse
+  tools:
+  - order_queues
+  answerable: 'yes'
+- id: daily-090
+  module: daily
+  question: what wholesale orders are waiting
+  tools:
+  - order_queues
+  answerable: partial
+  gap: warehouse holds are listed but not the full wholesale order queue
+- id: daily-091
+  module: daily
+  question: what should I focus on
+  tools:
+  - list_tasks
+  - order_queues
+  - list_alerts
+  - compliance_check
+  answerable: partial
+  gap: no ranking of what matters most; bot summarizes
+- id: daily-092
+  module: daily
+  question: what's urgent
+  tools:
+  - list_tasks
+  - order_queues
+  - compliance_check
+  answerable: partial
+  gap: urgency inferred from due dates, queue age and close flags only
+- id: daily-093
+  module: daily
+  question: can you send me a briefing every morning
+  tools: []
+  answerable: 'no'
+  gap: no scheduled or recurring bot messages
+- id: daily-094
+  module: daily
+  question: set up a daily digest
+  tools: []
+  answerable: 'no'
+  gap: no scheduling or notification tool for the bot
+- id: daily-095
+  module: daily
+  question: text me if the site goes down
+  tools: []
+  answerable: 'no'
+  gap: no alerting or notification setup via chat
+- id: daily-096
+  module: daily
+  question: what's my day look like
+  tools:
+  - list_tasks
+  - time_keeping_report
+  answerable: partial
+  gap: calendar events and appointments are not in Rupert
+- id: daily-097
+  module: daily
+  question: who needs a call back
+  tools:
+  - order_queues
+  answerable: partial
+  gap: customer follow-ups are listed but no phone call-back queue
+- id: daily-098
+  module: daily
+  question: anything the accountant is waiting on
+  tools:
+  - compliance_check
+  answerable: partial
+  gap: close checklist shows open items but not accountant requests
+- id: daily-099
+  module: daily
+  question: what's left to do before we close tonight
+  tools:
+  - list_tasks
+  - compliance_check
+  - order_queues
+  answerable: partial
+  gap: no closing checklist tool for the day; bot combines close checks and tasks
+- id: daily-100
+  module: daily
+  question: end of day check
+  tools:
+  - compliance_check
+  - order_queues
+  - list_tasks
+  answerable: partial
+  gap: no dedicated end-of-day routine
+- id: daily-101
+  module: daily
+  question: did the drawer balance
+  tools: []
+  answerable: 'no'
+  gap: no register drawer count or over/short tool
+- id: daily-102
+  module: daily
+  question: how much was in the drawer
+  tools: []
+  answerable: 'no'
+  gap: no drawer count totals tool
+- id: daily-103
+  module: daily
+  question: cash sales today
+  tools:
+  - metric
+  - sales_summary
+  answerable: partial
+  gap: order sources are available but cash vs card tender split is not guaranteed
+- id: daily-104
+  module: daily
+  question: cash vs card today
+  tools:
+  - sales_summary
+  answerable: partial
+  gap: no tender-type breakdown tool
+- id: daily-105
+  module: daily
+  question: did we do the deposit
+  tools:
+  - compliance_check
+  answerable: partial
+  gap: bank lines and daily reviews are flagged but no per-day deposit-made status
+- id: daily-106
+  module: daily
+  question: how much to deposit today
+  tools: []
+  answerable: 'no'
+  gap: no deposit amount calculator or cash-on-hand tool
+- id: daily-107
+  module: daily
+  question: did yesterday's deposit hit the bank
+  tools:
+  - compliance_check
+  answerable: partial
+  gap: bank line checks exist but no specific deposit match lookup
+- id: daily-108
+  module: daily
+  question: did the nab deposit come in
+  tools:
+  - compliance_check
+  answerable: partial
+  gap: no specific card-processor deposit lookup tool
+- id: daily-109
+  module: daily
+  question: did yesterday get closed out
+  tools:
+  - compliance_check
+  answerable: partial
+  gap: daily reviews and approvals flagged, not specific to one date
+- id: daily-110
+  module: daily
+  question: whats left to close the month
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: daily-111
+  module: daily
+  question: is the daily review done
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: daily-112
+  module: daily
+  question: any days not reviewed
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: daily-113
+  module: daily
+  question: did C-Trax close yesterday
+  tools:
+  - sync_health
+  answerable: partial
+  gap: shows C-Trax sync recency, not whether its daily close was submitted
+- id: daily-114
+  module: daily
+  question: did swipesimple match the register yesterday
+  tools:
+  - compliance_check
+  answerable: partial
+  gap: no per-day card total comparison tool
+- id: daily-115
+  module: daily
+  question: card sales yesterday vs what swipesimple says
+  tools:
+  - metric
+  answerable: partial
+  gap: no SwipeSimple report total comparison tool
+- id: daily-116
+  module: daily
+  question: did the daily reconciliation come out clean
+  tools:
+  - compliance_check
+  answerable: partial
+  gap: flags open items but no per-day variance figure
+- id: daily-117
+  module: daily
+  question: any variances from yesterday
+  tools:
+  - compliance_check
+  answerable: partial
+  gap: flags but no variance amounts
+- id: daily-118
+  module: daily
+  question: was the till short
+  tools: []
+  answerable: 'no'
+  gap: no over/short data tool
+- id: daily-119
+  module: daily
+  question: did we log all receipts today
+  tools:
+  - order_queues
+  answerable: partial
+  gap: receipts to review are listed; no check of whether every receipt was uploaded
+- id: daily-120
+  module: daily
+  question: did the day's uploads go through
+  tools:
+  - list_uploads
+  answerable: 'yes'
+- id: daily-121
+  module: daily
+  question: upload failed? check
+  tools:
+  - list_uploads
+  answerable: 'yes'
+- id: daily-122
+  module: daily
+  question: did the end of day report get uploaded
+  tools:
+  - list_uploads
+  answerable: partial
+  gap: can see uploads but not which expected report is missing
+- id: daily-123
+  module: daily
+  question: where do I upload the daily report
+  tools:
+  - where_is
+  - how_do_i
+  answerable: 'yes'
+- id: daily-124
+  module: daily
+  question: how do I close out the day
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: daily-125
+  module: daily
+  question: where do I do the daily close
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: daily-126
+  module: daily
+  question: is everything approved for today
+  tools:
+  - compliance_check
+  answerable: partial
+  gap: approvals are flagged by area but no single yes/no for a day
+- id: daily-127
+  module: daily
+  question: can I lock yesterday
+  tools:
+  - compliance_check
+  answerable: partial
+  gap: period lock status is visible, but locking is done on the page
+- id: daily-128
+  module: daily
+  question: how are we doing this week
+  tools:
+  - metric
+  - period_review
+  answerable: 'yes'
+- id: daily-129
+  module: daily
+  question: this week so far
+  tools:
+  - metric
+  answerable: 'yes'
+- id: daily-130
+  module: daily
+  question: week to date vs last week
+  tools:
+  - metric
+  answerable: 'yes'
+- id: daily-131
+  module: daily
+  question: how's the month going
+  tools:
+  - metric
+  - period_review
+  answerable: 'yes'
+- id: daily-132
+  module: daily
+  question: are we on track this month
+  tools:
+  - metric
+  answerable: partial
+  gap: no sales goal or target to compare against; only vs prior period
+- id: daily-133
+  module: daily
+  question: how far are we from our monthly goal
+  tools: []
+  answerable: 'no'
+  gap: no sales goal or target stored for chat
+- id: daily-134
+  module: daily
+  question: are we up or down vs last month
+  tools:
+  - metric
+  answerable: 'yes'
+- id: daily-135
+  module: daily
+  question: this month vs same month last year
+  tools:
+  - metric
+  answerable: 'yes'
+- id: daily-136
+  module: daily
+  question: best day this week
+  tools:
+  - metric
+  answerable: 'yes'
+- id: daily-137
+  module: daily
+  question: worst day this month
+  tools:
+  - sales_summary
+  answerable: partial
+  gap: best_day exists but not a lowest day; needs daily series scan
+- id: daily-138
+  module: daily
+  question: how's the quarter shaping up
+  tools:
+  - metric
+  - period_review
+  answerable: 'yes'
+- id: daily-139
+  module: daily
+  question: what's our average day
+  tools:
+  - sales_summary
+  answerable: partial
+  gap: no average-daily-sales metric; computed from totals
+- id: daily-140
+  module: daily
+  question: week summary for the owners meeting
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: daily-141
+  module: daily
+  question: whats our busiest day of the week usually
+  tools:
+  - sales_summary
+  answerable: partial
+  gap: needs a daily series over many weeks and day-of-week grouping, no direct tool
+- id: daily-142
+  module: daily
+  question: are we spending more this week
+  tools:
+  - period_review
+  answerable: partial
+  gap: expenses appear in period_review only if allowed and without category detail
+- id: daily-143
+  module: daily
+  question: how much have we spent this month
+  tools:
+  - period_review
+  answerable: partial
+  gap: expense total only if permitted, no breakdown by day
+- id: daily-144
+  module: daily
+  question: cash position today
+  tools: []
+  answerable: 'no'
+  gap: cash flow and forecast pages have no chat tool
+- id: daily-145
+  module: daily
+  question: what's in the bank
+  tools: []
+  answerable: 'no'
+  gap: no bank balance tool
+- id: daily-146
+  module: daily
+  question: do we have enough to make payroll
+  tools: []
+  answerable: 'no'
+  gap: no cash balance or payroll forecast tool
+- id: daily-147
+  module: daily
+  question: when is payroll
+  tools:
+  - compliance_check
+  answerable: partial
+  gap: draft pay runs are flagged but pay-run schedule dates are not exposed
+- id: daily-148
+  module: daily
+  question: remind me to call the vendor
+  tools:
+  - create_task
+  answerable: partial
+  gap: no reminder or notification feature; can only propose a task with a due date
+- id: daily-149
+  module: daily
+  question: remind me tomorrow morning to count the shelf
+  tools:
+  - create_task
+  answerable: partial
+  gap: no timed reminders; a task with tomorrow's due date is the workaround
+- id: daily-150
+  module: daily
+  question: remind me at 3 to check shipping
+  tools: []
+  answerable: 'no'
+  gap: no time-of-day reminders or push notifications
+- id: daily-151
+  module: daily
+  question: make a task to call the courier
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: daily-152
+  module: daily
+  question: 'add task: restock the tea shelf'
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: daily-153
+  module: daily
+  question: new task for Jo to sweep the stockroom by friday
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: daily-154
+  module: daily
+  question: create a task for me to check the freezer log tomorrow
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: daily-155
+  module: daily
+  question: 'todo: order more bags'
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: daily-156
+  module: daily
+  question: add a high priority task to fix the label printer
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: daily-157
+  module: daily
+  question: make a recurring task to empty the trash every night
+  tools:
+  - create_task
+  answerable: partial
+  gap: no recurring task support; one task per day only
+- id: daily-158
+  module: daily
+  question: can you add a daily opening checklist as tasks
+  tools:
+  - create_task
+  answerable: partial
+  gap: creating many tasks is possible but no recurring checklist template
+- id: daily-159
+  module: daily
+  question: mark the courier task done
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: daily-160
+  module: daily
+  question: push that to tomorrow
+  tools:
+  - update_task
+  answerable: 'yes'
+- id: daily-161
+  module: daily
+  question: move the reorder task to Sean
+  tools:
+  - update_task
+  answerable: 'yes'
+- id: daily-162
+  module: daily
+  question: bump the bag order to high priority
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: daily-163
+  module: daily
+  question: add a note to the shipping task that the box is damaged
+  tools:
+  - update_task
+  answerable: 'yes'
+- id: daily-164
+  module: daily
+  question: snooze the invoice task till monday
+  tools:
+  - update_task
+  answerable: 'yes'
+- id: daily-165
+  module: daily
+  question: close out all my done tasks
+  tools:
+  - list_tasks
+  - update_task
+  answerable: partial
+  gap: bulk updates need many approvals, no bulk edit
+- id: daily-166
+  module: daily
+  question: who's got the open tasks about shipping
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: daily-167
+  module: daily
+  question: find the task about the fridge
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: daily-168
+  module: daily
+  question: what did we say we'd do today in last night's chat
+  tools:
+  - search
+  answerable: partial
+  gap: search covers records, not past team chat message history
+- id: daily-169
+  module: daily
+  question: make a note that the courier comes at 4
+  tools: []
+  answerable: 'no'
+  gap: no notes or memo tool; tasks only
+- id: daily-170
+  module: daily
+  question: 'write this down for tomorrow: check the sample box'
+  tools:
+  - create_task
+  answerable: partial
+  gap: no notes, so it becomes a task due tomorrow
+- id: daily-171
+  module: daily
+  question: store vs online today
+  tools:
+  - metric
+  answerable: 'yes'
+- id: daily-172
+  module: daily
+  question: online or store, where are sales coming from today
+  tools:
+  - metric
+  answerable: 'yes'
+- id: daily-173
+  module: daily
+  question: store sales vs online this week
+  tools:
+  - metric
+  answerable: 'yes'
+- id: daily-174
+  module: daily
+  question: did the website do anything today
+  tools:
+  - metric
+  answerable: 'yes'
+- id: daily-175
+  module: daily
+  question: share of sales by source this month
+  tools:
+  - metric
+  answerable: 'yes'
+- id: daily-176
+  module: daily
+  question: which channel is up this week
+  tools:
+  - metric
+  answerable: 'yes'
+- id: daily-177
+  module: daily
+  question: online orders vs store orders today
+  tools:
+  - sales_summary
+  answerable: 'yes'
+- id: daily-178
+  module: daily
+  question: top product online vs in store today
+  tools:
+  - metric
+  - sales_summary
+  answerable: partial
+  gap: top products are by period and source breakdown per source may need separate calls
+- id: daily-179
+  module: daily
+  question: did the register and shopify both sync today
+  tools:
+  - sync_health
+  answerable: 'yes'
+- id: daily-180
+  module: daily
+  question: store average order vs online
+  tools:
+  - metric
+  answerable: partial
+  gap: average order value is per currency and period, not split per source
+- id: daily-181
+  module: daily
+  question: how much of today is wholesale
+  tools:
+  - sales_summary
+  answerable: partial
+  gap: wholesale orders may be a source but no dedicated wholesale revenue breakdown
+- id: daily-182
+  module: daily
+  question: is it slow because it's raining
+  tools: []
+  answerable: 'no'
+  gap: no weather data
+- id: daily-183
+  module: daily
+  question: what's the weather doing today
+  tools: []
+  answerable: 'no'
+  gap: no weather data
+- id: daily-184
+  module: daily
+  question: is a storm coming, should we staff down
+  tools: []
+  answerable: 'no'
+  gap: no weather or staffing recommendation tool
+- id: daily-185
+  module: daily
+  question: is today a holiday
+  tools:
+  - get_workspace_info
+  answerable: partial
+  gap: gives today's date only, no holiday calendar
+- id: daily-186
+  module: daily
+  question: how do holiday weeks usually go for us
+  tools:
+  - metric
+  - sales_summary
+  answerable: partial
+  gap: no holiday calendar; owner must name the dates and compare periods
+- id: daily-187
+  module: daily
+  question: how did we do last thanksgiving week
+  tools:
+  - sales_summary
+  answerable: 'yes'
+- id: daily-188
+  module: daily
+  question: how did the sale weekend go
+  tools:
+  - metric
+  - sales_summary
+  answerable: partial
+  gap: discount/campaign attribution is not available, only sales for the dates
+- id: daily-189
+  module: daily
+  question: did the farmers market event bring in sales
+  tools:
+  - sales_summary
+  answerable: partial
+  gap: no event tagging; sales for the dates only
+- id: daily-190
+  module: daily
+  question: are there any local events this weekend
+  tools: []
+  answerable: 'no'
+  gap: no local events data
+- id: daily-191
+  module: daily
+  question: christmas week vs last year
+  tools:
+  - metric
+  answerable: 'yes'
+- id: daily-192
+  module: daily
+  question: what were sales the day after the holiday last year
+  tools:
+  - sales_summary
+  answerable: 'yes'
+- id: daily-193
+  module: daily
+  question: when are we closed for the holiday
+  tools: []
+  answerable: 'no'
+  gap: no store hours or closure calendar
+- id: daily-194
+  module: daily
+  question: what are our hours today
+  tools: []
+  answerable: 'no'
+  gap: no store hours in Rupert
+- id: daily-195
+  module: daily
+  question: should we open late tomorrow
+  tools: []
+  answerable: 'no'
+  gap: business decision needs staffing and weather data not available
+- id: daily-196
+  module: daily
+  question: is the heat hurting sales
+  tools: []
+  answerable: 'no'
+  gap: no weather correlation data
+- id: daily-197
+  module: daily
+  question: did the promo email drive sales today
+  tools:
+  - metric
+  answerable: partial
+  gap: sales are available but no campaign attribution for a day
+- id: daily-198
+  module: daily
+  question: handing off to Sean, what should he know
+  tools:
+  - list_tasks
+  - order_queues
+  - sync_health
+  - metric
+  answerable: partial
+  gap: no handoff note tool; bot summarizes current state
+- id: daily-199
+  module: daily
+  question: I'm leaving early what's open
+  tools:
+  - list_tasks
+  - order_queues
+  answerable: partial
+  gap: combined from several queues, no single open-items list
+- id: daily-200
+  module: daily
+  question: summary for Jan for tonight
+  tools:
+  - metric
+  - order_queues
+  - list_tasks
+  answerable: partial
+  gap: assembled summary; cannot message Jan directly
+- id: daily-201
+  module: daily
+  question: tell Derek the courier already came
+  tools: []
+  answerable: 'no'
+  gap: bot cannot send messages to other users outside chat
+- id: daily-202
+  module: daily
+  question: leave a note for tomorrow's opener
+  tools:
+  - create_task
+  answerable: partial
+  gap: no notes feature; a task is the closest thing
+- id: daily-203
+  module: daily
+  question: reassign all my tasks to Sean while I'm out
+  tools:
+  - list_tasks
+  - update_task
+  answerable: partial
+  gap: each reassignment needs separate approval
+- id: daily-204
+  module: daily
+  question: what did I miss while I was out
+  tools:
+  - period_review
+  - list_tasks
+  answerable: partial
+  gap: period comparisons exist but no personal "since last login" digest
+- id: daily-205
+  module: daily
+  question: what did Sean do today
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: tasks completed by person only, other actions are in the activity log without a chat tool
+- id: daily-206
+  module: daily
+  question: who changed that
+  tools: []
+  answerable: 'no'
+  gap: activity log has no chat tool
+- id: daily-207
+  module: daily
+  question: catch me up
+  tools:
+  - period_review
+  - order_queues
+  - list_tasks
+  answerable: partial
+  gap: no catch-up digest tool
+- id: daily-208
+  module: daily
+  question: anything Jan flagged
+  tools:
+  - list_tasks
+  - list_feedback
+  answerable: partial
+  gap: no flags or mentions feed
+- id: daily-209
+  module: daily
+  question: end of week handoff
+  tools:
+  - period_review
+  - list_tasks
+  answerable: partial
+  gap: assembled report only
+- id: daily-210
+  module: daily
+  question: where do I find today's sales
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: daily-211
+  module: daily
+  question: where do I see yesterday's orders
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: daily-212
+  module: daily
+  question: how do I look up an order
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: daily-213
+  module: daily
+  question: how do I mark an order shipped
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: daily-214
+  module: daily
+  question: how do I add a task
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: daily-215
+  module: daily
+  question: where do I see my tasks
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: daily-216
+  module: daily
+  question: how do I fix a wrong clock punch
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: daily-217
+  module: daily
+  question: where do I see low stock
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: daily-218
+  module: daily
+  question: how do I check a product's stock
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: daily-219
+  module: daily
+  question: how do I report a bug
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: daily-220
+  module: daily
+  question: what can you do?
+  tools:
+  - data_guide
+  - list_reports
+  answerable: partial
+  gap: no catalog of bot abilities; answers from tool descriptions
+- id: daily-221
+  module: daily
+  question: what reports are there
+  tools:
+  - list_reports
+  answerable: 'yes'
+- id: daily-222
+  module: daily
+  question: where is the daily report
+  tools:
+  - list_reports
+  - where_is
+  answerable: 'yes'
+- id: daily-223
+  module: daily
+  question: how far back does the data go
+  tools:
+  - history_summary
+  answerable: 'yes'
+- id: daily-224
+  module: daily
+  question: how are daily orders stored
+  tools:
+  - data_guide
+  answerable: 'yes'
+- id: daily-225
+  module: daily
+  question: find order from Pat from this morning
+  tools:
+  - search
+  answerable: 'yes'
+- id: daily-226
+  module: daily
+  question: look up the Calm Gummies 30ct
+  tools:
+  - inventory_search
+  answerable: 'yes'
+- id: daily-227
+  module: daily
+  question: do we have any Calm Gummies left
+  tools:
+  - inventory_search
+  answerable: 'yes'
+- id: daily-228
+  module: daily
+  question: stock check on the tea
+  tools:
+  - inventory_search
+  answerable: 'yes'
+- id: daily-229
+  module: daily
+  question: is the tincture in at the store
+  tools:
+  - inventory_search
+  answerable: 'yes'
+- id: daily-230
+  module: daily
+  question: what's the sku for the large bag
+  tools:
+  - inventory_search
+  answerable: 'yes'
+- id: daily-231
+  module: daily
+  question: did the numbers match the register on stock
+  tools:
+  - stock_comparison
+  answerable: 'yes'
+- id: daily-232
+  module: daily
+  question: did the shipment come in
+  tools:
+  - order_queues
+  answerable: partial
+  gap: shows POs awaiting or late, not a live delivery confirmation
+- id: daily-233
+  module: daily
+  question: what vendor orders are open
+  tools:
+  - order_queues
+  answerable: 'yes'
+- id: daily-234
+  module: daily
+  question: which PO is late
+  tools:
+  - order_queues
+  answerable: 'yes'
+- id: daily-235
+  module: daily
+  question: how many POs did we receive this week
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: daily-236
+  module: daily
+  question: sales tax so far this month
+  tools:
+  - sales_tax_report
+  answerable: 'yes'
+- id: daily-237
+  module: daily
+  question: tax collected today
+  tools:
+  - sales_tax_report
+  answerable: 'yes'
+- id: daily-238
+  module: daily
+  question: are the books ok today
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: daily-239
+  module: daily
+  question: anything the books check is flagging
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: daily-240
+  module: daily
+  question: how many hours did we work last week vs scheduled
+  tools:
+  - time_keeping_report
+  answerable: 'yes'
+- id: daily-241
+  module: daily
+  question: what did we spend on labor this week
+  tools:
+  - time_keeping_report
+  answerable: partial
+  gap: hours only, no wage rates or payroll cost
+- id: daily-242
+  module: daily
+  question: did we get any good reviews today
+  tools: []
+  answerable: 'no'
+  gap: reviews and community data have no chat tool
+- id: daily-243
+  module: daily
+  question: any new customers today
+  tools:
+  - search
+  answerable: partial
+  gap: no new-customer count tool
+- id: daily-244
+  module: daily
+  question: how many new customers this week
+  tools: []
+  answerable: 'no'
+  gap: no customer acquisition metric
+- id: daily-245
+  module: daily
+  question: any wholesale inquiries
+  tools: []
+  answerable: 'no'
+  gap: no inbound inquiry tool
+- id: daily-246
+  module: daily
+  question: did the courier pick up
+  tools: []
+  answerable: 'no'
+  gap: no carrier pickup data
+- id: daily-247
+  module: daily
+  question: tracking number for Pat's order
+  tools:
+  - search
+  answerable: partial
+  gap: order details searchable, tracking info availability uncertain
+- id: daily-248
+  module: daily
+  question: anything stuck in shipping
+  tools:
+  - order_queues
+  answerable: partial
+  gap: shows unshipped orders, not carrier-stuck shipments
+- id: daily-249
+  module: daily
+  question: did anyone ask a question on the site
+  tools: []
+  answerable: 'no'
+  gap: no customer contact or inbox tool
+- id: daily-250
+  module: daily
+  question: did we ship everything we promised for today?
+  tools:
+  - order_queues
+  answerable: 'yes'
