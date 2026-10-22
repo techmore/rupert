@@ -41,3 +41,22 @@ test('trailing punctuation is not part of a link but balanced brackets are', () 
   const wiki = Chat.parseLine('https://en.wikipedia.org/wiki/Rupert_(name)');
   assert.equal(wiki.find((part) => part.type === 'link').href, 'https://en.wikipedia.org/wiki/Rupert_(name)');
 });
+
+test('standalone image links are recognised, other links are not images', () => {
+  assert.equal(Chat.imageUrl('https://example.com/a.png'), 'https://example.com/a.png');
+  assert.equal(Chat.imageUrl('https://example.com/a.JPG?x=1'), 'https://example.com/a.JPG?x=1');
+  assert.equal(Chat.imageUrl('https://example.com/a.svg'), null);
+  assert.equal(Chat.imageUrl('javascript:alert(1)'), null);
+  assert.equal(Chat.imageUrl('data:image/png;base64,abc'), null);
+});
+
+test('the typing row names people and says when Rupert is working', () => {
+  assert.equal(Chat.typingLabel([]), '');
+  assert.equal(Chat.typingLabel([{ name: 'Sam', agent: false }]), 'Sam is typing');
+  assert.equal(Chat.typingLabel([{ name: 'Sam', agent: false }, { name: 'Ana', agent: false }]), 'Sam and Ana are typing');
+  assert.equal(Chat.typingLabel([{ name: 'A' }, { name: 'B' }, { name: 'C' }, { name: 'D' }]), 'A, B and 2 more are typing');
+  assert.equal(Chat.typingLabel([{ name: 'Rupert', agent: true }]), 'Rupert is working on a reply');
+  assert.equal(Chat.typingLabel([{ name: 'Sam', agent: false }, { name: 'Rupert', agent: true }]), 'Sam is typing · Rupert is working on a reply');
+  assert.equal(Chat.typingLabel([], true), 'Rupert is working on a reply', 'waiting for an answer after an @rupert mention');
+  assert.equal(Chat.typingLabel(null), '');
+});
