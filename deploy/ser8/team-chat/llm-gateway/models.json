@@ -128,7 +128,7 @@
     ]
   },
   "flint-40b-a2.5b": {
-    "file": "/var/lib/rupert-llm/models/flint-preview-UD-IQ3_XXS.gguf",
+    "file": "/var/lib/rupert-llm/models/flint-UD-IQ3_XXS.gguf",
     "ctx": 16384,
     "args": [
       "--reasoning-budget",
@@ -144,7 +144,7 @@
     ]
   },
   "flint-40b-a2.5b-think": {
-    "file": "/var/lib/rupert-llm/models/flint-preview-UD-IQ3_XXS.gguf",
+    "file": "/var/lib/rupert-llm/models/flint-UD-IQ3_XXS.gguf",
     "ctx": 16384,
     "args": [
       "--reasoning-budget",
