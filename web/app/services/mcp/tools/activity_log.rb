@@ -92,24 +92,24 @@ module Mcp
         scope = scope.where.not(action: BOT_ACTIONS) unless args['include_assistant_calls']
         if args['user'].present?
           ids = matching_users(args['user']).pluck(:id)
-          scope = scope.where('actor_name LIKE ? OR user_id IN (?)', like(args['user']), ids.presence || [0])
+          scope = scope.where("actor_name LIKE ? ESCAPE '!' OR user_id IN (?)", like(args['user']), ids.presence || [0])
         end
-        scope = scope.where('action LIKE ?', like(args['action'])) if args['action'].present?
+        scope = scope.where("action LIKE ? ESCAPE '!'", like(args['action'])) if args['action'].present?
         if args['group'].present?
           prefixes = ActivityController::GROUPS.fetch(args['group']).last
-          scope = scope.where(prefixes.map { 'action LIKE ?' }.join(' OR '), *prefixes.map { |prefix| "#{prefix}%" })
+          scope = scope.where(prefixes.map { "action LIKE ? ESCAPE '!'" }.join(' OR '), *prefixes.map { |prefix| "#{prefix}%" })
         end
-        scope = scope.where('subject_type LIKE ?', like(args['record_type'].to_s.delete(' '))) if args['record_type'].present?
+        scope = scope.where("subject_type LIKE ? ESCAPE '!'", like(args['record_type'].to_s.delete(' '))) if args['record_type'].present?
         scope = scope.where(subject_id: args['record_id'].to_s.strip) if args['record_id'].present?
         if args['query'].present?
-          scope = scope.where('action LIKE :q OR actor_name LIKE :q OR subject_label LIKE :q OR details LIKE :q', q: like(args['query']))
+          scope = scope.where("action LIKE :q ESCAPE '!' OR actor_name LIKE :q ESCAPE '!' OR subject_label LIKE :q ESCAPE '!' OR details LIKE :q ESCAPE '!'", q: like(args['query']))
         end
         scope
       end
 
-      def like(text) = "%#{::ActivityLog.sanitize_sql_like(text.to_s.strip)}%"
+      def like(text) = "%#{::ActivityLog.sanitize_sql_like(text.to_s.strip, '!')}%"
 
-      def matching_users(name) = User.where(tenant_id: tenant.id).where('name LIKE ?', like(name))
+      def matching_users(name) = User.where(tenant_id: tenant.id).where("name LIKE ? ESCAPE '!'", like(name))
 
       def entry(row)
         { id: row.id, at: iso(row.created_at), who: self.class.person(row.actor_name) || 'system', user_id: row.user_id,

@@ -45,7 +45,9 @@ module Mcp
 
       # Same rule as time_keeping_report: reviewers see everyone, other staff only themselves.
       def all_employees?
-        @all_employees ||= user.can_review_timesheets? || (user.can_manage_accounts? && user.can?('timesheets.read'))
+        return @all_employees if defined?(@all_employees)
+
+        @all_employees = user.can_review_timesheets? || (user.can_manage_accounts? && user.can?('timesheets.read'))
       end
 
       def scope_label = all_employees? ? 'all staff' : 'own shifts only'
