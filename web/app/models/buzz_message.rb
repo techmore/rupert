@@ -11,6 +11,7 @@ class BuzzMessage < ApplicationRecord
   belongs_to :rupert_user, class_name: 'User', optional: true
 
   scope :in_channel, ->(channel) { where(channel: channel) }
+  scope :top_level, -> { where(thread_root: nil) }
   scope :newest_first, -> { order(posted_at: :desc, event_id: :desc) }
   scope :oldest_first, -> { order(posted_at: :asc, event_id: :asc) }
 

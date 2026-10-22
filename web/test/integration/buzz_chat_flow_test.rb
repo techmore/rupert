@@ -93,7 +93,7 @@ class BuzzChatFlowTest < ActionDispatch::IntegrationTest
 
     get buzz_chat_path
     assert_response :success
-    assert_select '[data-controller~=buzz-chat][data-buzz-chat-url-value=?]', buzz_chat_messages_path
+    assert_select '[data-controller~=buzz-chat][data-buzz-chat-url-value=?]', buzz_chat_path
     assert_select 'textarea#buzz-message'
     refute_includes response.body, 'alert(1)'
 
@@ -223,5 +223,130 @@ class BuzzChatFlowTest < ActionDispatch::IntegrationTest
       summary: 'From the Rupert chat', ready: true, open_task: false)
     refute result.ready
     assert_match(/allow-list/, result.ready_denied_reason)
+  end
+
+  # --- the Buzz client: channels, threads, reactions, mentions ---
+
+  def start_client_relay
+    start_buzz_relay
+    add_channel(CHANNEL, 'rupert', members: [@alice[:public_key]])
+    add_channel(OTHER_CHANNEL, 'general', members: [@alice[:public_key], @bob[:public_key]])
+  end
+
+  test 'the channel list carries unread counts and each person marks their own channel read' do
+    start_client_relay
+    @relay.add(@relay.message(@alice, 'old', at: @t0))
+    sign_in_admin
+    get buzz_chat_channels_path
+    assert_response :success
+    assert_equal %w[rupert general], json['channels'].map { |c| c['name'] }
+    assert_equal [0, 0], json['channels'].map { |c| c['unread'] }
+
+    @relay.add(@relay.message(@bob, 'hello', at: Time.now.to_i + 1, channel: OTHER_CHANNEL))
+    BuzzChatState.update_all(last_attempt_at: 1.minute.ago)
+    perform_enqueued_jobs { get buzz_chat_channels_path }
+    assert_equal 1, json['channels'].find { |c| c['name'] == 'general' }['unread']
+
+    post buzz_chat_read_path, params: { channel: OTHER_CHANNEL }, as: :json
+    assert_response :no_content
+    get buzz_chat_channels_path
+    assert_equal 0, json['channels'].find { |c| c['name'] == 'general' }['unread']
+  end
+
+  test 'messages come from the chosen channel and an unknown channel is refused' do
+    start_client_relay
+    @relay.add(@relay.message(@alice, 'in rupert', at: @t0))
+    @relay.add(@relay.message(@bob, 'in general', at: @t0 + 1, channel: OTHER_CHANNEL))
+    sign_in_admin
+    get buzz_chat_channels_path # the first look fills the copy
+    get buzz_chat_messages_path, params: { channel: OTHER_CHANNEL }
+    assert_equal ['in general'], json['messages'].map { |m| m['text'] }
+    get buzz_chat_messages_path
+    assert_equal ['in rupert'], json['messages'].map { |m| m['text'] }, 'the configured channel is the default'
+    get buzz_chat_messages_path, params: { channel: '99999999-9999-4999-8999-999999999999' }
+    assert_response :unprocessable_entity
+  end
+
+  test 'a thread comes back with its replies and a reply is posted into it' do
+    start_client_relay
+    root = @relay.message(@alice, 'the root', at: @t0)
+    @relay.add(root)
+    @relay.add(@relay.message(@bob, 'first reply', at: @t0 + 10, extra_tags: [['e', root['id'], '', 'reply']]))
+    sign_in_admin
+    get buzz_chat_messages_path
+    assert_equal [1], json['messages'].map { |m| m['reply_count'] }
+
+    post buzz_chat_messages_path, params: { message: 'my reply', reply_to: root['id'] }, as: :json
+    assert_response :created
+    assert_includes @relay.published.last['tags'], ['e', root['id'], '', 'reply']
+
+    get buzz_chat_thread_path(root['id']), params: { channel: CHANNEL, refresh: 1 }
+    assert_response :success
+    assert_equal 'the root', json['root']['text']
+    assert_equal ['first reply', 'my reply'], json['replies'].map { |m| m['text'] }
+    assert json['replies'].last['mine']
+
+    get buzz_chat_thread_path('f' * 64), params: { channel: CHANNEL }
+    assert_response :not_found
+  end
+
+  test 'reactions need the post permission and toggle on and off' do
+    start_client_relay
+    message = @relay.message(@alice, 'react to me', at: @t0)
+    @relay.add(message)
+    sign_in_admin
+    get buzz_chat_channels_path
+    post buzz_chat_reactions_path, params: { channel: CHANNEL, message: message['id'], emoji: '🎉' }, as: :json
+    assert_response :success
+    assert_equal 'added', json['result']
+    get buzz_chat_messages_path
+    assert_equal [{ 'emoji' => '🎉', 'count' => 1, 'mine' => true, 'by' => ['Rupert (an administrator)'] }], json['messages'].first['reactions']
+
+    post buzz_chat_reactions_path, params: { channel: CHANNEL, message: message['id'], emoji: '🎉' }, as: :json
+    assert_equal 'removed', json['result']
+    post buzz_chat_reactions_path, params: { channel: CHANNEL, message: message['id'], emoji: '<b>' }, as: :json
+    assert_response :unprocessable_entity
+    post buzz_chat_reactions_path, params: { channel: 'nope', message: message['id'], emoji: '🎉' }, as: :json
+    assert_response :unprocessable_entity
+  end
+
+  test 'people who can read but not post cannot react, and see no composers' do
+    start_client_relay
+    message = @relay.message(@alice, 'hi', at: @t0)
+    @relay.add(message)
+    sign_in_role('manager', permissions: ['dashboard.read', 'buzz.read'])
+    get buzz_chat_path
+    assert_select '#buzz-thread-message', 0
+    post buzz_chat_reactions_path, params: { channel: CHANNEL, message: message['id'], emoji: '👍' }, as: :json
+    assert_response :forbidden
+    assert_empty @relay.published
+    get buzz_chat_channels_path
+    assert_response :success
+  end
+
+  test 'members for the mention picker, and a mention goes out as a p tag' do
+    start_client_relay
+    @relay.add(@relay.profile(@alice, display_name: 'Alice'))
+    sign_in_admin
+    get buzz_chat_channels_path
+    get buzz_chat_members_path, params: { channel: CHANNEL }
+    assert_equal ['Rupert', 'Alice'], json['members'].map { |m| m['name'] }
+    assert json['members'].first['agent']
+
+    post buzz_chat_messages_path, params: { message: 'ping @Alice', mentions: [@alice[:public_key], 'not-a-key', { x: 1 }] }, as: :json
+    assert_response :created
+    assert_equal [['p', @alice[:public_key]]], @relay.published.last['tags'].select { |t| t[0] == 'p' }
+  end
+
+  test 'the page has the channel list, thread pane and mention pickers, still with no message text in the markup' do
+    start_client_relay
+    @relay.add(@relay.message(@alice, '<b>nope</b>', at: @t0))
+    sign_in_admin
+    get buzz_chat_path
+    assert_select 'nav[aria-label=Channels] ul[data-buzz-chat-target=channels]'
+    assert_select 'aside[data-buzz-chat-target=threadPane][hidden]'
+    assert_select '[data-buzz-chat-target=picker][role=listbox]'
+    assert_select '[data-buzz-chat-emoji-value]'
+    refute_includes response.body, 'nope'
   end
 end

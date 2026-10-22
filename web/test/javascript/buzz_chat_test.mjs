@@ -41,3 +41,33 @@ test('trailing punctuation is not part of a link but balanced brackets are', () 
   const wiki = Chat.parseLine('https://en.wikipedia.org/wiki/Rupert_(name)');
   assert.equal(wiki.find((part) => part.type === 'link').href, 'https://en.wikipedia.org/wiki/Rupert_(name)');
 });
+
+test('the @mention being typed is found just before the caret', () => {
+  assert.deepEqual(plain(Chat.mentionQuery('hello @al', 9)), { query: 'al', start: 6 });
+  assert.deepEqual(plain(Chat.mentionQuery('@', 1)), { query: '', start: 0 });
+  assert.equal(Chat.mentionQuery('mail me at a@b.com', 18), null, 'an @ inside a word is not a mention');
+  assert.equal(Chat.mentionQuery('hello @alice and', 16), null, 'a finished word is not being typed');
+  assert.deepEqual(plain(Chat.mentionQuery('hi @bo then @al', 15)), { query: 'al', start: 12 });
+});
+
+test('members are filtered by name with the agent and prefix matches first', () => {
+  const members = [
+    { name: 'Alice', pubkey: 'a' }, { name: 'Malik', pubkey: 'm' }, { name: 'Rupert', pubkey: 'r', agent: true }, { name: 'Alan', pubkey: 'n' }
+  ];
+  assert.deepEqual(plain(Chat.filterMembers(members, 'al').map((m) => m.name)), ['Alan', 'Alice', 'Malik']);
+  assert.deepEqual(plain(Chat.filterMembers(members, 'ru').map((m) => m.name)), ['Rupert']);
+  assert.equal(Chat.filterMembers(members, '').length, 4);
+  assert.equal(Chat.filterMembers(members, 'zzz').length, 0);
+});
+
+test('only mentions whose @name is still in the text are sent', () => {
+  const picked = new Map([['Alice A', 'k1'], ['Bob', 'k2'], ['Rupert', 'k3']]);
+  assert.deepEqual(plain(Chat.mentionedKeys('hi @Alice A and @Rupert', picked)), ['k1', 'k3']);
+  assert.deepEqual(plain(Chat.mentionedKeys('I removed them', picked)), []);
+});
+
+test('cursors order by time first, then id', () => {
+  assert.ok(Chat.compareCursor('100:aa', '200:00') < 0);
+  assert.ok(Chat.compareCursor('200:bb', '200:aa') > 0);
+  assert.equal(Chat.compareCursor('200:aa', '200:aa'), 0);
+});

@@ -200,6 +200,11 @@ Rails.application.routes.draw do
   get '/buzz/chat', to: 'buzz_chat#show', as: :buzz_chat
   get '/buzz/chat/messages', to: 'buzz_chat#messages', as: :buzz_chat_messages
   post '/buzz/chat/messages', to: 'buzz_chat#create'
+  get '/buzz/chat/channels', to: 'buzz_chat#channels', as: :buzz_chat_channels
+  get '/buzz/chat/members', to: 'buzz_chat#members', as: :buzz_chat_members
+  get '/buzz/chat/threads/:id', to: 'buzz_chat#thread', as: :buzz_chat_thread, constraints: { id: /\h{64}/ }
+  post '/buzz/chat/reactions', to: 'buzz_chat#react', as: :buzz_chat_reactions
+  post '/buzz/chat/read', to: 'buzz_chat#read', as: :buzz_chat_read
   post '/buzz/link', to: 'buzz_links#create', as: :buzz_link
   post '/buzz/link/:id/confirm', to: 'buzz_links#confirm', as: :confirm_buzz_link
   delete '/buzz/link/:id', to: 'buzz_links#destroy', as: :remove_buzz_link
