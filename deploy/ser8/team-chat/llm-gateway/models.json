@@ -127,22 +127,6 @@
       "1024"
     ]
   },
-  "qwen3.5-2b": {
-    "file": "/var/lib/rupert-llm/models/Qwen3.5-2B-UD-Q4_K_XL.gguf",
-    "ctx": 16384,
-    "args": [
-      "--chat-template-kwargs",
-      "{\"enable_thinking\":false}",
-      "--n-gpu-layers",
-      "99",
-      "--flash-attn",
-      "on",
-      "--batch-size",
-      "2048",
-      "--ubatch-size",
-      "512"
-    ]
-  },
   "flint-40b-a2.5b": {
     "file": "/var/lib/rupert-llm/models/flint-preview-UD-IQ3_XXS.gguf",
     "ctx": 16384,
