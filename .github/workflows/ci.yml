@@ -46,7 +46,13 @@ jobs:
           fetch-depth: 0
 
       - name: Verify patched DNS resolver in Ruby runtime
-        run: ruby -e 'require "resolv"; version = Gem.loaded_specs.fetch("resolv").version; abort "resolv #{version} is below 0.7.2" if version < Gem::Version.new("0.7.2"); puts "resolv #{version}"'
+        run: |
+          ruby <<'RUBY'
+          require "resolv"
+          version = Gem.loaded_specs.fetch("resolv").version
+          abort "resolv #{version} is below 0.7.2" if version < Gem::Version.new("0.7.2")
+          puts "resolv #{version}"
+          RUBY
 
       - name: Install dependencies
         run: bundle install
