@@ -14,8 +14,8 @@ WorkingDirectory=/opt/rupert/web
 EnvironmentFile=/etc/rupert.env
 Environment=RAILS_ENV=production
 Environment=RAILS_LOG_TO_STDOUT=1
-Environment=PATH=/opt/rbenv/versions/4.0.6/bin:/opt/rbenv/shims:/opt/rbenv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ExecStart=/opt/rbenv/versions/4.0.6/bin/bundle exec bin/jobs
+Environment=PATH=/opt/rbenv/versions/4.0.9/bin:/opt/rbenv/shims:/opt/rbenv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/opt/rbenv/versions/4.0.9/bin/bundle exec bin/jobs
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=60

@@ -24,7 +24,7 @@ ENV_FILE=${RUPERT_AUTODEPLOY_ENV_FILE:-/etc/rupert.env}
 # failed-sha). Only the presence and mtime of those two files are read; nothing
 # in $INBOX is ever opened, written or run by root.
 INBOX=${RUPERT_AUTODEPLOY_INBOX:-$APP/web/storage/autodeploy}
-export RAILS_ENV=production PATH=${RUPERT_AUTODEPLOY_PATH:-/opt/rbenv/versions/4.0.6/bin:/usr/local/bin:/usr/bin:/bin}
+export RAILS_ENV=production PATH=${RUPERT_AUTODEPLOY_PATH:-/opt/rbenv/versions/4.0.9/bin:/usr/local/bin:/usr/bin:/bin}
 log() { echo "autodeploy: $*"; }
 
 # write_json FILE STATE MESSAGE: atomic, readable by the app user. No-op on a dry run.

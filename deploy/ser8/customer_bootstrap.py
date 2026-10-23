@@ -8,7 +8,7 @@ import secrets
 import subprocess
 
 APP = Path('/opt/rupert/web')
-RUBY_BIN = '/opt/rbenv/versions/4.0.6/bin'
+RUBY_BIN = '/opt/rbenv/versions/4.0.9/bin'
 
 
 def main():
