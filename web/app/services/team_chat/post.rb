@@ -49,6 +49,8 @@ module TeamChat
         else
           rupert = answer?(message)
           agents = LocalAgents.mentioned(@body)
+          # Naming a bot asks that bot, even in a room where @rupert answers everything.
+          rupert = message.mentions_rupert? if agents.any?
           # Replying to a bot's answer, without naming a bot, asks that same bot again.
           if !rupert && agents.empty? && quote&.assistant? && quote.status == 'done'
             agents = LocalAgents.all.select { |agent| agent.handle == quote.local_agent&.handle }

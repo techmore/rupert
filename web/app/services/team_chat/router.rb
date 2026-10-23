@@ -17,14 +17,28 @@ module TeamChat
 
     def config = @config ||= YAML.safe_load_file(CONFIG).freeze
 
+    # Words that join two parts of one question ("hours worked and sales on the same days").
+    JOINS = /\b(?:and|while|same days?|still|also|plus|both)\b/i
+
+    # Keyword hits are counted per side (finance topics vs the rest). Single words are noisy ("overdue" is also a
+    # books word, "today" a sales word), so a question is cross only when both sides have hits and the question
+    # joins two parts, or both sides have two or more hits. Otherwise the side with more hits wins; a tie stays
+    # general (local and private).
     def kind_for(text)
-      return 'think' if text.to_s.match?(THINK)
+      text = text.to_s
+      return 'think' if text.match?(THINK)
 
-      keys = DataGuide.match(text).map(&:key) - NEUTRAL
-      finance = keys & Array(config['finance_topics'])
-      return 'cross' if finance.any? && (keys - finance).any?
+      finance_keys = Array(config['finance_topics'])
+      finance = general = 0
+      DataGuide.topics.each do |topic|
+        next if NEUTRAL.include?(topic.key)
 
-      finance.any? ? 'finance' : 'general'
+        hits = text.scan(topic.pattern).size
+        finance_keys.include?(topic.key) ? finance += hits : general += hits
+      end
+      return 'cross' if finance.positive? && general.positive? && (text.match?(JOINS) || [finance, general].min >= 2)
+
+      finance > general ? 'finance' : 'general'
     end
 
     def route(text)
