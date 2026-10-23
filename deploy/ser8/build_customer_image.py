@@ -31,13 +31,13 @@ def main():
     with tempfile.TemporaryDirectory(prefix='rupert-public-runtime-') as directory:
         archive = Path(directory) / 'ruby.tar'
         with archive.open('wb') as stream:
-            subprocess.run(['incus', 'exec', 'rupert', '--', 'tar', '-C', '/opt/rbenv/versions', '-cf', '-', '4.0.6'], stdout=stream, check=True)
+            subprocess.run(['incus', 'exec', 'rupert', '--', 'tar', '-C', '/opt/rbenv/versions', '-cf', '-', '4.0.9'], stdout=stream, check=True)
         run(['incus', 'file', 'push', str(archive), name + '/tmp/rupert-public-ruby.tar'])
     script = r'''set -euo pipefail
 install -d /opt/rbenv/versions
  tar -xf /tmp/rupert-public-ruby.tar -C /opt/rbenv/versions
 rm /tmp/rupert-public-ruby.tar
-export PATH=/opt/rbenv/versions/4.0.6/bin:$PATH
+export PATH=/opt/rbenv/versions/4.0.9/bin:$PATH
 git clone -q https://github.com/techmore/rupert.git /opt/rupert
 cd /opt/rupert
 git checkout -q REVISION

@@ -30,7 +30,7 @@ Square ───┼── sync engine ──▶ SQLite DB     ──▶ GUI
 
 ## Local development
 
-Requirements: Ruby 4.0.6 (rbenv), Bundler, and Node (for the Shopify CLI
+Requirements: Ruby 4.0.9 (rbenv), Bundler, and Node (for the Shopify CLI
 and JavaScript tests). SQLite is the only supported database; no database
 server is needed.
 
