@@ -54,7 +54,8 @@ class TeamChatTest < ActionDispatch::IntegrationTest
     previous = ENV['RUPERT_LOCAL_LLM_URL']
     ENV['RUPERT_LOCAL_LLM_URL'] = 'https://llm.test/v1'
     sign_in(@admin)
-    get team_chat_room_path('admins')
+    get team_chat_path
+    follow_redirect!
     assert_response :success
     %w[qwen-4b flint-think qwen liquid].each do |handle|
       assert_select ".chat-rail-room[href='#{team_chat_room_path("bot-#{handle}-#{@admin.id}")}']"
@@ -81,7 +82,8 @@ class TeamChatTest < ActionDispatch::IntegrationTest
     previous = ENV['RUPERT_LOCAL_LLM_URL']
     ENV['RUPERT_LOCAL_LLM_URL'] = nil
     sign_in(@admin)
-    get team_chat_room_path('admins')
+    get team_chat_path
+    follow_redirect!
     assert_select ".chat-rail-room[href^='/chat/bot-']", count: 0
   ensure
     ENV['RUPERT_LOCAL_LLM_URL'] = previous
