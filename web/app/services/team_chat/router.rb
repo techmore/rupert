@@ -36,9 +36,17 @@ module TeamChat
         hits = text.scan(topic.pattern).size
         finance_keys.include?(topic.key) ? finance += hits : general += hits
       end
-      return 'cross' if finance.positive? && general.positive? && (text.match?(JOINS) || [finance, general].min >= 2)
+      return 'cross' if finance.positive? && general.positive? && (joined?(text) || [finance, general].min >= 2)
 
       finance > general ? 'finance' : 'general'
+    end
+
+    # A joining word, or one of the data guide's cross-question phrases ("low on stock", "same days", ...).
+    def joined?(text)
+      return true if text.match?(JOINS)
+
+      phrases = Array(DataGuide.find('cross')&.keywords) - %w[and]
+      phrases.any? { |phrase| text.match?(/(?<![\p{L}\p{N}])#{Regexp.escape(phrase)}(?![\p{L}\p{N}])/i) }
     end
 
     def route(text)
