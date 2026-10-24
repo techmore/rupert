@@ -27,6 +27,35 @@ module People
       (ends_at - starts_at) / 3600.0
     end
 
+    # Approved leave for this person on any calendar day the shift touches.
+    # A warning only: a manager may still schedule someone on leave.
+    def approved_leave
+      return People::LeaveRequest.none if starts_at.nil? || ends_at.nil? || employee_id.blank?
+
+      People::LeaveRequest.where(employee_id: employee_id, status: 'approved')
+        .where('starts_on <= ? AND ends_on >= ?', ends_at.to_date, starts_at.to_date)
+    end
+
+    # Copies the week before `week` (a Monday) forward seven days. Wall-clock
+    # times are kept across a DST change. Shifts that would overlap one already
+    # planned, or belong to someone no longer active, are skipped.
+    def self.copy_week_forward(week)
+      copied = []
+      skipped = 0
+      transaction do
+        between(week - 7, week - 1).where('starts_at >= ?', (week - 7).in_time_zone).chronological.includes(:employee).each do |source|
+          shift = new(employee: source.employee, starts_at: source.starts_at + 7.days, ends_at: source.ends_at + 7.days,
+            role_label: source.role_label, notes: source.notes)
+          if source.employee&.status == 'active' && shift.save
+            copied << shift
+          else
+            skipped += 1
+          end
+        end
+      end
+      [copied, skipped]
+    end
+
     def time_label
       "#{starts_at.strftime('%-l:%M %p')} – #{ends_at.strftime('%-l:%M %p')}"
     end
