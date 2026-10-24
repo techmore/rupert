@@ -52,6 +52,7 @@ enum WebViewSupport {
         let controller = configuration.userContentController
         controller.addUserScript(WKUserScript(source: diagnostics, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         controller.addUserScript(WKUserScript(source: connectLateTurbo, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+        BannerBridge.install(in: controller)
     }
 
     /// The diagnostics of the page in `webView`, as readable lines.
