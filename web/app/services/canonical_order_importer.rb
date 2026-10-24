@@ -123,9 +123,7 @@ class CanonicalOrderImporter
           email: email,
           first_name: first_name,
           last_name: last_name,
-          phone: phone,
-          created_at: Time.current,
-          updated_at: Time.current
+          phone: phone
         },
         unique_by: %i[tenant_id source external_id]
       )
@@ -194,9 +192,7 @@ class CanonicalOrderImporter
             tracking_company: tracking['company'],
             tracking_number: tracking['number'],
             tracking_url: tracking['url'],
-            fulfilled_at: parse_time(node['createdAt']) || node['updatedAt'].presence && parse_time(node['updatedAt']),
-            created_at: Time.current,
-            updated_at: Time.current
+            fulfilled_at: parse_time(node['createdAt']) || node['updatedAt'].presence && parse_time(node['updatedAt'])
           },
           unique_by: %i[source source_fulfillment_id]
         )
@@ -378,9 +374,7 @@ class CanonicalOrderImporter
         shipping_province: address_attr(data, 'province'),
         shipping_zip: address_attr(data, 'zip'),
         shipping_country: address_attr(data, 'country'),
-        shipping_phone: address_attr(data, 'phone'),
-        created_at: Time.current,
-        updated_at: Time.current
+        shipping_phone: address_attr(data, 'phone')
       }
     end
 

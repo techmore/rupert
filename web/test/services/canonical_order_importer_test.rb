@@ -183,6 +183,20 @@ class CanonicalOrderImporterTest < ActiveSupport::TestCase
     assert_equal 'FedEx', record.fulfillments.first.tracking_company
   end
 
+  test 're-reading an order keeps when Rupert first stored it' do
+    CanonicalOrderImporter.from_shopify!([shopify_order])
+    order = Core::Order.find_by!(source: 'shopify', source_order_id: 'gid://shopify/Order/123')
+    customer = Core::Customer.find_by!(source: 'shopify')
+    stored = [order.created_at, customer.created_at]
+    # Pretend both were first stored weeks ago; a later sync must not move that.
+    order.update_columns(created_at: 3.weeks.ago)
+    customer.update_columns(created_at: 3.weeks.ago)
+    stored = [order.reload.created_at, customer.reload.created_at]
+    CanonicalOrderImporter.from_shopify!([shopify_order.merge('name' => '#1001-renamed')])
+    assert_equal stored, [order.reload.created_at, customer.reload.created_at]
+    assert_equal '#1001-renamed', order.order_number
+  end
+
   test 'is idempotent for the same source order and replaces lines' do
     2.times { CanonicalOrderImporter.from_shopify!([shopify_order]) }
     order = Core::Order.find_by(source: 'shopify', source_order_id: 'gid://shopify/Order/123')
