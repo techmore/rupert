@@ -1,11 +1,19 @@
 name: Employee mobile
 on:
+  # Feature-branch pushes are covered by the pull_request run for the same head.
+  # main pushes stay: the updater needs an exact-SHA `validate` result on main.
   push:
+    branches: [main]
     paths: ['mobile/**', 'bin/check-mobile-sdk.mjs', '.github/workflows/employee-mobile.yml']
   pull_request:
     paths: ['mobile/**', 'bin/check-mobile-sdk.mjs', '.github/workflows/employee-mobile.yml']
 permissions:
   contents: read
+concurrency:
+  # main runs are keyed by commit so a queued main run is never replaced.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  # Only superseded PR runs are cancelled; a cancelled main run would block deployment.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   validate:
     runs-on: ubuntu-latest

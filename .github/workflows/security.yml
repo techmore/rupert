@@ -7,6 +7,11 @@ on:
     - cron: '17 6 * * 1'
 permissions:
   contents: read
+concurrency:
+  # PR runs share a group per PR; main and scheduled runs are keyed by event and commit.
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  # Only superseded PR runs are cancelled; a cancelled main run would block deployment.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   scan:
     name: Dependency and static scan
