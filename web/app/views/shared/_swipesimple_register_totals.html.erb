@@ -1,0 +1,41 @@
+<%# SwipeSimple's native daily sales report: the four register-slip boxes and a folded per-account table.
+    Locals: close (SwipesimpleDayClose), level (heading tag, default :h2). Never added to other sources. %>
+<% level = local_assigns.fetch(:level, :h2) %>
+<% money = ->(cents) { ctrax_money(cents) } %>
+<section aria-label="Register close totals" class="space-y-3">
+  <%= section_heading 'Register close totals', level: level, hint: "SwipeSimple’s daily sales report for #{close.date.strftime('%b %-d, %Y')}, across all merchant accounts." %>
+  <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <% [['Total collected', :net_sales_cents], ['Sales tax collected', :tax_cents], ['Credit card collected', :net_card_cents], ['Cash collected', :net_cash_cents]].each do |label, field| %>
+      <div class="stat" data-register-total="<%= field %>">
+        <p class="stat-label"><%= label %></p>
+        <p class="stat-value mt-2"><%= money.call(close.register_totals[field]) %></p>
+      </div>
+    <% end %>
+  </div>
+  <% if close.register_totals.values.any?(&:nil?) %>
+    <p class="text-sm text-mocha">Some daily sales report amounts are missing. They are shown as Unknown until the reports supply them.</p>
+    <% if retail_business_access?('settings.read') %><p><%= link_to 'Open SwipeSimple connection', pos_connection_path('swipesimple'), class: 'btn-ghost btn-sm' %></p><% end %>
+  <% end %>
+  <details class="explainer">
+    <summary class="explainer-summary">Where these amounts come from</summary>
+    <div class="mt-2 space-y-3 text-sm text-mocha">
+      <p>Total collected is SwipeSimple’s Total Net Sales; tax, tips and refunds are already reflected in the reported amounts. Sales tax is shown separately for reference, not added again. These reports and the SwipeSimple transaction totals describe the same activity.</p>
+      <p>Amounts are the latest stored figures for this business date. A report pulled before the day ended is provisional. An omitted day is zero only when a report covering it was pulled after the day ended. Missing accounts or blank report amounts keep the combined figure Unknown.</p>
+      <% if close.register_reports.empty? %>
+        <p>No daily sales reports are stored for this date.</p>
+      <% else %>
+        <div class="table-region" role="region" tabindex="0" aria-label="Register close totals by account">
+          <table class="table">
+            <caption class="sr-only">SwipeSimple native daily sales report amounts for <%= close.date %></caption>
+            <thead><tr><th scope="col" class="th">Account</th><th scope="col" class="th num">Total collected</th><th scope="col" class="th num">Sales tax collected</th><th scope="col" class="th num">Credit card collected</th><th scope="col" class="th num">Cash collected</th><th scope="col" class="th">Report pulled</th></tr></thead>
+            <tbody><% close.register_reports.each do |report| %><tr>
+              <th scope="row" class="td text-left font-medium"><%= report[:account] %></th>
+              <% SwipesimpleDayClose::REGISTER_FIELDS.each do |field| %><td class="td num"><%= money.call(report[:values][field]) %></td><% end %>
+              <td class="td"><%= report[:pulled_at] ? retail_source_time(report[:pulled_at]) : 'No report stored' %></td>
+            </tr><% end %></tbody>
+          </table>
+        </div>
+      <% end %>
+    </div>
+  </details>
+</section>

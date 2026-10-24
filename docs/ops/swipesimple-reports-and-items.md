@@ -101,6 +101,16 @@ tenant's records. Changes to the displayed native report values invalidate a
 local review, just as changed transaction evidence does. This adds no provider
 writes, journal entries or database migrations.
 
+The same four boxes and account table appear on **Day close** (Bookkeeping →
+Daily close → Day close) and Daily reconciliation, in the daily close summary's
+**SwipeSimple** section beside the SwipeSimple transaction totals. A separate
+**Shopify and Authorize.net** section holds the store rows (Shopify and any
+Square or C-Trax store) and the Authorize.net payments and refunds settled that
+day, using the same settlement-date rules as Source reports. The two sections
+are never added together, and Authorize.net settlements are payment evidence
+for store sales, not more sales. The SwipeSimple daily close link appears only
+for users with sales access.
+
 ## Older months (automatic)
 
 Each pull also fills up to 3 older months that are missing, newest first, going

@@ -193,6 +193,56 @@ class SwipesimpleDaysTest < ActionDispatch::IntegrationTest
     assert_select 'a[href=?]', swipesimple_days_path(date: '2026-10-14')
   end
 
+  test 'day close shows Shopify and Authorize.net and SwipeSimple as separate sections' do
+    import(ROWS)
+    SwipesimpleSalesDay.create!(merchant_account: 'Example Wholesale', business_date: '2026-10-14',
+      net_sales_cents: 10_700, tax_cents: 600, net_card_cents: 8000, net_cash_cents: 2700,
+      tips_cents: 100, source_digest: 'synthetic-combined-close', pulled_at: Time.current)
+    settled = Time.zone.parse('2026-10-14 16:00')
+    AuthorizeNetTransaction.create!(environment: 'production', gateway_id: 'gw-synthetic', source_transaction_id: 'anet-1',
+      transaction_type: 'authCaptureTransaction', payment_status: 'settledSuccessfully', submitted_at: settled - 1.hour,
+      settled_at: settled, authorized_amount: '42.50', settled_amount: '42.50', currency: 'USD', observed_at: settled)
+    order = Core::Order.new(source: 'shopify', source_order_id: SecureRandom.uuid, occurred_at: Time.zone.parse('2026-10-14 12:00'),
+      gross_cents: 1100, tax_cents: 100, currency: 'USD')
+    order.aasm.current_state = :paid
+    order.save!
+
+    get financial_close_path(day: '2026-10-14')
+    assert_response :success
+    assert_select '#daily-close-stores' do
+      assert_select 'h3', 'Shopify and Authorize.net'
+      assert_select '[aria-label^="Store sales"] tbody th', text: /Shopify/
+      assert_select '[data-authorize-net-row="gw-synthetic"]', text: /42\.50.*1 payment.*42\.50/m
+      assert_select '[data-register-total]', 0
+      assert_select 'th', text: 'SwipeSimple register', count: 0
+    end
+    assert_select '#daily-close-swipesimple' do
+      assert_select 'h3', 'SwipeSimple'
+      assert_select '[data-register-total=net_sales_cents] .stat-value', '$107.00'
+      assert_select '[data-register-total=tax_cents] .stat-value', '$6.00'
+      assert_select '[data-register-total=net_card_cents] .stat-value', '$80.00'
+      assert_select '[data-register-total=net_cash_cents] .stat-value', '$27.00'
+      assert_select '[aria-label^="SwipeSimple transaction totals"] th', text: /SwipeSimple register/
+      assert_select 'a[href=?]', swipesimple_days_path(date: '2026-10-14')
+      assert_select '[data-authorize-net-row]', 0
+    end
+
+    get swipesimple_days_path(date: '2026-10-14')
+    assert_select 'a[href=?]', financial_close_path(day: '2026-10-14', anchor: 'daily-close-swipesimple')
+  end
+
+  test 'day close keeps SwipeSimple boxes unknown without a report and hides the sales link from report-only readers' do
+    import(ROWS)
+    bookkeeper = User.create!(email: 'ss-books@example.invalid', password: 'password123', role: 'reporting', tenant: @tenant)
+    bookkeeper.update_permission_overrides!(%w[dashboard.read reports.read])
+    switch_to(bookkeeper)
+    get financial_close_path(day: '2026-10-14')
+    assert_response :success
+    assert_select '#daily-close-swipesimple [data-register-total=net_sales_cents] .stat-value', 'Unknown'
+    assert_select '#daily-close-stores', text: /No Authorize\.net settlements are stored for this day/
+    assert_select 'a[href^=?]', swipesimple_days_path, count: 0
+  end
+
   private
 
   def switch_to(user)

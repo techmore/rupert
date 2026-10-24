@@ -1,0 +1,18 @@
+<%# One daily close table. Locals: rows (DailyCloseSummary::Row list), label (table name), day (Date). %>
+<% columns = [['Gross sales', :gross], ['Refunds', :refunds], ['Net sales', :net], ['Collected tax', :tax], ['Collected tips', :tips], ['Collected cash', :cash], ['Collected credit', :credit]]
+   sales_reader = Current.user.can?('sales.read') %>
+<div class="overflow-x-auto" tabindex="0" role="region" aria-label="<%= label %>, scroll horizontally for all columns">
+  <table class="w-full text-sm">
+    <caption class="sr-only">Gross sales, refunds, net sales, collected tax, tips, cash and credit: <%= label %></caption>
+    <thead class="border-b border-fog bg-haze/60"><tr><th scope="col" class="th">Store</th><% columns.each do |heading, _| %><th scope="col" class="th text-right"><%= heading %></th><% end %></tr></thead>
+    <tbody class="divide-y divide-fog">
+      <% rows.each do |row| %>
+        <tr>
+          <th scope="row" class="td text-left font-medium"><% if row.kind == 'swipesimple' && sales_reader %><%= link_to(row.label, swipesimple_days_path(date: day), class: 'text-olive underline') %><% else %><%= row.path && sales_reader ? link_to(row.label, ctrax_day_path(row.path), class: 'text-olive underline') : row.label %><% end %><span class="block text-xs font-normal text-mocha"><%= row.currency %></span></th>
+          <% columns.each do |_, key| %><td class="td text-right tabular-nums <%= 'font-semibold' if key == :net %>"><%= reconciliation_money(row[key]) %></td><% end %>
+        </tr>
+        <% if row.notes %><tr><td class="td text-xs text-mocha" colspan="<%= columns.size + 1 %>"><%= row.label %>: <%= row.notes %></td></tr><% end %>
+      <% end %>
+    </tbody>
+  </table>
+</div>

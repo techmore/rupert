@@ -20,4 +20,21 @@ class DailyCloseSummaryTest < ActiveSupport::TestCase
   test 'no data gives an empty summary rather than zeros' do
     assert_predicate DailyCloseSummary.new(day: '2026-10-14'), :empty?
   end
+
+  test 'authorize.net settlements are summarised per gateway and currency, refunds kept apart' do
+    settled = Time.zone.parse('2026-10-14 16:00')
+    { 'a1' => ['authCaptureTransaction', 'settledSuccessfully', '30.00'], 'a2' => ['authCaptureTransaction', 'settledSuccessfully', '12.25'],
+      'r1' => ['refundTransaction', 'refundSettledSuccessfully', '5.00'], 's1' => ['authCaptureTransaction', 'settledSuccessfully', '99.00'] }.each do |id, (type, status, amount)|
+      AuthorizeNetTransaction.create!(environment: id == 's1' ? 'sandbox' : 'production', gateway_id: 'gw-1', source_transaction_id: id,
+        transaction_type: type, payment_status: status, submitted_at: settled - 1.hour, settled_at: settled,
+        authorized_amount: amount, settled_amount: amount, currency: 'USD', observed_at: settled)
+    end
+    summary = DailyCloseSummary.new(day: '2026-10-14')
+    assert_equal [{ account: 'gw-1', currency: 'USD', sales_cents: 4225, sales_count: 2, refund_cents: 500, refund_count: 1 }], summary.authorize_net_rows
+    assert_predicate summary, :empty?, 'gateway settlements are never store sales'
+  end
+
+  test 'swipesimple close is the same business date' do
+    assert_equal Date.new(2026, 10, 14), DailyCloseSummary.new(day: '2026-10-14').swipesimple_close.date
+  end
 end
