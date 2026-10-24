@@ -14,8 +14,8 @@ EnvironmentFile=/etc/rupert.env
 Environment=RAILS_ENV=production
 Environment=RAILS_LOG_TO_STDOUT=1
 Environment=PORT=3000
-Environment=PATH=/opt/rbenv/versions/4.0.6/bin:/opt/rbenv/shims:/opt/rbenv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ExecStart=/opt/rbenv/versions/4.0.6/bin/bundle exec puma -C config/puma.rb
+Environment=PATH=/opt/rbenv/versions/4.0.9/bin:/opt/rbenv/shims:/opt/rbenv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/opt/rbenv/versions/4.0.9/bin/bundle exec puma -C config/puma.rb
 # Puma re-execs itself on SIGUSR2 for a near-zero-downtime restart (see docs/ops/release-process.md).
 ExecReload=/bin/kill -USR2 $MAINPID
 Restart=on-failure

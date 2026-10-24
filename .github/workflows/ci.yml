@@ -28,7 +28,7 @@ jobs:
     # provide on GitHub-hosted runners (max 3.5). Run inside the official
     # ruby:4.0 image instead.
     container:
-      image: ruby:4.0
+      image: ruby:4.0.9
     env:
       SHOPIFY_API_KEY: test-api-key
       SHOPIFY_API_SECRET: test-secret-key
@@ -44,6 +44,15 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+
+      - name: Verify patched DNS resolver in Ruby runtime
+        run: |
+          ruby <<'RUBY'
+          require "resolv"
+          version = Gem.loaded_specs.fetch("resolv").version
+          abort "resolv #{version} is below 0.7.2" if version < Gem::Version.new("0.7.2")
+          puts "resolv #{version}"
+          RUBY
 
       - name: Install dependencies
         run: bundle install
