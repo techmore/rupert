@@ -10,7 +10,7 @@ struct GoogleSignInPolicy: WebViewPolicyDecisionHandler {
     let name = "rupert-google-sign-in"
 
     func matches(navigationAction: WKNavigationAction, configuration: Navigator.Configuration) -> Bool {
-        guard navigationAction.isMainFrameNavigation, let url = navigationAction.request.url else { return false }
+        guard navigationAction.targetFrame?.isMainFrame ?? true, let url = navigationAction.request.url else { return false }
         return Instance.isInstance(url) && url.path == "/auth/google"
     }
 
