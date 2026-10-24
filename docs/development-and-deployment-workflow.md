@@ -40,7 +40,10 @@ prove that the integrated commit is deployable or accepted by an operator.
 ## 3. CI and integration
 
 Full CI runs on pull requests and on pushes to `main`; feature-branch pushes do
-not launch a duplicate full CI run. Mobile checks remain path-filtered. The
+not launch a duplicate full CI run. Mobile checks remain path-filtered and,
+like CI, run on pull requests and `main` pushes only. PR runs of CI, Security
+and Employee mobile cancel when the PR gets a newer head; `main` runs never
+cancel each other, so every integrated SHA gets its own result. The
 security workflow runs for pull requests, `main` pushes and its scheduled
 scans. Cancellation should supersede older runs for the same PR, not serialize
 unrelated work. Keep required check names stable and do not let path filters
