@@ -410,7 +410,9 @@ Rails.application.routes.draw do
     end
     resources :departments, only: %i[index new create edit update]
     resources :positions, only: %i[index new create edit update]
-    resources :scheduled_shifts, path: 'schedule', only: %i[index new create edit update destroy]
+    resources :scheduled_shifts, path: 'schedule', only: %i[index new create edit update destroy] do
+      post :copy_last_week, on: :collection
+    end
     resources :timesheets, only: %i[index show new create edit update destroy] do
       collection { post :bulk_approve }
       member do
