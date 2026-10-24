@@ -8,7 +8,7 @@
 #   bin/check-palette-contrast          # exit 1 on any failing pair
 #   bin/check-palette-contrast --all    # print every pair, not just failures
 CSS = File.expand_path('../app/assets/tailwind/application.css', __dir__)
-TOKENS = %w[oat cream paper ink mocha taupe fog haze olive olive-deep sage clay butter rose fern edge
+TOKENS = %w[oat cream paper ink mocha taupe fog haze banner olive olive-deep sage clay butter rose fern edge
   danger danger-bg danger-edge success success-bg success-edge warn warn-bg warn-edge on-butter].freeze
 
 # Tokens a block does not override (on-butter) fall back to the base (Herbal) value.
@@ -56,6 +56,8 @@ def pairs(t)
     ['danger on danger-bg', t['danger'], t['danger-bg'], 4.5], ['success on success-bg', t['success'], t['success-bg'], 4.5],
     ['warn on warn-bg', t['warn'], t['warn-bg'], 4.5], ['danger on paper', t['danger'], t['paper'], 4.5],
     ['success on paper', t['success'], t['paper'], 4.5], ['warn on paper', t['warn'], t['paper'], 4.5],
+    ['ink on banner (app header)', t['ink'], t['banner'], 4.5], ['mocha on banner (header icons)', t['mocha'], t['banner'], 4.5],
+    ['taupe on banner (build line)', t['taupe'], t['banner'], 4.5], ['olive vs banner (focus ring)', t['olive'], t['banner'], 3.0],
     ['edge vs paper (control border, 1.4.11)', t['edge'], t['paper'], 3.0], ['olive vs paper (focus ring)', t['olive'], t['paper'], 3.0]
   ]
 end

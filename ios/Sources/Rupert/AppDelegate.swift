@@ -20,8 +20,12 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     private func configureAppearance() {
-        // Opaque bars, like the rest of iOS, so page content never shows through the chrome.
-        UINavigationBar.appearance().scrollEdgeAppearance = .init()
+        // Opaque bars, like the rest of iOS, so page content never shows through the chrome. The top
+        // bar starts in Rupert's banner colour; each page then sets its own (Banner.swift).
+        let banner = BannerColors.fallback.appearance
+        UINavigationBar.appearance().standardAppearance = banner
+        UINavigationBar.appearance().scrollEdgeAppearance = banner
+        UINavigationBar.appearance().compactAppearance = banner
         UITabBar.appearance().scrollEdgeAppearance = .init()
     }
 
@@ -41,6 +45,9 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         Hotwire.config.backButtonDisplayMode = .minimal
         Hotwire.config.showDoneButtonOnModals = true
         Hotwire.config.animateReplaceActions = true
+        // Pages paint the top bar in their banner colour and pick the status bar text to match.
+        Hotwire.config.defaultViewController = { url in BannerWebViewController(url: url) }
+        Hotwire.config.defaultNavigationController = { BannerNavigationController() }
         // Page diagnostics and a late-Turbo connection (WebViewSupport), then Hotwire's defaults.
         Hotwire.config.makeCustomWebView = { configuration in
             WebViewSupport.install(in: configuration)
