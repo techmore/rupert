@@ -63,6 +63,20 @@ class MoneyReconciliationReport
     end
   end
 
+  # Authorize.net settled sales and refunds alone (same rows as in #payload),
+  # for pages that show the gateway layer next to, never added to, store sales.
+  def authorize_net_rows
+    @authorize_net_rows ||= begin
+      saved = [@rows, @warnings]
+      @rows = []
+      @warnings = []
+      authorize_net
+      @rows
+    ensure
+      @rows, @warnings = saved
+    end
+  end
+
   def save!
     raise ArgumentError, 'An active workspace is required.' unless Current.tenant&.status == 'active'
 

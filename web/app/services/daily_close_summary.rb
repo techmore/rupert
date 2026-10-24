@@ -11,6 +11,11 @@
 # SwipeSimple is the store register (from Oct 2026), so its row carries its
 # own cash and card split from each transaction's tender. It stays its own
 # row and is never added to another source's sales.
+#
+# The page shows two sections that are never added together: the stores
+# (Shopify and any Square or C-Trax store) with Authorize.net settled payments
+# as separate payment evidence, and SwipeSimple with its native daily sales
+# report beside its transaction totals.
 class DailyCloseSummary
   CTRAX_CARD_TYPES = %w[credit standaloneCardTerminal].freeze
   STORE_SOURCES = %w[shopify square].freeze
@@ -65,11 +70,33 @@ class DailyCloseSummary
     store_rows + [swipesimple_row].compact
   end
 
+  # SwipeSimple's own daily close (native register report and checks) for the same business date.
+  def swipesimple_close
+    @swipesimple_close ||= SwipesimpleDayClose.new(day)
+  end
+
+  # Authorize.net settled sales and refunds per gateway and currency, from the
+  # same settlement-date rules as Source reports. Payment evidence for store
+  # sales, not more sales: never add these to the store rows.
+  def authorize_net_rows
+    @authorize_net_rows ||= MoneyReconciliationReport.new(kind: 'daily', date: day).authorize_net_rows
+      .group_by { |row| [row['account'], row['currency']] }.sort_by { |key, _| key.map(&:to_s) }.map do |(account, currency), list|
+        sales = list.find { |row| row['metric'] == 'Settled sales' }
+        refunds = list.find { |row| row['metric'] == 'Settled refunds' }
+        { account: account, currency: currency, sales_cents: cents(sales), sales_count: sales&.dig('count') || 0,
+          refund_cents: cents(refunds), refund_count: refunds&.dig('count') || 0 }
+      end
+  end
+
   def empty?
     rows.empty?
   end
 
   private
+
+  def cents(row)
+    row ? (BigDecimal(row['amount']) * 100).round.to_i : 0
+  end
 
   # Cash and card come from each SwipeSimple transaction's own tender. Rows
   # whose tender the export does not identify stay out of both columns.

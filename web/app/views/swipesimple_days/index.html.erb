@@ -7,9 +7,11 @@
 <% latest = close.latest_transaction_export %>
 <% sections = [['Checks', '#close-checks'], ['Totals', '#close-totals'], ['Deposit', '#close-deposit'], ['Transactions', '#close-transactions']] %>
 <% sections << ['Review', '#close-review'] if retail_business_access?('sales.write') %>
+<% menu = [['Download CSV', swipesimple_days_path(date: @date, format: :csv)], ['C-Trax daily close for this date', ctrax_days_path(date: @date)]] %>
+<% menu << ['Day close for this date', financial_close_path(day: @date.iso8601, anchor: 'daily-close-swipesimple')] if Current.user.can?('reports.read') %>
 <div class="space-y-6">
   <%= page_header 'SwipeSimple daily close', subtitle: 'Approved SwipeSimple sales, refunds and tips for one business day.',
-      menu: [['Download CSV', swipesimple_days_path(date: @date, format: :csv)], ['C-Trax daily close for this date', ctrax_days_path(date: @date)]] do %>
+      menu: menu do %>
     <span class="<%= close.warnings.empty? ? 'pill-fern' : 'pill-clay' %>"><%= close.warnings.empty? ? 'No flags' : 'Needs review' %></span>
   <% end %>
 
@@ -25,6 +27,8 @@
       <div class="toolbar-actions"><%= submit_tag 'Apply', class: 'btn-primary' %><% if @date != today %><%= link_to 'Today', swipesimple_days_path(date: today), class: 'btn-ghost' %><% end %></div>
     <% end %>
   </section>
+
+  <%= render 'shared/swipesimple_register_totals', close: close %>
 
   <section class="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Daily SwipeSimple summary">
     <div class="stat"><p class="stat-label">Approved sales</p><p class="stat-value mt-2"><%= usd.empty? ? 'None stored' : money.call(usd.sum(&:sale_cents)) %></p><p class="mt-1 text-xs text-mocha"><%= pluralize(usd.sum(&:sale_count), 'sale') %></p></div>
@@ -77,10 +81,6 @@
         </table>
       </div>
     <% end %>
-    <%# SwipeSimple Reporting "sales"/"tax" daily CSVs (feature/swipesimple-tax-reports, planned tables
-        swipesimple_sales_days / swipesimple_tax_days) belong here once they land: render an optional
-        "SwipeSimple's own daily report" block (subtotal, discounts, sales tax, tips, refunds, net card,
-        net cash) only when a row exists for @date, shown next to these export totals, never added to them. %>
     <%= section_heading 'Invoices created this day', level: :h3 %>
     <% if close.invoices.empty? %>
       <p class="text-sm text-mocha">No invoices created on this day in the latest full invoice export.</p>
@@ -190,7 +190,7 @@
 
   <% if retail_business_access?('sales.write') %>
     <section id="close-review" class="retail-anchor section-card">
-      <%= section_heading 'Record a local review', hint: 'Records your review in Rupert only. A changed export needs another review.' do %>
+      <%= section_heading 'Record a local review', hint: 'Records your review in Rupert only. A changed report or export needs another review.' do %>
         <span class="<%= close.reviewed? ? 'pill-fern' : 'pill-clay' %>"><%= close.reviewed? ? 'Current version reviewed' : 'Review needed' %></span>
       <% end %>
       <% if close.review %>

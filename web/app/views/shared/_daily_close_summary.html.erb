@@ -1,28 +1,58 @@
-<%# Daily close overview: per-store figures plus SwipeSimple. Locals: day (Date). %>
-<% summary = DailyCloseSummary.new(day: day) %>
-<% columns = [['Gross sales', :gross], ['Refunds', :refunds], ['Net sales', :net], ['Collected tax', :tax], ['Collected tips', :tips], ['Collected cash', :cash], ['Collected credit', :credit]] %>
+<%# Daily close: two sections that are never added together. Shopify and Authorize.net holds the store rows
+    (Shopify and any Square or C-Trax store) with Authorize.net settled payments as separate payment evidence.
+    SwipeSimple holds its native register report and its transaction totals. Locals: day (Date). %>
+<% summary = DailyCloseSummary.new(day: day)
+   sales_reader = Current.user.can?('sales.read') %>
 <section id="daily-close-summary" class="card overflow-hidden scroll-mt-48" aria-labelledby="daily-close-summary-title">
   <header class="space-y-1 border-b border-fog p-4">
     <h2 id="daily-close-summary-title" class="font-display text-xl">Daily close summary · <%= day.strftime('%b %-d, %Y') %></h2>
-    <p class="text-xs text-mocha">Gross sales are after discounts and before tax and tips. Each store is its own line and stores are not added together. Unavailable means the source did not report the amount; it is not zero.</p>
+    <p class="text-xs text-mocha">Shopify and Authorize.net, and SwipeSimple, are separate sections and are never added together. Gross sales are after discounts and before tax and tips. Each store is its own line. Unavailable or Unknown means the source did not report the amount; it is not zero.</p>
   </header>
-  <% if summary.empty? %>
-    <p class="p-4 text-sm text-mocha">No store or SwipeSimple figures are stored for this date. This does not establish a zero-sales day.</p>
-  <% else %>
-    <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Daily close summary, scroll horizontally for all columns">
+
+  <section id="daily-close-stores" class="space-y-3 border-b border-fog p-4" aria-labelledby="daily-close-stores-title">
+    <div>
+      <h3 id="daily-close-stores-title" class="card-title">Shopify and Authorize.net</h3>
+      <p class="card-hint">Store sales, then Authorize.net payments settled this day. Authorize.net payments are evidence for the store sales above, not more sales.</p>
+    </div>
+    <% if summary.store_rows.empty? %>
+      <p class="text-sm text-mocha">No store figures are stored for this date. This does not establish a zero-sales day.</p>
+    <% else %>
+      <%= render 'shared/daily_close_rows', rows: summary.store_rows, label: 'Store sales', day: day %>
+    <% end %>
+    <% anet = summary.authorize_net_rows %>
+    <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Authorize.net settled payments">
       <table class="w-full text-sm">
-        <caption class="sr-only">Gross sales, refunds, net sales, collected tax, tips, cash and credit for each store and SwipeSimple</caption>
-        <thead class="border-b border-fog bg-haze/60"><tr><th scope="col" class="th">Store</th><% columns.each do |label, _| %><th scope="col" class="th text-right"><%= label %></th><% end %></tr></thead>
+        <caption class="p-2 text-left text-sm font-semibold">Authorize.net settled this day — not additional sales</caption>
+        <thead class="border-b border-fog bg-haze/60"><tr><th scope="col" class="th">Gateway</th><th scope="col" class="th text-right">Settled payments</th><th scope="col" class="th text-right">Settled refunds</th><th scope="col" class="th text-right">Net settled</th></tr></thead>
         <tbody class="divide-y divide-fog">
-          <% summary.rows.each do |row| %>
-            <tr class="<%= 'bg-haze/40' if row.kind == 'swipesimple' %>">
-              <th scope="row" class="td text-left font-medium"><% if row.kind == 'swipesimple' && Current.user.can?('sales.read') %><%= link_to(row.label, swipesimple_days_path(date: day), class: 'text-olive underline') %><% else %><%= row.path && Current.user.can?('sales.read') ? link_to(row.label, ctrax_day_path(row.path), class: 'text-olive underline') : row.label %><% end %><span class="block text-xs font-normal text-mocha"><%= row.currency %></span></th>
-              <% columns.each do |_, key| %><td class="td text-right tabular-nums <%= 'font-semibold' if key == :net %>"><%= reconciliation_money(row[key]) %></td><% end %>
+          <% anet.each do |row| %>
+            <tr data-authorize-net-row="<%= row[:account] %>">
+              <th scope="row" class="td text-left font-medium">Authorize.net <%= row[:account] %><span class="block text-xs font-normal text-mocha"><%= row[:currency] || 'Currency unknown' %></span></th>
+              <td class="td text-right tabular-nums"><%= reconciliation_money(row[:sales_cents]) %><span class="block text-xs text-mocha"><%= pluralize(row[:sales_count], 'payment') %></span></td>
+              <td class="td text-right tabular-nums"><%= reconciliation_money(row[:refund_cents]) %><span class="block text-xs text-mocha"><%= pluralize(row[:refund_count], 'refund') %></span></td>
+              <td class="td text-right font-semibold tabular-nums"><%= reconciliation_money(row[:sales_cents] - row[:refund_cents]) %></td>
             </tr>
-            <% if row.notes %><tr><td class="td text-xs text-mocha" colspan="<%= columns.size + 1 %>"><%= row.label %>: <%= row.notes %></td></tr><% end %>
           <% end %>
+          <% if anet.empty? %><tr><td class="empty-row" colspan="4">No Authorize.net settlements are stored for this day. Missing rows do not prove zero settlements.</td></tr><% end %>
         </tbody>
       </table>
     </div>
-  <% end %>
+    <p class="text-xs text-mocha">Settlement dates (America/New_York), newest API or portal observation per transaction. Settlement can fall on a later day than the sale. <%= link_to 'Authorize.net evidence for this day', daily_reconciliations_path(day: day.iso8601, anchor: 'source-evidence'), class: 'font-semibold text-olive-deep hover:underline' %></p>
+  </section>
+
+  <section id="daily-close-swipesimple" class="space-y-3 p-4" aria-labelledby="daily-close-swipesimple-title">
+    <div class="flex flex-wrap items-start justify-between gap-2">
+      <div>
+        <h3 id="daily-close-swipesimple-title" class="card-title">SwipeSimple</h3>
+        <p class="card-hint">The store register. SwipeSimple’s daily sales report and its transaction totals describe the same sales; neither is added to Shopify or Authorize.net.</p>
+      </div>
+      <% if sales_reader %><%= link_to 'SwipeSimple daily close', swipesimple_days_path(date: day), class: 'btn-ghost btn-sm' %><% end %>
+    </div>
+    <%= render 'shared/swipesimple_register_totals', close: summary.swipesimple_close, level: :h4 %>
+    <% if summary.swipesimple_row %>
+      <%= render 'shared/daily_close_rows', rows: [summary.swipesimple_row], label: 'SwipeSimple transaction totals', day: day %>
+    <% else %>
+      <p class="text-sm text-mocha">No SwipeSimple transactions are stored for this date. This does not establish a zero-sales day.</p>
+    <% end %>
+  </section>
 </section>
