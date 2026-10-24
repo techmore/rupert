@@ -51,10 +51,14 @@ module NativeSignIn
   end
 
   def callback_url(code: nil, error: nil, message: nil)
-    query = if code then { code: code }
-            elsif message then { message: message.to_s[0, 300] }
-            else { error: error.to_s[0, 200] }
-            end
+    query =
+      if code
+        { code: code }
+      elsif message
+        { message: message.to_s[0, 300] }
+      else
+        { error: error.to_s[0, 200] }
+      end
     "#{CALLBACK}?#{query.to_query}"
   end
 
