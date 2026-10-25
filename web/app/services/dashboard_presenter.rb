@@ -122,7 +122,7 @@ class DashboardPresenter
     return {} unless can_read?('sales.read')
 
     @sales_freshness ||= begin
-      values = Setting.where(key: %w[sync_watermark_shopify sync_watermark_square]).pluck(:key, :value).to_h
+      values = Setting.of_tenant.where(key: %w[sync_watermark_shopify sync_watermark_square]).pluck(:key, :value).to_h
       result = %w[shopify square].index_with do |source|
         value = values["sync_watermark_#{source}"]
         { pulled_at: value.present? ? Time.zone.parse(value) : nil,

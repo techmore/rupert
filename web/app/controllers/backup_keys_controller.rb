@@ -96,7 +96,7 @@ class BackupKeysController < AuthenticatedController
 
   def authorize_owner
     actor = User.find_by(id: Current.user&.id, active: true)
-    return if actor&.super_admin? && actor.can?('settings.write')
+    return skip_authorization if actor&.super_admin? && actor.can?('settings.write') # gate
 
     ActivityLogger.log('backup_key_access_denied', details: "#{action_name} refused")
     redirect_to(settings_path, alert: 'Only the instance owner (super admin) can manage backup keys.')

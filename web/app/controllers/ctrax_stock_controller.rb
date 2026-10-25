@@ -2,6 +2,7 @@
 
 class CtraxStockController < AuthenticatedController
   def index
+    skip_authorization # gated here by inventory.read; a denial redirects below
     unless Current.user.can?('inventory.read')
       return redirect_to root_path, alert: 'Inventory read permission is required.'
     end

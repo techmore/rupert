@@ -17,11 +17,11 @@ class OauthAllowedDomain < ApplicationRecord
   # Does this tenant allow Google sign-in for the email's domain? Defaults to
   # Current.tenant; callers on the pre-auth callback (where Current.tenant may
   # be nil on the root domain) pass the resolved tenant explicitly. Queries are
-  # unscoped because the tenant is always given explicitly here.
+  # read with tenant_unscoped because the tenant is always given explicitly here.
   def self.allowed?(email, tenant: Current.tenant)
     return false if email.blank? || tenant.nil?
 
     domain = email.split('@').last.to_s.downcase
-    unscoped.exists?(tenant_id: tenant.id, domain: domain)
+    tenant_unscoped(tenant.id).exists?(domain: domain)
   end
 end

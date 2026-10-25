@@ -73,7 +73,7 @@ module Finance
       keywords.to_s.split(/[,\n]/).map { |word| word.strip.downcase }.reject { |word| word.length < 2 }.uniq
     end
 
-    def in_use_count = Finance::Expense.unscoped.where(tenant_id: tenant_id, category: key).count
+    def in_use_count = Finance::Expense.tenant_unscoped(tenant_id).where(category: key).count
 
     private
 
@@ -92,8 +92,11 @@ module Finance
       self.key = key_was if key_changed?
     end
 
+    # Looked up by id within this workspace: the association hides another workspace's account
+    # (it reads as nil), which must not pass as "no account".
     def ledger_account_is_expense
-      return if ledger_account.nil? || (ledger_account.account_type == 'expense' && ledger_account.tenant_id == tenant_id)
+      return if ledger_account_id.blank?
+      return if Finance::Account.tenant_unscoped(tenant_id || Current.tenant_id).exists?(id: ledger_account_id, account_type: 'expense')
 
       errors.add(:ledger_account, 'must be an expense account in this workspace')
     end

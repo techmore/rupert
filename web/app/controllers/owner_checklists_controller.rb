@@ -127,6 +127,7 @@ class OwnerChecklistsController < AuthenticatedController
 
     Current.user = actor
     Current.tenant = workspace
+    skip_authorization # gate: fresh owner role (admin of this workspace, or super admin)
   end
 
   def set_checklist

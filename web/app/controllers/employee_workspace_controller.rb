@@ -137,7 +137,8 @@ class EmployeeWorkspaceController < AuthenticatedController
 
   def require_worker
     @worker = TimeClockService.worker_for(Current.user, include_on_leave: true)
-    return if @worker
+    # gate: the signed-in person's own linked staff record; every page reads only @worker's data
+    return skip_authorization if @worker
 
     redirect_to employee_app_path, alert: 'Ask an administrator to link your staff record before using your personal workspace.'
   end

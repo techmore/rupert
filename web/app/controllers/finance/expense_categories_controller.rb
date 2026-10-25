@@ -14,7 +14,7 @@ module Finance
 
     def index
       @categories = ExpenseCategory.catalog
-      @usage = Finance::Expense.unscoped.where(tenant_id: Current.tenant_id).group(:category).count
+      @usage = Finance::Expense.with_discarded.group(:category).count
     end
 
     def new

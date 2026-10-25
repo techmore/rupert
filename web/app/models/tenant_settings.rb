@@ -18,7 +18,7 @@ class TenantSettings
   class << self
     DEFAULTS.each_key do |key|
       define_method(key) do
-        value = Setting.find_by(key: "tenant_#{key}", tenant_id: Current.tenant_id)&.value
+        value = Setting.for_tenant("tenant_#{key}")&.value
         value.presence || DEFAULTS[key]
       end
     end

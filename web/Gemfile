@@ -74,8 +74,8 @@ gem "aasm"
 gem "pundit"
 # Soft deletes (keep history on financial/CRM records)
 gem "discard"
-# Per-request memo (EnvStore, ConnectionControlCenter); was only pulled in by paper_trail
-gem "request_store", "~> 1.7"
+# Used directly (per-request settings caches); ApplicationJob clears it around each job.
+gem "request_store"
 # Excel export for ledger/reports/sales
 gem "caxlsx_rails"
 # PDF export for the current-inventory snapshot (Inventory page → Download PDF)

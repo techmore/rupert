@@ -204,7 +204,7 @@ class PlatformPushGuard
     private
 
     def load(platform)
-      raw = Setting.find_by(key: key(platform), tenant_id: Current.tenant_id)&.value
+      raw = Setting.for_tenant(key(platform))&.value
       return {} if raw.blank?
 
       parsed = JSON.parse(raw)

@@ -314,7 +314,7 @@ class SwipesimpleImporter
         orders = Core::Order.where(tenant_id: tenant_id, source: 'swipesimple', source_order_id: batch.pluck(:source_order_id))
           .includes(:order_lines, :payments).to_a
         existing.merge!(orders.index_by(&:source_order_id))
-        refunded.merge(Core::Refund.unscoped.where(tenant_id: tenant_id, order_id: orders.map(&:id)).pluck(:order_id))
+        refunded.merge(Core::Refund.tenant_unscoped(tenant_id).where(order_id: orders.map(&:id)).pluck(:order_id))
         batch_ledgers = LedgerEntry.where(tenant_id: tenant_id, source: 'swipesimple', sourceOrderId: batch.pluck(:source_order_id)).to_a
         ledgers.merge!(batch_ledgers.index_by(&:id))
         batch_ledgers.each do |ledger|

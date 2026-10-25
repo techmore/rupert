@@ -5,7 +5,7 @@ class SquareTimecardSync
   KEY = 'square_timecards_schedule'
 
   def self.configuration
-    JSON.parse(Setting.find_by(tenant_id: Current.tenant_id, key: KEY)&.value || '{}')
+    JSON.parse(Setting.for_tenant(KEY)&.value || '{}')
   rescue JSON::ParserError
     {}
   end

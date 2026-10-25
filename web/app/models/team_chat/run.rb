@@ -21,7 +21,7 @@ module TeamChat
     def self.for_reply!(reply)
       unscoped.create_or_find_by!(message_id: reply.id) do |run|
         run.tenant_id = reply.tenant_id
-        trigger = Message.unscoped.find_by(id: reply.meta.to_h['trigger_id'], room_id: reply.room_id, tenant_id: reply.tenant_id)
+        trigger = Message.tenant_unscoped(reply.tenant_id).find_by(id: reply.meta.to_h['trigger_id'], room_id: reply.room_id)
         if trigger&.person?
           run.request_context = { 'requester_id' => trigger.user_id, 'requester_name' => trigger.user&.display_name,
                                   'trigger_id' => trigger.id, 'last_chat' => trigger.body, 'requested_at' => (reply.meta.to_h['source_requested_at'] || (trigger.edited_at || trigger.created_at).iso8601(6)),
@@ -42,7 +42,7 @@ module TeamChat
       return true unless context['source_room_id']
       return false unless context['source_trigger_id']
 
-      source = Message.unscoped.find_by(id: context['source_trigger_id'], tenant_id: tenant_id)
+      source = Message.tenant_unscoped(tenant_id).find_by(id: context['source_trigger_id'])
       matches_request?(source, room_id: context['source_room_id'], parent_id: context['source_parent_id'], revision: context.fetch('source_request_revision', 0))
     end
 

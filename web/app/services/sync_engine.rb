@@ -112,7 +112,7 @@ class SyncEngine
     end
 
     def running?
-      SyncRun.unscoped.where(tenant_id: Current.tenant_id, status: 'running').exists?
+      SyncRun.tenant_unscoped.where(status: 'running').exists?
     end
 
     # One-way import of a SwipeSimple CSV export (SwipeSimple has no public
@@ -161,7 +161,7 @@ class SyncEngine
     end
 
     def read_watermark(source)
-      value = Setting.find_by(key: watermark_key(source), tenant_id: Current.tenant_id)&.value
+      value = Setting.for_tenant(watermark_key(source))&.value
       value.present? ? Time.zone.parse(value) : nil
     rescue ArgumentError, TypeError
       nil
@@ -211,7 +211,7 @@ class SyncEngine
 
     def recover_stale_runs!
       cutoff = STALE_RUN_AFTER.ago
-      SyncRun.unscoped.where(tenant_id: Current.tenant_id, status: 'running').where('"startedAt" < ?', cutoff).update_all(
+      SyncRun.tenant_unscoped.where(status: 'running').where('"startedAt" < ?', cutoff).update_all(
         status: 'failed',
         finishedAt: Time.current,
         error: "Automatically recovered stale sync after #{STALE_RUN_AFTER.inspect}"

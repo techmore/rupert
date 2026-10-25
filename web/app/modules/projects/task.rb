@@ -264,7 +264,7 @@ module Projects
 
     def project_belongs_to_tenant
       return if project_id.blank?
-      return if Projects::Project.unscoped.exists?(id: project_id, tenant_id: tenant_id || Current.tenant_id)
+      return if Projects::Project.tenant_unscoped(tenant_id || Current.tenant_id).exists?(id: project_id)
 
       errors.add(:project, 'was not found')
     end

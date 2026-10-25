@@ -89,7 +89,9 @@ class AskRupertController < AuthenticatedController
 
   def require_available
     return head :not_found unless AskRupert::Config.current.enabled?
-    head :forbidden if Current.user.employee? || !Current.user.can?('chat.use') || Current.tenant_id != Current.user.tenant_id
+    return head :forbidden if Current.user.employee? || !Current.user.can?('chat.use') || Current.tenant_id != Current.user.tenant_id
+
+    skip_authorization # gate: chat.use in the user's own workspace; conversations are owned_by(Current.user)
   end
 
   def config_now = @config_now ||= AskRupert::Config.current

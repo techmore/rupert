@@ -165,7 +165,7 @@ module Work
       return if parent_id.blank?
 
       errors.add(:parent, 'cannot be the item itself') if persisted? && parent_id == id
-      errors.add(:parent, 'was not found') unless Work::Item.unscoped.exists?(id: parent_id, tenant_id: tenant_id || Current.tenant_id)
+      errors.add(:parent, 'was not found') unless Work::Item.tenant_unscoped(tenant_id || Current.tenant_id).exists?(id: parent_id)
     end
   end
 end

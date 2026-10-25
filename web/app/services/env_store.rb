@@ -70,14 +70,14 @@ module EnvStore
 
   # All platform rows, read once per request or job; platform_set clears it.
   def self.platform_settings
-    Current.metadata[:platform_settings] ||= Setting.where(key: PLATFORM_KEYS, tenant_id: nil).index_by(&:key)
+    Current.metadata[:platform_settings] ||= Setting.platform.where(key: PLATFORM_KEYS).index_by(&:key)
   end
 
   def self.platform_set(key, value)
     raise ArgumentError, 'Key is not a platform setting' unless PLATFORM_KEYS.include?(key)
 
     Current.metadata.delete(:platform_settings)
-    setting = Setting.find_by(key: key, tenant_id: nil)
+    setting = Setting.global(key)
     if value.nil?
       setting&.destroy!
     else
@@ -103,14 +103,14 @@ module EnvStore
   end
 
   def self.scoped(key)
-    Setting.find_by(key: key, tenant_id: Current.tenant_id)
+    Setting.for_tenant(key)
   end
 
   def self.all_scoped
     tenant_id = Current.tenant_id
     maps = RequestStore.fetch(:env_store_all_by_tenant) { {} }
     maps.fetch(tenant_id) do
-      maps[tenant_id] = Setting.where(key: MANAGED_KEYS, tenant_id: tenant_id).index_by(&:key)
+      maps[tenant_id] = Setting.of_tenant(tenant_id).where(key: MANAGED_KEYS).index_by(&:key)
     end
   end
 
@@ -163,7 +163,7 @@ module EnvStore
   end
 
   def self.settings_map
-    Setting.where(tenant_id: Current.tenant_id).to_h { |setting| [setting.key, setting.value] }
+    Setting.of_tenant.to_h { |setting| [setting.key, setting.value] }
   end
 
   def self.mask(value)

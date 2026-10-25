@@ -47,6 +47,8 @@ module Projects
 
     def require_reviewer
       raise Pundit::NotAuthorizedError unless RequestTriage.reviewer?(Current.user)
+
+      skip_authorization # gate: RequestTriage reviewer
     end
 
     def load_request

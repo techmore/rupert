@@ -17,6 +17,17 @@ module TenantScoped
     before_validation :assign_tenant, on: :create
   end
 
+  class_methods do
+    # Every default scope removed except the workspace filter: rows the model's other
+    # default scopes hide (discarded, merged, ...), but only from +tenant_id+. Use it
+    # instead of `unscoped.where(tenant_id: ...)`, which is one typo from reading
+    # every workspace. Prefer a model's named helper (with_discarded, including_merged)
+    # when only one extra scope should be lifted.
+    def tenant_unscoped(tenant_id = Current.tenant_id)
+      unscoped.where(tenant_id: tenant_id)
+    end
+  end
+
   private
 
   def assign_tenant

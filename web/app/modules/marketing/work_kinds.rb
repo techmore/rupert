@@ -104,10 +104,10 @@ module Marketing
       item.errors.add(:details, 'Give a venue or a channel') if details['venue'].blank? && details['channel'].blank?
       item.errors.add(:details, 'Channel is not a known channel') if details['channel'].present? && !CHANNELS.key?(details['channel'])
       tenant_id = item.tenant_id || Current.tenant_id
-      if details['location_id'].present? && !Location.unscoped.exists?(tenant_id: tenant_id, externalId: details['location_id'])
+      if details['location_id'].present? && !Location.tenant_unscoped(tenant_id).exists?(externalId: details['location_id'])
         item.errors.add(:details, 'Location was not found in this workspace')
       end
-      if details['offer_id'].present? && !Marketing::Offer.unscoped.exists?(tenant_id: tenant_id, id: details['offer_id'])
+      if details['offer_id'].present? && !Marketing::Offer.tenant_unscoped(tenant_id).exists?(id: details['offer_id'])
         item.errors.add(:details, 'Offer was not found in this workspace')
       end
       check_campaign_source(item, tenant_id)
@@ -118,7 +118,7 @@ module Marketing
       tenant_id = item.tenant_id || Current.tenant_id
       check_campaign_source(item, tenant_id)
       if item.parent_id.present?
-        parent = Work::Item.unscoped.find_by(id: item.parent_id, tenant_id: tenant_id)
+        parent = Work::Item.tenant_unscoped(tenant_id).find_by(id: item.parent_id)
         item.errors.add(:parent, 'must be a marketing event') unless parent&.kind == 'marketing_event'
       elsif item.source_id.blank?
         item.errors.add(:base, 'A campaign task needs a campaign or an event')
@@ -128,7 +128,7 @@ module Marketing
     def check_campaign_source(item, tenant_id)
       return if item.source_type.blank? && item.source_id.blank?
 
-      valid = item.source_type == 'Marketing::Campaign' && Marketing::Campaign.unscoped.exists?(tenant_id: tenant_id, id: item.source_id)
+      valid = item.source_type == 'Marketing::Campaign' && Marketing::Campaign.tenant_unscoped(tenant_id).exists?(id: item.source_id)
       item.errors.add(:source, 'must be a campaign in this workspace') unless valid
     end
   end

@@ -10,6 +10,9 @@ class FeedbackReportsController < AuthenticatedController
   before_action -> { response.headers['Cache-Control'] = 'no-store' }
   before_action :load_report, only: %i[show screenshot]
   before_action :require_attachment_access, only: :screenshot
+  # Any signed-in staff member may report; reads are scoped to reported_by(Current.user)
+  # unless FeedbackAttachment.viewable_by? (administrators), which also gates screenshots.
+  skip_after_action :verify_authorized
 
   def index
     @reports = AgentFeedback.reported_by(Current.user).newest_first.limit(100)
