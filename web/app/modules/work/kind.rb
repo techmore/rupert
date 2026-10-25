@@ -9,6 +9,7 @@ module Work
   # transitions: { 'start' => { from: %w[todo], to: 'in_progress', who: :writer }, ... }
   #   who: :writer   — anyone the kind's policy lets update the item
   #        :assignee — only the item's assignee (or a writer acting for them)
+  #        :assignee_only — only the item's assignee; nobody acts for them (a trainee completing training)
   #        :manager  — only someone with the kind's write permission
   # fields: { 'venue' => { type: :string, max: 200, required: false }, ... }
   #   types: :string, :text, :integer, :boolean, :date (YYYY-MM-DD), :datetime (local wall time YYYY-MM-DDTHH:MM), :url
@@ -19,15 +20,19 @@ module Work
   #   nil (not on the calendar).
   # prepare: optional callable(item) run before validation (a kind that derives columns from its details, such as an
   #   event's start_on/due_on from its local start and end). check: optional callable(item) adding cross-field errors.
+  # event_details: optional callable(item) → Hash of facts saved on each history row the item writes (training: the
+  #   module revision the step was taken against).
+  # activity: optional callable(item, event, user, note) that writes the Activity log entry for a transition instead
+  #   of the default "<prefix>_transitioned" (training keeps its own training_started/… names).
   Kind = Data.define(:key, :label, :model, :statuses, :initial_status, :started_statuses, :done_statuses, :transitions, :fields, :permissions,
-    :policy, :activity_prefix, :path, :calendar, :prepare, :check)
+    :policy, :activity_prefix, :path, :calendar, :prepare, :check, :event_details, :activity)
 
   class Kind
     FIELD_TYPES = %i[string text integer boolean date datetime url].freeze
     CALENDAR_MODES = [nil, :due, :span].freeze
 
     def initialize(key:, label:, statuses:, initial_status:, transitions:, permissions:, model: nil, started_statuses: [], done_statuses: [], fields: {},
-      policy: nil, activity_prefix: nil, path: nil, calendar: nil, prepare: nil, check: nil)
+      policy: nil, activity_prefix: nil, path: nil, calendar: nil, prepare: nil, check: nil, event_details: nil, activity: nil)
       fields = fields.to_h { |name, spec| [name.to_s, spec] }
       bad = fields.reject { |_, spec| FIELD_TYPES.include?(spec[:type]) }
       raise ArgumentError, "unknown field type for #{bad.keys.to_sentence}" if bad.any?
@@ -35,7 +40,7 @@ module Work
 
       super(key: key.to_s, label:, model:, statuses: statuses.map(&:to_s), initial_status: initial_status.to_s,
         started_statuses: started_statuses.map(&:to_s), done_statuses: done_statuses.map(&:to_s), transitions:, fields:, permissions:, policy:,
-        activity_prefix: (activity_prefix || key).to_s, path:, calendar:, prepare:, check:)
+        activity_prefix: (activity_prefix || key).to_s, path:, calendar:, prepare:, check:, event_details:, activity:)
     end
 
     def model_class = model&.constantize

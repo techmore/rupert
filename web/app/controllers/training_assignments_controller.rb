@@ -25,15 +25,26 @@ class TrainingAssignmentsController < AuthenticatedController
 
   def cancel
     authorize(:module, :hr_write?)
-    assignment = TrainingAssignment.find_by!(tenant_id: Current.tenant_id, id: params[:id])
+    assignment = find_assignment
+    return redirect_to(training_module_path(assignment.training_module, anchor: 'assignments'), alert: 'That page was out of date. Try again.') if @moved
+
     assignment.transition!('cancel', actor: Current.user, note: params[:note])
-    ActivityLogger.log('training_assignment_cancelled', subject: assignment.training_module, details: assignment.assignee.display_name)
     redirect_to training_module_path(assignment.training_module, anchor: 'assignments'), notice: 'Assignment cancelled.'
   rescue TrainingAssignment::TransitionRefused => e
     redirect_to training_module_path(assignment.training_module, anchor: 'assignments'), alert: e.message
   end
 
   private
+
+  # By id; an id the assignment had before the move to the shared table (#409) finds it too, without acting on it.
+  def find_assignment
+    assignment = TrainingAssignment.find_by(tenant_id: Current.tenant_id, id: params[:id])
+    return assignment if assignment
+
+    moved = TrainingAssignment::Legacy.where(id: params[:id].to_s).pick(:work_item_id)
+    @moved = true
+    TrainingAssignment.find_by!(tenant_id: Current.tenant_id, id: moved)
+  end
 
   def parse_due_on
     return nil if params[:due_on].blank?

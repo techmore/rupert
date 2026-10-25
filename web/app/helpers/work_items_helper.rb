@@ -5,11 +5,11 @@
 module WorkItemsHelper
   WORK_STATUS_LABELS = {
     'todo' => 'To do', 'in_progress' => 'In progress', 'blocked' => 'Blocked', 'done' => 'Done', 'planned' => 'Planned',
-    'confirmed' => 'Confirmed', 'held' => 'Held', 'cancelled' => 'Cancelled'
+    'confirmed' => 'Confirmed', 'held' => 'Held', 'cancelled' => 'Cancelled', 'assigned' => 'Assigned', 'completed' => 'Completed'
   }.freeze
 
   WORK_STATUS_PILLS = {
-    'done' => 'pill-fern', 'held' => 'pill-fern', 'in_progress' => 'pill-olive', 'confirmed' => 'pill-olive', 'blocked' => 'pill-rose'
+    'done' => 'pill-fern', 'held' => 'pill-fern', 'completed' => 'pill-fern', 'in_progress' => 'pill-olive', 'confirmed' => 'pill-olive', 'blocked' => 'pill-rose'
   }.freeze
 
   WORK_EVENT_LABELS = {

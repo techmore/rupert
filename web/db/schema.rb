@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_26_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_26_150900) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -3474,9 +3474,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_100000) do
     t.integer "lock_version", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "work_item_id"
     t.index ["tenant_id", "assignee_id", "status"], name: "idx_training_assignments_by_assignee"
     t.index ["tenant_id", "training_module_id", "status"], name: "idx_training_assignments_by_module"
     t.index ["training_module_id"], name: "index_training_assignments_on_training_module_id"
+    t.index ["work_item_id"], name: "idx_training_assignments_work_item"
   end
 
   create_table "training_attachments", force: :cascade do |t|
@@ -3725,6 +3727,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_100000) do
     t.text "field_changes"
     t.string "note"
     t.datetime "created_at", null: false
+    t.text "details"
     t.index ["tenant_id", "item_kind", "created_at"], name: "idx_work_item_events_by_kind"
     t.index ["tenant_id", "work_item_id", "created_at"], name: "idx_work_item_events_timeline"
   end

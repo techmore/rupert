@@ -4,9 +4,10 @@
 <% show_choices = [['Everything', 'all']] %>
 <% show_choices << ['Task deadlines', 'tasks'] if @all_kinds.include?('task') %>
 <% show_choices << ['Marketing', 'marketing'] if (@all_kinds & %w[marketing_event campaign_task]).any? %>
+<% show_choices << ['Training due dates', 'training'] if @all_kinds.include?('training_assignment') %>
 <% by_day = @calendar.by_day %>
 <div class="space-y-6">
-  <%= page_header 'Calendar', subtitle: "Task deadlines and marketing events you can open. Task dates are in store time (#{Time.zone.tzinfo.abbreviation}); event times are local to each event." %>
+  <%= page_header 'Calendar', subtitle: "Task deadlines, training due dates and marketing events you can open. Task and training dates are in store time (#{Time.zone.tzinfo.abbreviation}); event times are local to each event." %>
 
   <nav class="tabs" aria-label="Calendar views">
     <%= link_to 'Month', query.call(view: 'month'), class: 'tab', aria: { current: @view == 'month' ? 'page' : nil } %>
@@ -58,7 +59,7 @@
   <% else %>
     <% days = by_day.keys.select { |day| day.month == @month.month }.sort %>
     <% if days.empty? %>
-      <section class="card"><%= empty_state "Nothing due or scheduled in #{@month.strftime('%B %Y')}", hint: 'Try another month, or add a due date to a task or an event in Marketing.' %></section>
+      <section class="card"><%= empty_state "Nothing due or scheduled in #{@month.strftime('%B %Y')}", hint: 'Try another month, or add a due date to a task, a training assignment or an event in Marketing.' %></section>
     <% else %>
       <section class="card overflow-hidden" aria-label="Agenda">
         <div class="table-region" role="region" tabindex="0" aria-label="Agenda">

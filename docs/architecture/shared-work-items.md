@@ -7,7 +7,8 @@ status steps, actions and views, and one shared way to assign, date, track statu
 check workspace and role access. Each module keeps its own screens; it stops keeping its own copy of
 the workflow table.
 
-Status: **phases 1, 3 and 4 are built**: the core and tasks (phase 1), the marketing kinds and their
+Status: **phases 1, 2b, 3 and 4 are built**: the core and tasks (phase 1), training assignments
+(phase 2b, [#409](https://github.com/techmore/rupert/issues/409)), the marketing kinds and their
 results table (phase 3, [#415](https://github.com/techmore/rupert/issues/415)) and the shared calendar
 (phase 4, [#417](https://github.com/techmore/rupert/issues/417)). The remaining phases are listed at the end
 and are not built.
@@ -20,7 +21,7 @@ The shared table is the existing `tasks` table. It is not renamed (see section 8
 | Column | Shared meaning |
 | --- | --- |
 | `tenant_id` | Workspace. Every query is filtered by `TenantScoped`. |
-| `kind` | Which kind of work this row is: `task`, `marketing_event` or `campaign_task`. Must be registered (section 2). |
+| `kind` | Which kind of work this row is: `task`, `training_assignment`, `marketing_event` or `campaign_task`. Must be registered (section 2). |
 | `title`, `description` | What it is. `Work::Item#body` is the same column as `description`. |
 | `status` | The kind's current status. Changes only through the kind's transitions. |
 | `priority` | `low`, `medium`, `high`, `urgent`. |
@@ -51,7 +52,8 @@ registered cannot be saved. Each kind (`Work::Kind`) declares:
 - **statuses**, the **initial** one, which count as **started** and which as **done**;
 - **transitions**: `event => { from: [statuses], to: status, who: }`, where `who` is `:writer`
   (anyone the kind's policy lets update the item), `:assignee` (the assignee, or a manager) or
-  `:manager` (only someone with the kind's write permission);
+  `:manager` (only someone with the kind's write permission), or `:assignee_only` (only the assignee; nobody
+  acts for them);
 - **fields**: the `details` keys, each with a type (`string`, `text`, `integer`, `boolean`, `date`
   as `YYYY-MM-DD`, `url` as `https://…`), an optional `max` length and `required` flag. Unknown keys
   are refused;
@@ -62,7 +64,9 @@ registered cannot be saved. Each kind (`Work::Kind`) declares:
 - **activity prefix** for Activity log entries, and a **path** to the item's page;
 - **calendar**: `:due` (on its `due_on`), `:span` (`start_on` through `due_on`) or none;
 - optional **prepare** (run before validation, e.g. an event deriving `start_on`/`due_on` from its
-  local start and end) and **check** (cross-field rules) callables.
+  local start and end) and **check** (cross-field rules) callables;
+- optional **event_details** (facts saved on every history row, in `work_item_events.details`) and
+  **activity** (writes the Activity log entry for a transition instead of `<prefix>_transitioned`).
 
 `Work::Kind#visible_to(user, relation)` narrows a relation to the items of the kind the person may
 see, through the kind's own policy scope.
@@ -74,8 +78,10 @@ Registered:
 | `task` | `Projects::Task` | `todo`, `in_progress`, `blocked`, `done` | read from the task's AASM machine: `start`, `unstart`, `finish`, `block`, `reopen` | `projects.read`, `projects.write`, staff `tasks.self` | none (task fields are columns) |
 | `marketing_event` | — (`Work::Item`) | `planned`, `confirmed`, `held`, `cancelled` | `confirm` (writer), `hold` (writer), `cancel` (manager), `reopen` (manager, from held or cancelled) | `marketing.read`, `marketing.write`, Marketing on (`Marketing::WorkItemPolicy`); no staff access | `starts_at`, `ends_at` (local, required), `time_zone` (required), `venue`, `channel`, `location_id`, `offer_id`, `url`; `start_on`/`due_on` hold the local dates |
 | `campaign_task` | — (`Work::Item`) | `todo`, `in_progress`, `done`, `cancelled` | `start`, `finish` (assignee or manager), `cancel`, `reopen` (manager) | as `marketing_event` | none; `source` = the campaign and/or `parent` = the event |
+| `training_assignment` | — (`Work::Item`; read as `TrainingAssignment`) | `assigned`, `in_progress`, `completed`, `cancelled` | `start`, `complete` (assignee only), `cancel` (manager) | `hr.read`, `hr.write`; everyone else only their own (`Training::AssignmentPolicy`) | `completed_revision`, `completed_by_id`, `legacy_id`; `source` = the `TrainingModule`, `requester` = who assigned it |
 
-The marketing kinds are defined in `web/app/modules/marketing/work_kinds.rb`.
+The marketing kinds are defined in `web/app/modules/marketing/work_kinds.rb`, the training kind in
+`web/app/modules/training/work_kind.rb`.
 
 The task kind reads its transitions from `Projects::Task`'s state machine, so the two cannot
 disagree. The task's own guards still apply (start and finish wait on unfinished dependencies;
@@ -105,6 +111,7 @@ finishing a repeating task creates the next one; board moves take a row lock).
 | `actor_id`, `actor_name` | Who did it; `system` for jobs |
 | `field_changes` | JSON `{ field: [before, after] }`; long text is cut at 300 characters |
 | `note` | The blocked reason, or a transition note |
+| `details` | JSON facts the kind keeps about the moment (training: `module_revision`; copied rows: `legacy_event_id`) |
 | `created_at` | When |
 
 Rows are written by `Work::Tracked` in the same transaction as the change, whichever path made it
@@ -139,10 +146,10 @@ history on any screen yet.
 | Tasks ([#413](https://github.com/techmore/rupert/issues/413)) | kind `task` — **done in phase 1** | checklist, comments, time, files, dependencies (child tables) |
 | Projects | phase 1: unchanged container (`project_id`). Folding projects in as kind `project` with tasks as children is an open decision for a later phase | — |
 | Assistant and feature requests ([#406](https://github.com/techmore/rupert/issues/406), PR #519) | kind `request`: `source` = the `AgentFeedback` row, `requester_id`, statuses `new` → `accepted` / `merged` / `declined`; accepting creates a child `task` (`parent_id`) | `AgentFeedback` keeps the inbound message, its chat link and GitHub sync; chat records stay their own conversation records ([#408](https://github.com/techmore/rupert/issues/408)) |
-| Training ([#409](https://github.com/techmore/rupert/issues/409), PR #521) | kind `training_assignment`: `source` = the `TrainingModule`, statuses `assigned` → `in_progress` → `completed`, or `cancelled` (the `TrainingAssignment::TRANSITIONS` table moves into the registry as is), `details` = `completed_revision`, `completed_by_id` | `training_modules` and `training_attachments` are content, not work, and stay |
+| Training ([#409](https://github.com/techmore/rupert/issues/409), PR #521) | **done in phase 2b**: kind `training_assignment`: `source` = the `TrainingModule`, statuses `assigned` → `in_progress` → `completed`, or `cancelled` (the old `TrainingAssignment::TRANSITIONS` table moved into the registry as is), `details` = `completed_revision`, `completed_by_id`, `legacy_id` | `training_modules` and `training_attachments` are content, not work, and stay |
 | Marketing campaigns and events ([#415](https://github.com/techmore/rupert/issues/415)) | **done in phase 3**: kind `campaign_task` (work for a campaign, `source` = `Marketing::Campaign`, `parent` = the event) and kind `marketing_event` (`details`: `starts_at`, `ends_at`, `time_zone`, `venue` or `channel`, `location_id`, `offer_id`, `url`; `source` = the campaign) | `Marketing::Campaign` and `Offer` stay. Observed redemptions and results are facts, not work: `marketing_results` (`Marketing::Result`), one row per event, code, order source, store location and currency |
 | Orders | kind `order_follow_up` for work about an order (special orders, fulfilment problems), `source` = `Core::Order` | `Core::Order` and its lines, payments and fulfilments stay the sales record. Orders do not move into the work table |
-| Calendar ([#417](https://github.com/techmore/rupert/issues/417)) | **done in phase 4**: `/calendar` (`Work::Calendar`) reads `Work::Item` across kinds (task and campaign task `due_on`, event `start_on`–`due_on`), through each kind's policy scope, in one query per range, with time zone, place, status and a link from the kind's `path` | — |
+| Calendar ([#417](https://github.com/techmore/rupert/issues/417)) | **done in phase 4**: `/calendar` (`Work::Calendar`) reads `Work::Item` across kinds (task, training and campaign task `due_on`, event `start_on`–`due_on`), through each kind's policy scope, in one query per range, with time zone, place, status and a link from the kind's `path` | — |
 
 ## 7. Moving a module in (each later phase)
 
@@ -223,10 +230,69 @@ are removed.
 `web/app/services/work/calendar.rb`, `Marketing::EventsController`, `EventWorkItemsController`,
 `EventResultsController`, `CalendarController`, `WorkItemsHelper`.
 
-## 10. Later phases (not built)
+## 10. Phase 2b: training assignments
+
+Training had an old table, so this is the first phase that follows every step of section 7.
+
+**Kind.** `Training::WorkKind` (`web/app/modules/training/work_kind.rb`): the old transitions unchanged
+(`start` and `complete` by the assignee only, `cancel` by `hr.write`), `calendar: :due`, the module revision on
+every history row (`event_details`), and the Activity log names training used before (`training_started`,
+`training_completed`, `training_assignment_cancelled`, about the module). `TrainingAssignment` is now a
+subclass of `Work::Item` with a `default_scope` on its kind (no `type` column, so no single-table
+inheritance); its `unscoped` keeps the kind filter, so the setup checklist's cross-workspace reads cannot see
+other kinds. `TrainingAssignmentEvent` reads `work_item_events` of the kind and translates the shared actions
+(`created` → assigned, `transitioned` by start/complete/cancel → started/completed/cancelled).
+`Training::AssignmentPolicy`: `hr.read` sees every assignment, `hr.write` assigns and cancels, everyone else
+(staff included) sees and works only their own; assignments are never destroyed.
+
+**Migration** `20261026150900_move_training_assignments_to_work_items` (additive):
+
+- adds `work_item_events.details` and `training_assignments.work_item_id` (indexed);
+- copies each old assignment into `tasks` (`kind = 'training_assignment'`, title = the module title, source =
+  the module, assignee, requester = assigned by, due date, status, started and completed times — the cancel time
+  for cancelled rows — and `details` = `legacy_id`, `completed_revision`, `completed_by_id`, original
+  timestamps), records the new id on the old row, and copies each old history row into `work_item_events`
+  (`assigned` → `created`; `started`/`completed`/`cancelled` → `transitioned` with `start`/`complete`/`cancel`)
+  with its actor, name, note, time, `module_revision` and `legacy_event_id`;
+- then checks that every old assignment has exactly one linked copy and every old event one copied event, and
+  stops, saving nothing, if not;
+- leaves `training_assignments` and `training_assignment_events` exactly as they were. They are read-only for
+  this release (`TrainingAssignment::Legacy` only reads the id mapping); drop them in a later pull request once
+  the copy is verified in production.
+
+The copy is idempotent. `bin/rails training:copy_legacy_assignments` runs it again: after a code rollback, the
+previous release keeps working on the old tables (it never reads the copies), and once the new code is back this
+task copies what it wrote meanwhile — new assignments, new history rows, and newer status on rows already
+copied — and checks the counts again.
+
+**URLs.** Module pages keep their ids. Assignment ids changed (they are now `tasks` ids):
+`/employee/training/:id` and its file links with an old id redirect (301) to the new id for the assignee only;
+an old-id `POST` (start, complete, cancel) redirects without acting. An id that is both a new id and an old one
+opens the new one.
+
+**Rollback.** Code rollback needs nothing (see above). `bin/rails db:migrate:down VERSION=20261026150900`,
+outside a transaction and after a backup, removes the copies, their history and the two added columns; it is
+refused while training items exist that were made after the migration (they exist only in `tasks`).
+
+**Raw-query audit, repeated for this kind.** The search of section 9 (`unscoped`/`unscope`, `FROM tasks`,
+`JOIN tasks`, `tasks.` fragments, `find_by_sql`/`select_all`/`execute`, every `Projects::Task` user) found no
+new read of the table that skips a kind filter. `GettingStartedChecklist` read `TrainingAssignment.unscoped`,
+which is now kind-safe. `test/integration/training_work_items_test.rb` checks that training rows change no
+task count, list, project progress, task page, task export or MCP task tool, plus the calendar by permission,
+old links and workspace isolation; `test/services/training_work_items_migration_test.rb` runs up, re-run,
+mismatch, down and up on a copy with rows.
+
+**Code.** `web/app/modules/training/work_kind.rb`, `web/app/policies/training/assignment_policy.rb`,
+`web/app/models/training_assignment.rb`, `training_assignment/legacy.rb`, `training_assignment_event.rb`,
+`web/lib/tasks/training.rake`; `Work::Kind` (`event_details`, `activity`, `:assignee_only`), `Work::Tracked`
+(transition notes, event details), `Work::Item` (a person who has since left no longer blocks saving an item
+they were already on).
+
+## 11. Later phases (not built)
 
 1. **Requests** (#406, PR #519): kind `request`; triage writes the request item and its child task.
-2. **Training** (#409, PR #521): kind `training_assignment`; copy assignments and their events.
+2. ~~Training~~: built (section 10). Drop `training_assignments` and `training_assignment_events` after a
+   release has verified the copy.
 3. ~~Marketing~~ and 4. ~~Calendar~~: built (section 9).
 5. **Projects**: decide whether projects become kind `project`.
 6. Show the item history on each item's page (marketing events show theirs; tasks do not yet).
@@ -235,9 +301,10 @@ are removed.
 
 ## Risks
 
-- Code that reads the `tasks` table with `unscoped` or raw SQL sees every kind. The search before
-  phase 3 was clean (section 9); repeat it before each new kind, and never call `unscoped` on
-  `Projects::Task` (it drops the kind filter as well as the workspace).
+- Code that reads the `tasks` table with `unscoped` or raw SQL sees every kind. The searches before
+  phases 3 and 2b were clean (sections 9 and 10); repeat it before each new kind, and never call `unscoped` on
+  `Projects::Task` (it drops the kind filter as well as the workspace). `TrainingAssignment.unscoped` keeps its
+  kind.
 - `details` is JSON in a text column: it cannot be indexed or summed. Fields that need that become
   columns in their own migration.
 - History grows by one row per change; there is no retention rule yet.

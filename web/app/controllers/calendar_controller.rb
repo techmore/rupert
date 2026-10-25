@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-# One calendar for task deadlines and marketing events (#417), read across kinds of the shared work-item table
+# One calendar for task deadlines, marketing events and training due dates (#417 #409), read across kinds of the shared work-item table
 # (Work::Calendar). Each kind shows only what its own policy lets the viewer see.
 class CalendarController < AuthenticatedController
   VIEWS = %w[month agenda].freeze
-  SHOW = { 'all' => nil, 'tasks' => %w[task], 'marketing' => %w[marketing_event campaign_task] }.freeze
+  SHOW = { 'all' => nil, 'tasks' => %w[task], 'marketing' => %w[marketing_event campaign_task], 'training' => %w[training_assignment] }.freeze
 
   def show
     raise Pundit::NotAuthorizedError unless ModuleRegistry.visible?(Current.user, 'calendar')

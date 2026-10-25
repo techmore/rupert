@@ -68,6 +68,7 @@ module Work
 
       case spec[:who]
       when :assignee then assignee_id.to_s == user&.id.to_s || manager?(user)
+      when :assignee_only then assignee_id.present? && assignee_id.to_s == user&.id.to_s
       when :manager then manager?(user)
       else true
       end
@@ -79,13 +80,14 @@ module Work
     def transition!(event, user: Current.user, note: nil)
       event = event.to_s
       with_lock do
-        raise TransitionRefused, refusal_for(event) unless may_transition?(event, user)
+        raise TransitionRefused, refusal_for(event, user) unless may_transition?(event, user)
 
         record = specific
         record.work_actor = user
         if record.equal?(self)
           spec = kind_definition.transition(event)
           @work_transition = event
+          @work_note = note.to_s.squish.first(500).presence
           self.status = spec[:to]
           self.completed_at = kind_definition.done_statuses.include?(spec[:to]) ? Time.current : nil
           @transitioning = true
@@ -99,14 +101,19 @@ module Work
       ensure
         @transitioning = false
         @work_transition = nil
+        @work_note = nil
         @work_actor = nil
       end
-      ActivityLogger.log("#{kind_definition.activity_prefix}_transitioned", subject: self, actor: user,
-        details: ["Status: #{status}", note.to_s.squish.first(500).presence].compact.join('; '))
+      if kind_definition.activity
+        kind_definition.activity.call(self, event, user, note)
+      else
+        ActivityLogger.log("#{kind_definition.activity_prefix}_transitioned", subject: self, actor: user,
+          details: ["Status: #{status}", note.to_s.squish.first(500).presence].compact.join('; '))
+      end
       true
     end
 
-    def refusal_for(event)
+    def refusal_for(event, _user = nil)
       return "There is no #{event.to_s.humanize.downcase} step for a #{kind_definition.label.downcase}." unless kind_definition.transition(event)
       return "Cannot #{event.to_s.humanize.downcase} a #{status.to_s.humanize.downcase} #{kind_definition.label.downcase}." unless kind_definition.allows?(event, status)
 
@@ -146,6 +153,8 @@ module Work
       %i[assignee_id requester_id].each do |attribute|
         value = public_send(attribute)
         next if value.blank?
+        # Someone who has since left stays on the items they already had; only a new or changed person is checked.
+        next if persisted? && !will_save_change_to_attribute?(attribute)
         next if User.where(tenant_id: tenant_id || Current.tenant_id).active.exists?(id: value)
 
         errors.add(attribute, 'must be an active person in this workspace')

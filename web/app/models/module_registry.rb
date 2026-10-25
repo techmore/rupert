@@ -189,7 +189,9 @@ class ModuleRegistry
         next false if entry.key == 'owner_checklists' && !(user&.active? && (user.admin? || user.super_admin?))
 
         next false if %w[influencers marketing_events].include?(entry.key) && !FeatureFlag.enabled?(:marketing)
-        next user.can?('projects.read') || (user.can?('marketing.read') && FeatureFlag.enabled?(:marketing)) if entry.key == 'calendar'
+        if entry.key == 'calendar'
+          next user.can?('projects.read') || user.can?('hr.read') || (user.can?('marketing.read') && FeatureFlag.enabled?(:marketing))
+        end
         next false if entry.key == 'marketing' && !FeatureFlag.enabled?(:marketing) && !user.can_manage_accounts?
 
         Array(entry.permission).all? { |permission| user.can?(permission) }

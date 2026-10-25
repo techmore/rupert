@@ -23,7 +23,7 @@ class TrainingAssignmentTest < ActiveSupport::TestCase
     assert_equal 'assigned', assignment.status
     assert_equal @manager, assignment.assigned_by
     event = assignment.events.sole
-    assert_equal ['assigned', nil, 'assigned', 1, @manager.id], [event.action, event.from_status, event.to_status, event.module_revision, event.actor_id]
+    assert_equal ['assigned', nil, 'assigned', 1, @manager.id], [event.training_action, event.from_status, event.to_status, event.module_revision, event.actor_id]
 
     created, skipped = TrainingAssignment.assign!(@module, [@staff, @other], due_on: nil, actor: @manager)
     assert_equal [@other], created.map(&:assignee)
@@ -41,7 +41,9 @@ class TrainingAssignmentTest < ActiveSupport::TestCase
     assignment.reload
     assert_equal ['completed', @staff.id, 2], [assignment.status, assignment.completed_by_id, assignment.completed_revision]
     assert assignment.completed_at
-    assert_equal %w[assigned started completed], assignment.events.map(&:action)
+    assert_equal %w[assigned started completed], assignment.events.map(&:training_action)
+    assert_equal %w[created transitioned transitioned], assignment.events.map(&:action) # the shared history's own words
+    assert_equal [1, 1, 2], assignment.events.map(&:module_revision)
     assert_equal [nil, 'assigned', 'in_progress'], assignment.events.map(&:from_status)
   end
 
@@ -78,7 +80,7 @@ class TrainingAssignmentTest < ActiveSupport::TestCase
     assert_raises(ActiveRecord::ReadOnlyRecord) { event.update!(actor_name: 'Someone else') }
     assert_raises(ActiveRecord::ReadOnlyRecord) { event.delete }
     assert_not event.destroy
-    assert_equal 'assigned', TrainingAssignmentEvent.find(event.id).action
+    assert_equal 'assigned', TrainingAssignmentEvent.find(event.id).training_action
   end
 
   test 'assignees, modules and history stay in their own workspace' do
@@ -86,7 +88,7 @@ class TrainingAssignmentTest < ActiveSupport::TestCase
     outsider = User.create!(tenant: other_tenant, email: 'outsider-train@example.com', role: 'employee', password: 'password123')
     assignment = TrainingAssignment.new(training_module: @module, assignee: outsider, status: 'assigned')
     assert_not assignment.valid?
-    assert assignment.errors[:assignee].any?
+    assert assignment.errors[:assignee_id].any?
 
     @other.update!(active: false)
     assert_not TrainingAssignment.new(training_module: @module, assignee: @other, status: 'assigned').valid?
