@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_24_030000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_25_000000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -1660,6 +1660,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_030000) do
     t.datetime "updated_at", null: false
     t.index ["tenant_id", "api_origin", "merchant_number", "report_kind", "window_from", "window_to"], name: "idx_iris_report_window", unique: true
     t.index ["tenant_id"], name: "index_iris_reports_on_tenant_id"
+  end
+
+  create_table "item_costs", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "shopify_variant_id", null: false
+    t.integer "cost_cents", null: false
+    t.bigint "updated_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "shopify_variant_id"], name: "index_item_costs_on_tenant_id_and_shopify_variant_id", unique: true
   end
 
   create_table "journal_entries", force: :cascade do |t|

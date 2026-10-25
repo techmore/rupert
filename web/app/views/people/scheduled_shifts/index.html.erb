@@ -3,7 +3,10 @@
 <div class="space-y-6">
   <%= page_header 'Shifts', subtitle: 'Planned shifts for the week.' do %>
     <%= full_window_button %>
-    <% if can_write %><%= link_to "Add shift", new_people_scheduled_shift_path(date: [@week, Date.current].max.iso8601), class: "btn-primary" %><% end %>
+    <% if can_write %>
+      <%= button_to "Copy last week", copy_last_week_people_scheduled_shifts_path(week: @week.iso8601), class: "btn-ghost", form: { data: { turbo_confirm: "Copy #{(@week - 7).strftime('%b %-d')} – #{(@week - 1).strftime('%b %-d')} into this week? Shifts that overlap one already planned are skipped." } } %>
+      <%= link_to "Add shift", new_people_scheduled_shift_path(date: [@week, Date.current].max.iso8601), class: "btn-primary" %>
+    <% end %>
   <% end %>
 
   <section class="toolbar-band">
@@ -16,6 +19,10 @@
       <% unless Date.current.between?(@week, @week + 6) %><%= link_to "This week", people_scheduled_shifts_path, class: "btn-ghost btn-sm" %><% end %>
     </nav>
   </section>
+
+  <% if @on_leave.any? %>
+    <p role="note" class="rounded-xl border border-warn-edge bg-warn-bg p-3 text-sm text-warn" data-leave-warning><%= pluralize(@on_leave.size, 'shift') %> this week <%= @on_leave.size == 1 ? 'falls' : 'fall' %> on approved leave. They are marked below; the shift is still planned until you change it.</p>
+  <% end %>
 
   <div class="card">
     <div class="table-region" role="region" tabindex="0" aria-label="Planned shifts">
@@ -37,7 +44,7 @@
               <% (@week..(@week + 6)).each do |day| %>
                 <td class="td text-mocha">
                   <% shifts.select { |shift| shift.starts_at.to_date == day }.each do |shift| %>
-                    <p class="whitespace-nowrap"><%= can_write ? link_to(shift.time_label, edit_people_scheduled_shift_path(shift), class: "text-olive hover:underline") : shift.time_label %><% if shift.role_label.present? %><span class="block text-xs"><%= shift.role_label %></span><% end %></p>
+                    <p class="whitespace-nowrap"><%= can_write ? link_to(shift.time_label, edit_people_scheduled_shift_path(shift), class: "text-olive hover:underline") : shift.time_label %><% if shift.role_label.present? %><span class="block text-xs"><%= shift.role_label %></span><% end %><% if @on_leave.include?(shift.id) %><span class="block text-xs font-semibold text-warn" data-on-leave="<%= shift.id %>">On approved leave</span><% end %></p>
                   <% end %>
                 </td>
               <% end %>
