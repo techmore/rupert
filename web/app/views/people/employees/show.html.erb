@@ -18,6 +18,10 @@
     <div><dt>Status</dt><dd><span class="<%= status_pill %>"><%= @employee.status.tr("_", " ").capitalize %></span></dd></div>
     <div><dt>Hired</dt><dd><%= @employee.hire_date ? l(@employee.hire_date, format: :long) : "—" %></dd></div>
     <div><dt>Employment</dt><dd><%= @employee.employment_type.tr("_", " ").capitalize %></dd></div>
+    <% if @employee.in_training? %>
+      <% training_date = ->(date) { date.strftime('%b %-d, %Y') } %>
+      <div><dt>Training</dt><dd><%= @employee.in_training_on?(Date.current) ? 'In training' : 'Not in training today' %> · <%= @employee.training_starts_on ? training_date.call(@employee.training_starts_on) : '—' %> – <%= @employee.training_ends_on ? training_date.call(@employee.training_ends_on) : 'no end date' %></dd></div>
+    <% end %>
     <% if Current.user.can?("payroll.read") %>
       <div><dt>Pay</dt><dd><%= @employee.current_pay_rate&.label || "—" %></dd></div>
     <% end %>

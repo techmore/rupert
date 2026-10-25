@@ -211,6 +211,9 @@ module People
         :hire_date,
         :termination_date,
         :employment_type,
+        :in_training,
+        :training_starts_on,
+        :training_ends_on,
         :emergency_contact_name,
         :emergency_contact_phone,
         :notes

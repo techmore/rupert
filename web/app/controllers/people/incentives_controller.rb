@@ -6,7 +6,7 @@ module People
   class IncentivesController < AuthenticatedController
     def show
       authorize(:module, :payroll_read?)
-      @plan = IncentiveModel.plan_from(params.permit(:shift_rate, :training_rate, :training_hours, trainees: []).to_h.symbolize_keys)
+      @plan = IncentiveModel.plan_from(params.permit(:shift_rate, :training_rate, :training_hours, :training_from, trainees: []).to_h.symbolize_keys)
       @model = IncentiveModel.new(plan: @plan, period: params[:period], from: params[:from], to: params[:to])
     end
   end

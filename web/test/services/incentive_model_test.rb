@@ -46,6 +46,32 @@ class IncentiveModelTest < ActiveSupport::TestCase
     assert_equal 0, under.training_weeks
   end
 
+  test 'the training flag on the staff record sets the training rate only within its dates' do
+    plan = { training_rate: '2', training_hours: '2' }
+    @worker.update!(in_training: true, training_starts_on: Date.new(2026, 10, 1), training_ends_on: Date.new(2026, 10, 31))
+    flagged = model(**plan).rows.first
+    assert_equal 'records', IncentiveModel.plan_from(plan).training_from
+    assert_equal 200, flagged.plan_cents
+    assert_equal 1, flagged.training_weeks
+
+    @worker.update!(training_starts_on: Date.new(2026, 10, 15), training_ends_on: nil)
+    later = model(**plan).rows.first
+    assert_equal 100, later.plan_cents
+    assert_equal 0, later.training_weeks
+
+    @worker.update!(in_training: false)
+    assert_equal 100, model(**plan).rows.first.plan_cents
+  end
+
+  test 'ticked staff override the records for a what-if, and the Pay tab is unchanged' do
+    @worker.update!(in_training: true, training_starts_on: Date.new(2026, 10, 1))
+    pay = EmployeePayWeek.new(employee: @worker, week_of: Date.new(2026, 10, 10))
+    assert_equal 100, pay.commission_cents
+    none_ticked = model(training_rate: '2', training_hours: '2', training_from: 'chosen').rows.first
+    assert_equal 100, none_ticked.plan_cents
+    assert_equal pay.commission_cents, none_ticked.current_cents
+  end
+
   test 'rates are clamped and a period with no shifts has no rows' do
     assert_equal 10.0, IncentiveModel.plan_from(shift_rate: '50').shift_rate
     empty = IncentiveModel.new(plan: IncentiveModel.plan_from({}), period: 'custom', from: '2026-09-01', to: '2026-09-07',
