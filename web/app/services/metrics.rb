@@ -27,7 +27,9 @@ module Metrics
     Definition.new('sales_by_source', 'Sales by source', 'share', 'Gross and orders per source and its share of the currency total.'),
     Definition.new('top_products', 'Top products', 'share', 'The ten products with the most revenue, with units and share of product revenue.'),
     Definition.new('refund_rate', 'Refund rate', 'percent', 'Refunds recorded in the period as a percent of gross sales, with the amount and count.'),
-    Definition.new('expenses_by_category', 'Expenses by category', 'money', 'Active expense-register totals by category, in USD.')
+    Definition.new('expenses_by_category', 'Expenses by category', 'money', 'Active expense-register totals by category, in USD.'),
+    Definition.new('tax_collected', 'Sales tax collected', 'money', 'Sales tax recorded on paid and fulfilled orders, per currency, with each source.'),
+    Definition.new('effective_tax_rate', 'Effective tax rate', 'percent', 'Recorded sales tax as a percent of sales before tax, per currency, with each source.')
   ].freeze
 
   module_function
@@ -73,6 +75,7 @@ module Metrics
     when 'top_products' then { values: top_products(orders) }
     when 'refund_rate' then { values: refund_rate(orders, window, source) }
     when 'expenses_by_category' then { values: expenses_by_category(window) }
+    when 'tax_collected', 'effective_tax_rate' then { values: tax_by_currency(orders, key) }
     end
   end
 
@@ -200,6 +203,37 @@ module Metrics
        expense_count: categories.sum { |category| category[:expenses] }, categories: categories }]
   end
 
+  # Tax as recorded on each order by its source; sales before tax are gross minus that tax. One unrecorded (NULL)
+  # amount makes the source, and its currency, unknown: never counted as zero.
+  def tax_by_currency(orders, key)
+    rows = orders.group(:currency, :source).pluck(:currency, :source, Arel.sql('COUNT(*)'), Arel.sql('SUM(gross_cents)'),
+      Arel.sql('COUNT(gross_cents)'), Arel.sql('SUM(tax_cents)'), Arel.sql('COUNT(tax_cents)'))
+    rows.group_by(&:first).sort_by { |currency, _| currency.to_s }.map do |currency, list|
+      sources = list.map { |_, source, n, gross, gross_n, tax, tax_n| tax_row(currency, n, gross_n == n ? gross.to_i : nil, tax_n == n ? tax.to_i : nil).merge(source: source) }
+                    .sort_by { |row| [-row[:tax_cents].to_i, row[:source]] }
+      known = ->(field) { sources.all? { |row| row[field] } ? sources.sum { |row| row[field] } : nil }
+      total = tax_row(currency, sources.sum { |row| row[:orders] }, known.call(:gross_cents), known.call(:tax_cents))
+      field = key == 'tax_collected' ? :tax : :rate_text
+      breakdown = sources.map { |row| "#{row[:source]} #{row[field] || 'unknown'}" }.join(', ')
+      value = key == 'tax_collected' ? total[:tax_cents] : total[:effective_rate_percent]
+      formatted = if key == 'tax_collected'
+        total[:tax] || 'unknown (not recorded on every order)'
+      else
+        total[:rate_text] ? "#{total[:rate_text]} (#{total[:tax]} tax on #{total[:sales_before_tax]} before tax)" : 'unknown'
+      end
+      { currency: currency, value: value, formatted: "#{formatted} (#{breakdown})" }
+        .merge(total.except(:rate_text)).merge(sources: sources.map { |row| row.except(:rate_text) })
+    end
+  end
+
+  def tax_row(currency, count, gross, tax)
+    before = gross && tax ? gross - tax : nil
+    rate = (tax * 100.0 / before).round(2) if tax && before&.positive?
+    { orders: count, tax_cents: tax, tax: money(tax, currency), gross_cents: gross, gross: money(gross, currency),
+      sales_before_tax_cents: before, sales_before_tax: money(before, currency), effective_rate_percent: rate,
+      rate_text: ("#{rate}%" if rate) }
+  end
+
   # --- comparison and wording ---
 
   def change(metric, now, before)
@@ -240,6 +274,14 @@ module Metrics
       end
     end
     list << 'Refunds are counted by refund date; some refund sales from an earlier period.' if key == 'refund_rate'
+    if %w[tax_collected effective_tax_rate].include?(key)
+      list << 'Tax is as recorded by each source on its orders; Rupert does not recompute it, and tax on refunds is not subtracted. ' \
+              'A source that does not record tax may show $0.00. Store register tax (C-Trax, SwipeSimple) is in sales_tax_report.'
+      list << 'Sales before tax are gross sales minus the recorded tax. Unknown amounts stay unknown, never zero.'
+    end
+    if key == 'effective_tax_rate'
+      list << 'This is recorded tax divided by sales before tax. It is not the configured tax rate; untaxed or exempt items lower it.'
+    end
     if key == 'worst_day'
       list << 'Lowest of the days with stored sales. Days with no stored orders are unknown, not zero, and are not counted.'
     end

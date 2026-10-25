@@ -12,9 +12,9 @@ class MetricsTest < ActiveSupport::TestCase
 
   teardown { Current.reset }
 
-  def order(day, cents, source: 'shopify', currency: 'USD', name: 'Tea 50g', paid: true)
+  def order(day, cents, source: 'shopify', currency: 'USD', name: 'Tea 50g', paid: true, tax: 0)
     row = Core::Order.create!(source: source, source_order_id: SecureRandom.hex(4), occurred_at: day.in_time_zone.change(hour: 12),
-      gross_cents: cents, tax_cents: 0, currency: currency)
+      gross_cents: cents, tax_cents: tax, currency: currency)
     row.mark_paid! if paid
     row.order_lines.create!(name: name, sku: name.parameterize, unit_cents: cents, quantity: 1, line_cents: cents)
     row
@@ -141,5 +141,53 @@ class MetricsTest < ActiveSupport::TestCase
     assert_match(/no active expense records/, result[:text])
     assert_match(/does not prove there was no money out/, result[:caveats].join)
     assert_nil result[:change]
+  end
+
+  test 'tax collected and effective tax rate per currency with each source, never added across currencies' do
+    order(TODAY - 1, 10_800, tax: 800)
+    order(TODAY - 1, 5_400, source: 'square', tax: 400)
+    order(TODAY - 1, 11_300, currency: 'CAD', tax: 1_300)
+    order(TODAY - 1, 99_999, tax: 9_999, paid: false)
+    order(TODAY - 2, 5_250, tax: 250)
+
+    tax = metric('tax_collected', period: 'yesterday')
+    assert_equal %w[CAD USD], tax[:values].pluck(:currency), 'currencies are never added together'
+    usd = tax[:values].find { |row| row[:currency] == 'USD' }
+    assert_equal [1_200, '$12.00', 2, 15_000, '$150.00', 8.0], usd.values_at(:value, :tax, :orders, :sales_before_tax_cents, :sales_before_tax, :effective_rate_percent)
+    assert_equal '$12.00 (shopify $8.00, square $4.00)', usd[:formatted]
+    assert_equal [['shopify', 800, 10_000, 8.0], ['square', 400, 5_000, 8.0]],
+      usd[:sources].map { |row| row.values_at(:source, :tax_cents, :sales_before_tax_cents, :effective_rate_percent) }
+    assert_equal ['up', 950, 380.0], tax[:change].find { |row| row[:currency] == 'USD' }.values_at(:direction, :change_amount, :change_percent)
+    assert_match(/as recorded by each source/, tax[:caveats].join)
+    assert_match(/\ASales tax collected, Yesterday \(2026-10-21 to 2026-10-21\): 13\.00 CAD/, tax[:text])
+
+    rate = metric('effective_tax_rate', period: 'yesterday')
+    usd = rate[:values].find { |row| row[:currency] == 'USD' }
+    assert_equal [8.0, '8.0% ($12.00 tax on $150.00 before tax) (shopify 8.0%, square 8.0%)'], usd.values_at(:value, :formatted)
+    assert_equal 13.0, rate[:values].find { |row| row[:currency] == 'CAD' }[:value]
+    change = rate[:change].find { |row| row[:currency] == 'USD' }
+    assert_equal ['up', 3.0, 'up 3.0 percentage points'], change.values_at(:direction, :change_amount, :formatted)
+    assert_match(/not the configured tax rate/, rate[:caveats].join)
+    assert_equal 'rupert_pos', metric('tax_collected', period: 'yesterday', source: 'rupert_pos', compare: 'none')[:source]
+  end
+
+  test 'unrecorded tax is unknown, never zero, and an empty period says so' do
+    order(TODAY - 1, 10_800, tax: 800)
+    order(TODAY - 1, 5_000, source: 'square', tax: nil)
+
+    usd = metric('tax_collected', period: 'yesterday', compare: 'none')[:values].first
+    assert_nil usd[:value]
+    assert_equal 'unknown (not recorded on every order) (shopify $8.00, square unknown)', usd[:formatted]
+    assert_equal [['shopify', 800], ['square', nil]], usd[:sources].map { |row| row.values_at(:source, :tax_cents) }
+
+    rate = metric('effective_tax_rate', period: 'yesterday')
+    assert_nil rate[:values].first[:value]
+    assert_equal 'unknown (shopify 8.0%, square unknown)', rate[:values].first[:formatted]
+    assert_equal [{ currency: 'USD', direction: 'unknown' }], rate[:change]
+
+    empty = metric('tax_collected', period: 'last_quarter', compare: 'none')
+    assert_empty empty[:values]
+    assert_match(/no stored orders/, empty[:text])
+    assert_match(/does not prove zero sales/, empty[:caveats].join)
   end
 end

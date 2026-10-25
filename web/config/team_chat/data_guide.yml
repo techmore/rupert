@@ -17,11 +17,13 @@ topics:
   - key: tax
     title: Sales tax
     keywords: [tax, sales tax, vat, taxes]
-    tools: [sales_tax_report]
+    tools: [sales_tax_report, metric]
     card: >-
       sales_tax_report gives tax collected per source for a date range. Sources overlap (one card sale can appear in
       a store and in its card processor), so never add sources together: report each. Rupert does not record when a
-      sales tax return was filed.
+      sales tax return was filed. For online and Square orders, metric tax_collected gives the tax recorded on orders
+      per currency with each source, and metric effective_tax_rate gives that tax as a percent of sales before tax,
+      with the comparison already computed; quote them. Tax is as recorded by each source, and unknown is not zero.
   - key: money_out
     title: Refunds and expenses
     keywords: [refund, refunds, refunded, return, returns, expense, expenses, spend, spent, cost, costs, paid out, bills]
@@ -104,12 +106,12 @@ topics:
       A store with no day stored is missing, not zero.
   - key: sales
     title: Online and Square sales and orders
-    keywords: [sales, sold, sell, revenue, gross, orders, order value, average order, aov, top products, top-selling, top selling, best-selling, best selling, best day, best seller, worst day, slowest day, slow day, weekday, day of the week, busiest day, shopify, square, rupert pos, website, web store, today, yesterday]
+    keywords: [sales, sold, sell, revenue, gross, orders, order value, average order, aov, top products, top-selling, top selling, best-selling, best selling, best day, best seller, worst day, slowest day, slow day, weekday, day of the week, busiest day, tax collected, effective tax rate, tax rate, shopify, square, rupert pos, website, web store, today, yesterday]
     tools: [metric, sales_summary, period_review]
     card: >-
       For a single figure use metric (gross_sales, orders, average_order_value, best_day, worst_day, sales_by_weekday,
       sales_by_source, top_products,
-      refund_rate): Rupert computes it per currency with the comparison already worked out; quote it.
+      refund_rate, tax_collected, effective_tax_rate): Rupert computes it per currency with the comparison already worked out; quote it.
       Orders live in Rupert's order store (Shopify, Square, Rupert POS, manual). Paid and fulfilled orders count as
       sales. Money is in cents with a ready *_dollars value beside it. Totals are per currency, never added across
       currencies. These are NOT the store's register sales: the SwipeSimple and C-Trax registers are separate (use

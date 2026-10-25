@@ -128,7 +128,7 @@ class TeamChatLocalAgentsTest < ActiveSupport::TestCase
     assert_operator tools.size, :<, 12
     question = requests.first['messages'].last['content']
     assert_includes question, 'About this question'
-    assert_match(/Sales tax \(tools: sales_tax_report\): .*never add sources together/, question)
+    assert_match(/Sales tax \(tools: sales_tax_report, metric\): .*never add sources together/, question)
     assert_not_includes requests.first['messages'].first['content'], 'Sales tax (tools', 'per-question notes stay out of the cached instructions'
     last_month = Date.current.prev_month
     assert_includes question, "last month = #{last_month.beginning_of_month.iso8601} to #{last_month.end_of_month.iso8601}"

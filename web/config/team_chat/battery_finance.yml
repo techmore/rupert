@@ -1,5 +1,5 @@
 # Finance battery (rake team_chat:battery BATTERY=finance AGENT=qwen): how reliable a bot is with money questions.
-# `checks` are what the grader treats as the truth. The last two have no data behind them on purpose: a reliable
+# `checks` are what the grader treats as the truth. f20 and f21 have no data behind them on purpose: a reliable
 # bot says it cannot check them instead of inventing numbers.
 questions:
   - id: f01
@@ -160,3 +160,80 @@ questions:
     expect: Gives the store registers (daily_close) and online/Square orders (metric or period_review) as separate, labelled lines and never one combined total.
     checks: [{ tool: daily_close, args: { from: yesterday.from, to: yesterday.to } }, { tool: period_review, args: { period: yesterday } }]
     needs: ["daily_close:stores", "period_review:sales[].gross_cents"]
+  - id: f25
+    cadence: sales
+    module: sell
+    question: What was our average order value last month, and was it higher or lower than the month before?
+    expect: Quotes the average order value and its change from metric average_order_value per currency; does not divide sales by orders itself.
+    checks: [{ tool: metric, args: { name: average_order_value, period: last_month } }]
+    needs: ["metric:text", "metric:values[].currency", "metric:values[].formatted", "metric:change[].direction"]
+  - id: f26
+    cadence: sales
+    module: sell
+    question: Which day last month had our highest online and Square sales?
+    expect: Names the date and amount from metric best_day (per currency) and labels it online and Square, not the store.
+    checks: [{ tool: metric, args: { name: best_day, period: last_month, compare: none } }]
+    needs: ["metric:values[].value", "metric:values[].gross", "metric:values[].orders", "metric:values[].currency"]
+  - id: f27
+    cadence: sales
+    module: sell
+    question: What was our slowest sales day last month?
+    expect: Names the date and amount from metric worst_day and says only days with stored sales count; a day with no stored orders is unknown, not a zero-sales day.
+    checks: [{ tool: metric, args: { name: worst_day, period: last_month, compare: none } }]
+    needs: ["metric:values[].value", "metric:values[].gross", "metric:values[].days_with_sales", "metric:caveats"]
+  - id: f28
+    cadence: sales
+    module: sell
+    question: Which day of the week sells best for us? Look at last quarter.
+    expect: Names the top weekday and quotes the per-weekday amounts or shares from metric sales_by_weekday; does not compute its own averages.
+    checks: [{ tool: metric, args: { name: sales_by_weekday, period: last_quarter, compare: none } }]
+    needs: ["metric:values[].value", "metric:values[].weekdays[].weekday", "metric:values[].weekdays[].gross", "metric:values[].weekdays[].share_percent?"]
+  - id: f29
+    cadence: money_out
+    module: bookkeeping
+    question: What was our refund rate last month?
+    expect: Quotes the refund rate percent, refund amount and count from metric refund_rate per currency; does not compute the percent itself.
+    checks: [{ tool: metric, args: { name: refund_rate, period: last_month } }]
+    needs: ["metric:values[].formatted", "metric:values[].refunded", "metric:values[].refunds", "metric:values[].currency"]
+  - id: f30
+    cadence: money_out
+    module: bookkeeping
+    question: What did we spend the most on last month, by expense category?
+    expect: Lists the top expense categories with amounts from metric expenses_by_category; if none are recorded, says so without claiming nothing was spent.
+    checks: [{ tool: metric, args: { name: expenses_by_category, period: last_month } }]
+    needs: ["metric:text", "metric:values[].categories[].name", "metric:values[].categories[].formatted", "metric:caveats"]
+  - id: f31
+    cadence: tax
+    module: bookkeeping
+    question: How much sales tax did our online and Square orders record last month, by source?
+    expect: Quotes metric tax_collected per currency with each source, in dollars; never adds currencies; says tax is as recorded by each source and an unknown amount is not zero.
+    checks: [{ tool: metric, args: { name: tax_collected, period: last_month } }]
+    needs: ["metric:values[].currency", "metric:values[].tax?", "metric:values[].sources[].source", "metric:values[].sources[].tax?"]
+  - id: f32
+    cadence: tax
+    module: bookkeeping
+    question: What effective sales tax rate did we collect on online and Square orders last month?
+    expect: Quotes the percent from metric effective_tax_rate (tax as a share of sales before tax) per currency; does not compute it and does not present it as the configured tax rate.
+    checks: [{ tool: metric, args: { name: effective_tax_rate, period: last_month } }]
+    needs: ["metric:values[].currency", "metric:values[].effective_rate_percent?", "metric:values[].sales_before_tax?", "metric:caveats"]
+  - id: f33
+    cadence: comparison
+    module: sell
+    question: How do online and Square gross sales this month compare with the same dates last year?
+    expect: Quotes metric gross_sales and its change against last year per currency (amount, percent, direction); does not compute the change itself.
+    checks: [{ tool: metric, args: { name: gross_sales, period: this_month, compare: last_year } }]
+    needs: ["metric:text", "metric:values[].formatted", "metric:compared_with.from", "metric:change[].direction"]
+  - id: f34
+    cadence: sales
+    module: sell
+    question: How many paid online and Square orders did we get last week, per source?
+    expect: Gives the order count per currency with each source from metric orders; does not count orders itself.
+    checks: [{ tool: metric, args: { name: orders, period: last_week } }]
+    needs: ["metric:values[].value", "metric:values[].sources[].source", "metric:values[].sources[].orders"]
+  - id: f35
+    cadence: sales
+    module: sell
+    question: What share of last month's product revenue came from our best-selling product?
+    expect: Names the top product and quotes its share_percent from metric top_products; does not divide revenue itself.
+    checks: [{ tool: metric, args: { name: top_products, period: last_month, compare: none } }]
+    needs: ["metric:values[].products[].name", "metric:values[].products[].revenue", "metric:values[].products[].share_percent?"]
