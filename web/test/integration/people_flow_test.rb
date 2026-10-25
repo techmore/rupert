@@ -214,17 +214,20 @@ class PeopleFlowTest < ActionDispatch::IntegrationTest
     slip = pay_run.payslips.first
     assert_equal 42.0, slip.hours
     assert_equal rate.id, slip.pay_rate_id
-    # 40h × $20 + 2h × $30 (1.5x)
-    assert_equal 86_000, slip.gross_cents
-    assert_equal 12_900, slip.deductions_cents # 15% default
-    assert_equal 73_100, slip.net_cents
+    # Overtime is off in the pay rules by default: 42h × $20, overtime entries at straight time.
+    assert_equal 84_000, slip.gross_cents
+    assert_equal 12_600, slip.deductions_cents # 15% placeholder estimate
+    assert_equal 71_400, slip.net_cents
+    assert_select 'p', text: /placeholder estimate/
+
+
 
     post_page finalize_people_pay_run_path(pay_run)
     follow_redirect!
     pay_run.reload
     assert pay_run.finalized?
-    assert_equal 86_000, pay_run.total_gross_cents
-    assert_equal 73_100, pay_run.total_net_cents
+    assert_equal 84_000, pay_run.total_gross_cents
+    assert_equal 71_400, pay_run.total_net_cents
 
     post_page pay_people_pay_run_path(pay_run)
     follow_redirect!

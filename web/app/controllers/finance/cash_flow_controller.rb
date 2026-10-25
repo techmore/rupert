@@ -12,7 +12,10 @@ module Finance
       respond_to do |format|
         format.html
         format.turbo_stream { render turbo_stream: live_streams }
-        format.json { render json: @report.to_h }
+        format.json do
+          log_export('Cash flow JSON', [@report.from, @report.to].map(&:iso8601).join(' to ') + (@report.account ? ', one bank account' : ''))
+          render json: @report.to_h
+        end
       end
     rescue CashFlowReport::Error => e
       respond_to do |format|

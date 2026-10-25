@@ -17,6 +17,7 @@ class HomeController < AuthenticatedController
       Current.user.with_lock do
         Current.user.update!(dashboard_config: Current.user.dashboard_config_hash.except('widgets', 'hidden').presence)
       end
+      ActivityLogger.log('dashboard_layout_reset', details: 'Default widget layout restored')
       return render(json: { ok: true, reset: true })
     end
 
@@ -30,6 +31,7 @@ class HomeController < AuthenticatedController
     Current.user.with_lock do
       Current.user.update!(dashboard_config: Current.user.dashboard_config_hash.merge('widgets' => widgets, 'hidden' => hidden))
     end
+    ActivityLogger.log('dashboard_layout_saved', details: "#{widgets.size} widgets in order, #{hidden.size} hidden")
     render(json: { ok: true, widgets: widgets, hidden: hidden })
   rescue ActiveRecord::RecordInvalid => e
     render(json: { ok: false, error: e.message }, status: :unprocessable_entity)

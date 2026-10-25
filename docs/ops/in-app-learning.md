@@ -68,8 +68,8 @@ sales totals, reports, closing a day, reviewing hours, reviewing receipts,
 assigned tasks, and projects and goals. Each lesson is permission-checked on
 read and on completion.
 
-**Team training progress** (`/learning/team`, for accounts with `users.read` or
-`hr.read`) lists each account's path, lessons done, tours taken and last lesson.
+**Team training progress** (`/learning/team`, for accounts with `hr.read`, the same
+rule as its rail entry) lists each account's path, lessons done, tours taken and last lesson.
 It is read-only and makes no changes.
 
 ## Maintenance

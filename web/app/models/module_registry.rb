@@ -165,6 +165,13 @@ class ModuleRegistry
       all.find { |e| e.key == key.to_s }
     end
 
+    # True when the module's rail entry is shown to this user. Pages whose
+    # access should match their rail link (for example Training progress) use
+    # this so the link and the page cannot disagree.
+    def visible?(user, key)
+      nav_for(user).any? { |entry| entry.key == key.to_s }
+    end
+
     # Top-level ERP areas that group modules in the header. "modules" lists the
     # entry keys that belong to the area, in display order. Areas follow the
     # operator's day (sell / stock / money / work / team), not the org chart.

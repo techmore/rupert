@@ -67,7 +67,8 @@ class EmployeeWorkSummary
     rate = rate_for(entry.worked_on)
     return unless rate&.pay_type == 'hourly' && rate.hourly_rate_cents.positive?
 
-    multiplier = entry.work_type == 'overtime' ? BigDecimal(People::PayrollCalculator::OVERTIME_MULTIPLIER.to_s) : 1
+    # Overtime-labelled entries earn the PayRules multiplier only when overtime is turned on.
+    multiplier = entry.work_type == 'overtime' && PayRules.current.overtime_enabled? ? PayRules.current.overtime_multiplier : 1
     (entry.hours * rate.hourly_rate_cents * multiplier).round.to_i
   end
 

@@ -58,6 +58,45 @@ class CustomerManagementTest < ActionDispatch::IntegrationTest
     assert_select 'form[action=?]', customer_path(record)
   end
 
+  test 'CRM edits, interactions, follow-ups and exports are in the Activity log without contact details' do
+    @customer.update!(email: 'fixture@example.test', phone: '555-0100')
+    post customers_path, params: { customer: { first_name: 'Logged contact', email: 'logged@example.test', crm_status: 'lead' } }
+    created = Core::Customer.order(:id).last
+    patch customer_path(@customer), params: { customer: { crm_status: 'vip', notes: 'Private note text' } }
+    post customer_interactions_path(@customer), params: { interaction: { kind: 'call', body: 'Called about order' } }
+    post customer_follow_ups_path(@customer), params: { follow_up: { title: 'Return call', due_on: Date.current, owner_id: @user.id } }
+    follow_up = CustomerFollowUp.order(:id).last
+    patch customer_follow_up_path(@customer, follow_up), params: { event: 'complete' }
+    patch customer_follow_up_path(@customer, follow_up), params: { event: 'reopen' }
+    get export_customers_path, params: { status: 'vip' }
+    assert_response :success
+
+    logs = ActivityLog.where(tenant_id: @user.tenant_id).order(:id)
+    assert_equal ['customer_created', "Customer ##{created.id}"], logs.find_by(action: 'customer_created').then { |log| [log.action, log.subject_label] }
+    updated = logs.find_by(action: 'customer_updated')
+    assert_equal "Customer ##{@customer.id}", updated.subject_label
+    assert_equal @customer.id.to_s, updated.subject_id
+    assert_match(/crm_status/, updated.details)
+    assert_match(/notes/, updated.details)
+    assert_equal 'call', logs.find_by(action: 'customer_interaction_recorded').details
+    assert logs.exists?(action: 'customer_follow_up_scheduled')
+    assert logs.exists?(action: 'customer_follow_up_completed')
+    assert logs.exists?(action: 'customer_follow_up_reopened')
+    export = logs.find_by(action: 'data_exported')
+    assert_match(/Customers CSV: 1 profile, status=vip/, export.details)
+    assert_equal @user.id, export.user_id
+
+    text = logs.flat_map { |log| [log.subject_label, log.details] }.join(' ')
+    ['Fixture', 'Logged contact', 'example.test', '555-0100', 'Private note text', 'Called about order', 'Return call'].each do |secret|
+      assert_not_includes text, secret
+    end
+  end
+
+  test 'saving a customer with no changes writes no Activity log entry' do
+    patch customer_path(@customer), params: { customer: { crm_status: @customer.crm_status } }
+    assert_not ActivityLog.exists?(action: 'customer_updated')
+  end
+
   test 'native contacts retain provenance while local relationship fields remain editable' do
     @customer.update!(source: 'square')
     patch customer_path(@customer), params: { customer: { first_name: 'Overwrite', source: 'manual', external_id: 'different', crm_status: 'vip', notes: 'Local summary' } }
