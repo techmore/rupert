@@ -78,26 +78,33 @@ fi
 # CLA is a PR-only check. Re-runs leave earlier check runs in the list, so only
 # the latest check run by ID for each required name counts. Missing, skipped or
 # pending checks never pass the gate.
-mobile_check_required=0
-if ! git diff --quiet "$CUR" "$NEW" -- mobile bin/check-mobile-sdk.mjs .github/workflows/employee-mobile.yml; then
-  mobile_check_required=1
-fi
-ci=$(curl -fsS --max-time 20 -H 'Accept: application/vnd.github+json' \
-  "https://api.github.com/repos/$REPO/commits/$NEW/check-runs?per_page=100" | python3 -c '
+# A mobile change needs a green exact-SHA `validate` on the newest commit in
+# CUR..NEW that touched mobile paths. That workflow only runs on commits that
+# change those paths, so it is never required on a later, unrelated commit.
+mobile_sha=$(git log -1 --format=%H "$CUR..$NEW" -- mobile bin/check-mobile-sdk.mjs .github/workflows/employee-mobile.yml)
+gate() { # gate <sha> <comma-separated required check names> -> green|red|pending
+  curl -fsS --max-time 20 -H 'Accept: application/vnd.github+json' \
+    "https://api.github.com/repos/$REPO/commits/$1/check-runs?per_page=100" | python3 -c '
 import json, sys
-required = ["CI (sqlite3)", "Product site consistency", "Dependency and static scan"]
-if sys.argv[1] == "1": required.append("validate")
+required = sys.argv[1].split(",")
 latest = {}
 for r in json.load(sys.stdin)["check_runs"]:
     if r["name"] in required and r["id"] > latest.get(r["name"], {"id": -1})["id"]:
         latest[r["name"]] = r
 if any(r.get("status") == "completed" and r.get("conclusion") != "success" for r in latest.values()): print("red")
 elif all(name in latest and latest[name].get("status") == "completed" and latest[name].get("conclusion") == "success" for name in required): print("green")
-else: print("pending")' "$mobile_check_required") || ci=unknown
+else: print("pending")' "$2"
+}
+ci=$(gate "$NEW" "CI (sqlite3),Product site consistency,Dependency and static scan") || ci=unknown
+gated=$NEW
+if [ "$ci" = green ] && [ -n "$mobile_sha" ]; then
+  ci=$(gate "$mobile_sha" validate) || ci=unknown
+  gated=$mobile_sha
+fi
 case "$ci" in
   green) ;;
-  red) report ci_failed "CI for ${NEW:0:8} is red, not deploying"; exit 0 ;;
-  *) report waiting_ci "CI for ${NEW:0:8} is $ci, not deploying yet"; exit 0 ;;
+  red) report ci_failed "CI for ${gated:0:8} is red, not deploying ${NEW:0:8}"; exit 0 ;;
+  *) report waiting_ci "CI for ${gated:0:8} is $ci, not deploying ${NEW:0:8} yet"; exit 0 ;;
 esac
 
 migrations=$(git diff --name-only --diff-filter=A "$CUR" "$NEW" -- web/db/migrate | wc -l)
