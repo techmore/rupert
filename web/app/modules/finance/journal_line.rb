@@ -22,6 +22,14 @@ module Finance
     # #169 M3). The database adds foreign keys and a one-sided CHECK.
     def readonly? = persisted? || super
 
+    # A leg can only be added while its entry is being created. Adding one to a
+    # saved entry (`entry.journal_lines << line`) would unbalance posted history.
+    before_create(prepend: true) do
+      next if journal_entry.nil? || journal_entry.accepting_lines?
+
+      raise ActiveRecord::ReadOnlyRecord, 'A saved journal entry cannot gain lines; void it and post a correction.'
+    end
+
     def amount_cents = [debit_cents.to_i, credit_cents.to_i].max
     def debit? = debit_cents.to_i.positive?
     def credit? = credit_cents.to_i.positive?

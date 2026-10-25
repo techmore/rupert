@@ -32,6 +32,7 @@ module Finance
     validates :normal_balance, inclusion: { in: NORMAL_BALANCE.values }
     validates :code, uniqueness: { scope: :tenant_id, case_sensitive: false }
     validate :classification_fixed_once_used, on: :update
+    validate :normal_balance_matches_type, if: -> { new_record? || will_save_change_to_account_type? || will_save_change_to_normal_balance? }
 
     scope :by_type, ->(type) { type.present? && type != 'all' ? where(account_type: type) : all }
     scope :active, -> { where(active: true) }
@@ -63,6 +64,17 @@ module Finance
       return if fixed.empty? || !used_in_ledger?
 
       errors.add(:base, "#{fixed.map(&:humanize).to_sentence} cannot change on an account that already has ledger entries. Create a new account instead.")
+    end
+
+    # The balance sheet's "Balanced?" check and every report read the balance
+    # side, so it must be the one the type implies (audit #169 M6). Checked
+    # only when the type or side is being set, so an older row saved before
+    # this rule still loads, renames and archives normally.
+    def normal_balance_matches_type
+      expected = NORMAL_BALANCE[account_type]
+      return if expected.nil? || normal_balance.blank? || normal_balance == expected
+
+      errors.add(:normal_balance, "must be #{expected} for #{type_label.downcase.singularize} accounts.")
     end
 
     def set_normal_balance

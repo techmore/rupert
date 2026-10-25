@@ -3,7 +3,7 @@
   <header class="desk-day-header">
     <div class="min-w-0">
       <h3 id="day-<%= day.iso8601 %>-title" class="card-title"><%= day.strftime('%A, %b %-d') %></h3>
-      <p class="text-xs text-mocha"><%= pluralize(row.orders, 'order') %> · <%= books_desk_totals(row.totals) %></p>
+      <p class="text-xs text-mocha"><%= pluralize(row.orders, 'order') %> · <%= books_desk_totals(row.totals, row.sources) %></p>
     </div>
     <% if row.complete? %>
       <span class="pill-fern">Done</span>

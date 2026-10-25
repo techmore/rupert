@@ -76,9 +76,22 @@ module BooksDeskHelper
     { done: '✓', exception: '!', quiet: '–', todo: '○', overdue: '!', info: 'i', later: '…' }.fetch(state, '○')
   end
 
-  def books_desk_totals(totals)
+  # One figure per currency (currencies are never added together). Where a
+  # figure adds more than one source, it says so and names them.
+  def books_desk_totals(totals, sources = {})
     return 'No sales recorded' if totals.empty?
 
-    totals.map { |currency, cents| cents.nil? ? "#{currency} unavailable" : "#{currency} #{number_with_precision(cents / 100.0, precision: 2, delimiter: ',')}" }.join(' · ')
+    totals.map do |currency, cents|
+      amount = if cents.nil? then "#{currency} unavailable"
+      elsif currency == 'USD' then number_to_currency(cents / 100.0)
+      else "#{currency} #{number_with_precision(cents / 100.0, precision: 2, delimiter: ',')}"
+      end
+      names = Array(sources&.dig(currency)).map { |key| ReconciliationLibrary::SOURCE_NAMES.fetch(key, key.to_s.titleize) }
+      case names.size
+      when 0 then amount
+      when 1 then "#{names.first}: #{amount}"
+      else "All sources combined (#{names.join(', ')}): #{amount}"
+      end
+    end.join(' · ')
   end
 end

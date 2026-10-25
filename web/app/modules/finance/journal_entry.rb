@@ -24,6 +24,12 @@ module Finance
     validate :only_voiding_after_posting, on: :update
     # Prepended so it runs before the has_many restrict callback registered above.
     before_destroy(prepend: true) { raise ActiveRecord::ReadOnlyRecord, 'Journal entries are permanent; void the entry instead.' }
+    # Lines are written only by the save that creates the entry. Once it is
+    # posted, `journal_lines <<` or `journal_lines.create` would change its
+    # totals without the balance check (audit #169); JournalLine refuses them.
+    before_create { @accepting_lines = true }
+    after_save { @accepting_lines = false }
+    after_rollback { @accepting_lines = false }
 
     scope :posted, -> { where(status: 'posted') }
     scope :for_source, ->(type, id) { where(source_type: type.to_s, source_id: id.to_s) }
@@ -39,6 +45,7 @@ module Finance
     def credit_cents = journal_lines.sum { |l| l.credit_cents.to_i }
     def balanced? = debit_cents == credit_cents && journal_lines.size >= 2
     def void? = status == 'void'
+    def accepting_lines? = new_record? || @accepting_lines == true
 
     # Build and persist a balanced entry in one transaction. `lines` is an array
     # of hashes: { account_id:, debit_cents:, credit_cents:, memo: }. Raises on
