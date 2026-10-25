@@ -58,8 +58,10 @@ consistency`, and `Dependency and static scan` checks. Missing or pending
 checks wait; a completed non-success check blocks. `cla` is a PR-only check and
 does not run as an integrated-main gate. If mobile source, the SDK checker, or
 its workflow changes, the updater also requires the exact-SHA `validate` result
-from the Employee mobile workflow. Deployer tests cover missing, pending,
-failed, rerun and mobile-path results.
+from the Employee mobile workflow, read from the newest commit in the
+deployed range that touched those paths (that workflow does not run on later,
+unrelated commits). Deployer tests cover missing, pending, failed, rerun and
+mobile-path results.
 
 Measure CI cost with runner-minute billing data and comparable windows. Record
 runner minutes, runs per unique PR SHA, duplicate event pairs, queue time,
@@ -77,7 +79,7 @@ not infer either from repository configuration.
 
 The updater checks for a clean checkout and fast-forward, waits for the newest
 `CI (sqlite3)`, `Product site consistency`, and `Dependency and static scan`
-checks on the target SHA (and `validate` when mobile paths changed), takes a pre-deploy SQLite backup, installs
+checks on the target SHA (and `validate` on the newest mobile commit when mobile paths changed), takes a pre-deploy SQLite backup, installs
 dependencies, migrates and precompiles assets, restarts services, then checks
 `/up`. On health-check failure it rolls back the code; it does not reverse
 database migrations. It records a failed SHA to avoid retry loops. A manual
@@ -110,7 +112,58 @@ migrations remain. Restoring a backup after business writes can lose data and
 requires the owner's written approval. Follow the
 [backup and restore runbook](ops/backup-restore-runbook.md).
 
-## 6. Acceptance and evidence
+## 6. Parallel delivery rule
+
+Several people and agents work on Rupert at the same time. This is the rule that
+lets them merge independently without breaking `main` or the deployment.
+
+1. **One change, one branch, one worktree, one PR.** Create the branch from the
+   current `origin/main` in its own worktree
+   (`git worktree add -b docs/my-change ../rupert-my-change origin/main`). Never
+   share a checkout or push to someone else's branch. Do not delete other
+   people's branches; GitHub deletes a branch after its PR merges.
+2. **Do not sync just because `main` moved.** Branch protection has
+   `strict=false`, so a PR does not have to be current with `main`. Update a
+   branch only when GitHub reports a conflict or a required check fails because
+   of something already on `main`. To update without a local rebase, use
+   `gh api -X PUT repos/techmore/rupert/pulls/<number>/update-branch`
+   (the `gh` CLI has no `pr update-branch` command). Resolve real conflicts on
+   the branch.
+3. **Merge only on green.** The required checks (`CI (sqlite3)`,
+   `Product site consistency`, `Dependency and static scan`, `cla`) must pass on
+   the PR head. Auto-merge (`gh pr merge <number> --merge --auto`) is allowed
+   once the owner has approved the change; GitHub then merges only after the
+   required checks pass. Missing, skipped, pending or cancelled checks are not
+   passes.
+4. **Every `main` commit keeps its own result.** CI, Security and Employee mobile
+   cancel superseded runs only for pull requests; `main` runs are grouped by
+   commit SHA and never cancel each other
+   ([PR #495](https://github.com/techmore/rupert/pull/495)). A cancelled `main`
+   run would count as non-success and block deployment of that SHA.
+5. **The deployment checks the integrated result.** Head-only PR checks do not
+   prove the merged combination works. The SER8 updater
+   (`deploy/ser8/rupert-autodeploy.sh`) deploys only when the exact `main` SHA
+   has green `CI (sqlite3)`, `Product site consistency` and
+   `Dependency and static scan`, and, if the range includes a mobile change, a
+   green `validate` on the newest mobile commit
+   ([PR #507](https://github.com/techmore/rupert/pull/507)). A red integrated
+   check is fixed by a new PR, not by rerunning until green.
+6. **Tests must not depend on the day they run.** Parallel merges land at any
+   hour and day, so a test that counts by weekday or "today" fails on some
+   merges and not others. Pin the clock (`travel_to`) to a fixed date; the page
+   query budget test runs on a fixed Sunday, its largest day
+   ([PR #505](https://github.com/techmore/rupert/pull/505)).
+7. **Check integration when two PRs touch the same thing.** If PRs change the
+   same model, migration, route or shared helper, the second one to merge
+   updates its branch (rule 2) and reruns checks before merging. There is no
+   merge queue today; if head-only checks stop being enough, add one rather than
+   turning on `strict`.
+
+`deploy/ser8/tests/test_delivery_rules.py` (run in the Product site consistency
+job) checks that the workflow files, the updater and the page budget test still
+match rules 3–6. Change that test and this section together.
+
+## 7. Acceptance and evidence
 
 Track the change through distinct states: PR checks, merged SHA, integrated
 checks, deploy eligibility, backup, migration/build, installed revision,

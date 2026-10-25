@@ -12,9 +12,11 @@ did not. It uses the same bearer tokens, scopes and owner permissions as the
 - Protocol versions: `2025-06-18` (preferred), `2025-03-26`, `2024-11-05`.
 - Nothing writes to Shopify, Square, C-Trax or SwipeSimple. The only tools that
   change anything are `submit_feedback` (stores feedback and, when asked, opens a
-  review task) and `create_task` (adds a task to Rupert's own Tasks board, only
-  with the `tasks:write` scope). The operations and report tools below are
-  read-only.
+  review task), and `create_task` and `update_task` (add or change a task on
+  Rupert's own Tasks board, only with the `tasks:write` scope). The operations
+  and report tools below are read-only.
+- The shared contract for tokens, scopes, errors, pagination and versioning is in
+  [API standards](api-standards.md).
 
 ## 1. Create a token
 
@@ -91,6 +93,14 @@ unless marked.
 | `get_workspace_info` | any valid token | — | Store, time zone, today, token scopes, available and locked tools. Start here. |
 | `submit_feedback` | any valid token | — | **Writes feedback only.** Report a bug, struggle, task outcome, suggestion, question or report issue. |
 | `list_my_feedback` | any valid token | — | Status of feedback this token sent (never the owner's notes). |
+| `data_guide` | any valid token | — | How Rupert stores a kind of business data (sales, tax, books, hours, stock, queues, tasks, sync), which tool answers it, and the rules that keep figures right. Pass a topic or the question asked. |
+| `business_pulse` | `reports:read` | `reports.read` | One snapshot for today: gross sales and orders per currency, waiting queues, open low-stock alerts, failing syncs and overdue tasks. Sections the person cannot read are marked unavailable. |
+| `metric` | `reports:read` | `reports.read` | One computed figure (gross sales, orders, average order value, best/worst day, by weekday, by source, top products, refund rate, expenses by category, tax collected, effective tax rate) for a period, with the comparison already computed. |
+| `list_metrics` | `reports:read` | `reports.read` | The figures `metric` can compute, with periods and comparisons. |
+| `period_review` | `reports:read` | `reports.read` | A review of one period against the one before: sales by source and currency, refunds, top products, tasks, alerts, counts, purchase orders, sync failures, and hours and expenses when allowed. |
+| `daily_close` | `reports:read` | `reports.read` | In-person store sales from the registers, one row per store, as on the Daily close page. Stores are never added together. |
+| `order_queues` | `reports:read` | `reports.read` | What is waiting to be processed now (unshipped and unpaid orders, transfers, purchase orders, receipts, holds, card payments, follow-ups), with counts and the oldest. |
+| `compliance_check` | `finance:read` | `finance.read` | What is overdue or at risk for record keeping (Books check items, close checklists, timesheets, leave, draft pay runs, uploads, document retention), each with fix/watch/ok and the page that fixes it. |
 | `list_reports` | `reports:read` | `reports.read` | Rupert's reports, their pages and the tool that answers each. |
 | `sales_summary` | `reports:read` | `reports.read` | Orders and gross sales per source and currency, optional daily series and top products. |
 | `sales_tax_report` | `reports:read` | `reports.read` | Tax per source and store (Shopify, Square, Rupert POS, C-Trax, SwipeSimple); labelled estimates. |
@@ -109,6 +119,7 @@ unless marked.
 | `marketing_summary` | `marketing:read` | `marketing.read` | How marketing is doing for a period: replies drafted and approved, offers live and ending, Shopify codes, gifts shipped with cost, influencer stages, collaborations. |
 | `marketing_records` | `marketing:read` | `marketing.read` | One kind of marketing record at a time: campaigns, communities, offers, discounts, reviews (approvals of our replies), influencers, engagements, gifts, events (change history). No usage counts, ratings or analytics are stored. |
 | `create_task` | `tasks:write` | `projects.write` | **Writes:** adds a task to Rupert's own Tasks board, marked as added by an AI assistant. |
+| `update_task` | `tasks:write` | `projects.write` | **Writes:** changes one task on Rupert's own Tasks board: assignee, status, priority, due date, title, or an appended note. |
 | `list_alerts` | `alerts:read` | `alerts.read` | Low-stock alerts with counts per status. |
 | `list_uploads` | `uploads:read` | `uploads.read` | "Did my file arrive and what happened to it?": each upload's status (received, recognized, needs_review, imported, rejected, duplicate), who sent it and when, size, SHA-256, detected type and confidence, and the reason for any hold or refusal. Find by id, file-name fragment or SHA-256 prefix. Never returns file contents; cannot upload or approve. See [Uploads inbox](ops/uploads-inbox.md). |
 | `ai_health` | `system:read` | `system.read` + instance operator | Health of the opencode integration behind Ask Rupert and team chat: key state, live free models, agent model status, tokens in/out today and over 7 days, rate-limit hits, warnings. Counts only — never the key or message content. Hidden from tokens whose owner is not a platform administrator. See [AI health monitor](ops/ai-health-monitor.md). |
