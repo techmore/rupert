@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Revisit a week of days for late-arriving imports. Unchanged reports replay safely.
-class DailyReconciliationArchiveJob < ActiveJob::Base
+class DailyReconciliationArchiveJob < ApplicationJob
   queue_as :default
 
   def perform

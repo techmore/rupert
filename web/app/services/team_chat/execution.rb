@@ -53,7 +53,7 @@ module TeamChat
     end
 
     def check_request!
-      trigger = Message.unscoped.find_by(id: run.request_context['trigger_id'], tenant_id: run.tenant_id)
+      trigger = Message.tenant_unscoped(run.tenant_id).find_by(id: run.request_context['trigger_id'])
       return if run.request_matches?(trigger)
 
       stop_for_request_change!

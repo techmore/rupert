@@ -118,7 +118,7 @@ module Projects
 
     def goal_belongs_to_tenant
       return if goal_id.blank?
-      return if Goals::Goal.unscoped.exists?(id: goal_id, tenant_id: tenant_id || Current.tenant_id)
+      return if Goals::Goal.tenant_unscoped(tenant_id || Current.tenant_id).exists?(id: goal_id)
 
       errors.add(:goal, 'was not found')
     end

@@ -2,6 +2,9 @@
 
 class WorkspacesController < AuthenticatedController
   before_action { response.headers['Cache-Control'] = 'no-store' }
+  # Self-service: each action loads only the signed-in account's own workspace deployment (Current.user.tenant_id).
+  skip_after_action :verify_authorized
+
   def show
     @deployment = WorkspaceDeployment.find_by!(tenant_id: Current.user.tenant_id)
   end

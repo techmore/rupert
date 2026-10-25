@@ -12,6 +12,8 @@ module People
 
     # Original profiles remain as private audit records after consolidation.
     default_scope { where(merged_into_id: nil) }
+    # Duplicates merged into another record, still limited to the current workspace.
+    scope :including_merged, -> { unscope(where: :merged_into_id) }
     has_many :source_identities, class_name: 'EmployeeSourceIdentity', dependent: :restrict_with_exception
     before_destroy :protect_consolidation_history, prepend: true
 
@@ -114,7 +116,7 @@ module People
     private
 
     def protect_consolidation_history
-      return unless self.class.unscoped.where(tenant_id: tenant_id, merged_into_id: id).exists?
+      return unless self.class.tenant_unscoped(tenant_id).exists?(merged_into_id: id)
 
       errors.add(:base, 'This staff member has consolidated profiles; retain the record and its history.')
       throw :abort

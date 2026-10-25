@@ -143,7 +143,7 @@ class OperationsBrief
   end
 
   def already_published?(period_key)
-    Setting.find_by(key: publication_key, tenant_id: Current.tenant_id)&.value == period_key
+    Setting.for_tenant(publication_key)&.value == period_key
   end
 
   def mark_published(period_key)

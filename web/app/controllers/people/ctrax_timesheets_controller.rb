@@ -54,6 +54,7 @@ module People
 
     def show
       @shift = CtraxLaborShift.visible_to(Current.user).includes(:employee).find(params[:id])
+      skip_authorization # gate: CtraxLaborShift.visible_to(Current.user) — another person's shift is a 404
       if request.format.csv?
         data = CSV.generate do |csv|
           csv << ['C-Trax shift ID', 'Observation', 'Observed at', 'Status', 'Issue', 'Clock-in', 'Clock-out', 'Source-reported hours', 'Elapsed hours', 'In progress', 'Source verified']

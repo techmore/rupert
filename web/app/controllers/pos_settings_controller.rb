@@ -3,6 +3,8 @@
 class PosSettingsController < AuthenticatedController
   before_action do
     raise Pundit::NotAuthorizedError unless Current.user.can?('settings.write') && Current.user.can?('sales.write') && Current.user.can?('inventory.write')
+
+    skip_authorization # gate: settings.write + sales.write + inventory.write
     response.headers['Cache-Control'] = 'no-store'
     @location = Location.find_by!(id: params[:location_id], source: 'ctrax')
     @setting = PosSetting.find_or_initialize_by(location: @location)

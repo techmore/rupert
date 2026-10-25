@@ -58,8 +58,21 @@ class SquareSyncer
         }
       end
 
+      refuse_foreign_identities!(item_rows.keys, variation_rows.pluck(:id))
       SquareItem.upsert_all(item_rows.values, unique_by: :id) if item_rows.any?
       SquareVariation.upsert_all(variation_rows, unique_by: :id) if variation_rows.any?
+    end
+
+    # Square object ids are global primary keys. Upserting by id would silently
+    # move another workspace's rows into this one (rewriting tenant_id), so a
+    # catalog that names ids already owned elsewhere is refused outright.
+    def refuse_foreign_identities!(item_ids, variation_ids)
+      [[SquareItem, item_ids], [SquareVariation, variation_ids]].each do |model, ids|
+        next if ids.empty?
+        next unless model.unscoped.where(id: ids).where.not(tenant_id: Current.tenant_id).exists?
+
+        raise SquareClient::Error, 'Square catalog identities belong to another workspace'
+      end
     end
 
     def sync_links!(catalog)

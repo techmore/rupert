@@ -5,7 +5,7 @@
 # skip Square. Per-source watermarks advance only after that source imports.
 class CatalogSyncHistory
   def self.watermark(source)
-    value = Setting.find_by(key: "sync_watermark_#{source}", tenant_id: Current.tenant_id)&.value
+    value = Setting.for_tenant("sync_watermark_#{source}")&.value
     return unless value.is_a?(String) && value.match?(/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)\z/)
 
     time = DateTime.iso8601(value).to_time

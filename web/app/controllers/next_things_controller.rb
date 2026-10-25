@@ -5,6 +5,9 @@
 # Ops mode and skips live in this browser session; Done and Snooze are saved per person.
 class NextThingsController < AuthenticatedController
   before_action -> { response.headers['Cache-Control'] = 'no-store' }
+  # Self-service: NextThings.for(Current.user) already filters each item by the person's own permissions,
+  # and the writes touch only this person's dismissals and session.
+  skip_after_action :verify_authorized
 
   # GET /next_thing
   def show

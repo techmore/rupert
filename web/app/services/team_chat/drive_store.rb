@@ -101,7 +101,7 @@ module TeamChat
     end
 
     def root_folder!
-      setting = Setting.find_by(key: ROOT_KEY, tenant_id: Current.tenant_id)
+      setting = Setting.for_tenant(ROOT_KEY)
       return setting.value if setting&.value.present? && folder?(setting.value)
 
       id = create_folder("Rupert Team Chat — #{@connection.tenant.name}", nil)

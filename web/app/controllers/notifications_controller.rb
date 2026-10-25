@@ -2,6 +2,9 @@
 
 # A person's own notifications: the bell in the header opens this list.
 class NotificationsController < AuthenticatedController
+  # Self-service: every action reads or updates only Notification.where(user_id: Current.user.id).
+  skip_after_action :verify_authorized
+
   def index
     @pagy, @notifications = pagy(:offset, mine.newest, limit: 30)
     @unread = mine.unread.count

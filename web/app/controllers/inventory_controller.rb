@@ -113,7 +113,7 @@ class InventoryController < AuthenticatedController
     scope = scope.where('"createdAt" >= ?', days.days.ago)
     @pagy, @movements = pagy(:offset, scope, limit: 50)
     @names = movement_names(@movements)
-    @sources = InventoryMovement.unscoped.where(tenant_id: Current.tenant_id)
+    @sources = InventoryMovement.tenant_unscoped
                                 .distinct.order(:source).pluck(:source)
   end
 

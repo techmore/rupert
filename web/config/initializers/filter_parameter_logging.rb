@@ -63,3 +63,9 @@ Rails.application.config.filter_parameters += [/\Afeedback_report\z/i]
 
 # Backup recovery kit (#421): the activation check code.
 Rails.application.config.filter_parameters += %i[check_code]
+
+# Tax and identity details (1099 vendors, staff records, workspace legal entity). Anchored so
+# unrelated keys such as "address_verified", "tint" or "email_address_id" still log.
+Rails.application.config.filter_parameters += [
+  /\Atin\z/i, /\Adate_of_birth\z/i, /\Aaddress(_line[12])?\z/i, /\Alegal_name\z/i, /\Apostal_code\z/i
+]

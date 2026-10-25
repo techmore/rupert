@@ -120,7 +120,7 @@ module Finance
     end
 
     def set_payment
-      @payment = Finance::VendorPayment.unscoped.find_by!(tenant_id: Current.tenant_id, id: params[:id])
+      @payment = Finance::VendorPayment.with_discarded.find_by!(id: params[:id])
     end
 
     def payment_params
