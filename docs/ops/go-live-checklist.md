@@ -3,7 +3,7 @@
 Tick every line before Rupert is the system a shift depends on. Owner items are decisions or credentials only the owner can provide; see the audit's "Needs owner" list.
 
 ## Code and configuration
-- [ ] `main` deployed to SER8 and `curl -sI https://herbalhealers.rupertpos.com/up | grep x-rupert-build` matches the release tag (release process doc).
+- [ ] `main` deployed to SER8 and `curl -sI https://herbalhealers.rupertpos.com/up | grep x-rupert-build` matches the deployed `main` SHA in the updater's release receipt (release process doc).
 - [ ] `shopify app deploy` run after merging, so the Partner Dashboard `application_url` and compliance webhook URIs point at `herbalhealers.rupertpos.com` (owner).
 - [ ] `/etc/rupert.env` has `HOST`, `SECRET_KEY_BASE`, all three `RAILS_ENCRYPTION_*`, `SHOPIFY_API_KEY/SECRET`, and optionally `SENTRY_DSN` (environment reference doc).
 - [ ] Shopify sync credentials saved in Settings (client id/secret, shop domain, `SHOPIFY_LOCATION_ID` if more than one location).

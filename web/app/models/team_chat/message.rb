@@ -154,6 +154,8 @@ module TeamChat
       return nil if info['duration_ms'].blank?
 
       { seconds: (info['duration_ms'].to_f / 1000).round(1), model: info['model'].presence,
+        provider: TeamChat::ModelConfig::PROVIDER_NAMES[info['engine']],
+        fallback_from: Array(info['fallback_from']).filter_map { |from| TeamChat::ModelConfig::PROVIDER_NAMES[from['engine']] || from['model'] }.presence,
         where: LOCAL_ENGINES.include?(info['engine']) ? 'local' : 'cloud',
         load_seconds: (info['load_ms'].to_f / 1000).round(1).nonzero? }.compact
     end

@@ -75,6 +75,7 @@ instance environment variables in `/etc/rupert.env`, never a web setting:
 | `RUPERT_CHAT_MODEL` | Model id. OpenCode Go default `deepseek-v4.1-flash` |
 | `RUPERT_CHAT_API_BASE` | Base URL for `openai`, or an override for the others |
 | `RUPERT_CHAT_API_KEY` | Key for `opencode_go` / `openai` |
+| `RUPERT_CHAT_FALLBACK` | Models to try in order when the first is refused or unreachable: `engine[:model]` list, e.g. `local_gateway:qwen3.6-35b-a3b,opencode_cli`, or `none`. Unset = the CLI on auto, nothing when `RUPERT_CHAT_PROVIDER` is set |
 
 **Auto** picks, in this order:
 
@@ -85,8 +86,26 @@ instance environment variables in `/etc/rupert.env`, never a web setting:
    `RUPERT_CHAT_MODEL`) are set; its `/v1` API is used.
 3. **The opencode CLI** Ask Rupert already uses, with a text tool protocol.
 
-In auto, a refused or unreachable HTTP model falls back to the CLI. The model in
-use is shown under the composer and in the rail.
+In auto, a refused or unreachable HTTP model falls back to the CLI. With an
+explicit `RUPERT_CHAT_PROVIDER`, `RUPERT_CHAT_FALLBACK` names the next models
+(unconfigured ones and repeats are skipped; `openai` cannot be a fallback because
+it needs its own base URL). A fallback is used only for a refused credential, rate
+limit or unreachable/unavailable model, and only before anything was written into
+the reply; a timeout is not retried elsewhere because the run's time budget is
+spent. The model in use is shown under the composer and in the rail. Each answer
+shows its model, provider (e.g. "deepseek-v4.1-flash · OpenCode Go · cloud") and,
+after a fallback, which provider it replaced; the reply's meta keeps `engine`,
+`model` and `fallback_from`, and the run records a `fallback` telemetry span.
+
+What leaves the server for a cloud model (OpenCode Go): one HTTPS POST to
+`/chat/completions` per generation with `model`, `messages` (Rupert's system
+instructions, the room's recent messages or the thread as "Name: text", the
+"Context for this reply" note, and earlier tool calls and their results in that
+answer), `tools` (names, descriptions and JSON schemas), `temperature`, `stream`
+and `stream_options`; headers carry the key and `x-opencode-session:
+rupert-room-<id>`. MCP tool results other than typed financial evidence pass
+through `AskRupert::Redactor.personal` first. Only what the tools the model called
+returned, as the asking person, is sent from the database.
 
 ## Local model @agents (@lfm, @bonsai, @gemma)
 

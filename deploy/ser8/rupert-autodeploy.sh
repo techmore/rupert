@@ -309,5 +309,7 @@ if [ $? -ne 0 ]; then
 fi
 rm -f "$STATE/failed-sha"
 write_receipt deployed "deployed ${NEW:0:8}, healthy"
+# The receipt keeps the previous SHA; from here on the running revision is NEW.
+CUR=$NEW
 write_json last-deploy.json deployed "deployed ${NEW:0:8}, healthy"
 report deployed "deployed ${NEW:0:8}, healthy"

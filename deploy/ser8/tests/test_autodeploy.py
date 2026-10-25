@@ -162,6 +162,9 @@ class AutodeployTest(unittest.TestCase):
         self.assertEqual(self.head(self.tmp / 'app'), new)
         self.assertLess(calls.index('sqlite3'), calls.index('db:migrate'))
         self.assertIn('systemctl restart rupert-web rupert-jobs', calls)
+        # Regression: status.json kept the old SHA as current until the next run.
+        self.assertEqual((self.status()['current'], self.status()['target']), (new, new))
+        self.assertEqual(self.status('last-deploy.json')['current'], new)
 
     def test_deployed_files_stay_readable_by_the_app_user(self):
         # Regression: umask 077 made Gemfile.lock and new gems root-only and the
