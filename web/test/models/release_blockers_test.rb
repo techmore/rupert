@@ -8,7 +8,7 @@ class ReleaseBlockersTest < ActiveSupport::TestCase
     assert_equal 'v0.2.1', gate.release
     assert_equal 'Release v0.2.1 blockers', gate.title
     assert_equal 'https://github.com/techmore/rupert/issues/326', gate.tracker_url
-    ids = %w[google_drive_backup payroll_review pay_period tax_preparer_review wallet_payments pos_hardware branch_protection]
+    ids = %w[google_drive_backup payroll_review pay_period approval_change_rule iris_header_check tax_preparer_review wallet_payments pos_hardware branch_protection]
     assert_equal ids, gate.items.map(&:id)
     assert(gate.items.all? { |item| item.title.present? && item.needed.present? && item.issues.any? })
     assert_equal [[419, 'https://github.com/techmore/rupert/issues/419']], gate.items.first.issue_links.first(1)
@@ -20,10 +20,10 @@ class ReleaseBlockersTest < ActiveSupport::TestCase
     item = gate.items.find { |candidate| candidate.id == 'pay_period' }
     assert_equal ['pay_period_chosen', '/settings#pay-rules', [423]], [item.done_when, item.link, item.issues]
     assert item.open?
-    assert_equal 7, gate.open_count
+    assert_equal 8, gate.open_count
     PayRules.save!({ pay_period: 'weekly', week_start_day: 'thursday' }, actor: users(:regular_user))
     assert item.done?
-    assert_equal 6, gate.open_count
+    assert_equal 7, gate.open_count
   ensure
     Current.reset
   end

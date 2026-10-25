@@ -19,7 +19,9 @@ reviewed through normal PR review. `ModuleRegistry` keys: `team_chat` (Team → 
 
 - Team chat: `TeamChat::Room`, `Membership`, `Message`, `Attachment`, `Reaction`, `Run`
   (`chat_runs`, the reply outbox), `Approval` and `ApprovalEvent` (`chat_approvals`, proposed
-  changes and their receipts). Messages and attachments are rows in Rupert's own database.
+  changes and their receipts). Messages and attachments are rows in Rupert's own database. Message
+  `body` and attachment `data` are encrypted at rest (#421), so the Media tab searches message text
+  in Ruby, one room at a time ([encryption-at-rest.md](../ops/encryption-at-rest.md)).
 - Ask Rupert: conversations and messages per person, plus `ask_rupert_usages` (counters only:
   person, time, provider, model, tokens, lookups; kept 35 days).
 - `TeamChat::Approval` is `TenantScoped`; a decided approval cannot be edited. Other tables:

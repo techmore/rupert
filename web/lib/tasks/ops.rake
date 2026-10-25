@@ -378,3 +378,17 @@ namespace :ops do
     puts "Shop rows checked: #{Shop.count}; re-encrypted: #{rewritten}"
   end
 end
+
+namespace :ops do
+  desc 'Encrypt chat, payroll, HR and 1099 rows stored before #421 (dry run unless CONFIRM=1; TENANT_ID optional)'
+  task encrypt_sensitive_fields: :environment do
+    write = ENV['CONFIRM'] == '1'
+    tenant_id = ENV['TENANT_ID'].presence
+    raise "No tenant #{tenant_id}" if tenant_id && !Tenant.exists?(id: tenant_id)
+
+    puts "#{write ? 'Encrypting' : 'Dry run (set CONFIRM=1 to write)'} — #{tenant_id ? "tenant #{tenant_id}" : 'all tenants'}"
+    results = SensitiveFieldEncryption.call(write: write, tenant_id: tenant_id)
+    results.each { |result| puts "  #{result.line(write)}" }
+    puts "Total: #{results.sum(&:plaintext)} rows with plaintext; #{write ? "#{results.sum(&:rewritten)} encrypted" : 'nothing written'}"
+  end
+end

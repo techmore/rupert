@@ -25,6 +25,16 @@ items:
     done_when: pay_period_chosen
     link: /settings#pay-rules
     link_label: Choose the pay period
+  - id: approval_change_rule
+    title: 'Approved periods: Jan to review'
+    needed: Decide whether a manual journal entry or reversal in an already-approved period should mark that approval as changed. Turning it on marks every existing approval as changed once.
+    issues: [169]
+    status: open
+  - id: iris_header_check
+    title: IRIS CSV header check
+    needed: Download the 1099-NEC and 1099-MISC CSV templates inside the IRS IRIS portal and compare their header rows with Rupert's export before the first upload.
+    issues: [472]
+    status: open
   - id: tax_preparer_review
     title: Tax preparer review of 1099s
     needed: A tax preparer checks the 1099-NEC and 1099-MISC totals and copies.
@@ -44,4 +54,4 @@ items:
     title: GitHub branch protection
     needed: A repository admin turns on branch protection and required checks for main.
     issues: [206]
-    status: open
+    status: done

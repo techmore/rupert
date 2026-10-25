@@ -34,7 +34,7 @@ module Finance
     def initialize(year:)
       @year = year.to_i
       @range = Date.new(@year, 1, 1)..Date.new(@year, 12, 31)
-      @rows = Finance::TaxPayee.order(:legal_name).map { |payee| row_for(payee) }
+      @rows = Finance::TaxPayee.all.sort_by { |payee| [payee.legal_name.to_s.downcase, payee.id] }.map { |payee| row_for(payee) }
     end
 
     def needed = rows.select { |row| row.status(year) == 'needed' }
