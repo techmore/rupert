@@ -166,6 +166,23 @@ class McpServerTest < ActionDispatch::IntegrationTest
     assert task.reload.in_progress?
   end
 
+  test 'MCP task writes land in the shared work-item table with history, answering as before' do
+    _, secret = issue
+    result = call_tool(secret, 'create_task', { title: 'Count the tins', priority: 'low' })
+    assert_equal false, result['isError'], result.dig('content', 0, 'text')
+    task = Projects::Task.find_by!(title: 'Count the tins')
+    assert_equal 'task', task.kind
+    assert_equal task.id, Work::Item.find(task.id).id
+
+    result = call_tool(secret, 'update_task', { task_id: task.id, status: 'in_progress' })
+    assert_equal false, result['isError'], result.dig('content', 0, 'text')
+    Current.tenant = @tenant
+    events = task.history.to_a
+    assert_equal %w[created transitioned], events.map(&:action)
+    assert_equal [%w[todo in_progress]], events.drop(1).map { |event| [event.from_status, event.to_status] }
+    assert(events.all? { |event| event.actor_id == @owner.id && event.tenant_id == @tenant.id })
+  end
+
   test 'bad or missing token is rejected with 401' do
     post mcp_path, params: { jsonrpc: '2.0', id: 1, method: 'tools/list' }.to_json, headers: { 'Content-Type' => 'application/json' }
     assert_response :unauthorized

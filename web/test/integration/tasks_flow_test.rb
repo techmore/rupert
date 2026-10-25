@@ -100,6 +100,18 @@ class TasksFlowTest < ActionDispatch::IntegrationTest
     assert task_now.done?
   end
 
+  test 'web task changes write the shared append-only history with the person who made them' do
+    patch projects_task_path(@task), params: PARAMS.merge(task: { title: 'Fix duplicate SKUs now', due_on: '2026-11-03' })
+    post transition_projects_task_path(@task, event: 'start'), params: PARAMS
+    Current.tenant = @tenant
+    events = Work::ItemEvent.for_item(@task).timeline.to_a.drop(1) # the first is the setup's 'created'
+    assert_equal %w[updated transitioned], events.map(&:action)
+    assert_equal ['Fix duplicate SKUs', 'Fix duplicate SKUs now'], events.first.field_changes['title']
+    assert_equal %w[todo in_progress start], [events.last.from_status, events.last.to_status, events.last.transition]
+    assert_equal [@user.id, @user.id], events.map(&:actor_id)
+    assert task_now.started_at
+  end
+
   test 'move changes status through the state machine and stamps completion' do
     post move_projects_task_path(@task, **PARAMS), params: { status: 'in_progress' }, as: :json
     assert_response :success

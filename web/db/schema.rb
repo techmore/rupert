@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_25_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_25_190000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -3289,8 +3289,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_25_160000) do
     t.string "recurrence"
     t.datetime "next_spawned_at"
     t.integer "estimate_minutes"
+    t.string "kind", default: "task", null: false
+    t.string "requester_id"
+    t.datetime "started_at"
+    t.bigint "parent_id"
+    t.string "source_type"
+    t.bigint "source_id"
+    t.text "details"
+    t.index ["source_type", "source_id"], name: "index_tasks_on_source"
     t.index ["tenant_id", "assignee_id"], name: "index_tasks_on_tenant_id_and_assignee_id"
     t.index ["tenant_id", "due_on"], name: "index_tasks_on_tenant_id_and_due_on"
+    t.index ["tenant_id", "kind", "status"], name: "index_tasks_on_tenant_kind_status"
+    t.index ["tenant_id", "parent_id"], name: "index_tasks_on_tenant_parent"
     t.index ["tenant_id", "project_id"], name: "index_tasks_on_tenant_id_and_project_id"
     t.index ["tenant_id", "status"], name: "index_tasks_on_tenant_id_and_status"
   end
@@ -3663,6 +3673,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_25_160000) do
     t.datetime "updated_at", null: false
     t.index ["provider", "delivery_id"], name: "index_webhook_deliveries_on_provider_and_delivery_id", unique: true
     t.index ["received_at"], name: "index_webhook_deliveries_on_received_at"
+  end
+
+  create_table "work_item_events", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "work_item_id", null: false
+    t.string "item_kind", null: false
+    t.string "action", null: false
+    t.string "transition"
+    t.string "from_status"
+    t.string "to_status"
+    t.bigint "actor_id"
+    t.string "actor_name", null: false
+    t.text "field_changes"
+    t.string "note"
+    t.datetime "created_at", null: false
+    t.index ["tenant_id", "item_kind", "created_at"], name: "idx_work_item_events_by_kind"
+    t.index ["tenant_id", "work_item_id", "created_at"], name: "idx_work_item_events_timeline"
   end
 
   create_table "workspace_deployments", force: :cascade do |t|
