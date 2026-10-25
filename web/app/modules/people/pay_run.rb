@@ -9,6 +9,9 @@ module People
 
     self.table_name = 'pay_runs'
 
+    # The stored totals and notes are encrypted at rest (#421), so totals are added up in Ruby.
+    encrypts :total_gross_cents, :total_net_cents, :notes
+
     has_many :payslips, class_name: 'People::Payslip', dependent: :destroy, inverse_of: :pay_run
 
     validates :name, presence: true
@@ -31,12 +34,13 @@ module People
       end
     end
 
+    # pluck decrypts each value; SQL SUM over the encrypted column would not.
     def total_gross_cents
-      payslips.sum(:gross_cents)
+      payslips.pluck(:gross_cents).sum(&:to_i)
     end
 
     def total_net_cents
-      payslips.sum(:net_cents)
+      payslips.pluck(:net_cents).sum(&:to_i)
     end
 
     def finalized?

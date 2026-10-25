@@ -45,6 +45,7 @@ Shopify sends `customers/data_request`, `customers/redact`, `shop/redact`, `app/
 | Shopify client secret (sync) | Settings → env (`SHOPIFY_CLIENT_SECRET`) | regenerate in Shopify admin, save, run a sync | token cache refreshes itself |
 | Shopify API secret (OAuth app) | `SHOPIFY_API_SECRET` in env | rotate in the Partner Dashboard; set `old_secret` in `config/initializers/shopify_app.rb` during the overlap | webhooks use the new HMAC |
 | Shopify offline token (`shops` table) | re-install the app | tokens are encrypted at rest; run `bin/rails ops:encrypt_shop_tokens` once after upgrading past 2026-10-20 | — |
+| Chat, payroll, HR and 1099 columns | database | encrypted at rest since #421; run `CONFIRM=1 bin/rails ops:encrypt_sensitive_fields` once after upgrading ([encryption-at-rest.md](encryption-at-rest.md)) | — |
 | Square access token | Settings → env (`SQUARE_ACCESS_TOKEN`) | create a new token in the Square developer dashboard for the same environment, save, run a Square sync | — |
 | Google OAuth / Drive | Settings → Google sign-in and Drive sections | regenerate the client secret in Google Cloud, save; reconnect Drive (consent) | Drive refresh token must be re-issued |
 | Off-host backup key | host `~/.config/rupert/offhost.key` | generate a new key, re-encrypt the retained sets (or accept that older sets need the old key, kept in the password manager) | — |

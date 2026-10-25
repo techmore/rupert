@@ -11,6 +11,9 @@ module Finance
 
     KINDS = %w[original corrected].freeze
 
+    # The recipient's name and TIN digits as issued are encrypted at rest (#421).
+    encrypts :legal_name, :tin_last4
+
     belongs_to :tax_payee, class_name: 'Finance::TaxPayee'
 
     validates :kind, inclusion: { in: KINDS }

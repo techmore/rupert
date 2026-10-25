@@ -10,6 +10,8 @@
 class TeamChatController < AuthenticatedController
   PAGE = 50
   MEDIA_PAGE = 60
+  MEDIA_SCAN_BATCH = 200
+  MEDIA_SCAN = 2_000
   CHANGED_MAX = 200
 
   before_action :require_access
@@ -168,18 +170,14 @@ class TeamChatController < AuthenticatedController
     scope = scope.where(content_type: TeamChat::Attachment::IMAGE_TYPES) if params[:kind] == 'images'
     scope = scope.where.not(content_type: TeamChat::Attachment::IMAGE_TYPES) if params[:kind] == 'files'
     scope = scope.where(id: ...params[:before].to_i) if params[:before].present?
-    if (query = params[:q].to_s.strip.first(80)).present?
-      like = "%#{TeamChat::Attachment.sanitize_sql_like(query.downcase)}%"
-      scope = scope.joins('LEFT JOIN users ON users.id = chat_messages.user_id')
-                   .where('LOWER(chat_attachments.filename) LIKE :q OR LOWER(chat_messages.body) LIKE :q OR LOWER(users.name) LIKE :q OR LOWER(users.email) LIKE :q', q: like)
-    end
-    rows = scope.preload(message: :user).order(id: :desc).limit(MEDIA_PAGE + 1).to_a
-    items = rows.first(MEDIA_PAGE).map do |file|
+    query = params[:q].to_s.strip.first(80)
+    rows, has_more, next_before = query.present? ? media_search(scope, query.downcase) : media_page(scope)
+    items = rows.map do |file|
       message = file.message
       file.as_payload(@room).merge(message_id: message.id, parent_id: message.parent_id, created_at: file.created_at.iso8601,
         author: message.author_name, email: (message.user&.email if message.person?), excerpt: message.body.to_s.squish.first(120))
     end
-    render json: { items: items, has_more: rows.size > MEDIA_PAGE }
+    render json: { items: items, has_more: has_more, next_before: next_before }
   end
 
   # POST /chat/:room/messages/:id/reactions { emoji } — adds or removes yours.
@@ -312,6 +310,38 @@ class TeamChatController < AuthenticatedController
   end
 
   private
+
+  def media_page(scope)
+    rows = scope.preload(message: :user).order(id: :desc).limit(MEDIA_PAGE + 1).to_a
+    more = rows.size > MEDIA_PAGE
+    rows = rows.first(MEDIA_PAGE)
+    [rows, more, (rows.last&.id if more)]
+  end
+
+  # Message text is encrypted at rest (#421), so SQL cannot search it. This reads the room's files newest first, in
+  # batches, and matches the file name, message text and poster in Ruby. It stops at a page of matches or after
+  # MEDIA_SCAN files; next_before tells the browser where to carry on.
+  def media_search(scope, needle)
+    found = []
+    scanned = 0
+    cursor = nil
+    loop do
+      batch = (cursor ? scope.where(id: ...cursor) : scope).preload(message: :user).order(id: :desc).limit(MEDIA_SCAN_BATCH).to_a
+      batch.each do |file|
+        scanned += 1
+        cursor = file.id
+        found << file if media_match?(file, needle)
+        return [found.first(MEDIA_PAGE), true, found[MEDIA_PAGE - 1].id] if found.size > MEDIA_PAGE
+      end
+      return [found, false, nil] if batch.size < MEDIA_SCAN_BATCH
+      return [found, true, cursor] if scanned >= MEDIA_SCAN
+    end
+  end
+
+  def media_match?(file, needle)
+    message = file.message
+    [file.filename, message.body, message.user&.name, message.user&.email].any? { |text| text.to_s.downcase.include?(needle) }
+  end
 
   def require_access
     return head :forbidden unless TeamChat.allowed?(Current.user)

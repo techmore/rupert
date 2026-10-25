@@ -917,6 +917,28 @@ class TeamChatTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
   end
 
+  test 'Media text search pages through encrypted message text within the room' do
+    sign_in(@admin)
+    get team_chat_path
+    room = TeamChat::Room.find_by!(slug: 'admins')
+    other = TeamChat::Room.create!(name: 'elsewhere', slug: 'elsewhere', kind: 'channel', created_by: @admin)
+    add = lambda do |target, body|
+      message = target.messages.create!(user: @admin, body: body)
+      TeamChat::Attachment.create!(room: target, message: message, filename: 'f.png', content_type: 'image/png', byte_size: 4, data: 'x'.b * 4)
+    end
+    (TeamChatController::MEDIA_PAGE + 1).times { |index| add.call(room, "Pallet count #{index}") }
+    add.call(room, 'unrelated')
+    add.call(other, 'pallet count in another room')
+
+    get team_chat_media_path('admins', q: 'pallet'), as: :json
+    assert_equal TeamChatController::MEDIA_PAGE, json['items'].size
+    assert json['has_more']
+    assert_equal json['items'].last['id'], json['next_before']
+    get team_chat_media_path('admins', q: 'pallet', before: json['next_before']), as: :json
+    assert_equal ['Pallet count 0'], json['items'].pluck('excerpt')
+    assert_not json['has_more']
+  end
+
   test 'Media lists the room photos and files and searches them' do
     sign_in(@admin)
     get team_chat_path
@@ -934,6 +956,14 @@ class TeamChatTest < ActionDispatch::IntegrationTest
     assert_equal %w[counts.csv], json['items'].pluck('name')
     get team_chat_media_path('admins', q: 'nothing like this'), as: :json
     assert_empty json['items']
+
+    # Message text and file bytes are ciphertext on disk (#421); the search above matched the decrypted text.
+    message = TeamChat::Message.order(:id).find { |row| row.body == 'weekly counts' }
+    raw = TeamChat::Message.connection.select_value("SELECT body FROM chat_messages WHERE id = #{message.id}")
+    assert raw.start_with?('{"p":'), 'chat body is stored encrypted'
+    assert_not_includes raw, 'weekly'
+    data = TeamChat::Message.connection.select_value("SELECT CAST(data AS TEXT) FROM chat_attachments WHERE message_id = #{message.id}")
+    assert data.start_with?('{"p":'), 'attachment bytes are stored encrypted'
 
     get team_chat_room_path('admins')
     assert_select '.chat-tab[data-tab="media"]'

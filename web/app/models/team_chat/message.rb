@@ -15,6 +15,9 @@ module TeamChat
     STALE_AFTER = 12.minutes
     COLORS = %w[#2563eb #0891b2 #7c3aed #db2777 #ea580c #16a34a #4f46e5 #0d9488].freeze
 
+    # Encrypted at rest (#421). Searching message text happens in Ruby, within one room.
+    encrypts :body
+
     has_one :run, class_name: 'TeamChat::Run', dependent: :destroy
 
     belongs_to :room, class_name: 'TeamChat::Room'
