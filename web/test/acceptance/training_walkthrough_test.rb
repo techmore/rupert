@@ -108,7 +108,7 @@ class TrainingWalkthroughTest < ActionDispatch::IntegrationTest
     assert_select "tr[data-assignment-id='#{sam_a.id}']", text: /Completed/
     assert_select "tr[data-assignment-id='#{casey_a.id}']", text: /Cancelled/
     assert_select '#history li', count: 6
-    history = tenant_scope { TrainingAssignmentEvent.where(training_assignment_id: [sam_a.id, casey_a.id]).order(:id).map { |e| [e.actor_name, e.action, e.module_revision] } }
+    history = tenant_scope { TrainingAssignmentEvent.where(training_assignment_id: [sam_a.id, casey_a.id]).order(:id).map { |e| [e.actor_name, e.training_action, e.module_revision] } }
     assert_equal [%w[assigned assigned started started completed cancelled].sort, 6], [history.map(&:second).sort, history.size]
     get training_modules_path
     assert_response :success

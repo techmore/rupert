@@ -16,6 +16,8 @@ class TrainingAssignmentEvent < Work::ItemEvent
   default_scope { where(item_kind: TrainingAssignment::KIND) }
 
   belongs_to :training_assignment, foreign_key: :work_item_id, inverse_of: :events
+  # The old table's column name, so queries written against it keep working.
+  alias_attribute :training_assignment_id, :work_item_id
 
   # assigned, started, completed or cancelled.
   def training_action
