@@ -65,6 +65,14 @@
       <div><dt>Connections</dt><dd class="stat-value-sm"><%= @system.db_connections %> / <%= @system.db_max_connections %></dd></div>
       <div><dt>Size</dt><dd class="stat-value-sm"><%= @system.db_size_mb %> MB</dd></div>
       <div><dt>App cache</dt><dd><%= @system.cache_entries || "n/a" %> entries · <%= @system.cache_dir_mb %> MB on disk</dd></div>
+      <div data-encryption-status="<%= @encryption_status ? @encryption_status[:plaintext] : 'unknown' %>">
+        <dt>Plaintext in encrypted columns</dt>
+        <% if @encryption_status %>
+          <dd class="<%= @encryption_status[:plaintext].positive? ? "text-clay" : "" %>"><%= @encryption_status[:plaintext] %> rows · <%= @encryption_status[:models] %> models · checked <%= @encryption_status[:at] ? "#{time_ago_in_words(@encryption_status[:at])} ago" : "at an unknown time" %></dd>
+        <% else %>
+          <dd>Not checked yet. Run <code>bin/rails ops:encryption_status</code></dd>
+        <% end %>
+      </div>
     </dl>
     <% if @sqlite[:supported] %>
       <dl class="facts">

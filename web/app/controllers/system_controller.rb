@@ -11,6 +11,7 @@ class SystemController < AuthenticatedController
     @ai_health = AiHealthSnapshot.build
     @ops_activity = OpsActivitySnapshot.build
     @backups = BackupStatus.layers
+    @encryption_status = SensitiveFieldEncryption.last_status
     render('system/index')
   end
 
