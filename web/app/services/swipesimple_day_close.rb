@@ -401,9 +401,8 @@ class SwipesimpleDayClose
     value.in_time_zone(BusinessClock.zone).strftime('%b %-d, %Y · %-I:%M %p %Z')
   end
 
-  def dollars(cents)
-    format('%.2f', cents / 100.0)
-  end
+  # CSV cell: plain decimal, ASCII minus, no separators.
+  def dollars(cents) = Money.format(cents, unit: false, minus: '-', delimiter: '')
 
   def safe(value)
     text = value.to_s

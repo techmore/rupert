@@ -144,6 +144,14 @@ class MoneyFormatTest < ActionView::TestCase
       assert_equal old_tax.call(cents), tax.send(:dollars, cents)
       assert_equal old_mcp.call(cents), mcp.send(:money, cents)
     end
+    day_close = SwipesimpleDayClose.allocate
+    close_summary = DailyCloseSummary.allocate
+    payees = Finance::TaxPayeesController.new
+    AMOUNTS.each do |cents|
+      assert_equal format('%.2f', cents / 100.0), day_close.send(:dollars, cents)
+      assert_equal format('%<sign>s$%<amount>.2f', sign: cents.negative? ? '-' : '', amount: cents.abs / 100.0), close_summary.send(:reconciliation_note_money, cents)
+      assert_equal old_currency.call(cents), payees.send(:money_text, cents)
+    end
     assert_nil metrics.send(:money, nil)
     assert_equal 'unavailable', tax.send(:dollars, nil)
     assert_equal 'unavailable', mcp.send(:money, nil)
