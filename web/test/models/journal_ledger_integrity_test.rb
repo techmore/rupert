@@ -44,6 +44,18 @@ class JournalLedgerIntegrityTest < ActiveSupport::TestCase
     assert_raises(ActiveRecord::RecordInvalid) { entry.update!(status: 'posted') }
   end
 
+  test 'a saved entry cannot gain lines' do
+    entry = post_entry
+    line = -> { Finance::JournalLine.new(account_id: @cash.id, debit_cents: 250, position: 9) }
+    assert_raises(ActiveRecord::ReadOnlyRecord) { entry.journal_lines << line.call }
+    assert_raises(ActiveRecord::ReadOnlyRecord) { entry.reload.journal_lines.create!(account_id: @cash.id, debit_cents: 250) }
+    assert_raises(ActiveRecord::ReadOnlyRecord) { Finance::JournalLine.create!(journal_entry_id: entry.id, account_id: @cash.id, debit_cents: 250) }
+    entry.void!
+    assert_raises(ActiveRecord::ReadOnlyRecord) { entry.journal_lines << line.call }
+    assert_equal 2, entry.reload.journal_lines.count
+    assert entry.balanced?
+  end
+
   test 'database rejects a leg carrying both a debit and a credit' do
     entry = post_entry
     assert_raises(ActiveRecord::StatementInvalid) { raw_line(entry_id: entry.id, account_id: @cash.id, debit: 5, credit: 5) }

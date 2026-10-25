@@ -36,7 +36,9 @@ class BooksDesk
   # waits for the weekly sign-off). It is not done, but it is never "next".
   ACTIONABLE_STATES = %i[todo overdue].freeze
 
-  Day = Struct.new(:day, :orders, :totals, :stages, keyword_init: true) do
+  # totals and sources are keyed by currency: a day's sales are added across
+  # sources (and locations) within one currency, never across currencies.
+  Day = Struct.new(:day, :orders, :totals, :sources, :stages, keyword_init: true) do
     def complete? = stages.all?(&:done?)
     def next_stage = stages.find { |stage| ACTIONABLE_STATES.include?(stage.state) && !(stage.key == :approved && stage.blocker == :week) }
     def daily_cleanup_complete? = stages.reject { |stage| stage.key == :approved }.all?(&:done?)
@@ -156,9 +158,10 @@ class BooksDesk
     @rows[day] ||= begin
       wf = workflow(day)
       register = wf.report.register.rows
-      totals = register.group_by { |r| r[:currency].presence || 'Unknown' }
-        .transform_values { |rows| rows.any? { |r| r[:order_total_cents].nil? } ? nil : rows.sum { |r| r[:order_total_cents] } }
-      Day.new(day: day, orders: register.sum { |r| r[:orders].to_i }, totals: totals, stages: stages_for(day, wf))
+      by_currency = register.group_by { |r| r[:currency].presence || 'Unknown' }
+      totals = by_currency.transform_values { |rows| rows.any? { |r| r[:order_total_cents].nil? } ? nil : rows.sum { |r| r[:order_total_cents] } }
+      sources = by_currency.transform_values { |rows| rows.map { |r| r[:source].to_s }.uniq.sort }
+      Day.new(day: day, orders: register.sum { |r| r[:orders].to_i }, totals: totals, sources: sources, stages: stages_for(day, wf))
     end
   end
 

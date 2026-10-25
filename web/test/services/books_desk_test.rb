@@ -46,4 +46,23 @@ class BooksDeskTest < ActiveSupport::TestCase
     assert_not day.daily_cleanup_complete?
     assert_equal :closed, day.next_stage.key
   end
+
+  test 'day totals add sources within a currency and say so, never across currencies' do
+    day = Date.new(2026, 10, 14)
+    at = Time.zone.local(2026, 10, 14, 12)
+    { 'square' => ['USD', 1500], 'shopify' => ['USD', 2500], 'swipesimple' => ['CAD', 700] }.each do |source, (currency, cents)|
+      order = Core::Order.new(source: source, source_order_id: SecureRandom.uuid, currency: currency,
+        gross_cents: cents, tax_cents: 0, occurred_at: at)
+      order[:status] = 'paid'
+      order.save!
+    end
+    row = BooksDesk.new(today: Date.new(2026, 10, 17)).this_week_days.find { |d| d.day == day }
+    assert_equal({ 'CAD' => 700, 'USD' => 4000 }, row.totals)
+    assert_equal({ 'CAD' => ['swipesimple'], 'USD' => %w[shopify square] }, row.sources)
+
+    helper = ApplicationController.new.view_context
+    assert_equal 'SwipeSimple: CAD 7.00 · All sources combined (Shopify, Square): $40.00',
+      helper.books_desk_totals(row.totals, row.sources)
+    assert_equal 'No sales recorded', helper.books_desk_totals({})
+  end
 end

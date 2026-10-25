@@ -42,4 +42,24 @@ class FinanceAccountTest < ActiveSupport::TestCase
     account = Finance::Account.new(code: '1200', name: 'Inventory')
     assert_equal '1200 · Inventory', account.label
   end
+
+  # Audit #169 M6: the balance sheet reads the balance side, so it must match the type.
+  test 'normal balance must match the account type' do
+    account = Finance::Account.new(code: '9100', name: 'Wrong side', account_type: 'expense', normal_balance: 'credit')
+    assert_not account.valid?
+    assert_includes account.errors[:normal_balance], 'must be debit for expense accounts.'
+
+    unused = Finance::Account.create!(code: '9101', name: 'Spare', account_type: 'liability')
+    assert_not unused.update(account_type: 'asset')
+    assert_includes unused.errors[:normal_balance], 'must be debit for asset accounts.'
+    assert unused.update(account_type: 'asset', normal_balance: 'debit')
+  end
+
+  test 'an older mismatched account still loads and can be renamed' do
+    account = Finance::Account.create!(code: '9102', name: 'Legacy', account_type: 'revenue')
+    account.update_column(:normal_balance, 'debit')
+    account = Finance::Account.find(account.id)
+    assert account.update(name: 'Legacy renamed', active: false)
+    assert_equal 'debit', account.reload.normal_balance
+  end
 end
