@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class AppScopesUpdateJob < ActiveJob::Base
+class AppScopesUpdateJob < ApplicationJob
   def perform(shop_domain:, webhook:)
     logger.info("#{self.class} started for shop '#{shop_domain}'")
     shop = Shop.find_by(shopify_domain: shop_domain)
