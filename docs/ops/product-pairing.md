@@ -16,3 +16,4 @@ same unpaired rows came back every time.
 - A confirmed pair is the strongest evidence in `StockIdentityMatcher`, so Stock comparison, SwipeSimple item
   matching and C-Trax daily items all use it. One Shopify item pairs with one C-Trax item per store.
 - Changes are in the activity log (`product_pair_decided`, `product_pair_undone`).
+- The item page shows the C-Trax cost of a paired item unless a cost was entered in Rupert; see `item-cost.md`.

@@ -59,7 +59,39 @@ class ShopifyVariantsController < AuthenticatedController
     redirect_to(shopify_variant_path(@variant), notice: 'Explicitly unlinked. Automatic syncs will keep this item unlinked until you choose a new link.')
   end
 
+  # Cost of goods entered in Rupert (stored locally only; never sent to Shopify, Square or C-Trax). A blank amount
+  # removes it, so the item page falls back to the C-Trax cost.
+  def cost
+    authorize(:module, :inventory_write?)
+    existing = ItemCost.find_by(shopify_variant_id: @variant.id)
+    text = params[:cost].to_s.strip
+    if text.blank? || params[:remove].present?
+      return redirect_to(shopify_variant_path(@variant), notice: 'No cost was entered in Rupert.') unless existing
+
+      existing.destroy!
+      log_cost('item_cost_removed', "#{cost_subject}: removed #{format_cents(existing.cost_cents)}")
+      return redirect_to(shopify_variant_path(@variant), notice: 'Cost removed. The item page uses the C-Trax cost when there is one.')
+    end
+
+    cents = ItemCost.parse_cents(text)
+    return redirect_to(shopify_variant_path(@variant), alert: 'Enter the cost as an amount, like 6.50.') if cents.nil? || cents >= ItemCost::MAX_CENTS
+
+    item_cost = existing || ItemCost.new(shopify_variant_id: @variant.id)
+    before = item_cost.cost_cents
+    item_cost.update!(cost_cents: cents, updated_by: Current.user)
+    log_cost('item_cost_set', "#{cost_subject}: #{before ? "#{format_cents(before)} -> " : ''}#{format_cents(cents)}")
+    redirect_to(shopify_variant_path(@variant), notice: "Cost saved: #{format_cents(cents)}. Stored in Rupert only.")
+  end
+
   private
+
+  def log_cost(action, details)
+    ActivityLogger.log(action, actor: Current.user, details: details)
+  end
+
+  def cost_subject = "#{ItemProfile.display_name(@variant)} (#{@variant.sku.presence || @variant.id})"
+
+  def format_cents(cents) = ActiveSupport::NumberHelper.number_to_currency(cents / 100.0)
 
   def handle_mapping_database_error(error)
     raise error unless %w[SQLite3::BusyException SQLite3::LockedException].include?(error.cause.class.name)
