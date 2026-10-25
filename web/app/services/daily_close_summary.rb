@@ -113,7 +113,7 @@ class DailyCloseSummary
   end
 
   def reconciliation_note_money(cents)
-    format('%<sign>s$%<amount>.2f', sign: cents.negative? ? '-' : '', amount: cents.abs / 100.0)
+    Money.format(cents, minus: '-', delimiter: '')
   end
 
   def ctrax_rows

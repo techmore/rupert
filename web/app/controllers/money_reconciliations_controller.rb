@@ -7,7 +7,7 @@ class MoneyReconciliationsController < AuthenticatedController
   def index
     saved = MoneyReconciliation.find(params[:saved]) if params[:saved].present?
     @report = MoneyReconciliationReport.new(kind: saved&.period_kind || params[:kind].presence || 'daily',
-      date: saved&.period_from || params[:date].presence || Time.find_zone!(MoneyReconciliationReport::ZONE).today)
+      date: saved&.period_from || params[:date].presence || BusinessClock.today)
     @payload = saved ? saved.payload : @report.payload
     @saved = saved
     @history = MoneyReconciliation.order(period_from: :desc, generated_at: :desc).limit(36)
@@ -25,7 +25,7 @@ class MoneyReconciliationsController < AuthenticatedController
   def create
     authorize(:module, :reports_write?)
     report = MoneyReconciliationReport.new(kind: params[:kind].presence || 'daily',
-      date: params[:date].presence || Time.find_zone!(MoneyReconciliationReport::ZONE).today).save!
+      date: params[:date].presence || BusinessClock.today).save!
     ActivityLogger.log('money_reconciliation_saved', subject: report, details: "#{report.period_kind}: #{report.period_from}..#{report.period_to}")
     redirect_to money_reconciliations_path(saved: report.id), notice: 'Reconciliation review saved. Source records were not changed.'
   rescue ReconciliationEvidence::Error => e

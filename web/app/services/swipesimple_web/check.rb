@@ -9,7 +9,7 @@ module SwipesimpleWeb
       snapshots.each { |snapshot| snapshot.merchant_account ||= primary }
       snapshots.each do |snapshot|
         SwipesimpleReportImporter.preview(snapshot.text, kind: snapshot.kind,
-          merchant_account: snapshot.merchant_account, currency: 'USD', source_timezone: 'America/New_York',
+          merchant_account: snapshot.merchant_account, currency: 'USD', source_timezone: BusinessClock.zone_name,
           exported_at: snapshot.exported_at, invoice_scope: 'full')
       end
       { status: 'verified', message: 'SwipeSimple sign-in and both fresh website exports checked. No snapshots were imported.' }

@@ -9,7 +9,7 @@ class CtraxDaysController < AuthenticatedController
   end
 
   def index
-    @date = params[:date].present? ? Date.iso8601(params[:date]) : Time.current.in_time_zone('America/New_York').to_date
+    @date = params[:date].present? ? Date.iso8601(params[:date]) : BusinessClock.today
     @days = CtraxDay.includes(:location).where(business_date: @date).order(:location_id)
     @connection = PosConnection.find_by(provider: 'ctrax')
   rescue Date::Error

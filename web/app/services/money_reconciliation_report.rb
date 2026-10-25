@@ -6,13 +6,12 @@ require 'bigdecimal'
 # Evidence review, not a posting engine. Source totals are never added across
 # order, gateway and deposit layers. Missing currency and coverage stay unknown.
 class MoneyReconciliationReport
-  ZONE = 'America/New_York'
   KINDS = %w[daily weekly monthly quarterly yearly].freeze
   # Raised instead of overwriting a saved review inside a locked period.
   Locked = Class.new(ReconciliationEvidence::Error)
   attr_reader :kind, :from, :to
 
-  def self.previous_period(kind, today: Time.find_zone!(ZONE).today)
+  def self.previous_period(kind, today: BusinessClock.today)
     case kind
     when 'daily' then today - 1
     when 'weekly' then today.beginning_of_week - 7
@@ -23,7 +22,7 @@ class MoneyReconciliationReport
     end
   end
 
-  def initialize(kind: 'daily', date: Time.find_zone!(ZONE).today)
+  def initialize(kind: 'daily', date: BusinessClock.today)
     raise ArgumentError, 'Choose daily, weekly, monthly, quarterly or yearly.' unless KINDS.include?(kind)
 
     day = date.is_a?(Date) ? date : Date.iso8601(date.to_s)
@@ -37,8 +36,7 @@ class MoneyReconciliationReport
     when 'yearly' then [day.beginning_of_year, day.end_of_year]
     else [day, day]
     end
-    zone = Time.find_zone!(ZONE)
-    @range = zone.local(from.year, from.month, from.day)...zone.local((to + 1).year, (to + 1).month, (to + 1).day)
+    @range = BusinessClock.range(from, to)
   end
 
   def payload
@@ -55,7 +53,7 @@ class MoneyReconciliationReport
       swipesimple
       authorize_net
       iris
-      { 'kind' => kind, 'from' => from.iso8601, 'to' => to.iso8601, 'timezone' => ZONE,
+      { 'kind' => kind, 'from' => from.iso8601, 'to' => to.iso8601, 'timezone' => BusinessClock.zone_name,
         'generated_at' => Time.current.utc.iso8601(6), 'status' => 'Review required',
         'rows' => @rows, 'warnings' => @warnings.uniq,
         'source_coverage' => Finance::SourceCoverage.new(from: from, to: to).rows,

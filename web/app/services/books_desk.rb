@@ -319,5 +319,5 @@ class BooksDesk
   end
 
   def pluralize(count, word) = ActionController::Base.helpers.pluralize(count, word)
-  def money(cents) = ActionController::Base.helpers.number_to_currency(cents.to_i / 100.0)
+  def money(cents) = Money.format(cents.to_i, minus: '-')
 end

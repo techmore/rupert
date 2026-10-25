@@ -8,9 +8,7 @@ module SwipesimpleWeb
   # its pull record, so half-hourly pulls do not pile up documents.
   class ReportStore
     MODELS = { 'tax' => 'SwipesimpleTaxDay', 'sales' => 'SwipesimpleSalesDay' }.freeze
-    TIMEZONE = 'America/New_York'
-
-    def self.today = Time.current.in_time_zone(TIMEZONE).to_date
+    def self.today = BusinessClock.today
 
     def self.replace!(chunk, merchant_account:)
       model = MODELS.fetch(chunk.topic).constantize

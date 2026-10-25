@@ -160,7 +160,7 @@ class SalesTaxReport
   end
 
   def dollars(cents)
-    cents.nil? ? 'unavailable' : ActiveSupport::NumberHelper.number_to_delimited(format('%.2f', BigDecimal(cents.to_s) / 100))
+    Money.format(cents, unit: false, minus: '-', missing: 'unavailable')
   end
 
   def swipesimple_transaction_lines

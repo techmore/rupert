@@ -72,7 +72,7 @@ class EmployeePayWeek
   def overtime_premium_cents
     return 0 unless overtime_hours.positive? && pay_rate&.pay_type == 'hourly'
 
-    overtime_hours * pay_rate.hourly_rate_cents * (rules.overtime_multiplier - 1)
+    rules.overtime_premium_cents(overtime_hours, pay_rate.hourly_rate_cents)
   end
 
   def total_cents
@@ -108,7 +108,7 @@ class EmployeePayWeek
     starts.sum do |week|
       range = week.beginning_of_day...(week + 7).beginning_of_day
       worked = own_shifts.sum { |shift| clipped_seconds(shift, range) } / 3600.0
-      [worked - rules.overtime_threshold_hours.to_f, 0].max
+      rules.hours_over_threshold(worked)
     end
   end
 
@@ -149,7 +149,7 @@ class EmployeePayWeek
 
         base = order['total'] - order['tax']
         @sales_cents += base
-        @commission_cents += (base + 50) / 100
+        @commission_cents += PayRules.commission_cents(base)
         sharers = on_shift.keys - @admin_keys.to_a
         @tip_cents += order['tip'].to_i / sharers.size
       end

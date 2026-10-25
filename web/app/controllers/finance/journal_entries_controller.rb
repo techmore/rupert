@@ -124,8 +124,7 @@ module Finance
     end
 
     def to_cents_or_nil(value)
-      text = value.to_s.strip
-      text.match?(AMOUNT_FORMAT) ? (BigDecimal(text) * 100).to_i : nil
+      Money.parse(value, pattern: AMOUNT_FORMAT)
     end
 
     def bad_amount_filter?
@@ -202,10 +201,7 @@ module Finance
     end
 
     def to_cents(value)
-      text = value.to_s.strip
-      return 0 unless text.match?(AMOUNT_FORMAT)
-
-      (BigDecimal(text) * 100).to_i
+      Money.parse(value, pattern: AMOUNT_FORMAT) || 0
     end
 
     def render_invalid(message)

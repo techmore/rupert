@@ -190,7 +190,7 @@ module Finance
     end
 
     def cents(value) = format('%.2f', value.to_i / 100.0)
-    def money_text(value) = helpers.number_to_currency(value.to_i / 100.0)
+    def money_text(value) = Money.format(value.to_i, minus: '-')
 
     # Spreadsheet formula injection guard.
     def safe_cell(value) = value.is_a?(String) && value.match?(/\A[=+\-@\t\r]/) ? "'#{value}" : value

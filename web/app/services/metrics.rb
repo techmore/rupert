@@ -315,11 +315,9 @@ module Metrics
     "#{metric.title}, #{window.label} (#{window.from} to #{window.to}): #{parts.join('; ')}."
   end
 
+  # Assistant/MCP text: ASCII minus, other currencies after the amount ("5.00 CAD").
   def money(cents, currency = 'USD')
-    return nil if cents.nil?
-
-    amount = ActiveSupport::NumberHelper.number_to_delimited(format('%.2f', cents.abs / 100.0))
-    currency.to_s.upcase == 'USD' || currency.blank? ? "#{'-' if cents.negative?}$#{amount}" : "#{'-' if cents.negative?}#{amount} #{currency}"
+    Money.format(cents, currency: currency.presence || 'USD', code: :suffix, minus: '-', missing: nil)
   end
 
   def signed(number) = number.to_f.positive? ? "+#{number}" : number.to_s

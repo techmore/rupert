@@ -5,8 +5,7 @@ module Finance
   class SourceCoverage
     def initialize(from:, to:)
       @from, @to = from, to
-      zone = Time.find_zone!(MoneyReconciliationReport::ZONE)
-      @range = zone.local(from.year, from.month, from.day)...zone.local((to + 1).year, (to + 1).month, (to + 1).day)
+      @range = BusinessClock.range(from, to)
     end
 
     def rows
@@ -36,7 +35,7 @@ module Finance
     def date(value)
       return unless value
 
-      (value.is_a?(Time) ? value.in_time_zone(MoneyReconciliationReport::ZONE).to_date : value.to_date).iso8601
+      (value.is_a?(Time) ? value.in_time_zone(BusinessClock.zone).to_date : value.to_date).iso8601
     end
   end
 end

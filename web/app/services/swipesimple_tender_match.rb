@@ -23,7 +23,7 @@ class SwipesimpleTenderMatch
 
   attr_reader :window
 
-  # window: the business day (Time range, America/New_York midnight to midnight).
+  # window: the business day (Time range, BusinessClock midnight to midnight).
   def initialize(window)
     @window = window
   end

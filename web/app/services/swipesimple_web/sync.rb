@@ -56,7 +56,7 @@ module SwipesimpleWeb
       invoices.first.merchant_account = primary
       prepared = snapshots.map do |snapshot|
         options = { kind: snapshot.kind, merchant_account: snapshot.merchant_account, currency: 'USD',
-          source_timezone: 'America/New_York', exported_at: snapshot.exported_at, invoice_scope: 'full' }
+          source_timezone: BusinessClock.zone_name, exported_at: snapshot.exported_at, invoice_scope: 'full' }
         SwipesimpleReportImporter.preview(snapshot.text, options)
       end
 

@@ -1,5 +1,5 @@
 <% content_for :title, 'C-Trax daily close' %>
-<% today = Time.current.in_time_zone('America/New_York').to_date %>
+<% today = BusinessClock.today %>
 <% can_pull = @connection&.credentials_saved? && retail_business_access?('sales.write') && Current.user.can?('sync.write') %>
 <% menu = [['SwipeSimple daily close for this date', swipesimple_days_path(date: @date)]] %>
 <% menu << ['Download items CSV', items_ctrax_days_path(date: @date, format: :csv)] if @days.any? %>

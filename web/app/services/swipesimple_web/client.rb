@@ -248,7 +248,7 @@ module SwipesimpleWeb
       raise Error, :response unless total.is_a?(Integer) && total >= 0 && total == filtered
       raise Error, :limit if total > SwipesimpleReportImporter::MAX_ROWS
 
-      response, url = get("https://swipesimple.com/#{kind}.csv?time_zone=America%2FNew_York")
+      response, url = get("https://swipesimple.com/#{kind}.csv?time_zone=#{ERB::Util.url_encode(BusinessClock.zone_name)}")
       raise Error, :login unless url.host == 'swipesimple.com' && url.path == "/#{kind}.csv"
       raise Error, :response unless response['content-type'].to_s.match?(CSV_TYPES)
 
