@@ -28,7 +28,8 @@ module Mcp
                      'record id, free text and dates. Newest first, paginated, with counts by action and by person. A person ' \
                      'filter also returns when that person was last active in Rupert. Not here: sign-ins (not logged), edits ' \
                      'that Rupert does not log (vendor records, stock counts), and errors (use recent_errors). Contact details, ' \
-                     'IP addresses and browsers are never shown. Read-only.',
+                     'IP addresses and browsers are never shown. Needs system:read and the owner\'s settings.read permission ' \
+                     '(the same as the Activity page). Read-only.',
         scope: 'system:read'
 
       input_schema(
@@ -48,7 +49,14 @@ module Mcp
         additionalProperties: false
       )
 
+      # The Activity page needs settings.read as well; the tool follows the same rule.
+      PAGE_PERMISSION = 'settings.read'
+
       class << self
+        def available_to?(token)
+          super && token.user.can?(PAGE_PERMISSION)
+        end
+
         # Removes contact details, IP addresses and browser strings (and anything the request log hides) from text.
         def scrub(text, max: nil)
           return if text.nil?

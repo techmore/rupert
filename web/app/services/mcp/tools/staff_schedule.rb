@@ -14,7 +14,7 @@ module Mcp
                      'working Saturday" or "is anyone on tomorrow morning". view=staff lists current staff (name, position, ' \
                      'department, employment type, status) with their scheduled hours in the range. Default range today to ' \
                      '6 days ahead, max 31 days. Filter by employee name. No contact details, pay or leave balances. If the ' \
-                     'token owner cannot review everyone\'s time, only their own shifts are returned. For hours actually ' \
+                     'token owner cannot open the Team schedule page, only their own shifts are returned. For hours actually ' \
                      'worked use time_keeping_report. Read-only.',
         scope: 'timesheets:read'
 
@@ -43,11 +43,12 @@ module Mcp
 
       private
 
-      # Same rule as time_keeping_report: reviewers see everyone, other staff only themselves.
+      # Same rule as the Team schedule page (hr.read, schedule.write or hr.write):
+      # those people see everyone; anyone else only their own shifts.
       def all_employees?
         return @all_employees if defined?(@all_employees)
 
-        @all_employees = user.can_review_timesheets? || (user.can_manage_accounts? && user.can?('timesheets.read'))
+        @all_employees = ModulePolicy.new(user, :module).schedule_read?
       end
 
       def scope_label = all_employees? ? 'all staff' : 'own shifts only'

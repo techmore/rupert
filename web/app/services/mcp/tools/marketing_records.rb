@@ -197,7 +197,8 @@ module Mcp
         ids = influencers.map(&:id)
         engagements = Marketing::Engagement.where(influencer_id: ids).group(:influencer_id).count
         gifts = Marketing::ProductGift.joins(:engagement).where(marketing_engagements: { influencer_id: ids }).group('marketing_engagements.influencer_id').count
-        last_contact = Marketing::Interaction.where(influencer_id: ids).group(:influencer_id).maximum(:occurred_at)
+        # The contact log is restricted on the Influencers page; only its date is shown, and only with that access.
+        last_contact = user.can?('marketing.contacts') ? Marketing::Interaction.where(influencer_id: ids).group(:influencer_id).maximum(:occurred_at) : {}
         owners = user_names(influencers.map(&:owner_id))
         rows = influencers.map do |influencer|
           { id: influencer.id, name: influencer.name, platform: influencer.platform, handle: influencer.handle,
@@ -336,7 +337,7 @@ module Mcp
       end
 
       def user_names(ids)
-        User.unscoped.where(id: ids.compact.uniq).to_h { |user| [user.id, user_name(user)] }
+        User.where(tenant_id: tenant.id, id: ids.compact.uniq).to_h { |user| [user.id, user_name(user)] }
       end
 
       def user_name(user) = user && (user.name.presence || "User #{user.id}")
