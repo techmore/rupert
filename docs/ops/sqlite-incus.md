@@ -2,7 +2,7 @@
 
 ## Decision and evidence
 
-Keep Rupert as a Rails modular monolith in an unprivileged Incus system container on SER8, with SQLite on local persistent storage. The [cutover report](https://github.com/techmore/rupert/blob/main/docs/ops/sqlite-migration.md) records a completed 2026-10-13 migration: 78,573 rows in 61 tables, counts verified, a worker installed and six-hourly snapshots configured. The cutover counts are historical. A fresh live check on October 14 confirmed SQLite 3.53.2, healthy web/jobs, the one-thread worker default, and a verified local backup restore; see the [deployment receipt](https://github.com/techmore/rupert/blob/main/docs/ops/deployment-2026-10-14.md). Production load and off-host recovery remain unmeasured. SQLite is the only supported database: the PostgreSQL adapter, CI job and tooling were removed (see issue #263).
+Keep Rupert as a Rails modular monolith in an unprivileged Incus system container on SER8, with SQLite on local persistent storage. The [cutover report](https://github.com/techmore/rupert/blob/main/docs/ops/sqlite-migration.md) records a completed 2026-10-13 migration: 78,573 rows in 61 tables, counts verified, a worker installed and six-hourly snapshots configured. The cutover counts are historical. A fresh live check on October 14 confirmed SQLite 3.53.2, healthy web/jobs, the one-thread worker default, and a verified local backup restore; see the [deployment receipt](https://github.com/techmore/rupert/blob/main/docs/ops/history/deployment-2026-10-14.md). Production load and off-host recovery remain unmeasured. SQLite is the only supported database: the PostgreSQL adapter, CI job and tooling were removed (see issue #263).
 
 GitHub Pages publishes product documentation only. It cannot host Rails, jobs or a writable SQLite database. A push/release does not deploy the ERP or change its live environment.
 
@@ -35,11 +35,11 @@ Keep write transactions short. Do API/network work before entering write transac
 
 ## October 15 workflow and provider deployment
 
-The [October 15 deployment receipt](https://github.com/techmore/rupert/blob/main/docs/ops/deployment-2026-10-15.md) records the workflow/provider release, six-migration rollback/reapply rehearsal, preserved prior-table counts, private recovery points and postrestart checks. Provider account setup was deployed; no payment terminal or merchant account was activated. The later [October 17 combined-release receipt](https://github.com/techmore/rupert/blob/main/docs/ops/combined-release-recovery-2026-10-17.md) records the subsequent application and recovery checkpoint.
+The [October 15 deployment receipt](https://github.com/techmore/rupert/blob/main/docs/ops/history/deployment-2026-10-15.md) records the workflow/provider release, six-migration rollback/reapply rehearsal, preserved prior-table counts, private recovery points and postrestart checks. Provider account setup was deployed; no payment terminal or merchant account was activated. The later [October 17 combined-release receipt](https://github.com/techmore/rupert/blob/main/docs/ops/history/combined-release-recovery-2026-10-17.md) records the subsequent application and recovery checkpoint.
 
 ## Measured query improvements
 
-The [October 14 performance receipt](https://github.com/techmore/rupert/blob/main/docs/ops/sqlite-performance-2026-10-14.md) records isolated snapshot measurements, exact query plans, result equality and synthetic write/contention checks. The changes remove per-product inventory queries, prevent search-cache mixups and add only the two indexes with clear measured benefits. These results are component timings, not HTTP latency or production throughput claims.
+The [October 14 performance receipt](https://github.com/techmore/rupert/blob/main/docs/ops/history/sqlite-performance-2026-10-14.md) records isolated snapshot measurements, exact query plans, result equality and synthetic write/contention checks. The changes remove per-product inventory queries, prevent search-cache mixups and add only the two indexes with clear measured benefits. These results are component timings, not HTTP latency or production throughput claims.
 
 ## Measurement and release gates
 

@@ -39,7 +39,7 @@ The current operating decision and restore/scaling guidance are in `ops/sqlite-i
 
 ## Repository continuity
 
-- [Main / SER8 reconciliation and preserved PR work](ops/repository-reconciliation-2026-10-16.md).
+- [Main / SER8 reconciliation and preserved PR work](ops/history/repository-reconciliation-2026-10-16.md).
 - [Historical record backfills and recovery checks](ops/historical-records.md).
 - [QuickBooks CSV import and the History view](ops/quickbooks-import.md).
 - [Uploads inbox: one front door for files, with dry run and approval](ops/uploads-inbox.md).

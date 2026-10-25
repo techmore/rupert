@@ -65,16 +65,16 @@ The archive CSV includes source-separated totals, coverage, freshness, controls/
 
 Apply `20261016040100_create_reconciliation_evidence` on the current SER8 release, preserving all existing integrations and encryption configuration. Rehearse on a consistent private database copy, verify unchanged existing-table counts and integrity, build assets, then promote code/schema and restart web/jobs through the established Incus workflow. Verify the authenticated page, an exact archive download and the recurring schedule. Rolling back code is additive-schema compatible; retain new evidence tables and do not restore an older database over subsequent business writes.
 
-The [October 15 SER8 deployment receipt](daily-reconciliation-deployment-2026-10-15.md) records validation, native-file retention, archive initialization and the encrypted backup/restore checks.
+The [October 15 SER8 deployment receipt](history/daily-reconciliation-deployment-2026-10-15.md) records validation, native-file retention, archive initialization and the encrypted backup/restore checks.
 
-The [October 16 document-library UX receipt](reconciliation-library-deployment-2026-10-16.md) records searchable retention, correction/error flows, combined validation and the pending Drive status.
+The [October 16 document-library UX receipt](history/reconciliation-library-deployment-2026-10-16.md) records searchable retention, correction/error flows, combined validation and the pending Drive status.
 
-The [October 16 attention and follow-up receipt](reconciliation-follow-ups-deployment-2026-10-16.md) records the deployed difference-first view and report-request queue. Apply the additional additive migration `20261017050000_create_reconciliation_follow_ups` for its requests and encrypted history, preserving both tables on code rollback.
+The [October 16 attention and follow-up receipt](history/reconciliation-follow-ups-deployment-2026-10-16.md) records the deployed difference-first view and report-request queue. Apply the additional additive migration `20261017050000_create_reconciliation_follow_ups` for its requests and encrypted history, preserving both tables on code rollback.
 
-The [October 16 across-day UX receipt](reconciliation-across-days-deployment-2026-10-16.md) records the seven-date overview, request/evidence shortcuts and combined release validation.
+The [October 16 across-day UX receipt](history/reconciliation-across-days-deployment-2026-10-16.md) records the seven-date overview, request/evidence shortcuts and combined release validation.
 
-The [October 16 priority-action UX receipt](reconciliation-priority-actions-deployment-2026-10-16.md) records prominent unrequested reports, overdue cards and direct progress/original actions.
+The [October 16 priority-action UX receipt](history/reconciliation-priority-actions-deployment-2026-10-16.md) records prominent unrequested reports, overdue cards and direct progress/original actions.
 
-The [October 16 local follow-up UX receipt](reconciliation-local-follow-up-deployment-2026-10-16.md) records date shortcuts, original review/link suggestions and the post-security rollout with no email actions.
+The [October 16 local follow-up UX receipt](history/reconciliation-local-follow-up-deployment-2026-10-16.md) records date shortcuts, original review/link suggestions and the post-security rollout with no email actions.
 
 The [financial-close workflow guide](financial-close.md) connects completeness, originals, differences, follow-up, version-bound review, retained close packages, reporting and manual cash scenarios through **Money → Financial close**. Generated close/scenario artifacts stay separate from source evidence and cannot invalidate their own baseline review.

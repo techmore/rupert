@@ -1,6 +1,6 @@
 # Product pairing (Inventory → Stock comparison)
 
-Phase 1 of `connections-and-inventory-plan-2026-10-23.md`. C-Trax is the retail count reference, but on
+Phase 1 of `history/connections-and-inventory-plan-2026-10-23.md`. C-Trax is the retail count reference, but on
 2026-10-23 only 37 of 513 C-Trax/Shopify rows paired up and the matcher's suggestions were never saved, so the
 same unpaired rows came back every time.
 

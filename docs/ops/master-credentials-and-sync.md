@@ -37,7 +37,7 @@ The hub exposes no bulk “fix everything” action. Credential replacement, ven
 
 Priority 2 now adds [structured source diagnostics and repair guidance](sync-diagnostics.md): safe attempt receipts, independent acquisition/source timestamps, separate C-Trax stock/sales channels, queue receipts, worker heartbeat evidence and in-page failure/staleness alerts. Current read setup additionally names missing required fields and separates source setup from an intentional schedule pause. Shopify legacy evidence includes successful combined runs and valid per-source acquisition watermarks without inventing diagnostic receipts. Precise causes remain unknown for older or unclassified failures. Event-time coverage, outbound transition notifications and source-scheduler registration proof remain separate gaps. “Configured” still does not mean “healthy,” and a recent heartbeat does not establish vendor entitlement or a supported feed.
 
-The [October 16 live source audit](live-sync-audit-2026-10-16.md) records verified reads, missing-access blockers and the exact settings preserved during troubleshooting.
+The [October 16 live source audit](history/live-sync-audit-2026-10-16.md) records verified reads, missing-access blockers and the exact settings preserved during troubleshooting.
 
 ## Validation and rollout
 

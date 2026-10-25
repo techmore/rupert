@@ -23,4 +23,4 @@ Apply migration `20261017033000_create_retention_drive_connections` and preserve
 
 ## Current activation checkpoint
 
-The [October 16 SER8 rollout](drive-retention-deployment-2026-10-16.md) deployed the UI and scheduler, but Google denied owner-account consent because the OAuth app is in Testing. The owner deferred adding the test user and requested a note. Automatic uploads remain off; 39 existing files were ready at the checkpoint. Resume with the test-user/consent steps above, then verify real cloud copies before declaring activation complete.
+The [October 16 SER8 rollout](history/drive-retention-deployment-2026-10-16.md) deployed the UI and scheduler, but Google denied owner-account consent because the OAuth app is in Testing. The owner deferred adding the test user and requested a note. Automatic uploads remain off; 39 existing files were ready at the checkpoint. Resume with the test-user/consent steps above, then verify real cloud copies before declaring activation complete.
