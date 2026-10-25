@@ -63,7 +63,8 @@ class EmployeeWorkspaceTest < ActionDispatch::IntegrationTest
     run.finalize!
     @worker.payslips.create!(pay_run: run, hours: 8, gross_cents: 16000, net_cents: 14000, deductions_cents: 2000)
     @other.payslips.create!(pay_run: run, hours: 8, gross_cents: 99999, net_cents: 98765)
-    draft = People::PayRun.create!(name: 'Draft pay', period_start: @from, period_end: @to)
+    # Overlapping runs are refused now (#424); an older workspace may still hold one, so it is saved without validation.
+    draft = People::PayRun.new(name: 'Draft pay', period_start: @from, period_end: @to).tap { |r| r.save!(validate: false) }
     @worker.payslips.create!(pay_run: draft, hours: 8, gross_cents: 88888, net_cents: 87654)
     sign_in
     get employee_reports_path, params: { from: @from, to: @to, employee_id: @other.id }

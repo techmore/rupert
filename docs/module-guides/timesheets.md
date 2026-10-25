@@ -101,13 +101,18 @@ race on SQLite. Restore follows the
 `timesheet_reviews_test.rb`, `employee_timesheets_test.rb`,
 `demo_timesheets_test.rb`, `time_keeping_test.rb`, `punch_history_test.rb`,
 `square_timecard_history_test.rb`, `ctrax_timesheet_schedule_test.rb`,
-`employee_source_timesheets_test.rb`, and the Square timecard service and job
+`employee_source_timesheets_test.rb`, the release-gate walkthrough
+`test/acceptance/timesheet_lifecycle_walkthrough_test.rb` (#422), and the Square timecard service and job
 tests under `test/services` and `test/jobs`.
 
 ## Open gaps
 
-- [#422](https://github.com/techmore/rupert/issues/422): a full synthetic
-  lifecycle walk (entry, correction, submit, review, reject/reopen, export,
-  timezone edges) has not been recorded.
-- Timezone handling across DST for Rupert clock shifts: Unknown (Square history
-  documents its own handling).
+- [#422](https://github.com/techmore/rupert/issues/422): the synthetic lifecycle walk
+  (clock, correction, submit, reject/reopen, approve, history, export, payroll lock) is
+  `test/acceptance/timesheet_lifecycle_walkthrough_test.rb`; the issue closes on its
+  recorded evidence.
+- Timezone: clock shifts are split into days at local midnight (America/New_York) and
+  paid on elapsed time, so a shift across the November daylight-saving change counts
+  the repeated hour (22:00 EDT to 03:00 EST is 6 hours). Hours are stored to two
+  decimals (`hours` is `decimal(6,2)`), so a punch interval is held to the nearest
+  0.01 hour (36 seconds); there is no other rounding.
