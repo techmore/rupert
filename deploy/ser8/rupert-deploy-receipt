@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+"""Print a release receipt written by rupert-autodeploy (deploy/ser8/README.md).
+
+  rupert-deploy-receipt            the latest receipt (successful or failed)
+  rupert-deploy-receipt <sha>      the latest receipt for a commit (a 7+ character prefix works)
+  rupert-deploy-receipt --list     every receipt, newest last
+
+Options: --json (print the stored JSON), --dir PATH (default $RUPERT_AUTODEPLOY_STATE/receipts or
+/var/lib/rupert-autodeploy/receipts). Read-only: it never changes a receipt or the deployment.
+"""
+import argparse
+import json
+import os
+from pathlib import Path
+import sys
+
+
+def default_dir():
+    return Path(os.environ.get('RUPERT_AUTODEPLOY_STATE', '/var/lib/rupert-autodeploy')) / 'receipts'
+
+
+def receipts(directory):
+    found = []
+    for path in directory.glob('*.json'):
+        try:
+            found.append((json.loads(path.read_text()), path))
+        except (OSError, ValueError):
+            continue
+    return sorted(found, key=lambda item: (item[0].get('finished_at') or '', item[1].stat().st_mtime))
+
+
+def summary(receipt, path):
+    short = lambda sha: (sha or '-')[:12]
+    lines = [f"{receipt.get('result', '?').upper()}  {short(receipt.get('target_sha'))} (from {short(receipt.get('previous_sha'))})",
+             f"  receipt:   {path}",
+             f"  started:   {receipt.get('started_at')}   finished: {receipt.get('finished_at')}",
+             f"  message:   {receipt.get('message')}"]
+    if receipt.get('failed_stage'):
+        lines.append(f"  failed at: {receipt['failed_stage']}; rollback: {receipt.get('rollback')}")
+    for key in ('required_checks', 'mobile_checks'):
+        block = receipt.get(key)
+        if not block:
+            continue
+        lines.append(f"  checks on {short(block.get('sha'))}: {block.get('verdict')}")
+        for check in block.get('checks', []):
+            lines.append(f"    {check.get('name')}: {check.get('conclusion') or check.get('status')} "
+                         f"(id {check.get('id')}) {check.get('url') or ''}".rstrip())
+    migrations = receipt.get('migrations') or {}
+    lines.append(f"  migrations: {len(migrations.get('new', []))} new, db:migrate {migrations.get('db_migrate')}")
+    for name in migrations.get('new', []):
+        lines.append(f"    {name}")
+    backup = receipt.get('backup') or {}
+    lines.append(f"  backup:    {backup.get('path')} sha256 {backup.get('sha256')}")
+    health = receipt.get('health') or {}
+    lines.append(f"  health:    {health.get('result')} (HTTP {health.get('last_http_code')}, {health.get('attempts')} attempt(s))")
+    smoke = receipt.get('smoke')
+    if smoke:
+        lines.append(f"  smoke:     {smoke.get('result')}; {smoke.get('page')} HTTP {smoke.get('page_http_code')}, "
+                     f"build {short(smoke.get('served_build'))}")
+        for asset in smoke.get('assets', []):
+            lines.append(f"    {asset.get('http_code')} {asset.get('path')}")
+    return '\n'.join(lines)
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('sha', nargs='?')
+    parser.add_argument('--json', action='store_true')
+    parser.add_argument('--list', action='store_true')
+    parser.add_argument('--dir', type=Path, default=None)
+    args = parser.parse_args(argv)
+    found = receipts(args.dir or default_dir())
+    if args.sha:
+        found = [item for item in found if (item[0].get('target_sha') or '').startswith(args.sha.lower())]
+    if not found:
+        print('no deploy receipt found', file=sys.stderr)
+        return 1
+    if args.list:
+        for receipt, path in found:
+            print(f"{receipt.get('finished_at')}  {receipt.get('result'):8}  {(receipt.get('target_sha') or '')[:12]}  {path.name}")
+        return 0
+    receipt, path = found[-1]
+    print(json.dumps(receipt, indent=2) if args.json else summary(receipt, path))
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

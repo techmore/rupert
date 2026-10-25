@@ -48,14 +48,19 @@ Runs **inside the `rupert` Incus container** as root. Every 5 minutes it fetches
 checkout is clean, and the latest exact-SHA `CI (sqlite3)`, `Product site
 consistency`, and `Dependency and static scan` checks are green (read from the
 public GitHub API, no token; for a re-run only its latest check run counts).
-Missing and pending checks wait; a completed non-success check blocks. `cla`
+Only a `success` conclusion passes. Missing, queued and in-progress checks wait
+(`waiting_ci`); a completed check with any other conclusion (`failure`,
+`skipped`, `neutral`, `cancelled`, `timed_out`, `action_required`, `stale`)
+blocks (`ci_failed`); an unreadable API answer is `unknown` and waits. `cla`
 is a pull-request check and is not expected on integrated `main`. Changes under
 `mobile/`, `bin/check-mobile-sdk.mjs`, or the employee-mobile workflow also
 require its exact-SHA `validate` check.
 
 Each deploy takes a SQLite backup first (last 5 kept in `/var/backups/rupert-autodeploy`), then runs `bundle install`,
-`db:migrate` and `assets:precompile`, restarts `rupert-web` and `rupert-jobs`, and checks `/up`. If the health check
-fails it rolls the code back to the previous commit and restarts; **database migrations are not reverted**, so
+`db:migrate` and `assets:precompile`, restarts `rupert-web` and `rupert-jobs`, checks `/up`, then runs an asset smoke
+check: it renders `/login` (`RUPERT_AUTODEPLOY_SMOKE_PATH`), requires its `X-Rupert-Build` header to equal the new SHA,
+and fetches every compiled stylesheet and the `application-<digest>.js` script that page links to, each of which must
+answer 200 with a non-empty body. If any step, the health check or the smoke check fails it rolls the code back to the previous commit and restarts; **database migrations are not reverted**, so
 migrations must stay backward compatible (the log says how many new migrations the commit carried and names the
 pre-deploy backup). A commit that failed is recorded in `/var/lib/rupert-autodeploy/failed-sha` and is not retried
 until `main` moves on, so a broken release does not restart the app every 5 minutes; delete that file to retry. A running scheduled job is interrupted by the restart. It does not take the
@@ -63,9 +68,39 @@ shared manual-deploy lock, so avoid deploying by hand at the same moment.
 
 ```sh
 install -m755 deploy/ser8/rupert-autodeploy.sh /usr/local/sbin/
+install -m755 deploy/ser8/rupert-deploy-receipt /usr/local/bin/
 install -m644 deploy/ser8/rupert-autodeploy.service deploy/ser8/rupert-autodeploy.timer deploy/ser8/rupert-autodeploy.path /etc/systemd/system/
 systemctl daemon-reload && systemctl enable --now rupert-autodeploy.timer rupert-autodeploy.path
 ```
+
+### Release receipts
+
+Every install attempt (after the CI gate and mode check pass, so not dry runs, waits or blocks) leaves a JSON receipt
+in `/var/lib/rupert-autodeploy/receipts/` (directory 755, files 644):
+
+- `<sha>.json` — written only after a healthy deploy that passed the smoke check;
+- `<sha>.failed-<UTC time>.json` — a backup, build, migration, restart, health or smoke failure. The code was rolled
+  back; `rollback` says whether the old code came back `healthy` or `unhealthy`. No success receipt is written for it.
+
+`status.json` and `last-deploy.json` carry the path of the newest receipt in `receipt`. A receipt records:
+
+| Field | Contents |
+| --- | --- |
+| `result`, `message`, `failed_stage` | `deployed` or `failed`; for a failure the stage (`backup`, `checkout`, `bundle_install`, `db_migrate`, `assets_precompile`, `restart`, `health`, `asset_smoke`) |
+| `deployed_sha`, `target_sha`, `previous_sha`, `running_sha` | full SHAs; `deployed_sha` is null on failure and `running_sha` is what serves after it |
+| `required_checks` | the SHA, verdict, and for `CI (sqlite3)`, `Product site consistency` and `Dependency and static scan` the check-run ID, status, conclusion, URL and completion time the gate used |
+| `mobile_checks` | the same for `validate` on the newest mobile commit, when the range touched mobile paths (else null) |
+| `migrations` | new migration files in the range, whether `db:migrate` `succeeded`/`failed`/`not_run`, `reverted: false` |
+| `backup` | pre-deploy SQLite backup path, size and SHA-256 |
+| `health` | `/up` result, last HTTP code and attempts (of the deploy attempt, not the rollback) |
+| `smoke` | page, HTTP code, served `X-Rupert-Build`, and each asset's path, HTTP code and SHA-256 |
+| `mode`, `install_requested`, `rollback`, `started_at`, `finished_at` | context and UTC timestamps |
+
+Receipts contain commit IDs, public check-run URLs, local file names, checksums and HTTP results only. Nothing from
+`/etc/rupert.env`, the database, cookies or the app's request inbox is written to them. They are not pruned (a few KB
+each). Read one with the read-only `rupert-deploy-receipt` (latest), `rupert-deploy-receipt <sha>`,
+`rupert-deploy-receipt --list` or `--json`. Receipts are host-private evidence: copy what a public issue needs (SHA,
+check URLs, results), not backup paths or host details.
 
 ### Controlling it from Rupert (System → Updates)
 
@@ -96,7 +131,14 @@ outside Rupert.
 Check by hand: `DRY_RUN=1 /usr/local/sbin/rupert-autodeploy.sh`. Logs: `journalctl -u rupert-autodeploy`.
 Stop it with `systemctl disable --now rupert-autodeploy.timer`.
 
-When updating an installed watcher, replace the copied `/usr/local/sbin/rupert-autodeploy.sh` with the current repository version before re-enabling the timer. Older copies may still require the retired PostgreSQL CI check or may gate on only one required check.
+When updating an installed watcher, replace the copied `/usr/local/sbin/rupert-autodeploy.sh` with the current repository version before re-enabling the timer. Older copies may still require the retired PostgreSQL CI check, may gate on only one required check, or may write no release receipts. The installed watcher is a hand-copied file and is **not** updated by an autodeploy. From the SER8 host, in a checkout of the merged `main`:
+
+```sh
+incus file push deploy/ser8/rupert-autodeploy.sh rupert/usr/local/sbin/rupert-autodeploy.sh.new --mode 0755
+incus file push deploy/ser8/rupert-deploy-receipt rupert/usr/local/bin/rupert-deploy-receipt --mode 0755
+incus exec rupert -- sh -c 'flock /run/rupert-autodeploy.lock sh -c "cp -p /usr/local/sbin/rupert-autodeploy.sh /usr/local/sbin/rupert-autodeploy.sh.bak-$(date +%Y%m%d%H%M%S) && mv /usr/local/sbin/rupert-autodeploy.sh.new /usr/local/sbin/rupert-autodeploy.sh"'
+incus exec rupert -- env DRY_RUN=1 /usr/local/sbin/rupert-autodeploy.sh
+```
 
 ## Team chat (Buzz retired)
 

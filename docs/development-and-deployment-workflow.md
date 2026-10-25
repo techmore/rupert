@@ -30,8 +30,16 @@ with `main` (`strict=false`). It requires `CI (sqlite3)`, `Product site
 consistency`, `Dependency and static scan`, and `cla`. `Employee mobile` is
 path-filtered and is not a required check. Treat current GitHub settings as the
 source of truth; see [issue #206](https://github.com/techmore/rupert/issues/206)
-for the exact-SHA release receipt and missing/skipped-check evidence that are
-still open.
+for the protection history and test receipts.
+
+A read on 2026-10-25 confirmed `enforce_admins` is on. An administrator
+therefore cannot bypass the rules: a direct push to `main` was rejected with
+`GH006: Protected branch update failed` (tested 2026-10-20), and
+`gh pr merge --admin` on a PR whose required checks are failing, pending or
+missing is refused by the same setting. The `--admin` merge was not
+attempted; that is GitHub's documented behaviour for `enforce_admins`, not a
+test result. The only override is for the owner to turn `enforce_admins` off
+and back on, which is a branch-protection change outside agent authority.
 
 Fix a real merge conflict when it blocks integration. Do not rebase solely
 because `main` advanced. A green PR head is necessary for merge, but does not
@@ -55,13 +63,19 @@ release record. A successful check on an earlier or duplicate event is not a
 substitute for a failed required check on the current head. The deployment
 updater gates on the newest exact-SHA `CI (sqlite3)`, `Product site
 consistency`, and `Dependency and static scan` checks. Missing or pending
-checks wait; a completed non-success check blocks. `cla` is a PR-only check and
+checks wait; a completed check with any conclusion other than `success`
+(including `skipped`, `neutral` and `cancelled`) blocks. `cla` is a PR-only check and
 does not run as an integrated-main gate. If mobile source, the SDK checker, or
 its workflow changes, the updater also requires the exact-SHA `validate` result
 from the Employee mobile workflow, read from the newest commit in the
 deployed range that touched those paths (that workflow does not run on later,
-unrelated commits). Deployer tests cover missing, pending, failed, rerun and
-mobile-path results.
+unrelated commits). Deployer tests (`deploy/ser8/tests/test_autodeploy.py`)
+cover every non-success conclusion (`skipped`, `neutral`, `cancelled`,
+`failure`, `timed_out`, `action_required`, `stale`) on each required check,
+missing and queued/in-progress checks, a skipped rerun after a pass, an
+unreadable API answer, and the same for mobile `validate`: none of them deploy,
+take a backup or restart anything, and each reports `ci_failed` or
+`waiting_ci`, never a green state.
 
 Measure CI cost with runner-minute billing data and comparable windows. Record
 runner minutes, runs per unique PR SHA, duplicate event pairs, queue time,
@@ -82,7 +96,10 @@ The updater checks for a clean checkout and fast-forward, waits for the newest
 checks on the target SHA (and `validate` on the newest mobile commit when mobile paths changed), takes a pre-deploy SQLite backup, installs
 dependencies, migrates and precompiles assets, restarts services, then checks
 `/up`. On health-check failure it rolls back the code; it does not reverse
-database migrations. It records a failed SHA to avoid retry loops. A manual
+database migrations. After `/up` passes it smoke-checks the rendered layout:
+the served `X-Rupert-Build` must equal the target SHA and the compiled CSS and
+application JS it links to must answer 200 with a body; a failure there also
+rolls back. It records a failed SHA to avoid retry loops. A manual
 request can retry a failed SHA. See the [SER8 updater runbook](../deploy/ser8/README.md#auto-deploy-rupert-autodeploy)
 for file state, commands and limitations.
 
@@ -93,6 +110,16 @@ feature is live from a merge or prerelease alone; verify `X-Rupert-Build` and
 the rendered feature on the intended instance.
 
 ## 5. Deployment receipt and recovery
+
+The updater writes the machine part of this receipt itself: one JSON file per
+install attempt in `/var/lib/rupert-autodeploy/receipts/` (`<sha>.json` for a
+healthy deploy, `<sha>.failed-<time>.json` for a failed or rolled-back one) with
+the deployed and previous SHAs, the exact required check-run IDs, conclusions
+and URLs (and mobile `validate` when applicable), migrations, backup path and
+SHA-256, `/up` result, asset smoke results and timestamps. Print the latest with
+`rupert-deploy-receipt` inside the container. The format is in the
+[SER8 runbook](../deploy/ser8/README.md#release-receipts). A receipt proves what
+the updater installed and checked, not operator acceptance.
 
 For each release or operationally accepted change, record privately:
 
