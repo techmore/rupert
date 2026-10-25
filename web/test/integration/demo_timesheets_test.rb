@@ -105,7 +105,7 @@ class DemoTimesheetsTest < ActionDispatch::IntegrationTest
     summary = EmployeeWorkSummary.new(employee: @worker, from: @monday, to: @monday + 13)
     assert_empty summary.entries
     assert_equal 0, summary.hours
-    assert_empty summary.csv.lines.drop(1)
+    assert_equal ["Total #{@monday.iso8601} to #{(@monday + 13).iso8601},,,0.0,0.00,\n"], summary.csv.lines.drop(1)
     assert @sheets.all?(&:demo?)
   end
 

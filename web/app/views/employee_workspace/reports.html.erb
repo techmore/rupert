@@ -1,10 +1,10 @@
 <% content_for :title, 'My reports' %>
 <%= page_header 'My reports', subtitle: 'Your hours and pay, for the dates you choose.' %>
 <%= form_with url: personal_reports_path, method: :get, class: 'toolbar' do |f| %>
-  <%= render 'shared/time_range_picker', from: @from, to: @to %>
+  <%= render 'shared/time_range_picker', from: @from, to: @to, hint: "Any start and end date, up to one year. Days run midnight to midnight in the business time zone (#{Time.zone.name})." %>
   <div class="toolbar-actions"><%= f.submit 'Apply', class: 'btn-primary' %><%= link_to 'Download my hours', personal_reports_path(format: :csv, from: @from, to: @to), class: 'btn-ghost' %></div>
 <% end %>
-<section class="grid grid-cols-2 gap-3"><div class="stat"><p class="stat-label">Timesheet hours</p><p class="stat-value mt-1"><%= number_with_precision(@summary.hours, precision: 2, strip_insignificant_zeros: true) %>h</p></div><div class="stat"><p class="stat-label">Estimated gross pay</p><p class="stat-value mt-1"><%= @summary.gross_cents.nil? ? '—' : number_to_currency(@summary.gross_cents / 100.0) %></p></div></section>
+<section class="grid grid-cols-2 gap-3"><div class="stat"><p class="stat-label">Timesheet hours</p><p class="stat-value mt-1"><%= number_with_precision(@summary.hours, precision: 2, strip_insignificant_zeros: true) %>h</p><p class="mt-1 text-xs text-mocha"><%= report_range_label(@from, @to) %></p></div><div class="stat"><p class="stat-label">Estimated gross pay</p><p class="stat-value mt-1"><%= @summary.gross_cents.nil? ? '—' : number_to_currency(@summary.gross_cents / 100.0) %></p><p class="mt-1 text-xs text-mocha"><%= report_range_label(@from, @to) %></p></div></section>
 <%= fold_explainer('Estimates use the hourly rate effective on each recorded day, with marked overtime at 1.5×. They include draft hours and exclude deductions, commissions and clock time not yet imported. Missing rates and salary periods have no hourly estimate. Square history uses its recorded wage and paid time; it does not determine overtime, deductions or payment status.', class: 'text-xs text-mocha') %>
 <section class="space-y-3"><h2 class="section-title">Hours</h2>
   <% if @summary.entries.empty? %><p class="card card-pad text-sm text-mocha">No timesheet hours in this period.</p><% end %>

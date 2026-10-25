@@ -31,7 +31,8 @@ class EmployeePreview
   end
 
   def summary(from: @start, to: @start + 6)
-    raise ArgumentError, 'Choose a date range of up to one year.' unless from && to && to >= from && to <= from + 365
+    problem = EmployeeWorkSummary.range_problem(from, to)
+    raise ArgumentError, problem if problem
 
     result = EmployeeWorkSummary.allocate
     { employee: employee, from: from, to: to, entries: entries.select { |entry| (from..to).cover?(entry.worked_on) }.sort_by(&:worked_on),
