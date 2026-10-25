@@ -15,6 +15,7 @@ module Finance
       @lock = Finance::Form1099Lock.new(@totals)
       @payer = Finance::TaxPayer.load
       @can_write = Current.user.can?('tax.write')
+      @iris = Finance::IrisCsv.form_types.map { |form| Finance::IrisCsv.new(year: @year, form_type: form, payer: @payer) } if @lock.issued?
       return unless request.format.csv?
 
       ActivityLogger.log('tax_payees_exported', details: "1099 totals #{@year}")
@@ -41,6 +42,34 @@ module Finance
       ActivityLogger.log('tax_forms_generated', details: "1099 recipient copies #{year}: #{rows.size}#{' (as issued)' if lock.issued?}")
       send_data Finance::Form1099Pdf.new(year: year, rows: rows, payer: payer).render, filename: "1099-recipient-copies-#{year}.pdf",
         type: 'application/pdf', disposition: 'inline'
+    end
+
+    # The IRS IRIS upload file for one form type (Finance::IrisCsv), from the forms as issued. It carries full TINs, so it
+    # needs tax.write, is built in memory only, is never cached, and the log records only the year, form and count.
+    def iris
+      authorize(:module, :tax_write?)
+      year = params[:year].to_i
+      return redirect_to(finance_tax_payees_path, alert: 'Choose a tax year.') unless year.between?(2000, Date.current.year)
+      return redirect_to(finance_tax_payees_path(year: year), alert: 'Choose 1099-NEC or 1099-MISC.') unless Finance::IrisCsv.form_types.include?(params[:form])
+
+      payer = Finance::TaxPayer.load
+      return redirect_to(payer_finance_tax_payees_path, alert: 'Add the payer details first: they go on every form in the file.') unless payer.complete?
+
+      export = Finance::IrisCsv.new(year: year, form_type: params[:form], payer: payer)
+      unless Finance::TaxFormFiling.for_year(year).exists?
+        return redirect_to(finance_tax_payees_path(year: year), alert: "Issue the #{year} 1099s first: the IRIS file is built from the forms as issued.")
+      end
+      return redirect_to(finance_tax_payees_path(year: year), alert: "No #{export.form_name} forms were issued for #{year}.") if export.originals.empty?
+
+      csv = export.render
+      unless csv
+        return redirect_to(finance_tax_payees_path(year: year),
+          alert: "The IRIS file was not made. Fix these first: #{export.problems.first(5).join(' ')}#{' …' if export.problems.size > 5}")
+      end
+
+      ActivityLogger.log('tax_iris_exported', details: "IRIS CSV #{year} #{export.form_name}: #{helpers.pluralize(export.originals.size, 'form')}")
+      response.headers['Pragma'] = 'no-cache'
+      send_data csv, filename: export.filename, type: 'text/csv'
     end
 
     # Year-end lock: records the totals on every 1099 due for the year that has not been issued yet.

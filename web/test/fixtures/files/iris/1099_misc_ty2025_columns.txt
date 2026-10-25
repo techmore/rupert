@@ -1,0 +1,66 @@
+# IRS IRIS CSV template, tax year 2025: column letter <TAB> field name, from the IRS "Template Formatting Guidelines"
+# (https://www.irs.gov/pub/irs-efile/ty2025-template-formatting-guidelines.zip). * marks a required field.
+A	Form Type
+B	Tax Year
+C	Payer TIN Type*
+D	Payer Taxpayer ID Number*
+E	Payer Name Type*
+F	Payer Business or Entity Name Line 1
+G	Payer Business or Entity Name Line 2
+H	Payer First Name
+I	Payer Middle Name
+J	Payer Last Name (Surname)
+K	Payer Suffix
+L	Payer Country*
+M	Payer Address Line 1*
+N	Payer Address Line 2
+O	Payer City/Town*
+P	Payer State/Province/Territory*
+Q	Payer ZIP/Postal Code*
+R	Payer Phone Type
+S	Payer Phone
+T	Recipient TIN Type
+U	Recipient Taxpayer ID Number
+V	Recipient Name Type*
+W	Recipient Business or Entity Name Line 1
+X	Recipient Business or Entity Name Line 2
+Y	Recipient First Name
+Z	Recipient Middle Name
+AA	Recipient Last Name (Surname)
+AB	Recipient Suffix
+AC	Recipient Country*
+AD	Recipient Address Line 1*
+AE	Recipient Address Line 2
+AF	Recipient City/Town*
+AG	Recipient State/Province/Territory*
+AH	Recipient ZIP/Postal Code*
+AI	Office Code
+AJ	Form Account Number
+AK	FATCA Filing Requirements
+AL	2nd TIN Notice
+AM	Box 1 - Rents
+AN	Box 2 - Royalties
+AO	Box 3 - Other income
+AP	Box 4 - Federal income tax withheld
+AQ	Box 5 - Fishing boat proceeds
+AR	Box 6 - Medical and health care payments
+AS	Box 7 - Direct sales of $5,000 or more of consumer products to a recipient for resale
+AT	Box 8 - Substitute payments in lieu of dividends or interest
+AU	Box 9 - Crop insurance proceeds
+AV	Box 10 - Gross proceeds paid to an attorney
+AW	Box 11 - Fish purchased for resale
+AX	Box 12 - Section 409A deferrals
+AY	Box 15 - Nonqualified deferred compensation
+AZ	Combined Federal/State Filing (CF/SF)
+BA	State 1
+BB	State 1 - State Tax Withheld
+BC	State 1 - State/Payer state number
+BD	State 1 - State income
+BE	State 1 - Local income tax withheld
+BF	State 1 - Special Data Entries
+BG	State 2
+BH	State 2 - State Tax Withheld
+BI	State 2 - State/Payer state number
+BJ	State 2 - State income
+BK	State 2 - Local income tax withheld
+BL	State 2 - Special Data Entries
