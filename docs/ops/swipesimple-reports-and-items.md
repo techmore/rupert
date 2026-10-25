@@ -89,11 +89,14 @@ SwipeSimple daily close shows four **Register close totals** from
 collected (`tax_cents`), Credit card collected (`net_card_cents`) and Cash
 collected (`net_cash_cents`). These are the native sales report's amounts,
 including its treatment of tax, tips and refunds; they are never added to
-transaction-export totals or deposits. A folded account table shows each
-account's figures and report pull time.
+transaction-export totals or deposits.
 
-The combined figure for a field remains Unknown if any known account is
-missing that field or its report. A covered day omitted from the report is
+The four boxes are shown **once per merchant account** (for example the
+counter terminal and a separate card account), each with its report pull
+time, and accounts are never added together: each account has its own
+register slip, so a combined figure matched neither. An account whose report
+shows no sales for the day gets one line instead of four $0.00 boxes. A field
+stays Unknown when that account's report or cell is missing. A covered day omitted from the report is
 zero only when its sales report was pulled after that business day ended;
 an in-progress omitted day remains Unknown. A missing tax cell is not
 estimated. Report values for one tenant/date never use C-Trax or another
@@ -101,7 +104,7 @@ tenant's records. Changes to the displayed native report values invalidate a
 local review, just as changed transaction evidence does. This adds no provider
 writes, journal entries or database migrations.
 
-The same four boxes and account table appear on **Day close** (Bookkeeping →
+The same per-account boxes appear on **Day close** (Bookkeeping →
 Daily close → Day close) and Daily reconciliation, in the daily close summary's
 **SwipeSimple** section beside the SwipeSimple transaction totals. A separate
 **Shopify and Authorize.net** section holds the store rows (Shopify and any

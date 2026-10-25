@@ -55,7 +55,29 @@ class SwipesimpleDaysTest < ActionDispatch::IntegrationTest
     end
     assert_select '[aria-label="Daily SwipeSimple summary"]', text: /Approved sales.*\$100\.00/m
     assert_equal before, SwipesimpleReportRow.unscoped.count
-    assert_select '[aria-label="Register close totals by account"]', text: /Example Wholesale/
+    assert_select '[data-register-account="Example Wholesale"]', text: /report pulled/
+  end
+
+  test 'register boxes show each merchant account on its own and never a combined total' do
+    import(ROWS)
+    SwipesimpleSalesDay.create!(merchant_account: 'Example Wholesale', business_date: '2026-10-14',
+      net_sales_cents: 852_450, tax_cents: 0, net_card_cents: 852_450, net_cash_cents: 0,
+      tips_cents: 0, source_digest: 'synthetic-card-account', pulled_at: Time.current)
+    SwipesimpleSalesDay.create!(merchant_account: 'Example Terminal', business_date: '2026-10-14',
+      net_sales_cents: 140_169, tax_cents: 5660, net_card_cents: 78_747, net_cash_cents: 61_422,
+      tips_cents: 0, source_digest: 'synthetic-terminal', pulled_at: Time.current)
+    SwipesimpleSalesDay.create!(merchant_account: 'Example Quiet', business_date: '2026-10-14',
+      net_sales_cents: 0, tax_cents: 0, net_card_cents: 0, net_cash_cents: 0,
+      tips_cents: 0, source_digest: 'synthetic-quiet', pulled_at: Time.current)
+    get swipesimple_days_path(date: '2026-10-14')
+    assert_response :success
+    assert_select '[data-register-account="Example Terminal"] [data-register-total=net_sales_cents] .stat-value', '$1,401.69'
+    assert_select '[data-register-account="Example Terminal"] [data-register-total=net_cash_cents] .stat-value', '$614.22'
+    assert_select '[data-register-account="Example Wholesale"] [data-register-total=net_sales_cents] .stat-value', '$8,524.50'
+    assert_select '[data-register-account="Example Quiet"]', text: /no sales on this report/
+    assert_select '[data-register-account="Example Quiet"] [data-register-total]', 0
+    assert_select '[data-register-total=net_sales_cents] .stat-value', count: 2
+    assert_select '[aria-label="Register close totals"] .stat-value', text: '$9,926.19', count: 0
   end
 
   test 'missing native reports keep register boxes unknown for readers too' do
