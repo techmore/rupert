@@ -275,7 +275,7 @@ module Mcp
             due_on: follow_up.due_on.iso8601, days_overdue: follow_up.completed_at ? nil : [(Date.current - follow_up.due_on).to_i, 0].max,
             owner: staff_name(follow_up.owner) || 'Unassigned', completed_at: iso(follow_up.completed_at), path: paths.customer_path(follow_up.customer_id) }
         end
-        owners = User.where(id: scope.where.not(owner_id: nil).distinct.pluck(:owner_id)).index_by(&:id)
+        owners = User.where(tenant_id: tenant.id, id: scope.where.not(owner_id: nil).distinct.pluck(:owner_id)).index_by(&:id)
         by_owner = scope.group(:owner_id).count.to_h { |id, count| [id ? staff_name(owners[id]) : 'Unassigned', count] }
         open = base.open
         counts = { matching: scope.count, open: open.count, due: open.where(due_on: ..Date.current).count, due_today: open.where(due_on: Date.current).count,

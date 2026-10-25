@@ -10,6 +10,9 @@ class MoneyReconciliationJob < ApplicationJob
       rescue MoneyReconciliationReport::Locked => e
         # The locked review stays as it was; other workspaces still run.
         Rails.logger.info("MoneyReconciliationJob skipped #{kind} for #{tenant.id}: #{e.message}")
+      rescue ReconciliationEvidence::Error => e
+        # e.g. a yearly report larger than the evidence limit: report it, keep going for the other workspaces.
+        Rails.error.report(e, handled: true, context: { job: 'MoneyReconciliationJob', kind: kind, tenant_id: tenant.id })
       end
     end
   end

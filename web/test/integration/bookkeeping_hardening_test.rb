@@ -126,4 +126,36 @@ class BookkeepingHardeningTest < ActionDispatch::IntegrationTest
     assert_match(/existing vendor/, flash[:alert])
     assert line.reload.pending?
   end
+
+  test 'a nested bank statement decision is ignored instead of failing' do
+    file = Rack::Test::UploadedFile.new(StringIO.new("Date,Description,Amount\n2026-10-14,ACME,-12.00\n"), 'text/csv', original_filename: 'n.csv')
+    post bank_statements_path, params: { account_label: 'Nested checking', file: file }
+    doc = ReconciliationDocument.where(kind: 'bank_statement').last
+    line = BankStatementLine.for_document(doc.id).first
+
+    post decide_bank_statement_path(doc.id), params: { decisions: { line.id => { 'x' => 'expense:rent' } } }
+    assert_redirected_to bank_statement_path(doc.id)
+    assert_equal 'Nothing was changed.', flash[:notice]
+    assert line.reload.pending?
+  end
+
+  test 'saving a review for a locked period says it is locked, not that the date is invalid' do
+    month = (Date.current - 70).beginning_of_month
+    MoneyReconciliationReport.new(kind: 'monthly', date: month).save!
+    PeriodLock.record!(action: 'lock', kind: 'monthly', date: month, user: users(:regular_user))
+
+    post money_reconciliations_path, params: { kind: 'monthly', date: month.iso8601 }
+    assert_redirected_to money_reconciliations_path
+    assert_no_match(/Choose a valid/, flash[:alert])
+    assert_match(/lock/i, flash[:alert])
+  end
+
+  test 'one workspace whose review cannot be saved does not stop the scheduled run for the others' do
+    Tenant.create!(name: 'Second books workspace', subdomain: 'second-books')
+    active = Tenant.where(status: 'active').count
+    assert_operator active, :>=, 2
+    MoneyReconciliationReport.any_instance.expects(:save!).times(active)
+      .raises(ReconciliationEvidence::Error, 'Attach a document of 1 byte to 8 MiB.').then.returns(nil)
+    assert_nothing_raised { MoneyReconciliationJob.perform_now('daily') }
+  end
 end
