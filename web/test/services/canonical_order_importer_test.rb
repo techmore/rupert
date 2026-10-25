@@ -205,6 +205,26 @@ class CanonicalOrderImporterTest < ActiveSupport::TestCase
     assert_equal 1, order.payments.count
   end
 
+  # #204: re-importing an order whose payments changed used to SQL-delete the old payment, skipping its ledger hook,
+  # so the old sale entry stayed posted next to the new one and the revenue counted twice.
+  test 're-importing changed payments voids the old sale entry instead of leaving it posted' do
+    Finance::ChartOfAccounts.seed!
+    CanonicalOrderImporter.from_shopify!([shopify_order])
+    order = Core::Order.find_by!(source: 'shopify', source_order_id: 'gid://shopify/Order/123')
+    old_payment = order.payments.sole
+    assert Finance::JournalEntry.for_source('Core::Payment', old_payment.id).posted.exists?
+
+    changed = shopify_order
+    changed['currentTotalPriceSet'] = { 'shopMoney' => { 'amount' => '30.00', 'currencyCode' => 'USD' } }
+    CanonicalOrderImporter.from_shopify!([changed])
+    new_payment = order.reload.payments.sole
+    assert_not_equal old_payment.id, new_payment.id
+    assert_not Finance::JournalEntry.for_source('Core::Payment', old_payment.id).posted.exists?
+    assert Finance::JournalEntry.for_source('Core::Payment', old_payment.id).where(status: 'void').exists?
+    posted = Finance::JournalEntry.posted.where(source_type: 'Core::Payment', source_id: [old_payment.id.to_s, new_payment.id.to_s])
+    assert_equal [new_payment.id.to_s], posted.pluck(:source_id)
+  end
+
   test 'square gift card and card tenders map to methods' do
     order = square_order
     order['tenders'] = [

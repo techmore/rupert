@@ -2,6 +2,7 @@
 <% can_write = Current.user.can?("payroll.write") %>
 <% pay_rules = PayRules.current %>
 <% menu = [] %>
+<% menu << ['Download CSV', people_pay_run_path(@pay_run, format: :csv), { data: { turbo: false }, title: 'One row per payslip: hours, rate, gross, estimated deductions and net' }] %>
 <% menu << ['Regenerate from timesheets', generate_payslips_people_pay_run_path(@pay_run), { method: :post, data: { turbo_confirm: "Rebuild all payslips from approved timesheets? Manual payslips will be replaced." } }] if can_write && @pay_run.draft? %>
 <div class="space-y-6">
   <%= page_header @pay_run.name, subtitle: @pay_run.period_label, menu: menu do %>
@@ -52,12 +53,12 @@
             <%= f.select :employee_id, @employees.map { |e| [e.name, e.id] }, { include_blank: "…" }, class: "select w-auto", required: true %>
           </div>
           <div>
-            <%= f.label :gross_cents, "Gross $", class: "field-label" %>
-            <%= f.number_field :gross_cents, step: 100, min: 0, class: "input w-32" %>
+            <%= f.label :gross, "Gross $", class: "field-label" %>
+            <%= f.number_field :gross, step: 0.01, min: 0, value: nil, class: "input w-32" %>
           </div>
           <div>
-            <%= f.label :deductions_cents, "Deductions $", class: "field-label" %>
-            <%= f.number_field :deductions_cents, step: 100, min: 0, value: 0, class: "input w-32" %>
+            <%= f.label :deductions, "Deductions $", class: "field-label" %>
+            <%= f.number_field :deductions, step: 0.01, min: 0, value: 0, class: "input w-32" %>
           </div>
           <div>
             <%= f.label :hours, "Hours", class: "field-label" %>
@@ -92,7 +93,7 @@
             <tr>
               <td class="td font-medium text-ink"><%= link_to slip.employee&.name, people_employee_path(slip.employee), class: "hover:text-olive hover:underline" %></td>
               <td class="td text-mocha"><%= slip.pay_rate&.label || "—" %></td>
-              <td class="td num"><%= number_with_precision(slip.hours, precision: 1) %></td>
+              <td class="td num"><%= number_with_precision(slip.hours, precision: 2) %></td>
               <td class="td num"><%= number_to_currency(slip.gross_cents / 100.0) %></td>
               <td class="td num"><%= number_to_currency(slip.deductions_cents / 100.0) %></td>
               <td class="td num font-medium text-ink"><%= number_to_currency(slip.net_cents / 100.0) %></td>

@@ -172,6 +172,7 @@ tours do not write Activity log entries. There is no history of who changed less
 `test/integration/learning_flow_test.rb`, `learning_onboarding_test.rb`,
 `learning_definitions_test.rb`, `onboarding_connect_test.rb`,
 `test/services/page_tours_test.rb`, `test/models/training_assignment_test.rb`,
+`test/acceptance/training_walkthrough_test.rb` (#411, two trainees: one completes, one cancelled),
 `test/integration/training_assignments_flow_test.rb` (assign, transitions, append-only history,
 staff-only-own, read-only managers, tenant isolation, file types and size, setup step), and `test/javascript/tour_test.mjs`, `help_panel_test.mjs`,
 `practice_test.mjs`.
