@@ -4,8 +4,10 @@ on:
   pull_request:
 name: CI
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # main runs are keyed by commit so each integrated SHA keeps its own result.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  # Only superseded PR runs are cancelled; a cancelled main run would block deployment.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   product_site:
     name: Product site consistency
