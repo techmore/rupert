@@ -15,6 +15,8 @@ Marketing operators: [Community thread and reply review](ops/community-marketing
 
 Influencer operators: [Influencer CMS](ops/influencer-cms.md) covers prospects, collaborations, product gifts, temporary code records, referral URLs, private contacts and versioned documents.
 
+Release-gate standards: [Human Interface Guideline for the release scope](human-interface-guidelines.md) (built on the [interface guidelines](ui-standards.md)), [API standards and contracts](api-standards.md), [module guides](module-guides/README.md), and the parallel delivery rule in the [development and deployment workflow](development-and-deployment-workflow.md#6-parallel-delivery-rule).
+
 | Where | What |
 | --- | --- |
 | `index.html`, `getting-started.html`, `architecture.html`, `modules.html`, `operations.html`, `deployment.html` | The published docs site (GitHub Pages, styled by `assets/style.css`) |

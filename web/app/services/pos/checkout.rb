@@ -4,7 +4,7 @@ module Pos
   class Checkout
     def self.prepare!(display:, tender:, register_id:)
       raise Error, 'Checkout belongs to another workspace.' unless display.tenant_id == Current.tenant_id
-      raise Error, 'Choose cash or card.' unless %w[cash card].include?(tender)
+      raise Error, 'Choose cash or card.' unless PosCheckout::TENDERS.include?(tender)
       raise Error, 'Customer must confirm their tip choice first.' unless display.active? && display.confirmed?
       existing = display.current_checkout
       return existing if existing && existing.status != 'cancelled' && existing.tender == tender
@@ -18,7 +18,7 @@ module Pos
         raise Error, 'NMI production payments are disabled pending Next Stage confirmation.'
       end
       unless display.demo?
-        raise Error, 'Enable this store’s checkout in POS setup first.' unless setting && (tender == 'cash' ? setting.cash_enabled : setting.card_enabled && setting.verified_at)
+        raise Error, 'Enable this store’s checkout in POS setup first.' unless setting && (tender == 'card' ? setting.card_enabled && setting.verified_at : setting.cash_enabled)
         setting_version = setting.lock_version
         connection = PosConnection.find_by!(provider: 'ctrax', vendor_approved: true)
         Ctrax::StockSync.call(connection: connection)
@@ -98,6 +98,18 @@ module Pos
       checkout
     end
 
+    # The card was already run on the A920 terminal; record it like cash. No
+    # gateway call: the amount is the frozen checkout total, tip included, which
+    # is what the cashier keyed on the terminal.
+    def self.terminal_card!(checkout)
+      checkout.with_lock do
+        return checkout if checkout.paid?
+        raise Error, 'This checkout cannot be recorded as an A920 card sale.' unless checkout.terminal_card? && checkout.status == 'ready'
+        finalize!(checkout)
+      end
+      checkout
+    end
+
     def self.finalize!(checkout, transaction_id: nil)
       # Caller locks checkout. All durable local sale effects commit atomically.
       return checkout if checkout.paid?
@@ -112,10 +124,11 @@ module Pos
         checkout.lines.each do |line|
           order.order_lines.create!(source_line_id: line['variant_id'], source_variant_id: line['variant_id'], sku: line['sku'], name: line['title'], quantity: line['quantity'], unit_cents: (BigDecimal(line['unit_price']) * 100).to_i, line_cents: (BigDecimal(line['line_total']) * 100).to_i)
         end
-        order.payments.create!(method: checkout.tender, amount_cents: checkout.total_cents, status: 'completed', paid_at: Time.current, reference: transaction_id || "cash-#{checkout.reference}") if checkout.total_cents.positive?
+        reference = transaction_id || "#{checkout.terminal_card? ? PosCheckout::TERMINAL_REFERENCE_PREFIX : 'cash'}-#{checkout.reference}"
+        order.payments.create!(method: checkout.payment_method, amount_cents: checkout.total_cents, status: 'completed', paid_at: Time.current, reference: reference) if checkout.total_cents.positive?
         order.mark_paid!
         checkout.order = order
-        column = checkout.tender == 'cash' ? :cash_sales_cents : :card_sales_cents
+        column = checkout.payment_method == 'cash' ? :cash_sales_cents : :card_sales_cents
         register.update!(column => register.public_send(column).to_i + checkout.total_cents)
         checkout.pos_stock_allocations.update_all(status: 'pending', updated_at: Time.current)
       end

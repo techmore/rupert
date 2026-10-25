@@ -1,10 +1,12 @@
 import { Controller } from "@hotwired/stimulus"
 
 // Checkout step of the cashier cart. Sends only the display, tender, register and cash
-// physically received; the server takes the amount from the frozen checkout. Cash and Card
-// are two big buttons over one hidden tender field; an unavailable tender stays disabled.
+// physically received; the server takes the amount from the frozen checkout. Cash, Card and
+// Card (A920) are big buttons over one hidden tender field; an unavailable tender stays
+// disabled. Card (A920) records a card already run on the A920 terminal: no gateway charge.
+const A920 = "card_a920"
 export default class extends Controller {
-  static targets = ["tender", "tenderButton", "cashFields", "cash", "exact", "submit", "status", "result"]
+  static targets = ["tender", "tenderButton", "cashFields", "cash", "a920Fields", "exact", "submit", "status", "result"]
   static values = { url: String, displayId: Number, demo: Boolean }
 
   connect() {
@@ -32,10 +34,17 @@ export default class extends Controller {
     const cash = tender === "cash"
     const available = this.tenderButtonTargets.find(button => button.dataset.tender === tender)?.dataset.available !== "false"
     this.tenderButtonTargets.forEach(button => button.setAttribute("aria-pressed", String(button.dataset.tender === tender)))
+    const a920 = tender === A920
     this.cashFieldsTarget.hidden = !cash
     this.cashTarget.required = cash
-    this.submitTarget.value = this.demoValue ? (cash ? "Run demo cash checkout" : "Send demo card checkout") : (cash ? "Complete cash sale" : "Send card checkout to customer screen")
+    if (this.hasA920FieldsTarget) this.a920FieldsTarget.hidden = !a920
+    this.submitTarget.value = this.submitLabel(cash, a920)
     this.submitTarget.disabled = !available
+  }
+
+  submitLabel(cash, a920) {
+    if (a920) return this.demoValue ? "Run demo A920 card sale" : "Record A920 card sale"
+    return this.demoValue ? (cash ? "Run demo cash checkout" : "Send demo card checkout") : (cash ? "Complete cash sale" : "Send card checkout to customer screen")
   }
 
   // Quick cash: the customer-confirmed total (server cents) or a common bill.
@@ -69,7 +78,7 @@ export default class extends Controller {
     const signature = JSON.stringify(result)
     if (signature === this.lastReceipt) return
     this.lastReceipt = signature
-    this.statusTarget.textContent = result.status === "paid" ? `${result.sandbox ? "Sandbox completed" : (result.demo ? "Demo completed" : "Paid")} · ${this.money(result.total_cents)}${result.tender === "cash" ? ` · Change ${this.money(result.change_cents)}` : ""}${result.inventory_pending ? " · Stock update pending verification" : ""}` : ["processing", "unknown"].includes(result.status) ? "Payment is unresolved. Check the receipt/gateway; do not submit another charge." : "Customer can now pay privately on their screen."
+    this.statusTarget.textContent = result.status === "paid" ? `${result.sandbox ? "Sandbox completed" : (result.demo ? "Demo completed" : "Paid")} · ${this.money(result.total_cents)}${result.tender === A920 ? " · Card (A920), no gateway charge" : ""}${result.tender === "cash" ? ` · Change ${this.money(result.change_cents)}` : ""}${result.inventory_pending ? " · Stock update pending verification" : ""}` : ["processing", "unknown"].includes(result.status) ? "Payment is unresolved. Check the receipt/gateway; do not submit another charge." : "Customer can now pay privately on their screen."
     this.resultTarget.replaceChildren()
     if (result.status === "paid") {
       const text = document.createElement("p"); text.className = "pos-checkout-hint"; text.textContent = `Receipt ${result.reference}.`; this.resultTarget.append(text)

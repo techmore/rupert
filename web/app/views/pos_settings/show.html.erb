@@ -10,7 +10,7 @@
     <%= form.hidden_field :lock_version %>
     <fieldset class="space-y-3">
       <legend class="card-title">Cash and stock</legend>
-      <label class="flex gap-2 text-sm"><%= form.check_box :cash_enabled %><span>Enable real cash sales and receipts</span></label>
+      <label class="flex gap-2 text-sm"><%= form.check_box :cash_enabled %><span>Enable real cash and Card (A920) sales and receipts</span></label>
       <label class="flex gap-2 text-sm"><%= form.check_box :stock_writes_enabled %><span>Deduct C-Trax stock for paid Rupert sales using the saved C-Trax account</span></label>
       <p class="text-xs text-taupe">Only verified paid sales can deduct their exact native variants. Uncertain write outcomes remain pending for review and are never blindly repeated. Sales are recorded in Rupert, separately from C-Trax’s own order journal.</p>
     </fieldset>

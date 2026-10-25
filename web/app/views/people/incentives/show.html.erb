@@ -14,10 +14,11 @@
       <div class="toolbar-field"><%= label_tag :shift_rate, 'Shift commission %', class: 'field-label' %><%= number_field_tag :shift_rate, plan.shift_rate, min: 0, max: 10, step: 0.25, class: 'input' %></div>
       <div class="toolbar-field"><%= label_tag :training_rate, 'Training rate %', class: 'field-label' %><%= number_field_tag :training_rate, plan.training_rate, min: 0, max: 10, step: 0.25, class: 'input' %></div>
       <div class="toolbar-field"><%= label_tag :training_hours, 'Training: more than (hours a week)', class: 'field-label' %><%= number_field_tag :training_hours, plan.training_hours, min: 0, max: 60, step: 1, class: 'input' %></div>
+      <div class="toolbar-field"><%= label_tag :training_from, 'Who is in training', class: 'field-label' %><%= select_tag :training_from, options_for_select(IncentiveModel::TRAINING_SOURCES.invert, plan.training_from), class: 'select' %></div>
       <% if @model.rows.any? %>
         <fieldset class="toolbar-field">
-          <legend class="field-label">In training</legend>
-          <div class="flex flex-wrap gap-3"><% @model.rows.each do |row| %><label class="flex items-center gap-2 text-sm"><%= check_box_tag 'trainees[]', row.employee.id, plan.trainees.include?(row.employee.id.to_s), id: "trainee_#{row.employee.id}", class: 'checkbox' %><%= row.employee.name %></label><% end %></div>
+          <legend class="field-label">In training (when ticked below is chosen)</legend>
+          <div class="flex flex-wrap gap-3"><% @model.rows.each do |row| %><% ticked = plan.chosen_trainees? ? plan.trainees.include?(row.employee.id.to_s) : row.employee.in_training_during?(@model.from, @model.to) %><label class="flex items-center gap-2 text-sm"><%= check_box_tag 'trainees[]', row.employee.id, ticked, id: "trainee_#{row.employee.id}", class: 'checkbox' %><%= row.employee.name %></label><% end %></div>
         </fieldset>
       <% end %>
       <div class="toolbar-actions"><%= submit_tag 'Apply', class: 'btn-primary', data: { turbo_submits_with: 'Working…' } %><%= link_to 'Clear', people_incentives_path, class: 'btn-ghost' %></div>
@@ -59,7 +60,8 @@
     <summary class="explainer-summary font-semibold">How this is worked out<%= " · #{@model.notes.size} notes" if @model.notes.any? %></summary>
     <ul class="mt-2 list-disc space-y-2 pl-5 text-sm text-mocha">
       <li>Sales are before tax and after discounts, rung up while the employee was clocked in: the same matching as the Pay tab, so the figures agree.</li>
-      <li>Staff ticked as in training earn the training rate in any Thursday–Wednesday week where they worked more than the hours set. Other weeks use the shift rate.</li>
+      <li>Staff in training earn the training rate in any pay week where they worked more than the hours set. Other weeks use the shift rate.</li>
+      <li>With staff records, someone is in training in a week when they are marked in training on their staff record and the week falls within their training dates. Choose “Ticked below” to try other staff for the whole period. The training flag does not change real pay.</li>
       <li>Coupon and referral bonuses are not modelled yet: discount codes are not imported from orders.</li>
       <li>Nothing is saved or posted to payroll. The plan is in the page address, so copying the link shares the scenario.</li>
       <% @model.notes.each do |note| %><li><%= note %></li><% end %>

@@ -1,0 +1,20 @@
+<%# Card (A920) tender: the card is run on the SwipeSimple Pax A920 terminal and recorded here
+    like cash, with no gateway charge. The ? is the house definition popover (a native
+    disclosure, keyboard reachable without JavaScript); the same text also describes the tender
+    button for screen readers. Locals: blocker, live. %>
+<% help = 'Use this while card payments are taken on the A920 terminal, until Rupert handles card payments end to end.' %>
+<% help_id = "pos-a920-help-#{live ? 'live' : 'idle'}" %>
+<div class="pos-tender-a920" data-a920-tender>
+  <% if live %>
+    <button type="button" class="pos-tender" data-tender="<%= PosCheckout::TERMINAL_CARD %>" data-available="<%= blocker.nil? %>" data-pos-checkout-target="tenderButton" data-action="pos-checkout#choose" aria-pressed="false" aria-describedby="<%= help_id %>" <%= 'disabled' if blocker %>>Card (A920)</button>
+  <% else %>
+    <button type="button" class="pos-tender" aria-describedby="<%= help_id %>" disabled>Card (A920)</button>
+  <% end %>
+  <details class="term pos-tender-help" data-controller="navigation-menu term" data-a920-help>
+    <summary class="term-trigger" title="What is Card (A920)?"><span class="sr-only">What is Card (A920)?</span><span class="term-mark" aria-hidden="true">?</span></summary>
+    <div class="term-panel" role="note">
+      <p class="term-name">Card (A920)</p>
+      <p id="<%= help_id %>" class="term-definition"><%= help %></p>
+    </div>
+  </details>
+</div>

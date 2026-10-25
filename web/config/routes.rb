@@ -341,6 +341,7 @@ Rails.application.routes.draw do
       end
       collection do
         get :forms
+        get :iris
         post :issue
         get :payer
         patch :payer, action: :update_payer
