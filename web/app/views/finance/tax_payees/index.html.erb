@@ -23,6 +23,36 @@
       <% first = @lock.first_issue %>
       <p class="text-sm"><span class="pill-olive">Locked</span> 1099s for <%= @year %> were issued on <%= first.issued_at.strftime('%b %-d, %Y') %><% if first.issued_by_name.present? %> by <%= first.issued_by_name %><% end %>. The recipient copies print the totals as issued; later changes show below as differences.</p>
       <% if @lock.changed.any? %><p class="mt-2 text-sm"><span class="pill-clay">Needs attention</span> <%= pluralize(@lock.changed.size, 'payee') %> changed since issue and <%= @lock.changed.size == 1 ? 'needs' : 'need' %> a corrected form.</p><% end %>
+      <% if @can_write %>
+        <% exports = @iris.select { |export| export.originals.any? } %>
+        <% corrections = @iris.flat_map(&:corrections) %>
+        <div class="mt-3 flex flex-wrap gap-2"<%= ' hidden' if exports.empty? %>>
+          <% exports.each do |export| %>
+            <%= link_to "Download IRIS CSV · #{export.form_name}", iris_finance_tax_payees_path(year: @year, form: export.form_type), class: 'btn-ghost btn-sm', data: { turbo: false },
+                  aria: { label: "Download the IRIS upload file for #{@year} #{export.form_name} (#{pluralize(export.originals.size, 'form')})" } %>
+          <% end %>
+        </div>
+        <p class="mt-2 text-xs text-mocha">For the IRS IRIS Taxpayer Portal (Upload CSV with Form Data): one file per form, with each payee's original form as issued and full TINs. Do not save it anywhere shared. Columns follow the IRS tax year <%= Finance::IrisCsv::TEMPLATE_YEAR %> template guidelines; the header row has not been checked against the portal's own template file.</p>
+        <% if corrections.any? %>
+          <div class="mt-3" aria-label="Corrections to file in IRIS">
+            <p class="text-sm"><span class="pill-clay">Corrections</span> IRIS takes corrections only through <em>Make a Correction</em> in the portal, not in the upload file. Enter these there after the originals are accepted:</p>
+            <ul class="mt-1 list-disc pl-5 text-sm text-mocha tabular-nums">
+              <% corrections.each do |correction| %>
+                <% previous = correction.previous %>
+                <li><%= correction.filing.legal_name %> · <%= correction.filing.form_label %> · <%= finance_money_text(correction.filing.paid_cents) %><% if previous %> (was <%= finance_money_text(previous.paid_cents) %><% if correction.two_step? %> on <%= previous.form_label %>: a 2-step correction, zero out that form and file an original <%= correction.filing.form_label %><% end %>)<% end %> · corrected <%= correction.filing.issued_at.strftime('%b %-d, %Y') %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+        <details class="explainer mt-3">
+          <summary class="explainer-summary text-sm font-semibold">About the IRIS file</summary>
+          <ul class="mt-2 list-disc space-y-2 pl-5 text-sm text-mocha">
+            <li>The columns, their order and the formats follow the IRS <%= link_to "Template Formatting Guidelines for tax year #{Finance::IrisCsv::TEMPLATE_YEAR}", Finance::IrisCsv::GUIDELINES_URL, class: 'underline', rel: 'noopener', target: '_blank' %>. The IRS template file itself is only in the IRIS Taxpayer Portal, so the header row has not been compared with it. Before the first upload, download that template and check the headers match exactly<% if @year != Finance::IrisCsv::TEMPLATE_YEAR %>; the IRS may change the template for <%= @year %><% end %>.</li>
+            <li>Amounts, form and box come from the forms as issued; names follow the form, and the address and TIN are the ones on file now. Periods, commas and other characters IRIS does not accept are left out. People with an SSN or ITIN are filed by first and last name.</li>
+            <li>Each file holds up to <%= Finance::IrisCsv::MAX_RECORDS %> forms and one tax year. A form already filed must not be uploaded again: file a correction instead.</li>
+          </ul>
+        </details>
+      <% end %>
     <% else %>
       <p class="text-sm text-mocha">Not issued yet. When the totals are final, issue the 1099s: Rupert keeps what each form said, and any later change shows as a difference that needs a corrected form.</p>
     <% end %>

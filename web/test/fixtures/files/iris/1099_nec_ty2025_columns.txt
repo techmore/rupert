@@ -1,0 +1,56 @@
+# IRS IRIS CSV template, tax year 2025: column letter <TAB> field name, from the IRS "Template Formatting Guidelines"
+# (https://www.irs.gov/pub/irs-efile/ty2025-template-formatting-guidelines.zip). * marks a required field.
+A	Form Type
+B	Tax Year
+C	Payer TIN Type*
+D	Payer Taxpayer ID Number*
+E	Payer Name Type*
+F	Payer Business or Entity Name Line 1
+G	Payer Business or Entity Name Line 2
+H	Payer First Name
+I	Payer Middle Name
+J	Payer Last Name (Surname)
+K	Payer Suffix
+L	Payer Country*
+M	Payer Address Line 1*
+N	Payer Address Line 2
+O	Payer City/Town*
+P	Payer State/Province/Territory*
+Q	Payer ZIP/Postal Code*
+R	Payer Phone Type
+S	Payer Phone
+T	Recipient TIN Type
+U	Recipient Taxpayer ID Number
+V	Recipient Name Type*
+W	Recipient Business or Entity Name Line 1
+X	Recipient Business or Entity Name Line 2
+Y	Recipient First Name
+Z	Recipient Middle Name
+AA	Recipient Last Name (Surname)
+AB	Recipient Suffix
+AC	Recipient Country*
+AD	Recipient Address Line 1*
+AE	Recipient Address Line 2
+AF	Recipient City/Town*
+AG	Recipient State/Province/Territory*
+AH	Recipient ZIP/Postal Code*
+AI	Office Code
+AJ	Form Account Number
+AK	2nd TIN Notice
+AL	Box 1 - Nonemployee Compensation
+AM	Box 2 - Payer made direct sales totaling $5,000 or more of consumer products to a recipient for resale
+AN	Box 3 - Excess golden parachute payments
+AO	Box 4 - Federal income tax withheld
+AP	Combined Federal/State Filing (CF/SF)
+AQ	State 1
+AR	State 1 - State Tax Withheld
+AS	State 1 - State/Payer state number
+AT	State 1 - State income
+AU	State 1 - Local income tax withheld
+AV	State 1 - Special Data Entries
+AW	State 2
+AX	State 2 - State Tax Withheld
+AY	State 2 - State/Payer state number
+AZ	State 2 - State income
+BA	State 2 - Local income tax withheld
+BB	State 2 - Special Data Entries
