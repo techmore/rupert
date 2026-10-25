@@ -1,5 +1,5 @@
 <% content_for :title, 'Learn Rupert' %>
-<% team_menu = (!Current.user.employee? && (Current.user.can?('users.read') || Current.user.can?('hr.read'))) ? [['Team progress', learning_team_path]] : nil %>
+<% team_menu = ModuleRegistry.visible?(Current.user, 'training') ? [['Team progress', learning_team_path]] : nil %>
 <div class="page-medium space-y-6">
   <%= page_header 'Learn Rupert', subtitle: 'Learn one task at a time, try an example, then open the tool you need.', menu: team_menu %>
   <% if @query.blank? %>

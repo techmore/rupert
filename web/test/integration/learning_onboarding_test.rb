@@ -229,6 +229,26 @@ class LearningOnboardingTest < ActionDispatch::IntegrationTest
     assert_nil other.reload.dashboard_config_hash['learning_tours']
   end
 
+  test 'training progress page and its rail link use the same hr.read rule' do
+    # Account access alone (users.read) shows neither the link nor the page.
+    @user.update!(role: 'manager')
+    @user.update_permission_overrides!(%w[dashboard.read users.read])
+    assert_not ModuleRegistry.visible?(@user.reload, 'training')
+    get learning_index_path
+    assert_select 'a[href=?]', learning_team_path, count: 0
+    get learning_team_path
+    assert_response :forbidden
+
+    # Staff access (hr.read) shows both.
+    @user.update_permission_overrides!(%w[dashboard.read hr.read])
+    assert ModuleRegistry.visible?(@user.reload, 'training')
+    assert_includes ModuleRegistry.nav_for(@user).map(&:key), 'training'
+    get learning_index_path
+    assert_select 'a[href=?]', learning_team_path
+    get learning_team_path
+    assert_response :success
+  end
+
   test 'a staff account gets the staff welcome and tour on its home page' do
     @user.update!(role: 'employee')
     get employee_app_path
