@@ -7,8 +7,10 @@ status steps, actions and views, and one shared way to assign, date, track statu
 check workspace and role access. Each module keeps its own screens; it stops keeping its own copy of
 the workflow table.
 
-Status: **phase 1 is built** (the core and tasks). Later phases are listed at the end and are not
-built.
+Status: **phases 1, 3 and 4 are built**: the core and tasks (phase 1), the marketing kinds and their
+results table (phase 3, [#415](https://github.com/techmore/rupert/issues/415)) and the shared calendar
+(phase 4, [#417](https://github.com/techmore/rupert/issues/417)). The remaining phases are listed at the end
+and are not built.
 
 ## 1. The table
 
@@ -18,7 +20,7 @@ The shared table is the existing `tasks` table. It is not renamed (see section 8
 | Column | Shared meaning |
 | --- | --- |
 | `tenant_id` | Workspace. Every query is filtered by `TenantScoped`. |
-| `kind` | Which kind of work this row is. `task` for every row today. Must be registered (section 2). |
+| `kind` | Which kind of work this row is: `task`, `marketing_event` or `campaign_task`. Must be registered (section 2). |
 | `title`, `description` | What it is. `Work::Item#body` is the same column as `description`. |
 | `status` | The kind's current status. Changes only through the kind's transitions. |
 | `priority` | `low`, `medium`, `high`, `urgent`. |
@@ -57,13 +59,23 @@ registered cannot be saved. Each kind (`Work::Kind`) declares:
 - **policy**: a policy class, or the default `Work::ItemPolicy`;
 - **model**: optionally a class that owns the kind's workflow. When set, the kind is written only
   through that class, so its own rules always apply;
-- **activity prefix** for Activity log entries, and a **path** to the item's page.
+- **activity prefix** for Activity log entries, and a **path** to the item's page;
+- **calendar**: `:due` (on its `due_on`), `:span` (`start_on` through `due_on`) or none;
+- optional **prepare** (run before validation, e.g. an event deriving `start_on`/`due_on` from its
+  local start and end) and **check** (cross-field rules) callables.
 
-Registered in phase 1:
+`Work::Kind#visible_to(user, relation)` narrows a relation to the items of the kind the person may
+see, through the kind's own policy scope.
+
+Registered:
 
 | Kind | Model | Statuses | Transitions | Permissions | Fields |
 | --- | --- | --- | --- | --- | --- |
 | `task` | `Projects::Task` | `todo`, `in_progress`, `blocked`, `done` | read from the task's AASM machine: `start`, `unstart`, `finish`, `block`, `reopen` | `projects.read`, `projects.write`, staff `tasks.self` | none (task fields are columns) |
+| `marketing_event` | — (`Work::Item`) | `planned`, `confirmed`, `held`, `cancelled` | `confirm` (writer), `hold` (writer), `cancel` (manager), `reopen` (manager, from held or cancelled) | `marketing.read`, `marketing.write`, Marketing on (`Marketing::WorkItemPolicy`); no staff access | `starts_at`, `ends_at` (local, required), `time_zone` (required), `venue`, `channel`, `location_id`, `offer_id`, `url`; `start_on`/`due_on` hold the local dates |
+| `campaign_task` | — (`Work::Item`) | `todo`, `in_progress`, `done`, `cancelled` | `start`, `finish` (assignee or manager), `cancel`, `reopen` (manager) | as `marketing_event` | none; `source` = the campaign and/or `parent` = the event |
+
+The marketing kinds are defined in `web/app/modules/marketing/work_kinds.rb`.
 
 The task kind reads its transitions from `Projects::Task`'s state machine, so the two cannot
 disagree. The task's own guards still apply (start and finish wait on unfinished dependencies;
@@ -112,6 +124,8 @@ history on any screen yet.
   workspace.
 - Each kind names its policy. `task` uses `Projects::TaskPolicy` unchanged (staff see and work only
   tasks assigned to them), and its scope now also filters `kind = 'task'`.
+- `marketing_event` and `campaign_task` use `Marketing::WorkItemPolicy`: `Work::ItemPolicy`, and only
+  while the workspace has Marketing turned on; staff accounts never see them.
 - `Work::ItemPolicy` is the default for later kinds: `read` to see, `write` to create, change,
   reassign, transition and delete, and staff (employee) accounts with `self_service` see and work
   only items assigned to them. `Work::ItemPolicy::Scope.new(user, scope, kind:)` filters the
@@ -126,9 +140,9 @@ history on any screen yet.
 | Projects | phase 1: unchanged container (`project_id`). Folding projects in as kind `project` with tasks as children is an open decision for a later phase | — |
 | Assistant and feature requests ([#406](https://github.com/techmore/rupert/issues/406), PR #519) | kind `request`: `source` = the `AgentFeedback` row, `requester_id`, statuses `new` → `accepted` / `merged` / `declined`; accepting creates a child `task` (`parent_id`) | `AgentFeedback` keeps the inbound message, its chat link and GitHub sync; chat records stay their own conversation records ([#408](https://github.com/techmore/rupert/issues/408)) |
 | Training ([#409](https://github.com/techmore/rupert/issues/409), PR #521) | kind `training_assignment`: `source` = the `TrainingModule`, statuses `assigned` → `in_progress` → `completed`, or `cancelled` (the `TrainingAssignment::TRANSITIONS` table moves into the registry as is), `details` = `completed_revision`, `completed_by_id` | `training_modules` and `training_attachments` are content, not work, and stay |
-| Marketing campaigns and events ([#415](https://github.com/techmore/rupert/issues/415)) | kind `campaign_task` (work for a campaign, `source` = `Marketing::Campaign`) and kind `marketing_event` (`details`: `starts_at`, `ends_at`, `time_zone`, `venue` or `channel`, `offer_id`, `url`) | `Marketing::Campaign` and `Offer` stay. Observed redemptions and results are facts, not work: they get their own table keyed by event, source, location and currency so nothing is counted twice |
+| Marketing campaigns and events ([#415](https://github.com/techmore/rupert/issues/415)) | **done in phase 3**: kind `campaign_task` (work for a campaign, `source` = `Marketing::Campaign`, `parent` = the event) and kind `marketing_event` (`details`: `starts_at`, `ends_at`, `time_zone`, `venue` or `channel`, `location_id`, `offer_id`, `url`; `source` = the campaign) | `Marketing::Campaign` and `Offer` stay. Observed redemptions and results are facts, not work: `marketing_results` (`Marketing::Result`), one row per event, code, order source, store location and currency |
 | Orders | kind `order_follow_up` for work about an order (special orders, fulfilment problems), `source` = `Core::Order` | `Core::Order` and its lines, payments and fulfilments stay the sales record. Orders do not move into the work table |
-| Calendar ([#417](https://github.com/techmore/rupert/issues/417)) | one calendar reads `Work::Item` across kinds (task `due_on`, event `details.starts_at`), through each kind's policy scope, with time zone, location, status and a link from the kind's `path` | — |
+| Calendar ([#417](https://github.com/techmore/rupert/issues/417)) | **done in phase 4**: `/calendar` (`Work::Calendar`) reads `Work::Item` across kinds (task and campaign task `due_on`, event `start_on`–`due_on`), through each kind's policy scope, in one query per range, with time zone, place, status and a link from the kind's `path` | — |
 
 ## 7. Moving a module in (each later phase)
 
@@ -182,23 +196,48 @@ append-only history, workspace isolation, permissions, tasks through `Work::Item
 plus history checks in `tasks_flow_test.rb` and `mcp_server_test.rb`. The existing task, project,
 staff, MCP, team chat and API docs contract tests pass unchanged.
 
-## 9. Later phases (not built)
+## 9. Phases 3 and 4: marketing and the calendar
+
+Phase 3 had no old table to copy (there were no event records before), so steps 2 to 4 of section 7
+do not apply: the kinds were registered and new rows are written straight into `tasks`.
+
+**Raw-query audit before registering the kinds.** A search of `web/app`, `web/lib` and `web/config`
+for `unscoped`/`unscope` on task classes, `FROM tasks`/`JOIN tasks`, `tasks.` in SQL fragments,
+`find_by_sql`/`select_all`/`execute` and every user of `Projects::Task` (task screens, project
+progress and timeline, goals, dashboard widget, Next thing bar, reminder job, request triage, team
+chat actions and links, MCP `list_tasks`, `list_projects`, `create_task`, `update_task`,
+`period_review`, CSV export) found no read of the table that skips the `kind = 'task'` default scope.
+The only cross-kind reads are `Work::Item` itself (parent check, calendar). The `tasks.` SQL
+fragments are ordering and search clauses on `Projects::Task` relations, which keep the default
+scope. `test/models/work/marketing_kinds_test.rb` and `test/integration/work_calendar_test.rb`
+check that marketing items change no task count, listing, project progress, task page or MCP task
+tool.
+
+**Migration** `20261026100000_create_marketing_results`: creates `marketing_results` only (additive,
+no rewrite of `tasks`). Rollback: `bin/rails db:migrate:down VERSION=20261026100000` drops the
+results; marketing event and campaign task rows in `tasks` then block the phase 1 rollback until they
+are removed.
+
+**Code.** `web/app/modules/marketing/work_kinds.rb`, `result.rb`,
+`web/app/policies/marketing/work_item_policy.rb`, `web/app/services/marketing/redemption_count.rb`,
+`web/app/services/work/calendar.rb`, `Marketing::EventsController`, `EventWorkItemsController`,
+`EventResultsController`, `CalendarController`, `WorkItemsHelper`.
+
+## 10. Later phases (not built)
 
 1. **Requests** (#406, PR #519): kind `request`; triage writes the request item and its child task.
 2. **Training** (#409, PR #521): kind `training_assignment`; copy assignments and their events.
-3. **Marketing** (#415): kinds `campaign_task` and `marketing_event`, plus the separate results
-   table.
-4. **Calendar** (#417): one calendar across kinds.
+3. ~~Marketing~~ and 4. ~~Calendar~~: built (section 9).
 5. **Projects**: decide whether projects become kind `project`.
-6. Show the item history on each item's page.
+6. Show the item history on each item's page (marketing events show theirs; tasks do not yet).
 7. When every module reads through `Work::Item` and deploys can tolerate it, consider renaming the
    table to `work_items` in a release that ships the rename on its own.
 
 ## Risks
 
-- Code that reads the `tasks` table with `unscoped` or raw SQL would see other kinds once they
-  exist. Today nothing does; `Projects::TaskPolicy::Scope` filters the kind explicitly. New
-  kinds must not be added until a search for raw `tasks` queries is clean.
+- Code that reads the `tasks` table with `unscoped` or raw SQL sees every kind. The search before
+  phase 3 was clean (section 9); repeat it before each new kind, and never call `unscoped` on
+  `Projects::Task` (it drops the kind filter as well as the workspace).
 - `details` is JSON in a text column: it cannot be indexed or summed. Fields that need that become
   columns in their own migration.
 - History grows by one row per change; there is no retention rule yet.

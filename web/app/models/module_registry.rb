@@ -28,6 +28,7 @@ class ModuleRegistry
     Entry.new(key: 'customers', name: 'Customers', path: -> { customers_path }, permission: 'customers.read', position: 30),
     # Marketing
     Entry.new(key: 'marketing', name: 'Marketing', path: -> { marketing_path }, permission: 'marketing.read', position: 35),
+    Entry.new(key: 'marketing_events', name: 'Events', path: -> { marketing_events_path }, permission: 'marketing.read', position: 35.5),
     Entry.new(key: 'influencers', name: 'Influencers', path: -> { marketing_influencers_path }, permission: 'marketing.read', position: 36),
     # Stock
     Entry.new(key: 'inventory', name: 'Inventory', path: -> { inventory_index_path }, permission: 'inventory.read', position: 40),
@@ -89,6 +90,8 @@ class ModuleRegistry
     # Work
     Entry.new(key: 'projects', name: 'Projects', path: -> { projects_projects_path }, permission: 'projects.read', position: 70),
     Entry.new(key: 'tasks', name: 'Tasks', path: -> { projects_tasks_path }, permission: 'projects.read', position: 71),
+    # Task deadlines and marketing events together (#417); shown to anyone who can read either (see nav_for).
+    Entry.new(key: 'calendar', name: 'Calendar', path: -> { calendar_path }, permission: nil, position: 71.5),
     Entry.new(key: 'requests', name: 'Requests', path: -> { projects_requests_path }, permission: 'projects.write', position: 72),
     Entry.new(key: 'goals', name: 'Goals', path: -> { goals_goals_path }, permission: 'projects.read', position: 75),
     Entry.new(key: 'kpis', name: 'KPIs', path: -> { goals_kpis_path }, permission: 'projects.read', position: 78),
@@ -185,7 +188,8 @@ class ModuleRegistry
         next user.can?('hr.read') || user.can?('schedule.write') if entry.key == 'schedule'
         next false if entry.key == 'owner_checklists' && !(user&.active? && (user.admin? || user.super_admin?))
 
-        next false if entry.key == 'influencers' && !FeatureFlag.enabled?(:marketing)
+        next false if %w[influencers marketing_events].include?(entry.key) && !FeatureFlag.enabled?(:marketing)
+        next user.can?('projects.read') || (user.can?('marketing.read') && FeatureFlag.enabled?(:marketing)) if entry.key == 'calendar'
         next false if entry.key == 'marketing' && !FeatureFlag.enabled?(:marketing) && !user.can_manage_accounts?
 
         Array(entry.permission).all? { |permission| user.can?(permission) }
@@ -216,7 +220,7 @@ class ModuleRegistry
           { name: 'Daily close', modules: %w[ctrax_days swipesimple_days] },
           { name: 'Customers', modules: %w[customers] }
         ] },
-      { key: 'marketing', name: 'Marketing', modules: %w[marketing influencers] },
+      { key: 'marketing', name: 'Marketing', modules: %w[marketing marketing_events influencers] },
       { key: 'stock', name: 'Stock',
         modules: %w[inventory stock_comparison movements product_names inventory_exceptions alerts
                     inventory_counts stock_requests stock_reservations
@@ -246,7 +250,7 @@ class ModuleRegistry
         ] },
       # Every report in one place; each report page also carries the same tab bar.
       { key: 'reports', name: 'Reports', modules: %w[reports sales_tax finance_reports] },
-      { key: 'work', name: 'Work', modules: %w[projects tasks requests goals kpis] },
+      { key: 'work', name: 'Work', modules: %w[projects tasks calendar requests goals kpis] },
       # Personal staff self-service (own receipts, own hours). Receipts has no permission, so
       # this area is visible to everyone.
       { key: 'me', name: 'Me', modules: %w[receipts time_clock learning] },

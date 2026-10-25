@@ -1,0 +1,47 @@
+<% title = @event.persisted? ? 'Edit event' : 'Add event' %>
+<% content_for :title, title %>
+<% details = @event.details %>
+<% zones = ActiveSupport::TimeZone.us_zones.map(&:name) %>
+<% zones |= [Time.zone.name, details['time_zone']].compact %>
+<div class="page-narrow space-y-6">
+  <%= page_header title, subtitle: 'Times are the local time at the event, in the time zone you choose.' %>
+  <div class="card card-pad">
+    <%= form_with model: @event, scope: :event, url: @event.persisted? ? marketing_event_path(@event) : marketing_events_path, method: @event.persisted? ? :patch : :post, class: 'space-y-6' do |f| %>
+      <% if @event.errors.any? %>
+        <div role="alert" class="flash flash-alert">
+          <p class="font-semibold">Please fix the following:</p>
+          <ul class="mt-1 list-disc pl-5"><% @event.errors.full_messages.each do |message| %><li><%= message %></li><% end %></ul>
+        </div>
+      <% end %>
+      <fieldset class="space-y-4">
+        <legend class="card-title">Event</legend>
+        <div><%= f.label :title, 'Name', class: 'field-label' %><%= f.text_field :title, maxlength: 200, required: true, class: 'input w-full', aria: { invalid: @event.errors[:title].any? } %></div>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div><%= label_tag 'event_starts_at', 'Starts', class: 'field-label' %><%= datetime_local_field_tag 'event[starts_at]', details['starts_at'], id: 'event_starts_at', required: true, class: 'input w-full' %></div>
+          <div><%= label_tag 'event_ends_at', 'Ends', class: 'field-label' %><%= datetime_local_field_tag 'event[ends_at]', details['ends_at'], id: 'event_ends_at', required: true, class: 'input w-full' %></div>
+        </div>
+        <div><%= label_tag 'event_time_zone', 'Time zone', class: 'field-label' %><%= select_tag 'event[time_zone]', options_for_select(zones, details['time_zone'] || Time.zone.name), id: 'event_time_zone', class: 'select w-full' %></div>
+        <div><%= f.label :description, 'Notes', class: 'field-label' %><%= f.text_area :description, rows: 3, maxlength: 5000, class: 'input w-full' %></div>
+      </fieldset>
+      <fieldset class="space-y-4">
+        <legend class="card-title">Where</legend>
+        <p class="text-sm text-mocha">Give a venue, a channel or both.</p>
+        <div><%= label_tag 'event_venue', 'Venue', class: 'field-label' %><%= text_field_tag 'event[venue]', details['venue'], id: 'event_venue', maxlength: 200, class: 'input w-full', placeholder: 'Farmers market, booth 12' %></div>
+        <div><%= label_tag 'event_channel', 'Channel', class: 'field-label' %><%= select_tag 'event[channel]', options_for_select(Marketing::WorkKinds::CHANNELS.invert, details['channel']), include_blank: 'None', id: 'event_channel', class: 'select w-full' %></div>
+        <div><%= label_tag 'event_location_id', 'Store location', class: 'field-label' %><%= select_tag 'event[location_id]', options_for_select(@locations.map { |l| [l.picker_label, l.externalId] }, details['location_id']), include_blank: 'Any location', id: 'event_location_id', class: 'select w-full' %>
+          <p class="mt-1 text-xs text-taupe">When set, only orders from this store count towards the results.</p></div>
+        <div><%= label_tag 'event_url', 'Link', class: 'field-label' %><%= url_field_tag 'event[url]', details['url'], id: 'event_url', maxlength: 2000, class: 'input w-full', placeholder: 'https://…' %></div>
+      </fieldset>
+      <fieldset class="space-y-4">
+        <legend class="card-title">Campaign and owner</legend>
+        <div><%= label_tag 'event_campaign_id', 'Campaign', class: 'field-label' %><%= select_tag 'event[campaign_id]', options_for_select(@campaigns.map { |c| [c.name, c.id] }, @event.source_id), include_blank: 'None', id: 'event_campaign_id', class: 'select w-full' %></div>
+        <div><%= label_tag 'event_offer_id', 'Discount code', class: 'field-label' %><%= select_tag 'event[offer_id]', options_for_select(@offers.map { |o| [o.code, o.id] }, details['offer_id']), include_blank: 'None', id: 'event_offer_id', class: 'select w-full' %></div>
+        <div><%= label_tag 'event_assignee_id', 'Owner', class: 'field-label' %><%= select_tag 'event[assignee_id]', options_for_select(@people.map { |p| [p.display_name, p.id.to_s] }, @event.assignee_id), include_blank: 'Unassigned', id: 'event_assignee_id', class: 'select w-full' %></div>
+      </fieldset>
+      <div class="form-actions">
+        <%= f.submit 'Save', class: 'btn-primary', data: { turbo_submits_with: 'Saving…' } %>
+        <%= link_to 'Cancel', @event.persisted? ? marketing_event_path(@event) : marketing_events_path, class: 'btn-ghost' %>
+      </div>
+    <% end %>
+  </div>
+</div>

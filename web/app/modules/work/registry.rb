@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 module Work
-  # The kinds of tracked work that live in the shared work-item table (#407). Phase 1 registers only 'task'; later
-  # phases add request, training_assignment and marketing_event (docs/architecture/shared-work-items.md). A row
-  # whose kind is not registered cannot be saved.
+  # The kinds of tracked work that live in the shared work-item table (#407): 'task' (phase 1), and the marketing
+  # kinds 'marketing_event' and 'campaign_task' (#415, Marketing::WorkKinds). Later phases add request and
+  # training_assignment (docs/architecture/shared-work-items.md). A row whose kind is not registered cannot be saved.
   module Registry
     class UnknownKind < KeyError; end
 
@@ -34,8 +34,11 @@ module Work
     end
 
     def defaults
-      [task_kind]
+      [task_kind, Marketing::WorkKinds.event_kind, Marketing::WorkKinds.campaign_task_kind]
     end
+
+    # Kinds that appear on the shared calendar (#417).
+    def calendar_kinds = kinds.values.select(&:calendar)
 
     # Projects::Task keeps its AASM state machine (dependency guards, recurrence, board moves); the registry reads
     # the transition table from it so the two can never disagree.
@@ -45,7 +48,8 @@ module Work
         statuses: %w[todo in_progress blocked done], initial_status: 'todo', started_statuses: %w[in_progress], done_statuses: %w[done],
         transitions: -> { aasm_transitions(Projects::Task) },
         permissions: { read: 'projects.read', write: 'projects.write', self_service: 'tasks.self' },
-        path: ->(item) { Rails.application.routes.url_helpers.projects_task_path(item) }
+        path: ->(item) { Rails.application.routes.url_helpers.projects_task_path(item) },
+        calendar: :due
       )
     end
 

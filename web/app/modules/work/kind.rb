@@ -11,30 +11,45 @@ module Work
   #        :assignee — only the item's assignee (or a writer acting for them)
   #        :manager  — only someone with the kind's write permission
   # fields: { 'venue' => { type: :string, max: 200, required: false }, ... }
-  #   types: :string, :text, :integer, :boolean, :date, :url
+  #   types: :string, :text, :integer, :boolean, :date (YYYY-MM-DD), :datetime (local wall time YYYY-MM-DDTHH:MM), :url
   # started_statuses: entering one of these first stamps started_at; done_statuses: these stamp completed_at.
   # model: a class that owns the kind's workflow (Projects::Task for 'task'). Writes for such a kind go through that
   #   class so its own rules (dependencies, recurrence, row locks) apply; Work::Item only reads them.
+  # calendar: how an item sits on the shared calendar (#417): :due (on its due_on), :span (start_on through due_on), or
+  #   nil (not on the calendar).
+  # prepare: optional callable(item) run before validation (a kind that derives columns from its details, such as an
+  #   event's start_on/due_on from its local start and end). check: optional callable(item) adding cross-field errors.
   Kind = Data.define(:key, :label, :model, :statuses, :initial_status, :started_statuses, :done_statuses, :transitions, :fields, :permissions,
-    :policy, :activity_prefix, :path)
+    :policy, :activity_prefix, :path, :calendar, :prepare, :check)
 
   class Kind
-    FIELD_TYPES = %i[string text integer boolean date url].freeze
+    FIELD_TYPES = %i[string text integer boolean date datetime url].freeze
+    CALENDAR_MODES = [nil, :due, :span].freeze
 
     def initialize(key:, label:, statuses:, initial_status:, transitions:, permissions:, model: nil, started_statuses: [], done_statuses: [], fields: {},
-      policy: nil, activity_prefix: nil, path: nil)
+      policy: nil, activity_prefix: nil, path: nil, calendar: nil, prepare: nil, check: nil)
       fields = fields.to_h { |name, spec| [name.to_s, spec] }
       bad = fields.reject { |_, spec| FIELD_TYPES.include?(spec[:type]) }
       raise ArgumentError, "unknown field type for #{bad.keys.to_sentence}" if bad.any?
+      raise ArgumentError, "unknown calendar mode #{calendar.inspect}" unless CALENDAR_MODES.include?(calendar)
 
       super(key: key.to_s, label:, model:, statuses: statuses.map(&:to_s), initial_status: initial_status.to_s,
         started_statuses: started_statuses.map(&:to_s), done_statuses: done_statuses.map(&:to_s), transitions:, fields:, permissions:, policy:,
-        activity_prefix: (activity_prefix || key).to_s, path:)
+        activity_prefix: (activity_prefix || key).to_s, path:, calendar:, prepare:, check:)
     end
 
     def model_class = model&.constantize
     def policy_class = (policy || 'Work::ItemPolicy').constantize
     def bespoke? = model.present?
+
+    # The items of this kind `user` may see, narrowed from `relation`, through the kind's own policy scope. Policy
+    # scopes written for one kind (Projects::TaskPolicy::Scope) take (user, scope); Work::ItemPolicy::Scope and its
+    # subclasses also take the kind.
+    def visible_to(user, relation)
+      scope_class = policy_class::Scope
+      takes_kind = scope_class.instance_method(:initialize).parameters.any? { |_, name| name == :kind }
+      (takes_kind ? scope_class.new(user, relation, kind: key) : scope_class.new(user, relation)).resolve
+    end
 
     # transitions may be a hash or a lambda (so a kind can read them from its model's state machine lazily).
     def transition_table
@@ -74,11 +89,12 @@ module Work
            when :integer then value.is_a?(Integer)
            when :boolean then [true, false].include?(value)
            when :date then value.is_a?(String) && value.match?(/\A\d{4}-\d{2}-\d{2}\z/) && Date.iso8601(value)
+           when :datetime then value.is_a?(String) && value.match?(/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\z/) && DateTime.iso8601(value)
            when :url then value.is_a?(String) && value.length <= 2000 && value.match?(%r{\Ahttps://[^\s]+\z})
            end
       record.errors.add(:details, "#{name.humanize} is not a valid #{spec[:type]}") unless ok
     rescue Date::Error
-      record.errors.add(:details, "#{name.humanize} is not a valid date")
+      record.errors.add(:details, "#{name.humanize} is not a valid #{spec[:type] == :datetime ? 'date and time' : 'date'}")
     end
   end
 end

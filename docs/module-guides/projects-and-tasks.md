@@ -1,6 +1,6 @@
 # Projects and tasks
 
-Last checked against `main` at `ec5ae024` on `2026-10-25`.
+Last checked against `main` at `96a8a660` on `2026-10-25`.
 
 ## Purpose and owner
 
@@ -25,8 +25,10 @@ Tasks live in the shared work-item table ([#407](https://github.com/techmore/rup
 [design](../architecture/shared-work-items.md)): the `tasks` table carries a `kind` (`task` for
 every task), and `Projects::Task` reads only that kind. `Work::Item` reads every kind, and
 `work_item_events` keeps an append-only history of each task's creation, field changes, status
-changes and deletion, with who did it. Requests, training, marketing work and order follow-up move
-in during later phases.
+changes and deletion, with who did it. Marketing events and campaign tasks share the table
+(kinds `marketing_event`, `campaign_task`, see [Marketing](marketing.md)); they never appear in task
+lists, counts, project progress or task tools. Requests, training and order follow-up move in during
+later phases.
 
 ## Permissions and tenant boundary
 
@@ -40,7 +42,8 @@ in during later phases.
 
 ## Routes and API
 
-- Web: `/projects/projects`, `/projects/tasks` (views: board, list, calendar),
+- Web: `/calendar` (**Work → Calendar**, `ModuleRegistry` key `calendar`), `/projects/projects`,
+  `/projects/tasks` (views: board, list, calendar),
   `/projects/tasks/:id`, plus nested checklist, comment, time entry, attachment, dependency and
   template routes.
 - MCP tools ([MCP guide](../mcp.md)): `list_tasks` and `list_projects` (`tasks:read`, owner needs
@@ -67,10 +70,17 @@ Tasks is a List-template page with `.tabs` for board, list and calendar; a task 
 with facts and related sections. Projects has a board and a timeline per project. Desktop and
 phone visual acceptance: Unknown.
 
-**Calendar:** the Tasks calendar is a month view of tasks by due date
-(`TasksController#load_calendar`). There is no calendar of marketing events, and no combined
-calendar of task deadlines and marketing events. Marketing offers have start and end times, but
-they do not appear on a calendar ([#417](https://github.com/techmore/rupert/issues/417)).
+**Calendar** ([#417](https://github.com/techmore/rupert/issues/417)): **Work → Calendar**
+(`/calendar`, `CalendarController`, `Work::Calendar`) shows task deadlines, campaign task deadlines
+and marketing events together, as a **Month** grid or an **Agenda** table (`.tabs`), with a month
+stepper and a Show filter (everything, task deadlines, marketing). Each kind is filtered by its own
+policy scope (tasks: `projects.read`; marketing: `marketing.read` with Marketing on), so a person sees
+only what they could open; everything is in the current workspace. All kinds load in one query per
+month. Task dates are in store time; event times are shown in each event's own time zone with its
+abbreviation, with venue, store location or channel, status and a link to the task or event page.
+The page is in the rail for anyone with `projects.read`, or `marketing.read` while Marketing is on.
+Staff accounts keep **My tasks** and do not get the calendar. The Tasks page keeps its own calendar
+tab of tasks by due date (`TasksController#load_calendar`).
 
 ## Integration and sync
 
@@ -101,6 +111,7 @@ field before/after values; those rows cannot be edited or deleted and outlive th
 `employee_tasks_access_test.rb`, `projects_guide_test.rb`, `task_ai_activity_test.rb`,
 `mcp_server_test.rb`, `test/policies/projects_task_policy_test.rb`,
 `test/javascript/task_board_test.mjs`, `test/models/work/item_test.rb`,
+`test/models/work/marketing_kinds_test.rb`, `test/integration/work_calendar_test.rb`,
 `test/services/shared_work_items_migration_test.rb`, and the team chat approval tests
 (`test/services/team_chat/actions_test.rb`).
 
@@ -109,8 +120,8 @@ field before/after values; those rows cannot be edited or deleted and outlive th
 - [#407](https://github.com/techmore/rupert/issues/407): decided (one shared table); phase 1 moved
   tasks in. Later phases are listed in the [design](../architecture/shared-work-items.md). The item
   history is not shown on the task page yet.
-- [#417](https://github.com/techmore/rupert/issues/417): one calendar for task deadlines and
-  marketing events, with time zone, location, status and links.
+- [#417](https://github.com/techmore/rupert/issues/417): the shared calendar is built; acceptance
+  evidence in the production workspace is not recorded. No week view and no calendar feed (iCal).
 - [#406](https://github.com/techmore/rupert/issues/406): assistant requests triaged into tracked
   tasks without duplicates.
 - Email or push delivery, @mentions and per-person notification preferences are not built.

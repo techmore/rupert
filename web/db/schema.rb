@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_26_093000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_26_100000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -2023,6 +2023,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_093000) do
     t.index ["tenant_id", "status", "updated_at"], name: "index_marketing_replies_on_tenant_id_and_status_and_updated_at"
     t.index ["tenant_id"], name: "index_marketing_replies_on_tenant_id"
     t.index ["thread_id"], name: "index_marketing_replies_on_thread_id", unique: true
+  end
+
+  create_table "marketing_results", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "work_item_id", null: false
+    t.bigint "offer_id"
+    t.string "code", default: "", null: false
+    t.string "basis", null: false
+    t.string "order_source", default: "", null: false
+    t.string "location_id", default: "", null: false
+    t.string "currency", default: "USD", null: false
+    t.datetime "window_starts_at"
+    t.datetime "window_ends_at"
+    t.integer "redemptions", default: 0, null: false
+    t.bigint "revenue_cents", default: 0, null: false
+    t.text "order_ids"
+    t.text "summary"
+    t.bigint "recorded_by_id"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "code"], name: "idx_marketing_results_code"
+    t.index ["tenant_id", "work_item_id", "code", "order_source", "location_id", "currency"], name: "idx_marketing_results_identity", unique: true
   end
 
   create_table "marketing_review_events", force: :cascade do |t|
