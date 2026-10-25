@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_25_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_25_160000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -767,6 +767,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_25_140000) do
     t.check_constraint "source = 'shopify' AND version > 0 AND mg_per_unit > 0", name: "bulk_recipe_positive"
   end
 
+  create_table "buzz_channels", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "channel_id", null: false
+    t.string "name", null: false
+    t.string "about"
+    t.string "channel_type", limit: 20
+    t.boolean "archived", default: false, null: false
+    t.text "members", default: "[]", null: false
+    t.datetime "fetched_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "channel_id"], name: "idx_buzz_channels_channel", unique: true
+  end
+
+  create_table "buzz_chat_reads", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "user_id", null: false
+    t.string "channel", null: false
+    t.bigint "read_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "user_id", "channel"], name: "idx_buzz_chat_reads_user_channel", unique: true
+  end
+
   create_table "buzz_chat_states", force: :cascade do |t|
     t.string "tenant_id", null: false
     t.datetime "last_attempt_at"
@@ -810,8 +834,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_25_140000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.text "attachments"
+    t.string "thread_root", limit: 64
+    t.boolean "edited", default: false, null: false
     t.index ["tenant_id", "channel", "posted_at", "event_id"], name: "idx_buzz_messages_timeline"
     t.index ["tenant_id", "event_id"], name: "idx_buzz_messages_event", unique: true
+    t.index ["tenant_id", "thread_root"], name: "idx_buzz_messages_thread"
   end
 
   create_table "buzz_person_keys", force: :cascade do |t|
@@ -836,6 +863,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_25_140000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["tenant_id", "pubkey"], name: "idx_buzz_profiles_pubkey", unique: true
+  end
+
+  create_table "buzz_reactions", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "event_id", limit: 64, null: false
+    t.string "target_id", limit: 64, null: false
+    t.string "channel", null: false
+    t.string "pubkey", limit: 64, null: false
+    t.string "emoji", limit: 64, null: false
+    t.bigint "rupert_user_id"
+    t.bigint "posted_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "event_id"], name: "idx_buzz_reactions_event", unique: true
+    t.index ["tenant_id", "target_id"], name: "idx_buzz_reactions_target"
   end
 
   create_table "chat_approval_events", force: :cascade do |t|

@@ -1,0 +1,7 @@
+<%# The two Buzz pages. Setup shows only to people who may change settings. %>
+<% if Current.user&.can?('settings.write') %>
+  <nav class="tabs" aria-label="Buzz pages">
+    <%= link_to 'Team chat', buzz_chat_path, class: "tab #{'tab-active' if current == :chat}".strip, aria: { current: (current == :chat ? 'page' : nil) } %>
+    <%= link_to 'Setup', buzz_setup_path, class: "tab #{'tab-active' if current == :setup}".strip, aria: { current: (current == :setup ? 'page' : nil) } %>
+  </nav>
+<% end %>

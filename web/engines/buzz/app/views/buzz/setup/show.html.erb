@@ -1,0 +1,68 @@
+<%# Buzz setup: the Settings template (docs/ui-standards.md §4). One section card per topic. %>
+<% configured = Buzz::Identity.configured? %>
+<div class="page-medium space-y-6">
+  <%= page_header 'Buzz', subtitle: "Connect Rupert to the team's Buzz relay." %>
+  <%= render 'buzz/tabs', current: :setup %>
+
+  <section class="section-card" aria-labelledby="buzz-relay-title">
+    <h2 id="buzz-relay-title" class="section-title">Relay and channel</h2>
+    <%= form_with url: buzz_setup_path, method: :patch, class: 'space-y-4' do %>
+      <fieldset class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="field-label" for="buzz_relay_url">Relay address</label>
+          <input type="text" id="buzz_relay_url" name="relay_url" value="<%= @relay_url %>" placeholder="wss://buzz.example.com" class="input font-mono" autocomplete="off" spellcheck="false">
+        </div>
+        <div>
+          <label class="field-label" for="buzz_channel">Default channel id</label>
+          <input type="text" id="buzz_channel" name="channel" value="<%= @channel %>" placeholder="0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d" class="input font-mono" autocomplete="off" spellcheck="false">
+        </div>
+      </fieldset>
+      <p class="text-xs text-taupe">Stored encrypted with this workspace's other connection settings. The channel id is the UUID Buzz shows for the channel.</p>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" data-turbo-submits-with="Saving…">Save</button>
+      </div>
+    <% end %>
+  </section>
+
+  <section class="section-card" aria-labelledby="buzz-identity-title">
+    <h2 id="buzz-identity-title" class="section-title">Rupert's identity</h2>
+    <dl class="facts">
+      <div><dt>Public key</dt><dd class="break-all font-mono text-xs"><%= @npub || 'None yet.' %></dd></div>
+      <div><dt>Relay</dt><dd>
+        <% if @check.nil? %>
+          <span class="pill-taupe">Not checked</span>
+        <% elsif @check[:reachable] %>
+          <span class="pill-fern">Answers</span>
+        <% else %>
+          <span class="pill-rose">Not reachable</span>
+        <% end %>
+      </dd></div>
+      <div><dt>Profile on the relay</dt><dd>
+        <% if @check.nil? || @check[:registered].nil? %>
+          <span class="pill-taupe">Not checked</span>
+        <% elsif @check[:registered] %>
+          <span class="pill-fern">Published</span>
+        <% else %>
+          <span class="pill-clay">Not yet</span>
+        <% end %>
+      </dd></div>
+    </dl>
+    <p class="text-xs text-taupe">Rupert reads the channels and posts for people with this one identity. Its private key is stored encrypted and never shown. To let it in: create the identity, publish its profile, then add the public key to each channel in Buzz.</p>
+    <div class="form-actions">
+      <%= button_to (@npub ? 'Replace identity' : 'Create identity'), buzz_setup_keypair_path, method: :post, class: 'btn-ghost',
+            form: { data: { turbo_confirm: (@npub ? 'Replace Rupert’s Buzz identity? Channels will need the new public key.' : nil) } } %>
+      <%= button_to 'Publish profile', buzz_setup_profile_path, method: :post, class: 'btn-ghost', disabled: !configured %>
+      <%= button_to 'Check relay', buzz_setup_check_path, method: :post, class: 'btn-ghost', disabled: !configured %>
+    </div>
+  </section>
+
+  <section class="section-card" aria-labelledby="buzz-devices-title">
+    <h2 id="buzz-devices-title" class="section-title">People's own devices</h2>
+    <p class="text-sm text-mocha">Everyone can also use the Buzz app with their own identity. Get it from the <%= link_to 'Buzz releases page', Buzz::Connect::RELEASES_URL, class: 'underline', target: '_blank', rel: 'noopener noreferrer' %> (macOS, Windows, Linux).</p>
+    <% if (connect = Buzz::Connect.connect_url) %>
+      <p class="text-sm text-mocha"><%= link_to 'Add this workspace to Buzz', connect, class: 'underline' %><% if (chat = Buzz::Connect.chat_url) %> · <%= link_to 'Open the default channel', chat, class: 'underline' %><% end %></p>
+    <% else %>
+      <p class="text-sm text-taupe">Save the relay address to get the link that adds this workspace to the app.</p>
+    <% end %>
+  </section>
+</div>

@@ -169,19 +169,30 @@ RUPERT_CHAT_MODEL=qwen3.5:4b bin/rails team_chat:try QUESTIONS="How were sales y
 Prefer the official Ollama library tags over `hf.co/...` GGUF pulls; tool
 calling is only reliable with the library's chat templates.
 
-## Buzz (removed)
+## Buzz (retired; optional module, off)
 
-Buzz has been removed from `main`. Its code (relay setup, mirror, `@rupert`
-agent container, `BUZZ_*` settings, the Buzz card and badge, the feedback
-intake scripts) is preserved on the `archive/buzz` branch.
+Native team chat replaced Buzz on 2026-10-22. The Buzz web client now lives on
+as an **optional module that is turned off**: `web/engines/buzz` (see its
+[README](../../web/engines/buzz/README.md)). It is loaded only when the server
+sets `RUPERT_BUZZ_ENABLED=1`; while off (the default everywhere) Rupert has no
+Buzz page, route, navigation entry, permission, job or relay connection, and the
+old `/admin/buzz`, `/buzz` and `/buzz/chat` addresses lead to `/chat`. Turned
+on or off, it never touches team chat or its tables.
+
+The rest of the old integration (relay setup, mirror, `@rupert` agent
+container, the Buzz card and badge, the feedback intake scripts) is preserved
+on the `archive/buzz` branch.
 
 - Rupert's notices that went to Buzz channels now go to **#announcements**
   (above).
-- The `BUZZ_*` keys, the `buzz.read` / `buzz.post` permissions, Ask Rupert's
-  Buzz switch and the Settings → Buzz agent card are gone.
+- Ask Rupert's Buzz switch and the Settings → Buzz agent card are gone. The
+  `BUZZ_RELAY_URL`, `BUZZ_CHANNEL` and `BUZZ_PRIVATE_KEY` settings and the
+  `buzz.read` / `buzz.post` permissions exist again only inside the optional
+  module, while it is on.
 - The Buzz tables (`buzz_messages`, `buzz_identities`, `buzz_person_keys`,
-  `buzz_profiles`, `buzz_chat_states`) are kept for now, with their data. A
-  later change drops them.
+  `buzz_profiles`, `buzz_chat_states`) are kept, with their data; the optional
+  module reuses `buzz_messages`, `buzz_profiles` and `buzz_chat_states` and adds
+  `buzz_channels`, `buzz_reactions` and `buzz_chat_reads`.
 - Older reports filed from Buzz keep `source` `buzz`. MCP `submit_feedback`
   still accepts `source: "buzz"` so older callers keep working.
 
