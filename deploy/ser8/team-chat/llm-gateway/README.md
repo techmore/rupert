@@ -2,6 +2,10 @@
 
 Runs in its own Incus container on SER8 (`rupert-llm`, 10.96.131.7), never inside `rupert`. See docs/ops/team-chat.md.
 
+The commands below describe the historical CPU bootstrap. On the provisioned
+Vulkan SER8, follow the shared-gateway rollout section below instead; preserve the
+current Vulkan binary link and model files.
+
 ```bash
 incus launch images:ubuntu/24.04 rupert-llm -c limits.cpu=8 -c limits.memory=14GiB -c boot.autostart=true -c security.idmap.isolated=true
 incus config device override rupert-llm eth0 ipv4.address=10.96.131.7 && incus restart rupert-llm

@@ -28,6 +28,14 @@ module AskRupert
       gateway.configured? ? gateway : Ollama.new(config)
     end
 
+    def local_label(config)
+      local = local_provider(config)
+      return 'not set up on this server' unless local.configured?
+
+      location = local.name == 'local_gateway' ? 'shared local gateway' : 'Ollama on this network'
+      "#{local.model} (#{location})"
+    end
+
     # A short how-to or where-is question, not a numbers question.
     def simple_turn?(text)
       text.to_s.length <= SIMPLE_TURN_MAX && !text.to_s.match?(/\d/) && !text.to_s.match?(DATA_WORDS)

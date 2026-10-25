@@ -284,6 +284,17 @@ class AskRupertFlowTest < ActionDispatch::IntegrationTest
     assert_equal 9, AskRupert::Config.current['rate_limit_count']
   end
 
+  test 'the usage page identifies the shared Qwen gateway instead of reporting Ollama as missing' do
+    original = ENV['RUPERT_LOCAL_LLM_URL']
+    ENV['RUPERT_LOCAL_LLM_URL'] = 'http://gateway.test:8080/v1'
+    get ask_rupert_usage_path
+    assert_response :success
+    assert_includes response.body, 'qwen3.5-4b (shared local gateway)'
+    refute_includes response.body, 'not set up on this server'
+  ensure
+    original ? ENV['RUPERT_LOCAL_LLM_URL'] = original : ENV.delete('RUPERT_LOCAL_LLM_URL')
+  end
+
   test 'chats are saved by default; a retention window removes old ones and keeps recent ones' do
     Current.tenant = @tenant
     old = AskRupert::Conversation.create!(user: @user, last_message_at: 400.days.ago)
