@@ -135,9 +135,39 @@ class ModuleRegistry
     Entry.new(key: 'style_guide', name: 'Style guide', path: -> { system_style_guide_path }, permission: 'settings.read', position: 111)
   ].freeze
 
+  # Optional modules (web/engines/*) add their entries at boot, and only while
+  # they are turned on, so a module that is off leaves the registry as it is.
+  @extensions = [].freeze
+
   class << self
     def all
-      ENTRIES
+      @extensions.empty? ? ENTRIES : ENTRIES + @extensions.map { |extension| extension[:entry] }
+    end
+
+    # Adds an optional module's page to an area (and one of its groups). Called
+    # again after a code reload, so registering the same key replaces it.
+    def register(entry, area:, group: nil)
+      raise ArgumentError, "Unknown area #{area}" unless AREAS.any? { |candidate| candidate[:key] == area }
+      raise ArgumentError, "#{entry.key} is a built-in module" if ENTRIES.any? { |builtin| builtin.key == entry.key }
+
+      @extensions = (@extensions.reject { |extension| extension[:entry].key == entry.key } +
+                     [{ entry: entry, area: area, group: group }]).freeze
+    end
+
+    # AREAS with the registered optional modules added to their area and group.
+    def areas
+      return AREAS if @extensions.empty?
+
+      AREAS.map do |area|
+        added = @extensions.select { |extension| extension[:area] == area[:key] }
+        next area if added.empty?
+
+        groups = area[:groups]&.map do |group|
+          keys = added.select { |extension| extension[:group] == group[:name] }.map { |extension| extension[:entry].key }
+          keys.empty? ? group : group.merge(modules: group[:modules] + keys)
+        end
+        area.merge(modules: area[:modules] + added.map { |extension| extension[:entry].key }, groups: groups).compact
+      end
     end
 
     # Nav entries visible to a user, sorted by position.
@@ -249,7 +279,7 @@ class ModuleRegistry
     end
 
     def area_key_for(module_key)
-      AREAS.find { |area| area[:modules].include?(module_key.to_s) }&.dig(:key)
+      areas.find { |area| area[:modules].include?(module_key.to_s) }&.dig(:key)
     end
 
     # Areas with their modules filtered by the user's permissions.
@@ -258,7 +288,7 @@ class ModuleRegistry
       # Staff members get one personal section with everything they can open.
       return [{ key: 'me', name: 'Me', modules: visible, groups: [] }] if user&.employee? && visible.any?
 
-      AREAS.filter_map do |area|
+      areas.filter_map do |area|
         modules = area[:modules].filter_map { |key| visible.find { |entry| entry.key == key } }
         next if modules.empty?
         # Features & roadmap stays in the account menu when it is the only System page.

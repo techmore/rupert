@@ -250,7 +250,11 @@ Rails.application.routes.draw do
   get    '/chat/:room/media',                         to: 'team_chat#media',           as: :team_chat_media
   post   '/chat/:room/messages/:id/actions/:action_id', to: 'team_chat#decide',        as: :team_chat_action
 
-  # Buzz was retired for team chat; old bookmarks land in team chat.
+  # Optional Buzz module (web/engines/buzz/config/routes/buzz.rb), only while it is on.
+  draw(:buzz) if Rails.application.config.x.buzz_enabled
+
+  # Buzz was retired for team chat; old bookmarks land in team chat. While the
+  # optional module above is on, its own /buzz and /buzz/chat pages answer first.
   get '/admin/buzz', to: redirect('/chat')
   get '/buzz', to: redirect('/chat')
   get '/buzz/chat', to: redirect('/chat')

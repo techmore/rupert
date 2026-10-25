@@ -236,6 +236,21 @@ class User < ActiveRecord::Base
   # Permission catalog grouped by module area, used by the Permissions screen
   # and to keep the role matrix in one place.
   def self.permission_catalog
+    builtin_permission_catalog + extra_permission_groups
+  end
+
+  # Optional modules (web/engines/*) add one group each at boot, only while they
+  # are on. Called again after a code reload, so the same area replaces itself.
+  def self.register_permission_group(area:, permissions:)
+    @extra_permission_groups = (extra_permission_groups.reject { |group| group[:area] == area } +
+                                [{ area: area, permissions: permissions }]).freeze
+  end
+
+  def self.extra_permission_groups
+    @extra_permission_groups || []
+  end
+
+  def self.builtin_permission_catalog
     [
       { area: 'Receipts', permissions: ['receipts.review'] },
       { area: 'Overview', permissions: ['dashboard.read'] },

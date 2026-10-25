@@ -20,7 +20,7 @@ jobs:
       - run: python3 bin/check-doc-links
       - run: python3 -m unittest discover -s deploy/ser8/tests -v
       - name: Run all browser-controller tests
-        run: node --test web/test/javascript/*_test.mjs
+        run: node --test web/test/javascript/*_test.mjs web/engines/*/test/javascript/*_test.mjs
   CI:
     # The job name is a required status check and is read by
     # deploy/ser8/rupert-autodeploy.sh; keep it in sync with both.
@@ -85,6 +85,11 @@ jobs:
 
       - name: Run tests (with coverage)
         run: COVERAGE=1 bin/rails test
+
+      # Optional modules (web/engines/*) are off in the run above; each one's own
+      # tests run here with it turned on, in a separate process.
+      - name: Run the optional Buzz module's tests (module on)
+        run: RUPERT_BUZZ_ENABLED=1 bin/rails test engines/buzz/test
 
       - name: Enforce coverage floors on the sync engine and money paths
         run: bin/check-coverage --report

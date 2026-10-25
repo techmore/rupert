@@ -55,6 +55,6 @@ Two kinds of configuration exist. **Boot-time variables** live in `/etc/rupert.e
 | `FULFILLMENT_ALERT_HOURS` | Unfulfilled-order alert threshold |
 | `PUSH_GUARD_*`, `PUSH_FREEZE_*` | Informational freeze/approval state (no longer enforced) |
 
-The `BUZZ_*` and `OPCODE_BUZZ_PRIVATE_KEY` keys were removed with Buzz. Rupert no longer reads them. Team chat's model settings (`RUPERT_CHAT_*`) are boot-time variables; see [team-chat.md](team-chat.md).
+The `BUZZ_*` and `OPCODE_BUZZ_PRIVATE_KEY` keys were removed with Buzz. Only the optional Buzz module reads `BUZZ_RELAY_URL`, `BUZZ_CHANNEL` and `BUZZ_PRIVATE_KEY` (encrypted workspace settings, set on its Setup page), and only while `RUPERT_BUZZ_ENABLED=1` is set on the server; it is off by default everywhere. See [web/engines/buzz/README.md](../../web/engines/buzz/README.md). Team chat's model settings (`RUPERT_CHAT_*`) are boot-time variables; see [team-chat.md](team-chat.md).
 
 Masked values are visible at `GET /settings/env.json`; a full export needs the password again and is logged. Imports and exports are audit-logged and rate-limited.

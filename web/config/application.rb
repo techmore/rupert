@@ -18,6 +18,12 @@ end
 # you've limited to :test, :development, or :production.
 Bundler.require(*Rails.groups)
 
+# Optional Buzz module (web/engines/buzz, see its README). Off unless
+# RUPERT_BUZZ_ENABLED=1, in every environment; while off it is not loaded at all
+# (no routes, pages, navigation, permissions, jobs or relay connections). An
+# engine has to be required before the app initializes, so the switch is read here.
+require_relative '../engines/buzz/lib/buzz' if ENV.fetch('RUPERT_BUZZ_ENABLED', '0') == '1'
+
 module ShopifyAppTemplateRuby
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
@@ -52,6 +58,9 @@ module ShopifyAppTemplateRuby
     #
     # Store timestamps in UTC and display them in the store's local time.
     config.time_zone = 'Eastern Time (US & Canada)'
+
+    # True only when the optional Buzz module was loaded above.
+    config.x.buzz_enabled = defined?(Buzz::Engine) ? true : false
     # config.eager_load_paths << Rails.root.join("extras")
   end
 end

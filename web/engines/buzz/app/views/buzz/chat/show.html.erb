@@ -1,0 +1,105 @@
+<% content_for :head, stylesheet_link_tag('buzz/chat', 'data-turbo-track': 'reload') %>
+<div class="mx-auto max-w-6xl space-y-4">
+  <%= page_header 'Buzz', subtitle: "The team's Buzz channels, read and answered from Rupert." %>
+  <%= render 'buzz/tabs', current: :chat %>
+
+  <% if @state == :ready %>
+    <section class="card buzz-chat" aria-labelledby="buzz-chat-title"
+             data-controller="buzz-chat" data-buzz-chat-url-value="<%= buzz_chat_path %>"
+             data-buzz-chat-can-post-value="<%= @can_post %>" data-buzz-chat-post-max-value="<%= Buzz::Chat::POST_MAX %>"
+             data-buzz-chat-emoji-value="<%= Buzz::Reaction::QUICK.to_json %>" data-thread-open="false">
+      <header class="buzz-chat-head">
+        <div class="min-w-0">
+          <h2 id="buzz-chat-title" class="section-title">Team chat</h2>
+          <p class="buzz-status" data-buzz-chat-target="status" data-tone="ok" role="status" aria-live="polite">Connecting to Buzz…</p>
+        </div>
+        <%= link_to 'Open in Buzz', Buzz::Connect.chat_url, class: 'btn-ghost btn-sm shrink-0', aria: { label: 'Open Buzz in the app' } if Buzz::Connect.chat_url %>
+      </header>
+
+      <p class="buzz-disclosure">These are the team's Buzz channels that Rupert's identity belongs to, shown through it. Everyone in a channel reads what is posted, and channel membership is wider than Rupert permissions, so keep customer personal details, pay and keys out of it. Posts and reactions go out as Rupert (your name in front of a post), never under a personal Buzz identity. Rupert keeps a copy of recent messages for <%= Buzz::Chat::RETENTION.in_days.to_i %> days.</p>
+
+      <div class="buzz-layout">
+        <nav class="buzz-side" aria-label="Channels">
+          <h2 class="buzz-side-title">Channels</h2>
+          <ul class="buzz-channel-list" data-buzz-chat-target="channels"></ul>
+        </nav>
+
+        <div class="buzz-main" data-buzz-chat-target="main">
+          <div class="buzz-channel-head">
+            <h2 class="buzz-channel-title" data-buzz-chat-target="channelTitle">Team chat</h2>
+            <p class="buzz-channel-about" data-buzz-chat-target="channelAbout"></p>
+          </div>
+          <div class="buzz-log-wrap">
+            <div class="buzz-log" data-buzz-chat-target="log" data-action="scroll->buzz-chat#onScroll" role="log" aria-live="polite" aria-relevant="additions" aria-label="Channel messages" tabindex="0">
+              <button type="button" class="btn-ghost btn-sm buzz-more" data-buzz-chat-target="more" data-action="buzz-chat#loadEarlier" hidden>Load earlier messages</button>
+              <p class="buzz-hint" data-buzz-chat-target="loading">Loading messages…</p>
+              <p class="buzz-hint" data-buzz-chat-target="empty" hidden>No messages yet. Say hello below.</p>
+              <div data-buzz-chat-list></div>
+            </div>
+            <button type="button" class="buzz-jump" data-buzz-chat-target="jump" data-action="buzz-chat#scrollToEnd" hidden>New messages ↓</button>
+          </div>
+
+          <% if @can_post %>
+            <form class="buzz-compose" data-buzz-chat-target="form" data-action="submit->buzz-chat#submitChannel">
+              <p class="buzz-error" data-buzz-chat-target="notice" role="alert" hidden></p>
+              <div class="buzz-compose-row">
+                <div class="buzz-compose-field">
+                  <label for="buzz-message" class="sr-only">Message to the channel</label>
+                  <div class="buzz-mention-list" role="listbox" aria-label="People to mention" data-buzz-chat-target="picker" hidden></div>
+                  <textarea id="buzz-message" class="input buzz-input" rows="1" maxlength="<%= Buzz::Chat::POST_MAX + 200 %>" placeholder="Message the channel. Type @ to mention someone"
+                            data-buzz-chat-target="input" data-action="input->buzz-chat#input keydown->buzz-chat#keydown" autocomplete="off"
+                            aria-autocomplete="list" aria-expanded="false"></textarea>
+                </div>
+                <button type="submit" class="btn-primary shrink-0" data-buzz-chat-target="send" disabled>Send</button>
+              </div>
+              <p class="buzz-count" data-buzz-chat-target="count" hidden></p>
+              <p class="buzz-hint">Appears in Buzz as <strong><%= Current.user.display_name.to_s.first(40) %> via Rupert</strong>. Enter sends, Shift+Enter adds a line.</p>
+            </form>
+          <% else %>
+            <p class="buzz-compose buzz-hint">You can read the team chat. Ask an administrator for permission to post.</p>
+          <% end %>
+        </div>
+
+        <aside class="buzz-thread" data-buzz-chat-target="threadPane" aria-label="Thread" hidden>
+          <header class="buzz-thread-head">
+            <h2 class="buzz-channel-title" data-buzz-chat-target="threadTitle">Thread</h2>
+            <button type="button" class="btn-ghost btn-sm" data-close-thread data-thread-focus>Close</button>
+          </header>
+          <div class="buzz-thread-log" data-buzz-chat-target="threadLog" role="log" aria-live="polite" aria-label="Thread messages" tabindex="0"></div>
+          <% if @can_post %>
+            <form class="buzz-compose" data-buzz-chat-target="threadForm" data-action="submit->buzz-chat#submitThread">
+              <p class="buzz-error" data-buzz-chat-target="threadNotice" role="alert" hidden></p>
+              <div class="buzz-compose-row">
+                <div class="buzz-compose-field">
+                  <label for="buzz-thread-message" class="sr-only">Reply in thread</label>
+                  <div class="buzz-mention-list" role="listbox" aria-label="People to mention" data-buzz-chat-target="threadPicker" hidden></div>
+                  <textarea id="buzz-thread-message" class="input buzz-input" rows="1" maxlength="<%= Buzz::Chat::POST_MAX + 200 %>" placeholder="Reply in thread"
+                            data-buzz-chat-target="threadInput" data-action="input->buzz-chat#input keydown->buzz-chat#keydown" autocomplete="off"
+                            aria-autocomplete="list" aria-expanded="false"></textarea>
+                </div>
+                <button type="submit" class="btn-primary shrink-0" data-buzz-chat-target="threadSend" disabled>Reply</button>
+              </div>
+              <p class="buzz-count" data-buzz-chat-target="threadCount" hidden></p>
+            </form>
+          <% end %>
+        </aside>
+      </div>
+    </section>
+  <% else %>
+    <section class="card card-pad empty-state" role="status">
+      <h2 class="empty-state-title"><%= @state == :unconfigured ? 'Buzz is not set up yet' : 'No channel chosen yet' %></h2>
+      <p class="empty-state-hint">
+        <% if @state == :unconfigured %>
+          Rupert needs the team's relay address and its own Buzz identity before it can show the channels.
+        <% else %>
+          The relay is set but no default channel is, so there is nothing to show yet.
+        <% end %>
+        <% if @can_configure %>
+          <%= link_to 'Open Setup', buzz_setup_path, class: 'underline' %> to finish it.
+        <% else %>
+          Ask an administrator to finish Buzz setup.
+        <% end %>
+      </p>
+    </section>
+  <% end %>
+</div>
