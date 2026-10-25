@@ -67,6 +67,27 @@
     </fieldset>
 
     <fieldset class="space-y-4">
+      <legend class="card-title">Training</legend>
+      <p class="text-sm text-mocha">Used only by the incentives model to try a training commission rate. It does not change pay.</p>
+      <label class="flex items-center gap-2 text-sm">
+        <%= f.check_box :in_training, class: "checkbox" %>
+        In training
+      </label>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <%= f.label :training_starts_on, "Training starts", class: "field-label" %>
+          <%= f.date_field :training_starts_on, class: "input", "aria-invalid": (employee.errors[:training_starts_on].any? || nil), "aria-describedby": (employee.errors[:training_starts_on].any? ? "training_starts_on_error" : nil) %>
+          <% if employee.errors[:training_starts_on].any? %><p id="training_starts_on_error" class="mt-1 text-xs text-danger">Training start date <%= employee.errors[:training_starts_on].to_sentence %></p><% end %>
+        </div>
+        <div>
+          <%= f.label :training_ends_on, "Training ends (optional)", class: "field-label" %>
+          <%= f.date_field :training_ends_on, class: "input", "aria-invalid": (employee.errors[:training_ends_on].any? || nil), "aria-describedby": (employee.errors[:training_ends_on].any? ? "training_ends_on_error" : nil) %>
+          <% if employee.errors[:training_ends_on].any? %><p id="training_ends_on_error" class="mt-1 text-xs text-danger">Training end date <%= employee.errors[:training_ends_on].to_sentence %></p><% end %>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="space-y-4">
       <legend class="card-title">Contact</legend>
       <div class="grid gap-4 sm:grid-cols-3">
         <div>

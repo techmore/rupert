@@ -40,6 +40,7 @@ module People
     validates :employment_type, inclusion: { in: EMPLOYMENT_TYPES }
     validates :user_id, uniqueness: { scope: :tenant_id }, allow_nil: true, if: :user_id_changed?
     validate :termination_after_hire
+    validate :training_dates
     validate :associations_belong_to_workspace
 
     scope :ordered, -> { order(:last_name, :first_name) }
@@ -79,6 +80,17 @@ module People
       pay_rates.where('effective_on <= ? AND (ended_on IS NULL OR ended_on >= ?)', Date.current, Date.current).order(effective_on: :desc, id: :desc).first
     end
 
+    # In training on this date: flagged, and the date falls within the training start and (optional) end dates.
+    # Read only by the incentives model (#465); real pay does not use it.
+    def in_training_on?(date)
+      in_training? && training_starts_on.present? && training_starts_on <= date && (training_ends_on.nil? || training_ends_on >= date)
+    end
+
+    # In training on any day from first to last.
+    def in_training_during?(first, last)
+      in_training? && training_starts_on.present? && training_starts_on <= last && (training_ends_on.nil? || training_ends_on >= first)
+    end
+
     def on_payroll?
       active? && current_pay_rate.present?
     end
@@ -112,6 +124,15 @@ module People
       return if hire_date.nil? || termination_date.nil?
 
       errors.add(:termination_date, 'must be after the hire date') if termination_date < hire_date
+    end
+
+    def training_dates
+      return unless in_training?
+
+      errors.add(:training_starts_on, 'is needed for staff in training') if training_starts_on.nil?
+      return if training_starts_on.nil? || training_ends_on.nil?
+
+      errors.add(:training_ends_on, 'must be on or after the training start date') if training_ends_on < training_starts_on
     end
 
     def default_accrual(leave_type)

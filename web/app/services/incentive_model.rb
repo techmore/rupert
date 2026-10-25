@@ -3,8 +3,9 @@
 # "What if we paid staff this way?" A read-only model of an incentive plan against real history: for each employee,
 # the sales they rang up while clocked in (the same matching as the Pay tab, EmployeePayWeek), the commission under
 # today's rule (1% of before-tax, after-discount sales on shift) and under the plan being modelled, with a higher
-# rate for staff marked in training who worked more than a set number of hours that week. Nothing is saved or
-# posted to payroll. Coupon and referral bonuses need discount codes on orders, which are not imported yet.
+# rate for staff in training who worked more than a set number of hours that week. "In training" comes from the
+# training flag and dates on each employee record, or, to try a what-if, from staff ticked on the page. Nothing is
+# saved or posted to payroll, and real pay never reads the training flag. Coupon and referral bonuses need discount codes on orders, which are not imported yet.
 class IncentiveModel
   PERIODS = {
     'last_4_weeks' => 'Last 4 weeks', 'last_3_months' => 'Last 3 months (13 weeks)',
@@ -12,8 +13,11 @@ class IncentiveModel
   }.freeze
   MAX_DAYS = 92
   DEFAULTS = { shift_rate: 1.0, training_rate: 2.0, training_hours: 20.0 }.freeze
+  TRAINING_SOURCES = { 'records' => 'Staff records (training dates)', 'chosen' => 'Ticked below' }.freeze
 
-  Plan = Struct.new(:shift_rate, :training_rate, :training_hours, :trainees, keyword_init: true)
+  Plan = Struct.new(:shift_rate, :training_rate, :training_hours, :trainees, :training_from, keyword_init: true) do
+    def chosen_trainees? = training_from == 'chosen'
+  end
   Row = Struct.new(:employee, :hours, :sales_cents, :current_cents, :plan_cents, :training_weeks, keyword_init: true) do
     def difference_cents = plan_cents - current_cents
 
@@ -27,7 +31,16 @@ class IncentiveModel
   def self.plan_from(params)
     number = ->(key, min, max) { (params[key].presence || DEFAULTS.fetch(key)).to_f.clamp(min, max).round(2) }
     Plan.new(shift_rate: number.call(:shift_rate, 0, 10), training_rate: number.call(:training_rate, 0, 10),
-      training_hours: number.call(:training_hours, 0, 60), trainees: Array(params[:trainees]).map(&:to_s).compact_blank)
+      training_hours: number.call(:training_hours, 0, 60), trainees: Array(params[:trainees]).map(&:to_s).compact_blank,
+      training_from: training_source(params))
+  end
+
+  # Ticked staff are used when asked for, or when a link from before the training flag names trainees without a source.
+  def self.training_source(params)
+    source = params[:training_from].to_s
+    return source if TRAINING_SOURCES.key?(source)
+
+    Array(params[:trainees]).compact_blank.any? ? 'chosen' : 'records'
   end
 
   def initialize(plan:, period: 'last_4_weeks', from: nil, to: nil, today: Date.current)
@@ -83,6 +96,13 @@ class IncentiveModel
     ranges
   end
 
+  # Ticked on the page, or the employee's training flag covers any day of that pay week.
+  def in_training?(employee, week_start)
+    return plan.trainees.include?(employee.id.to_s) if plan.chosen_trainees?
+
+    employee.in_training_during?(week_start, week_start + 6)
+  end
+
   def parse(value)
     Date.iso8601(value.to_s) if value.present?
   rescue Date::Error
@@ -97,7 +117,7 @@ class IncentiveModel
         part = EmployeePayWeek.new(employee: employee, from: first, to: last)
         week_start = EmployeePayWeek.week_start(first)
         whole_week = first == week_start && last == first + 6 ? part : EmployeePayWeek.new(employee: employee, from: week_start, to: week_start + 6)
-        training = plan.trainees.include?(employee.id.to_s) && whole_week.hours > plan.training_hours
+        training = in_training?(employee, week_start) && whole_week.hours > plan.training_hours
         rate = training ? plan.training_rate : plan.shift_rate
         row.hours += part.hours
         row.sales_cents += part.sales_cents

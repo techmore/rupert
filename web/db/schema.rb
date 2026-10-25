@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_25_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_25_130000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -1376,6 +1376,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_25_120000) do
     t.string "employment_type", default: "full_time"
     t.string "first_name", null: false
     t.date "hire_date"
+    t.boolean "in_training", default: false, null: false
     t.string "last_name", null: false
     t.string "legal_name"
     t.text "notes"
@@ -1384,6 +1385,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_25_120000) do
     t.string "status", default: "active", null: false
     t.string "tenant_id", null: false
     t.date "termination_date"
+    t.date "training_ends_on"
+    t.date "training_starts_on"
     t.datetime "updated_at", null: false
     t.bigint "user_id"
     t.string "source"
