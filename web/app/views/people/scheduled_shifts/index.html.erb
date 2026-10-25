@@ -1,23 +1,26 @@
 <% content_for :title, "Shifts" %>
 <% can_write = Current.user.can?('schedule.write') || Current.user.can?('hr.write') %>
+<% store = @location_id.present? ? { location_id: @location_id } : {} %>
+<% store_name = @locations.find { |location| location.id == @location_id }&.name %>
 <div class="space-y-6">
   <%= page_header 'Shifts', subtitle: 'Planned shifts for the week.' do %>
     <%= full_window_button %>
     <% if can_write %>
       <%= button_to "Copy last week", copy_last_week_people_scheduled_shifts_path(week: @week.iso8601), class: "btn-ghost", form: { data: { turbo_confirm: "Copy #{(@week - 7).strftime('%b %-d')} – #{(@week - 1).strftime('%b %-d')} into this week? Shifts that overlap one already planned are skipped." } } %>
-      <%= link_to "Add shift", new_people_scheduled_shift_path(date: [@week, Date.current].max.iso8601), class: "btn-primary" %>
+      <%= link_to "Add shift", new_people_scheduled_shift_path(store.merge(date: [@week, Date.current].max.iso8601)), class: "btn-primary" %>
     <% end %>
   <% end %>
 
   <section class="toolbar-band">
     <nav class="toolbar" aria-label="Week">
       <div class="date-stepper">
-        <%= link_to "‹", people_scheduled_shifts_path(week: (@week - 7).iso8601), class: "btn-ghost btn-sm", aria: { label: "Previous week" }, title: "Previous week" %>
+        <%= link_to "‹", people_scheduled_shifts_path(store.merge(week: (@week - 7).iso8601)), class: "btn-ghost btn-sm", aria: { label: "Previous week" }, title: "Previous week" %>
         <h2 class="section-title"><%= @week.strftime("%b %-d") %> – <%= (@week + 6).strftime("%b %-d, %Y") %></h2>
-        <%= link_to "›", people_scheduled_shifts_path(week: (@week + 7).iso8601), class: "btn-ghost btn-sm", aria: { label: "Next week" }, title: "Next week" %>
+        <%= link_to "›", people_scheduled_shifts_path(store.merge(week: (@week + 7).iso8601)), class: "btn-ghost btn-sm", aria: { label: "Next week" }, title: "Next week" %>
       </div>
-      <% unless Date.current.between?(@week, @week + 6) %><%= link_to "This week", people_scheduled_shifts_path, class: "btn-ghost btn-sm" %><% end %>
+      <% unless Date.current.between?(@week, @week + 6) %><%= link_to "This week", people_scheduled_shifts_path(store), class: "btn-ghost btn-sm" %><% end %>
     </nav>
+    <%= render 'people/scheduled_shifts/store_filter', url: people_scheduled_shifts_path, week: @week, locations: @locations, location_id: @location_id %>
   </section>
 
   <% if @on_leave.any? %>
@@ -51,7 +54,7 @@
         </thead>
         <tbody>
           <% if @by_employee.empty? %>
-            <tr><td colspan="9" class="empty-row">No shifts planned this week.<%= ' Add the first shift.' if can_write %></td></tr>
+            <tr><td colspan="9" class="empty-row">No shifts planned this week<%= " at #{store_name}" if store_name %>.<%= ' Add the first shift.' if can_write %></td></tr>
           <% end %>
           <% @by_employee.each do |employee, shifts| %>
             <tr class="align-top">
@@ -59,7 +62,7 @@
               <% (@week..(@week + 6)).each do |day| %>
                 <td class="td text-mocha">
                   <% shifts.select { |shift| shift.starts_at.to_date == day }.each do |shift| %>
-                    <p class="whitespace-nowrap"><%= can_write ? link_to(shift.time_label, edit_people_scheduled_shift_path(shift), class: "text-olive hover:underline") : shift.time_label %><% if shift.role_label.present? %><span class="block text-xs"><%= shift.role_label %></span><% end %><% if @on_leave.include?(shift.id) %><span class="block text-xs font-semibold text-warn" data-on-leave="<%= shift.id %>">On approved leave</span><% end %><% if @short_rest.key?(shift.id) %><span class="block text-xs font-semibold text-warn" data-short-rest="<%= shift.id %>">Short rest: <%= hours_label(@short_rest[shift.id]) %> h since last shift</span><% end %></p>
+                    <p class="whitespace-nowrap"><%= can_write ? link_to(shift.time_label, edit_people_scheduled_shift_path(shift), class: "text-olive hover:underline") : shift.time_label %><% if shift.location && @location_id.blank? %><span class="block text-xs" data-shift-store="<%= shift.id %>"><%= shift.location.name %></span><% end %><% if shift.role_label.present? %><span class="block text-xs"><%= shift.role_label %></span><% end %><% if @on_leave.include?(shift.id) %><span class="block text-xs font-semibold text-warn" data-on-leave="<%= shift.id %>">On approved leave</span><% end %><% if @short_rest.key?(shift.id) %><span class="block text-xs font-semibold text-warn" data-short-rest="<%= shift.id %>">Short rest: <%= hours_label(@short_rest[shift.id]) %> h since last shift</span><% end %></p>
                   <% end %>
                 </td>
               <% end %>
@@ -70,5 +73,42 @@
       </table>
     </div>
   </div>
+  <section class="card" aria-labelledby="planned-worked-title" data-planned-worked>
+    <div class="card-head"><h2 id="planned-worked-title" class="card-title">Planned and worked</h2></div>
+    <div class="table-region" role="region" tabindex="0" aria-label="Planned and worked hours">
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col" class="th">Staff member</th>
+            <th scope="col" class="th num">Planned</th>
+            <th scope="col" class="th num">Worked</th>
+            <th scope="col" class="th num">Difference</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @planned_worked.empty? %>
+            <tr><td colspan="4" class="empty-row">No planned shifts or clock punches this week.</td></tr>
+          <% end %>
+          <% @planned_worked.each do |row| %>
+            <tr data-planned-worked-row="<%= row[:employee].id %>">
+              <td class="td font-medium text-ink"><%= row[:employee].full_name %></td>
+              <td class="td num"><%= hours_label(row[:planned]) %> h</td>
+              <% if row[:worked] %>
+                <td class="td num"><%= hours_label(row[:worked]) %> h</td>
+                <td class="td num"><%= hours_difference(row[:worked] - row[:planned]) %> h</td>
+              <% else %>
+                <td class="td num text-mocha">Unknown<span class="block text-xs"><%= row[:reason] %></span></td>
+                <td class="td num text-mocha">Unknown</td>
+              <% end %>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <details class="explainer row-list-foot"><summary class="explainer-summary">How these hours are counted</summary>
+      <p class="mt-2 text-sm text-mocha">Hours for <%= @week.strftime('%b %-d') %> – <%= (@week + 6).strftime('%b %-d, %Y') %>, at every store: clock punches do not record a store<%= ', so the store filter only chooses who is listed' if store_name %>. Worked hours come from Rupert clock punches. Someone still clocked in, or with no punches this week, shows Unknown rather than zero. Square and C-Trax hours are on Team schedule.</p>
+    </details>
+  </section>
+
   <p class="text-xs text-mocha">Staff see their own shifts on the Schedule tab of their workspace.</p>
 </div>

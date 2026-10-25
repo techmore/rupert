@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_25_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_25_120000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -2678,8 +2678,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_25_000000) do
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "location_id"
     t.index ["employee_id", "starts_at"], name: "idx_scheduled_shift_employee"
     t.index ["employee_id"], name: "index_scheduled_shifts_on_employee_id"
+    t.index ["tenant_id", "location_id", "starts_at"], name: "idx_scheduled_shift_location"
     t.index ["tenant_id", "starts_at"], name: "idx_scheduled_shift_window"
     t.check_constraint "ends_at > starts_at", name: "scheduled_shift_positive_interval"
   end
@@ -3796,6 +3798,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_25_000000) do
   add_foreign_key "refunds", "orders", on_delete: :cascade
   add_foreign_key "retention_drive_connections", "tenants"
   add_foreign_key "retention_drive_items", "tenants"
+  add_foreign_key "scheduled_shifts", "Location", column: "location_id", on_delete: :nullify
   add_foreign_key "scheduled_shifts", "employees", on_delete: :cascade
   add_foreign_key "size_changes", "size_families", column: "family_id", on_delete: :cascade
   add_foreign_key "size_family_members", "size_families", column: "family_id", on_delete: :cascade
