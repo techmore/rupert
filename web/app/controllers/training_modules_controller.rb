@@ -9,8 +9,8 @@ class TrainingModulesController < AuthenticatedController
   def index
     authorize(:module, :hr_read?)
     @modules = TrainingModule.ordered.to_a
-    counts = TrainingAssignment.group(:training_module_id, :status).count
-    @overdue = TrainingAssignment.overdue.group(:training_module_id).count
+    counts = TrainingAssignment.group(:source_id, :status).count
+    @overdue = TrainingAssignment.overdue.group(:source_id).count
     @counts = Hash.new { |hash, key| hash[key] = Hash.new(0) }
     counts.each { |(module_id, status), count| @counts[module_id][status] = count }
     @totals = TrainingAssignment.group(:status).count
@@ -21,7 +21,7 @@ class TrainingModulesController < AuthenticatedController
     authorize(:module, :hr_read?)
     @attachments = @module.attachments.select(TrainingAttachment.column_names - ['content_base64']).to_a
     @assignments = @module.assignments.includes(:assignee).by_due.to_a
-    @events = TrainingAssignmentEvent.where(training_assignment_id: @assignments.map(&:id)).includes(training_assignment: :assignee)
+    @events = TrainingAssignmentEvent.where(work_item_id: @assignments.map(&:id)).includes(training_assignment: :assignee)
       .order(created_at: :desc, id: :desc).limit(100).to_a
     @can_write = Current.user.can?('hr.write')
     load_assign_choices if @can_write

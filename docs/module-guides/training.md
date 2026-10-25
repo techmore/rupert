@@ -1,6 +1,7 @@
 # Training: Learn Rupert and Training progress
 
-Last checked against `main` at `b15205e7` plus the training assignments change on `2026-10-25`.
+Last checked against `main` at `3e4f9f05` plus the move of training assignments onto the shared work-item
+table (#409) on `2026-10-25`.
 
 ## Purpose and owner
 
@@ -36,21 +37,26 @@ Migration `20261025150000_create_training_assignments`:
   with Active Record encryption, SHA-256 checked on every read, so the normal database backups
   carry them ([backups](../ops/backups.md)). Removing a file only sets `removed_at`/`removed_by_id`;
   the row cannot be destroyed.
-- `training_assignments`: `training_module_id`, `assignee_id` (a `User`), `assigned_by_id`,
-  `due_on`, `status`, `started_at`, `completed_at`, `completed_by_id`, `completed_revision`,
-  `cancelled_at`, `lock_version`. One open assignment per person per module. Cannot be destroyed.
-  A completed assignment is the record a future training bonus binds to (#412); nothing reads it
-  for pay today.
-- `training_assignment_events`: append-only history: `actor_id`, `actor_name`, `action`
-  (`assigned`, `started`, `completed`, `cancelled`), `from_status`, `to_status`,
-  `module_revision`, `note`, `created_at`. Saved rows are read-only and cannot be destroyed or
-  deleted through the model. Rows are written only by `TrainingAssignment.assign!` and
-  `TrainingAssignment#transition!`, in the same transaction as the change.
-
-Shared Project table (#407 #409): not built. The assignment columns match a task's (`assignee_id`,
-`due_on`, `status`, `started_at`/`completed_at`) and the history rows are generic (actor, action,
-from/to status, time), so a module can become a "training" project type with these transitions
-and these rows its history.
+- **Assignments** are rows of the shared work-item table (`tasks`, kind `training_assignment`;
+  [shared work items](../architecture/shared-work-items.md) section 10), read as `TrainingAssignment`
+  (a `Work::Item` limited to the kind): `source` = the module, `assignee_id`, `requester_id` (who
+  assigned it), `due_on`, `status`, `started_at`, `completed_at` (for a cancelled assignment, when it
+  was cancelled), `title` (the module's title, kept in step), and `details` = `completed_revision`,
+  `completed_by_id` and, for copied rows, `legacy_id`. One open assignment per person per module.
+  Cannot be destroyed. A completed assignment is the record a future training bonus binds to (#412);
+  nothing reads it for pay today.
+- **History** is the shared append-only `work_item_events`, read as `TrainingAssignmentEvent`:
+  `actor_id`, `actor_name`, `action` (`created` = assigned; `transitioned` with `transition`
+  `start`/`complete`/`cancel` = started/completed/cancelled; `training_action` gives the training word),
+  `from_status`, `to_status`, `note`, `created_at`, and `details.module_revision`. Saved rows are
+  read-only and cannot be destroyed or deleted through the model. Rows are written by `Work::Tracked`
+  when `TrainingAssignment.assign!` or `TrainingAssignment#transition!` saves, in the same transaction.
+- `training_assignments` and `training_assignment_events` (migration `20261025150000`) are the old
+  tables. Migration `20261026150900` copied every row into the shared table and history and recorded
+  each copy's id in `training_assignments.work_item_id`; the old tables are kept unchanged and read-only
+  for one release as rollback safety (`TrainingAssignment::Legacy` reads only the id mapping), and are
+  dropped in a later pull request. `bin/rails training:copy_legacy_assignments` re-runs the copy (for
+  rows a rolled-back release wrote) and checks the counts.
 
 ### Learn Rupert
 
@@ -82,7 +88,13 @@ The completion record holds the lesson key and time. It does not record a conten
   `assignee_id` is the signed-in account in the current tenant: another person's assignment, its
   files, or a cancelled assignment is 404. Only the assignee can start or complete; a manager
   cannot complete on someone's behalf.
-- All four tables are `TenantScoped`; assignees must be active users of the module's tenant.
+- The kind's policy is `Training::AssignmentPolicy`: `hr.read` sees every assignment, `hr.write`
+  assigns and cancels, everyone else (staff included) sees and works only their own.
+- Every table is `TenantScoped`; assignees must be active users of the module's tenant.
+- Work → **Calendar** shows assignment due dates: every assignment to `hr.read` (linked to the module's
+  Assignments table), and to anyone else with calendar access only their own (linked to their training
+  page). People with `hr.read` can open the calendar for this alone; staff accounts reach their training
+  from their workspace, not the calendar.
 
 ## Routes and API
 
@@ -93,7 +105,10 @@ Training: `GET /training`, `GET|POST /training/new`, `GET /training/:id`,
 `GET|DELETE /training/:id/attachments/:file_id`, `POST /training/:id/assignments` (`assignee_ids[]`,
 `role`, `department_id`, `due_on`), `POST /training/assignments/:id/cancel`; staff:
 `GET /employee/training`, `GET /employee/training/:id`, `POST /employee/training/:id/start`,
-`POST /employee/training/:id/complete`, `GET /employee/training/:id/files/:file_id`.
+`POST /employee/training/:id/complete`, `GET /employee/training/:id/files/:file_id`. Assignment ids are
+work-item ids; a link with an assignment's id from before the move redirects (301) to its new id for the
+assignee, and an old-id `POST` (start, complete, cancel) redirects without acting. Calendar:
+`GET /calendar?show=training`.
 No `/api/v1` endpoint and no MCP tool. Contract rules: [API standards](../api-standards.md).
 
 ## Workflow and status transitions
@@ -102,14 +117,14 @@ Per lesson: not started → complete. Completion needs every knowledge-check ans
 submission; a wrong answer re-renders the lesson (HTTP 422) with explanations. A path is complete
 when all its lessons are. Tours: not taken → taken or skipped.
 
-Training assignment (`TrainingAssignment::TRANSITIONS`):
+Training assignment (the `training_assignment` kind, `Training::WorkKind`):
 
 ```
 assigned ──start (assignee)──▶ in_progress ──complete (assignee)──▶ completed
    └──────────────cancel (hr.write)───────┴──▶ cancelled
 ```
 
-Any other move is refused (`TransitionRefused`, shown as an alert) and writes nothing: completing
+Any other move is refused (`Work::Item::TransitionRefused`, shown as an alert) and writes nothing: completing
 before starting, acting on someone else's assignment, restarting a completed one, or changing
 `status` directly. Completion stores who, when and the module revision. There is no reopen; assign
 again for a refresher (the old completion stays). Assigning to a role or department picks the
@@ -146,11 +161,12 @@ None. Nothing is read from or written to an outside system.
 
 ## Audit history
 
-Training: `training_assignment_events` (append-only, above) is the trail of record, shown on the
+Training: the assignment's rows in `work_item_events` (append-only, above) are the trail of record, shown on the
 module page to `hr.read` and on the assignment page to the trainee. Activity log entries:
 `training_module_created`, `training_module_updated`, `training_file_added`,
 `training_file_removed`, `training_assigned`, `training_started`, `training_completed`,
-`training_assignment_cancelled`.
+`training_assignment_cancelled` (unchanged by the move; the last three are written by the kind's
+transition, about the module).
 
 Learn Rupert: only the per-user completion timestamps in `dashboard_config`. Lesson completions and
 tours do not write Activity log entries. There is no history of who changed lesson content beyond Git.
@@ -173,13 +189,17 @@ tours do not write Activity log entries. There is no history of who changed less
 `learning_definitions_test.rb`, `onboarding_connect_test.rb`,
 `test/services/page_tours_test.rb`, `test/models/training_assignment_test.rb`,
 `test/integration/training_assignments_flow_test.rb` (assign, transitions, append-only history,
-staff-only-own, read-only managers, tenant isolation, file types and size, setup step), and `test/javascript/tour_test.mjs`, `help_panel_test.mjs`,
+staff-only-own, read-only managers, tenant isolation, file types and size, setup step),
+`test/integration/training_work_items_test.rb` (registered kind, shared history and Activity log names,
+policy scope, calendar by permission, old links, never seen as tasks or by task tools),
+`test/services/training_work_items_migration_test.rb` (copy up, re-run, count mismatch, down and up), and `test/javascript/tour_test.mjs`, `help_panel_test.mjs`,
 `practice_test.mjs`.
 
 ## Open gaps
 
 - [#409](https://github.com/techmore/rupert/issues/409) / [#407](https://github.com/techmore/rupert/issues/407):
-  training is not yet on the shared Project table; the tables above are shaped to fold into it.
+  assignments are on the shared table in source; acceptance needs the migration's count check on the live
+  workspace, and the old tables are dropped only after a release has verified the copy.
 - [#399](https://github.com/techmore/rupert/issues/399), [#410](https://github.com/techmore/rupert/issues/410)
   and [#411](https://github.com/techmore/rupert/issues/411) were reopened on 2026-10-25; the
   assignment, state, history and upload pieces are now in source. Acceptance needs a run on the

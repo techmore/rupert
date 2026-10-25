@@ -15,7 +15,9 @@ class TrainingModule < ApplicationRecord
   # Removed files stay (soft-removed) so a completion's revision can still be traced to what was there.
   has_many :all_attachments, class_name: 'TrainingAttachment', dependent: :restrict_with_exception
   has_many :attachments, -> { where(removed_at: nil).order(:created_at, :id) }, class_name: 'TrainingAttachment'
-  has_many :assignments, class_name: 'TrainingAssignment', inverse_of: :training_module, dependent: :restrict_with_exception
+  # Assignments are rows of the shared work-item table (kind training_assignment, source = this module).
+  has_many :assignments, -> { where(source_type: 'TrainingModule') }, class_name: 'TrainingAssignment', foreign_key: :source_id,
+    inverse_of: :training_module, dependent: :restrict_with_exception
   belongs_to :created_by, class_name: 'User', optional: true
   belongs_to :updated_by, class_name: 'User', optional: true
 
@@ -29,6 +31,8 @@ class TrainingModule < ApplicationRecord
   validate :video_url_is_web_link
 
   before_update { self.revision = revision.to_i + 1 if (changed & CONTENT_FIELDS).any? }
+  # An assignment's title (shown on the calendar) is the module's title.
+  after_update { assignments.update_all(title: title) if saved_change_to_title? }
 
   scope :ordered, -> { order(:title, :id) }
 

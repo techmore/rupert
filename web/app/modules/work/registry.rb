@@ -2,8 +2,8 @@
 
 module Work
   # The kinds of tracked work that live in the shared work-item table (#407): 'task' (phase 1), and the marketing
-  # kinds 'marketing_event' and 'campaign_task' (#415, Marketing::WorkKinds). Later phases add request and
-  # training_assignment (docs/architecture/shared-work-items.md). A row whose kind is not registered cannot be saved.
+  # kinds 'marketing_event' and 'campaign_task' (#415, Marketing::WorkKinds) and 'training_assignment' (#409,
+  # Training::WorkKind). A later phase adds request (docs/architecture/shared-work-items.md). A row whose kind is not registered cannot be saved.
   module Registry
     class UnknownKind < KeyError; end
 
@@ -34,7 +34,7 @@ module Work
     end
 
     def defaults
-      [task_kind, Marketing::WorkKinds.event_kind, Marketing::WorkKinds.campaign_task_kind]
+      [task_kind, Marketing::WorkKinds.event_kind, Marketing::WorkKinds.campaign_task_kind, Training::WorkKind.kind]
     end
 
     # Kinds that appear on the shared calendar (#417).

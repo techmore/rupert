@@ -18,6 +18,8 @@ module Work
     belongs_to :actor, class_name: 'User', optional: true
 
     attribute :field_changes, :json, default: -> { {} }
+    # Facts the kind keeps about the moment (Work::Kind#event_details; training: the module revision).
+    attribute :details, :json, default: -> { {} }
 
     validates :tenant_id, :work_item_id, :actor_name, presence: true
     validates :action, inclusion: { in: ACTIONS }
@@ -28,6 +30,8 @@ module Work
 
     scope :timeline, -> { order(:created_at, :id) }
     scope :for_item, ->(item) { where(work_item_id: item.id) }
+
+    def details = super || {}
 
     def label = LABELS.fetch(action, action.humanize)
 

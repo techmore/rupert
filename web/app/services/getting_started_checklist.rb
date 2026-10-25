@@ -128,7 +128,7 @@ class GettingStartedChecklist
 
   # {'open' => n, 'completed' => n} for this person's own assignments.
   def my_training_counts
-    TrainingAssignment.unscoped.where(tenant_id: user.tenant_id, assignee_id: user.id, status: TrainingAssignment::STATUSES - ['cancelled'])
+    TrainingAssignment.unscoped.where(tenant_id: user.tenant_id, assignee_id: user.id.to_s, status: TrainingAssignment::STATUSES - ['cancelled'])
       .group(Arel.sql("CASE WHEN status = 'completed' THEN 'completed' ELSE 'open' END")).count
   end
 

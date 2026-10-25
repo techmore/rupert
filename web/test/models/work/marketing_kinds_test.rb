@@ -32,7 +32,7 @@ class MarketingWorkKindsTest < ActiveSupport::TestCase
     assert_equal({ read: 'marketing.read', write: 'marketing.write' }, kind.permissions)
     task = Work::Registry.fetch('campaign_task')
     assert_equal :due, task.calendar
-    assert_equal %w[task marketing_event campaign_task], Work::Registry.calendar_kinds.map(&:key)
+    assert_equal %w[task marketing_event campaign_task training_assignment], Work::Registry.calendar_kinds.map(&:key)
     assert_raises(ArgumentError) { Work::Registry.unregister('marketing_event') }
   end
 

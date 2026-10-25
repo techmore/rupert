@@ -27,6 +27,8 @@ module Work
     # Who the next history row is for, when it is not Current.user (Work::Item#transition! sets it).
     attr_writer :work_actor
 
+    def work_actor = @work_actor || Current.user
+
     def kind_definition = Work::Registry.fetch(kind)
 
     def history = Work::ItemEvent.where(tenant_id: tenant_id).for_item(self).timeline
@@ -59,13 +61,25 @@ module Work
     end
 
     def record_work_event!(action, from_status: nil, to_status: nil, field_changes: {})
-      actor = @work_actor || Current.user
+      actor = work_actor
       Work::ItemEvent.create!(
         tenant_id: tenant_id, work_item_id: id, item_kind: kind, action: action, transition: current_transition_name,
         from_status: from_status, to_status: to_status, actor_id: actor&.id,
         actor_name: actor&.display_name.presence || actor&.email || 'system', field_changes: printable(field_changes),
-        note: (blocked_reason.to_s.first(500).presence if respond_to?(:blocked_reason) && to_status == 'blocked' && action == 'transitioned')
+        note: work_event_note(action, to_status), details: work_event_details
       )
+    end
+
+    def work_event_note(action, to_status)
+      return @work_note if action == 'transitioned' && @work_note.present?
+
+      blocked_reason.to_s.first(500).presence if respond_to?(:blocked_reason) && to_status == 'blocked' && action == 'transitioned'
+    end
+
+    # Facts the kind keeps on each history row (training: the module revision), or none.
+    def work_event_details
+      hook = Work::Registry.known?(kind) && kind_definition.event_details
+      hook ? hook.call(self).to_h.compact : {}
     end
 
     # The event that is firing, when the record has a state machine (AASM) or Work::Item#transition! set one.
