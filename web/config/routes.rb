@@ -335,8 +335,13 @@ Rails.application.routes.draw do
 
   namespace :finance do
     resources :tax_payees, only: %i[index new create edit update] do
+      member do
+        post :correct
+        get :form
+      end
       collection do
         get :forms
+        post :issue
         get :payer
         patch :payer, action: :update_payer
       end

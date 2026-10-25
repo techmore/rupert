@@ -1,5 +1,6 @@
 <% labels = { 'needed' => ['Needs a 1099', 'pill-clay'], 'under' => ['Under threshold', 'pill-taupe'], 'exempt' => ['Likely exempt', 'pill-olive'], 'none' => ['No 1099', 'pill-taupe'] } %>
 <% needed = @totals.needed %>
+<% money_change = ->(cents) { cents.negative? ? "−#{finance_money_text(-cents)}" : "+#{finance_money_text(cents)}" } %>
 <%= page_header '1099 payees', subtitle: 'Who may get a 1099, what they were paid, and whether their W-9 is on file.',
       menu: [['Recipient copies (PDF)', forms_finance_tax_payees_path(year: @year), { data: { turbo: false }, target: '_blank' }],
              ['Download CSV', finance_tax_payees_path(year: @year, format: :csv), { data: { turbo: false } }],
@@ -17,6 +18,22 @@
     <% end %>
   </section>
 
+  <section class="card card-pad" aria-label="<%= @year %> forms issued">
+    <% if @lock.issued? %>
+      <% first = @lock.first_issue %>
+      <p class="text-sm"><span class="pill-olive">Locked</span> 1099s for <%= @year %> were issued on <%= first.issued_at.strftime('%b %-d, %Y') %><% if first.issued_by_name.present? %> by <%= first.issued_by_name %><% end %>. The recipient copies print the totals as issued; later changes show below as differences.</p>
+      <% if @lock.changed.any? %><p class="mt-2 text-sm"><span class="pill-clay">Needs attention</span> <%= pluralize(@lock.changed.size, 'payee') %> changed since issue and <%= @lock.changed.size == 1 ? 'needs' : 'need' %> a corrected form.</p><% end %>
+    <% else %>
+      <p class="text-sm text-mocha">Not issued yet. When the totals are final, issue the 1099s: Rupert keeps what each form said, and any later change shows as a difference that needs a corrected form.</p>
+    <% end %>
+    <% if @can_write && @lock.not_issued.any? %>
+      <div class="mt-3">
+        <%= button_to "Issue #{pluralize(@lock.not_issued.size, '1099')} for #{@year}", issue_finance_tax_payees_path(year: @year), method: :post, class: 'btn-ghost',
+              disabled: !@payer.complete?, form: { class: 'inline', data: { turbo_confirm: "Issue #{pluralize(@lock.not_issued.size, '1099')} for #{@year}?\n\nThe totals on them are kept as issued and cannot be changed. Later changes need a corrected form." } } %>
+      </div>
+    <% end %>
+  </section>
+
   <section class="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="<%= @year %> summary">
     <div class="stat"><div class="stat-label">Payees</div><p class="stat-value mt-2 tabular-nums"><%= @totals.rows.size %></p></div>
     <div class="stat"><div class="stat-label">Need a 1099 for <%= @year %></div><p class="stat-value mt-2 tabular-nums"><%= needed.size %></p></div>
@@ -25,10 +42,10 @@
   </section>
 
   <div class="card"><div class="table-region" role="region" tabindex="0" aria-label="1099 payees for <%= @year %>"><table class="table">
-    <thead><tr><th class="th" scope="col">Payee</th><th class="th" scope="col">Form</th><th class="th" scope="col">TIN</th><th class="th num" scope="col">Paid <%= @year %></th><th class="th num" scope="col">Card (left out)</th><th class="th" scope="col">Status</th><th class="th" scope="col">W-9 needs</th><th class="th" scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+    <thead><tr><th class="th" scope="col">Payee</th><th class="th" scope="col">Form</th><th class="th" scope="col">TIN</th><th class="th num" scope="col">Paid <%= @year %></th><th class="th num" scope="col">Card (left out)</th><th class="th" scope="col">Status</th><th class="th" scope="col">W-9 needs</th><th class="th" scope="col">Issued</th><th class="th" scope="col"><span class="sr-only">Actions</span></th></tr></thead>
     <tbody>
       <% @totals.rows.each do |row| %>
-        <% payee = row.payee; label, tone = labels[row.status(@year)] %>
+        <% payee = row.payee; label, tone = labels[row.status(@year)]; entry = @lock.entry(row); filing = entry.filing %>
         <tr>
           <th scope="row" class="td text-left"><span class="font-medium"><%= payee.legal_name %></span><% if payee.business_name.present? %><span class="block text-xs text-mocha"><%= payee.business_name %></span><% end %><span class="block text-xs text-taupe">Paid as <%= payee.payee_label %> · <%= Finance::TaxPayee::CLASSIFICATIONS[payee.tax_classification] %></span></th>
           <td class="td"><%= payee.form_label %></td>
@@ -37,10 +54,29 @@
           <td class="td num text-mocha"><%= finance_money(row.card_cents, zero: :dash) %></td>
           <td class="td"><span class="<%= tone %>"><%= label %></span></td>
           <td class="td"><% if payee.missing.any? %><span class="pill-clay"><%= payee.missing.to_sentence %></span><% else %><span class="pill-fern">Complete</span><% end %></td>
+          <td class="td">
+            <% case entry.state %>
+            <% when 'issued' %>
+              <span class="pill-fern"><%= filing.corrected? ? 'Corrected' : 'Issued' %></span>
+              <span class="block text-xs text-mocha tabular-nums"><%= filing.issued_at.strftime('%b %-d, %Y') %> · <%= finance_money_text(filing.paid_cents) %></span>
+              <%= link_to 'Download PDF', form_finance_tax_payee_path(payee, filing: filing.id), class: 'text-xs underline', data: { turbo: false }, target: '_blank', aria: { label: "Download #{payee.legal_name}'s issued 1099" } %>
+            <% when 'changed' %>
+              <span class="pill-clay">Needs correction</span>
+              <span class="block text-xs text-mocha tabular-nums">Issued <%= finance_money_text(filing.paid_cents) %><% if filing.form_type != payee.form_type || filing.misc_box.to_s != payee.misc_box.to_s %> as <%= filing.form_label %><% end %> · now <%= finance_money_text(row.paid_cents) %> (<%= money_change.call(entry.difference_cents) %>)</span>
+              <% if @can_write %>
+                <%= button_to 'Issue corrected form', correct_finance_tax_payee_path(payee, year: @year), method: :post, class: 'btn-ghost btn-sm', disabled: !@payer.complete?,
+                      form: { class: 'inline', target: '_blank', data: { turbo: false } } %>
+              <% end %>
+            <% when 'not_issued' %>
+              <span class="pill-taupe">Not issued</span>
+            <% else %>
+              <span class="text-taupe">—</span>
+            <% end %>
+          </td>
           <td class="td text-right"><% if @can_write %><%= link_to 'Edit', edit_finance_tax_payee_path(payee), class: 'btn-ghost btn-sm', aria: { label: "Edit #{payee.legal_name}" } %><% end %></td>
         </tr>
       <% end %>
-      <% if @totals.rows.empty? %><tr><td colspan="8" class="empty-row">No 1099 payees yet. Add the contractors and vendors you pay who may need a 1099.</td></tr><% end %>
+      <% if @totals.rows.empty? %><tr><td colspan="9" class="empty-row">No 1099 payees yet. Add the contractors and vendors you pay who may need a 1099.</td></tr><% end %>
     </tbody>
   </table></div></div>
 
@@ -50,7 +86,8 @@
       <li><strong>Paid</strong> adds expenses and vendor payments to that vendor or payee name dated in <%= @year %>, and paid payslips for a contractor on staff (by pay date). <strong>Card payments are left out</strong>: the card processor reports those on a 1099-K. Payments with the method "other" are counted but marked, in case they went through a payment app.</li>
       <li><strong>Threshold for <%= @year %>:</strong> <%= finance_money_text(Finance::Form1099Totals::THRESHOLDS.fetch(@year) { @year < 2025 ? 600_00 : Finance::Form1099Totals::LATER_THRESHOLD }) %> (royalties: <%= finance_money_text(Finance::Form1099Totals::ROYALTY_THRESHOLD) %>). The 2025 tax law raised it from $600 to $2,000 for payments made after 2025. Corporations are usually exempt, except attorney fees.</li>
       <li><strong>1099-NEC</strong> covers pay for services by non-employees; <strong>1099-MISC</strong> covers rent, royalties, attorney fees and other income. The TIN is encrypted and shown only as its last four digits, also in the CSV.</li>
-      <li>This is a preparation aid, not tax advice. Have a tax preparer review the totals before filing. The forms themselves come next (#472).</li>
+      <li><strong>Issuing locks the year.</strong> Rupert keeps the form, box and total on each 1099 issued, with who issued it and when. If a payment is added or edited later, the payee shows <em>Needs correction</em> with the difference; a corrected form prints with the CORRECTED box checked and is kept alongside the original. Form 1096 and Copy A must be the official IRS forms or an electronic filing.</li>
+      <li>This is a preparation aid, not tax advice. Have a tax preparer review the totals before filing.</li>
     </ul>
   </details>
 </div>

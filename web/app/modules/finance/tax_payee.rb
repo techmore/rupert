@@ -24,6 +24,9 @@ module Finance
 
     encrypts :tin
 
+    # Issued 1099s are kept for good, so a payee with any cannot be removed.
+    has_many :form_filings, class_name: 'Finance::TaxFormFiling', dependent: :restrict_with_exception
+
     validates :payee_key, presence: true, format: { with: KEY }, uniqueness: { scope: :tenant_id }
     validates :legal_name, presence: true, length: { maximum: 200 }
     validates :business_name, length: { maximum: 200 }
