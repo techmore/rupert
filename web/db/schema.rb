@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_25_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_26_093000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -617,6 +617,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_25_160000) do
     t.text "invoice_number"
     t.index ["tenant_id", "environment", "gateway_id", "source_transaction_id"], name: "idx_anet_transaction_source", unique: true
     t.index ["tenant_id"], name: "index_authorize_net_transactions_on_tenant_id"
+  end
+
+  create_table "backup_encryption_keys", force: :cascade do |t|
+    t.datetime "activated_at"
+    t.bigint "activated_by_id"
+    t.string "confirmation_digest", null: false
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id"
+    t.string "fingerprint", null: false
+    t.string "recipient", null: false
+    t.datetime "retired_at"
+    t.datetime "updated_at", null: false
+    t.index ["activated_at", "retired_at"], name: "index_backup_encryption_keys_on_activated_at_and_retired_at"
+    t.index ["recipient"], name: "index_backup_encryption_keys_on_recipient", unique: true
   end
 
   create_table "bank_statement_accounts", force: :cascade do |t|

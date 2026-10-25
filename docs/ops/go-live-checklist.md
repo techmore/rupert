@@ -13,7 +13,7 @@ Tick every line before Rupert is the system a shift depends on. Owner items are 
 ## Services on SER8
 - [ ] `rupert-web.service` installed from `deploy/rupert-web-ser8.service`, `rupert-jobs.service` from `deploy/rupert-jobs-ser8.service`, both `active` with `NRestarts=0`.
 - [ ] `rupert-backup.timer` (6 h) and `rupert-backup-frequent.timer` (5 min) active inside the container; `systemctl list-timers` shows next runs.
-- [ ] Host: `rupert-sync-watch.timer` active with `READY_URL=https://herbalhealers.rupertpos.com/up/ready`; `rupert-offhost-backup.timer` active and the key provisioned (backup runbook).
+- [ ] Host: `rupert-sync-watch.timer` active with `READY_URL=https://herbalhealers.rupertpos.com/up/ready`; `rupert-offhost-backup.timer` active running `~/.local/bin/rupert-backup` (the encrypted pull), and a backup key active in Settings → Backups with its recovery kit saved (backup runbook).
 - [ ] An external uptime monitor polls `/up/ready` every 5 minutes and pages someone on 503.
 - [ ] `GET /up/ready` returns `"status":"ready"` with every check `ok`.
 
@@ -22,7 +22,7 @@ Tick every line before Rupert is the system a shift depends on. Owner items are 
 - [ ] A physical sample count of 20 high-turn SKUs matches Shopify and the Inventory page (within the agreed tolerance).
 - [ ] Yesterday's sales total in Reports matches Shopify admin for the same day; a test refund shows up on the order within 15 minutes.
 - [ ] `bin/restore-drill` run against the production file this week: `DRILL OK`.
-- [ ] Off-host backup verified (`sha256sum -c`) and a decrypt test done on another machine.
+- [ ] Off-host backup verified (`sha256sum -c`) and a `bin/backup-decrypt` drill done on another machine with the recovery kit.
 
 ## People and access
 - [ ] One `super_admin` (owner), named `admin`/`manager` accounts, staff on `employee`/`cashier`; no shared logins.

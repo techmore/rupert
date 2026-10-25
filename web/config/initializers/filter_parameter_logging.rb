@@ -60,3 +60,6 @@ Rails.application.config.filter_parameters += [/\Azelle_export\z/i, :counterpart
 
 # Ladybug reports carry what a person typed plus page snapshots and screenshots.
 Rails.application.config.filter_parameters += [/\Afeedback_report\z/i]
+
+# Backup recovery kit (#421): the activation check code.
+Rails.application.config.filter_parameters += %i[check_code]

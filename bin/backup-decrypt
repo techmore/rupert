@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# Decrypt and verify one Rupert backup file (#421, restore drill #420). Run it on a TRUSTED computer with the owner's
+# recovery kit, never on the server.
+#
+#   bin/backup-decrypt --identity-file KEYFILE [--out PATH] BACKUP.age
+#   bin/backup-decrypt --identity-stdin        [--out PATH] BACKUP.age     (paste the AGE-SECRET-KEY-1… line, then Ctrl-D)
+#
+# The private key is read from a file (mode 0600 or 0400) or from standard input, never from the command line, where
+# it would land in shell history and the process list. This script refuses an argument that looks like a key.
+#
+# Steps, any failure stops with a non-zero exit and leaves no output file:
+#   1. BACKUP.age.sha256, when present, must match the file (it was written when the backup was made);
+#   2. BACKUP.age.key, when present, must name the same public key as the private key given (else: wrong kit, and the
+#      message names the fingerprint to look for);
+#   3. age decrypts it. age is authenticated: a tampered or truncated file fails here;
+#   4. a .gz inside is decompressed and checked; a SQLite database must pass PRAGMA integrity_check and have no
+#      foreign_key_check rows; the restored file is written mode 0600.
+# Needs: age (apt install age), gzip, and sqlite3 or python3 for the database checks.
+set -euo pipefail
+umask 077
+
+usage() { sed -n '4,6p' "$0" | sed 's/^# //' >&2; exit 64; }
+die() { echo "backup-decrypt: $1" >&2; exit "${2:-1}"; }
+
+identity_file=""; from_stdin=0; out=""; input=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    AGE-SECRET-KEY-*|*AGE-SECRET-KEY-1*) die "refusing a private key on the command line; use --identity-file or --identity-stdin" 64 ;;
+    --identity-file) identity_file="${2:-}"; shift 2 || usage ;;
+    --identity-stdin) from_stdin=1; shift ;;
+    --out) out="${2:-}"; shift 2 || usage ;;
+    -h|--help) usage ;;
+    -*) die "unknown option $1" 64 ;;
+    *) [ -z "$input" ] || usage; input="$1"; shift ;;
+  esac
+done
+[ -n "$input" ] || usage
+case "$identity_file$out" in *AGE-SECRET-KEY-1*) die "refusing a private key on the command line; use --identity-file or --identity-stdin" 64 ;; esac
+[ -f "$input" ] || die "no such backup file: $input"
+if [ "$from_stdin" = 1 ] && [ -n "$identity_file" ]; then die "use --identity-file or --identity-stdin, not both" 64; fi
+command -v age >/dev/null 2>&1 || die "age is not installed (apt install age)"
+command -v age-keygen >/dev/null 2>&1 || die "age-keygen is not installed (it comes with the age package)"
+
+if [ "$from_stdin" = 1 ]; then
+  [ -t 0 ] && echo "Paste the AGE-SECRET-KEY-1… line from the recovery kit, then press Ctrl-D:" >&2
+  identity=$(grep -Eo 'AGE-SECRET-KEY-1[A-Z0-9]+' || true)
+elif [ -n "$identity_file" ]; then
+  [ -r "$identity_file" ] || die "cannot read $identity_file"
+  case "$(stat -c %a "$identity_file")" in 600|400) ;; *) die "$identity_file must be readable only by you (chmod 600)" ;; esac
+  identity=$(grep -Eo 'AGE-SECRET-KEY-1[A-Z0-9]+' "$identity_file" || true)
+else
+  usage
+fi
+[ -n "$identity" ] || die "no AGE-SECRET-KEY-1… line found in the key you gave"
+[ "$(wc -l <<<"$identity")" = 1 ] || die "more than one private key given; give the one whose fingerprint matches"
+
+recipient=$(age-keygen -y <<<"$identity" 2>/dev/null) || die "that private key is not a valid age key"
+fingerprint() { printf '%s' "$1" | sha256sum | cut -c1-16 | sed -E 's/(....)/\1 /g; s/ $//'; }
+fpr=$(fingerprint "$recipient")
+
+if [ -f "$input.sha256" ]; then
+  ( cd "$(dirname "$input")" && sha256sum -c --quiet "$(basename "$input").sha256" ) >/dev/null 2>&1 \
+    || die "digest mismatch: $input does not match $(basename "$input").sha256 (damaged or altered copy)"
+  echo "digest ok" >&2
+else
+  echo "warning: no $(basename "$input").sha256 beside the file; relying on age's own integrity check" >&2
+fi
+if [ -f "$input.key" ]; then
+  want=$(sed -n 's/^recipient //p' "$input.key")
+  [ "$want" = "$recipient" ] \
+    || die "wrong recovery kit: this backup was encrypted to key $(sed -n 's/^fingerprint //p' "$input.key"), the key given is $fpr"
+fi
+
+base=$(basename "$input" .age)
+if [ -z "$out" ]; then out="${base%.gz}"; fi
+[ -e "$out" ] && die "$out already exists; choose another --out"
+tmp="$out.partial.$$"
+trap 'rm -f "$tmp"' EXIT
+
+if [[ "$base" == *.gz ]]; then
+  age -d -i <(printf '%s\n' "$identity") "$input" | gzip -dc > "$tmp" || die "decryption failed: wrong key, or the file was altered or truncated"
+else
+  age -d -i <(printf '%s\n' "$identity") -o "$tmp" "$input" || die "decryption failed: wrong key, or the file was altered or truncated"
+fi
+unset identity
+
+if [[ "$base" == *.sqlite3* ]]; then
+  if command -v sqlite3 >/dev/null 2>&1; then
+    integrity=$(sqlite3 -readonly "$tmp" 'PRAGMA integrity_check') || die "restored file is not a SQLite database"
+    fk=$(sqlite3 -readonly "$tmp" 'PRAGMA foreign_key_check' | wc -l)
+  else
+    read -r integrity fk < <(python3 -I - "$tmp" <<'PY'
+import sqlite3, sys
+db = sqlite3.connect(f"file:{sys.argv[1]}?mode=ro", uri=True)
+print(db.execute("PRAGMA integrity_check").fetchone()[0].replace(" ", "_"), len(db.execute("PRAGMA foreign_key_check").fetchall()))
+PY
+) || die "restored file is not a SQLite database"
+  fi
+  [ "$integrity" = "ok" ] || die "restored database failed integrity_check: $integrity"
+  [ "$fk" -eq 0 ] || die "restored database has $fk foreign_key_check problem rows"
+  echo "sqlite integrity_check ok, foreign_key_check clean" >&2
+fi
+
+chmod 0600 "$tmp"
+mv "$tmp" "$out"
+trap - EXIT
+echo "restored $out from $(basename "$input") with key $fpr"
