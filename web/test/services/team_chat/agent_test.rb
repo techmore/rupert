@@ -243,4 +243,57 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_requested stub
     assert_equal 'Local hello.', reply.reload.body
   end
+
+  test 'a refused model hands over to the configured fallback, and the answer says who answered and what it replaced' do
+    stub_request(:post, "#{LLM_BASE}/chat/completions").to_return(status: 401, body: { error: { message: 'bad key' } }.to_json, headers: { 'Content-Type' => 'application/json' })
+    gateway = stub_request(:post, 'http://gateway.test/v1/chat/completions')
+              .with { |request| JSON.parse(request.body)['model'] == 'qwen-test' }
+              .to_return(status: 200, headers: { 'Content-Type' => 'text/event-stream' }, body: sse_for(text: 'Fallback hello.'))
+    config = team_chat_config('RUPERT_CHAT_FALLBACK' => 'local_gateway:qwen-test', 'RUPERT_LOCAL_LLM_URL' => 'http://gateway.test/v1')
+    reply = ask('@rupert hi')
+    TeamChat::Agent.new(reply, config: config).run
+    reply.reload
+
+    assert_requested gateway
+    assert_equal ['done', 'Fallback hello.'], [reply.status, reply.body]
+    assert_equal ['local_gateway', 'qwen-test'], reply.meta.values_at('engine', 'model')
+    assert_equal [{ 'engine' => 'openai', 'model' => 'test-model', 'failure' => 'unauthorized' }], reply.meta['fallback_from']
+    assert_equal({ seconds: reply.answer_timing[:seconds], model: 'qwen-test', fallback_from: ['OpenAI-compatible'], where: 'local' }, reply.answer_timing)
+    run = TeamChat::Run.unscoped.find_by(message_id: reply.id)
+    fallback = TeamChat::Telemetry.unscoped.where(run_id: run.id, kind: 'fallback').sole
+    assert_equal({ 'from_engine' => 'openai', 'to_engine' => 'local_gateway', 'failure' => 'unauthorized' }, fallback.facts.slice('from_engine', 'to_engine', 'failure'))
+  end
+
+  test 'a model the instance picked explicitly has no fallback unless one is configured' do
+    stub_request(:post, "#{LLM_BASE}/chat/completions").to_return(status: 401, body: { error: { message: 'bad key' } }.to_json, headers: { 'Content-Type' => 'application/json' })
+    reply = ask('@rupert hi')
+    TeamChat::Agent.new(reply, config: team_chat_config('RUPERT_LOCAL_LLM_URL' => 'http://gateway.test/v1')).run
+    reply.reload
+    assert_equal 'failed', reply.status
+    assert_nil reply.meta['fallback_from']
+  end
+
+  test 'model config lists fallbacks in order and leaves out unconfigured or repeated ones' do
+    Dir.mktmpdir do |dir|
+      auth = File.join(dir, 'auth.json')
+      File.write(auth, JSON.generate('opencode-go' => { 'type' => 'api', 'key' => 'go-key' }))
+      auto = TeamChat::ModelConfig.new({}, auth_file: auth)
+      assert_equal ['opencode_cli'], auto.fallbacks.map(&:engine)
+      assert_empty TeamChat::ModelConfig.new({ 'RUPERT_CHAT_FALLBACK' => 'none' }, auth_file: auth).fallbacks
+      assert_empty TeamChat::ModelConfig.new({ 'RUPERT_CHAT_PROVIDER' => 'opencode_go' }, auth_file: auth).fallbacks
+
+      chosen = TeamChat::ModelConfig.new({ 'RUPERT_CHAT_PROVIDER' => 'opencode_go', 'RUPERT_LOCAL_LLM_URL' => 'http://gateway.test/v1',
+                                           'RUPERT_CHAT_FALLBACK' => 'opencode_go, ollama, local_gateway:qwen-test, bogus, opencode_cli, local_gateway:qwen-test' }, auth_file: auth)
+      assert_equal [%w[local_gateway qwen-test], ['opencode_cli', nil]], chosen.fallbacks.map { |config| [config.engine, config.model] }
+      assert_equal 'http://gateway.test/v1', chosen.fallbacks.first.api_base
+      assert_empty chosen.fallbacks.first.fallbacks
+    end
+  end
+
+  test 'each answer names the provider that answered' do
+    asked = @room.messages.create!(user: @user, body: '@rupert hi')
+    reply = @room.messages.create!(author_kind: 'assistant', status: 'done', body: 'Hi.',
+      meta: { 'asked_by' => @user.id, 'trigger_id' => asked.id, 'engine' => 'opencode_go', 'model' => 'deepseek-v4.1-flash', 'duration_ms' => 4_200 })
+    assert_equal({ seconds: 4.2, model: 'deepseek-v4.1-flash', provider: 'OpenCode Go', where: 'cloud' }, reply.answer_timing)
+  end
 end

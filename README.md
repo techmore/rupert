@@ -61,7 +61,7 @@ set in the production environment.
 ## Repository checks
 
 [Repository maintenance](docs/ops/repository-maintenance.md) records the
-validation commands, release branch conventions, and current consolidation
+validation commands, Git and deployment notes, and current consolidation
 work. Tests skip the repository-root `.env`; use explicit test settings and
 an isolated checkout.
 
@@ -163,10 +163,13 @@ manual source (`SwipesimpleImporter`) feeds CSV exports through the same seam.
 
 Production is hosted on SER8 in Incus and served at
 [herbalhealers.rupertpos.com](https://herbalhealers.rupertpos.com/). GitHub is the source
-repository. The SER8 updater polls `main`; eligible commits can install
-automatically or wait for an operator request, depending on the instance's
-configured mode. Check the installed mode and build SHA before describing a
-change as live. See the [development and deployment workflow](docs/development-and-deployment-workflow.md)
+repository. Merging to `main` deploys: the SER8 updater polls `main` every 5
+minutes and, once the exact SHA's required checks are green, installs it
+automatically (the default mode) or on an operator's request (click-only mode,
+**System → Updates**). Each install takes a backup, writes a release receipt and
+rolls the code back on a failed health or smoke check; migrations are not
+reverted. A stable `v*` tag does not deploy. Check the receipt or the
+`X-Rupert-Build` header before describing a change as live. See the [development and deployment workflow](docs/development-and-deployment-workflow.md)
 and [SER8 updater runbook](deploy/ser8/README.md#auto-deploy-rupert-autodeploy).
 
 The SER8 web/worker/backup units and the host-side watcher and off-host backup scripts are under `deploy/`. The pre-Incus droplet units and the original Node/React implementation (`legacy/`) were removed on 2026-10-20; they remain in git history (`git show 03db8bb:legacy/README.md`).
