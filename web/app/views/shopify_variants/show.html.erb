@@ -24,6 +24,18 @@
       <div><dt>Cost of goods</dt><dd><%= money.call(profile.cost_cents) || 'Unknown' %></dd><p><%= profile.cost_note %></p></div>
       <div><dt>Margin per unit</dt><dd><%= profile.margin_cents ? "#{money.call(profile.margin_cents)} (#{profile.margin_percent}%)" : 'Unknown' %></dd><p>Price minus cost, before tax. An estimate, not profit.</p></div>
     </dl>
+    <% if Current.user.can?('inventory.write') %>
+      <details class="explainer item-cost-edit">
+        <summary class="explainer-summary"><%= profile.item_cost ? 'Edit cost' : 'Add cost' %></summary>
+        <%= form_with url: cost_shopify_variant_path(@variant), method: :patch, class: 'item-cost-form' do |f| %>
+          <%= f.label :cost, 'Cost of goods per unit', for: 'item-cost' %>
+          <%= f.text_field :cost, id: 'item-cost', value: profile.item_cost && format('%.2f', profile.item_cost.cost_cents / 100.0), class: 'input',
+            inputmode: 'decimal', autocomplete: 'off', placeholder: '0.00', aria: { describedby: 'item-cost-hint' } %>
+          <p id="item-cost-hint" class="text-xs text-mocha">Stored in Rupert only; never sent to Shopify, Square or C-Trax.<%= ' Remove it to use the C-Trax cost again.' if profile.item_cost %></p>
+          <div class="form-actions"><%= f.submit 'Save', class: 'btn-primary' %><% if profile.item_cost %><%= f.button 'Remove', type: 'submit', name: 'remove', value: '1', class: 'btn-ghost' %><% end %></div>
+        <% end %>
+      </details>
+    <% end %>
   </section>
 
   <section class="section-card" aria-labelledby="item-source-title">
