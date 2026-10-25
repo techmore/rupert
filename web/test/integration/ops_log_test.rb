@@ -22,10 +22,6 @@ class OpsLogTest < ActionDispatch::IntegrationTest
 
   teardown { Current.reset }
 
-  def sign_in(user)
-    post login_path, params: { email: user.email, password: 'password123' }
-  end
-
   def requests(lines) = ops_events(lines, 'request')
 
   test 'a signed-in request writes one JSON line with who, what, how long and how big' do

@@ -17,10 +17,6 @@ class TeamChatTest < ActionDispatch::IntegrationTest
     Rack::Attack.cache.store.clear if defined?(Rack::Attack)
   end
 
-  def sign_in(user, password: 'password')
-    post login_path, params: { email: user.email, password: password }
-  end
-
   def json = response.parsed_body
 
   def manager

@@ -78,10 +78,4 @@ class ProjectsGuideTest < ActionDispatch::IntegrationTest
     get projects_getting_started_path
     assert_redirected_to login_path
   end
-
-  private
-
-  def sign_in(user)
-    post login_path, params: { email: user.email, password: 'password123' }
-  end
 end

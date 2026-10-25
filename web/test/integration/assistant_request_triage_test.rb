@@ -22,10 +22,6 @@ class AssistantRequestTriageTest < ActionDispatch::IntegrationTest
 
   teardown { Current.reset }
 
-  def sign_in(user)
-    post login_path, params: { email: user.email, password: 'password123' }
-  end
-
   def last_log = ActivityLog.unscoped.order(:id).last
 
   test 'a reviewer sees the queue and approves a request into a task that keeps requester, date and text' do

@@ -19,10 +19,6 @@ class AskRupertFlowTest < ActionDispatch::IntegrationTest
     Rack::Attack.cache.store.clear if defined?(Rack::Attack)
   end
 
-  def sign_in(user)
-    post login_path, params: { email: user.email, password: 'password' }
-  end
-
   def json = response.parsed_body
 
   def stub_model(*replies)

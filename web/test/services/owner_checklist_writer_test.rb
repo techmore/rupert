@@ -314,8 +314,7 @@ class OwnerChecklistWriterConcurrencyTest < ActiveSupport::TestCase
   self.use_transactional_tests = false
 
   setup do
-    @tenant = Tenant.create!(name: 'Checklist race', subdomain: "checklist-race-#{SecureRandom.hex(4)}", status: 'active')
-    Current.tenant = @tenant
+    @tenant = create_workspace('Checklist race', status: 'active')
     @actor = User.create!(tenant: @tenant, role: 'admin', active: true,
       email: "checklist-race-#{SecureRandom.hex(4)}@example.com", password: 'password123')
     @checklist = OwnerChecklistWriter.create(attributes: { name: 'Race', domain: 'store.example.com',

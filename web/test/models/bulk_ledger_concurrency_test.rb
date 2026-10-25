@@ -6,8 +6,7 @@ class BulkLedgerConcurrencyTest < ActiveSupport::TestCase
   self.use_transactional_tests = false
 
   setup do
-    @tenant = Tenant.create!(name: 'Concurrent bulk', subdomain: "concurrent-bulk-#{SecureRandom.hex(4)}")
-    Current.tenant = @tenant
+    @tenant = create_workspace('Concurrent bulk')
     @material = BulkMaterial.create!(name: 'Concurrent material', unit: 'g')
     @lot = BulkLedger.receive(material: @material, attributes: { code: 'RACE' },
       movement_attributes: { quantity: '5', unit: 'g', reference: 'Supplier' }, actor: 'counter@example.com')

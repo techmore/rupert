@@ -18,10 +18,6 @@ class FeedbackReportsTest < ActionDispatch::IntegrationTest
 
   teardown { Current.reset }
 
-  def sign_in(user)
-    post login_path, params: { email: user.email, password: 'password123' }
-  end
-
   def file_report(params = {})
     post feedback_reports_path, params: { feedback_report: { kind: 'bug', description: 'The total on the till is wrong', severity: 'high',
                                                               page_url: 'https://x.example.com/inventory?token=abc&q=tea', page_request_id: 'req-1' }.merge(params) }

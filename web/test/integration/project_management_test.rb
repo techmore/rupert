@@ -19,10 +19,6 @@ class ProjectManagementTest < ActionDispatch::IntegrationTest
 
   teardown { Current.reset }
 
-  def sign_in(user)
-    post login_path, params: { email: user.email, password: 'password123' }
-  end
-
   def tenant!
     Current.tenant = @tenant
   end
