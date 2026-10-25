@@ -5,7 +5,7 @@
 # platform; an import only replaces Rupert's stored SwipeSimple snapshot.
 class SwipesimpleItemsController < AuthenticatedController
   before_action -> { response.headers['Cache-Control'] = 'no-store' }
-  before_action -> { redirect_to(root_path, alert: 'Inventory read permission is required.') unless Current.user.can?('inventory.read') }
+  before_action -> { Current.user.can?('inventory.read') ? skip_authorization : redirect_to(root_path, alert: 'Inventory read permission is required.') }
   before_action -> { redirect_to(swipesimple_items_path, alert: 'Inventory write permission is required to import.') unless Current.user.can?('inventory.write') }, only: :create
 
   def index

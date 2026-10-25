@@ -8,6 +8,8 @@ class EmployeeTrainingController < AuthenticatedController
   layout 'employee'
   before_action -> { response.headers['Cache-Control'] = 'no-store' }
   before_action :set_assignment, except: :index
+  # Self-service: every lookup starts from Current.user's own assignments (see above), so there is no policy to ask.
+  skip_after_action :verify_authorized
 
   def index
     assignments = mine.includes(:training_module).by_due.to_a

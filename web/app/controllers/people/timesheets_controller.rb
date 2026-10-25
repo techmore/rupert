@@ -140,6 +140,7 @@ module People
     end
 
     def create
+      authorize(People::Timesheet, :create?)
       @timesheet = workflow.create(timesheet_params)
       redirect_to people_timesheet_path(@timesheet), notice: 'Timesheet created — add hours or import your clock shifts.'
     rescue ActiveRecord::RecordInvalid => e
@@ -155,6 +156,7 @@ module People
     end
 
     def update
+      authorize(@timesheet)
       workflow.change(@timesheet, :update, timesheet_params)
       redirect_to people_timesheet_path(@timesheet), notice: 'Timesheet updated.'
     rescue ActiveRecord::RecordInvalid
@@ -163,12 +165,14 @@ module People
     end
 
     def destroy
+      authorize(@timesheet)
       workflow.change(@timesheet, :destroy)
       redirect_to people_timesheets_path, notice: 'Draft deleted.'
     end
 
     %i[submit approve reject reopen import_shifts].each do |event|
       define_method(event) do
+        authorize(@timesheet, :"#{event}?")
         workflow.change(@timesheet, event, review_note: params[:review_note])
         following = if params[:continue].present? && event == :approve
           People::TimesheetPolicy.visible_to(Current.user).awaiting_review.where.not(id: @timesheet.id).order(:submitted_at, :id).first
@@ -184,6 +188,7 @@ module People
 
     %i[add_entry update_entry remove_entry].each do |event|
       define_method(event) do
+        authorize(@timesheet, :"#{event}?")
         attrs = event == :remove_entry ? {} : params.require(:timesheet_entry).permit(:worked_on, :hours, :work_type, :notes).to_h
         workflow.change(@timesheet, event, attrs.merge(entry_id: params[:entry_id]))
         redirect_to people_timesheet_path(@timesheet), notice: 'Timesheet entry saved.'

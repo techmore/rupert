@@ -59,7 +59,7 @@ class UpdatesController < AuthenticatedController
 
   def require_update_access
     @actor = User.find_by(id: Current.user&.id, active: true)
-    return if AutoUpdate.manager?(@actor)
+    return skip_authorization if AutoUpdate.manager?(@actor) # gate; changes also pass require_update_control
 
     redirect_to(root_path, alert: "You don't have permission to manage updates.")
   end

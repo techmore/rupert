@@ -6,6 +6,8 @@
 class LearningController < AuthenticatedController
   before_action :load_lessons
   before_action -> { response.headers['Cache-Control'] = 'no-store' }
+  # Self-service: these actions read and write only the signed-in account's own learning journey.
+  skip_after_action :verify_authorized, except: :team
 
   def index
     @completed = @journey.completed
@@ -70,6 +72,7 @@ class LearningController < AuthenticatedController
   # GET /learning/team — read-only training overview for people with staff (hr.read) access.
   # Same rule as the Training progress rail entry in ModuleRegistry.
   def team
+    skip_authorization # gated here by Training module visibility (hr.read); a denial answers 403 below
     return head :forbidden unless ModuleRegistry.visible?(Current.user, 'training')
 
     @rows = User.where(tenant_id: Current.tenant_id).ordered.map do |user|

@@ -9,6 +9,8 @@ class CalendarController < AuthenticatedController
   def show
     raise Pundit::NotAuthorizedError unless ModuleRegistry.visible?(Current.user, 'calendar')
 
+    skip_authorization # gate: calendar module visibility; each kind is filtered by its own policy below
+
     @view = params[:view].presence_in(VIEWS) || 'month'
     @show = params[:show].presence_in(SHOW.keys) || 'all'
     @month = parse_month(params[:month])

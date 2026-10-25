@@ -9,6 +9,12 @@ class AuthenticatedController < ApplicationController
 
   rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
   before_action :note_presence
+  # Safety net: every action must either authorize against a policy (including
+  # headless `authorize(:module, ...)`) or pass a controller gate that calls
+  # `skip_authorization`. Controllers whose records are scoped to the signed-in
+  # user opt out with `skip_after_action :verify_authorized` and a reason.
+  # An action that does neither raises Pundit::AuthorizationNotPerformedError.
+  after_action :verify_authorized
 
   # Pagy 43 removed the legacy :last_page overflow option. Preserve the app's
   # existing behavior by retrying an out-of-range request at that paginator's

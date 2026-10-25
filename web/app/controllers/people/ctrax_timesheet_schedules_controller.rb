@@ -6,6 +6,8 @@ module People
 
     def update
       raise Pundit::NotAuthorizedError unless CtraxLaborSync.authorized_actor(Current.user.id)
+
+      skip_authorization # gate: CtraxLaborSync.authorized_actor
       return head :unprocessable_entity unless %w[1 0].include?(params[:enabled])
 
       enabled = params[:enabled] == '1'

@@ -91,7 +91,8 @@ class PointOfSaleController < AuthenticatedController
   end
 
   def authorize_preview
-    return if Current.user.active? && Current.tenant&.status == 'active' &&
+    # gate: an active cashier (can_use_pos?) in an active workspace
+    return skip_authorization if Current.user.active? && Current.tenant&.status == 'active' &&
       Current.user.can_use_pos?
 
     respond_to do |format|

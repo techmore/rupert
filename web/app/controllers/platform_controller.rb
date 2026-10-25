@@ -88,6 +88,7 @@ class PlatformController < AuthenticatedController
 
     Current.user = actor
     Current.tenant = workspace
+    skip_authorization # gate: active platform administrator (super admin) with an active home workspace
   end
 
   def not_found

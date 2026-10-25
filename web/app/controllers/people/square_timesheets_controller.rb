@@ -44,6 +44,7 @@ module People
 
     def show
       @card = SquareTimecard.visible_to(Current.user).includes(:employee, :days).find(params[:id])
+      skip_authorization # gate: SquareTimecard.visible_to(Current.user) — another person's timecard is a 404
       @latest = helpers.square_latest_values(@card)
       if request.format.csv?
         data = CSV.generate do |csv|

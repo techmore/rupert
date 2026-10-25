@@ -2,6 +2,8 @@
 
 class HomeController < AuthenticatedController
   before_action :require_dashboard_access, unless: :public_landing?
+  # The signed-out marketing page reads no workspace data.
+  skip_after_action :verify_authorized, if: :public_landing?
 
   def index
     return render('landing/index', layout: false) if public_landing?
@@ -51,6 +53,8 @@ class HomeController < AuthenticatedController
   end
 
   def require_dashboard_access
-    head :forbidden unless Current.user&.can?('dashboard.read')
+    return head :forbidden unless Current.user&.can?('dashboard.read')
+
+    skip_authorization # gate: dashboard.read; widgets check their own permissions
   end
 end

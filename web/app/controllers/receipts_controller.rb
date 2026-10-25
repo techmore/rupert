@@ -3,6 +3,10 @@
 class ReceiptsController < AuthenticatedController
   before_action :prevent_caching
   before_action :set_receipt, except: %i[index new create]
+  # Any staff member may file their own receipts. Reads go through PurchaseReceipt.visible_to(Current.user)
+  # (own receipts, or all for receipt reviewers) and every change through ReceiptWorkflow, which checks
+  # ownership and receipts.review itself.
+  skip_after_action :verify_authorized
   rescue_from ReceiptWorkflow::Error, ActiveRecord::RecordInvalid, ActiveRecord::StaleObjectError, with: :workflow_error
 
   def index

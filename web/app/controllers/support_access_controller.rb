@@ -38,6 +38,8 @@ class SupportAccessController < AuthenticatedController
   private
 
   def require_customer_owner
-    head :forbidden unless Current.user&.admin? && Current.user.tenant_id == Current.tenant&.id
+    return head :forbidden unless Current.user&.admin? && Current.user.tenant_id == Current.tenant&.id
+
+    skip_authorization # gate: workspace owner (admin of this workspace)
   end
 end

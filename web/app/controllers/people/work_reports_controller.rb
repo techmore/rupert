@@ -32,6 +32,8 @@ module People
     def authorize_private_review
       raise Pundit::NotAuthorizedError unless Current.user.can_manage_accounts? && Current.user.can?('hr.read')
       raise Pundit::NotAuthorizedError if action_name == 'update' && !Current.user.can?('hr.write')
+
+      skip_authorization # gate: account manager with hr.read (hr.write to respond)
     end
   end
 end
