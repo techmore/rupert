@@ -15,8 +15,8 @@ class PosCheckoutsController < AuthenticatedController
       raise Pos::Error, 'Cash received is less than the total.' if Pos::Checkout.money(params[:cash_received]) < total
     end
     checkout = Pos::Checkout.prepare!(display: display, tender: params[:tender], register_id: params[:register_id])
-    if checkout.tender == 'cash'
-      Pos::Checkout.cash!(checkout, received: params[:cash_received])
+    if checkout.tender == 'cash' || checkout.terminal_card?
+      checkout.terminal_card? ? Pos::Checkout.terminal_card!(checkout) : Pos::Checkout.cash!(checkout, received: params[:cash_received])
       PosInventoryJob.perform_later(checkout.id) unless checkout.demo?
     end
     render json: checkout.receipt

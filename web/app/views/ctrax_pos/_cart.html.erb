@@ -1,9 +1,10 @@
 <%# Cashier cart (docs/ui-standards.md §5, POS cart panel). Two steps in one panel: the cart
-    (lines, totals, Checkout) and checkout (register, Cash / Card, cash received). Prices,
+    (lines, totals, Checkout) and checkout (register, Cash / Card / Card (A920), cash received). Prices,
     tax and totals come from the server quote; the tip only from the customer's confirmation. %>
 <% demo = @display&.demo? %>
 <% card_blocker = pos_tender_blocker('card') %>
 <% cash_blocker = pos_tender_blocker('cash') %>
+<% a920_blocker = pos_tender_blocker(PosCheckout::TERMINAL_CARD) %>
 <section id="retail-cart" class="pos-cart" tabindex="-1" aria-label="Cart" data-step="cart" data-pos-screen-target="cart" <%= tour_anchor('cart') %>>
   <header class="pos-cart-head">
     <h2 class="pos-cart-title">Cart <span class="pos-cart-count"><span data-pos-cart-target="count">0</span> items</span></h2>
@@ -36,8 +37,9 @@
         <div class="pos-tenders" role="group" aria-label="Payment method">
           <button type="button" class="pos-tender" data-tender="cash" data-available="<%= cash_blocker.nil? %>" data-pos-checkout-target="tenderButton" data-action="pos-checkout#choose" aria-pressed="false" <%= 'disabled' if cash_blocker %>>Cash</button>
           <button type="button" class="pos-tender" data-tender="card" data-available="<%= card_blocker.nil? %>" data-pos-checkout-target="tenderButton" data-action="pos-checkout#choose" aria-pressed="false" <%= 'disabled' if card_blocker %>>Card</button>
+          <%= render 'ctrax_pos/a920_tender', blocker: a920_blocker, live: true %>
         </div>
-        <%= render 'ctrax_pos/tender_blockers', cash_blocker: cash_blocker, card_blocker: card_blocker %>
+        <%= render 'ctrax_pos/tender_blockers', cash_blocker: cash_blocker, card_blocker: card_blocker, a920_blocker: a920_blocker %>
         <div class="pos-cash" data-pos-checkout-target="cashFields">
           <%= label_tag :cash_received, 'Cash received', class: 'field-label' %>
           <%= number_field_tag :cash_received, nil, min: 0, max: 999999.99, step: 0.01, required: true, inputmode: 'decimal', placeholder: '0.00', class: 'input pos-cash-input', data: { pos_checkout_target: 'cash' } %>
@@ -46,6 +48,7 @@
             <% [20, 50, 100].each do |bill| %><button type="button" class="pos-chip" data-action="pos-checkout#quick" data-amount="<%= bill %>">$<%= bill %></button><% end %>
           </div>
         </div>
+        <p class="pos-checkout-hint" data-pos-checkout-target="a920Fields" data-a920-steps hidden>Run the total shown, tip included, on the A920 first. Record it here only after the terminal approves the card; Rupert does not charge the card.</p>
         <%= submit_tag(demo ? 'Run demo cash checkout' : 'Complete cash sale', class: 'btn-primary btn-lg pos-pay', data: { pos_checkout_target: 'submit' }) %>
       <% end %>
       <p role="status" aria-live="polite" class="pos-checkout-status" data-pos-checkout-target="status"></p>
@@ -59,8 +62,9 @@
       <div class="pos-tenders" role="group" aria-label="Payment method">
         <button type="button" class="pos-tender" disabled>Cash</button>
         <button type="button" class="pos-tender" disabled>Card</button>
+        <%= render 'ctrax_pos/a920_tender', blocker: a920_blocker, live: false %>
       </div>
-      <%= render 'ctrax_pos/tender_blockers', cash_blocker: cash_blocker, card_blocker: card_blocker %>
+      <%= render 'ctrax_pos/tender_blockers', cash_blocker: cash_blocker, card_blocker: card_blocker, a920_blocker: a920_blocker %>
     </section>
   <% end %>
 
