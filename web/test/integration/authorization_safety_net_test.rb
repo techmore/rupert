@@ -55,6 +55,23 @@ class AuthorizationSafetyNetTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test 'in production an ungated action is reported instead of breaking the page' do
+    with_routing do |set|
+      set.draw do
+        root to: 'home#index'
+        post '/login', to: 'sessions#create', as: :login
+        get '/probe/ungated', to: 'authorization_safety_net_test/ungated_probe#index'
+      end
+      post login_path, params: { email: @user.email, password: 'password' }
+      reported = []
+      Rails.stubs(:env).returns(ActiveSupport::EnvironmentInquirer.new('production'))
+      Rails.error.stubs(:report).with { |error, **| reported << error.class }
+      get '/probe/ungated'
+      assert_response :ok
+      assert_equal [Pundit::AuthorizationNotPerformedError], reported
+    end
+  end
+
   test 'only documented controllers opt out of verify_authorized' do
     root = Rails.root.join('app/controllers')
     skipping = Dir[root.join('**/*_controller.rb')].select { |path| File.read(path).match?(/^\s*skip_after_action :verify_authorized/) }
