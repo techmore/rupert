@@ -13,12 +13,19 @@ module AskRupert
     module_function
 
     # Providers to try for this turn, in order. Local-only never falls back to the cloud.
-    def for_turn(config, text, local: Ollama.new(config), cloud: Opencode.new)
+    def for_turn(config, text, local: local_provider(config), cloud: Opencode.new)
       case config.mode
       when 'local_only' then [local]
       when 'auto' then simple_turn?(text) && local.configured? ? [local, cloud] : [cloud]
       else [cloud]
       end
+    end
+
+    # Both chat surfaces share the one-model gateway when it is configured.
+    # Keep Ollama for installations that have not installed that gateway.
+    def local_provider(config)
+      gateway = LocalGateway.new
+      gateway.configured? ? gateway : Ollama.new(config)
     end
 
     # A short how-to or where-is question, not a numbers question.
