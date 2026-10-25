@@ -13,6 +13,9 @@ module TeamChat
   #   RUPERT_CHAT_API_BASE  base URL for openai (any OpenAI-compatible server) or to override the others
   #   RUPERT_CHAT_API_KEY   key for opencode_go / openai; opencode_go falls back to the key
   #                         `opencode auth login` saved for Ask Rupert (OPENCODE_STATE_DIR)
+  #   RUPERT_CHAT_FALLBACK  engines to try, in order, when the first is refused or unreachable before it wrote
+  #                         anything: a comma list of engine[:model], e.g. "local_gateway:qwen3.6-35b-a3b,opencode_cli",
+  #                         or "none". Unset = the opencode CLI on auto, nothing when RUPERT_CHAT_PROVIDER is set.
   #
   # Auto picks OpenCode Go when a key is available, else the local Ollama model
   # (OLLAMA_URL + ASK_RUPERT_LOCAL_MODEL), else the opencode CLI that Ask Rupert
@@ -22,6 +25,9 @@ module TeamChat
     DEFAULT_GO_MODEL = 'deepseek-v4.1-flash'
     ENGINES = %w[opencode_go local_gateway ollama openai opencode_cli].freeze
     AUTH_PROVIDERS = %w[opencode-go opencode].freeze
+    # Who runs the model, shown with each answer. The local gateway is shown as "local" already.
+    PROVIDER_NAMES = { 'opencode_go' => 'OpenCode Go', 'opencode_cli' => 'OpenCode CLI', 'ollama' => 'Ollama',
+                       'openai' => 'OpenAI-compatible' }.freeze
 
     attr_reader :engine, :model, :api_base
 
@@ -29,7 +35,7 @@ module TeamChat
 
     # The model for a local @agent, served by the one-model-at-a-time gateway.
     def self.for_local(agent)
-      return new(ENV.to_h.merge('RUPERT_CHAT_PROVIDER' => 'opencode_go', 'RUPERT_CHAT_MODEL' => agent.model)) if agent.cloud?
+      return new(ENV.to_h.merge('RUPERT_CHAT_PROVIDER' => 'opencode_go', 'RUPERT_CHAT_MODEL' => agent.model, 'RUPERT_CHAT_FALLBACK' => 'none')) if agent.cloud?
 
       LocalModel.new(agent)
     end
@@ -50,6 +56,7 @@ module TeamChat
       def local? = true
       def auto? = false
       def configured? = api_base.present?
+      def fallbacks = []
       def label = "#{agent.name} on this server"
       def disclosure = "#{agent.name} runs on this server; nothing leaves it."
 
@@ -83,6 +90,22 @@ module TeamChat
       return true if engine == 'opencode_cli'
 
       api_base.present? && model.present? && (local? || @api_key.present?)
+    end
+
+    # The next models to try, in order, when this one is refused or cannot be reached (RUPERT_CHAT_FALLBACK).
+    # Each is a ModelConfig of its own; ones that are not configured, or repeat this one, are left out.
+    def fallbacks
+      @fallbacks ||= fallback_specs.filter_map do |spec|
+        engine, model = spec.split(':', 2).map(&:strip)
+        next unless ENGINES.include?(engine)
+
+        env = @env.to_h.except('RUPERT_CHAT_API_BASE', 'RUPERT_CHAT_MODEL').merge('RUPERT_CHAT_PROVIDER' => engine, 'RUPERT_CHAT_FALLBACK' => 'none')
+        env['RUPERT_CHAT_MODEL'] = model if model.present?
+        config = self.class.new(env, auth_file: @auth_file)
+        next if !config.configured? || [config.engine, config.model] == [self.engine, self.model]
+
+        config
+      end.uniq { |config| [config.engine, config.model] }
     end
 
     def label
@@ -127,6 +150,14 @@ module TeamChat
     end
 
     private
+
+    def fallback_specs
+      setting = @env['RUPERT_CHAT_FALLBACK'].to_s.strip
+      return [] if setting == 'none'
+      return setting.split(',').map(&:strip).compact_blank if setting.present?
+
+      auto? && native? ? ['opencode_cli'] : []
+    end
 
     def pick_engine
       chosen = @env['RUPERT_CHAT_PROVIDER'].to_s.strip
