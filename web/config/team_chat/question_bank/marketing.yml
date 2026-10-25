@@ -1,0 +1,1458 @@
+questions:
+- id: marketing-001
+  module: marketing
+  question: what campaigns are running right now?
+  tools: []
+  answerable: 'no'
+  gap: no campaign list tool
+- id: marketing-002
+  module: marketing
+  question: whats the next campaign we have planned?
+  tools: []
+  answerable: 'no'
+  gap: no campaign list tool
+- id: marketing-003
+  module: marketing
+  question: how did the spring campaign do?
+  tools: [sales_summary, metric]
+  answerable: partial
+  gap: no campaign results tool; only sales for a date range
+- id: marketing-004
+  module: marketing
+  question: which campaign made the most money this year
+  tools: [sales_summary]
+  answerable: partial
+  gap: no campaign results or attribution tool
+- id: marketing-005
+  module: marketing
+  question: list all campaigns from last quarter
+  tools: []
+  answerable: 'no'
+  gap: no campaign list tool
+- id: marketing-006
+  module: marketing
+  question: how many campaigns did we run in 2026?
+  tools: []
+  answerable: 'no'
+  gap: no campaign list tool
+- id: marketing-007
+  module: marketing
+  question: did the holiday campaign beat last years
+  tools: [metric]
+  answerable: partial
+  gap: no campaign results tool; can compare sales for same dates only
+- id: marketing-008
+  module: marketing
+  question: which campaigns are draft vs live
+  tools: []
+  answerable: 'no'
+  gap: no campaign status data via any tool
+- id: marketing-009
+  module: marketing
+  question: show me the Calm Gummies launch campaign
+  tools: []
+  answerable: 'no'
+  gap: no campaign detail tool
+- id: marketing-010
+  module: marketing
+  question: whens the summer campaign start and end
+  tools: []
+  answerable: 'no'
+  gap: no campaign dates tool
+- id: marketing-011
+  module: marketing
+  question: what was the budget on our last campaign
+  tools: []
+  answerable: 'no'
+  gap: no campaign budget data in any tool
+- id: marketing-012
+  module: marketing
+  question: how much have we spent on marketing this month
+  tools: [period_review]
+  answerable: partial
+  gap: period_review reports expenses but no marketing spend breakdown
+- id: marketing-013
+  module: marketing
+  question: total ad spend ytd
+  tools: []
+  answerable: 'no'
+  gap: no ad spend tool; expenses not split by marketing
+- id: marketing-014
+  module: marketing
+  question: cost per order from the last campaign
+  tools: []
+  answerable: 'no'
+  gap: no campaign cost or attribution tool
+- id: marketing-015
+  module: marketing
+  question: did the email campaign last week do anything
+  tools: [sales_summary]
+  answerable: partial
+  gap: no email campaign results tool; only sales totals
+- id: marketing-016
+  module: marketing
+  question: whats the roi on our campaigns
+  tools: []
+  answerable: 'no'
+  gap: no campaign ROI tool
+- id: marketing-017
+  module: marketing
+  question: which campaign brought in new customers
+  tools: []
+  answerable: 'no'
+  gap: no campaign-to-customer attribution
+- id: marketing-018
+  module: marketing
+  question: who created the black friday campaign
+  tools: []
+  answerable: 'no'
+  gap: no campaign detail or audit tool
+- id: marketing-019
+  module: marketing
+  question: what products were in the tea campaign
+  tools: []
+  answerable: 'no'
+  gap: no campaign products tool
+- id: marketing-020
+  module: marketing
+  question: campaigns ending this week?
+  tools: []
+  answerable: 'no'
+  gap: no campaign dates tool
+- id: marketing-021
+  module: marketing
+  question: pls compare our last two campaigns
+  tools: []
+  answerable: 'no'
+  gap: no campaign results tool
+- id: marketing-022
+  module: marketing
+  question: is there a campaign for the new tincture line
+  tools: []
+  answerable: 'no'
+  gap: no campaign list tool
+- id: marketing-023
+  module: marketing
+  question: how many orders came from the newsletter blast
+  tools: [sales_summary]
+  answerable: partial
+  gap: no source or campaign attribution beyond sales source
+- id: marketing-024
+  module: marketing
+  question: what channel is working best for marketing
+  tools: [metric]
+  answerable: partial
+  gap: sales_by_source gives sales channel shares, not marketing channel
+- id: marketing-025
+  module: marketing
+  question: campaign calendar for next month
+  tools: []
+  answerable: 'no'
+  gap: no campaign calendar tool
+- id: marketing-026
+  module: marketing
+  question: can u make a task to review the fall campaign results
+  tools: [create_task]
+  answerable: 'yes'
+- id: marketing-027
+  module: marketing
+  question: remind me to finish the campaign brief by friday
+  tools: [create_task]
+  answerable: 'yes'
+- id: marketing-028
+  module: marketing
+  question: any open tasks about campaigns
+  tools: [list_tasks]
+  answerable: 'yes'
+- id: marketing-029
+  module: marketing
+  question: what offers are live on the store right now?
+  tools: []
+  answerable: 'no'
+  gap: no offers tool
+- id: marketing-030
+  module: marketing
+  question: list our current offers
+  tools: []
+  answerable: 'no'
+  gap: no offers tool
+- id: marketing-031
+  module: marketing
+  question: whats the discount on right now
+  tools: []
+  answerable: 'no'
+  gap: no Shopify discount list tool
+- id: marketing-032
+  module: marketing
+  question: do we have a bogo going
+  tools: []
+  answerable: 'no'
+  gap: no offers tool
+- id: marketing-033
+  module: marketing
+  question: is the free shipping offer still on?
+  tools: []
+  answerable: 'no'
+  gap: no offers tool
+- id: marketing-034
+  module: marketing
+  question: which Shopify discounts are active
+  tools: []
+  answerable: 'no'
+  gap: no Shopify discount list tool
+- id: marketing-035
+  module: marketing
+  question: what discount codes exist
+  tools: []
+  answerable: 'no'
+  gap: no Shopify discount list tool
+- id: marketing-036
+  module: marketing
+  question: what discounts expire this month
+  tools: []
+  answerable: 'no'
+  gap: no discount expiry data tool
+- id: marketing-037
+  module: marketing
+  question: what was the offer for new subscribers
+  tools: []
+  answerable: 'no'
+  gap: no offers tool
+- id: marketing-038
+  module: marketing
+  question: percentage off vs dollar off offers, which do we use more
+  tools: []
+  answerable: 'no'
+  gap: no offers or discount tool
+- id: marketing-039
+  module: marketing
+  question: what's the code for 10% off
+  tools: []
+  answerable: 'no'
+  gap: no discount code lookup tool
+- id: marketing-040
+  module: marketing
+  question: who can create discounts in Shopify
+  tools: []
+  answerable: 'no'
+  gap: no Shopify permissions tool
+- id: marketing-041
+  module: marketing
+  question: is there a minimum order for the welcome offer
+  tools: []
+  answerable: 'no'
+  gap: no offer detail tool
+- id: marketing-042
+  module: marketing
+  question: what's the biggest discount we ever gave
+  tools: []
+  answerable: 'no'
+  gap: no discount history tool
+- id: marketing-043
+  module: marketing
+  question: offers that need approval?
+  tools: []
+  answerable: 'no'
+  gap: no offers tool
+- id: marketing-044
+  module: marketing
+  question: are any discounts stacking with each other
+  tools: []
+  answerable: 'no'
+  gap: no discount config tool
+- id: marketing-045
+  module: marketing
+  question: which products are excluded from the sale
+  tools: []
+  answerable: 'no'
+  gap: no discount config tool
+- id: marketing-046
+  module: marketing
+  question: what was our offer last black friday
+  tools: []
+  answerable: 'no'
+  gap: no offers tool
+- id: marketing-047
+  module: marketing
+  question: are we running the autumn promo?
+  tools: []
+  answerable: 'no'
+  gap: no offers tool
+- id: marketing-048
+  module: marketing
+  question: how do I set up a new discount code?
+  tools: [how_do_i]
+  answerable: partial
+  gap: Rupert doesn't manage Shopify discounts; guidance only
+- id: marketing-049
+  module: marketing
+  question: where do I see offers in Rupert
+  tools: [where_is]
+  answerable: 'yes'
+- id: marketing-050
+  module: marketing
+  question: where are discounts managed
+  tools: [where_is]
+  answerable: 'yes'
+- id: marketing-051
+  module: marketing
+  question: which orders used a discount code
+  tools: [search]
+  answerable: partial
+  gap: search by text only; no discount usage filter
+- id: marketing-052
+  module: marketing
+  question: how many times was the WELCOME10 code used?
+  tools: [search]
+  answerable: partial
+  gap: no discount code usage tool
+- id: marketing-053
+  module: marketing
+  question: top discount codes this month
+  tools: []
+  answerable: 'no'
+  gap: no discount usage tool
+- id: marketing-054
+  module: marketing
+  question: discount code usage last week
+  tools: []
+  answerable: 'no'
+  gap: no discount usage tool
+- id: marketing-055
+  module: marketing
+  question: how much money did discounts cost us in october
+  tools: []
+  answerable: 'no'
+  gap: no discount total tool
+- id: marketing-056
+  module: marketing
+  question: total discounts given ytd
+  tools: []
+  answerable: 'no'
+  gap: no discount total tool
+- id: marketing-057
+  module: marketing
+  question: did anyone use an expired code?
+  tools: []
+  answerable: 'no'
+  gap: no discount usage tool
+- id: marketing-058
+  module: marketing
+  question: is code SPRING15 still being used
+  tools: []
+  answerable: 'no'
+  gap: no discount usage tool
+- id: marketing-059
+  module: marketing
+  question: orders w/ discount code this week
+  tools: [search]
+  answerable: partial
+  gap: no discount usage filter on orders
+- id: marketing-060
+  module: marketing
+  question: what share of orders had a discount
+  tools: [sales_summary]
+  answerable: partial
+  gap: sales_summary has no discount breakdown
+- id: marketing-061
+  module: marketing
+  question: average order value with vs without a code
+  tools: [metric]
+  answerable: partial
+  gap: no discount-split AOV
+- id: marketing-062
+  module: marketing
+  question: which code drives the most revenue
+  tools: []
+  answerable: 'no'
+  gap: no discount usage or revenue tool
+- id: marketing-063
+  module: marketing
+  question: how many unique customers used a code
+  tools: []
+  answerable: 'no'
+  gap: no discount usage tool
+- id: marketing-064
+  module: marketing
+  question: did the influencer code get used?
+  tools: [search]
+  answerable: partial
+  gap: no discount usage tool
+- id: marketing-065
+  module: marketing
+  question: are people abusing the free shipping code
+  tools: []
+  answerable: 'no'
+  gap: no discount usage tool
+- id: marketing-066
+  module: marketing
+  question: discount usage by source
+  tools: []
+  answerable: 'no'
+  gap: no discount usage tool
+- id: marketing-067
+  module: marketing
+  question: what percent of sales is discounted
+  tools: [metric]
+  answerable: partial
+  gap: no discounted-sales metric
+- id: marketing-068
+  module: marketing
+  question: refund rate on discounted orders
+  tools: []
+  answerable: 'no'
+  gap: no discount split on refunds
+- id: marketing-069
+  module: marketing
+  question: how many redemptions left on the VIP code
+  tools: []
+  answerable: 'no'
+  gap: no discount usage limits tool
+- id: marketing-070
+  module: marketing
+  question: look up order 1042 and tell me the code used
+  tools: [search]
+  answerable: partial
+  gap: search finds orders; discount code may not be returned
+- id: marketing-071
+  module: marketing
+  question: did the code work for this customer
+  tools: [search]
+  answerable: partial
+  gap: no discount usage tool
+- id: marketing-072
+  module: marketing
+  question: which discount codes had zero uses
+  tools: []
+  answerable: 'no'
+  gap: no discount usage tool
+- id: marketing-073
+  module: marketing
+  question: gross sales vs net after discounts this month
+  tools: [metric]
+  answerable: partial
+  gap: metric gives gross sales only; no net of discounts
+- id: marketing-074
+  module: marketing
+  question: who are our influencers?
+  tools: []
+  answerable: 'no'
+  gap: no influencer list tool
+- id: marketing-075
+  module: marketing
+  question: list all influencers
+  tools: []
+  answerable: 'no'
+  gap: no influencer list tool
+- id: marketing-076
+  module: marketing
+  question: how many influencers are we working with
+  tools: []
+  answerable: 'no'
+  gap: no influencer tool
+- id: marketing-077
+  module: marketing
+  question: which influencers are active
+  tools: []
+  answerable: 'no'
+  gap: no influencer tool
+- id: marketing-078
+  module: marketing
+  question: who got free product last month
+  tools: []
+  answerable: 'no'
+  gap: no gifted product tool
+- id: marketing-079
+  module: marketing
+  question: what did Jo get sent
+  tools: []
+  answerable: 'no'
+  gap: no influencer gifting tool
+- id: marketing-080
+  module: marketing
+  question: did Alex ever post about us
+  tools: []
+  answerable: 'no'
+  gap: no influencer posts tool
+- id: marketing-081
+  module: marketing
+  question: whats the best performing influencer
+  tools: []
+  answerable: 'no'
+  gap: no influencer results tool
+- id: marketing-082
+  module: marketing
+  question: which influencer drove the most sales
+  tools: [sales_summary]
+  answerable: partial
+  gap: no influencer attribution tool
+- id: marketing-083
+  module: marketing
+  question: how much have we spent on influencers
+  tools: []
+  answerable: 'no'
+  gap: no influencer cost tool
+- id: marketing-084
+  module: marketing
+  question: influencer contact info for Sam
+  tools: []
+  answerable: 'no'
+  gap: no influencer tool
+- id: marketing-085
+  module: marketing
+  question: what is our influencer program?
+  tools: [data_guide]
+  answerable: partial
+  gap: data_guide explains data storage only
+- id: marketing-086
+  module: marketing
+  question: how do i add an influencer
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: marketing-087
+  module: marketing
+  question: where's the influencers page
+  tools: [where_is]
+  answerable: 'yes'
+- id: marketing-088
+  module: marketing
+  question: which influencers have a discount code
+  tools: []
+  answerable: 'no'
+  gap: no influencer tool
+- id: marketing-089
+  module: marketing
+  question: influencers who havent posted yet after getting product
+  tools: []
+  answerable: 'no'
+  gap: no influencer posts tool
+- id: marketing-090
+  module: marketing
+  question: how many followers does Jo have
+  tools: []
+  answerable: 'no'
+  gap: no influencer social data tool
+- id: marketing-091
+  module: marketing
+  question: which influencers are on tiktok vs instagram
+  tools: []
+  answerable: 'no'
+  gap: no influencer tool
+- id: marketing-092
+  module: marketing
+  question: influencers we should follow up with
+  tools: []
+  answerable: 'no'
+  gap: no influencer follow-up tool
+- id: marketing-093
+  module: marketing
+  question: did any influencer content go live this week
+  tools: []
+  answerable: 'no'
+  gap: no influencer posts tool
+- id: marketing-094
+  module: marketing
+  question: which influencers are paid vs gifted only
+  tools: []
+  answerable: 'no'
+  gap: no influencer tool
+- id: marketing-095
+  module: marketing
+  question: how many influencer partnerships ended
+  tools: []
+  answerable: 'no'
+  gap: no influencer tool
+- id: marketing-096
+  module: marketing
+  question: total value of products given to influencers
+  tools: []
+  answerable: 'no'
+  gap: no gifted product or cost tool
+- id: marketing-097
+  module: marketing
+  question: influencer w/ best conversion rate
+  tools: []
+  answerable: 'no'
+  gap: no influencer results tool
+- id: marketing-098
+  module: marketing
+  question: anyone in our influencer list in the tea niche
+  tools: []
+  answerable: 'no'
+  gap: no influencer tool
+- id: marketing-099
+  module: marketing
+  question: influencer sales lift after a post
+  tools: [sales_summary]
+  answerable: partial
+  gap: no influencer post dates or attribution
+- id: marketing-100
+  module: marketing
+  question: did sales go up after Jos video
+  tools: [sales_summary]
+  answerable: partial
+  gap: no influencer post dates; only daily sales for dates given
+- id: marketing-101
+  module: marketing
+  question: remind me to message the influencers about the launch
+  tools: [create_task]
+  answerable: 'yes'
+- id: marketing-102
+  module: marketing
+  question: open tasks for influencers
+  tools: [list_tasks]
+  answerable: 'yes'
+- id: marketing-103
+  module: marketing
+  question: make a task to send samples to Sam, due next tuesday
+  tools: [create_task]
+  answerable: 'yes'
+- id: marketing-104
+  module: marketing
+  question: who has an outstanding sample shipment
+  tools: []
+  answerable: 'no'
+  gap: no influencer or gifting tool
+- id: marketing-105
+  module: marketing
+  question: what gifted products went out this month
+  tools: []
+  answerable: 'no'
+  gap: no gifted product tool
+- id: marketing-106
+  module: marketing
+  question: how many gifts have we sent in total
+  tools: []
+  answerable: 'no'
+  gap: no gifted product tool
+- id: marketing-107
+  module: marketing
+  question: who got Calm Gummies 30ct for free
+  tools: []
+  answerable: 'no'
+  gap: no gifted product tool
+- id: marketing-108
+  module: marketing
+  question: cost of gifted inventory this quarter
+  tools: [period_review]
+  answerable: partial
+  gap: no gifted product cost; expenses only
+- id: marketing-109
+  module: marketing
+  question: did the gifted items come out of stock count
+  tools: [inventory_search]
+  answerable: partial
+  gap: no gifting movement tracking tool
+- id: marketing-110
+  module: marketing
+  question: how many units gifted vs sold of the new tincture
+  tools: [inventory_search]
+  answerable: partial
+  gap: no gifted units metric
+- id: marketing-111
+  module: marketing
+  question: which products do we gift most
+  tools: []
+  answerable: 'no'
+  gap: no gifted product tool
+- id: marketing-112
+  module: marketing
+  question: are gifts recorded as inventory movements?
+  tools: [data_guide]
+  answerable: partial
+  gap: data_guide explains storage; no gift movement tool
+- id: marketing-113
+  module: marketing
+  question: how do I record a gifted product
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: marketing-114
+  module: marketing
+  question: where do i log product gifts
+  tools: [where_is]
+  answerable: 'yes'
+- id: marketing-115
+  module: marketing
+  question: gift sent to a customer last week, who
+  tools: []
+  answerable: 'no'
+  gap: no gifting tool
+- id: marketing-116
+  module: marketing
+  question: gifted product return rate
+  tools: []
+  answerable: 'no'
+  gap: no gifting results tool
+- id: marketing-117
+  module: marketing
+  question: did the gift to Jo turn into a review
+  tools: []
+  answerable: 'no'
+  gap: no gifting-to-review link
+- id: marketing-118
+  module: marketing
+  question: how many samples do we have left to hand out
+  tools: [inventory_search]
+  answerable: partial
+  gap: no sample stock category
+- id: marketing-119
+  module: marketing
+  question: what freebies went in orders this month
+  tools: [search]
+  answerable: partial
+  gap: no free item tracking
+- id: marketing-120
+  module: marketing
+  question: did we gift anything to a wholesale buyer
+  tools: []
+  answerable: 'no'
+  gap: no gifting tool
+- id: marketing-121
+  module: marketing
+  question: who approves product gifts
+  tools: []
+  answerable: 'no'
+  gap: no gifting approval tool
+- id: marketing-122
+  module: marketing
+  question: gifting budget this year
+  tools: []
+  answerable: 'no'
+  gap: no gifting budget data
+- id: marketing-123
+  module: marketing
+  question: how are reviews looking?
+  tools: []
+  answerable: 'no'
+  gap: no reviews tool
+- id: marketing-124
+  module: marketing
+  question: what's our average review rating
+  tools: []
+  answerable: 'no'
+  gap: no reviews tool
+- id: marketing-125
+  module: marketing
+  question: new reviews this week
+  tools: []
+  answerable: 'no'
+  gap: no reviews tool
+- id: marketing-126
+  module: marketing
+  question: any bad reviews?
+  tools: []
+  answerable: 'no'
+  gap: no reviews tool
+- id: marketing-127
+  module: marketing
+  question: which product has the best reviews
+  tools: []
+  answerable: 'no'
+  gap: no reviews tool
+- id: marketing-128
+  module: marketing
+  question: which product has the worst rating
+  tools: []
+  answerable: 'no'
+  gap: no reviews tool
+- id: marketing-129
+  module: marketing
+  question: how many 5 star reviews did we get this month
+  tools: []
+  answerable: 'no'
+  gap: no reviews tool
+- id: marketing-130
+  module: marketing
+  question: show me reviews that need a reply
+  tools: []
+  answerable: 'no'
+  gap: no reviews tool
+- id: marketing-131
+  module: marketing
+  question: who left a review on the sleep tincture
+  tools: []
+  answerable: 'no'
+  gap: no reviews tool
+- id: marketing-132
+  module: marketing
+  question: review count by product
+  tools: []
+  answerable: 'no'
+  gap: no reviews tool
+- id: marketing-133
+  module: marketing
+  question: what are customers saying about the new gummies
+  tools: []
+  answerable: 'no'
+  gap: no reviews or sentiment tool
+- id: marketing-134
+  module: marketing
+  question: complaints in reviews about shipping
+  tools: []
+  answerable: 'no'
+  gap: no reviews tool
+- id: marketing-135
+  module: marketing
+  question: are reviews synced from shopify
+  tools: []
+  answerable: 'no'
+  gap: no reviews tool
+- id: marketing-136
+  module: marketing
+  question: where do I read customer reviews
+  tools: [where_is]
+  answerable: 'yes'
+- id: marketing-137
+  module: marketing
+  question: how do I respond to a review
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: marketing-138
+  module: marketing
+  question: how many reviews are pending moderation
+  tools: []
+  answerable: 'no'
+  gap: no reviews tool
+- id: marketing-139
+  module: marketing
+  question: what's the community page for?
+  tools: [where_is]
+  answerable: partial
+  gap: where_is points to page; no content summary
+- id: marketing-140
+  module: marketing
+  question: most active community members
+  tools: []
+  answerable: 'no'
+  gap: no community tool
+- id: marketing-141
+  module: marketing
+  question: any questions in the community unanswered
+  tools: []
+  answerable: 'no'
+  gap: no community tool
+- id: marketing-142
+  module: marketing
+  question: how big is our community
+  tools: []
+  answerable: 'no'
+  gap: no community tool
+- id: marketing-143
+  module: marketing
+  question: new community signups this week
+  tools: []
+  answerable: 'no'
+  gap: no community tool
+- id: marketing-144
+  module: marketing
+  question: community engagement this month
+  tools: []
+  answerable: 'no'
+  gap: no community tool
+- id: marketing-145
+  module: marketing
+  question: who is flagged in the community
+  tools: []
+  answerable: 'no'
+  gap: no community tool
+- id: marketing-146
+  module: marketing
+  question: community vs sales, are the active members buying more
+  tools: [search]
+  answerable: partial
+  gap: no community-to-sales join
+- id: marketing-147
+  module: marketing
+  question: how do I moderate a community post
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: marketing-148
+  module: marketing
+  question: make a task to answer the unanswered review questions
+  tools: [create_task]
+  answerable: 'yes'
+- id: marketing-149
+  module: marketing
+  question: reviews to follow up tasks
+  tools: [list_tasks]
+  answerable: 'yes'
+- id: marketing-150
+  module: marketing
+  question: did a negative review lead to a refund
+  tools: [search]
+  answerable: partial
+  gap: no review-to-refund link; search is text only
+- id: marketing-151
+  module: marketing
+  question: is customer feedback different from reviews
+  tools: [data_guide]
+  answerable: partial
+  gap: data_guide explains storage only
+- id: marketing-152
+  module: marketing
+  question: how's engagement looking
+  tools: []
+  answerable: 'no'
+  gap: no engagement tool
+- id: marketing-153
+  module: marketing
+  question: email open rate last campaign
+  tools: []
+  answerable: 'no'
+  gap: no email stats tool
+- id: marketing-154
+  module: marketing
+  question: click rate on the newsletter
+  tools: []
+  answerable: 'no'
+  gap: no email stats tool
+- id: marketing-155
+  module: marketing
+  question: how many subscribers do we have
+  tools: []
+  answerable: 'no'
+  gap: no email subscriber tool
+- id: marketing-156
+  module: marketing
+  question: new subscribers this month
+  tools: []
+  answerable: 'no'
+  gap: no email subscriber tool
+- id: marketing-157
+  module: marketing
+  question: unsubscribes after the last email
+  tools: []
+  answerable: 'no'
+  gap: no email stats tool
+- id: marketing-158
+  module: marketing
+  question: social media followers
+  tools: []
+  answerable: 'no'
+  gap: no social stats tool
+- id: marketing-159
+  module: marketing
+  question: instagram engagement
+  tools: []
+  answerable: 'no'
+  gap: no social stats tool
+- id: marketing-160
+  module: marketing
+  question: website traffic yesterday
+  tools: []
+  answerable: 'no'
+  gap: no web analytics tool
+- id: marketing-161
+  module: marketing
+  question: conversion rate on the store
+  tools: []
+  answerable: 'no'
+  gap: no web analytics tool; metric covers orders not visits
+- id: marketing-162
+  module: marketing
+  question: how many visitors turned into orders
+  tools: []
+  answerable: 'no'
+  gap: no web analytics tool
+- id: marketing-163
+  module: marketing
+  question: abandoned carts today
+  tools: []
+  answerable: 'no'
+  gap: no abandoned cart tool
+- id: marketing-164
+  module: marketing
+  question: cart abandonment rate this month
+  tools: []
+  answerable: 'no'
+  gap: no abandoned cart tool
+- id: marketing-165
+  module: marketing
+  question: top landing pages
+  tools: []
+  answerable: 'no'
+  gap: no web analytics tool
+- id: marketing-166
+  module: marketing
+  question: what time of day do orders come in
+  tools: [sales_summary]
+  answerable: partial
+  gap: sales_summary has daily series, not hourly
+- id: marketing-167
+  module: marketing
+  question: which day is our best for sales
+  tools: [metric]
+  answerable: 'yes'
+- id: marketing-168
+  module: marketing
+  question: which days have the most engagement
+  tools: []
+  answerable: 'no'
+  gap: no engagement tool
+- id: marketing-169
+  module: marketing
+  question: repeat customer rate
+  tools: [metric]
+  answerable: partial
+  gap: no repeat customer metric
+- id: marketing-170
+  module: marketing
+  question: new vs returning customers this month
+  tools: []
+  answerable: 'no'
+  gap: no customer cohort tool
+- id: marketing-171
+  module: marketing
+  question: what events are coming up?
+  tools: []
+  answerable: 'no'
+  gap: no CMS events tool
+- id: marketing-172
+  module: marketing
+  question: any events this month
+  tools: []
+  answerable: 'no'
+  gap: no CMS events tool
+- id: marketing-173
+  module: marketing
+  question: CMS events list
+  tools: []
+  answerable: 'no'
+  gap: no CMS events tool
+- id: marketing-174
+  module: marketing
+  question: what events have we hosted
+  tools: []
+  answerable: 'no'
+  gap: no CMS events tool
+- id: marketing-175
+  module: marketing
+  question: how many people signed up for the workshop
+  tools: []
+  answerable: 'no'
+  gap: no event signups tool
+- id: marketing-176
+  module: marketing
+  question: event attendance last time
+  tools: []
+  answerable: 'no'
+  gap: no event attendance tool
+- id: marketing-177
+  module: marketing
+  question: did the pop-up event sell anything
+  tools: [sales_summary]
+  answerable: partial
+  gap: no event record; sales by date and source only
+- id: marketing-178
+  module: marketing
+  question: sales on the day of the tasting event
+  tools: [sales_summary]
+  answerable: partial
+  gap: no event dates tool; user must supply the date
+- id: marketing-179
+  module: marketing
+  question: how do I add an event
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: marketing-180
+  module: marketing
+  question: where do I edit events on the site
+  tools: [where_is]
+  answerable: 'yes'
+- id: marketing-181
+  module: marketing
+  question: what's the event for next saturday
+  tools: []
+  answerable: 'no'
+  gap: no CMS events tool
+- id: marketing-182
+  module: marketing
+  question: events that are published vs draft
+  tools: []
+  answerable: 'no'
+  gap: no CMS events tool
+- id: marketing-183
+  module: marketing
+  question: is the holiday market event on the website
+  tools: []
+  answerable: 'no'
+  gap: no CMS events tool
+- id: marketing-184
+  module: marketing
+  question: who is running the booth at the next event
+  tools: []
+  answerable: 'no'
+  gap: no events or staffing tool
+- id: marketing-185
+  module: marketing
+  question: event costs this year
+  tools: []
+  answerable: 'no'
+  gap: no event cost tool
+- id: marketing-186
+  module: marketing
+  question: event tasks due
+  tools: [list_tasks]
+  answerable: 'yes'
+- id: marketing-187
+  module: marketing
+  question: create a task to confirm the vendor for the spring event
+  tools: [create_task]
+  answerable: 'yes'
+- id: marketing-188
+  module: marketing
+  question: what happened with the last event signups
+  tools: []
+  answerable: 'no'
+  gap: no event signups tool
+- id: marketing-189
+  module: marketing
+  question: how many events are on the cms calendar
+  tools: []
+  answerable: 'no'
+  gap: no CMS events tool
+- id: marketing-190
+  module: marketing
+  question: did sales go up during the last promotion
+  tools: [sales_summary]
+  answerable: partial
+  gap: no promotion dates tool; user must give dates
+- id: marketing-191
+  module: marketing
+  question: how did the 20% off weekend do for sales
+  tools: [sales_summary, metric]
+  answerable: partial
+  gap: no discount or promo tool; compare by dates
+- id: marketing-192
+  module: marketing
+  question: sales last week vs the week of the email blast
+  tools: [sales_summary]
+  answerable: partial
+  gap: no email blast dates tool
+- id: marketing-193
+  module: marketing
+  question: did marketing help sales this month
+  tools: [metric, period_review]
+  answerable: partial
+  gap: no marketing attribution
+- id: marketing-194
+  module: marketing
+  question: online sales since we started the influencer post
+  tools: [sales_summary]
+  answerable: partial
+  gap: no post dates tool; supply the date
+- id: marketing-195
+  module: marketing
+  question: which marketing activity moved the needle most
+  tools: []
+  answerable: 'no'
+  gap: no attribution tool
+- id: marketing-196
+  module: marketing
+  question: what drives online orders
+  tools: [metric]
+  answerable: partial
+  gap: sales_by_source only; no marketing source detail
+- id: marketing-197
+  module: marketing
+  question: sales by source for last month
+  tools: [metric]
+  answerable: 'yes'
+- id: marketing-198
+  module: marketing
+  question: how much of sales is online vs in store this quarter
+  tools: [metric]
+  answerable: 'yes'
+- id: marketing-199
+  module: marketing
+  question: top products during the promo week
+  tools: [sales_summary]
+  answerable: partial
+  gap: no promo dates tool; works if dates are supplied
+- id: marketing-200
+  module: marketing
+  question: top products this month
+  tools: [metric]
+  answerable: 'yes'
+- id: marketing-201
+  module: marketing
+  question: did the discount push a specific product
+  tools: [metric]
+  answerable: partial
+  gap: top_products gives shares; no discount link
+- id: marketing-202
+  module: marketing
+  question: is the new tincture selling since launch
+  tools: [metric]
+  answerable: partial
+  gap: top_products only; no launch date tool
+- id: marketing-203
+  module: marketing
+  question: sales for the week of black friday last year
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: marketing-204
+  module: marketing
+  question: compare this black friday week to last year
+  tools: [metric]
+  answerable: 'yes'
+- id: marketing-205
+  module: marketing
+  question: what products sold best after the gifting round
+  tools: [metric]
+  answerable: partial
+  gap: no gifting dates; top_products only
+- id: marketing-206
+  module: marketing
+  question: revenue from new customers vs returning
+  tools: []
+  answerable: 'no'
+  gap: no customer cohort tool
+- id: marketing-207
+  module: marketing
+  question: did the sale cut into margin
+  tools: []
+  answerable: 'no'
+  gap: no margin or discount cost tool
+- id: marketing-208
+  module: marketing
+  question: orders per day during the campaign
+  tools: [sales_summary]
+  answerable: partial
+  gap: no campaign dates tool; daily series with dates supplied
+- id: marketing-209
+  module: marketing
+  question: refund rate after the promo
+  tools: [metric]
+  answerable: partial
+  gap: no promo dates tool; refund_rate works for dates supplied
+- id: marketing-210
+  module: marketing
+  question: average order value before and after the discount started
+  tools: [metric]
+  answerable: partial
+  gap: no discount start date tool
+- id: marketing-211
+  module: marketing
+  question: did free shipping increase order size
+  tools: [metric]
+  answerable: partial
+  gap: no free shipping offer tool
+- id: marketing-212
+  module: marketing
+  question: what was gross sales on launch day
+  tools: [metric]
+  answerable: partial
+  gap: no launch date tool; works with a date
+- id: marketing-213
+  module: marketing
+  question: how many orders in the last 30 days
+  tools: [metric]
+  answerable: 'yes'
+- id: marketing-214
+  module: marketing
+  question: best sales day this year
+  tools: [metric]
+  answerable: 'yes'
+- id: marketing-215
+  module: marketing
+  question: did the event weekend beat a normal weekend
+  tools: [sales_summary]
+  answerable: partial
+  gap: no event dates tool
+- id: marketing-216
+  module: marketing
+  question: sales trend since we ran the ads
+  tools: []
+  answerable: 'no'
+  gap: no ad dates or spend tool
+- id: marketing-217
+  module: marketing
+  question: marketing summary for the month
+  tools: [period_review]
+  answerable: partial
+  gap: no marketing summary; period_review covers sales and expenses
+- id: marketing-218
+  module: marketing
+  question: how's marketing doing
+  tools: []
+  answerable: 'no'
+  gap: no marketing summary tool
+- id: marketing-219
+  module: marketing
+  question: quarterly marketing report
+  tools: [list_reports]
+  answerable: partial
+  gap: no marketing report exists today
+- id: marketing-220
+  module: marketing
+  question: what should we promote next based on sales
+  tools: [metric]
+  answerable: partial
+  gap: top_products can inform; no marketing recommendations tool
+- id: marketing-221
+  module: marketing
+  question: slow movers we could put on sale
+  tools: [inventory_search, list_alerts]
+  answerable: partial
+  gap: no slow mover or sell-through tool
+- id: marketing-222
+  module: marketing
+  question: overstocked items to discount
+  tools: [stock_comparison]
+  answerable: partial
+  gap: no overstock or sell-through tool
+- id: marketing-223
+  module: marketing
+  question: what's the marketing page in rupert for
+  tools: [where_is]
+  answerable: 'yes'
+- id: marketing-224
+  module: marketing
+  question: where do i find campaigns
+  tools: [where_is]
+  answerable: 'yes'
+- id: marketing-225
+  module: marketing
+  question: where is the influencers page
+  tools: [where_is]
+  answerable: 'yes'
+- id: marketing-226
+  module: marketing
+  question: where do I see community and reviews
+  tools: [where_is]
+  answerable: 'yes'
+- id: marketing-227
+  module: marketing
+  question: how do I create a campaign in Rupert
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: marketing-228
+  module: marketing
+  question: how do i add a discount offer
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: marketing-229
+  module: marketing
+  question: how to link a Shopify discount to a campaign
+  tools: [how_do_i]
+  answerable: partial
+  gap: how_do_i guidance only; unclear if supported
+- id: marketing-230
+  module: marketing
+  question: how do I edit an influencer's details
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: marketing-231
+  module: marketing
+  question: how do I record what an influencer received
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: marketing-232
+  module: marketing
+  question: how do i track an influencer's code
+  tools: [how_do_i]
+  answerable: partial
+  gap: guidance only; no discount usage tool
+- id: marketing-233
+  module: marketing
+  question: how can I see how a campaign performed
+  tools: [how_do_i]
+  answerable: partial
+  gap: no campaign results tool; guidance only
+- id: marketing-234
+  module: marketing
+  question: how do I archive an old campaign
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: marketing-235
+  module: marketing
+  question: how do I export the influencer list
+  tools: [how_do_i]
+  answerable: partial
+  gap: export may not exist; guidance only
+- id: marketing-236
+  module: marketing
+  question: how do i add a CMS event
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: marketing-237
+  module: marketing
+  question: where do the marketing numbers come from
+  tools: [data_guide]
+  answerable: partial
+  gap: data_guide explains storage; no marketing data tool
+- id: marketing-238
+  module: marketing
+  question: how is discount data stored
+  tools: [data_guide]
+  answerable: 'yes'
+- id: marketing-239
+  module: marketing
+  question: what marketing data does rupert have history for
+  tools: [history_summary]
+  answerable: partial
+  gap: history_summary doesn't list marketing sources
+- id: marketing-240
+  module: marketing
+  question: which reports cover marketing
+  tools: [list_reports]
+  answerable: partial
+  gap: no marketing report exists today
+- id: marketing-241
+  module: marketing
+  question: can rupert pull ads data from meta
+  tools: []
+  answerable: 'no'
+  gap: no ads integration tool
+- id: marketing-242
+  module: marketing
+  question: does rupert connect to klaviyo or mailchimp
+  tools: [where_is]
+  answerable: partial
+  gap: connections page only; no email platform tool
+- id: marketing-243
+  module: marketing
+  question: is the shopify connection healthy
+  tools: [sync_health]
+  answerable: 'yes'
+- id: marketing-244
+  module: marketing
+  question: when did shopify last sync discounts
+  tools: [sync_health]
+  answerable: partial
+  gap: sync_health is per source, not per data type
+- id: marketing-245
+  module: marketing
+  question: are discount codes synced from shopify
+  tools: [data_guide]
+  answerable: partial
+  gap: data_guide explains storage only
+- id: marketing-246
+  module: marketing
+  question: why dont I see the new campaign
+  tools: [how_do_i]
+  answerable: partial
+  gap: troubleshooting guidance only
+- id: marketing-247
+  module: marketing
+  question: campaign page is blank
+  tools: [submit_feedback]
+  answerable: partial
+  gap: bug report route; no diagnostics tool
+- id: marketing-248
+  module: marketing
+  question: the influencer page wont load, report it
+  tools: [submit_feedback]
+  answerable: 'yes'
+- id: marketing-249
+  module: marketing
+  question: tell the devs the review list is missing a column
+  tools: [submit_feedback]
+  answerable: 'yes'
+- id: marketing-250
+  module: marketing
+  question: who has access to the marketing area
+  tools: [where_is]
+  answerable: partial
+  gap: where_is points to permissions; no per-user access tool

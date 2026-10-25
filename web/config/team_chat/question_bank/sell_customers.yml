@@ -1,0 +1,1460 @@
+questions:
+- id: sell-c001
+  module: sell
+  question: "find Mrs. Patel"
+  tools: [search]
+  answerable: 'partial'
+  gap: "no customer profile tool; search returns a record match only"
+- id: sell-c002
+  module: sell
+  question: "pull up Leo's customer record"
+  tools: [search]
+  answerable: 'partial'
+  gap: "no customer profile tool"
+- id: sell-c003
+  module: sell
+  question: "whats Mrs Patels phone number"
+  tools: [search]
+  answerable: 'partial'
+  gap: "no customer profile tool; contact fields not returned reliably"
+- id: sell-c004
+  module: sell
+  question: "email address for Leo from the tea shelf order"
+  tools: [search]
+  answerable: 'partial'
+  gap: "no customer profile tool"
+- id: sell-c005
+  module: sell
+  question: "do we have a customer named Priya Sample"
+  tools: [search]
+  answerable: 'yes'
+- id: sell-c006
+  module: sell
+  question: "is there a customer with email leo@example.com"
+  tools: [search]
+  answerable: 'yes'
+- id: sell-c007
+  module: sell
+  question: "look up customer by phone 555 0188"
+  tools: [search]
+  answerable: 'partial'
+  gap: "no customer lookup by phone field"
+- id: sell-c008
+  module: sell
+  question: "cust search: Hartley"
+  tools: [search]
+  answerable: 'yes'
+- id: sell-c009
+  module: sell
+  question: "find all customers named Garcia"
+  tools: [search]
+  answerable: 'partial'
+  gap: "search returns matches but no customer list tool"
+- id: sell-c010
+  module: sell
+  question: "who is the customer on order 10482"
+  tools: [search]
+  answerable: 'yes'
+- id: sell-c011
+  module: sell
+  question: "what address do we have for Mrs. Patel"
+  tools: [search]
+  answerable: 'partial'
+  gap: "no customer profile tool; address not exposed"
+- id: sell-c012
+  module: sell
+  question: "show me Leo's profile"
+  tools: [search]
+  answerable: 'partial'
+  gap: "no customer profile tool"
+- id: sell-c013
+  module: sell
+  question: "is Leo a wholesale or retail customer"
+  tools: [search]
+  answerable: 'partial'
+  gap: "no customer type field exposed"
+- id: sell-c014
+  module: sell
+  question: "when did Mrs Patel become a customer"
+  tools: [search]
+  answerable: 'partial'
+  gap: "no customer created-date field exposed"
+- id: sell-c015
+  module: sell
+  question: "what tags does Leo have"
+  tools: []
+  answerable: 'no'
+  gap: "no customer tags tool"
+- id: sell-c016
+  module: sell
+  question: "does Priya have notes on her account"
+  tools: []
+  answerable: 'no'
+  gap: "no customer notes tool"
+- id: sell-c017
+  module: sell
+  question: "which customer is tied to this phone number 555 0142"
+  tools: [search]
+  answerable: 'partial'
+  gap: "no reverse lookup by phone"
+- id: sell-c018
+  module: sell
+  question: "how many customers do we have in total"
+  tools: []
+  answerable: 'no'
+  gap: "no customer count tool"
+- id: sell-c019
+  module: sell
+  question: "do we have 2 records for Jo Example"
+  tools: [search]
+  answerable: 'partial'
+  gap: "no duplicate-customer detection tool"
+- id: sell-c020
+  module: sell
+  question: "list customers added this week"
+  tools: []
+  answerable: 'no'
+  gap: "no customer list/created-date tool"
+- id: sell-c021
+  module: sell
+  question: "customers from Ohio"
+  tools: []
+  answerable: 'no'
+  gap: "no customer filter by region"
+- id: sell-c022
+  module: sell
+  question: "what country is Leo in"
+  tools: [search]
+  answerable: 'partial'
+  gap: "no customer profile tool"
+- id: sell-c023
+  module: sell
+  question: "is Mrs Patel on our email list"
+  tools: []
+  answerable: 'no'
+  gap: "no marketing consent tool"
+- id: sell-c024
+  module: sell
+  question: "which customers have no email on file"
+  tools: []
+  answerable: 'no'
+  gap: "no customer data-quality tool"
+- id: sell-c025
+  module: sell
+  question: "show me what orders Mrs. Patel has placed"
+  tools: [search]
+  answerable: 'partial'
+  gap: "no per-customer order list tool"
+- id: sell-c026
+  module: sell
+  question: "how much has Leo spent with us"
+  tools: []
+  answerable: 'no'
+  gap: "no per-customer spend figure"
+- id: sell-c027
+  module: sell
+  question: "total spend for Mrs Patel this year"
+  tools: []
+  answerable: 'no'
+  gap: "no per-customer spend figure"
+- id: sell-c028
+  module: sell
+  question: "when was Priya's last order"
+  tools: [search]
+  answerable: 'partial'
+  gap: "no per-customer last-order tool"
+- id: sell-c029
+  module: sell
+  question: "how many orders has Leo placed"
+  tools: [search]
+  answerable: 'partial'
+  gap: "search cannot count a customer's orders"
+- id: sell-c030
+  module: sell
+  question: "what did Mrs. Patel buy last time"
+  tools: [search]
+  answerable: 'partial'
+  gap: "order lines not summarized per customer"
+- id: sell-c031
+  module: sell
+  question: "what does Leo usually order"
+  tools: []
+  answerable: 'no'
+  gap: "no customer purchase-pattern tool"
+- id: sell-c032
+  module: sell
+  question: "has Priya ever returned anything"
+  tools: [search]
+  answerable: 'partial'
+  gap: "no per-customer refund history"
+- id: sell-c033
+  module: sell
+  question: "did Mrs Patel get a refund on her last order"
+  tools: [search]
+  answerable: 'partial'
+  gap: "no per-customer refund lookup"
+- id: sell-c034
+  module: sell
+  question: "average order value for Leo"
+  tools: []
+  answerable: 'no'
+  gap: "no per-customer AOV"
+- id: sell-c035
+  module: sell
+  question: "what was Mrs Patel's biggest order"
+  tools: []
+  answerable: 'no'
+  gap: "no per-customer order ranking"
+- id: sell-c036
+  module: sell
+  question: "first order date for Leo"
+  tools: [search]
+  answerable: 'partial'
+  gap: "no per-customer first-order tool"
+- id: sell-c037
+  module: sell
+  question: "is Leo's order 10482 paid"
+  tools: [search]
+  answerable: 'yes'
+- id: sell-c038
+  module: sell
+  question: "did Leo's order ship"
+  tools: [search]
+  answerable: 'yes'
+- id: sell-c039
+  module: sell
+  question: "which customers ordered today"
+  tools: []
+  answerable: 'no'
+  gap: "no customer list by order date"
+- id: sell-c040
+  module: sell
+  question: "who ordered the calm gummies this week"
+  tools: [search]
+  answerable: 'partial'
+  gap: "search by text only; no buyer list by product"
+- id: sell-c041
+  module: sell
+  question: "top 10 customers by spend"
+  tools: []
+  answerable: 'no'
+  gap: "no customer spend ranking tool"
+- id: sell-c042
+  module: sell
+  question: "who are our best customers this year"
+  tools: []
+  answerable: 'no'
+  gap: "no customer spend ranking tool"
+- id: sell-c043
+  module: sell
+  question: "biggest spender last month"
+  tools: []
+  answerable: 'no'
+  gap: "no customer spend ranking tool"
+- id: sell-c044
+  module: sell
+  question: "top customers by number of orders"
+  tools: []
+  answerable: 'no'
+  gap: "no customer order-count ranking tool"
+- id: sell-c045
+  module: sell
+  question: "repeat customers last quarter"
+  tools: []
+  answerable: 'no'
+  gap: "no repeat-customer tool"
+- id: sell-c046
+  module: sell
+  question: "whats our repeat purchase rate"
+  tools: []
+  answerable: 'no'
+  gap: "no repeat-rate metric"
+- id: sell-c047
+  module: sell
+  question: "how many new customers did we get this month"
+  tools: []
+  answerable: 'no'
+  gap: "no new-customer count tool"
+- id: sell-c048
+  module: sell
+  question: "new customers vs returning this week"
+  tools: []
+  answerable: 'no'
+  gap: "no new/returning split"
+- id: sell-c049
+  module: sell
+  question: "first time buyers yesterday"
+  tools: []
+  answerable: 'no'
+  gap: "no first-time buyer tool"
+- id: sell-c050
+  module: sell
+  question: "customers who havent ordered in 6 months"
+  tools: []
+  answerable: 'no'
+  gap: "no lapsed-customer tool"
+- id: sell-c051
+  module: sell
+  question: "lapsed customers list"
+  tools: []
+  answerable: 'no'
+  gap: "no lapsed-customer tool"
+- id: sell-c052
+  module: sell
+  question: "who stopped buying from us"
+  tools: []
+  answerable: 'no'
+  gap: "no churn/lapse tool"
+- id: sell-c053
+  module: sell
+  question: "customers who ordered once and never came back"
+  tools: []
+  answerable: 'no'
+  gap: "no one-time-buyer tool"
+- id: sell-c054
+  module: sell
+  question: "customers who ordered 3+ times"
+  tools: []
+  answerable: 'no'
+  gap: "no order-count filter for customers"
+- id: sell-c055
+  module: sell
+  question: "whos our most loyal customer"
+  tools: []
+  answerable: 'no'
+  gap: "no loyalty ranking tool"
+- id: sell-c056
+  module: sell
+  question: "customers who spent over 500 this year"
+  tools: []
+  answerable: 'no'
+  gap: "no spend threshold filter"
+- id: sell-c057
+  module: sell
+  question: "how many customers bought more than once this year"
+  tools: []
+  answerable: 'no'
+  gap: "no repeat-customer count"
+- id: sell-c058
+  module: sell
+  question: "what percent of orders are from repeat customers"
+  tools: []
+  answerable: 'no'
+  gap: "no repeat-customer share metric"
+- id: sell-c059
+  module: sell
+  question: "which customers are at risk of leaving"
+  tools: []
+  answerable: 'no'
+  gap: "no churn risk tool"
+- id: sell-c060
+  module: sell
+  question: "who should we win back"
+  tools: []
+  answerable: 'no'
+  gap: "no win-back list tool"
+- id: sell-c061
+  module: sell
+  question: "customers with orders over 1 year ago and nothing since"
+  tools: []
+  answerable: 'no'
+  gap: "no lapsed-customer tool"
+- id: sell-c062
+  module: sell
+  question: "best customers by source (online vs store)"
+  tools: []
+  answerable: 'no'
+  gap: "no per-customer source breakdown"
+- id: sell-c063
+  module: sell
+  question: "what is a customer worth to us on average"
+  tools: []
+  answerable: 'no'
+  gap: "no lifetime value tool"
+- id: sell-c064
+  module: sell
+  question: "lifetime value of Mrs. Patel"
+  tools: []
+  answerable: 'no'
+  gap: "no lifetime value tool"
+- id: sell-c065
+  module: sell
+  question: "LTV by customer"
+  tools: []
+  answerable: 'no'
+  gap: "no lifetime value tool"
+- id: sell-c066
+  module: sell
+  question: "customer lifetime value this year vs last"
+  tools: []
+  answerable: 'no'
+  gap: "no lifetime value tool"
+- id: sell-c067
+  module: sell
+  question: "average number of orders per customer"
+  tools: []
+  answerable: 'no'
+  gap: "no per-customer order stats"
+- id: sell-c068
+  module: sell
+  question: "how long do customers stay with us"
+  tools: []
+  answerable: 'no'
+  gap: "no retention/tenure tool"
+- id: sell-c069
+  module: sell
+  question: "customer retention rate"
+  tools: []
+  answerable: 'no'
+  gap: "no retention metric"
+- id: sell-c070
+  module: sell
+  question: "what are our customer segments"
+  tools: []
+  answerable: 'no'
+  gap: "no segments tool"
+- id: sell-c071
+  module: sell
+  question: "break customers into segments"
+  tools: []
+  answerable: 'no'
+  gap: "no segments tool"
+- id: sell-c072
+  module: sell
+  question: "vip customers"
+  tools: []
+  answerable: 'no'
+  gap: "no VIP flag or segment tool"
+- id: sell-c073
+  module: sell
+  question: "which customers are VIPs"
+  tools: []
+  answerable: 'no'
+  gap: "no VIP flag or segment tool"
+- id: sell-c074
+  module: sell
+  question: "segment customers by spend"
+  tools: []
+  answerable: 'no'
+  gap: "no segments tool"
+- id: sell-c075
+  module: sell
+  question: "customers who bought the sleep tincture"
+  tools: [search]
+  answerable: 'partial'
+  gap: "search by text only; no buyer list by product"
+- id: sell-c076
+  module: sell
+  question: "who buys 30ct calm gummies most"
+  tools: []
+  answerable: 'no'
+  gap: "no buyer ranking by product"
+- id: sell-c077
+  module: sell
+  question: "average spend per customer last month"
+  tools: []
+  answerable: 'no'
+  gap: "no per-customer spend figures"
+- id: sell-c078
+  module: sell
+  question: "what share of sales is from our top 20 customers"
+  tools: []
+  answerable: 'no'
+  gap: "no customer concentration analysis"
+- id: sell-c079
+  module: sell
+  question: "cohort of customers who joined last january"
+  tools: []
+  answerable: 'no'
+  gap: "no cohort analysis tool"
+- id: sell-c080
+  module: sell
+  question: "customer acquisition by month"
+  tools: []
+  answerable: 'no'
+  gap: "no new-customer count tool"
+- id: sell-c081
+  module: sell
+  question: "what customer follow-ups are due"
+  tools: [order_queues]
+  answerable: 'yes'
+- id: sell-c082
+  module: sell
+  question: "any customer follow ups overdue"
+  tools: [order_queues]
+  answerable: 'partial'
+  gap: "order_queues shows counts but not which are overdue per customer"
+- id: sell-c083
+  module: sell
+  question: "whats waiting on customers"
+  tools: [order_queues]
+  answerable: 'yes'
+- id: sell-c084
+  module: sell
+  question: "customer follow ups due today"
+  tools: [order_queues]
+  answerable: 'partial'
+  gap: "no due-date filter on customer follow-ups"
+- id: sell-c085
+  module: sell
+  question: "list customer followups"
+  tools: [order_queues]
+  answerable: 'partial'
+  gap: "order_queues gives a count and summary, not the full list"
+- id: sell-c086
+  module: sell
+  question: "which customer follow-ups are assigned to Derek"
+  tools: []
+  answerable: 'no'
+  gap: "no customer follow-up list tool with assignee filter"
+- id: sell-c087
+  module: sell
+  question: "who has a follow up with Mrs Patel"
+  tools: []
+  answerable: 'no'
+  gap: "no follow-up list tool"
+- id: sell-c088
+  module: sell
+  question: "whens the next follow up for Leo"
+  tools: []
+  answerable: 'no'
+  gap: "no follow-up list tool"
+- id: sell-c089
+  module: sell
+  question: "how many follow ups did we close this week"
+  tools: []
+  answerable: 'no'
+  gap: "no follow-up history tool"
+- id: sell-c090
+  module: sell
+  question: "oldest open customer follow up"
+  tools: [order_queues]
+  answerable: 'partial'
+  gap: "no per-follow-up age"
+- id: sell-c091
+  module: sell
+  question: "add a follow-up to call Mrs. Patel on Friday"
+  tools: [create_task]
+  answerable: 'partial'
+  gap: "creates a task, not a customer follow-up record"
+- id: sell-c092
+  module: sell
+  question: "remind me to follow up with Leo next week"
+  tools: [create_task]
+  answerable: 'partial'
+  gap: "creates a task, not a customer follow-up record"
+- id: sell-c093
+  module: sell
+  question: "make a follow up for Priya about her subscription"
+  tools: [create_task]
+  answerable: 'partial'
+  gap: "creates a task, not a customer follow-up record"
+- id: sell-c094
+  module: sell
+  question: "create a follow up for everyone who ordered more than 3 times"
+  tools: [create_task]
+  answerable: 'partial'
+  gap: "no customer filter; cannot target the group"
+- id: sell-c095
+  module: sell
+  question: "mark the Leo follow up done"
+  tools: [update_task]
+  answerable: 'partial'
+  gap: "works only for tasks, not customer follow-up records"
+- id: sell-c096
+  module: sell
+  question: "close out the Mrs Patel follow up"
+  tools: [update_task]
+  answerable: 'partial'
+  gap: "works only for tasks, not customer follow-up records"
+- id: sell-c097
+  module: sell
+  question: "snooze the Priya follow up till next month"
+  tools: [update_task]
+  answerable: 'partial'
+  gap: "works only for tasks, not customer follow-up records"
+- id: sell-c098
+  module: sell
+  question: "reassign my customer follow ups to Jan"
+  tools: [update_task]
+  answerable: 'partial'
+  gap: "works only for tasks, not customer follow-up records"
+- id: sell-c099
+  module: sell
+  question: "push the Leo follow-up to monday"
+  tools: [update_task]
+  answerable: 'partial'
+  gap: "works only for tasks, not customer follow-up records"
+- id: sell-c100
+  module: sell
+  question: "make the Mrs. Patel follow up high priority"
+  tools: [update_task]
+  answerable: 'partial'
+  gap: "works only for tasks, not customer follow-up records"
+- id: sell-c101
+  module: sell
+  question: "customer tasks due this week"
+  tools: [list_tasks]
+  answerable: 'yes'
+- id: sell-c102
+  module: sell
+  question: "show my customer tasks"
+  tools: [list_tasks]
+  answerable: 'yes'
+- id: sell-c103
+  module: sell
+  question: "overdue customer tasks"
+  tools: [list_tasks]
+  answerable: 'yes'
+- id: sell-c104
+  module: sell
+  question: "what did I say I'd follow up on with customers"
+  tools: [list_tasks]
+  answerable: 'partial'
+  gap: "customer follow-ups are not tasks"
+- id: sell-c105
+  module: sell
+  question: "who still needs a call back"
+  tools: [order_queues]
+  answerable: 'partial'
+  gap: "no per-customer follow-up detail"
+- id: sell-c106
+  module: sell
+  question: "customers waiting on a reply from us"
+  tools: [order_queues]
+  answerable: 'partial'
+  gap: "no per-customer follow-up detail"
+- id: sell-c107
+  module: sell
+  question: "did anyone follow up with Leo after his complaint"
+  tools: []
+  answerable: 'no'
+  gap: "no interaction history tool"
+- id: sell-c108
+  module: sell
+  question: "follow up due dates for all customers"
+  tools: []
+  answerable: 'no'
+  gap: "no follow-up list tool"
+- id: sell-c109
+  module: sell
+  question: "how do I log a follow up for a customer"
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-c110
+  module: sell
+  question: "where do customer follow ups live"
+  tools: [where_is]
+  answerable: 'yes'
+- id: sell-c111
+  module: sell
+  question: "how do I set a follow up reminder on a customer"
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-c112
+  module: sell
+  question: "how do I mark a customer follow up complete"
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-c113
+  module: sell
+  question: "did we ever call Mrs Patel back"
+  tools: []
+  answerable: 'no'
+  gap: "no interaction history tool"
+- id: sell-c114
+  module: sell
+  question: "last time we talked to Leo"
+  tools: []
+  answerable: 'no'
+  gap: "no interaction history tool"
+- id: sell-c115
+  module: sell
+  question: "show interaction history for Priya"
+  tools: []
+  answerable: 'no'
+  gap: "no interaction history tool"
+- id: sell-c116
+  module: sell
+  question: "what notes do we have on Mrs. Patel"
+  tools: []
+  answerable: 'no'
+  gap: "no customer notes/interaction tool"
+- id: sell-c117
+  module: sell
+  question: "any notes on Leo's account"
+  tools: []
+  answerable: 'no'
+  gap: "no customer notes/interaction tool"
+- id: sell-c118
+  module: sell
+  question: "log a call with Mrs Patel"
+  tools: []
+  answerable: 'no'
+  gap: "no tool to write a customer interaction"
+- id: sell-c119
+  module: sell
+  question: "add a note to Leo's account saying he prefers email"
+  tools: []
+  answerable: 'no'
+  gap: "no tool to write a customer interaction"
+- id: sell-c120
+  module: sell
+  question: "record that I emailed Priya about the refund"
+  tools: []
+  answerable: 'no'
+  gap: "no tool to write a customer interaction"
+- id: sell-c121
+  module: sell
+  question: "who talked to Leo last"
+  tools: []
+  answerable: 'no'
+  gap: "no interaction history tool"
+- id: sell-c122
+  module: sell
+  question: "how many customer calls did we log this week"
+  tools: []
+  answerable: 'no'
+  gap: "no interaction history tool"
+- id: sell-c123
+  module: sell
+  question: "how many emails did we send to customers this month"
+  tools: []
+  answerable: 'no'
+  gap: "no interaction history tool"
+- id: sell-c124
+  module: sell
+  question: "which customers have we not contacted in 90 days"
+  tools: []
+  answerable: 'no'
+  gap: "no interaction history tool"
+- id: sell-c125
+  module: sell
+  question: "customers we talked to today"
+  tools: []
+  answerable: 'no'
+  gap: "no interaction history tool"
+- id: sell-c126
+  module: sell
+  question: "did Mrs Patel ever complain"
+  tools: []
+  answerable: 'no'
+  gap: "no interaction history tool"
+- id: sell-c127
+  module: sell
+  question: "what did Leo say last time he called"
+  tools: []
+  answerable: 'no'
+  gap: "no interaction history tool"
+- id: sell-c128
+  module: sell
+  question: "all interactions with Priya in the last month"
+  tools: []
+  answerable: 'no'
+  gap: "no interaction history tool"
+- id: sell-c129
+  module: sell
+  question: "show me customer notes mentioning shipping"
+  tools: [search]
+  answerable: 'partial'
+  gap: "search may match notes but no interaction filter"
+- id: sell-c130
+  module: sell
+  question: "how do i add a note to a customer"
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-c131
+  module: sell
+  question: "where can I see a customer's call history"
+  tools: [where_is]
+  answerable: 'partial'
+  gap: "page exists but no tool to read its contents"
+- id: sell-c132
+  module: sell
+  question: "how do i log an email to a customer"
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-c133
+  module: sell
+  question: "whos got an active subscription"
+  tools: []
+  answerable: 'no'
+  gap: "no subscription tool"
+- id: sell-c134
+  module: sell
+  question: "how many active subscriptions do we have"
+  tools: []
+  answerable: 'no'
+  gap: "no subscription tool"
+- id: sell-c135
+  module: sell
+  question: "subscriptions that renew this week"
+  tools: []
+  answerable: 'no'
+  gap: "no subscription tool"
+- id: sell-c136
+  module: sell
+  question: "subscribers whose renewal is next month"
+  tools: []
+  answerable: 'no'
+  gap: "no subscription tool"
+- id: sell-c137
+  module: sell
+  question: "did anyone cancel their subscription this week"
+  tools: []
+  answerable: 'no'
+  gap: "no subscription tool"
+- id: sell-c138
+  module: sell
+  question: "churned subscribers last quarter"
+  tools: []
+  answerable: 'no'
+  gap: "no subscription tool"
+- id: sell-c139
+  module: sell
+  question: "subscription churn rate"
+  tools: []
+  answerable: 'no'
+  gap: "no subscription tool"
+- id: sell-c140
+  module: sell
+  question: "is Mrs. Patel subscribed to anything"
+  tools: []
+  answerable: 'no'
+  gap: "no subscription tool"
+- id: sell-c141
+  module: sell
+  question: "what plan is Leo on"
+  tools: []
+  answerable: 'no'
+  gap: "no subscription tool"
+- id: sell-c142
+  module: sell
+  question: "monthly recurring revenue from subscriptions"
+  tools: []
+  answerable: 'no'
+  gap: "no subscription tool"
+- id: sell-c143
+  module: sell
+  question: "how much do subscriptions bring in per month"
+  tools: []
+  answerable: 'no'
+  gap: "no subscription tool; metric has no subscription figure"
+- id: sell-c144
+  module: sell
+  question: "any failed subscription payments"
+  tools: [order_queues]
+  answerable: 'partial'
+  gap: "order_queues shows unresolved card payments but not subscription-specific ones"
+- id: sell-c145
+  module: sell
+  question: "subscribers with a declined card"
+  tools: [order_queues]
+  answerable: 'partial'
+  gap: "no subscription-specific payment view"
+- id: sell-c146
+  module: sell
+  question: "when does Priya's subscription renew"
+  tools: []
+  answerable: 'no'
+  gap: "no subscription tool"
+- id: sell-c147
+  module: sell
+  question: "paused subscriptions"
+  tools: []
+  answerable: 'no'
+  gap: "no subscription tool"
+- id: sell-c148
+  module: sell
+  question: "subscribers who skipped a month"
+  tools: []
+  answerable: 'no'
+  gap: "no subscription tool"
+- id: sell-c149
+  module: sell
+  question: "which subscription product is most popular"
+  tools: []
+  answerable: 'no'
+  gap: "no subscription tool"
+- id: sell-c150
+  module: sell
+  question: "new subscribers this month"
+  tools: []
+  answerable: 'no'
+  gap: "no subscription tool"
+- id: sell-c151
+  module: sell
+  question: "cancel Leo's subscription"
+  tools: []
+  answerable: 'no'
+  gap: "no tool to change a subscription"
+- id: sell-c152
+  module: sell
+  question: "pause Mrs Patel's subscription for a month"
+  tools: []
+  answerable: 'no'
+  gap: "no tool to change a subscription"
+- id: sell-c153
+  module: sell
+  question: "how do I add a customer subscription"
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-c154
+  module: sell
+  question: "where do I see subscriptions"
+  tools: [where_is]
+  answerable: 'yes'
+- id: sell-c155
+  module: sell
+  question: "how do I cancel a subscription in rupert"
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-c156
+  module: sell
+  question: "who referred Mrs. Patel"
+  tools: []
+  answerable: 'no'
+  gap: "no referral tool"
+- id: sell-c157
+  module: sell
+  question: "how many referrals did we get this month"
+  tools: []
+  answerable: 'no'
+  gap: "no referral tool"
+- id: sell-c158
+  module: sell
+  question: "who are our top referrers"
+  tools: []
+  answerable: 'no'
+  gap: "no referral tool"
+- id: sell-c159
+  module: sell
+  question: "did Leo's referral ever order"
+  tools: []
+  answerable: 'no'
+  gap: "no referral tool"
+- id: sell-c160
+  module: sell
+  question: "who did Priya refer"
+  tools: []
+  answerable: 'no'
+  gap: "no referral tool"
+- id: sell-c161
+  module: sell
+  question: "referral rewards owed"
+  tools: []
+  answerable: 'no'
+  gap: "no referral tool"
+- id: sell-c162
+  module: sell
+  question: "which customers came from referrals"
+  tools: []
+  answerable: 'no'
+  gap: "no referral tool"
+- id: sell-c163
+  module: sell
+  question: "how much revenue came from referred customers"
+  tools: []
+  answerable: 'no'
+  gap: "no referral tool"
+- id: sell-c164
+  module: sell
+  question: "referral conversion rate"
+  tools: []
+  answerable: 'no'
+  gap: "no referral tool"
+- id: sell-c165
+  module: sell
+  question: "pending referrals"
+  tools: []
+  answerable: 'no'
+  gap: "no referral tool"
+- id: sell-c166
+  module: sell
+  question: "log a referral from Leo to his sister"
+  tools: []
+  answerable: 'no'
+  gap: "no tool to write a referral"
+- id: sell-c167
+  module: sell
+  question: "how do i record a referral"
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-c168
+  module: sell
+  question: "where do referrals show up"
+  tools: [where_is]
+  answerable: 'yes'
+- id: sell-c169
+  module: sell
+  question: "do we give a discount for referrals"
+  tools: [search]
+  answerable: 'partial'
+  gap: "search may find an offer record; referral program rules not exposed"
+- id: sell-c170
+  module: sell
+  question: "is there a referral code for Mrs Patel"
+  tools: []
+  answerable: 'no'
+  gap: "no referral tool"
+- id: sell-c171
+  module: sell
+  question: "how many loyalty points does Mrs. Patel have"
+  tools: []
+  answerable: 'no'
+  gap: "no loyalty/points tool"
+- id: sell-c172
+  module: sell
+  question: "who has the most loyalty points"
+  tools: []
+  answerable: 'no'
+  gap: "no loyalty/points tool"
+- id: sell-c173
+  module: sell
+  question: "do we have a rewards program"
+  tools: [search]
+  answerable: 'partial'
+  gap: "no loyalty tool; only text search of records"
+- id: sell-c174
+  module: sell
+  question: "points balance for Leo"
+  tools: []
+  answerable: 'no'
+  gap: "no loyalty/points tool"
+- id: sell-c175
+  module: sell
+  question: "how many points have been redeemed this month"
+  tools: []
+  answerable: 'no'
+  gap: "no loyalty/points tool"
+- id: sell-c176
+  module: sell
+  question: "add 100 points to Priya's account"
+  tools: []
+  answerable: 'no'
+  gap: "no loyalty/points tool"
+- id: sell-c177
+  module: sell
+  question: "customers close to a reward tier"
+  tools: []
+  answerable: 'no'
+  gap: "no loyalty/points tool"
+- id: sell-c178
+  module: sell
+  question: "loyalty program signups this month"
+  tools: []
+  answerable: 'no'
+  gap: "no loyalty/points tool"
+- id: sell-c179
+  module: sell
+  question: "how do loyalty points work in rupert"
+  tools: [how_do_i]
+  answerable: 'partial'
+  gap: "no loyalty feature documented"
+- id: sell-c180
+  module: sell
+  question: "who are our wholesale customers"
+  tools: []
+  answerable: 'no'
+  gap: "no customer type filter or wholesale customer list"
+- id: sell-c181
+  module: sell
+  question: "wholesale customers who havent reordered"
+  tools: []
+  answerable: 'no'
+  gap: "no wholesale customer tool"
+- id: sell-c182
+  module: sell
+  question: "how many wholesale accounts do we have"
+  tools: []
+  answerable: 'no'
+  gap: "no wholesale customer count"
+- id: sell-c183
+  module: sell
+  question: "wholesale orders on hold"
+  tools: [order_queues]
+  answerable: 'yes'
+- id: sell-c184
+  module: sell
+  question: "which wholesale orders are waiting on approval"
+  tools: [order_queues]
+  answerable: 'yes'
+- id: sell-c185
+  module: sell
+  question: "sales to wholesale this month"
+  tools: [sales_summary]
+  answerable: 'partial'
+  gap: "sales_summary has no wholesale/customer-type split"
+- id: sell-c186
+  module: sell
+  question: "top wholesale customer"
+  tools: []
+  answerable: 'no'
+  gap: "no customer spend ranking tool"
+- id: sell-c187
+  module: sell
+  question: "what does Leo's shop order wholesale"
+  tools: [search]
+  answerable: 'partial'
+  gap: "no per-customer product history"
+- id: sell-c188
+  module: sell
+  question: "wholesale price list for the tea shelf account"
+  tools: []
+  answerable: 'no'
+  gap: "no customer pricing tool"
+- id: sell-c189
+  module: sell
+  question: "net 30 customers"
+  tools: []
+  answerable: 'no'
+  gap: "no customer terms data"
+- id: sell-c190
+  module: sell
+  question: "unpaid invoices from wholesale customers"
+  tools: [order_queues]
+  answerable: 'partial'
+  gap: "order_queues shows unpaid orders but not by customer type"
+- id: sell-c191
+  module: sell
+  question: "how much does the corner store owe us"
+  tools: [order_queues]
+  answerable: 'partial'
+  gap: "no per-customer balance"
+- id: sell-c192
+  module: sell
+  question: "credit limit for the tea shelf account"
+  tools: []
+  answerable: 'no'
+  gap: "no customer credit data"
+- id: sell-c193
+  module: sell
+  question: "wholesale customers by region"
+  tools: []
+  answerable: 'no'
+  gap: "no customer filter by region"
+- id: sell-c194
+  module: sell
+  question: "how do I set up a new wholesale customer"
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-c195
+  module: sell
+  question: "where is the warehouse page for wholesale orders"
+  tools: [where_is]
+  answerable: 'yes'
+- id: sell-c196
+  module: sell
+  question: "any customer complaints this week"
+  tools: []
+  answerable: 'no'
+  gap: "no customer service issue tool"
+- id: sell-c197
+  module: sell
+  question: "open customer issues"
+  tools: [order_queues]
+  answerable: 'partial'
+  gap: "order_queues only shows follow-ups, not issues"
+- id: sell-c198
+  module: sell
+  question: "which customers are upset"
+  tools: []
+  answerable: 'no'
+  gap: "no customer service issue tool"
+- id: sell-c199
+  module: sell
+  question: "did Mrs Patel get her order"
+  tools: [search]
+  answerable: 'yes'
+- id: sell-c200
+  module: sell
+  question: "late orders customers are asking about"
+  tools: [order_queues]
+  answerable: 'partial'
+  gap: "shows unshipped orders but not customer inquiries"
+- id: sell-c201
+  module: sell
+  question: "customers waiting on a refund"
+  tools: [order_queues]
+  answerable: 'partial'
+  gap: "no per-customer refund-pending view"
+- id: sell-c202
+  module: sell
+  question: "refund requests this week"
+  tools: [metric]
+  answerable: 'partial'
+  gap: "metric gives refund rate, not individual requests"
+- id: sell-c203
+  module: sell
+  question: "how many refunds did Leo get"
+  tools: [search]
+  answerable: 'partial'
+  gap: "no per-customer refund count"
+- id: sell-c204
+  module: sell
+  question: "damaged item complaints"
+  tools: [search]
+  answerable: 'partial'
+  gap: "search by text only; no issue category tool"
+- id: sell-c205
+  module: sell
+  question: "customers who got the wrong item"
+  tools: [search]
+  answerable: 'partial'
+  gap: "search by text only; no issue category tool"
+- id: sell-c206
+  module: sell
+  question: "how many support emails came in today"
+  tools: []
+  answerable: 'no'
+  gap: "no support inbox tool"
+- id: sell-c207
+  module: sell
+  question: "what was Leo's complaint about"
+  tools: []
+  answerable: 'no'
+  gap: "no interaction history tool"
+- id: sell-c208
+  module: sell
+  question: "resolve the complaint from Mrs. Patel"
+  tools: [update_task]
+  answerable: 'partial'
+  gap: "works only if the complaint is a task"
+- id: sell-c209
+  module: sell
+  question: "who handles customer service"
+  tools: []
+  answerable: 'no'
+  gap: "no ownership data for customer service"
+- id: sell-c210
+  module: sell
+  question: "how do i handle a customer who wants a refund"
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-c211
+  module: sell
+  question: "whos having a birthday this month"
+  tools: []
+  answerable: 'no'
+  gap: "no customer birthday data tool"
+- id: sell-c212
+  module: sell
+  question: "customer birthdays next week"
+  tools: []
+  answerable: 'no'
+  gap: "no customer birthday data tool"
+- id: sell-c213
+  module: sell
+  question: "build a mailing list of customers who bought gummies"
+  tools: []
+  answerable: 'no'
+  gap: "no customer list/export tool"
+- id: sell-c214
+  module: sell
+  question: "export customer emails"
+  tools: []
+  answerable: 'no'
+  gap: "no customer export tool"
+- id: sell-c215
+  module: sell
+  question: "who opted in to marketing"
+  tools: []
+  answerable: 'no'
+  gap: "no marketing consent tool"
+- id: sell-c216
+  module: sell
+  question: "customers who unsubscribed"
+  tools: []
+  answerable: 'no'
+  gap: "no marketing consent tool"
+- id: sell-c217
+  module: sell
+  question: "send a text to everyone who ordered this week"
+  tools: []
+  answerable: 'no'
+  gap: "no customer messaging tool"
+- id: sell-c218
+  module: sell
+  question: "email list for the spring sale"
+  tools: []
+  answerable: 'no'
+  gap: "no customer list/export tool"
+- id: sell-c219
+  module: sell
+  question: "customers to invite to the tasting event"
+  tools: []
+  answerable: 'no'
+  gap: "no segments tool"
+- id: sell-c220
+  module: sell
+  question: "how many customers are on the newsletter"
+  tools: []
+  answerable: 'no'
+  gap: "no marketing consent tool"
+- id: sell-c221
+  module: sell
+  question: "send Mrs Patel a thank you email"
+  tools: []
+  answerable: 'no'
+  gap: "no outbound messaging tool"
+- id: sell-c222
+  module: sell
+  question: "how do I export customers to a csv"
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-c223
+  module: sell
+  question: "where do i manage marketing lists"
+  tools: [where_is]
+  answerable: 'partial'
+  gap: "marketing page exists; no customer list feature to confirm"
+- id: sell-c224
+  module: sell
+  question: "how do I import customers from a spreadsheet"
+  tools: [how_do_i]
+  answerable: 'partial'
+  gap: "import path for customers unclear"
+- id: sell-c225
+  module: sell
+  question: "delete Mrs. Patel from the system"
+  tools: []
+  answerable: 'no'
+  gap: "no tool to delete a customer"
+- id: sell-c226
+  module: sell
+  question: "she asked us to delete her data, what do we do"
+  tools: [how_do_i]
+  answerable: 'partial'
+  gap: "privacy steps for customer data not documented"
+- id: sell-c227
+  module: sell
+  question: "export everything we have on Leo"
+  tools: []
+  answerable: 'no'
+  gap: "no customer data export tool"
+- id: sell-c228
+  module: sell
+  question: "what personal info do we store about customers"
+  tools: [data_guide]
+  answerable: 'partial'
+  gap: "data guide may describe fields, not privacy policy"
+- id: sell-c229
+  module: sell
+  question: "remove Priya's email from the list"
+  tools: []
+  answerable: 'no'
+  gap: "no tool to edit customer data"
+- id: sell-c230
+  module: sell
+  question: "how do I delete a customer"
+  tools: [how_do_i]
+  answerable: 'partial'
+  gap: "deletion steps may not be documented"
+- id: sell-c231
+  module: sell
+  question: "how do I anonymize an old customer"
+  tools: [how_do_i]
+  answerable: 'partial'
+  gap: "no anonymize feature documented"
+- id: sell-c232
+  module: sell
+  question: "who looked at Mrs. Patel's record"
+  tools: []
+  answerable: 'no'
+  gap: "no per-record access log tool"
+- id: sell-c233
+  module: sell
+  question: "where is the customers page"
+  tools: [where_is]
+  answerable: 'yes'
+- id: sell-c234
+  module: sell
+  question: "how do I add a new customer"
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-c235
+  module: sell
+  question: "how do i edit a customers phone number"
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-c236
+  module: sell
+  question: "how do I attach an order to a customer"
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-c237
+  module: sell
+  question: "where can i see a customers orders"
+  tools: [where_is]
+  answerable: 'yes'
+- id: sell-c238
+  module: sell
+  question: "how do I attach a note to a customer record"
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-c239
+  module: sell
+  question: "where do I find customer interactions"
+  tools: [where_is]
+  answerable: 'yes'
+- id: sell-c240
+  module: sell
+  question: "how are customers stored in rupert"
+  tools: [data_guide]
+  answerable: 'yes'
+- id: sell-c241
+  module: sell
+  question: "where do customers come from, shopify or square"
+  tools: [data_guide]
+  answerable: 'yes'
+- id: sell-c242
+  module: sell
+  question: "do guest checkout orders create customers"
+  tools: [data_guide]
+  answerable: 'partial'
+  gap: "guest checkout handling not documented"
+- id: sell-c243
+  module: sell
+  question: "how do I tag a customer as wholesale"
+  tools: [how_do_i]
+  answerable: 'partial'
+  gap: "tagging may not exist"
+- id: sell-c244
+  module: sell
+  question: "how do i see which customers have a follow up"
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-c245
+  module: sell
+  question: "where is the page for customer follow ups"
+  tools: [where_is]
+  answerable: 'yes'
+- id: sell-c246
+  module: sell
+  question: "how do I link a referral to a customer"
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-c247
+  module: sell
+  question: "does rupert sync customers from shopify"
+  tools: [sync_health]
+  answerable: 'partial'
+  gap: "shows sync status but not whether customers are included"
+- id: sell-c248
+  module: sell
+  question: "when did customers last sync"
+  tools: [sync_health]
+  answerable: 'partial'
+  gap: "sync_health is per source, not customers specifically"
+- id: sell-c249
+  module: sell
+  question: "are Leo's shopify and square records the same person"
+  tools: []
+  answerable: 'no'
+  gap: "no customer matching tool"
+- id: sell-c250
+  module: sell
+  question: "customers who ordered during the holiday sale"
+  tools: []
+  answerable: 'no'
+  gap: "no customer list by campaign or offer"

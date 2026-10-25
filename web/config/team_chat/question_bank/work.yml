@@ -1,0 +1,1615 @@
+questions:
+- id: work-001
+  module: work
+  question: what tasks are overdue?
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-002
+  module: work
+  question: overdue tasks
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-003
+  module: work
+  question: whats due this week
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-004
+  module: work
+  question: what's on my plate
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-005
+  module: work
+  question: my tasks
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-006
+  module: work
+  question: show me everything assigned to me
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-007
+  module: work
+  question: what does Jan have open?
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-008
+  module: work
+  question: tasks assigned to Derek
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-009
+  module: work
+  question: what's Sean working on
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-010
+  module: work
+  question: anything blocked?
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-011
+  module: work
+  question: show blocked tasks
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-012
+  module: work
+  question: urgent tasks?
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-013
+  module: work
+  question: high priority stuff
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-014
+  module: work
+  question: what's due today
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-015
+  module: work
+  question: what's due tomorrow?
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-016
+  module: work
+  question: anything due next week?
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-017
+  module: work
+  question: open tasks by priority
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-018
+  module: work
+  question: list all done tasks this week
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-019
+  module: work
+  question: what did we finish last week
+  tools:
+  - list_tasks
+  - period_review
+  answerable: 'yes'
+- id: work-020
+  module: work
+  question: how many tasks did we complete this month
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: work-021
+  module: work
+  question: find the task about the shelf labels
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-022
+  module: work
+  question: is there a task for reordering the tea tins
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-023
+  module: work
+  question: any tasks mentioning Shopify
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-024
+  module: work
+  question: tasks for the website refresh project
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: list_tasks has no project filter; only text match, so tasks not named after the project are missed
+- id: work-025
+  module: work
+  question: which tasks have no due date
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: no missing-due-date filter; bot has to list everything and scan
+- id: work-026
+  module: work
+  question: whats unassigned
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: list_tasks filters assigned-to-me only, no unassigned or assignee filter documented
+- id: work-027
+  module: work
+  question: tasks in progress
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-028
+  module: work
+  question: what's in the backlog
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-029
+  module: work
+  question: what's waiting in review
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-030
+  module: work
+  question: oldest open task
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-031
+  module: work
+  question: how many open tasks do we have
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-032
+  module: work
+  question: tasks due before the end of the month
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-033
+  module: work
+  question: overdue and high priority
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-034
+  module: work
+  question: whats late
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-035
+  module: work
+  question: anything slipping this week?
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-036
+  module: work
+  question: tasks Jan created
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: no creator filter on list_tasks
+- id: work-037
+  module: work
+  question: whats Derek got due Friday
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-038
+  module: work
+  question: did Jan finish the tea shelf count task
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-039
+  module: work
+  question: status of the register cleanup task
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-040
+  module: work
+  question: who's working on the label reprint
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-041
+  module: work
+  question: who owns the vendor follow-up task?
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-042
+  module: work
+  question: quick rundown of open tasks
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-043
+  module: work
+  question: any tasks tagged marketing
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: no tag or label filter on list_tasks
+- id: work-044
+  module: work
+  question: which tasks have comments on them
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: list_tasks does not filter on notes/comments
+- id: work-045
+  module: work
+  question: show me completed tasks from last month
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-046
+  module: work
+  question: what tasks did Derek close this week
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: no assignee filter or completion date in filter; bot must scan done tasks
+- id: work-047
+  module: work
+  question: what got done today
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-048
+  module: work
+  question: tasks due in the next 3 days
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-049
+  module: work
+  question: whats urgent and unassigned
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: no unassigned filter
+- id: work-050
+  module: work
+  question: any tasks waiting on a vendor
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-051
+  module: work
+  question: whats overdue and due today
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-052
+  module: work
+  question: anything I forgot to do?
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-053
+  module: work
+  question: how many tasks are waiting on Jan
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-054
+  module: work
+  question: can you print the task list
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: no export or print tool; can only show the list in chat
+- id: work-055
+  module: work
+  question: how many tasks were created this week
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: work-056
+  module: work
+  question: are we getting more done than last month
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: work-057
+  module: work
+  question: task completion rate this quarter
+  tools:
+  - period_review
+  answerable: partial
+  gap: period_review gives created/done counts but no completion rate for open tasks
+- id: work-058
+  module: work
+  question: which tasks have been open longest
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-059
+  module: work
+  question: status of the holiday prep tasks
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-060
+  module: work
+  question: is anyone overloaded with tasks
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: no workload-per-person summary; bot has to count from the list
+- id: work-061
+  module: work
+  question: search tasks for invoice
+  tools:
+  - list_tasks
+  - search
+  answerable: 'yes'
+- id: work-062
+  module: work
+  question: 'monday morning: what''s open and late?'
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-063
+  module: work
+  question: which tasks were created today
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: no created-date filter
+- id: work-064
+  module: work
+  question: is the bag order task done yet
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-065
+  module: work
+  question: what's due by friday for the whole team
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-066
+  module: work
+  question: how many high priority tasks are open?
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-067
+  module: work
+  question: things Sean needs to do before the month end
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: work-068
+  module: work
+  question: make a task to call the supplier about the late pallet
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-069
+  module: work
+  question: remind me to order bags on Monday
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-070
+  module: work
+  question: 'add a task: reprint shelf tags, assign to Jan, due Friday'
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-071
+  module: work
+  question: new task for Derek - check the POS printer, high priority
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-072
+  module: work
+  question: remind me tomorrow to deposit the cash
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-073
+  module: work
+  question: remind me at 3pm to call the bank
+  tools:
+  - create_task
+  answerable: partial
+  gap: tasks have due dates only; no time-of-day reminder or notification
+- id: work-074
+  module: work
+  question: create a task for Jan to count the tea shelf next Wednesday
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-075
+  module: work
+  question: 'add to my list: email the label printer vendor'
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-076
+  module: work
+  question: todo - fix the broken link on the homepage
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-077
+  module: work
+  question: 'task: restock the sample bowl, urgent'
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-078
+  module: work
+  question: can you make a task for the monthly sales tax review, due the 20th
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-079
+  module: work
+  question: make a recurring task to count the register every Friday
+  tools:
+  - create_task
+  answerable: partial
+  gap: no recurring tasks; one task only
+- id: work-080
+  module: work
+  question: every month remind me to review expenses
+  tools:
+  - create_task
+  answerable: partial
+  gap: no recurring tasks or reminders
+- id: work-081
+  module: work
+  question: create a checklist task for opening the shop
+  tools:
+  - create_task
+  answerable: partial
+  gap: no subtasks or checklist items; only a note
+- id: work-082
+  module: work
+  question: add a task and link it to the holiday project
+  tools:
+  - create_task
+  answerable: partial
+  gap: create_task has no project field
+- id: work-083
+  module: work
+  question: 'add a task with a note: vendor said 2 weeks'
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-084
+  module: work
+  question: new task - low priority - tidy the back room
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-085
+  module: work
+  question: log a task to follow up with the customer who emailed about Calm Gummies 30ct
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-086
+  module: work
+  question: 'make 3 tasks: order bags, order labels, order boxes'
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-087
+  module: work
+  question: set up tasks for Jan and Derek to each count a shelf
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-088
+  module: work
+  question: add a task for tomorrow
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-089
+  module: work
+  question: create task "update hours on Google" due Monday assign Sean
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-090
+  module: work
+  question: add task to call the bank about the deposit
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-091
+  module: work
+  question: reminder to renew the business license in March
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-092
+  module: work
+  question: task to check on the backorder next week
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-093
+  module: work
+  question: make a task for me to approve timesheets Friday
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-094
+  module: work
+  question: please add "send Jan the weekly numbers" as a task
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-095
+  module: work
+  question: creat a task for restocking the sample tray
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-096
+  module: work
+  question: 'add task: the walk in is making noise, high'
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-097
+  module: work
+  question: can u add a task for derek to look into the sync errors
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-098
+  module: work
+  question: we need to reprice the 30ct gummies, make a task
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-099
+  module: work
+  question: 'task: ask the accountant about mileage'
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-100
+  module: work
+  question: put "order more receipt paper" on the list for Jan, due tuesday
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-101
+  module: work
+  question: add a task for every employee to read the new return policy
+  tools:
+  - create_task
+  answerable: partial
+  gap: no assign-to-everyone; would need one task per person
+- id: work-102
+  module: work
+  question: create a task and attach a photo of the broken shelf
+  tools:
+  - create_task
+  answerable: partial
+  gap: no attachments on tasks
+- id: work-103
+  module: work
+  question: create a task due end of month to review the books check
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-104
+  module: work
+  question: make a task for each overdue PO
+  tools:
+  - order_queues
+  - create_task
+  answerable: 'yes'
+- id: work-105
+  module: work
+  question: make tasks for each low-stock item
+  tools:
+  - list_alerts
+  - create_task
+  answerable: 'yes'
+- id: work-106
+  module: work
+  question: turn the open feedback into tasks
+  tools:
+  - list_feedback
+  - create_task
+  answerable: 'yes'
+- id: work-107
+  module: work
+  question: create a follow-up task for every unshipped order older than 3 days
+  tools:
+  - order_queues
+  - create_task
+  answerable: 'yes'
+- id: work-108
+  module: work
+  question: add a task for each fix item on the books check
+  tools:
+  - compliance_check
+  - create_task
+  answerable: 'yes'
+- id: work-109
+  module: work
+  question: add a task to check the uploads inbox every morning
+  tools:
+  - create_task
+  answerable: partial
+  gap: no recurring tasks; creates a single task
+- id: work-110
+  module: work
+  question: 'task for sean - call the vendor re: the backorder, due thursday, urgent'
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-111
+  module: work
+  question: add a reminder to look at cash flow before the 1st
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-112
+  module: work
+  question: 'jot down: ask Jan about the holiday hours'
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: work-113
+  module: work
+  question: assign the label task to Jan
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-114
+  module: work
+  question: move the shelf tags task to done
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-115
+  module: work
+  question: mark it done
+  tools:
+  - update_task
+  answerable: 'yes'
+- id: work-116
+  module: work
+  question: push it to Friday
+  tools:
+  - update_task
+  answerable: 'yes'
+- id: work-117
+  module: work
+  question: push the vendor call to next week
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-118
+  module: work
+  question: make it urgent
+  tools:
+  - update_task
+  answerable: 'yes'
+- id: work-119
+  module: work
+  question: bump the priority on the POS printer task
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-120
+  module: work
+  question: 'add a note to the inventory count task: waiting on boxes'
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-121
+  module: work
+  question: reassign Derek's tasks to Jan while he's out
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-122
+  module: work
+  question: mark all of Jan's done tasks as archived
+  tools:
+  - list_tasks
+  - update_task
+  answerable: partial
+  gap: no archive state; tasks stay on the board
+- id: work-123
+  module: work
+  question: delete the duplicate task
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'no'
+  gap: no delete; update_task can only change assign, status, due date, priority, note
+- id: work-124
+  module: work
+  question: cancel the reorder bags task
+  tools:
+  - list_tasks
+  - update_task
+  answerable: partial
+  gap: no cancel/delete; could only move it to done or add a note
+- id: work-125
+  module: work
+  question: reopen the refund task
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-126
+  module: work
+  question: move everything overdue to next Monday
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-127
+  module: work
+  question: set due date for the website task to Oct 31
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-128
+  module: work
+  question: rename the task "call vendor" to "call vendor re pallet"
+  tools:
+  - list_tasks
+  - update_task
+  answerable: partial
+  gap: update_task cannot change a task title
+- id: work-129
+  module: work
+  question: change the task description to include the PO number
+  tools:
+  - list_tasks
+  - update_task
+  answerable: partial
+  gap: only a note can be added; description not editable
+- id: work-130
+  module: work
+  question: take me off the register task
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-131
+  module: work
+  question: mark the tea shelf tasks as in progress
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-132
+  module: work
+  question: put the label task in review
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-133
+  module: work
+  question: set it to blocked, waiting on vendor
+  tools:
+  - update_task
+  answerable: 'yes'
+- id: work-134
+  module: work
+  question: unblock the bag order task
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-135
+  module: work
+  question: make all my high priority tasks due today
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-136
+  module: work
+  question: lower the priority of the back room task
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-137
+  module: work
+  question: assign everything unassigned to Sean
+  tools:
+  - list_tasks
+  - update_task
+  answerable: partial
+  gap: cannot filter unassigned tasks directly; must scan the list
+- id: work-138
+  module: work
+  question: add Derek as a second assignee
+  tools:
+  - update_task
+  answerable: partial
+  gap: tasks appear to have a single assignee
+- id: work-139
+  module: work
+  question: snooze it till Monday
+  tools:
+  - update_task
+  answerable: 'yes'
+- id: work-140
+  module: work
+  question: mark the sync check task done and note that it was fixed
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-141
+  module: work
+  question: complete the weekly count task
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-142
+  module: work
+  question: set the due date on the license renewal to March 1
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-143
+  module: work
+  question: tell Jan the task is hers now
+  tools:
+  - list_tasks
+  - update_task
+  answerable: partial
+  gap: update_task reassigns but sends no message or notification
+- id: work-144
+  module: work
+  question: move the holiday signage to done and make a follow-up for storage
+  tools:
+  - list_tasks
+  - update_task
+  - create_task
+  answerable: 'yes'
+- id: work-145
+  module: work
+  question: add a comment saying i called them
+  tools:
+  - update_task
+  answerable: 'yes'
+- id: work-146
+  module: work
+  question: change due date for all of Derek's open tasks to next week
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-147
+  module: work
+  question: make the oldest overdue task top priority
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-148
+  module: work
+  question: move 'order tags' to in progress
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-149
+  module: work
+  question: mark my tasks that are due today as done
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-150
+  module: work
+  question: assign the blocked ones to Sean
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-151
+  module: work
+  question: update the reconciliation task with a note that we're missing a statement
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-152
+  module: work
+  question: extend the deadline by a day on the count task
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-153
+  module: work
+  question: i did the bag order, mark it done
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-154
+  module: work
+  question: jan finished the labels, close it out
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-155
+  module: work
+  question: set the priority of everything for the reopening to high
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-156
+  module: work
+  question: mov the label task to jan
+  tools:
+  - list_tasks
+  - update_task
+  answerable: 'yes'
+- id: work-157
+  module: work
+  question: 'edit the task: new due 11/5'
+  tools:
+  - update_task
+  answerable: 'yes'
+- id: work-158
+  module: work
+  question: clear the due date on the cleanup task
+  tools:
+  - list_tasks
+  - update_task
+  answerable: partial
+  gap: unclear if update_task can remove a due date, only set one
+- id: work-159
+  module: work
+  question: move all done tasks off the board
+  tools:
+  - list_tasks
+  - update_task
+  answerable: partial
+  gap: no archive or hide; board status only
+- id: work-160
+  module: work
+  question: who gets this? just give it to whoever has the fewest open tasks
+  tools:
+  - list_tasks
+  - update_task
+  answerable: partial
+  gap: no workload summary; bot has to count assignees itself
+- id: work-161
+  module: work
+  question: what's blocking the bag order task?
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: list_tasks does not expose dependency (blocked-by) links
+- id: work-162
+  module: work
+  question: which tasks depend on the label reprint?
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: no dependency data via list_tasks
+- id: work-163
+  module: work
+  question: make the label task depend on the printer task
+  tools:
+  - update_task
+  answerable: 'no'
+  gap: no tool to add or edit task dependencies
+- id: work-164
+  module: work
+  question: does anything wait on Derek's tasks?
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: no dependency links returned
+- id: work-165
+  module: work
+  question: show the dependency chain for the holiday launch
+  tools:
+  - list_tasks
+  answerable: 'no'
+  gap: no dependency graph or project view
+- id: work-166
+  module: work
+  question: what can I start now that nothing is blocking
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: approximate via status only; dependencies not visible
+- id: work-167
+  module: work
+  question: which blocked tasks have their blockers done?
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: no dependency links to compare
+- id: work-168
+  module: work
+  question: add a blocker to the vendor task
+  tools:
+  - update_task
+  answerable: 'no'
+  gap: update_task cannot add dependencies
+- id: work-169
+  module: work
+  question: which tasks are blocking the most other tasks
+  tools:
+  - list_tasks
+  answerable: 'no'
+  gap: no dependency data
+- id: work-170
+  module: work
+  question: critical path for the store reset
+  tools:
+  - list_tasks
+  answerable: 'no'
+  gap: no dependency or project scheduling data
+- id: work-171
+  module: work
+  question: unblock everything whose prerequisite is done
+  tools:
+  - list_tasks
+  - update_task
+  answerable: partial
+  gap: cannot read prerequisites; could only change status manually
+- id: work-172
+  module: work
+  question: is the reorder task waiting on anything
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: dependency links not returned
+- id: work-173
+  module: work
+  question: what projects are active?
+  tools: []
+  answerable: 'no'
+  gap: no projects tool
+- id: work-174
+  module: work
+  question: how is the holiday project going?
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: no projects tool; only tasks matched by text
+- id: work-175
+  module: work
+  question: project progress
+  tools: []
+  answerable: 'no'
+  gap: no projects tool or progress percentage
+- id: work-176
+  module: work
+  question: what's left on the store refresh project
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: no project filter; text match on tasks only
+- id: work-177
+  module: work
+  question: which projects are behind?
+  tools: []
+  answerable: 'no'
+  gap: no projects tool
+- id: work-178
+  module: work
+  question: list all projects
+  tools: []
+  answerable: 'no'
+  gap: no projects tool
+- id: work-179
+  module: work
+  question: how many tasks are left in the website refresh
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: no project filter; text match on tasks only
+- id: work-180
+  module: work
+  question: percent complete for the inventory cleanup
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: no project progress figure; approximate from task statuses
+- id: work-181
+  module: work
+  question: create a new project for the spring promo
+  tools: []
+  answerable: 'no'
+  gap: no create_project tool
+- id: work-182
+  module: work
+  question: what project templates do we have?
+  tools: []
+  answerable: 'no'
+  gap: no projects or templates tool
+- id: work-183
+  module: work
+  question: who's on the holiday project
+  tools: []
+  answerable: 'no'
+  gap: no project membership data
+- id: work-184
+  module: work
+  question: when is the store reset project due?
+  tools: []
+  answerable: 'no'
+  gap: no project dates tool
+- id: work-185
+  module: work
+  question: which project has the most overdue tasks
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: no project field on tasks; cannot group by project
+- id: work-186
+  module: work
+  question: give me a project status summary for the owners meeting
+  tools:
+  - list_tasks
+  - period_review
+  answerable: partial
+  gap: no projects tool; only task and period figures
+- id: work-187
+  module: work
+  question: close out the store reset project
+  tools: []
+  answerable: 'no'
+  gap: no update_project tool
+- id: work-188
+  module: work
+  question: what's the budget on the redesign project
+  tools: []
+  answerable: 'no'
+  gap: no project budget data
+- id: work-189
+  module: work
+  question: show projects by owner
+  tools: []
+  answerable: 'no'
+  gap: no projects tool
+- id: work-190
+  module: work
+  question: did the POS migration project finish?
+  tools:
+  - list_tasks
+  answerable: partial
+  gap: no projects tool; check by task text
+- id: work-191
+  module: work
+  question: any projects stalled with no activity in 30 days
+  tools: []
+  answerable: 'no'
+  gap: no projects tool or activity data
+- id: work-192
+  module: work
+  question: move the project deadline to December 15
+  tools: []
+  answerable: 'no'
+  gap: no update_project tool
+- id: work-193
+  module: work
+  question: add a task to the spring promo project
+  tools:
+  - create_task
+  answerable: partial
+  gap: create_task has no project field
+- id: work-194
+  module: work
+  question: how do i start a project from a template
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: work-195
+  module: work
+  question: how do I add a task to a project
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: work-196
+  module: work
+  question: where do I see projects
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: work-197
+  module: work
+  question: how are we doing on our goals?
+  tools: []
+  answerable: 'no'
+  gap: no goals tool
+- id: work-198
+  module: work
+  question: what goals do we have this quarter
+  tools: []
+  answerable: 'no'
+  gap: no goals tool
+- id: work-199
+  module: work
+  question: are we on track for our sales goal
+  tools:
+  - metric
+  answerable: partial
+  gap: metric gives actual sales but goal target values are not readable
+- id: work-200
+  module: work
+  question: how close are we to the monthly revenue goal
+  tools:
+  - metric
+  answerable: partial
+  gap: actual from metric; no goals tool for the target
+- id: work-201
+  module: work
+  question: show me the KPIs
+  tools: []
+  answerable: 'no'
+  gap: no KPI tool
+- id: work-202
+  module: work
+  question: what was the KPI reading last month
+  tools: []
+  answerable: 'no'
+  gap: no KPI readings tool
+- id: work-203
+  module: work
+  question: add a new goal for the spring sale
+  tools: []
+  answerable: 'no'
+  gap: no create_goal tool
+- id: work-204
+  module: work
+  question: update progress on the customer goal to 60%
+  tools: []
+  answerable: 'no'
+  gap: no goal update tool
+- id: work-205
+  module: work
+  question: which goals are at risk?
+  tools: []
+  answerable: 'no'
+  gap: no goals tool
+- id: work-206
+  module: work
+  question: who owns the inventory goal
+  tools: []
+  answerable: 'no'
+  gap: no goals tool
+- id: work-207
+  module: work
+  question: average order value vs target
+  tools:
+  - metric
+  answerable: partial
+  gap: metric average_order_value gives the actual; target not readable
+- id: work-208
+  module: work
+  question: refund rate KPI this month
+  tools:
+  - metric
+  answerable: partial
+  gap: metric refund_rate exists but the KPI definition and target are not readable
+- id: work-209
+  module: work
+  question: have we hit our orders goal for the quarter
+  tools:
+  - metric
+  answerable: partial
+  gap: orders count from metric; goal target not readable
+- id: work-210
+  module: work
+  question: inventory accuracy KPI
+  tools: []
+  answerable: 'no'
+  gap: no KPI tool; no accuracy metric
+- id: work-211
+  module: work
+  question: on-time shipping KPI
+  tools:
+  - order_queues
+  answerable: partial
+  gap: order_queues shows current unshipped ages only, no historical on-time rate
+- id: work-212
+  module: work
+  question: okr status
+  tools: []
+  answerable: 'no'
+  gap: no goals or KPI tool
+- id: work-213
+  module: work
+  question: set a goal of 10% growth
+  tools: []
+  answerable: 'no'
+  gap: no create_goal tool
+- id: work-214
+  module: work
+  question: weekly KPI summary
+  tools:
+  - period_review
+  answerable: partial
+  gap: period_review covers sales, tasks, stock but not user-defined KPIs
+- id: work-215
+  module: work
+  question: did we hit last quarter's goals?
+  tools:
+  - metric
+  answerable: partial
+  gap: actual sales available; goal targets not readable
+- id: work-216
+  module: work
+  question: add this week's KPI reading
+  tools: []
+  answerable: 'no'
+  gap: no KPI reading write tool
+- id: work-217
+  module: work
+  question: how do I set up a KPI
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: work-218
+  module: work
+  question: where do I log a KPI reading
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: work-219
+  module: work
+  question: where are goals
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: work-220
+  module: work
+  question: where do I find the KPIs
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: work-221
+  module: work
+  question: how do I set a goal
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: work-222
+  module: work
+  question: how do I mark a goal complete
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: work-223
+  module: work
+  question: where do I see tasks?
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: work-224
+  module: work
+  question: where is the task board
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: work-225
+  module: work
+  question: how do i create a task
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: work-226
+  module: work
+  question: how do I assign a task
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: work-227
+  module: work
+  question: how do I set a due date on a task
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: work-228
+  module: work
+  question: how do I mark a task done
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: work-229
+  module: work
+  question: how can I see only my tasks
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: work-230
+  module: work
+  question: how do I add a note to a task
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: work-231
+  module: work
+  question: how do I change task priority
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: work-232
+  module: work
+  question: how do I set up task dependencies
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: work-233
+  module: work
+  question: how do I link a task to a project
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: work-234
+  module: work
+  question: how do I make a recurring task
+  tools:
+  - how_do_i
+  answerable: partial
+  gap: recurring tasks likely not supported; how_do_i can only say so
+- id: work-235
+  module: work
+  question: how do i get notified when a task is assigned to me
+  tools:
+  - how_do_i
+  answerable: partial
+  gap: unclear whether task notifications exist
+- id: work-236
+  module: work
+  question: what do the task statuses mean
+  tools:
+  - data_guide
+  answerable: 'yes'
+- id: work-237
+  module: work
+  question: how are tasks stored in Rupert
+  tools:
+  - data_guide
+  answerable: 'yes'
+- id: work-238
+  module: work
+  question: how do I filter the board by assignee
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: work-239
+  module: work
+  question: can i drag tasks between columns
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: work-240
+  module: work
+  question: how do i delete a task
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: work-241
+  module: work
+  question: how do I make a project template
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: work-242
+  module: work
+  question: where does Rupert show what the team finished this week
+  tools:
+  - where_is
+  - period_review
+  answerable: 'yes'
+- id: work-243
+  module: work
+  question: how many tasks did we close this week vs last week
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: work-244
+  module: work
+  question: 'weekly recap: tasks done and created'
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: work-245
+  module: work
+  question: tasks created vs done this month
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: work-246
+  module: work
+  question: what got done last quarter
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: work-247
+  module: work
+  question: how busy was the team on tasks last week
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: work-248
+  module: work
+  question: quick Monday recap
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: work-249
+  module: work
+  question: what's the date today and what's due
+  tools:
+  - get_workspace_info
+  - list_tasks
+  answerable: 'yes'
+- id: work-250
+  module: work
+  question: what's due this week and what did we finish last week
+  tools:
+  - list_tasks
+  - period_review
+  answerable: 'yes'

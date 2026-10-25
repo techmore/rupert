@@ -1,0 +1,1331 @@
+questions:
+- id: sell-001
+  module: sell
+  question: how r sales today
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-002
+  module: sell
+  question: what did we sell today
+  tools: [metric, sales_summary]
+  answerable: 'yes'
+- id: sell-003
+  module: sell
+  question: sales yesterday?
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-004
+  module: sell
+  question: how many orders came in yesterday
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-005
+  module: sell
+  question: gross sales this week
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-006
+  module: sell
+  question: gross sales last week vs the week before
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-007
+  module: sell
+  question: how's this month looking
+  tools: [metric, period_review]
+  answerable: 'yes'
+- id: sell-008
+  module: sell
+  question: total sales last month
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-009
+  module: sell
+  question: what were sales for last quarter
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-010
+  module: sell
+  question: this quarter so far?
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-011
+  module: sell
+  question: year to date sales
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-012
+  module: sell
+  question: how much did we sell last year in total
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-013
+  module: sell
+  question: sales for the pay week that just ended
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-014
+  module: sell
+  question: this pay week sales so far
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-015
+  module: sell
+  question: how many orders this month
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-016
+  module: sell
+  question: orders today vs same day last year
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-017
+  module: sell
+  question: are we ahead of last year this month
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-018
+  module: sell
+  question: Sales from Oct 1 to Oct 15
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-019
+  module: sell
+  question: orders between 9/1 and 9/30 broken out by source
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-020
+  module: sell
+  question: show me daily sales for the last 14 days
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-021
+  module: sell
+  question: daily sales series for this month
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-022
+  module: sell
+  question: whats our best day this month
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-023
+  module: sell
+  question: best sales day last quarter
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-024
+  module: sell
+  question: what was the busiest day this year
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-025
+  module: sell
+  question: best day of the week for sales
+  tools: [metric, sales_summary]
+  answerable: partial
+  gap: no day-of-week aggregation; would need a daily series and manual grouping
+- id: sell-026
+  module: sell
+  question: average order value this week
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-027
+  module: sell
+  question: aov last month vs this month
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-028
+  module: sell
+  question: what's the average order size today
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-029
+  module: sell
+  question: avg order value year to date compared to last year
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-030
+  module: sell
+  question: how much do people spend per order on average
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-031
+  module: sell
+  question: sales by source this month
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-032
+  module: sell
+  question: how much came from Square last month
+  tools: [sales_summary, metric]
+  answerable: 'yes'
+- id: sell-033
+  module: sell
+  question: Shopify orders yesterday
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-034
+  module: sell
+  question: how many Shopify orders this month
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-035
+  module: sell
+  question: Rupert POS sales today
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-036
+  module: sell
+  question: how much has the Rupert POS done this week
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-037
+  module: sell
+  question: C-Trax sales this month
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-038
+  module: sell
+  question: c trax sales yesterday
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-039
+  module: sell
+  question: SwipeSimple sales last week
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-040
+  module: sell
+  question: swipesimple total for october
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-041
+  module: sell
+  question: Square sales vs Shopify sales last month
+  tools: [sales_summary, metric]
+  answerable: 'yes'
+- id: sell-042
+  module: sell
+  question: which channel is growing fastest
+  tools: [metric, sales_summary]
+  answerable: partial
+  gap: no growth-by-channel tool; would need to compare sources across several periods manually
+- id: sell-043
+  module: sell
+  question: online vs in store split this quarter
+  tools: [metric]
+  answerable: partial
+  gap: no online/in-store grouping; only per-source shares to be combined by hand
+- id: sell-044
+  module: sell
+  question: what percent of sales are in-store
+  tools: [metric]
+  answerable: partial
+  gap: no in-store roll-up across Square/C-Trax/SwipeSimple/Rupert POS; sources may overlap
+- id: sell-045
+  module: sell
+  question: top products this month
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-046
+  module: sell
+  question: what are our best sellers this week
+  tools: [metric, sales_summary]
+  answerable: 'yes'
+- id: sell-047
+  module: sell
+  question: top 5 products last quarter
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-048
+  module: sell
+  question: best selling product year to date
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-049
+  module: sell
+  question: top products on Shopify only last month
+  tools: [sales_summary]
+  answerable: partial
+  gap: top products per source may not be filterable
+- id: sell-050
+  module: sell
+  question: what sold the most yesterday
+  tools: [sales_summary, metric]
+  answerable: 'yes'
+- id: sell-051
+  module: sell
+  question: how many Calm Gummies 30ct did we sell last month
+  tools: [sales_summary, search]
+  answerable: partial
+  gap: top products only; no per-item unit count for an arbitrary product
+- id: sell-052
+  module: sell
+  question: which products dropped off vs last month
+  tools: [period_review]
+  answerable: partial
+  gap: period_review lists top products but not a ranked decline list
+- id: sell-053
+  module: sell
+  question: refund rate this month
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-054
+  module: sell
+  question: how many refunds last week
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-055
+  module: sell
+  question: refunded orders this quarter
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-056
+  module: sell
+  question: whats our refund rate compared to last year
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-057
+  module: sell
+  question: which orders were refunded yesterday
+  tools: [sales_summary, search]
+  answerable: partial
+  gap: summary gives refunded counts only; no list of refunded order numbers
+- id: sell-058
+  module: sell
+  question: total refund dollars this month
+  tools: [sales_summary]
+  answerable: partial
+  gap: refunded order counts only, not refund dollar amounts
+- id: sell-059
+  module: sell
+  question: how many orders got cancelled this week
+  tools: [sales_summary]
+  answerable: partial
+  gap: no cancelled order count; only refunded counts
+- id: sell-060
+  module: sell
+  question: cancelled orders last month
+  tools: [search]
+  answerable: partial
+  gap: no cancelled-order tool; search only finds individual records
+- id: sell-061
+  module: sell
+  question: any unpaid orders sitting around
+  tools: [order_queues]
+  answerable: 'yes'
+- id: sell-062
+  module: sell
+  question: orders waiting to ship
+  tools: [order_queues]
+  answerable: 'yes'
+- id: sell-063
+  module: sell
+  question: how old is the oldest unshipped order
+  tools: [order_queues]
+  answerable: 'yes'
+- id: sell-064
+  module: sell
+  question: whats waiting to go out
+  tools: [order_queues]
+  answerable: 'yes'
+- id: sell-065
+  module: sell
+  question: unpaid shopify orders
+  tools: [order_queues]
+  answerable: 'yes'
+- id: sell-066
+  module: sell
+  question: how many paid orders havent shipped
+  tools: [order_queues]
+  answerable: 'yes'
+- id: sell-067
+  module: sell
+  question: did anything ship late this week
+  tools: [order_queues]
+  answerable: partial
+  gap: only current unshipped age, no shipped-late history
+- id: sell-068
+  module: sell
+  question: average time to ship an order
+  tools: [order_queues]
+  answerable: partial
+  gap: no fulfilment time history, only current queue age
+- id: sell-069
+  module: sell
+  question: find order 1042
+  tools: [search]
+  answerable: 'yes'
+- id: sell-070
+  module: sell
+  question: look up the order for Jo Example
+  tools: [search]
+  answerable: 'yes'
+- id: sell-071
+  module: sell
+  question: find all orders over $200 this month
+  tools: [search]
+  answerable: partial
+  gap: search is text-based; no amount filter
+- id: sell-072
+  module: sell
+  question: sales tax collected last month
+  tools: [sales_tax_report]
+  answerable: 'yes'
+- id: sell-073
+  module: sell
+  question: how much sales tax this quarter
+  tools: [sales_tax_report]
+  answerable: 'yes'
+- id: sell-074
+  module: sell
+  question: sales tax by source for Q3
+  tools: [sales_tax_report]
+  answerable: 'yes'
+- id: sell-075
+  module: sell
+  question: tax collected on Shopify orders last month
+  tools: [sales_tax_report]
+  answerable: 'yes'
+- id: sell-076
+  module: sell
+  question: why does sales tax differ between Shopify and Square
+  tools: [sales_tax_report, data_guide]
+  answerable: partial
+  gap: sources overlap and are never summed; no per-order reconciliation tool
+- id: sell-077
+  module: sell
+  question: sales tax filed yet?
+  tools: [compliance_check]
+  answerable: partial
+  gap: sales tax filings status is unknown
+- id: sell-078
+  module: sell
+  question: what is sales for this week compared to last week and why
+  tools: [period_review]
+  answerable: 'yes'
+- id: sell-079
+  module: sell
+  question: give me a review of last month
+  tools: [period_review]
+  answerable: 'yes'
+- id: sell-080
+  module: sell
+  question: weekly recap please
+  tools: [period_review]
+  answerable: 'yes'
+- id: sell-081
+  module: sell
+  question: how did we do this quarter vs last
+  tools: [period_review]
+  answerable: 'yes'
+- id: sell-082
+  module: sell
+  question: sales by hour of the day
+  tools: []
+  answerable: 'no'
+  gap: no hourly sales breakdown
+- id: sell-083
+  module: sell
+  question: what time of day do we sell the most
+  tools: []
+  answerable: 'no'
+  gap: no hourly sales breakdown
+- id: sell-084
+  module: sell
+  question: sales by weekday
+  tools: [sales_summary]
+  answerable: partial
+  gap: daily series can be grouped manually; no weekday report
+- id: sell-085
+  module: sell
+  question: sales by employee
+  tools: []
+  answerable: 'no'
+  gap: no per-staff sales reporting tool
+- id: sell-086
+  module: sell
+  question: who sold the most this month
+  tools: []
+  answerable: 'no'
+  gap: no per-staff sales reporting tool
+- id: sell-087
+  module: sell
+  question: what discount codes were used this month
+  tools: []
+  answerable: 'no'
+  gap: no discount usage reporting tool
+- id: sell-088
+  module: sell
+  question: how much revenue came from discounts
+  tools: []
+  answerable: 'no'
+  gap: no discount usage or discount revenue tool
+- id: sell-089
+  module: sell
+  question: sales split by cash vs card
+  tools: []
+  answerable: 'no'
+  gap: no payment method split tool
+- id: sell-090
+  module: sell
+  question: how much cash did we take this week
+  tools: []
+  answerable: 'no'
+  gap: no payment method split; cash not reported by sales summary
+- id: sell-091
+  module: sell
+  question: what's gross margin on top products
+  tools: []
+  answerable: 'no'
+  gap: no cost or margin data in sales tools
+- id: sell-092
+  module: sell
+  question: sales forecast for next month
+  tools: []
+  answerable: 'no'
+  gap: no forecasting tool; only historical sales
+- id: sell-093
+  module: sell
+  question: projected sales for the rest of the month
+  tools: [metric]
+  answerable: partial
+  gap: no projection; can show month to date and last month for comparison
+- id: sell-094
+  module: sell
+  question: USD vs CAD sales
+  tools: [metric]
+  answerable: partial
+  gap: per-currency sales are shown by metric/sales_summary but not combined
+- id: sell-095
+  module: sell
+  question: sales in other currencies this month
+  tools: [metric, sales_summary]
+  answerable: 'yes'
+- id: sell-096
+  module: sell
+  question: how far back does our order history go
+  tools: [history_summary]
+  answerable: 'yes'
+- id: sell-097
+  module: sell
+  question: do we have Shopify orders from 2022
+  tools: [history_summary]
+  answerable: 'yes'
+- id: sell-098
+  module: sell
+  question: how complete is the C-Trax history
+  tools: [history_summary]
+  answerable: 'yes'
+- id: sell-099
+  module: sell
+  question: when did Square sales last sync
+  tools: [sync_health]
+  answerable: 'yes'
+- id: sell-100
+  module: sell
+  question: is Shopify syncing ok
+  tools: [sync_health]
+  answerable: 'yes'
+- id: sell-101
+  module: sell
+  question: any sync failures on orders
+  tools: [sync_health]
+  answerable: 'yes'
+- id: sell-102
+  module: sell
+  question: why are today's sales low, did a sync break
+  tools: [sync_health, metric]
+  answerable: 'yes'
+- id: sell-103
+  module: sell
+  question: where do I see sales
+  tools: [where_is]
+  answerable: 'yes'
+- id: sell-104
+  module: sell
+  question: where is the orders page
+  tools: [where_is]
+  answerable: 'yes'
+- id: sell-105
+  module: sell
+  question: how do i view an order
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-106
+  module: sell
+  question: how do i refund an order
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-107
+  module: sell
+  question: how do i cancel an order
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-108
+  module: sell
+  question: how do I mark an order as shipped
+  tools: [how_do_i]
+  answerable: partial
+  gap: may be handled in Shopify, not Rupert
+- id: sell-109
+  module: sell
+  question: how do i filter the sales page by date
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-110
+  module: sell
+  question: how do I export sales to csv
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-111
+  module: sell
+  question: where can i download last month's sales report
+  tools: [list_reports, where_is]
+  answerable: 'yes'
+- id: sell-112
+  module: sell
+  question: how is a sale stored in rupert
+  tools: [data_guide]
+  answerable: 'yes'
+- id: sell-113
+  module: sell
+  question: whats the difference between an order and a sale record
+  tools: [data_guide]
+  answerable: 'yes'
+- id: sell-114
+  module: sell
+  question: what time zone do daily sales use
+  tools: [get_workspace_info]
+  answerable: 'yes'
+- id: sell-115
+  module: sell
+  question: what is today's date in the store
+  tools: [get_workspace_info]
+  answerable: 'yes'
+- id: sell-116
+  module: sell
+  question: what sells on the retail POS
+  tools: [metric, sales_summary]
+  answerable: 'yes'
+- id: sell-117
+  module: sell
+  question: where is the retail POS page
+  tools: [where_is]
+  answerable: 'yes'
+- id: sell-118
+  module: sell
+  question: how do I ring up a sale in the POS
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-119
+  module: sell
+  question: how do i void a POS sale
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-120
+  module: sell
+  question: how do I do a return at the register
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-121
+  module: sell
+  question: how do i apply a discount on a POS sale
+  tools: [how_do_i]
+  answerable: partial
+  gap: may not be documented in how-to content
+- id: sell-122
+  module: sell
+  question: POS sales today
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-123
+  module: sell
+  question: how many transactions at the register today
+  tools: [sales_summary]
+  answerable: partial
+  gap: order counts per source are given; register-level counts not exposed
+- id: sell-124
+  module: sell
+  question: sales by register
+  tools: []
+  answerable: 'no'
+  gap: no per-register sales breakdown
+- id: sell-125
+  module: sell
+  question: which register did the most this week
+  tools: []
+  answerable: 'no'
+  gap: no per-register sales breakdown
+- id: sell-126
+  module: sell
+  question: list our registers
+  tools: [where_is]
+  answerable: partial
+  gap: page location only; no register list tool
+- id: sell-127
+  module: sell
+  question: where do I set up a new register
+  tools: [how_do_i, where_is]
+  answerable: 'yes'
+- id: sell-128
+  module: sell
+  question: how do I open a register for the day
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-129
+  module: sell
+  question: how do I close out a register
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-130
+  module: sell
+  question: is the register drawer counted for yesterday
+  tools: [compliance_check]
+  answerable: partial
+  gap: daily close status is covered generally but not per register
+- id: sell-131
+  module: sell
+  question: register over or short this week
+  tools: []
+  answerable: 'no'
+  gap: no cash over/short reporting tool
+- id: sell-132
+  module: sell
+  question: cash drawer variance last month
+  tools: []
+  answerable: 'no'
+  gap: no cash over/short reporting tool
+- id: sell-133
+  module: sell
+  question: what was the till total yesterday
+  tools: []
+  answerable: 'no'
+  gap: no register till totals tool
+- id: sell-134
+  module: sell
+  question: C-Trax POS orders this week
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-135
+  module: sell
+  question: where is the C-Trax POS page
+  tools: [where_is]
+  answerable: 'yes'
+- id: sell-136
+  module: sell
+  question: what does the C-Trax POS page show
+  tools: [data_guide]
+  answerable: 'yes'
+- id: sell-137
+  module: sell
+  question: c-trax pos sales by day this month
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-138
+  module: sell
+  question: is C-Trax connected
+  tools: [sync_health]
+  answerable: 'yes'
+- id: sell-139
+  module: sell
+  question: when was C-Trax last synced
+  tools: [sync_health]
+  answerable: 'yes'
+- id: sell-140
+  module: sell
+  question: C-Trax sync failing?
+  tools: [sync_health]
+  answerable: 'yes'
+- id: sell-141
+  module: sell
+  question: why dont C-Trax sales match Square
+  tools: [data_guide, sales_summary]
+  answerable: partial
+  gap: no per-transaction cross-source comparison tool
+- id: sell-142
+  module: sell
+  question: C-Trax days page, where is it
+  tools: [where_is]
+  answerable: 'yes'
+- id: sell-143
+  module: sell
+  question: did we close out C-Trax for yesterday
+  tools: [compliance_check]
+  answerable: partial
+  gap: daily close checks exist but not specific to the C-Trax days page
+- id: sell-144
+  module: sell
+  question: which C-Trax days are not closed
+  tools: [compliance_check]
+  answerable: partial
+  gap: general daily review status only; no list of unclosed C-Trax days
+- id: sell-145
+  module: sell
+  question: how do i close a C-Trax day
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-146
+  module: sell
+  question: how do i reopen a closed day
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-147
+  module: sell
+  question: C-Trax daily totals for last week
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-148
+  module: sell
+  question: c trax total for the 15th
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-149
+  module: sell
+  question: does the C-Trax day total match the bank deposit
+  tools: [compliance_check]
+  answerable: partial
+  gap: bank lines are checked in books check; no day-level deposit match tool
+- id: sell-150
+  module: sell
+  question: C-Trax days with no sales
+  tools: [sales_summary]
+  answerable: partial
+  gap: daily series shows zero days but there is no dedicated query
+- id: sell-151
+  module: sell
+  question: are there any missing C-Trax days this month
+  tools: [compliance_check, sales_summary]
+  answerable: partial
+  gap: no missing-day detector; compare daily series manually
+- id: sell-152
+  module: sell
+  question: approve the C-Trax days from last week
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-153
+  module: sell
+  question: SwipeSimple daily totals this week
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-154
+  module: sell
+  question: swipesimple days page
+  tools: [where_is]
+  answerable: 'yes'
+- id: sell-155
+  module: sell
+  question: did swipesimple close for yesterday
+  tools: [compliance_check]
+  answerable: partial
+  gap: daily close checks are general; not specific to SwipeSimple days
+- id: sell-156
+  module: sell
+  question: what are the SwipeSimple days
+  tools: [data_guide]
+  answerable: 'yes'
+- id: sell-157
+  module: sell
+  question: swipesimple sales for the 20th
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-158
+  module: sell
+  question: how do I import SwipeSimple data
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-159
+  module: sell
+  question: how do i upload a swipesimple report
+  tools: [how_do_i, where_is]
+  answerable: 'yes'
+- id: sell-160
+  module: sell
+  question: did my swipesimple upload go through
+  tools: [list_uploads]
+  answerable: 'yes'
+- id: sell-161
+  module: sell
+  question: swipesimple files in the inbox
+  tools: [list_uploads]
+  answerable: 'yes'
+- id: sell-162
+  module: sell
+  question: any SwipeSimple uploads that failed
+  tools: [list_uploads]
+  answerable: 'yes'
+- id: sell-163
+  module: sell
+  question: swipesimple card payments unresolved
+  tools: [order_queues]
+  answerable: 'yes'
+- id: sell-164
+  module: sell
+  question: are there unresolved card payments
+  tools: [order_queues]
+  answerable: 'yes'
+- id: sell-165
+  module: sell
+  question: swipesimple fees this month
+  tools: []
+  answerable: 'no'
+  gap: no processing fee reporting tool
+- id: sell-166
+  module: sell
+  question: SwipeSimple item list
+  tools: [swipesimple_items]
+  answerable: 'yes'
+- id: sell-167
+  module: sell
+  question: which swipesimple items arent matched to the catalog
+  tools: [swipesimple_items]
+  answerable: 'yes'
+- id: sell-168
+  module: sell
+  question: SwipeSimple gross vs net for the month
+  tools: [sales_summary]
+  answerable: partial
+  gap: gross sales only; no net after fees
+- id: sell-169
+  module: sell
+  question: swipesimple refunds this month
+  tools: [sales_summary, metric]
+  answerable: partial
+  gap: refund counts only for the source
+- id: sell-170
+  module: sell
+  question: whats swipesimple and square have in common, do they overlap
+  tools: [data_guide]
+  answerable: 'yes'
+- id: sell-171
+  module: sell
+  question: are Square and SwipeSimple sales double counted
+  tools: [data_guide]
+  answerable: 'yes'
+- id: sell-172
+  module: sell
+  question: top customers this year
+  tools: [search]
+  answerable: partial
+  gap: no customer ranking tool
+- id: sell-173
+  module: sell
+  question: who are our best customers
+  tools: []
+  answerable: 'no'
+  gap: no customer spend ranking tool
+- id: sell-174
+  module: sell
+  question: biggest spender last month
+  tools: []
+  answerable: 'no'
+  gap: no customer spend ranking tool
+- id: sell-175
+  module: sell
+  question: repeat customers this quarter
+  tools: []
+  answerable: 'no'
+  gap: no repeat-customer analytics tool
+- id: sell-176
+  module: sell
+  question: how many repeat buyers do we have
+  tools: []
+  answerable: 'no'
+  gap: no repeat-customer analytics tool
+- id: sell-177
+  module: sell
+  question: how many new customers this month
+  tools: []
+  answerable: 'no'
+  gap: no new-customer count tool
+- id: sell-178
+  module: sell
+  question: customer lifetime value
+  tools: []
+  answerable: 'no'
+  gap: no customer lifetime value tool
+- id: sell-179
+  module: sell
+  question: find customer Jo Example
+  tools: [search]
+  answerable: 'yes'
+- id: sell-180
+  module: sell
+  question: orders for jo@example.com
+  tools: [search]
+  answerable: 'yes'
+- id: sell-181
+  module: sell
+  question: pull up the customer with phone ending 0142
+  tools: [search]
+  answerable: partial
+  gap: text search may not index phone numbers
+- id: sell-182
+  module: sell
+  question: show me Jo Example's order history
+  tools: [search]
+  answerable: partial
+  gap: search finds records but not a sorted full history with totals
+- id: sell-183
+  module: sell
+  question: how much has Jo spent total
+  tools: []
+  answerable: 'no'
+  gap: no per-customer total spend tool
+- id: sell-184
+  module: sell
+  question: when was Jo's last order
+  tools: [search]
+  answerable: partial
+  gap: search finds orders; no last-order-date lookup
+- id: sell-185
+  module: sell
+  question: how many orders has Sam Placeholder placed
+  tools: [search]
+  answerable: partial
+  gap: no per-customer order count
+- id: sell-186
+  module: sell
+  question: where is the customers page
+  tools: [where_is]
+  answerable: 'yes'
+- id: sell-187
+  module: sell
+  question: customers page, how do i add one
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-188
+  module: sell
+  question: how do i merge duplicate customers
+  tools: [how_do_i]
+  answerable: partial
+  gap: may not be documented
+- id: sell-189
+  module: sell
+  question: how do I edit a customer's email
+  tools: [how_do_i]
+  answerable: 'yes'
+- id: sell-190
+  module: sell
+  question: what customer follow-ups are open
+  tools: [order_queues]
+  answerable: 'yes'
+- id: sell-191
+  module: sell
+  question: any customers waiting on a reply
+  tools: [order_queues]
+  answerable: partial
+  gap: follow-up queue counts only; no reply status
+- id: sell-192
+  module: sell
+  question: how many customer follow ups are overdue
+  tools: [order_queues]
+  answerable: partial
+  gap: queue shows open follow-ups, not guaranteed overdue split
+- id: sell-193
+  module: sell
+  question: create a follow-up task for the customer who emailed about a late order
+  tools: [create_task]
+  answerable: 'yes'
+- id: sell-194
+  module: sell
+  question: make a task to call Jo Example about her wholesale order
+  tools: [create_task]
+  answerable: 'yes'
+- id: sell-195
+  module: sell
+  question: add a task to thank our top 10 customers
+  tools: [create_task]
+  answerable: 'yes'
+- id: sell-196
+  module: sell
+  question: list my customer follow up tasks
+  tools: [list_tasks]
+  answerable: 'yes'
+- id: sell-197
+  module: sell
+  question: which customer tasks are overdue
+  tools: [list_tasks]
+  answerable: 'yes'
+- id: sell-198
+  module: sell
+  question: assign the follow up with Sam Placeholder to Derek
+  tools: [update_task]
+  answerable: 'yes'
+- id: sell-199
+  module: sell
+  question: mark the Jo Example follow up done
+  tools: [update_task]
+  answerable: 'yes'
+- id: sell-200
+  module: sell
+  question: customers who havent ordered in 90 days
+  tools: []
+  answerable: 'no'
+  gap: no inactive/lapsed customer report
+- id: sell-201
+  module: sell
+  question: lapsed customers
+  tools: []
+  answerable: 'no'
+  gap: no lapsed customer report
+- id: sell-202
+  module: sell
+  question: customers who bought gummies and tea
+  tools: []
+  answerable: 'no'
+  gap: no cross-purchase customer segmentation
+- id: sell-203
+  module: sell
+  question: orders on hold for wholesale
+  tools: [order_queues]
+  answerable: 'yes'
+- id: sell-204
+  module: sell
+  question: whats the status of Jo Example's order
+  tools: [search, order_queues]
+  answerable: 'yes'
+- id: sell-205
+  module: sell
+  question: did Jo's order ship
+  tools: [search]
+  answerable: 'yes'
+- id: sell-206
+  module: sell
+  question: what did we sell on Black Friday last year
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-207
+  module: sell
+  question: compare this December to last December
+  tools: [sales_summary, metric]
+  answerable: partial
+  gap: presets cover standard periods; custom prior-year month needs two manual ranges
+- id: sell-208
+  module: sell
+  question: sales for the same week last year
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-209
+  module: sell
+  question: q3 vs q2 sales
+  tools: [period_review, metric]
+  answerable: 'yes'
+- id: sell-210
+  module: sell
+  question: how many orders in q3
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-211
+  module: sell
+  question: what was our best month last year
+  tools: [sales_summary]
+  answerable: partial
+  gap: no best-month metric; would need monthly ranges compared manually
+- id: sell-212
+  module: sell
+  question: average daily sales this month
+  tools: [metric, sales_summary]
+  answerable: partial
+  gap: no daily average metric; derived from totals divided by days
+- id: sell-213
+  module: sell
+  question: sales trend over the past 6 months
+  tools: [sales_summary]
+  answerable: partial
+  gap: returns ranges and daily series but no trend chart tool
+- id: sell-214
+  module: sell
+  question: which source had the most orders last week
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-215
+  module: sell
+  question: orders per day this week
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-216
+  module: sell
+  question: whats our highest single order
+  tools: []
+  answerable: 'no'
+  gap: no max order lookup
+- id: sell-217
+  module: sell
+  question: how many orders had more than one item
+  tools: []
+  answerable: 'no'
+  gap: no basket size breakdown
+- id: sell-218
+  module: sell
+  question: average items per order
+  tools: []
+  answerable: 'no'
+  gap: no units-per-order metric
+- id: sell-219
+  module: sell
+  question: sales by category
+  tools: []
+  answerable: 'no'
+  gap: no category sales breakdown
+- id: sell-220
+  module: sell
+  question: top category this month
+  tools: []
+  answerable: 'no'
+  gap: no category sales breakdown
+- id: sell-221
+  module: sell
+  question: are online orders up or down this week
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-222
+  module: sell
+  question: daily sales close checklist
+  tools: [compliance_check]
+  answerable: 'yes'
+- id: sell-223
+  module: sell
+  question: are yesterdays sales records all reviewed
+  tools: [compliance_check]
+  answerable: 'yes'
+- id: sell-224
+  module: sell
+  question: sales records needing review
+  tools: [compliance_check]
+  answerable: 'yes'
+- id: sell-225
+  module: sell
+  question: any sales records missing
+  tools: [compliance_check, sync_health]
+  answerable: partial
+  gap: books check covers sales records generally; no per-order missing list
+- id: sell-226
+  module: sell
+  question: whats on fire in sales
+  tools: [period_review, order_queues]
+  answerable: 'yes'
+- id: sell-227
+  module: sell
+  question: gimme the sales numbers for the owners meeting
+  tools: [period_review, metric]
+  answerable: 'yes'
+- id: sell-228
+  module: sell
+  question: quick sales summary for sean
+  tools: [period_review]
+  answerable: 'yes'
+- id: sell-229
+  module: sell
+  question: sales today vs yesterday
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-230
+  module: sell
+  question: and last week?
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-231
+  module: sell
+  question: and by source?
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-232
+  module: sell
+  question: what about refunds
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-233
+  module: sell
+  question: how about the month before
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-234
+  module: sell
+  question: ok and the top products for that
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-235
+  module: sell
+  question: break that down by day
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-236
+  module: sell
+  question: same but for square only
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-237
+  module: sell
+  question: sales on the 4th of july
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-238
+  module: sell
+  question: sales on christmas eve this year
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-239
+  module: sell
+  question: hows POS vs online
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-240
+  module: sell
+  question: how mny orders tdy
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-241
+  module: sell
+  question: salez this wk
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-242
+  module: sell
+  question: topp sellers lst month
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-243
+  module: sell
+  question: who bought the most?
+  tools: []
+  answerable: 'no'
+  gap: no customer spend ranking tool
+- id: sell-244
+  module: sell
+  question: did the website make any money today
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-245
+  module: sell
+  question: reg sales todya
+  tools: [sales_summary]
+  answerable: 'yes'
+- id: sell-246
+  module: sell
+  question: refunds?? how bad
+  tools: [metric]
+  answerable: 'yes'
+- id: sell-247
+  module: sell
+  question: ctrax close done?
+  tools: [compliance_check]
+  answerable: partial
+  gap: daily close status is general, not specific to C-Trax
+- id: sell-248
+  module: sell
+  question: ss deposits matched?
+  tools: [compliance_check]
+  answerable: partial
+  gap: bank lines checked generally; no SwipeSimple-specific match tool
+- id: sell-249
+  module: sell
+  question: what orders need attention
+  tools: [order_queues]
+  answerable: 'yes'
+- id: sell-250
+  module: sell
+  question: how do I create a new order for a phone customer
+  tools: [how_do_i]
+  answerable: 'yes'

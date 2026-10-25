@@ -520,6 +520,7 @@ class TeamChatTest < ActionDispatch::IntegrationTest
     rows = css_select('tbody tr').map { |row| row.css('td').map { |cell| cell.text.squish } }
     assert_equal ['@rupert · qwen3.5-4b local gateway', '100%', '1', '0', '1', '0', '40.0 s', '40.0 s', '0 (0%)', '1.0'], rows.first
     assert_select 'h2', 'Answers over 2 minutes'
+    assert_select '#question-bank h2', 'Question bank'
     assert_select 'h2', 'Test runs'
     TeamChat::BatteryRun.create!(run_key: 'r1', set_name: 'finance', agent: 'qwen', model: 'qwen3.5-4b', status: 'done', questions: 1, answered: 1,
       avg_grade: 4.5, avg_seconds: 13.5, max_seconds: 30, by_cadence: { 'tax' => 5.0 }, revision: 'abc123',

@@ -8,10 +8,11 @@ module Mcp
         Tools::GetWorkspaceInfo, Tools::DataGuide, Tools::ListReports, Tools::BusinessPulse,
         Tools::SalesSummary, Tools::Metric, Tools::ListMetrics, Tools::PeriodReview, Tools::SalesTaxReport, Tools::DailyClose,
         Tools::ComplianceCheck, Tools::OrderQueues,
-        Tools::InventorySearch, Tools::StockComparison, Tools::SwipesimpleItems, Tools::TimeKeepingReport, Tools::ListTasks,
+        Tools::InventorySearch, Tools::StockComparison, Tools::StockMovements, Tools::PurchaseOrders, Tools::SwipesimpleItems, Tools::TimeKeepingReport, Tools::ListTasks,
+        Tools::CustomerLookup, Tools::CustomerInsights, Tools::ListProjects, Tools::StaffSchedule, Tools::MarketingRecords, Tools::MarketingSummary,
         Tools::CreateTask, Tools::UpdateTask, Tools::ListAlerts, Tools::AiHealth, Tools::SubmitFeedback, Tools::ListMyFeedback,
         Tools::InstanceStatus, Tools::RecentErrors, Tools::SyncHealth, Tools::BackupFreshness, Tools::DeployStatus,
-        Tools::ListFeedback, Tools::ReportContext, Tools::ListUploads, Tools::HistorySummary
+        Tools::ActivityLog, Tools::ListFeedback, Tools::ReportContext, Tools::ListUploads, Tools::HistorySummary
       ]
     end
 

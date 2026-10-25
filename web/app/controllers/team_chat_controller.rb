@@ -234,6 +234,7 @@ class TeamChatController < AuthenticatedController
     runs = runs.where(set_name: @run_set) if @run_set
     @runs = runs.limit(60).to_a
     @leaderboard = TeamChat::Leaderboard.call
+    @bank_scores = TeamChat::QuestionBank.scores
   end
 
   # PATCH /chat/:room/messages/:id { body } — edit your own message.
