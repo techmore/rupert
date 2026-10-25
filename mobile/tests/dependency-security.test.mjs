@@ -10,7 +10,9 @@ import { verifyBackports } from '../scripts/security-backports.mjs';
 const require = createRequire(import.meta.url);
 const braces = require('braces');
 const forge = require('node-forge');
-const { z } = require('zod/v4');
+const { z } = require('zod');
+const expoCliRequire = createRequire(require.resolve('expo/package.json'));
+const expoCliRoot = dirname(expoCliRequire.resolve('@expo/cli/package.json'));
 
 test('backports match the reviewed upstream versions and source hashes', () => {
   verifyBackports();
@@ -59,6 +61,29 @@ test('RSA verification accepts valid signatures and rejects hidden DigestAlgorit
   ]) {
     assert.throws(() => key.verify(digest, signedInfo(children)), /ASN\.1 object|DigestInfo/);
   }
+});
+
+test('Expo CLI resolves the patched zod release, not the vulnerable 3.x line', () => {
+  const version = createRequire(join(expoCliRoot, 'package.json'))('zod/package.json').version;
+  assert.match(version, /^4\./);
+  const [minor, patch] = version.split('.').slice(1).map(Number);
+  assert.ok(minor > 6 || (minor === 6 && patch >= 6), `zod ${version} predates the GHSA-mrhx-c7xc-m3w5 fix`);
+});
+
+test('Expo CLI dev-tools plugin schemas still validate under the zod override', () => {
+  const { PluginSchema, DevToolsPluginOutputSchema } = require(join(expoCliRoot, 'build/src/start/server/DevToolsPlugin.schema.js'));
+  const { createMCPDevToolsExtensionSchema } = require(join(expoCliRoot, 'build/src/start/server/createMCPDevToolsExtensionSchema.js'));
+  const plugin = { packageName: 'p', packageRoot: '/p', bannerTitle: true, cliExtensions: { description: 'd', entryPoint: 'e.js',
+    commands: [{ name: 'run', title: 'Run', environments: ['cli', 'mcp'], parameters: [{ name: 'n', type: 'number' }] }] } };
+  assert.equal(PluginSchema.safeParse(plugin).success, true);
+  assert.equal(PluginSchema.safeParse({ packageName: '', packageRoot: '/p' }).success, false);
+  assert.equal(DevToolsPluginOutputSchema.safeParse([{ type: 'text', text: 't', level: 'info' }, { type: 'image', url: 'https://example.com/a.png' }]).success, true);
+  const bad = DevToolsPluginOutputSchema.safeParse([{ type: 'audio', url: 'not a url' }]);
+  assert.equal(bad.success, false);
+  assert.ok(bad.error.issues.length > 0);
+  const mcp = createMCPDevToolsExtensionSchema(plugin);
+  assert.equal(mcp.safeParse({ command: 'run', n: 2 }).success, true);
+  assert.equal(mcp.safeParse({ command: 'other' }).success, false);
 });
 
 test('oversized zod arrays and sets fail their size check before any element is parsed', () => {
