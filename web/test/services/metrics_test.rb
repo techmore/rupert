@@ -69,6 +69,33 @@ class MetricsTest < ActiveSupport::TestCase
       metric('gross_sales', **window, source: 'rupert_pos', compare: 'none')[:values]
   end
 
+  test 'slowest day and sales by weekday only count days with stored sales, per currency' do
+    order(TODAY - 10, 2_000) # Monday Oct 12
+    order(TODAY - 10, 4_000) # Monday Oct 12
+    order(TODAY - 3, 10_000) # Monday Oct 19
+    order(TODAY - 5, 1_500)  # Saturday Oct 17
+    order(TODAY - 2, 9_000, currency: 'CAD') # Tuesday Oct 20
+    window = { from: (TODAY - 29).iso8601, to: TODAY.iso8601 }
+
+    slow = metric('worst_day', **window)
+    usd = slow[:values].find { |row| row[:currency] == 'USD' }
+    assert_equal ['2026-10-17', 1_500, 1, 3], usd.values_at(:value, :gross_cents, :orders, :days_with_sales)
+    assert_equal 'Saturday Oct 17, 2026: $15.00 from 1 orders', usd[:formatted]
+    assert_equal %w[CAD USD], slow[:values].pluck(:currency), 'currencies are never added together'
+    assert_match(/no stored orders are unknown, not zero/, slow[:caveats].join)
+    assert_empty slow[:change], 'a day is not compared as an amount'
+
+    weekly = metric('sales_by_weekday', **window)[:values].find { |row| row[:currency] == 'USD' }
+    assert_equal ['Monday', 17_500, 3], weekly.values_at(:value, :gross_cents, :days_with_sales)
+    assert_equal [['Monday', 16_000, 3, 2, 8_000, 91.4], ['Saturday', 1_500, 1, 1, 1_500, 8.6]],
+      weekly[:weekdays].map { |row| row.values_at(:weekday, :gross_cents, :orders, :days_with_sales, :average_per_sales_day_cents, :share_percent) }
+    assert_equal 'Monday $160.00 (91.4%), Saturday $15.00 (8.6%)', weekly[:formatted]
+    assert_match(/workspace time zone/, metric('sales_by_weekday', **window)[:caveats].join)
+
+    assert_empty metric('worst_day', period: 'last_quarter', compare: 'none')[:values]
+    assert_empty metric('sales_by_weekday', period: 'last_quarter', compare: 'none')[:values]
+  end
+
   test 'same dates last year, an empty period, and bad requests' do
     order(TODAY - 1, 8_000)
     order((TODAY - 1).prev_year, 10_000)

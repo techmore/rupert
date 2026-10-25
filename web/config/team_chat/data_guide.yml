@@ -104,10 +104,11 @@ topics:
       A store with no day stored is missing, not zero.
   - key: sales
     title: Online and Square sales and orders
-    keywords: [sales, sold, sell, revenue, gross, orders, order value, average order, aov, top products, top-selling, top selling, best-selling, best selling, best day, best seller, shopify, square, rupert pos, website, web store, today, yesterday]
+    keywords: [sales, sold, sell, revenue, gross, orders, order value, average order, aov, top products, top-selling, top selling, best-selling, best selling, best day, best seller, worst day, slowest day, slow day, weekday, day of the week, busiest day, shopify, square, rupert pos, website, web store, today, yesterday]
     tools: [metric, sales_summary, period_review]
     card: >-
-      For a single figure use metric (gross_sales, orders, average_order_value, best_day, sales_by_source, top_products,
+      For a single figure use metric (gross_sales, orders, average_order_value, best_day, worst_day, sales_by_weekday,
+      sales_by_source, top_products,
       refund_rate): Rupert computes it per currency with the comparison already worked out; quote it.
       Orders live in Rupert's order store (Shopify, Square, Rupert POS, manual). Paid and fulfilled orders count as
       sales. Money is in cents with a ready *_dollars value beside it. Totals are per currency, never added across
