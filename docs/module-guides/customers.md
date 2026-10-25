@@ -91,8 +91,14 @@ person. A profile count is not a count of unique people.
 ## Audit history
 
 - Interactions and follow-ups keep `author` and timestamps.
-- Unknown: the customers controllers do not call `ActivityLogger`, so edits to
-  CRM fields and CSV exports are not in the Activity log today.
+- Activity log entries: `customer_created`, `customer_updated` (names of the
+  changed fields only, never their values), `customer_interaction_recorded`
+  (the kind, not the text), `customer_follow_up_scheduled`,
+  `customer_follow_up_completed` / `customer_follow_up_reopened`, and
+  `data_exported` for the CSV (profile count and filter names). Entries label
+  the profile as `Customer #<id>`; names, emails, phone numbers and notes are
+  not copied into the log. Syncs from Shopify or Square do not log per
+  profile.
 
 ## Failure and recovery
 

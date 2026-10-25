@@ -76,8 +76,12 @@ Nothing here writes to any outside system.
 
 ## Audit history
 
-None for page views. Dashboard layout changes are saved on the user record
-without an Activity log entry.
+None for page views or the 30-second live refresh. Saving or resetting the
+dashboard layout writes `dashboard_layout_saved` (widget and hidden counts) or
+`dashboard_layout_reset`. Downloading the cash flow JSON writes
+`data_exported` with the date range (and "one bank account" when filtered; the
+account label is not copied). Retaining a cash forecast writes
+`cash_forecast_retained`.
 
 ## Failure and recovery
 

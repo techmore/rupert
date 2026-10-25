@@ -49,6 +49,18 @@ class CashFlowPageTest < ActionDispatch::IntegrationTest
     assert_equal 120_000, body['kpis']['cash_in']['cents']
   end
 
+  test 'the JSON export is in the Activity log and the page and live refresh are not' do
+    get finance_cash_flow_path
+    get finance_cash_flow_path, headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+    assert_not ActivityLog.exists?(action: 'data_exported')
+
+    get finance_cash_flow_path(from: '2026-09-01', to: '2026-09-30', account: 'Operating', format: :json)
+    assert_response :success
+    log = ActivityLog.find_by!(action: 'data_exported')
+    assert_equal 'Cash flow JSON: 2026-09-01 to 2026-09-30, one bank account', log.details
+    assert_equal @user.id, log.user_id
+  end
+
   test 'bad dates redirect with a plain message and the finance permission is required' do
     get finance_cash_flow_path(from: '2026-10-10', to: '2026-10-01')
     assert_redirected_to finance_cash_flow_path

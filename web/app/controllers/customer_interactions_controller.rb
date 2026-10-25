@@ -7,6 +7,7 @@ class CustomerInteractionsController < AuthenticatedController
     interaction = customer.interactions.new(params.require(:interaction).permit(:kind, :body))
     interaction.author = Current.user
     if interaction.save
+      ActivityLogger.log('customer_interaction_recorded', subject: customer, label: "Customer ##{customer.id}", details: interaction.kind)
       redirect_to(customer_path(customer), notice: 'Interaction recorded.')
     else
       redirect_to(customer_path(customer), alert: interaction.errors.full_messages.to_sentence)
