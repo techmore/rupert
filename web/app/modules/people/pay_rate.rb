@@ -11,6 +11,9 @@ module People
     PAY_TYPES = %w[hourly salary].freeze
     PAY_FREQUENCIES = %w[weekly biweekly monthly].freeze
 
+    # Pay is encrypted at rest (#421). The amounts are only ever read in Ruby; never filter or sum them in SQL.
+    encrypts :hourly_rate_cents, :annual_salary_cents
+
     belongs_to :employee, class_name: 'People::Employee'
 
     validates :pay_type, inclusion: { in: PAY_TYPES }

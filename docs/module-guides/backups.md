@@ -113,5 +113,8 @@ Activity entries: `drive_backup_run`, `drive_disconnected`, `drive_domain_set`,
 - #420: prove the daily recovery objective from dated receipts and run a
   restore drill. Open.
 - #421: encryption in transit and at rest for uploads, chat, payroll and
-  backups. Open.
+  backups. Open. Chat, payroll, HR and 1099 columns are now encrypted
+  ([encryption-at-rest.md](../ops/encryption-at-rest.md)); older rows need
+  `CONFIRM=1 bin/rails ops:encrypt_sensitive_fields`. Backups themselves are
+  still unencrypted.
 - Every copy except the mirror is on SER8's single disk.

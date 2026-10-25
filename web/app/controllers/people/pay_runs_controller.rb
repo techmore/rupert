@@ -12,9 +12,9 @@ module People
       @status = params[:status].presence || 'all'
       @pay_runs = People::PayRun.by_status(@status).recent(100).includes(:payslips)
       @year = params[:year].presence || Date.current.year.to_s
-      @annual_gross = People::PayRun.where(period_start: Date.new(@year.to_i, 1,
-        1)..Date.new(@year.to_i, 12,
-          31)).sum(:total_gross_cents)
+      # Stored totals are encrypted (#421): pluck decrypts them and Ruby adds them up.
+      @annual_gross = People::PayRun.where(period_start: Date.new(@year.to_i, 1, 1)..Date.new(@year.to_i, 12, 31))
+                                    .pluck(:total_gross_cents).sum(&:to_i)
     end
 
     def show
@@ -94,8 +94,8 @@ module People
       end
 
       People::PayrollCalculator.apply_default_deductions(@pay_run)
-      totals = @pay_run.payslips.pick(Arel.sql('COALESCE(SUM(gross_cents), 0), COALESCE(SUM(net_cents), 0)'))
-      @pay_run.update!(total_gross_cents: totals[0], total_net_cents: totals[1])
+      # The amounts are encrypted (#421), so they are added up in Ruby.
+      @pay_run.update!(total_gross_cents: @pay_run.total_gross_cents, total_net_cents: @pay_run.total_net_cents)
       @pay_run.finalize! if @pay_run.may_finalize?
       ActivityLogger.log('pay_run_finalized', subject: @pay_run,
         details: "$#{format('%.2f', @pay_run.total_net_cents / 100.0)}")

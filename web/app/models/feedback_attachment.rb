@@ -21,6 +21,10 @@ class FeedbackAttachment < ApplicationRecord
   IMAGE_TYPES = { 'image/png' => "\x89PNG".b, 'image/jpeg' => "\xFF\xD8\xFF".b }.freeze
   ADMIN_ROLES = %w[admin super_admin].freeze
 
+  # Screenshots, page snapshots and logs can hold customer or staff data, so they are encrypted at rest (#421).
+  encrypts :text_body
+  encrypts :binary_body
+
   belongs_to :agent_feedback
 
   validates :tenant_id, presence: true

@@ -17,6 +17,10 @@ module People
 
     EMPLOYMENT_TYPES = %w[unspecified full_time part_time contractor seasonal].freeze
 
+    # Home address, date of birth and the consolidation snapshot (a copy of the whole profile) are encrypted at
+    # rest (#421). None of them is searched or sorted in SQL.
+    encrypts :address, :date_of_birth, :merge_snapshot
+
     belongs_to :user, optional: true
     belongs_to :department, class_name: 'People::Department', optional: true
     belongs_to :position, class_name: 'People::Position', optional: true

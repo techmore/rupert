@@ -52,8 +52,9 @@ class TeamChatBatteryTest < ActiveSupport::TestCase
     assert_equal 2, grader.calls.size
     assert_match(/period_review\(\{"period":"yesterday"\}\)/, grader.calls.first[:reference])
     assert_match(/"from":"#{Date.current.prev_month.beginning_of_month.iso8601}"/, grader.calls.last[:reference])
-    grades = room.messages.where(author_kind: 'system').where('body LIKE ?', 'Grade %')
-    assert_equal 2, grades.count
+    # Bodies are encrypted at rest (#421), so the notices are picked out in Ruby.
+    grades = room.messages.where(author_kind: 'system').order(:id).select { |notice| notice.body.start_with?('Grade ') }
+    assert_equal 2, grades.size
     assert_match(/Grade 4\/5 for Qwen .*Right totals.*\n- No top product\n— graded by fake-grader/m, grades.first.body)
 
     summary = room.messages.pinned.first
