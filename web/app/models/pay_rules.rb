@@ -44,7 +44,7 @@ class PayRules
   end
 
   def self.load(tenant_id)
-    raw = Setting.find_by(key: KEY, tenant_id: tenant_id)&.value
+    raw = Setting.for_tenant(KEY, tenant_id)&.value
     data = raw.present? ? JSON.parse(raw) : {}
     new(DEFAULTS.merge(data.slice(*DEFAULTS.keys)), tenant_id: tenant_id)
   rescue JSON::ParserError

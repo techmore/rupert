@@ -6,6 +6,8 @@ class PosDisplaysController < AuthenticatedController
   end
   before_action do
     raise Pundit::NotAuthorizedError unless Current.user.can_use_pos?
+
+    skip_authorization # gate: can_use_pos?
     response.headers['Cache-Control'] = 'no-store'
   end
 

@@ -37,6 +37,7 @@ module Finance
     guard_locked_period :incurred_on
 
     validate :category_known
+    validate :vendor_and_account_belong_to_workspace
     validates :amount_cents, numericality: { greater_than: 0, less_than_or_equal_to: 2_147_483_647 }
     validates :incurred_on, presence: true
 
@@ -49,6 +50,18 @@ module Finance
     end
 
     private
+
+    # A vendor or ledger account id from another workspace would read back as nil through the
+    # tenant-scoped association, so check the ids themselves (as Projects::Task does for projects).
+    def vendor_and_account_belong_to_workspace
+      workspace = tenant_id || Current.tenant_id
+      if vendor_id.present? && !Purchasing::Vendor.tenant_unscoped(workspace).exists?(id: vendor_id)
+        errors.add(:vendor, 'must belong to this workspace')
+      end
+      return if account_id.blank? || Finance::Account.tenant_unscoped(workspace).exists?(id: account_id)
+
+      errors.add(:account, 'must belong to this workspace')
+    end
 
     # Any category this workspace has; a new or changed category must be active.
     def category_known

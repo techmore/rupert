@@ -3,6 +3,8 @@
 class PosCheckoutsController < AuthenticatedController
   before_action do
     raise Pundit::NotAuthorizedError unless Current.user.can_use_pos?
+
+    skip_authorization # gate: can_use_pos?; checkouts are scoped to the cashier's own display sessions
     response.headers['Cache-Control'] = 'no-store'
   end
   rescue_from Pos::Error, Ctrax::Client::Error do |error|

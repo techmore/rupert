@@ -175,7 +175,7 @@ module People
     end
 
     def set_employee
-      record = People::Employee.unscoped.find_by!(tenant_id: Current.tenant_id, id: params[:id])
+      record = People::Employee.including_merged.find_by!(id: params[:id])
       if record.merged_into_id
         redirect_to people_employee_path(record.merged_into_id), status: :see_other
       else
@@ -191,7 +191,7 @@ module People
 
     def next_employee_number
       year = Time.now.year
-      count = People::Employee.unscoped.where(tenant_id: Current.tenant_id).count + 1
+      count = People::Employee.including_merged.count + 1
       "E#{year}-#{count.to_s.rjust(3, '0')}"
     end
 

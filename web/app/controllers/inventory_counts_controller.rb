@@ -122,7 +122,7 @@ class InventoryCountsController < AuthenticatedController
   private
 
   def require_inventory_read
-    return if Current.user.can?('inventory.read')
+    return skip_authorization if Current.user.can?('inventory.read') # gate; writes also pass require_inventory_write
 
     redirect_to root_path, alert: "You don't have permission to view inventory counts."
   end

@@ -71,6 +71,8 @@ class EmployeePreviewController < AuthenticatedController
     response.headers['Cache-Control'] = 'no-store'
     return head :forbidden unless Current.user.can_manage_accounts?
 
+    skip_authorization # gate: account managers only; the preview shows sample data, not a real employee
+
     @preview = true
     @examples = EmployeePreview.new
     @worker = @examples.employee

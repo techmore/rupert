@@ -9,6 +9,14 @@ class AuthenticatedController < ApplicationController
 
   rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
   before_action :note_presence
+  # Safety net: every action must either authorize against a policy (including
+  # headless `authorize(:module, ...)`) or pass a controller gate that calls
+  # `skip_authorization`. Controllers whose records are scoped to the signed-in
+  # user opt out with `skip_after_action :verify_authorized` and a reason.
+  # An action that does neither raises Pundit::AuthorizationNotPerformedError in
+  # development and test. In production the miss is reported instead, so a gap
+  # the suite didn't reach shows up in error reports rather than as a broken page.
+  after_action :verify_authorized
 
   # Pagy 43 removed the legacy :last_page overflow option. Preserve the app's
   # existing behavior by retrying an out-of-range request at that paginator's
@@ -20,6 +28,15 @@ class AuthenticatedController < ApplicationController
   end
 
   private
+
+  def verify_authorized
+    super
+  rescue Pundit::AuthorizationNotPerformedError => error
+    raise unless Rails.env.production?
+
+    Rails.error.report(error, handled: true, severity: :warning,
+      context: { controller: controller_path, action: action_name, tenant_id: Current.tenant_id })
+  end
 
   # Records that someone took data out of Rupert (CSV, original, backup).
   # Never raises; the details name the export, not its contents.

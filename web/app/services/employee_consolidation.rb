@@ -32,7 +32,7 @@ class EmployeeConsolidation
         ClockShift.where(employee_id: duplicate.id).update_all(employee_id: primary.id, employee_key: primary.id.to_s)
         People::Department.where(manager_id: duplicate.id).update_all(manager_id: primary.id)
         # Move previous tombstones too, keeping old bookmarks a single hop away.
-        People::Employee.unscoped.where(tenant_id: Current.tenant_id, merged_into_id: duplicate.id).update_all(merged_into_id: primary.id)
+        People::Employee.including_merged.where(merged_into_id: duplicate.id).update_all(merged_into_id: primary.id)
       end
       primary.update!(attrs)
       EmployeeAccessGrant.where(employee_id: primary.id, used_at: nil).update_all(used_at: Time.current)

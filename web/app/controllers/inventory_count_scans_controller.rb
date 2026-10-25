@@ -27,7 +27,7 @@ class InventoryCountScansController < AuthenticatedController
   private
 
   def require_inventory_write
-    return if Current.user.can?('inventory.read') && Current.user.can?('inventory.write')
+    return skip_authorization if Current.user.can?('inventory.read') && Current.user.can?('inventory.write') # gate
 
     respond_to do |format|
       format.json { render json: { error: "You don't have permission to scan inventory counts." }, status: :forbidden }

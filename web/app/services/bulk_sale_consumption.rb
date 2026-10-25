@@ -45,7 +45,7 @@ class BulkSaleConsumption
         .includes(:order_lines).to_a
       by_identity = orders.index_by { |order| [order.source, order.source_order_id] }
       lines = orders.to_h { |order| [order.id, order.order_lines.to_a.group_by(&:source_line_id)] }
-      refunded = Core::Refund.unscoped.where(tenant_id: Current.tenant_id, order_id: orders.map(&:id)).pluck(:order_id).to_set
+      refunded = Core::Refund.with_discarded.where(order_id: orders.map(&:id)).pluck(:order_id).to_set
       items.to_h do |receipt|
         order = by_identity[[receipt.source, receipt.source_order_id]]
         candidates = order ? lines.fetch(order.id).fetch(receipt.source_line_id, []) : []
@@ -126,7 +126,7 @@ class BulkSaleConsumption
           %w[paid fulfilled].include?(order.status) && ORDER_ID.match?(order.source_order_id.to_s)
         raise Error, 'Only complete, quantity-consistent, paid Shopify source orders are eligible for reviewed material consumption.'
       end
-      if Core::Refund.unscoped.where(tenant_id: Current.tenant_id, order_id: order.id).exists?
+      if Core::Refund.with_discarded.where(order_id: order.id).exists?
         raise Error, 'This order has refund history. Review its material disposition separately; refunds do not restock raw material.'
       end
       unless source_line_id.is_a?(String) && LINE_ID.match?(source_line_id)

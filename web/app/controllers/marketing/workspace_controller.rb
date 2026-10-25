@@ -32,6 +32,8 @@ module Marketing
     def toggle
       raise Pundit::NotAuthorizedError unless Current.user.can_manage_accounts? && Current.user.can?('settings.write')
 
+      skip_authorization # gate: account manager with settings.write
+
       FeatureFlag.set(:marketing, params[:enabled] == '1')
       ActivityLogger.log('marketing.toggle', details: { enabled: params[:enabled] == '1' })
       redirect_to(marketing_path, notice: 'Marketing setting updated.')

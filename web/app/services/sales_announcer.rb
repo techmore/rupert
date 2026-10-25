@@ -89,7 +89,7 @@ class SalesAnnouncer
 
   def watermark
     @watermark ||= begin
-      value = Setting.find_by(key: WATERMARK_KEY, tenant_id: Current.tenant_id)&.value
+      value = Setting.for_tenant(WATERMARK_KEY)&.value
       if value.present?
         parsed = JSON.parse(value)
         { time: Time.zone.parse(parsed.fetch('occurred_at')), id: parsed['id'] }
