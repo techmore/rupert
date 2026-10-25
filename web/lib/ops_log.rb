@@ -170,7 +170,8 @@ module OpsLog
       return {} unless error
 
       own = Array(error.backtrace).filter_map { |line| line.delete_prefix("#{Rails.root}/") if line.start_with?(Rails.root.to_s) }
-      own.reject! { |line| line.start_with?('lib/ops_log', 'app/middleware') }
+      # vendor/ is a bundle installed inside the app (CI's cached BUNDLE_PATH): gem frames, not ours.
+      own.reject! { |line| line.start_with?('lib/ops_log', 'app/middleware', 'vendor/') }
       { error_class: error.class.name, error_message: safe_text(error.message), error_at: own.first(frames) }
     end
 
