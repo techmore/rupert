@@ -24,6 +24,21 @@
     <p role="note" class="rounded-xl border border-warn-edge bg-warn-bg p-3 text-sm text-warn" data-leave-warning><%= pluralize(@on_leave.size, 'shift') %> this week <%= @on_leave.size == 1 ? 'falls' : 'fall' %> on approved leave. They are marked below; the shift is still planned until you change it.</p>
   <% end %>
 
+  <% if @over_hours.any? %>
+    <div role="note" class="rounded-xl border border-warn-edge bg-warn-bg p-3 text-sm text-warn" data-hours-warning>
+      <p>Over <%= People::ScheduledShift::PLANNED_HOURS_LIMIT %> planned hours in a pay week (Thursday – Wednesday). These are planned hours, not pay:</p>
+      <ul class="mt-1 list-disc pl-5">
+        <% @over_hours.each do |employee, weeks| %>
+          <% weeks.each do |start, total| %><li><%= employee.full_name %>: <%= hours_label(total) %> hours, <%= pay_week_label(start) %></li><% end %>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <% if @short_rest.any? %>
+    <p role="note" class="rounded-xl border border-warn-edge bg-warn-bg p-3 text-sm text-warn" data-rest-warning><%= pluralize(@short_rest.size, 'shift') %> this week <%= @short_rest.size == 1 ? 'starts' : 'start' %> less than <%= People::ScheduledShift::MIN_REST_HOURS %> hours after the same person's previous shift ends. They are marked below; nothing is changed.</p>
+  <% end %>
+
   <div class="card">
     <div class="table-region" role="region" tabindex="0" aria-label="Planned shifts">
       <table class="table">
@@ -31,7 +46,7 @@
           <tr>
             <th scope="col" class="th">Staff member</th>
             <% (@week..(@week + 6)).each do |day| %><th scope="col" class="th"><%= day.strftime("%a %-d") %></th><% end %>
-            <th scope="col" class="th num">Hours</th>
+            <th scope="col" class="th num">Hours (Mon – Sun)</th>
           </tr>
         </thead>
         <tbody>
@@ -44,11 +59,11 @@
               <% (@week..(@week + 6)).each do |day| %>
                 <td class="td text-mocha">
                   <% shifts.select { |shift| shift.starts_at.to_date == day }.each do |shift| %>
-                    <p class="whitespace-nowrap"><%= can_write ? link_to(shift.time_label, edit_people_scheduled_shift_path(shift), class: "text-olive hover:underline") : shift.time_label %><% if shift.role_label.present? %><span class="block text-xs"><%= shift.role_label %></span><% end %><% if @on_leave.include?(shift.id) %><span class="block text-xs font-semibold text-warn" data-on-leave="<%= shift.id %>">On approved leave</span><% end %></p>
+                    <p class="whitespace-nowrap"><%= can_write ? link_to(shift.time_label, edit_people_scheduled_shift_path(shift), class: "text-olive hover:underline") : shift.time_label %><% if shift.role_label.present? %><span class="block text-xs"><%= shift.role_label %></span><% end %><% if @on_leave.include?(shift.id) %><span class="block text-xs font-semibold text-warn" data-on-leave="<%= shift.id %>">On approved leave</span><% end %><% if @short_rest.key?(shift.id) %><span class="block text-xs font-semibold text-warn" data-short-rest="<%= shift.id %>">Short rest: <%= hours_label(@short_rest[shift.id]) %> h since last shift</span><% end %></p>
                   <% end %>
                 </td>
               <% end %>
-              <td class="td num"><%= number_with_precision(shifts.sum(&:hours), precision: 2, strip_insignificant_zeros: true) %></td>
+              <td class="td num"><%= hours_label(shifts.sum(&:hours)) %><% if @over_hours.key?(employee) %><span class="block text-xs font-semibold text-warn" data-over-hours="<%= employee.id %>">Over <%= People::ScheduledShift::PLANNED_HOURS_LIMIT %> in pay week</span><% end %></td>
             </tr>
           <% end %>
         </tbody>

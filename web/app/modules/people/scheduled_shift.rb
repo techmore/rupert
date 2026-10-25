@@ -7,6 +7,11 @@ module People
 
     self.table_name = 'scheduled_shifts'
 
+    # Planning warnings only (#469); neither ever blocks a save. Hours are planned
+    # hours in a Thursday-Wednesday pay week (EmployeePayWeek), not overtime pay.
+    PLANNED_HOURS_LIMIT = 40
+    MIN_REST_HOURS = 10
+
     belongs_to :employee, class_name: 'People::Employee'
 
     validates :starts_at, :ends_at, presence: true
@@ -25,6 +30,40 @@ module People
       return 0 if starts_at.nil? || ends_at.nil?
 
       (ends_at - starts_at) / 3600.0
+    end
+
+    # Hours of this shift that fall between two times (a shift can cross midnight
+    # into the next pay week).
+    def hours_within(from, to)
+      [([ends_at, to].min - [starts_at, from].max) / 3600.0, 0].max
+    end
+
+    # Planned hours per pay-week start for one person, for each pay week touched by `days`.
+    def self.pay_week_hours(employee_id, days)
+      days.map { |day| EmployeePayWeek.week_start(day) }.uniq.index_with do |start|
+        from = start.in_time_zone
+        to = (start + 7).in_time_zone
+        between(start, start + 6).where(employee_id: employee_id).sum { |shift| shift.hours_within(from, to) }
+      end
+    end
+
+    # The pay weeks this shift touches where the person is planned over the limit.
+    def pay_weeks_over_limit
+      return {} if starts_at.nil? || ends_at.nil? || employee_id.blank?
+
+      self.class.pay_week_hours(employee_id, [starts_at.to_date, ends_at.to_date]).select { |_start, total| total > PLANNED_HOURS_LIMIT }
+    end
+
+    # Hours between the end of the person's previous shift and the start of this
+    # one, and between this one and their next, when either is shorter than the minimum.
+    def short_rests
+      return [] if starts_at.nil? || ends_at.nil? || employee_id.blank?
+
+      others = self.class.where(employee_id: employee_id).where.not(id: id)
+      before = others.where('ends_at <= ?', starts_at).order(ends_at: :desc).first
+      after = others.where('starts_at >= ?', ends_at).order(:starts_at).first
+      [before && ((starts_at - before.ends_at) / 3600.0), after && ((after.starts_at - ends_at) / 3600.0)]
+        .compact.select { |gap| gap < MIN_REST_HOURS }
     end
 
     # Approved leave for this person on any calendar day the shift touches.

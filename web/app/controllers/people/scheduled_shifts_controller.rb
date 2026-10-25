@@ -19,6 +19,7 @@ module People
       @on_leave = @shifts.select do |shift|
         leave.any? { |item| item.employee_id == shift.employee_id && item.starts_on <= shift.ends_at.to_date && item.ends_on >= shift.starts_at.to_date }
       end.map(&:id).to_set
+      load_hours_warnings
     end
 
     # Copies last week's shifts into the week shown (#469). Overlaps are skipped, never replaced.
@@ -48,7 +49,7 @@ module People
       @shift = People::ScheduledShift.new(shift_params)
       if @shift.save
         ActivityLogger.log('scheduled_shift_created', subject: @shift, details: shift_details)
-        redirect_to(people_scheduled_shifts_path(week: @shift.starts_at.to_date.iso8601), notice: with_leave_warning('Shift scheduled.'))
+        redirect_to(people_scheduled_shifts_path(week: @shift.starts_at.to_date.iso8601), notice: with_planning_warnings('Shift scheduled.'))
       else
         load_employees
         render(:new, status: :unprocessable_entity)
@@ -64,7 +65,7 @@ module People
       authorize(:module, :schedule_write?)
       if @shift.update(shift_params)
         ActivityLogger.log('scheduled_shift_updated', subject: @shift, details: shift_details)
-        redirect_to(people_scheduled_shifts_path(week: @shift.starts_at.to_date.iso8601), notice: with_leave_warning('Shift updated.'))
+        redirect_to(people_scheduled_shifts_path(week: @shift.starts_at.to_date.iso8601), notice: with_planning_warnings('Shift updated.'))
       else
         load_employees
         render(:edit, status: :unprocessable_entity)
@@ -96,11 +97,52 @@ module People
       "#{@shift.employee&.full_name} · #{@shift.starts_at.strftime('%b %-d %-l:%M %p')} – #{@shift.ends_at.strftime('%-l:%M %p')}"
     end
 
-    def with_leave_warning(message)
-      return message unless @shift.approved_leave.exists?
-
-      "#{message} Note: #{@shift.employee.full_name} has approved leave on this day."
+    # Warnings only: the shift is already saved.
+    def with_planning_warnings(message)
+      name = @shift.employee.full_name
+      notes = []
+      notes << "#{name} has approved leave on this day." if @shift.approved_leave.exists?
+      @shift.pay_weeks_over_limit.each do |start, total|
+        notes << "#{name} is planned for #{hours_label(total)} hours in the pay week #{pay_week_label(start)}, over #{People::ScheduledShift::PLANNED_HOURS_LIMIT}."
+      end
+      @shift.short_rests.each do |gap|
+        notes << "Only #{hours_label(gap)} hours between this shift and another for #{name} (less than #{People::ScheduledShift::MIN_REST_HOURS})."
+      end
+      notes.empty? ? message : "#{message} Note: #{notes.join(' ')}"
     end
+
+    # Pay weeks run Thursday-Wednesday, so a Monday-Sunday grid week touches two.
+    # Planned hours only; this does not calculate pay.
+    def load_hours_warnings
+      @pay_weeks = [EmployeePayWeek.week_start(@week), EmployeePayWeek.week_start(@week + 6)]
+      nearby = People::ScheduledShift.between(@pay_weeks.first, @pay_weeks.last + 6).includes(:employee).to_a
+      limit = People::ScheduledShift::PLANNED_HOURS_LIMIT
+      @over_hours = nearby.group_by(&:employee).filter_map do |employee, list|
+        weeks = @pay_weeks.filter_map do |start|
+          total = list.sum { |shift| shift.hours_within(start.in_time_zone, (start + 7).in_time_zone) }
+          [start, total] if total > limit
+        end
+        [employee, weeks] if weeks.any?
+      end.sort_by { |employee, _| [employee.last_name.to_s, employee.first_name.to_s] }.to_h
+      shown = @shifts.map(&:id).to_set
+      @short_rest = {}
+      nearby.group_by(&:employee_id).each_value do |list|
+        list.sort_by(&:starts_at).each_cons(2) do |previous, shift|
+          gap = (shift.starts_at - previous.ends_at) / 3600.0
+          @short_rest[shift.id] = gap if gap < People::ScheduledShift::MIN_REST_HOURS && shown.include?(shift.id)
+        end
+      end
+    end
+
+    def hours_label(value)
+      helpers.number_with_precision(value, precision: 2, strip_insignificant_zeros: true)
+    end
+    helper_method :hours_label
+
+    def pay_week_label(start)
+      "#{start.strftime('%a %b %-d')} – #{(start + 6).strftime('%a %b %-d')}"
+    end
+    helper_method :pay_week_label
 
     def invalid_week
       redirect_to(people_scheduled_shifts_path, alert: 'Choose a valid week.')

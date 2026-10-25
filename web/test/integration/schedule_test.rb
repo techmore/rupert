@@ -178,4 +178,53 @@ class ScheduleTest < ActionDispatch::IntegrationTest
     post people_scheduled_shifts_path, params: { scheduled_shift: { employee_id: @worker.id, starts_at: "#{@monday + 2}T10:00", ends_at: "#{@monday + 2}T12:00" } }
     assert_equal 'Shift scheduled.', flash[:notice]
   end
+
+  test 'over 40 planned hours is flagged against the Thursday-Wednesday pay week but saving still works' do
+    sign_in(users(:regular_user), 'password')
+    @mine.destroy!
+    thursday = @monday + 3
+    4.times { |offset| @worker.scheduled_shifts.create!(starts_at: (thursday + offset).in_time_zone + 9.hours, ends_at: (thursday + offset).in_time_zone + 18.hours) }
+    get people_scheduled_shifts_path(week: @monday.iso8601)
+    assert_select '[data-hours-warning]', count: 0
+
+    assert_difference 'People::ScheduledShift.count', 1 do
+      post people_scheduled_shifts_path, params: { scheduled_shift: { employee_id: @worker.id, starts_at: "#{@monday + 7}T09:00", ends_at: "#{@monday + 7}T18:00" } }
+    end
+    assert_includes flash[:notice], 'Shift scheduled.'
+    assert_includes flash[:notice], 'Alex Planned is planned for 45 hours in the pay week Thu Oct 22 – Wed Oct 28, over 40.'
+
+    # The Monday-Sunday grid shows 36 hours, but the pay week reaching into next Monday is over 40.
+    get people_scheduled_shifts_path(week: @monday.iso8601)
+    assert_select '[data-hours-warning]', text: /Alex Planned: 45 hours, Thu Oct 22 – Wed Oct 28/
+    assert_select '[data-hours-warning]', text: /planned hours, not pay/
+    assert_select "[data-over-hours='#{@worker.id}']", /Over 40 in pay week/
+    refute_includes css_select('[data-hours-warning]').text, 'Someone Else'
+    get people_scheduled_shifts_path(week: (@monday - 7).iso8601)
+    assert_select '[data-hours-warning]', count: 0
+  end
+
+  test 'a short rest between shifts is flagged across the week boundary but saving still works' do
+    sign_in(users(:regular_user), 'password')
+    sunday = @monday + 6
+    late = @worker.scheduled_shifts.create!(starts_at: sunday.in_time_zone + 14.hours, ends_at: sunday.in_time_zone + 23.hours)
+
+    assert_difference 'People::ScheduledShift.count', 1 do
+      post people_scheduled_shifts_path, params: { scheduled_shift: { employee_id: @worker.id, starts_at: "#{sunday + 1}T06:00", ends_at: "#{sunday + 1}T12:00" } }
+    end
+    early = People::ScheduledShift.order(:id).last
+    assert_includes flash[:notice], 'Only 7 hours between this shift and another for Alex Planned (less than 10).'
+
+    get people_scheduled_shifts_path(week: (@monday + 7).iso8601)
+    assert_select '[data-rest-warning]', text: /1 shift this week starts less than 10 hours after/
+    assert_select "[data-short-rest='#{early.id}']", 'Short rest: 7 h since last shift'
+    get people_scheduled_shifts_path(week: @monday.iso8601)
+    assert_select '[data-rest-warning]', count: 0
+
+    # Editing the earlier shift warns about the gap to the next one; exactly 10 hours is fine.
+    patch people_scheduled_shift_path(late), params: { scheduled_shift: { starts_at: "#{sunday}T12:00", ends_at: "#{sunday}T22:00" } }
+    assert_equal late.reload.ends_at, sunday.in_time_zone + 22.hours
+    assert_includes flash[:notice], 'Only 8 hours between this shift'
+    patch people_scheduled_shift_path(late), params: { scheduled_shift: { starts_at: "#{sunday}T10:00", ends_at: "#{sunday}T20:00" } }
+    assert_equal 'Shift updated.', flash[:notice]
+  end
 end
