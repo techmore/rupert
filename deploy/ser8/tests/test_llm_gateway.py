@@ -160,6 +160,9 @@ class HTTPTest(unittest.TestCase):
             status, headers, _ = self.request('POST', json.dumps({'model': 'qwen3.5-4b'}))
         self.assertEqual(503, status)
         self.assertEqual('5', headers['Retry-After'])
+        # Reading the response can beat the handler's final telemetry/cleanup.
+        self.assertTrue(self.engine.admission.acquire(timeout=2))
+        self.engine.admission.release()
         with self.engine.request_slot():
             pass
 
