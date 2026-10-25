@@ -5,8 +5,14 @@ module Projects
     include TenantScoped
     include ProjectsPeople
     include AASM
+    include Work::Tracked
 
+    # The shared work-item table (#407, docs/architecture/shared-work-items.md): a task is the row kind 'task'.
+    # Work::Item reads every kind; this class reads and writes only tasks.
     self.table_name = 'tasks'
+    KIND = 'task'
+
+    default_scope { where(kind: KIND) }
 
     PRIORITIES = %w[low medium high urgent].freeze
     PRIORITY_RANK = { 'urgent' => 0, 'high' => 1, 'medium' => 2, 'low' => 3 }.freeze
@@ -171,6 +177,9 @@ module Projects
     def estimate_hours=(text)
       self.estimate_minutes = text.to_s.strip.empty? ? nil : (Projects::TaskTimeEntry.parse_minutes(text) || 0)
     end
+
+    # The same row as a shared work item (for cross-kind reads such as a combined calendar).
+    def work_item = Work::Item.find(id)
 
     def labels_text
       Array(labels).join(', ')

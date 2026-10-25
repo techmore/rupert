@@ -45,7 +45,7 @@ module Projects
       def resolve
         return @scope.none unless @user&.active? && (@user.super_admin? || @user.tenant_id.present?)
 
-        tasks = @user.super_admin? ? @scope : @scope.where(tenant_id: @user.tenant_id)
+        tasks = (@user.super_admin? ? @scope : @scope.where(tenant_id: @user.tenant_id)).where(kind: Projects::Task::KIND)
         if @user.employee?
           @user.can?('tasks.self') ? tasks.assigned_to(@user.id) : tasks.none
         elsif @user.can?('projects.read') || @user.can?('projects.write')
