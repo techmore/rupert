@@ -769,15 +769,19 @@ export default class extends Controller {
     bar.replaceChildren(label, hint, cancel)
   }
 
-  // "31s · qwen3.5-4b · local" next to a bot reply; "31s (17s load)" when the model had to be loaded first.
+  // "31s · qwen3.5-4b · local" next to a bot reply; "31s (17s load)" when the model had to be loaded first;
+  // "4s · deepseek-v4.1-flash · OpenCode Go · cloud" names the provider, and a fallback says which one it replaced.
   answerNode(answer) {
     const node = document.createElement("span")
     node.className = `chat-msg-answer is-${answer.where}`
     const short = (value) => value < 10 ? value.toFixed(1) : Math.round(value)
     const time = answer.load_seconds ? `${short(answer.seconds)}s (${short(answer.load_seconds)}s load)` : `${short(answer.seconds)}s`
-    node.textContent = [time, answer.model, answer.where].filter(Boolean).join(" · ")
-    node.title = `Answered in ${answer.seconds} seconds${answer.model ? ` by ${answer.model}` : ""} (${answer.where === "local" ? "on this server" : "cloud"})` +
-      (answer.load_seconds ? `, including ${answer.load_seconds} seconds loading the model` : "")
+    const fallback = answer.fallback_from ? `fallback for ${answer.fallback_from.join(", ")}` : null
+    node.textContent = [time, answer.model, answer.provider, answer.where, fallback].filter(Boolean).join(" · ")
+    node.title = `Answered in ${answer.seconds} seconds${answer.model ? ` by ${answer.model}` : ""}${answer.provider ? ` through ${answer.provider}` : ""}` +
+      ` (${answer.where === "local" ? "on this server" : "cloud"})` +
+      (answer.load_seconds ? `, including ${answer.load_seconds} seconds loading the model` : "") +
+      (fallback ? `, because ${answer.fallback_from.join(", ")} could not answer` : "")
     return node
   }
 

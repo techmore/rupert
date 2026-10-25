@@ -201,12 +201,26 @@ module TeamChat
 
       answer_native
     rescue Failure => e
-      # On auto, a refused or missing HTTP model falls back to the CLI Ask Rupert already uses.
-      raise unless @config.auto? && @config.native? && %i[unauthorized unavailable].include?(e.kind) && @reply.body.blank?
+      # A refused or unreachable model hands over to the next configured one (RUPERT_CHAT_FALLBACK; on auto the
+      # opencode CLI Ask Rupert already uses), but only before anything was written into the reply.
+      fallback = next_fallback(e)
+      raise unless fallback
 
-      Rails.logger.warn "[TeamChat] #{@engine} #{e.kind}; falling back to the opencode CLI"
-      @engine = 'opencode_cli'
-      answer_with_cli
+      Rails.logger.warn "[TeamChat] #{@engine} #{e.kind}; falling back to #{fallback.engine}"
+      (@fallback_from ||= []) << { 'engine' => @engine, 'model' => @config.model, 'failure' => e.kind.to_s }
+      @telemetry&.record('fallback', outcome: 'used', facts: { 'from_engine' => @engine, 'to_engine' => fallback.engine, 'failure' => e.kind.to_s })
+      @config = fallback
+      @engine = fallback.engine
+      retry
+    end
+
+    FALLBACK_FAILURES = %i[unauthorized unavailable rate_limited].freeze
+
+    def next_fallback(failure)
+      return unless FALLBACK_FAILURES.include?(failure.kind) && @reply.reload.body.blank?
+
+      @fallbacks ||= @config.fallbacks.dup
+      @fallbacks.shift
     end
 
     # --- RubyLLM, native tool calling ---
@@ -561,6 +575,7 @@ module TeamChat
       @reply.meta.to_h.merge('engine' => direct_navigation? ? NavigationAnswer::ENGINE : @engine, 'model' => direct_navigation? ? nil : model,
         'tokens_in' => direct_navigation? ? nil : @tokens_in, 'tokens_out' => direct_navigation? ? nil : @tokens_out, 'tools' => @toolbox&.tools_used.to_a.uniq, 'duration_ms' => ms, 'outcome' => outcome)
         .tap { |meta| meta['topics'] = @topics.map(&:key) if @topics.present? }
+        .tap { |meta| meta['fallback_from'] = @fallback_from if @fallback_from.present? }
     end
 
     # --- conversation ---
