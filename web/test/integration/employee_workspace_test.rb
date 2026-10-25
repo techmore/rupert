@@ -79,9 +79,9 @@ class EmployeeWorkspaceTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "'=PRIVATEFORMULA()"
     assert_includes response.body, '160.00'
     get employee_reports_path, params: { from: '2020-01-01', to: '2026-12-31' }
-    assert_redirected_to employee_app_path
+    assert_response :unprocessable_entity
     get employee_reports_path, params: { from: 'invalid' }
-    assert_redirected_to employee_app_path
+    assert_response :unprocessable_entity
     get reports_path
     assert_response :redirect
   end

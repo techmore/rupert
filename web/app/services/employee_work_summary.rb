@@ -5,10 +5,26 @@ require 'csv'
 # Employee-scoped reads only. Clock hours and timesheet hours are kept separate
 # so importing a shift never doubles either hours or the gross estimate.
 class EmployeeWorkSummary
+  # Longest report an employee can run: one year, counting both end dates.
+  MAX_DAYS = 366
+
   attr_reader :employee, :from, :to, :entries, :shifts, :requests, :rates
 
+  # A plain-language reason the dates cannot be reported on, or nil when they can.
+  def self.range_problem(from, to)
+    return 'Choose a start date and an end date.' unless from && to
+    if to < from
+      return "The end date (#{to.strftime('%b %-d, %Y')}) is before the start date (#{from.strftime('%b %-d, %Y')}). " \
+             'Choose an end date on or after the start date.'
+    end
+    return 'Choose a date range of up to one year.' if (to - from).to_i + 1 > MAX_DAYS
+
+    nil
+  end
+
   def initialize(employee:, from:, to:)
-    raise ArgumentError, 'Choose a date range of up to one year.' unless from && to && to >= from && to <= from + 365
+    problem = self.class.range_problem(from, to)
+    raise ArgumentError, problem if problem
     raise ActiveRecord::RecordNotFound unless employee&.tenant_id == Current.tenant_id
 
     @employee, @from, @to = employee, from, to
@@ -84,6 +100,8 @@ class EmployeeWorkSummary
         cents = estimated_cents(entry)
         csv << [entry.worked_on, entry.timesheet.status, entry.work_type, entry.hours.to_s('F'), cents && format('%.2f', cents / 100.0), entry.notes].map { |value| TimesheetCsv.cell(value) }
       end
+      total = gross_cents
+      csv << ["Total #{from.iso8601} to #{to.iso8601}", nil, nil, BigDecimal(hours.to_s).to_s('F'), total && format('%.2f', total / 100.0), nil]
     end
   end
 end

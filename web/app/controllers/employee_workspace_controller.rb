@@ -18,8 +18,14 @@ class EmployeeWorkspaceController < AuthenticatedController
     @pay_week = EmployeePayWeek.new(employee: @worker, week_of: week)
   end
 
+  # GET /employee/reports?range=…&from=YYYY-MM-DD&to=YYYY-MM-DD — the signed-in worker's own
+  # hours, estimated pay and time off for a preset or custom range (up to one year). Dates are
+  # business days in the app time zone. Unusable dates are rejected on this page with the reason,
+  # showing the default week instead; the CSV answers 422 with the same reason.
   def reports
     load_report_data
+    return reject_report_range if @range_error
+
     respond_to do |format|
       format.html
       format.csv do
@@ -95,14 +101,34 @@ class EmployeeWorkspaceController < AuthenticatedController
   end
 
   def load_report_data
-    range = TimeRangePicker.resolve(params)
-    @from = range.from || Date.current.beginning_of_week
-    @to = range.to || Date.current.end_of_week
+    @from, @to, @range_error = report_range
     @summary = EmployeeWorkSummary.new(employee: @worker, from: @from, to: @to)
     @payslips = @worker.payslips.joins(:pay_run).where(pay_runs: { tenant_id: Current.tenant_id, status: %w[finalized paid] })
       .where('pay_runs.period_start <= ? AND pay_runs.period_end >= ?', @to, @from).includes(:pay_run).order('pay_runs.period_end DESC')
     @work_reports = @worker.work_reports.includes(:reviewer).order(created_at: :desc).limit(50)
     @work_report ||= @worker.work_reports.new(request_key: SecureRandom.uuid, kind: 'time')
+  end
+
+  # [from, to, problem]: the requested dates, or this week plus the reason they were refused.
+  def report_range
+    default = [Date.current.beginning_of_week, Date.current.end_of_week]
+    range = TimeRangePicker.resolve(params)
+    from = range.from || default.first
+    to = range.to || default.last
+    problem = EmployeeWorkSummary.range_problem(from, to)
+    problem ? [*default, problem] : [from, to, nil]
+  rescue Date::Error
+    [*default, 'Enter the start and end dates as real calendar dates.']
+  end
+
+  def reject_report_range
+    respond_to do |format|
+      format.html do
+        flash.now[:alert] = "#{@range_error} Showing this week instead."
+        render :reports, status: :unprocessable_entity
+      end
+      format.csv { render plain: @range_error, status: :unprocessable_entity }
+    end
   end
 
   def private_response
