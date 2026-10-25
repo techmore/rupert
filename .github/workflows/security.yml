@@ -17,11 +17,11 @@ jobs:
     name: Dependency and static scan
     runs-on: ubuntu-latest
     container:
-      image: ruby:4.0
+      image: ruby:4.0.9
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install scanners
-        run: gem install --no-document brakeman bundler-audit
+        run: gem install --no-document brakeman:8.1.0 bundler-audit:0.9.3
       - name: Audit gems for known vulnerabilities
         run: bundler-audit check --update --gemfile-lock web/Gemfile.lock
       - name: Brakeman static analysis (fails on warnings not in the baseline)

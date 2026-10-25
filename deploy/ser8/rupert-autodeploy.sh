@@ -211,6 +211,7 @@ backup="$BACKUPS/production-$(date +%Y%m%d-%H%M%S)-${CUR:0:8}.sqlite3"
 if ! ( umask 077; sqlite3 web/storage/production.sqlite3 ".backup $backup" ); then
   backup=""; write_receipt failed "backup failed, aborting"; report failed "backup failed, aborting"; exit 1
 fi
+# shellcheck disable=SC2012 # names are our own production-<timestamp>-<sha>.sqlite3; ls -t gives newest-first
 ls -1t "$BACKUPS"/*.sqlite3 | tail -n +6 | xargs -r rm -f
 
 health() {
@@ -271,6 +272,7 @@ PY
 }
 # The build runs as root; hand anything it wrote back to the app user.
 fix_owner() { chown -R rupert:rupert web/storage web/public web/tmp web/log 2>/dev/null; return 0; }
+# shellcheck source=/dev/null # the env file is host config, not in the repo
 rails_env() { set -a && . "$ENV_FILE" && set +a; }
 in_web() { ( cd "$APP/web" && rails_env && "$@" ); }
 
@@ -281,6 +283,7 @@ stage=checkout; git checkout -q --detach "$NEW" \
   && stage=restart && fix_owner && systemctl restart rupert-web rupert-jobs \
   && stage=health && health_result=failed && health && health_result=passed \
   && stage=asset_smoke && asset_smoke
+# shellcheck disable=SC2181 # the && chain above records $stage; one status check keeps it readable
 if [ $? -ne 0 ]; then
   echo "$NEW" > "$STATE/failed-sha"
   if [ "$migrations" -gt 0 ]; then
