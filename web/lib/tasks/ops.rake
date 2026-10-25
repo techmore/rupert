@@ -380,7 +380,7 @@ namespace :ops do
 end
 
 namespace :ops do
-  desc 'Encrypt chat, payroll, HR and 1099 rows stored before #421 (dry run unless CONFIRM=1; TENANT_ID optional)'
+  desc 'Encrypt plaintext rows in every column declared with `encrypts` (dry run unless CONFIRM=1; TENANT_ID optional)'
   task encrypt_sensitive_fields: :environment do
     write = ENV['CONFIRM'] == '1'
     tenant_id = ENV['TENANT_ID'].presence
@@ -390,5 +390,31 @@ namespace :ops do
     results = SensitiveFieldEncryption.call(write: write, tenant_id: tenant_id)
     results.each { |result| puts "  #{result.line(write)}" }
     puts "Total: #{results.sum(&:plaintext)} rows with plaintext; #{write ? "#{results.sum(&:rewritten)} encrypted" : 'nothing written'}"
+  end
+
+  desc 'Read-only: count rows that still hold plaintext in an encrypted column (TENANT_ID optional; exits 1 if any)'
+  task encryption_status: :environment do
+    tenant_id = ENV['TENANT_ID'].presence
+    raise "No tenant #{tenant_id}" if tenant_id && !Tenant.exists?(id: tenant_id)
+
+    results = SensitiveFieldEncryption.status(tenant_id: tenant_id)
+    puts "Encryption status — #{tenant_id ? "tenant #{tenant_id}" : 'all tenants'}, #{results.count { |result| !result.skipped }} models"
+    results.each { |result| puts "  #{result.status_line}" }
+    total = results.sum(&:plaintext)
+    puts "Total: #{total} rows with plaintext"
+    unless tenant_id
+      begin
+        SensitiveFieldEncryption.write_status!(results)
+      rescue SystemCallError => e
+        warn "Could not record the status for System health: #{e.message}"
+      end
+    end
+    if total.zero?
+      puts tenant_id ? 'No plaintext left in this tenant; run without TENANT_ID before turning plaintext support off.' :
+        'Ready: support_unencrypted_data can be set to false (docs/ops/encryption-at-rest.md).'
+    else
+      puts 'Not ready: run CONFIRM=1 bin/rails ops:encrypt_sensitive_fields, then check again.'
+      exit 1
+    end
   end
 end

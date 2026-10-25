@@ -28,7 +28,7 @@ All of these columns use non-deterministic encryption, because none is looked up
 
 Columns that were already encrypted before #421 are not listed here. They include upload bytes and parsed
 JSON, import and reconciliation documents, Zelle, Authorize.net and SwipeSimple files, connection tokens,
-settings and marketing bodies; grep `encrypts` under `web/app`.
+settings and marketing bodies; grep `encrypts` under `web/app`. The backfill and status check below cover them too.
 
 ## What stays plaintext on purpose
 
@@ -59,7 +59,7 @@ settings and marketing bodies; grep `encrypts` under `web/app`.
   - We chose not to keep a separate plaintext search index. It would have stored the same text this change
     removes from disk.
 
-## Backfill: encrypt rows written before #421
+## Backfill: encrypt rows written before their column gained `encrypts`
 
 `support_unencrypted_data = true` (in `config/initializers/active_record_encryption.rb`) keeps old plaintext
 rows readable. New writes are always encrypted. Old rows stay plaintext on disk until this task rewrites them:
@@ -69,31 +69,83 @@ rows readable. New writes are always encrypted. Old rows stay plaintext on disk 
 bin/rails ops:encrypt_sensitive_fields
 bin/rails ops:encrypt_sensitive_fields TENANT_ID=<tenant id>
 
-# Write: re-encrypts every row that still has a plaintext value.
+# Write: re-encrypts every value that is still plaintext.
 CONFIRM=1 bin/rails ops:encrypt_sensitive_fields                       # every tenant
 CONFIRM=1 bin/rails ops:encrypt_sensitive_fields TENANT_ID=<tenant id> # one tenant
+
+# Read-only check: plaintext rows per model and a total; exits 1 while any remain.
+bin/rails ops:encryption_status
+bin/rails ops:encryption_status TENANT_ID=<tenant id>
 ```
 
 How the task behaves:
 
-- It covers the nine models in the table above (`SensitiveFieldEncryption::MODELS`).
-- It reads rows in batches: 200 at a time, 10 for chat attachments and 20 for feedback attachments, because
-  those rows carry file bytes.
-- A row is rewritten only when an encrypted column still holds a non-null plaintext value. The rewrite uses
-  `update_all` on that row: validations, callbacks and `updated_at` are not touched, and issued 1099 filings
-  (read-only records) are included.
+- **It covers every model that declares `encrypts`**, not a fixed list. It loads `app/models`, `app/modules`
+  and any loaded engine (Buzz), then scans every Active Record class with encrypted attributes. That is about
+  60 models today: the nine in the table above plus the uploads, imports, reconciliation documents, Zelle,
+  Authorize.net and SwipeSimple files, connection tokens, settings, marketing and the rest. A column that
+  gains `encrypts` later is covered with no change to the task.
+- **Skipped models** are printed as `skipped (reason)`:
+  - `table … is missing`: a model whose table does not exist on this server, such as a gem model
+    (`ActionText::EncryptedRichText`) or an engine that is not migrated. It has no rows.
+  - `column … missing`: the column is not in the table yet.
+  - `no tenant_id column` (only with `TENANT_ID`): global tables such as `shops` and `settings`. A run
+    without `TENANT_ID` covers them.
+  - `… not encrypted by every model on <table>`: a table shared by unrelated classes (`tasks` serves several
+    kinds). A column is rewritten only when every class on that table decrypts it. No such column exists today.
+- Under STI, the parent's scan covers the whole table. A subclass is scanned only for columns that it alone
+  encrypts, with its type condition.
+- It reads only the id and the encrypted columns, as raw values. No record is instantiated, so callbacks,
+  `after_find` and default scopes do not run. Batches are 200 rows, 50 for JSON documents and payloads,
+  and 10 for file bytes (`content_base64`, CSV exports, chat attachments, binary columns). Feedback attachments
+  are read 20 at a time.
+- A value is rewritten only when it is non-null and not ciphertext. Values already encrypted are left alone.
+  The rewrite uses `update_all` on that row and writes only the plaintext columns. Validations, callbacks and
+  `updated_at` are not touched. Read-only records (`attr_readonly` uploads and receipts, issued 1099 filings)
+  are included. Deterministic columns are written with the deterministic key, so lookups by equality still match.
 - Each batch is one transaction.
 - It is idempotent. A second run reports 0 rows with plaintext.
 - It prints, per model, how many rows it checked, how many still had plaintext, and how many it encrypted.
+- `ops:encryption_status` runs the same scan read-only. It prints `Model: N plaintext of M rows` and a total.
+  It ends with `Ready: …` when the total is 0, or `Not ready: …` and exit status 1 otherwise. A run without
+  `TENANT_ID` also records the total in `storage/ops/encryption_status.json`, and **System health → Database**
+  shows it as "Plaintext in encrypted columns" with the time of the check.
 
 Procedure on live (the owner runs this; agents do not):
 
 1. Take a fresh backup (`bin/backup.sh`) and confirm `/etc/rupert.env` has the same three keys that the app uses.
 2. Run the dry run and note the counts.
 3. Run with `CONFIRM=1`.
-4. Run the dry run again. Every model should show `0 with plaintext`.
-5. Spot-check a chat room, a pay run, an employee and the 1099 page.
+4. Run `bin/rails ops:encryption_status`. Every model should show `0 plaintext` and the total should be 0.
+5. Spot-check a chat room, a pay run, an employee, an upload and the 1099 page.
 
-Before the last encrypted column has been backfilled and verified, do not set
-`support_unencrypted_data = false`. That includes `ops:encrypt_shop_tokens` and this task. Once it is false,
-any leftover plaintext row raises an error when it is read.
+`ops:encrypt_shop_tokens` is no longer needed: `Shop` is covered by this task.
+
+## Phase b: turn plaintext support off
+
+Do this only after `bin/rails ops:encryption_status` (no `TENANT_ID`) on live prints `Total: 0 rows with
+plaintext` and `Ready`. Once plaintext support is off, any plaintext value left in an encrypted column raises
+`ActiveRecord::Encryption::Errors::Decryption` when it is read.
+
+1. Run the status check once more right before the change, and keep its output.
+2. In `web/config/initializers/active_record_encryption.rb`, replace the last line:
+
+   ```ruby
+   # before
+   Rails.application.config.active_record.encryption.support_unencrypted_data = true
+   # after
+   Rails.application.config.active_record.encryption.support_unencrypted_data = false
+   ```
+
+   Also update the comment above it: every encrypted column has been backfilled, so plaintext is no longer
+   accepted.
+3. Merge and deploy as usual, then watch the error tracker and the logs for `Decryption` errors. Open a chat
+   room, a pay run, an employee, an upload, a reconciliation document and the 1099 page.
+4. From then on, a model that gains `encrypts` over a column with existing rows needs its own plan. Either
+   declare that column with `encrypts :name, support_unencrypted_data: true` until the backfill has run, or
+   turn the global setting back on for that deploy.
+
+Rollback: set the line back to `support_unencrypted_data = true` and deploy. Nothing on disk changes in either
+direction, because the setting only controls whether plaintext is accepted when a value is read. If a
+`Decryption` error shows up, roll back first. Then run `bin/rails ops:encryption_status` to find the model,
+and run `CONFIRM=1 bin/rails ops:encrypt_sensitive_fields` before trying phase b again.
