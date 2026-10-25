@@ -512,6 +512,7 @@ export default class extends Controller {
     }
 
     if (!message.deleted && message.unverified?.length) main.append(this.unverifiedNode(message.unverified))
+    else if (!message.deleted && message.figures_checked) main.append(this.checkedNode())
     if (!message.deleted && message.attachments?.length) main.append(this.attachmentsNode(message.attachments))
     if (!message.deleted && message.views?.length) main.append(this.viewsNode(message))
     ;(message.actions || []).forEach((action) => main.append(this.actionNode(message, action)))
@@ -658,6 +659,21 @@ export default class extends Controller {
       return this.flash(this.threadLogTarget.querySelector(`[data-id="${item.message_id}"]`))
     }
     this.jumpToMessage(item.message_id)
+  }
+
+  // Every $ amount and % in a bot answer was found in the data its tools returned.
+  checkedNode() {
+    const note = document.createElement("p")
+    note.className = "chat-checked"
+    note.setAttribute("role", "note")
+    note.title = "Rupert compares every $ amount and % in a bot answer with the data its tools returned. All of them were found there."
+    const icon = document.createElement("span")
+    icon.setAttribute("aria-hidden", "true")
+    icon.textContent = "✓"
+    const text = document.createElement("span")
+    text.textContent = "Figures checked against Rupert"
+    note.append(icon, text)
+    return note
   }
 
   // A bot answer quoted figures that are not in the data its tools returned.

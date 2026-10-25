@@ -105,6 +105,19 @@ test('after a finished bot answer the bubbles become its Next questions, and go 
   assert.equal(row.children[0], original);
 });
 
+test('a checked bot answer gets a quiet text note, with the tick hidden from screen readers', () => {
+  const node = (tag) => ({ tag, children: [], attrs: {}, className: '', textContent: '', title: '',
+    setAttribute(name, value) { this.attrs[name] = value }, append(...kids) { this.children.push(...kids) } });
+  context.document.createElement = node;
+  const note = Object.create(Chat.prototype).checkedNode();
+  assert.equal(note.className, 'chat-checked');
+  assert.equal(note.attrs.role, 'note');
+  assert.equal(note.children[0].attrs['aria-hidden'], 'true');
+  assert.equal(note.children[0].textContent, '✓');
+  assert.equal(note.children[1].textContent, 'Figures checked against Rupert');
+  assert.match(note.title, /All of them were found/);
+});
+
 test('side panel: Rupert pages open in panel mode; chat pages and other sites stay normal links', () => {
   assert.equal(Chat.panelPath('/reports/sales?from=2026-10-01', 'https://rupert.test'), '/reports/sales?from=2026-10-01&panel=1');
   assert.equal(Chat.panelPath('/chat/admins', 'https://rupert.test'), null);

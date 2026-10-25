@@ -248,6 +248,7 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert reply.reload.body.start_with?('Shopify is at $214.83 so far today.')
     assert_includes reply.body, '✓ Gross sales'
     assert reply.meta['prose_checked']
+    assert reply.as_payload(viewer: @user)[:figures_checked]
     assert_includes reply.meta['follow_ups'], 'How does that compare with last week?'
     assert_equal reply.meta['follow_ups'], reply.as_payload(viewer: @user)[:follow_ups]
   end

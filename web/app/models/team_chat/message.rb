@@ -128,10 +128,17 @@ module TeamChat
         pinned: pinned?, pinned_by: (pinned_by&.display_name if pinned?), edited: edited_at.present?,
         answer: answer_timing, compare_of: (meta.to_h['compare_of'] if assistant?),
         unverified: (Array(meta.to_h['unverified']) if assistant? && meta.to_h['unverified'].present?),
+        figures_checked: figures_checked?,
         follow_ups: (Array(meta.to_h['follow_ups']).first(4) if assistant? && status == 'done' && meta.to_h['follow_ups'].present?),
         views: (Array(meta.to_h['views']).first(TeamChat::Views::MAX_VIEWS) if assistant? && status == 'done' && !deleted? && meta.to_h['views'].present?),
         quote: (quotes[quote_id]&.quote_payload if quote_id && !deleted?)
       }
+    end
+
+    # A finished bot answer whose figures were all found in what its tools returned.
+    def figures_checked?
+      assistant? && status == 'done' && !deleted? && meta.to_h['figures_checked'] == true &&
+        meta.to_h['unverified'].blank? && Array(meta.to_h['tools']).any?
     end
 
     LOCAL_ENGINES = %w[local_gateway ollama direct_navigation].freeze

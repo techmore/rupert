@@ -412,6 +412,7 @@ module TeamChat
       meta['load_ms'] = load_ms if load_ms
       unverified = @toolbox.financial? ? [] : NumberCheck.call(body, checked_sources)
       meta['unverified'] = unverified if unverified.any?
+      meta['figures_checked'] = true if figures_checked?(body, unverified)
       @execution.write_reply!({ body: body.to_s, status: 'done', activity: nil, meta: meta }, terminal: 'succeeded')
       @reply.reload
       note_ai_health('ok')
@@ -467,6 +468,15 @@ module TeamChat
     end
 
     # What the bot was given: its tool results and the conversation it saw.
+    # True when the answer used tools and every figure in it came from them, so the page can say so.
+    # Financial answers are either the bot's own words checked fact by fact or Ruby's list of the facts.
+    def figures_checked?(body, unverified)
+      return false if @toolbox.nil? || @toolbox.tools_used.empty? || unverified.any? || body == UNCHECKED_FIGURES
+      return @prose_checked || @toolbox.financial_evidence.any? { |item| Array(item['facts']).any? } if @toolbox.financial?
+
+      NumberCheck.figures_in(body).any?
+    end
+
     def checked_sources
       Array(@toolbox&.results) + transcript.map { |entry| entry[:content] }
     rescue StandardError

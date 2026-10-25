@@ -62,6 +62,7 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     TeamChat::Agent.new(reply, config: team_chat_config).run
 
     assert_nil reply.reload.meta['unverified']
+    assert reply.as_payload(viewer: @user)[:figures_checked], 'the facts Ruby listed come straight from Rupert'
     assert_includes reply.body, '214.83 USD'
     assert_includes reply.body, 'Gross sales'
     assert_includes reply.body, 'shopify canonical orders'
@@ -78,6 +79,25 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     TeamChat::Agent.new(reply, config: team_chat_config).run
     assert_nil reply.reload.meta['unverified']
     assert_nil reply.as_payload(viewer: @user)[:unverified]
+    assert_not reply.as_payload(viewer: @user)[:figures_checked], 'no tools, so nothing was checked'
+  end
+
+  test 'figures checked shows only for tool answers whose figures were all found' do
+    script_model({ tool: 'where_is', arguments: { query: 'timesheets' } }, { text: 'Timesheets are under Team.' })
+    reply = ask('@rupert where are timesheets?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_equal ['where_is'], reply.reload.meta['tools']
+    assert_nil reply.meta['figures_checked'], 'an answer with no figures makes no claim about them'
+
+    meta = reply.meta.merge('figures_checked' => true)
+    reply.update_columns(meta: meta)
+    assert reply.reload.as_payload(viewer: @user)[:figures_checked]
+    reply.update_columns(meta: meta.merge('unverified' => ['$12.00']))
+    assert_not reply.reload.as_payload(viewer: @user)[:figures_checked]
+    reply.update_columns(meta: meta.merge('tools' => []))
+    assert_not reply.reload.as_payload(viewer: @user)[:figures_checked]
+    reply.update_columns(meta: meta, status: 'pending')
+    assert_not reply.reload.as_payload(viewer: @user)[:figures_checked]
   end
 
   test 'a write tool only proposes; approving runs it as the approver and posts a notice' do
