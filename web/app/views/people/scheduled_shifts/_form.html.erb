@@ -18,6 +18,10 @@
         </div>
       </div>
       <div>
+        <%= f.label :location_id, "Store (optional)", class: "field-label" %>
+        <%= f.select :location_id, @locations.map { |location| [location.picker_label, location.id] }, { include_blank: "No store" }, class: "select w-full" %>
+      </div>
+      <div>
         <%= f.label :role_label, "Role or station (optional)", class: "field-label" %>
         <%= f.text_field :role_label, class: "input", maxlength: 80, placeholder: "e.g. Front counter" %>
       </div>

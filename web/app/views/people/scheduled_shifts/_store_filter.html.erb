@@ -1,0 +1,8 @@
+<%# Store filter for a week page (#469). Locals: url, week, locations, location_id. %>
+<% if locations.any? %>
+  <%= form_with url: url, method: :get, class: 'toolbar', aria: { label: 'Store' } do %>
+    <%= hidden_field_tag :week, week.iso8601, id: nil %>
+    <div class="toolbar-field"><%= label_tag :location_id, 'Store', class: 'field-label' %><%= select_tag :location_id, options_for_select([['All stores', '']] + locations.map { |location| [location.picker_label, location.id] }, location_id), class: 'select' %></div>
+    <div class="toolbar-actions"><%= submit_tag 'Apply', class: 'btn-ghost', name: nil %></div>
+  <% end %>
+<% end %>

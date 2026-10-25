@@ -11,6 +11,14 @@ module People
       @week = parse_week(params[:week]) || Date.current.beginning_of_week
       @week_days = (@week..@week + 6).to_a
       @employees = People::Employee.where(status: 'active').order(:last_name, :first_name)
+      # Store filter (#469): punches carry no store, so it narrows the list to people
+      # planned at that store this week; their hours still cover every store.
+      @locations = Location.for_shifts.to_a
+      @location_id = params[:location_id].presence&.to_s
+      if @location_id
+        planned = People::ScheduledShift.between(@week, @week + 6).where(location_id: @location_id).select(:employee_id)
+        @employees = @employees.where(id: planned)
+      end
       @hours = build_hours(@employees, @week_days)
       @prev_week = @week - 7
       @next_week = @week + 7
