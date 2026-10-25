@@ -1,8 +1,8 @@
 # Rupert backups: what exists, what each layer is for, how to restore
 
 Rupert runs on one SQLite file (`/opt/rupert/web/storage/production.sqlite3`) inside the `rupert` Incus container on
-SER8. Uploaded statements, exports and receipts are stored inside that file too (base64 in `reconciliation_documents`
-and `purchase_receipts`), so one file holds everything a restore needs except the encryption keys in `/etc/rupert.env`
+SER8. Uploaded statements, exports and receipts are stored inside that file too (base64 in `reconciliation_documents`,
+`purchase_receipts` and `training_attachments`), so one file holds everything a restore needs except the encryption keys in `/etc/rupert.env`
 and the settings dump. Every layer below copies that one file.
 
 **System → Backups** (super admins with `system.read`) shows each layer's last report. Each script writes a small JSON

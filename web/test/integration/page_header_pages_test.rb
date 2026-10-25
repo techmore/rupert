@@ -21,7 +21,9 @@ class PageHeaderPagesTest < ActionDispatch::IntegrationTest
     'Add project' => :new_projects_project_path,
     'Add department' => :new_people_department_path,
     'Add receipt' => :new_receipt_path,
-    'Add location' => :new_location_path
+    'Add location' => :new_location_path,
+    'Training' => :training_modules_path,
+    'Add training module' => :new_training_module_path
   }.each do |heading, route|
     test "#{heading} uses the shared header and tab title" do
       get public_send(route)

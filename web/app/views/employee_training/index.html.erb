@@ -1,0 +1,23 @@
+<% content_for :title, 'My training' %>
+<%= page_header 'Training', subtitle: 'Training your manager assigned to you.' %>
+<section class="space-y-3" aria-label="Open training">
+  <h2 class="section-title">To do</h2>
+  <% if @open.empty? %><%= empty_state 'No training to do', hint: 'When your manager assigns training, it shows here.' %><% end %>
+  <% @open.each do |assignment| %>
+    <article class="card card-pad space-y-2" data-assignment-id="<%= assignment.id %>">
+      <div class="flex flex-wrap items-center justify-between gap-2"><h3 class="card-title"><%= link_to assignment.training_module.title, employee_training_path(assignment), class: 'hover:underline' %></h3><%= training_status_pill(assignment) %></div>
+      <p class="text-sm text-mocha"><%= training_due(assignment) %></p>
+      <%= link_to 'Open', employee_training_path(assignment), class: 'btn-ghost btn-sm' %>
+    </article>
+  <% end %>
+</section>
+<% if @completed.any? %>
+  <section class="space-y-3" aria-label="Completed training">
+    <h2 class="section-title">Completed</h2>
+    <ul class="card row-list">
+      <% @completed.each do |assignment| %>
+        <li class="row-item text-sm" data-assignment-id="<%= assignment.id %>"><%= link_to assignment.training_module.title, employee_training_path(assignment), class: 'hover:underline' %><span class="row-item-end text-xs text-mocha">Completed <%= assignment.completed_at.strftime('%b %-d, %Y') %></span></li>
+      <% end %>
+    </ul>
+  </section>
+<% end %>

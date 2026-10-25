@@ -2,6 +2,9 @@
 <% team_menu = ModuleRegistry.visible?(Current.user, 'training') ? [['Team progress', learning_team_path]] : nil %>
 <div class="page-medium space-y-6">
   <%= page_header 'Learn Rupert', subtitle: 'Learn one task at a time, try an example, then open the tool you need.', menu: team_menu %>
+  <% if @query.blank? && @open_training.positive? %>
+    <p class="flash flash-notice" role="status">You have <%= pluralize(@open_training, 'training module') %> assigned to you. <%= link_to 'Open my training', employee_training_index_path, class: 'underline' %></p>
+  <% end %>
   <% if @query.blank? %>
   <section id="your-path" class="section-card scroll-mt-6" aria-labelledby="path-title" <%= tour_anchor('path') %>>
     <div class="card-head">

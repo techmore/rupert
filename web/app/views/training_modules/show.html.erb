@@ -1,0 +1,82 @@
+<% content_for :title, @module.title %>
+<div class="space-y-6">
+  <%= page_header @module.title, eyebrow: 'Training module' do %>
+    <% if @can_write %><%= link_to 'Edit', edit_training_module_path(@module), class: 'btn-ghost' %><% end %>
+  <% end %>
+
+  <dl class="facts">
+    <div><dt>Revision</dt><dd><%= @module.revision %></dd></div>
+    <div><dt>Updated</dt><dd><%= @module.updated_at.strftime('%b %-d, %Y %-l:%M %p') %><% if @module.updated_by %> · <%= @module.updated_by.display_name %><% end %></dd></div>
+    <div><dt>Video</dt><dd><%= training_video_link(@module) || 'No video link' %></dd></div>
+    <div><dt>Assigned</dt><dd><%= @assignments.count(&:open?) %> open · <%= @assignments.count(&:completed?) %> completed</dd></div>
+  </dl>
+
+  <section class="section-card space-y-3">
+    <%= section_heading 'What to read and do' %>
+    <% if @module.body.present? %><div class="space-y-2 text-sm"><%= simple_format(@module.body) %></div><% else %><p class="text-sm text-mocha">No text yet.<% if @can_write %> <%= link_to 'Edit', edit_training_module_path(@module), class: 'underline' %> to add instructions.<% end %></p><% end %>
+  </section>
+
+  <section id="files" class="section-card space-y-3">
+    <%= section_heading 'Files', hint: "#{TrainingAttachment::ALLOWED_LABEL}, up to 10 MB each and #{TrainingAttachment::MAX_PER_MODULE} per module. Stored encrypted with the workspace’s backups." %>
+    <% if @attachments.empty? %><p class="text-sm text-mocha">No files yet.</p><% end %>
+    <ul class="row-list">
+      <% @attachments.each do |file| %>
+        <li class="row-item"><span class="min-w-0 break-all text-sm"><%= file.filename %> <span class="text-xs text-taupe"><%= number_to_human_size(file.byte_size) %></span></span>
+          <span class="row-item-end flex gap-2"><%= link_to 'Download', training_module_attachment_path(@module, file), class: 'btn-ghost btn-sm' %><% if @can_write %><%= button_to 'Remove', training_module_attachment_path(@module, file), method: :delete, class: 'btn-ghost btn-sm', form: { data: { turbo_confirm: "Remove #{file.filename}? Staff will no longer see it." } } %><% end %></span></li>
+      <% end %>
+    </ul>
+    <% if @can_write %>
+      <%= form_with url: training_module_attachments_path(@module), multipart: true, class: 'flex flex-wrap items-end gap-3' do %>
+        <div><%= label_tag :file, 'Add a file', class: 'field-label' %><%= file_field_tag :file, accept: TrainingAttachment::TYPES.keys.join(','), required: true, class: 'input' %></div>
+        <%= submit_tag 'Add', class: 'btn-ghost', data: { turbo_submits_with: 'Saving…' } %>
+      <% end %>
+    <% end %>
+  </section>
+
+  <section id="assignments" class="section-card space-y-4">
+    <%= section_heading 'Assignments' %>
+    <div class="table-region" role="region" tabindex="0" aria-label="Assignments">
+      <table class="table">
+        <thead><tr><th scope="col" class="th">Person</th><th scope="col" class="th">Status</th><th scope="col" class="th">Due</th><th scope="col" class="th">Completed</th><% if @can_write %><th scope="col" class="th"><span class="sr-only">Actions</span></th><% end %></tr></thead>
+        <tbody>
+          <% if @assignments.empty? %><tr><td colspan="<%= @can_write ? 5 : 4 %>" class="empty-row">Not assigned to anyone yet.<%= ' Assign it below.' if @can_write %></td></tr><% end %>
+          <% @assignments.each do |assignment| %>
+            <tr data-assignment-id="<%= assignment.id %>">
+              <td class="td"><%= assignment.assignee.display_name %></td>
+              <td class="td"><%= training_status_pill(assignment) %></td>
+              <td class="td text-mocha"><%= assignment.due_on ? assignment.due_on.strftime('%b %-d, %Y') : '—' %></td>
+              <td class="td text-mocha"><%= assignment.completed_at ? "#{assignment.completed_at.strftime('%b %-d, %Y %-l:%M %p')} · revision #{assignment.completed_revision}" : '—' %></td>
+              <% if @can_write %><td class="td text-right"><% if assignment.open? %><%= button_to 'Cancel assignment', cancel_training_assignment_path(assignment), class: 'btn-ghost btn-sm', form: { data: { turbo_confirm: "Cancel this training for #{assignment.assignee.display_name}?" } } %><% end %></td><% end %>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <% if @can_write %>
+      <%= form_with url: training_module_assignments_path(@module), class: 'space-y-4' do %>
+        <fieldset class="space-y-3">
+          <legend class="card-title">Assign</legend>
+          <div class="grid gap-4 sm:grid-cols-3">
+            <div><%= label_tag :assignee_ids, 'People', class: 'field-label' %><%= select_tag 'assignee_ids[]', options_for_select(@people.map { |person| [person.display_name, person.id] }), multiple: true, id: 'assignee_ids', size: [[@people.size, 3].max, 8].min, class: 'select w-full' %></div>
+            <div><%= label_tag :role, 'Or everyone with role', class: 'field-label' %><%= select_tag :role, options_for_select(@roles.map { |role| [role.humanize, role] }), include_blank: '—', class: 'select w-full' %></div>
+            <div><%= label_tag :department_id, 'Or everyone in department', class: 'field-label' %><%= select_tag :department_id, options_for_select(@departments.map { |department| [department.name, department.id] }), include_blank: '—', class: 'select w-full' %></div>
+          </div>
+          <div class="max-w-xs"><%= label_tag :due_on, 'Due date (optional)', class: 'field-label' %><%= date_field_tag :due_on, nil, min: Date.current.iso8601, class: 'input w-full' %></div>
+          <p class="text-xs text-mocha">People who already have this module open are skipped. A department includes staff with a linked account only.</p>
+        </fieldset>
+        <div class="form-actions"><%= submit_tag 'Assign', class: 'btn-primary', data: { turbo_submits_with: 'Saving…' } %></div>
+      <% end %>
+    <% end %>
+  </section>
+
+  <section id="history" class="section-card space-y-3">
+    <%= section_heading 'History', hint: 'Every assignment, start, completion and cancellation. History cannot be edited or removed.' %>
+    <% if @events.empty? %><p class="text-sm text-mocha">Nothing has happened yet.</p><% end %>
+    <ol class="row-list">
+      <% @events.each do |event| %>
+        <li class="row-item text-sm"><span><strong><%= event.label %></strong> · <%= event.training_assignment.assignee.display_name %> · by <%= event.actor_name %><% if event.note %> · <%= event.note %><% end %></span>
+          <span class="row-item-end text-xs text-mocha"><%= event.created_at.strftime('%b %-d, %Y %-l:%M %p') %> · revision <%= event.module_revision %></span></li>
+      <% end %>
+    </ol>
+  </section>
+</div>
