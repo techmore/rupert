@@ -255,7 +255,8 @@ class CanonicalOrderImporter
       return if unchanged_records?(order.payments, %i[method amount_cents reference],
         payments.map { |p| [p[:method], p[:amount_cents], p[:reference]] })
 
-      order.payments.delete_all
+      # destroy (not delete_all) so each payment's ledger hook voids its sale entry (#204).
+      order.payments.destroy_all
       payments.each do |payment|
         order.payments.create!(
           tenant_id: Current.tenant_id,
