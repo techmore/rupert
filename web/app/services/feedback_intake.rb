@@ -127,6 +127,8 @@ class FeedbackIntake
 
   def open_task(feedback)
     return unless @open_task && TASK_KINDS.include?(feedback.kind)
+    # Requests go to the request queue for a reviewer (#406) unless an allow-listed sender marked them ready.
+    return if feedback.assistant_request? && !feedback.ready_for_development
 
     line = "From #{@source}#{" message #{@source_ref.first(24)}" if @source_ref}, sender #{self.class.short_sender(@sender)}. " \
            "#{feedback.ready_for_development ? 'Marked ready for development by an allow-listed sender.' : 'For review: not marked ready for development.'}"

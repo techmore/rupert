@@ -11,6 +11,24 @@
     <span class="<%= status_pill.fetch(@report.status, 'pill-taupe') %>"><%= @report.status_label %></span><% if @report.github_issue_url %> <%= link_to "GitHub ##{@report.github_issue_number}", @report.github_issue_url, target: '_blank', rel: 'noopener', class: 'pill-taupe' %><% end %>
     <% if @report.ready_for_development && can_view_attachments %><span class="pill-fern">Ready for development</span><% end %>
   <% end %>
+  <% if @report.assistant_request? %>
+    <% task_visible = @report.task && Projects::TaskPolicy.new(Current.user, @report.task).show? %>
+    <section class="section-card" aria-label="Decision" data-request-decision>
+      <%= section_heading 'Decision' %>
+      <% case @report.triage_decision %>
+      <% when 'accepted' %>
+        <p class="text-sm"><span class="pill-fern">Approved</span> <%= @report.triaged_by&.display_name || 'A reviewer' %> made this a task on <%= l(@report.triaged_at.to_date, format: :long) %>.<% if task_visible %> <%= link_to "Open task ##{@report.task_id}", projects_task_path(@report.task), class: 'underline' %><% end %></p>
+      <% when 'merged' %>
+        <p class="text-sm"><span class="pill-olive">Merged</span> An existing task already covers this; your request was added to it on <%= l(@report.triaged_at.to_date, format: :long) %>.<% if task_visible %> <%= link_to "Open task ##{@report.task_id}", projects_task_path(@report.task), class: 'underline' %><% end %></p>
+      <% when 'declined' %>
+        <p class="text-sm"><span class="pill-taupe">Rejected</span> <%= @report.triaged_by&.display_name || 'A reviewer' %> decided not to do this, on <%= l(@report.triaged_at.to_date, format: :long) %>.</p>
+        <p class="whitespace-pre-wrap break-words text-sm text-ink"><%= @report.decline_reason %></p>
+      <% else %>
+        <p class="text-sm"><span class="pill-clay">In review</span> Waiting for a reviewer to approve, merge or reject it.</p>
+      <% end %>
+      <% if @report.conversation_url.present? %><p class="text-xs text-taupe">Asked in <%= link_to @report.conversation_label || 'chat', @report.conversation_url, class: 'underline' %>.</p><% end %>
+    </section>
+  <% end %>
   <% if @report.details.present? %>
     <section class="section-card"><%= section_heading 'What was sent' %><p class="whitespace-pre-wrap break-words text-sm"><%= @report.details %></p></section>
   <% end %>

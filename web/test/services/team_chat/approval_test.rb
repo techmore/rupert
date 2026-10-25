@@ -143,6 +143,20 @@ class TeamChatApprovalTest < ActiveSupport::TestCase
     assert_equal 1, @approval.events.where(kind: 'executed').count
   end
 
+  test 'an approved chat request waits for triage and links back to the chat message' do
+    propose('submit_feedback', { 'kind' => 'request', 'summary' => 'Add a stock report by store', 'open_task' => true })
+    assert_no_difference -> { Projects::Task.count } do
+      decide
+    end
+    feedback = AgentFeedback.order(:id).last
+    assert_equal 'team_chat', feedback.conversation_kind
+    assert_equal @room.id, feedback.conversation_id
+    assert_equal @trigger.id, feedback.conversation_message_id
+    assert_equal @approval.provenance['chat_url'], feedback.conversation_url
+    assert_equal @user.id, feedback.user_id
+    assert feedback.awaiting_triage?
+  end
+
   test 'proposal audit failure cannot leave an orphan card or approval' do
     TeamChat::ApprovalEvent.any_instance.stubs(:save!).raises(ActiveRecord::RecordInvalid)
     assert_no_difference -> { TeamChat::Approval.count } do
