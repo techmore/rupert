@@ -4,7 +4,7 @@ require 'csv'
 require 'digest'
 require 'json'
 
-# One SwipeSimple business day (America/New_York) for the daily close page.
+# One SwipeSimple business day (BusinessClock: America/New_York by default) for the daily close page.
 #
 # Reads only stored native website/CSV exports (latest observation per
 # transaction) and stored NAB / IRIS deposit snapshots. Nothing here contacts a
@@ -13,7 +13,6 @@ require 'json'
 # Amounts stay in integer cents. Unknown values (tips, deposit currency,
 # coverage) stay nil and are shown as "Unknown", never as zero.
 class SwipesimpleDayClose
-  ZONE = 'America/New_York'
   EXCLUDED_STATUSES = %w[Declined Voided Errored Canceled].freeze
   # Flag the day when at least this share of attempts did not approve, once
   # there are enough attempts for the share to mean something.
@@ -38,10 +37,7 @@ class SwipesimpleDayClose
   end
 
   def window
-    @window ||= begin
-      start = ActiveSupport::TimeZone[ZONE].local(date.year, date.month, date.day)
-      start...ActiveSupport::TimeZone[ZONE].local((date + 1).year, (date + 1).month, (date + 1).day)
-    end
+    @window ||= BusinessClock.day_window(date)
   end
 
   # Latest observation of every transaction that happened during the day.
@@ -262,7 +258,7 @@ class SwipesimpleDayClose
       end
       refunds.each do |refund|
         if refund[:earlier_day]
-          list << check(:earlier_refund, :warn, "Refund #{refund[:row].source_number} reverses a sale from #{refund[:sale].occurred_at.in_time_zone(ZONE).to_date.strftime('%b %-d, %Y')}. It lowers today's net, not that day's.")
+          list << check(:earlier_refund, :warn, "Refund #{refund[:row].source_number} reverses a sale from #{refund[:sale].occurred_at.in_time_zone(BusinessClock.zone).to_date.strftime('%b %-d, %Y')}. It lowers today's net, not that day's.")
         elsif refund[:sale].nil?
           list << check(:unmatched_refund, :warn, "Refund #{refund[:row].source_number} has no matching sale in the stored exports.")
         end
@@ -312,7 +308,7 @@ class SwipesimpleDayClose
     CSV.generate do |csv|
       csv << %w[BusinessDate OccurredAt Account Currency Transaction Type Status Tender Amount Tip InTotals Export Row]
       rows.each do |row|
-        csv << [date.iso8601, row.occurred_at.in_time_zone(ZONE).iso8601, safe(row.swipesimple_export.merchant_account), row.swipesimple_export.currency,
+        csv << [date.iso8601, row.occurred_at.in_time_zone(BusinessClock.zone).iso8601, safe(row.swipesimple_export.merchant_account), row.swipesimple_export.currency,
           safe(row.source_number), row.transaction_type, row.status, row.tender || 'unknown', dollars(row.amount_cents),
           row.tip_cents.nil? ? 'Unknown' : dollars(row.tip_cents), row.status == 'Approved' ? 'yes' : 'no (excluded)',
           row.swipesimple_export_id, row.source_row]
@@ -402,7 +398,7 @@ class SwipesimpleDayClose
   end
 
   def format_time(value)
-    value.in_time_zone(ZONE).strftime('%b %-d, %Y · %-I:%M %p %Z')
+    value.in_time_zone(BusinessClock.zone).strftime('%b %-d, %Y · %-I:%M %p %Z')
   end
 
   def dollars(cents)

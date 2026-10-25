@@ -18,7 +18,7 @@
   </section>
 
   <section class="section-card" aria-label="Period review status">
-    <%= section_heading "#{@payload['from']} through #{@payload['to']}", hint: "#{@saved ? 'Saved source review' : 'Current source observations'} · generated #{retail_event_time(@payload['generated_at'], timezone: 'America/New_York')}" do %><span class="pill-clay"><%= @payload['status'] %></span><% end %>
+    <%= section_heading "#{@payload['from']} through #{@payload['to']}", hint: "#{@saved ? 'Saved source review' : 'Current source observations'} · generated #{retail_event_time(@payload['generated_at'], timezone: BusinessClock.zone_name)}" do %><span class="pill-clay"><%= @payload['status'] %></span><% end %>
     <div class="text-sm font-semibold">Orders, gateway payments and processor deposits may describe the same money. No combined total is calculated.<%= define('evidence_basis') %><%= define('deposit') %></div>
     <details class="explainer"><summary class="explainer-summary text-sm font-semibold">Coverage and evidence notes · <%= @payload['warnings'].size %></summary><ul class="mt-2 list-disc space-y-2 pl-5 text-sm text-mocha"><% @payload['warnings'].each do |warning| %><li><%= warning %></li><% end %></ul></details>
   </section>
@@ -40,7 +40,7 @@
 
   <section class="space-y-3" aria-label="Source freshness">
     <%= section_heading 'Source freshness at generation', hint: 'These statuses belong to the generated review. Stock and backup health provide operational context, not payment or bank-settlement evidence.' %>
-    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><% @payload['sources'].each do |source| %><article class="section-card min-w-0"><div class="card-head"><h3 class="card-title"><%= source['label'] %></h3><span class="pill-taupe"><%= source['badge'] %></span></div><p class="text-xs text-mocha">Last recorded read: <%= source['last_at'] ? retail_event_time(source['last_at'], timezone: 'America/New_York') : 'No successful read yet' %></p></article><% end %></div>
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><% @payload['sources'].each do |source| %><article class="section-card min-w-0"><div class="card-head"><h3 class="card-title"><%= source['label'] %></h3><span class="pill-taupe"><%= source['badge'] %></span></div><p class="text-xs text-mocha">Last recorded read: <%= source['last_at'] ? retail_event_time(source['last_at'], timezone: BusinessClock.zone_name) : 'No successful read yet' %></p></article><% end %></div>
   </section>
 
   <details class="explainer card card-pad">

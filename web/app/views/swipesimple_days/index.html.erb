@@ -1,5 +1,5 @@
 <% content_for :title, "SwipeSimple daily close · #{@date.iso8601}" %>
-<% today = Time.current.in_time_zone(SwipesimpleDayClose::ZONE).to_date %>
+<% today = BusinessClock.today %>
 <% close = @close %>
 <% money = ->(value, currency = 'USD') { ctrax_money(value, currency: currency) } %>
 <% usd = close.groups.select { |group| group.currency == 'USD' } %>
@@ -179,7 +179,7 @@
             <th scope="col" class="th" data-col="export" data-default-hidden>Export / row</th>
           </tr></thead>
           <tbody><% close.rows.each do |row| %><tr class="<%= 'text-mocha' unless row.status == 'Approved' %>">
-            <td class="td" data-sort-value="<%= row.occurred_at.to_i %>"><%= row.occurred_at.in_time_zone(SwipesimpleDayClose::ZONE).strftime('%-I:%M %p') %></td><td class="td font-mono text-xs"><%= row.source_number %></td><td class="td"><%= row.swipesimple_export.merchant_account %></td>
+            <td class="td" data-sort-value="<%= row.occurred_at.to_i %>"><%= row.occurred_at.in_time_zone(BusinessClock.zone).strftime('%-I:%M %p') %></td><td class="td font-mono text-xs"><%= row.source_number %></td><td class="td"><%= row.swipesimple_export.merchant_account %></td>
             <td class="td"><%= row.transaction_type %></td><td class="td"><%= row.status %></td><td class="td"><%= (row.tender.presence || 'unknown').capitalize %></td>
             <td class="td num" data-sort-value="<%= row.amount_cents %>"><%= money.call(row.amount_cents, row.swipesimple_export.currency) %></td>
             <td class="td num" data-sort-value="<%= report_sort_cents(row.tip_cents) %>"><%= money.call(row.tip_cents, row.swipesimple_export.currency) %></td>

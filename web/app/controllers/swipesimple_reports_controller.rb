@@ -82,6 +82,6 @@ class SwipesimpleReportsController < AuthenticatedController
       .includes(:swipesimple_export).order(occurred_at: :desc).limit(200)
     @exports = SwipesimpleExport.order(created_at: :desc).limit(20)
     @context ||= { 'kind' => 'transactions', 'merchant_account' => '', 'currency' => 'USD',
-      'source_timezone' => 'America/New_York', 'exported_at' => '' }
+      'source_timezone' => BusinessClock.zone_name, 'exported_at' => '' }
   end
 end

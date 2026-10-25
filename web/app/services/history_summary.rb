@@ -11,14 +11,13 @@
 # no names, amounts or raw rows.
 class HistorySummary
   GAP_LIMIT = 24
-  ZONE = MoneyReconciliationReport::ZONE
 
   Source = Struct.new(:key, :label, :role, :unit, :first_date, :last_date, :records, :last_import_at, :gap_months, :gap_total,
     :overlaps, :caveat, :path, :detail, :by_year, :by_month, keyword_init: true)
 
-  def self.call(today: Time.find_zone!(ZONE).today) = new(today: today).sources
+  def self.call(today: BusinessClock.today) = new(today: today).sources
 
-  def initialize(today: Time.find_zone!(ZONE).today)
+  def initialize(today: BusinessClock.today)
     @today = today
   end
 
@@ -131,7 +130,7 @@ class HistorySummary
   def to_date(value)
     return nil if value.nil?
 
-    (value.respond_to?(:in_time_zone) && !value.is_a?(Date) ? value.in_time_zone(ZONE).to_date : value.to_date)
+    (value.respond_to?(:in_time_zone) && !value.is_a?(Date) ? value.in_time_zone(BusinessClock.zone).to_date : value.to_date)
   end
 
   # Where the time spans of two sources coincide. A span overlap says nothing

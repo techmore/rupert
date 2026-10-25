@@ -8,7 +8,7 @@ class TaskReminderJob < ApplicationJob
 
   def perform
     Tenant.where(status: 'active').find_each do |tenant|
-      Current.set(tenant: tenant) { Time.use_zone('America/New_York') { remind } }
+      Current.set(tenant: tenant) { BusinessClock.use(tenant: tenant) { remind } }
     rescue StandardError => e
       logger.error("#{self.class}: reminders failed for tenant #{tenant.id}: #{e.class}")
     end

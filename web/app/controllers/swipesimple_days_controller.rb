@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # SwipeSimple daily close: stored export totals, checks and a local review for
-# one America/New_York business day. Read-only toward SwipeSimple and NAB.
+# one business day (BusinessClock). Read-only toward SwipeSimple and NAB.
 class SwipesimpleDaysController < AuthenticatedController
   before_action do
     authorize(:module, :sales_read?)
@@ -9,7 +9,7 @@ class SwipesimpleDaysController < AuthenticatedController
   end
 
   def index
-    @date = params[:date].present? ? Date.iso8601(params[:date].to_s) : Time.current.in_time_zone(SwipesimpleDayClose::ZONE).to_date
+    @date = params[:date].present? ? Date.iso8601(params[:date].to_s) : BusinessClock.today
     @close = SwipesimpleDayClose.new(@date)
     respond_to do |format|
       format.html
