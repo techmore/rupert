@@ -36,6 +36,7 @@
                 data: { action: 'click->chat-dock#toggle', chat_dock_target: 'trigger' } do %><%= navigation_icon('chat') %><span class="chat-dock-badge" data-chat-dock-target="badge" hidden></span><span class="nav-hint">Team chat</span><% end %>
         <% end %>
         <%= render 'shared/header_release' %>
+        <%= render 'shared/header_gate' %>
         <%= render 'shared/header_notifications' %>
         <div data-controller="dropdown" class="relative">
           <% initials = Current.user.display_name.split(/\s+/).map { |word| word[0] }.join.upcase[0, 2] %>

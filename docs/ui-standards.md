@@ -81,7 +81,10 @@ one thing, see the state of the business at a glance, and trust the numbers.
 
 - **Top bar** (`.app-topbar`): menu button (☰, the rail's only control), brand, global search, then exactly
   four utilities: Ask Rupert, Team chat, notifications, account. One row, always. Nothing
-  page-specific lives here, and nothing joins the four without taking one away. Sync state,
+  page-specific lives here, and nothing joins the four without taking one away. The one exception is
+  the release gates, for owners and platform administrators only and gone when nothing is open:
+  the release tracker (`shared/header_release`) and the gate menu of blockers that wait on an
+  outside account or a professional (`shared/header_gate`, read from `config/release_blockers.yml`). Sync state,
   help and bug reports live in the status bar; everything personal or rare (time, billing,
   support access, appearance, roadmap, instance overview) lives in the account menu. A problem with the system
   itself (card processing down) is not a banner on every page: it turns the notifications bell's badge red with
@@ -189,7 +192,8 @@ Rules that apply to all templates:
 | `.flash-notice`, `.flash-alert` | Result of an action |
 | `.empty-state`, `.empty-state-title`, `.empty-state-hint` | Nothing here yet |
 | `.explainer` | Folded explanation |
-| `.badge`, `.nav-badge` | Unread count on an icon or label; hidden at zero |
+| `.badge`, `.nav-badge`, `.badge-clay` | Unread count on an icon or label; hidden at zero. `.badge-clay` for counts that are waiting on someone (release blockers) |
+| `.gate-menu`, `.gate-list`, `.gate-item`, `.gate-links` | The top-bar release gate dropdown (owners only): each blocker's title, what is needed and its GitHub issue links; `Done` pill once ticked off in `config/release_blockers.yml` |
 | `.app-statusbar`, `.statusbar-item` | The bottom status bar (sync, Team chat, help, build) |
 | `.toast-stack`, `.toast` | Attention-only popups raised with the `rupert:toast` event; three at most |
 

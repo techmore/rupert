@@ -465,6 +465,17 @@ html[data-full-window] .table-region { max-height:none; }
 /* Badge: an unread count on an icon or a label; hidden when zero. */
 .badge { display:inline-grid;place-items:center;min-width:1.1rem;height:1.1rem;padding:0 .3rem;border-radius:999px;background:var(--color-olive);color:var(--color-cream);font-size:.62rem;font-weight:700;line-height:1; }
 .nav-badge { position:absolute;top:3px;right:3px;outline:2px solid var(--color-oat); }
+.badge-clay { background:var(--color-clay);color:var(--color-cream); }
+
+/* Release gate: the top-bar dropdown of release blockers that wait on outside accounts (owners only). */
+.gate-menu { width:min(24rem,calc(100vw - 2rem));max-height:min(32rem,calc(100vh - 5rem));overflow-y:auto; }
+.gate-list { padding:.35rem; }
+.gate-item { display:flex;flex-direction:column;gap:.25rem;padding:.6rem .65rem;border-radius:.6rem; }
+.gate-item + .gate-item { border-top:1px solid var(--color-fog); }
+.gate-links { display:flex;flex-wrap:wrap;gap:.5rem;font-size:.8rem; }
+.gate-link { font-weight:600;color:var(--color-olive-deep);text-decoration:underline;text-underline-offset:2px; }
+.gate-link:focus-visible { outline:2px solid var(--color-olive);outline-offset:2px;border-radius:.25rem; }
+@media(pointer:coarse) { .gate-link { display:inline-flex;align-items:center;min-height:44px; } }
 
 /* Toasts: bottom right, above the status bar, three at most. */
 .toast-stack { position:fixed;right:1rem;bottom:2.8rem;z-index:45;display:flex;flex-direction:column;gap:.5rem;width:min(22rem,calc(100vw - 2rem)); }
