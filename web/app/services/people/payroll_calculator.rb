@@ -30,17 +30,19 @@ module People
         pay_run.payslips.destroy_all
 
         rules = PayRules.load(pay_run.tenant_id)
+        pay_run.employees_without_rate = []
         approved_hours(pay_run).each do |employee_id, days|
           hours = days.values.sum { |types| types.values.sum }
           employee = People::Employee.find(employee_id)
-          rate = employee.current_pay_rate
-          next if rate.nil?
+          rate = employee.pay_rate_for(pay_run.period_start, pay_run.period_end)
+          # Approved hours with no rate are never dropped silently: the pay run page lists them.
+          next pay_run.employees_without_rate << employee if rate.nil?
 
           pay_run.payslips.create!(
             employee: employee,
             pay_rate: rate,
             hours: hours,
-            gross_cents: gross_for(employee, hours, overtime_hours(days, rules), pay_run, rules: rules),
+            gross_cents: gross_for(rate, hours, overtime_hours(days, rules), pay_run, rules: rules),
             deductions_cents: 0,
             net_cents: 0
           )
@@ -65,10 +67,7 @@ module People
 
     # Hourly: every hour at the rate, plus the premium (multiplier − 1) on
     # overtime hours. Overtime hours are zero unless PayRules turns it on.
-    def self.gross_for(employee, hours, overtime, pay_run, rules: nil)
-      rate = employee.current_pay_rate
-      return 0 if rate.nil?
-
+    def self.gross_for(rate, hours, overtime, pay_run, rules: nil)
       if rate.pay_type == 'hourly'
         premium = overtime.to_d.zero? ? 0 : overtime.to_d * rate.hourly_rate_cents * ((rules || PayRules.current).overtime_multiplier - 1)
         ((hours.to_d * rate.hourly_rate_cents) + premium).round.to_i

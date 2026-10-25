@@ -52,7 +52,10 @@ entries inside the period. Hourly pay is every hour × rate; overtime follows
 (`regular` and `overtime` entries, not PTO or holiday) over the threshold in
 each seven-day work week earn the multiplier; only days inside the pay run
 count toward a week that straddles its start or end. Salaried pay is a
-prorated slice of the annual salary and ignores overtime. Every payslip
+prorated slice of the annual salary and ignores overtime. The rate is the latest
+one in effect during the pay run's period (not today's), and an employee with
+approved hours but no rate for the period gets no payslip and is named in an
+alert on the pay run page, never dropped silently. Every payslip
 without deductions gets a flat **15% placeholder estimate** (`TAX_ESTIMATE`),
 labelled "Deductions (estimate)" on the pay run page. It is not tax or
 withholding; real deductions await qualified payroll review (#424, #425).

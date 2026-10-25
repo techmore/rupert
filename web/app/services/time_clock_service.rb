@@ -30,7 +30,16 @@ class TimeClockService
 
   def self.clock_out(user:, shift_id:)
     shift = ClockShift.find_by!(id: shift_id, user_id: user.id)
-    shift.serialize_change { shift.update!(ended_at: Time.current) unless shift.ended_at }
+    shift.serialize_change do
+      next if shift.ended_at
+      # A punch left open past the longest real shift was a forgotten clock-out: closing it now
+      # would record days of hours. The worker requests a correction with the real time instead.
+      if shift.started_at < ClockShift::MAX_SHIFT_HOURS.hours.ago
+        raise Error, "This shift has been open more than #{ClockShift::MAX_SHIFT_HOURS} hours. Request a correction with your real clock-out time."
+      end
+
+      shift.update!(ended_at: Time.current)
+    end
     shift
   end
 
@@ -51,6 +60,10 @@ class TimeClockService
       (reviewer.super_admin? || reviewer.tenant_id == Current.tenant_id)
 
     shift = correction.clock_shift
+    # Same rule as timesheets: nobody reviews a change to their own hours.
+    if shift.user_id == reviewer.id || correction.requested_by_id == reviewer.id || (shift.employee && shift.employee.user_id == reviewer.id)
+      raise Error, 'Another reviewer must review a correction to your own shift.'
+    end
     shift.serialize_change do
       correction.reload
       if correction.status != 'pending'

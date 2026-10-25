@@ -14,11 +14,28 @@ class ClockShift < ApplicationRecord
   validate :non_overlapping_interval
   validate :linked_worker, on: :create
 
+  # No real shift is longer than this; a longer interval is a forgotten clock-out to correct.
+  MAX_SHIFT_HOURS = 24
+  # Pay and commission estimates count a punch that is still open for at most this long, so a
+  # forgotten clock-out does not earn hours, commission or tips for days (it is flagged instead).
+  STALE_OPEN_HOURS = 16
+
   scope :open, -> { where(ended_at: nil) }
+  scope :stale_open, ->(at = Time.current) { open.where('started_at < ?', at - STALE_OPEN_HOURS.hours) }
   scope :recent, -> { order(started_at: :desc, id: :desc) }
 
   def hours(at: Time.current)
     [(ended_at || at) - started_at, 0].max / 3600.0
+  end
+
+  # Where an estimate stops counting this shift: the clock-out, or for a punch that is still open
+  # `at`, now -- capped at STALE_OPEN_HOURS after clock-in.
+  def counted_end(at = Time.current)
+    ended_at || [at, started_at + STALE_OPEN_HOURS.hours].min
+  end
+
+  def stale_open?(at = Time.current)
+    ended_at.nil? && started_at < at - STALE_OPEN_HOURS.hours
   end
 
   # All changes for one worker share a writer lock before interval reads.
@@ -53,6 +70,9 @@ class ClockShift < ApplicationRecord
     errors.add(:started_at, 'cannot be in the future') if started_at > Time.current
     errors.add(:ended_at, 'must be after clock-in') if ended_at && ended_at <= started_at
     errors.add(:ended_at, 'cannot be in the future') if ended_at && ended_at > Time.current
+    if ended_at && ended_at > started_at + MAX_SHIFT_HOURS.hours
+      errors.add(:ended_at, "must be within #{MAX_SHIFT_HOURS} hours of clock-in")
+    end
   end
 
   def non_overlapping_interval

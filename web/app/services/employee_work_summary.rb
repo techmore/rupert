@@ -52,7 +52,7 @@ class EmployeeWorkSummary
     end_at = ((day || to) + 1).in_time_zone
     shifts.sum do |shift|
       start = [shift.started_at, start_at].max
-      finish = [shift.ended_at || Time.current, end_at].min
+      finish = [shift.counted_end, end_at].min
       [finish - start, 0].max / 3600.0
     end
   end
