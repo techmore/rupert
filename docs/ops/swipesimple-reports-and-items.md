@@ -114,6 +114,26 @@ are never added together, and Authorize.net settlements are payment evidence
 for store sales, not more sales. The SwipeSimple daily close link appears only
 for users with sales access.
 
+## Card tenders matched (Rupert POS ↔ SwipeSimple)
+
+SwipeSimple daily close has a read-only **Card tenders matched** section. It
+pairs each completed card payment Rupert's own POS recorded that day (orders
+with source `rupert_pos`, timed by when the payment was recorded) with the
+approved SwipeSimple card sale of the **exact same amount** within 10 minutes.
+SwipeSimple's `Amount` already includes the tip, and Rupert's payment includes
+the customer's confirmed tip, so the two compare directly. When several sales
+of one amount overlap in time the group is shown as ambiguous and nothing is
+guessed. It writes nothing.
+
+The usual source of these Rupert card tenders is **Card (A920)** in Rupert POS
+(see [C-Trax retail](../ctrax-retail.md#card-a920)): the cashier runs the card
+on the A920 terminal, then taps Card (A920) to record the sale. For a clean
+match, key the total Rupert shows (tip included) on the terminal, do not add a
+second tip on the A920, and record it in Rupert within a few minutes. A Rupert
+tender with no SwipeSimple sale usually means the card was recorded but not
+run (or the export has not been pulled yet); a SwipeSimple sale with no Rupert
+tender usually means the card was run but not recorded in Rupert.
+
 ## Older months (automatic)
 
 Each pull also fills up to 3 older months that are missing, newest first, going

@@ -13,7 +13,15 @@ class PosCheckout < ApplicationRecord
   encrypts :lines_json
   validates :reference, uniqueness: true
   validates :status, inclusion: { in: %w[ready processing unknown declined paid cancelled] }
-  validates :tender, inclusion: { in: %w[cash card] }
+  # card_a920: the card was run on the store's SwipeSimple Pax A920 terminal and
+  # the cashier records it here, like cash. No gateway is called. Its payment is
+  # method card (card clearing 1150, SwipeSimple tender match) with a reference
+  # starting TERMINAL_REFERENCE_PREFIX, so it is told apart from gateway charges.
+  TERMINAL_CARD = 'card_a920'
+  TERMINAL_REFERENCE_PREFIX = 'swipesimple_a920'
+  TENDERS = ['cash', 'card', TERMINAL_CARD].freeze
+  TENDER_LABELS = { 'cash' => 'Cash', 'card' => 'Card', TERMINAL_CARD => 'Card (A920)' }.freeze
+  validates :tender, inclusion: { in: TENDERS }
   validates :subtotal_cents, :tax_cents, :tip_cents, :total_cents, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
   validate do
     errors.add(:base, 'Checkout belongs to another workspace.') unless [location, user, pos_display_session, pos_session, order].compact.all? { |row| row.tenant_id == tenant_id }
@@ -22,11 +30,14 @@ class PosCheckout < ApplicationRecord
   def lines = lines_json || []
   validates :gateway_provider, inclusion: { in: %w[authorize_net nmi] }
   def sandbox_payment? = tender == 'card' && gateway_provider == 'nmi' && environment == 'sandbox'
+  def terminal_card? = tender == TERMINAL_CARD
+  def payment_method = tender == 'cash' ? 'cash' : 'card'
+  def tender_label = TENDER_LABELS.fetch(tender, tender.to_s.humanize)
   def paid? = status == 'paid'
   def unresolved? = %w[processing unknown].include?(status)
 
   def receipt
-    { id: id, reference: reference, status: status, demo: demo?, sandbox: sandbox_payment?, tender: tender, subtotal_cents: subtotal_cents,
+    { id: id, reference: reference, status: status, demo: demo?, sandbox: sandbox_payment?, tender: tender, tender_label: tender_label, subtotal_cents: subtotal_cents,
       tax_cents: tax_cents, tip_cents: tip_cents, total_cents: total_cents, cash_received_cents: cash_received_cents,
       change_cents: change_cents, paid_at: paid_at&.iso8601,
       inventory_pending: pos_stock_allocations.where.not(status: %w[applied released]).exists? }
