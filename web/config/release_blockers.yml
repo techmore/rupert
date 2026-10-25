@@ -1,0 +1,38 @@
+# Release gate: the things the next release is waiting on that need an outside account or a
+# professional, shown to owners and platform administrators as the gate icon in the top bar
+# (shared/_header_gate). Tick an item off by changing its status to done; the badge counts the
+# open ones and the icon disappears when none are left. Read at render time from this file only:
+# no database, no network.
+release: v0.2.1
+tracker_issue: 326
+items:
+  - id: google_drive_backup
+    title: Google Drive backup consent
+    needed: Grant Rupert access to the backup Drive folder (consent currently fails with access denied); this unblocks the restore drills.
+    issues: [419, 418, 420, 421]
+    status: open
+  - id: payroll_review
+    title: Payroll professional review
+    needed: A payroll professional checks the calculator and a draft pay run.
+    issues: [424, 425]
+    status: open
+  - id: tax_preparer_review
+    title: Tax preparer review of 1099s
+    needed: A tax preparer checks the 1099-NEC and 1099-MISC totals and copies.
+    issues: [472]
+    status: open
+  - id: wallet_payments
+    title: Apple Pay and Google Pay
+    needed: Set up the payment gateway and the Apple and Google merchant accounts.
+    issues: [479]
+    status: open
+  - id: pos_hardware
+    title: POS hardware
+    needed: Terminal details and a hardware plan agreed with North.
+    issues: [478]
+    status: open
+  - id: branch_protection
+    title: GitHub branch protection
+    needed: A repository admin turns on branch protection and required checks for main.
+    issues: [206]
+    status: open

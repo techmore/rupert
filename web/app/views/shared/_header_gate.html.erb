@@ -1,0 +1,32 @@
+<%# Header gate: the release's blockers that wait on an outside account or a professional
+    (config/release_blockers.yml). Owners and platform administrators only; hidden when none are open.
+    Read from the file, so no page waits on the database or GitHub. %>
+<% gate = ReleaseBlockers.current %>
+<% if ReleaseBlockers.visible_to?(Current.user) && gate.any_open? %>
+  <% label = "#{gate.title}: #{gate.open_count} open" %>
+  <div data-controller="dropdown" class="relative" data-release-gate>
+    <button type="button" class="nav-utility" data-action="dropdown#toggle" data-dropdown-target="trigger" aria-label="<%= label %>" aria-expanded="false" aria-controls="release-gate-panel" title="<%= label %>"><%= navigation_icon('gate') %><span class="badge badge-clay nav-badge" aria-hidden="true" data-release-gate-open="<%= gate.open_count %>"><%= gate.open_count %></span></button>
+    <div id="release-gate-panel" data-dropdown-target="menu" class="account-menu gate-menu hidden" role="region" aria-labelledby="release-gate-title">
+      <div class="account-menu-head">
+        <p id="release-gate-title" class="text-sm font-semibold text-ink"><%= gate.title %></p>
+        <p class="text-xs text-mocha"><%= pluralize(gate.open_count, 'item') %> waiting on an outside account or a professional.</p>
+      </div>
+      <ul class="gate-list">
+        <% (gate.open_items + gate.done_items).each do |item| %>
+          <li class="gate-item" data-release-blocker="<%= item.id %>">
+            <p class="flex items-start justify-between gap-2"><span class="text-sm font-semibold text-ink"><%= item.title %></span><% if item.done? %><span class="pill-fern">Done</span><% end %></p>
+            <p class="text-xs text-mocha"><%= item.needed %></p>
+            <p class="gate-links">
+              <% item.issue_links.each do |number, url| %>
+                <%= link_to "##{number}", url, target: '_blank', rel: 'noopener', class: 'gate-link', aria: { label: "Open issue #{number} on GitHub (new tab)" } %>
+              <% end %>
+            </p>
+          </li>
+        <% end %>
+      </ul>
+      <% if gate.tracker_url %>
+        <div class="account-menu-group"><%= link_to "Open release tracker ##{gate.tracker_issue}", gate.tracker_url, target: '_blank', rel: 'noopener', class: 'nav-menu-item' %></div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
