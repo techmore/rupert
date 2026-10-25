@@ -9,6 +9,7 @@ Tick every line before Rupert is the system a shift depends on. Owner items are 
 - [ ] Shopify sync credentials saved in Settings (client id/secret, shop domain, `SHOPIFY_LOCATION_ID` if more than one location).
 - [ ] Square: token saved only if Square is actually in use; `SQUARE_ENVIRONMENT` matches the token (owner decision).
 - [ ] `bin/rails ops:encrypt_shop_tokens` run once after the upgrade that encrypted `shops.shopify_token`.
+- [ ] `CONFIRM=1 bin/rails ops:encrypt_sensitive_fields` run once after the #421 upgrade (chat, payroll, HR, 1099 columns); a dry run afterwards shows 0 plaintext rows ([encryption-at-rest.md](encryption-at-rest.md)).
 
 ## Services on SER8
 - [ ] `rupert-web.service` installed from `deploy/rupert-web-ser8.service`, `rupert-jobs.service` from `deploy/rupert-jobs-ser8.service`, both `active` with `NRestarts=0`.

@@ -22,7 +22,10 @@ module Finance
     TIN_TYPES = { 'ssn' => 'SSN', 'ein' => 'EIN', 'itin' => 'ITIN' }.freeze
     KEY = /\A(v:\d+|e:\d+|p:.{1,200})\z/
 
+    # The TIN and the W-9 name and address are encrypted at rest (#421). payee_key, state and form fields stay
+    # readable because they are matched by equality; names are sorted in Ruby.
     encrypts :tin
+    encrypts :legal_name, :business_name, :tin_last4, :address_line1, :address_line2, :city, :postal_code
 
     # Issued 1099s are kept for good, so a payee with any cannot be removed.
     has_many :form_filings, class_name: 'Finance::TaxFormFiling', dependent: :restrict_with_exception

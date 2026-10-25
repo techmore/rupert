@@ -23,6 +23,11 @@ store owner; payroll rules need a payroll professional's review (open gate).
 
 `PayRun`, `Payslip` and `Setting` rows are `TenantScoped`.
 
+Pay rate amounts, payslip hours, amounts and notes, and pay run totals and notes
+are encrypted at rest (#421). Totals are added up in Ruby (`pluck`, then sum):
+never `SUM()`, filter or sort these columns in SQL. Employee address and date of
+birth are encrypted too. See [encryption-at-rest.md](../ops/encryption-at-rest.md).
+
 ## Permissions and tenant boundary
 
 `payroll.read` to see pay runs and the Incentives model; `payroll.write` to
@@ -91,7 +96,8 @@ wrong finalize is Unknown beyond a database restore
 `live_commissions_test.rb`, `test/services/payroll_calculator_test.rb`
 (overtime off by default, threshold/multiplier/week start from `PayRules`,
 straddled weeks, salaried, placeholder deductions) and
-`employee_work_summary_test.rb`.
+`employee_work_summary_test.rb`. `test/services/sensitive_field_encryption_test.rb`
+covers ciphertext on disk, the Ruby totals and the backfill.
 
 ## Open gaps
 

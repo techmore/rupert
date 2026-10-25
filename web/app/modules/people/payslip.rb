@@ -7,6 +7,9 @@ module People
 
     self.table_name = 'payslips'
 
+    # Amounts, hours and notes are encrypted at rest (#421): add them up in Ruby, never with SQL SUM.
+    encrypts :hours, :gross_cents, :deductions_cents, :net_cents, :notes
+
     belongs_to :pay_run, class_name: 'People::PayRun'
     belongs_to :employee, class_name: 'People::Employee'
     belongs_to :pay_rate, class_name: 'People::PayRate', optional: true

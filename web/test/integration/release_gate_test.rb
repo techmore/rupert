@@ -5,7 +5,7 @@ require 'test_helper'
 # The top-bar release gate (shared/_header_gate): owners and platform administrators see the
 # open release blockers from config/release_blockers.yml; staff never do.
 class ReleaseGateTest < ActionDispatch::IntegrationTest
-  ISSUES = [419, 418, 420, 421, 424, 425, 423, 472, 479, 478, 206].freeze
+  ISSUES = [419, 418, 420, 421, 424, 425, 423, 169, 472, 479, 478, 206].freeze
 
   setup do
     Current.tenant = tenants(:default_tenant)
@@ -14,15 +14,15 @@ class ReleaseGateTest < ActionDispatch::IntegrationTest
 
   teardown { Current.reset }
 
-  test 'an owner sees the gate with its seven blockers and their GitHub issues' do
+  test 'an owner sees the gate with its open blockers and their GitHub issues' do
     post login_path, params: { email: @owner.email, password: 'password' }
     get sales_path
     assert_response :success
     assert_select '[data-release-gate] button[aria-controls="release-gate-panel"][aria-expanded="false"]'
-    assert_select '[data-release-gate-open="7"]', text: '7'
+    assert_select '[data-release-gate-open="8"]', text: '8'
     assert_select '#release-gate-panel.hidden' do
       assert_select '#release-gate-title', text: 'Release v0.2.1 blockers'
-      assert_select '[data-release-blocker]', count: 7
+      assert_select '[data-release-blocker]', count: 9
       assert_select '[data-release-blocker="pay_period"] a[href="/settings#pay-rules"]', text: 'Choose the pay period'
       assert_select '[data-release-blocker="google_drive_backup"]', text: /Google Drive backup consent/
       ISSUES.each do |number|
@@ -37,7 +37,7 @@ class ReleaseGateTest < ActionDispatch::IntegrationTest
     post pay_rules_settings_path, params: { pay_period: 'weekly', week_start_day: 'thursday', overtime_threshold_hours: '40', overtime_multiplier: '1.5' }
     assert_redirected_to settings_path(anchor: 'pay-rules')
     get sales_path
-    assert_select '[data-release-gate-open="6"]', text: '6'
+    assert_select '[data-release-gate-open="7"]', text: '7'
     assert_select '[data-release-blocker="pay_period"]', text: /Done/
     assert_select '[data-release-blocker="pay_period"] a[href="/settings#pay-rules"]', count: 0
   end

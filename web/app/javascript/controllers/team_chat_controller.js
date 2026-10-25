@@ -603,7 +603,9 @@ export default class extends Controller {
     this.mediaLoaded = true
     const nodes = data.items.map((item) => this.mediaNode(item))
     append ? this.mediaGridTarget.append(...nodes) : this.mediaGridTarget.replaceChildren(...nodes)
-    if (data.items.length) this.mediaLastId = data.items[data.items.length - 1].id
+    // A text search reads a bounded number of files per request, so it says where to carry on.
+    if (data.next_before) this.mediaLastId = data.next_before
+    else if (data.items.length) this.mediaLastId = data.items[data.items.length - 1].id
     this.mediaMoreTarget.hidden = !data.has_more
     const shown = this.mediaGridTarget.childElementCount
     this.mediaStatusTarget.hidden = shown > 0

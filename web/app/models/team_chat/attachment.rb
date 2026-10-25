@@ -15,6 +15,9 @@ module TeamChat
     TEXT_TYPES = { '.csv' => 'text/csv', '.txt' => 'text/plain' }.freeze
     IMAGE_TYPES = %w[image/png image/jpeg image/gif image/webp].freeze
 
+    # The file's bytes are encrypted at rest (#421). The name, type and size stay readable for listing.
+    encrypts :data
+
     belongs_to :room, class_name: 'TeamChat::Room'
     belongs_to :message, class_name: 'TeamChat::Message'
 

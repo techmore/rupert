@@ -22,6 +22,9 @@ business record. Product owner: the store owner. Full operator detail is in the
 - The original bytes are stored once, encrypted (`encrypts :content_base64`),
   with `summary_json` and `params_json` also encrypted. A duplicate row points
   at the first copy (`duplicate_of`). A refused file keeps only metadata.
+- Metadata (`filename`, `sha256`, size, type) stays plaintext on purpose: the
+  inbox searches file names with `LIKE` and `sha256` backs the replay index
+  ([encryption-at-rest.md](../ops/encryption-at-rest.md)).
 - Importers are listed in `Uploads::Registry::IMPORTERS`; each writes to its
   own destination module.
 
