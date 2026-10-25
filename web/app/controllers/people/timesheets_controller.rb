@@ -62,10 +62,15 @@ module People
         else
           ClockShift.where(employee_id: TimeClockService.worker_for(Current.user, include_on_leave: true)&.id)
         end
+        # One read per source for the month, bucketed by day in Ruby.
+        month_window = @month.beginning_of_month.in_time_zone...(@month.end_of_month + 1).in_time_zone
+        cal_sheets = cal_scope.to_a
+        punches_by_day = punch_scope.where(started_at: month_window).group_by { |p| p.started_at.to_date }
+        square_by_day = SquareTimecard.visible_to(Current.user).where(started_at: month_window).group_by { |c| c.started_at.to_date }
         @calendar_days = @month_days.each_with_object({}) do |day, days|
-          ts = cal_scope.select { |t| t.period_start <= day && t.period_end >= day }
-          punches = punch_scope.select { |p| p.started_at.to_date == day }
-          square = SquareTimecard.visible_to(Current.user).select { |c| c.started_at&.to_date == day }
+          ts = cal_sheets.select { |t| t.period_start <= day && t.period_end >= day }
+          punches = punches_by_day.fetch(day, [])
+          square = square_by_day.fetch(day, [])
           days[day.iso8601] = { timesheets: ts, punches: punches.size + square.size,
                                 hours: (punches.sum { |p| ((p.ended_at || p.started_at) - p.started_at) / 3600.0 } + square.sum(&:hours).to_f).round(2) }
         end
@@ -129,8 +134,8 @@ module People
 
     def new
       authorize(People::Timesheet, :create?)
-      monday = Date.current.beginning_of_week
-      @timesheet = People::Timesheet.new(period_start: monday, period_end: monday + 6)
+      first, last = PayRules.current.period_range(Date.current)
+      @timesheet = People::Timesheet.new(period_start: first, period_end: last)
       load_employees
     end
 
@@ -221,9 +226,10 @@ module People
 
     def build_unified_records(visible)
       records = []
+      sheet_hours = People::TimesheetEntry.where(timesheet_id: visible.select(:id)).group(:timesheet_id).sum(:hours)
       visible.includes(:employee, :assigned_reviewer).find_each do |ts|
         records << { source: 'Rupert', source_class: 'pill-olive', employee: ts.employee&.name || 'Unknown',
-          date: ts.period_start, end_date: ts.period_end, hours: ts.total_hours.to_f, status: ts.status,
+          date: ts.period_start, end_date: ts.period_end, hours: sheet_hours.fetch(ts.id, 0).to_f, status: ts.status,
           detail: ts.demo? ? 'DEMO' : ts.period_label, path: people_timesheet_path(ts) }
       end
       SquareTimecard.visible_to(Current.user).includes(:employee).find_each do |card|

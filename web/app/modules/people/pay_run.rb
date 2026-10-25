@@ -12,6 +12,9 @@ module People
     # The stored totals and notes are encrypted at rest (#421), so totals are added up in Ruby.
     encrypts :total_gross_cents, :total_net_cents, :notes
 
+    # Set by PayrollCalculator.generate!: employees with approved hours but no pay rate for the period.
+    attr_accessor :employees_without_rate
+
     has_many :payslips, class_name: 'People::Payslip', dependent: :destroy, inverse_of: :pay_run
 
     validates :name, presence: true

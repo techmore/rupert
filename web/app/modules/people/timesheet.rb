@@ -50,6 +50,20 @@ module People
       end
     end
 
+    # The period a new timesheet for `employee` covers on `date`: the pay period from PayRules
+    # (weekly Thursday-Wednesday until Jan chooses), shortened where an existing sheet already covers
+    # part of it. Sheets that match the pay period let a pay run be generated as soon as the period ends;
+    # a sheet straddling two pay periods holds the second one's hours until it, too, is approved.
+    def self.default_period_for(employee, date = Date.current)
+      first, last = PayRules.current.period_range(date)
+      others = where(employee_id: employee.id).where('period_start <= ? AND period_end >= ?', last, first).pluck(:period_start, :period_end)
+      before = others.filter_map { |_start, finish| finish if finish < date }.max
+      after = others.filter_map { |start, _finish| start if start > date }.min
+      first = [first, before + 1].max if before
+      last = [last, after - 1].min if after
+      [first, last]
+    end
+
     def total_hours
       entries.sum(:hours)
     end

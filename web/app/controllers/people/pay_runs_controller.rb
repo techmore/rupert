@@ -59,6 +59,10 @@ module People
       end
 
       People::PayrollCalculator.generate!(@pay_run)
+      missing = @pay_run.employees_without_rate.to_a
+      if missing.any?
+        flash[:alert] = "No payslip for #{missing.map(&:name).to_sentence}: approved hours but no pay rate for this period. Add a pay rate and regenerate."
+      end
       redirect_to(people_pay_run_path(@pay_run), notice: 'Payslips regenerated from approved timesheets.')
     end
 

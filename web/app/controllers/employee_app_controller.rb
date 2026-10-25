@@ -34,10 +34,13 @@ class EmployeeAppController < ApplicationController
     worker = TimeClockService.worker_for(Current.user)
     return redirect_to employee_app_path, alert: 'Ask an administrator to link your staff record.' unless worker
 
-    # Open an existing overlapping period instead of creating competing weeks.
-    monday = Date.current.beginning_of_week
-    sheet = worker.timesheets.where('period_start <= ? AND period_end >= ?', monday + 6, monday).first
-    sheet ||= TimesheetWorkflow.new.create(employee_id: worker.id, period_start: monday, period_end: monday + 6)
+    # Open the sheet covering today, or start one for the pay period (PayRules) without overlapping others.
+    today = Date.current
+    sheet = worker.timesheets.where('period_start <= ? AND period_end >= ?', today, today).first
+    unless sheet
+      first, last = People::Timesheet.default_period_for(worker, today)
+      sheet = TimesheetWorkflow.new.create(employee_id: worker.id, period_start: first, period_end: last)
+    end
     redirect_to people_timesheet_path(sheet)
   rescue TimesheetWorkflow::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
     redirect_to employee_app_path, alert: 'Could not open this week. Refresh and try again.'

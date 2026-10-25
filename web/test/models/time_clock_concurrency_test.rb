@@ -10,6 +10,8 @@ class TimeClockConcurrencyTest < ActiveSupport::TestCase
     Current.tenant = tenant
     user = User.create!(tenant: tenant, email: "clock-race-#{SecureRandom.hex(4)}@example.com", role: 'admin', password: 'password')
     worker = People::Employee.create!(user: user, first_name: 'Concurrent', last_name: 'Worker', employment_type: 'contractor')
+    # Nobody reviews a correction to their own shift.
+    approver = User.create!(tenant: tenant, email: "clock-race-reviewer-#{SecureRandom.hex(4)}@example.com", role: 'admin', password: 'password')
     date = 2.days.ago.beginning_of_day
     shifts = [[9, 10], [12, 13]].map do |start_hour, end_hour|
       ClockShift.create!(user: user, employee: worker, employee_key: worker.id.to_s,
@@ -30,7 +32,7 @@ class TimeClockConcurrencyTest < ActiveSupport::TestCase
         ActiveRecord::Base.connection_pool.with_connection do
           Current.tenant = tenant
           candidate = ClockCorrection.find(correction.id)
-          reviewer = User.find(user.id)
+          reviewer = User.find(approver.id)
           ready << true
           gate.pop
           TimeClockService.review(correction: candidate, reviewer: reviewer, approve: true)
@@ -58,6 +60,7 @@ class TimeClockConcurrencyTest < ActiveSupport::TestCase
     ClockCorrection.where(clock_shift_id: shifts&.map(&:id)).delete_all if shifts
     ClockShift.where(id: shifts&.map(&:id)).delete_all if shifts
     worker&.destroy!
+    approver&.destroy!
     user&.destroy!
     tenant&.destroy!
     Current.reset

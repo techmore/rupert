@@ -41,12 +41,15 @@ class EmployeePayWeek
     @sales_cents = 0
     @commission_cents = 0
     @tip_cents = 0
-    @pay_rate = employee.current_pay_rate
+    @pay_rate = employee.pay_rate_for(start_date, [end_date, Date.current].min)
     load_shifts
     @hours = own_shifts.sum { |shift| clipped_seconds(shift, window) } / 3600.0
     @overtime_hours = rules.overtime_enabled? ? count_overtime_hours : 0.0
     add_order_sources
     add_ctrax_days
+    if own_shifts.any? { |shift| shift.stale_open?(@now) }
+      @notes << "A punch has been open more than #{ClockShift::STALE_OPEN_HOURS} hours; it counts only #{ClockShift::STALE_OPEN_HOURS} hours until it is corrected."
+    end
     @notes << 'No pay rate is on file, so base pay is unavailable.' unless pay_rate
     @notes << 'An administrator account earns no commission and no share of tips.' if admin?
   end
@@ -95,7 +98,7 @@ class EmployeePayWeek
   end
 
   def clipped_seconds(shift, range)
-    finish = [shift.ended_at || @now, range.end].min
+    finish = [shift.counted_end(@now), range.end].min
     [finish - [shift.started_at, range.begin].max, 0].max
   end
 
@@ -141,7 +144,7 @@ class EmployeePayWeek
         at = Time.iso8601(order['completed_at'].to_s).in_time_zone
         next unless window.cover?(at) && order['total'].is_a?(Integer) && order['tax'].is_a?(Integer) && order['refund_count'].to_i.zero?
 
-        on_shift = @groups.select { |_key, shifts| shifts.any? { |shift| at >= shift.started_at && at < (shift.ended_at || @now) } }
+        on_shift = @groups.select { |_key, shifts| shifts.any? { |shift| at >= shift.started_at && at < shift.counted_end(@now) } }
         next unless (@own_keys & on_shift.keys).any?
 
         base = order['total'] - order['tax']

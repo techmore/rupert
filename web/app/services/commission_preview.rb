@@ -13,7 +13,7 @@ class CommissionPreview
   MAX_ORDERS = 5000
   MAX_SHIFTS = 1000
 
-  attr_reader :gateway_matched_orders, :gateway_excluded_orders, :rows, :eligible_orders, :excluded_orders, :source, :currency, :start_date, :end_date,
+  attr_reader :stale_open_shifts, :gateway_matched_orders, :gateway_excluded_orders, :rows, :eligible_orders, :excluded_orders, :source, :currency, :start_date, :end_date,
     :unassigned_tip_cents
 
   # Within a block, the same preview (dates, source, currency) is built once and shared, so the incentive model can
@@ -72,6 +72,8 @@ class CommissionPreview
       .where('quantity IS NULL OR unit_cents IS NULL OR quantity <= 0 OR unit_cents < 0 OR (unit_cents = 0 AND line_cents > 0)')
       .distinct.pluck(:order_id).to_set
     groups = shifts.group_by(&:employee_key)
+    # A punch open past STALE_OPEN_HOURS is a forgotten clock-out: it counts only that long.
+    @stale_open_shifts = shifts.count(&:stale_open?)
     admins = PayRules.admin_keys(shifts)
     totals = groups.to_h do |key, worker_shifts|
       [key, { employee: worker_shifts.max_by(&:started_at).employee_name, employee_id: worker_shifts.first.employee_id, admin: admins.include?(key),
@@ -89,7 +91,7 @@ class CommissionPreview
       end
       @eligible_orders += 1
       on_shift = groups.select do |_key, intervals|
-        intervals.any? { |shift| order.occurred_at >= shift.started_at && order.occurred_at < (shift.ended_at || now) }
+        intervals.any? { |shift| order.occurred_at >= shift.started_at && order.occurred_at < shift.counted_end(now) }
       end
       # Commission is never shared; a tip is split evenly between the non-admins on shift, rounded down.
       sharers = on_shift.keys.reject { |key| admins.include?(key) }

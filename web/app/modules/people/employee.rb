@@ -81,7 +81,13 @@ module People
     end
 
     def current_pay_rate
-      pay_rates.where('effective_on <= ? AND (ended_on IS NULL OR ended_on >= ?)', Date.current, Date.current).order(effective_on: :desc, id: :desc).first
+      pay_rate_for(Date.current, Date.current)
+    end
+
+    # The rate for a pay period: the latest one in effect on any day from `from` to `to` (a pay run
+    # for an earlier period uses that period's rate, not today's; a rate that ended mid-period still pays it).
+    def pay_rate_for(from, to)
+      pay_rates.where('effective_on <= ? AND (ended_on IS NULL OR ended_on >= ?)', to, from).order(effective_on: :desc, id: :desc).first
     end
 
     # In training on this date: flagged, and the date falls within the training start and (optional) end dates.

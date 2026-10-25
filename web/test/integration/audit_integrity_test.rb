@@ -82,19 +82,17 @@ class AuditIntegrityServicesTest < ActiveSupport::TestCase
 
   test 'full biweekly salaried period must pay one twenty sixth of annual salary' do
     rate = stub(pay_type: 'salary', annual_salary_cents: 5_200_000, pay_frequency: 'biweekly')
-    employee = stub(current_pay_rate: rate)
     run = stub(period_start: Date.new(2026, 1, 5), period_end: Date.new(2026, 1, 18))
-    assert_equal 200_000, People::PayrollCalculator.send(:gross_for, employee, 0, 0, run)
+    assert_equal 200_000, People::PayrollCalculator.send(:gross_for, rate, 0, 0, run)
   end
 
   test 'salary periods include the final day and calendar-month length' do
     rate = stub(pay_type: 'salary', annual_salary_cents: 6_240_000, pay_frequency: 'weekly')
-    employee = stub(current_pay_rate: rate)
     week = stub(period_start: Date.new(2026, 1, 5), period_end: Date.new(2026, 1, 11))
-    assert_equal 120_000, People::PayrollCalculator.send(:gross_for, employee, 0, 0, week)
+    assert_equal 120_000, People::PayrollCalculator.send(:gross_for, rate, 0, 0, week)
     rate.stubs(:pay_frequency).returns('monthly')
     month = stub(period_start: Date.new(2028, 2, 1), period_end: Date.new(2028, 2, 29))
-    assert_equal 520_000, People::PayrollCalculator.send(:gross_for, employee, 0, 0, month)
+    assert_equal 520_000, People::PayrollCalculator.send(:gross_for, rate, 0, 0, month)
   end
 
   test 'split payments allocate the final sales tax rounding cent exactly once' do
