@@ -67,9 +67,10 @@ class LearningController < AuthenticatedController
     redirect_to destination, notice: params[:focus].present? ? 'Your path is ready. Lessons and definitions stay one tap away.' : nil
   end
 
-  # GET /learning/team — read-only training overview for people who manage accounts or staff.
+  # GET /learning/team — read-only training overview for people with staff (hr.read) access.
+  # Same rule as the Training progress rail entry in ModuleRegistry.
   def team
-    return head :forbidden unless Current.user.can?('users.read') || Current.user.can?('hr.read')
+    return head :forbidden unless ModuleRegistry.visible?(Current.user, 'training')
 
     @rows = User.where(tenant_id: Current.tenant_id).ordered.map do |user|
       journey = LearningJourney.new(user)

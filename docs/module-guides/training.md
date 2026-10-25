@@ -69,8 +69,10 @@ The completion record holds the lesson key and time. It does not record a conten
 
 - `/learning` is open to every signed-in, active workspace account (registry permission `nil`).
   Each lesson is permission-checked on read and on completion.
-- Training progress (`/learning/team`) needs `users.read` or `hr.read` in the controller; the
-  rail entry is gated on `hr.read`. It lists users of the current tenant only.
+- Training progress (`/learning/team`) needs `hr.read`. The page, its rail entry and the
+  Learn Rupert / help-panel links all use `ModuleRegistry.visible?(user, 'training')`, so they
+  cannot disagree; `users.read` alone does not open it. It lists users of the current tenant
+  only.
 - Completing a lesson changes only the signed-in person's own progress. It grants no access and is
   not a certification.
 - Training modules: `hr.read` sees modules, files, assignments, progress and history; `hr.write`

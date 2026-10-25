@@ -4,7 +4,9 @@
 # raises, so a logging hiccup can't break the action being performed.
 class ActivityLogger
   class << self
-    def log(action, subject: nil, details: nil, actor: Current.user)
+    # `label:` replaces the subject's own label, for subjects whose name or
+    # email should not be copied into the log (for example customer profiles).
+    def log(action, subject: nil, details: nil, actor: Current.user, label: nil)
       ActivityLog.create!(
         tenant_id: Current.tenant_id,
         user_id: actor&.id,
@@ -12,7 +14,7 @@ class ActivityLogger
         action: action,
         subject_type: subject&.class&.name,
         subject_id: subject.try(:id)&.to_s,
-        subject_label: subject_label(subject),
+        subject_label: label || subject_label(subject),
         details: details
       )
     rescue StandardError

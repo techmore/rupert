@@ -70,7 +70,8 @@ class BankStatementsController < AuthenticatedController
 
   def decide
     document = ReconciliationDocument.find(params[:id])
-    decisions = params.fetch(:decisions, {}).permit!.to_h.reject { |_, v| v.blank? || v == 'leave' }
+    # Only "kind:value" strings: a nested decisions[id][x] value is not a choice (and must not 500).
+    decisions = params.fetch(:decisions, {}).permit!.to_h.select { |_, v| v.is_a?(String) }.reject { |_, v| v.blank? || v == 'leave' }
     payers = params.fetch(:payers, {}).permit!.to_h.transform_values { |v| v.to_s.squish.first(120) }
     lines = BankStatementLine.for_document(document.id).pending.where(id: decisions.keys).index_by { |l| l.id.to_s }
     done = Hash.new(0)

@@ -78,7 +78,7 @@ class AskRupertController < AuthenticatedController
   def report
     draft = draft_from_params
     feedback = AskRupert::Reporter.file!(user: Current.user, conversation: @conversation, kind: draft['kind'],
-      summary: draft['summary'], details: draft['details'])
+      summary: draft['summary'], details: draft['details'], message: @draft_message)
     mark_filed(feedback)
     render json: { ok: true, message: 'Thanks. Your report was sent to the Rupert team, with this chat attached.' }, status: :created
   rescue AskRupert::Reporter::Error => e

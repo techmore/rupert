@@ -89,6 +89,7 @@ class ModuleRegistry
     # Work
     Entry.new(key: 'projects', name: 'Projects', path: -> { projects_projects_path }, permission: 'projects.read', position: 70),
     Entry.new(key: 'tasks', name: 'Tasks', path: -> { projects_tasks_path }, permission: 'projects.read', position: 71),
+    Entry.new(key: 'requests', name: 'Requests', path: -> { projects_requests_path }, permission: 'projects.write', position: 72),
     Entry.new(key: 'goals', name: 'Goals', path: -> { goals_goals_path }, permission: 'projects.read', position: 75),
     Entry.new(key: 'kpis', name: 'KPIs', path: -> { goals_kpis_path }, permission: 'projects.read', position: 78),
     # Me
@@ -165,6 +166,13 @@ class ModuleRegistry
       all.find { |e| e.key == key.to_s }
     end
 
+    # True when the module's rail entry is shown to this user. Pages whose
+    # access should match their rail link (for example Training progress) use
+    # this so the link and the page cannot disagree.
+    def visible?(user, key)
+      nav_for(user).any? { |entry| entry.key == key.to_s }
+    end
+
     # Top-level ERP areas that group modules in the header. "modules" lists the
     # entry keys that belong to the area, in display order. Areas follow the
     # operator's day (sell / stock / money / work / team), not the org chart.
@@ -208,7 +216,7 @@ class ModuleRegistry
         ] },
       # Every report in one place; each report page also carries the same tab bar.
       { key: 'reports', name: 'Reports', modules: %w[reports sales_tax finance_reports] },
-      { key: 'work', name: 'Work', modules: %w[projects tasks goals kpis] },
+      { key: 'work', name: 'Work', modules: %w[projects tasks requests goals kpis] },
       # Personal staff self-service (own receipts, own hours). Receipts has no permission, so
       # this area is visible to everyone.
       { key: 'me', name: 'Me', modules: %w[receipts time_clock learning] },

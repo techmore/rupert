@@ -113,7 +113,8 @@ class BooksCheck
   end
 
   def payment_mismatch
-    paid = Core::Payment.where(status: 'completed').group(:order_id).sum(:amount_cents)
+    # Only payments for orders in the check window, not every completed payment ever.
+    paid = Core::Payment.where(status: 'completed', order_id: sales.select(:id)).group(:order_id).sum(:amount_cents)
     mismatched = sales.where(id: paid.keys).pluck(:id, :source, :order_number, :occurred_at, :gross_cents).filter_map do |id, source, number, at, gross|
       diff = paid[id].to_i - gross.to_i
       [source, number, at, gross, paid[id], diff] unless diff.zero?

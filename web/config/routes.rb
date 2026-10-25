@@ -284,6 +284,14 @@ Rails.application.routes.draw do
       end
     end
     resources :templates, only: :destroy, controller: 'project_templates'
+    # Requests assistants filed, waiting for a reviewer to accept, merge or decline (#406).
+    resources :requests, only: :index, controller: 'assistant_requests' do
+      member do
+        post :accept
+        post :merge
+        post :decline
+      end
+    end
     resources :tasks, only: %i[index show create update destroy] do
       get :export, on: :collection
       member do

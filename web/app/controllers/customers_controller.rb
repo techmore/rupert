@@ -78,6 +78,7 @@ class CustomersController < AuthenticatedController
     @customer.external_id = "manual:#{SecureRandom.hex(8)}"
 
     if @customer.save
+      log_customer('customer_created', 'manual profile')
       redirect_to(customer_path(@customer), notice: 'Customer added.')
     else
       render(:new, status: :unprocessable_entity)
@@ -93,6 +94,8 @@ class CustomersController < AuthenticatedController
     authorize(@customer)
     @owners = crm_owners
     if @customer.update(customer_params)
+      changed = @customer.previous_changes.keys.excluding('updated_at')
+      log_customer('customer_updated', "fields: #{changed.join(', ')}") if changed.any?
       redirect_to(customer_path(@customer), notice: 'Customer updated.')
     else
       render(:edit, status: :unprocessable_entity)
@@ -102,7 +105,8 @@ class CustomersController < AuthenticatedController
   def export
     authorize(:module, :customers_write?)
     records = filtered_customers.ransack(params[:q]).result.distinct.order(:id)
-    if records.count > 25_000
+    total = records.count
+    if total > 25_000
       return redirect_to(customers_path, alert: 'Narrow your filters to 25,000 profiles or fewer before exporting.')
     end
     csv = CSV.generate do |rows|
@@ -114,11 +118,26 @@ class CustomersController < AuthenticatedController
         end
       end
     end
+    log_export('Customers CSV', export_summary(total))
     response.headers['Cache-Control'] = 'no-store'
     send_data(csv, filename: "rupert-customers-#{Date.current.iso8601}.csv", type: 'text/csv')
   end
 
   private
+
+  # Customer entries name the profile by id only: names, emails and phone
+  # numbers stay out of the Activity log, and field values are never copied.
+  def log_customer(action, details)
+    ActivityLogger.log(action, subject: @customer, label: "Customer ##{@customer.id}", details: details)
+  end
+
+  # Which filters shaped the export and how many profiles it held; no values
+  # from the profiles themselves.
+  def export_summary(total)
+    filters = %i[status source owner due directory name].filter_map { |key| "#{key}=#{params[key]}" if params[key].present? }
+    filters << 'search' if params[:q].respond_to?(:values) && params[:q].values.any?(&:present?)
+    [helpers.pluralize(total, 'profile'), filters.join(' ').presence].compact.join(', ')
+  end
 
   # Staff who lack customers.read get an explanation instead of a bare redirect;
   # write-permission denials keep the standard behaviour.

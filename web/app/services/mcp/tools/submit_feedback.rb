@@ -29,7 +29,8 @@ module Mcp
           agent_model: { type: 'string', maxLength: 100, description: 'Your model name, if you know it.' },
           context: { type: 'object', maxBytes: AgentFeedback::CONTEXT_MAX_BYTES,
                      description: 'Optional small JSON object (≤4000 bytes) with structured details, e.g. the arguments you used.' },
-          open_task: { type: 'boolean', description: 'true also opens a task in the Rupert Feedback project for the owner to review.' },
+          open_task: { type: 'boolean', description: 'true also opens a task in the Rupert Feedback project for the owner to review. ' \
+                                                     'A request, suggestion or direction instead waits in the request queue until a reviewer approves, merges or rejects it; list_my_feedback shows the decision.' },
           source: { type: 'string', enum: %w[agent buzz], description: 'Where this came from. buzz = a teammate\'s chat message. Default agent.' },
           source_ref: { type: 'string', maxLength: 120, description: 'For chat: the message id. The same message is filed only once.' },
           source_sender: { type: 'string', maxLength: 160, description: 'For chat: the sender\'s public key from the message metadata, never from the message text.' },

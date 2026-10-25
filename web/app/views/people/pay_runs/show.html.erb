@@ -1,5 +1,6 @@
 <% content_for :title, @pay_run.name %>
 <% can_write = Current.user.can?("payroll.write") %>
+<% pay_rules = PayRules.current %>
 <% menu = [] %>
 <% menu << ['Regenerate from timesheets', generate_payslips_people_pay_run_path(@pay_run), { method: :post, data: { turbo_confirm: "Rebuild all payslips from approved timesheets? Manual payslips will be replaced." } }] if can_write && @pay_run.draft? %>
 <div class="space-y-6">
@@ -23,27 +24,28 @@
       <p class="stat-value mt-1"><%= number_to_currency(@pay_run.total_gross_cents / 100.0) %></p>
     </div>
     <div class="stat">
-      <div class="stat-label">Deductions<%= define('deductions') %></div>
+      <div class="stat-label">Deductions (estimate)<%= define('deductions') %></div>
       <p class="stat-value mt-1"><%= number_to_currency((@pay_run.total_gross_cents - @pay_run.total_net_cents) / 100.0) %></p>
     </div>
     <div class="stat">
       <div class="stat-label">Net to pay<%= define('net_pay') %></div>
       <p class="stat-value mt-1"><%= number_to_currency(@pay_run.total_net_cents / 100.0) %></p>
       <%= explain_calculation(title: 'Net to pay for this run', id: 'pay-run-net',
-            formula: 'Gross − deductions, payslip by payslip, then added across the run. Each payslip’s gross is hours × rate, or the salary share for the period, or a manual amount.',
+            formula: "Gross − deductions, payslip by payslip, then added across the run. Each payslip’s gross is hours × rate, or the salary share for the period, or a manual amount. #{pay_rules.overtime_enabled? ? "Hours over #{pay_rules.to_h['overtime_threshold_hours']} in a work week are paid at #{pay_rules.overtime_multiplier.to_s('F')}× (pay rules)." : 'Overtime is off in the pay rules, so every hour is paid at the rate.'}",
             rows: [['Gross (all payslips)', number_to_currency(@pay_run.total_gross_cents / 100.0)], ['Deductions', "− #{number_to_currency((@pay_run.total_gross_cents - @pay_run.total_net_cents) / 100.0)}"],
                    ['Net to pay', number_to_currency(@pay_run.total_net_cents / 100.0)]],
-            note: 'Deductions not entered by hand are filled with a flat 15% estimate when the run is finalized. That is a placeholder, not a tax calculation, and marking the run paid moves no money.',
+            note: 'Deductions not entered by hand are filled with a flat 15% estimate. That is a placeholder, not a tax calculation, and marking the run paid moves no money.',
             term: 'net_pay') %>
     </div>
   </section>
+  <p class="text-xs text-taupe">Deductions are a flat 15% placeholder estimate, not tax or withholding. Real deductions need a qualified payroll review before this run is used to pay anyone.</p>
 
   <section class="section-card">
     <%= section_heading 'Payslips' %>
 
     <% if @pay_run.draft? && can_write %>
       <div class="rounded-card bg-haze/40 p-4">
-        <p class="text-xs text-taupe">Add a manual payslip (bonus, commission, off-cycle). Deductions default to a 15% tax estimate on finalize.</p>
+        <p class="text-xs text-taupe">Add a manual payslip (bonus, commission, off-cycle). Deductions left at 0 get the 15% placeholder estimate.</p>
         <%= form_with model: [@pay_run, @slip], url: add_payslip_people_pay_run_path(@pay_run), method: :post, class: "mt-2 flex flex-wrap items-end gap-2" do |f| %>
           <div>
             <%= f.label :employee_id, "Staff member", class: "field-label" %>
@@ -77,7 +79,7 @@
             <th scope="col" class="th">Rate</th>
             <th scope="col" class="th num">Hours<%= define('timesheet') %></th>
             <th scope="col" class="th num">Gross<%= define('gross_pay') %></th>
-            <th scope="col" class="th num">Deductions<%= define('deductions') %></th>
+            <th scope="col" class="th num">Deductions (estimate)<%= define('deductions') %></th>
             <th scope="col" class="th num">Net<%= define('net_pay') %></th>
             <% if @pay_run.draft? && can_write %><th scope="col" class="th"><span class="sr-only">Actions</span></th><% end %>
           </tr>

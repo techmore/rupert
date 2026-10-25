@@ -1,7 +1,8 @@
 <%# My reports: a List page (docs/ui-standards.md §4) of the reports this person sent. %>
 <% status_pill = { 'new' => 'pill-clay', 'triaged' => 'pill-olive', 'planned' => 'pill-olive', 'done' => 'pill-fern', 'wont_fix' => 'pill-taupe' } %>
+<% decision_pill = { 'accepted' => 'pill-fern', 'merged' => 'pill-olive', 'declined' => 'pill-taupe' } %>
 <div class="page-medium space-y-6">
-  <%= page_header 'My reports', subtitle: 'Bugs, requests and questions you sent with the ladybug in the header, with their status.' %>
+  <%= page_header 'My reports', subtitle: 'Bugs, requests and questions you sent with the ladybug, Ask Rupert or team chat, with their status.' %>
   <p class="text-xs text-taupe">Screenshots and logs are visible to store administrators only.</p>
   <% if @reports.empty? %>
     <%= empty_state 'No reports yet', hint: 'Use the ladybug in the header from any page to send one.' %>
@@ -14,7 +15,13 @@
               <p class="font-medium text-ink"><%= link_to report.summary, feedback_report_path(report), class: 'underline' %></p>
               <p class="text-xs text-taupe"><%= report.kind_label %> · #<%= report.id %> · <%= l(report.created_at, format: :short) %></p>
             </div>
-            <span class="<%= status_pill.fetch(report.status, 'pill-taupe') %>"><%= report.status_label %></span>
+            <% if report.triage_decision %>
+              <span class="<%= decision_pill.fetch(report.triage_decision, 'pill-taupe') %>"><%= report.triage_label %></span>
+            <% elsif report.awaiting_triage? %>
+              <span class="pill-clay">In review</span>
+            <% else %>
+              <span class="<%= status_pill.fetch(report.status, 'pill-taupe') %>"><%= report.status_label %></span>
+            <% end %>
           </li>
         <% end %>
       </ul>

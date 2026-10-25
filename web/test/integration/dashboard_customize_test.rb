@@ -54,6 +54,20 @@ class DashboardCustomizeTest < ActionDispatch::IntegrationTest
     assert_select '[data-widget-key=stats]:not([hidden])'
   end
 
+  test 'saving and resetting the layout are recorded in the Activity log' do
+    post customize_dashboard_path, params: { widgets: %w[stats revenue], hidden: ['revenue'] }, as: :json
+    assert_response :success
+    saved = ActivityLog.find_by(action: 'dashboard_layout_saved')
+    assert_equal '2 widgets in order, 1 hidden', saved.details
+    assert saved.user_id
+
+    post customize_dashboard_path, params: { reset: true }, as: :json
+    assert ActivityLog.exists?(action: 'dashboard_layout_reset')
+
+    post customize_dashboard_path, params: { widgets: ['bogus'] }, as: :json
+    assert_equal 1, ActivityLog.where(action: 'dashboard_layout_saved').count
+  end
+
   test 'customize rejects unknown widgets' do
     post customize_dashboard_path, params: { widgets: ['bogus'] }
     assert_response :unprocessable_entity

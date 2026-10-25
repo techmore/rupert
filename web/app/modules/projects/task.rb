@@ -27,6 +27,8 @@ module Projects
     has_many :dependencies, class_name: 'Projects::TaskDependency', foreign_key: :task_id, inverse_of: :task, dependent: :destroy
     has_many :dependents, class_name: 'Projects::TaskDependency', foreign_key: :blocker_id, dependent: :destroy
     has_many :blockers, through: :dependencies, source: :blocker
+    # Assistant requests this task tracks (approved from, or merged in as duplicates). Requests outlive the task.
+    has_many :source_requests, class_name: '::AgentFeedback', foreign_key: :task_id, inverse_of: :task, dependent: :nullify
 
     attribute :labels, :json, default: -> { [] }
 

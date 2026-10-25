@@ -130,6 +130,31 @@ these rules itself:
   "ready" as a request that a human or a reviewed pipeline still checks before code
   is written or merged. Every ready mark is in the Activity log and on the report.
 
+## Request queue (Work → Requests)
+
+Feature and work requests an assistant files (kinds `request`, `suggestion`,
+`direction` from Ask Rupert, from a team chat card someone approved, or over MCP)
+no longer open a task on their own, unless an allow-listed sender marked them ready
+for development. They wait at `/projects/requests` for a reviewer, anyone who can
+add tasks (`projects.write`). For each request the reviewer can:
+
+- **Approve** it as a task (title, project, assignee, priority). The task description
+  keeps the request text, who asked, the date asked and the link back to the chat
+  and the report; the task's Requests card lists it.
+- **Merge** it into an open task that already covers it. The request is linked to that
+  task and a comment on the task records who asked, when and what.
+- **Reject** it with a reason. The reason is stored on the request.
+
+A request is decided once, under a row lock; each decision is written to the Activity
+log (`assistant_request_accepted`, `assistant_request_merged`, `assistant_request_declined`,
+plus `task_created_from_request` / `request_merged_into_task` on the task). The requester
+follows it on **My reports** (In review, Approved, Merged, Rejected with the reason) and an
+assistant sees `triage_decision` and `decline_reason` in `list_my_feedback`. Chat stays its
+own record: the request keeps only `conversation_kind`, `conversation_id`,
+`conversation_message_id` and a path-only `conversation_url`. These fields and the three
+decisions are the request type's transitions for the shared Project table (#407).
+Ladybug requests from people still open a task directly.
+
 ## Not built yet (follow-ups)
 
 - **Local development agent.** A goose or Claude Code session on a developer
