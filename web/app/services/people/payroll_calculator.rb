@@ -40,7 +40,7 @@ module People
             employee: employee,
             pay_rate: rate,
             hours: hours,
-            gross_cents: gross_for(employee, hours, overtime_hours(days, rules), rules, pay_run),
+            gross_cents: gross_for(employee, hours, overtime_hours(days, rules), pay_run, rules: rules),
             deductions_cents: 0,
             net_cents: 0
           )
@@ -65,12 +65,12 @@ module People
 
     # Hourly: every hour at the rate, plus the premium (multiplier − 1) on
     # overtime hours. Overtime hours are zero unless PayRules turns it on.
-    def self.gross_for(employee, hours, overtime, rules, pay_run)
+    def self.gross_for(employee, hours, overtime, pay_run, rules: nil)
       rate = employee.current_pay_rate
       return 0 if rate.nil?
 
       if rate.pay_type == 'hourly'
-        premium = overtime.to_d * rate.hourly_rate_cents * (rules.overtime_multiplier - 1)
+        premium = overtime.to_d.zero? ? 0 : overtime.to_d * rate.hourly_rate_cents * ((rules || PayRules.current).overtime_multiplier - 1)
         ((hours.to_d * rate.hourly_rate_cents) + premium).round.to_i
       else
         salary_for(rate, pay_run)
