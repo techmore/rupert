@@ -169,6 +169,26 @@ class EmployeeTimesheetsTest < ActionDispatch::IntegrationTest
     assert @sheet.reload.submitted?
   end
 
+  test 'kill switch refuses new staff app sign-ins and fails existing tokens closed' do
+    headers = app_login
+    config = Rails.application.config.x
+    config.employee_app_enabled = false
+    assert_no_difference -> { EmployeeAppSession.unscoped.count } do
+      post '/api/v1/employee/session', params: { email: @user.email, password: 'password123', device_name: 'Phone' }, as: :json
+    end
+    assert_response :service_unavailable
+    assert_equal 'employee_app_disabled', response.parsed_body['error']
+    get '/api/v1/employee/timesheets', headers: headers
+    assert_response :service_unavailable
+    assert_nil EmployeeAppSession.authenticate(headers['Authorization'].split.last)
+    assert_raises(TimesheetWorkflow::Error) { EmployeeAppSession.issue!(user: @user, device_name: 'Phone') }
+    config.employee_app_enabled = true
+    get '/api/v1/employee/timesheets', headers: headers
+    assert_response :success, 'turning the app back on restores unrevoked, unexpired tokens'
+  ensure
+    Rails.application.config.x.employee_app_enabled = true
+  end
+
   test 'mobile sessions expire and are invalidated by employee termination password or account changes' do
     headers = app_login
     record = EmployeeAppSession.unscoped.last

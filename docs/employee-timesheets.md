@@ -44,6 +44,8 @@ Visit `https://YOUR_INSTANCE/employee`:
 
 The instance serves its manifest, icons, installation page, privacy/support page, and service worker. HTTPS is required for production installation. The service worker does **not** cache staff records or credentials. There is no offline queue: a clock/time entry is saved only when the server confirms it. The offline screen says explicitly that no hours were saved by that page.
 
+**Kill switch (#436):** the staff app API is off in production unless `RUPERT_EMPLOYEE_APP_ENABLED=1` is set in the server environment. While off, `/api/v1/employee/*` answers 503 `employee_app_disabled`: no new sign-in issues a token and every existing token fails closed. Turning it back on restores only tokens that are unrevoked and unexpired. The `/employee` web pages use normal web sign-in and are not affected. The owner chose to keep it off on 2026-10-25.
+
 Staff can revoke their own device sessions at `/employee/devices`. Native session tokens expire after 30 days and are stored as digests on the server; the app stores the token in Expo SecureStore with device-only accessibility. The native app never stores the password. Web cookies cannot authorize the staff API, and staff app tokens cannot authorize Rupert's catalog/admin API.
 
 The staff workspace contains no installation or store promotion. Distribute native apps separately when the owner is ready; signing and store submission remain deferred.
