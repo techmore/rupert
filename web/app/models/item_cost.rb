@@ -14,10 +14,7 @@ class ItemCost < ApplicationRecord
 
   # "6", "6.5", "$1,234.50" -> cents; nil when blank or not a plain non-negative amount.
   def self.parse_cents(text)
-    cleaned = text.to_s.strip.delete('$,').strip
-    return nil unless cleaned.match?(/\A\d+(\.\d{1,2})?\z|\A\.\d{1,2}\z/)
-
-    (BigDecimal(cleaned) * 100).round.to_i
+    Money.parse(text, negative: false)
   end
 
   # "Entered in Rupert by Jo on Oct 25, 2026"

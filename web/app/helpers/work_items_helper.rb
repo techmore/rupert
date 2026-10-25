@@ -46,7 +46,6 @@ module WorkItemsHelper
 
   # $1,234.56 for dollars; other currencies name their code (1,234.56 EUR).
   def result_money(cents, currency)
-    amount = number_with_delimiter(format('%.2f', cents.to_i / 100.0))
-    currency.to_s == 'USD' ? "$#{amount}" : "#{amount} #{currency}"
+    Money.format(cents.to_i, currency: currency, code: :suffix, minus: '-')
   end
 end

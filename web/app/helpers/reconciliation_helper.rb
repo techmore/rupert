@@ -21,7 +21,7 @@ module ReconciliationHelper
   end
 
   def reconciliation_money(cents)
-    cents.nil? ? 'Unavailable' : number_with_precision(BigDecimal(cents.to_s) / 100, precision: 2, delimiter: ',')
+    Money.format(cents, unit: false, minus: '-', missing: 'Unavailable')
   end
 
   def reconciliation_tone(status)

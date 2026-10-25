@@ -23,5 +23,6 @@ class PayRunCsv
     end
   end
 
-  def self.money(cents) = format('%d.%02d', *cents.to_i.divmod(100))
+  # CSV cell: a plain decimal ("1234.50"), no "$" or separators.
+  def self.money(cents) = Money.format_cents(cents.to_i)
 end

@@ -130,8 +130,9 @@ class OperationsBrief
     SyncRun.where(status: 'failed', startedAt: (end_date - 7.days)...end_date).count
   end
 
+  # Plain chat text: ASCII minus, no thousands separator.
   def money(cents)
-    format('$%.2f', cents.to_f / 100.0)
+    Money.format(cents.to_i, minus: '-', delimiter: '')
   end
 
   def announcements_channel
