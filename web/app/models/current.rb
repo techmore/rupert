@@ -2,7 +2,7 @@
 
 # Thread-local context for the current request/job.
 class Current < ActiveSupport::CurrentAttributes
-  attribute :user, :tenant, :sync_run, :metadata
+  attribute :user, :tenant, :sync_run, :metadata, :pay_rules
 
   def metadata
     super || self.metadata = {}

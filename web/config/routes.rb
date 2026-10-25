@@ -633,6 +633,7 @@ Rails.application.routes.draw do
 
   resource :settings, only: :show do
     post :tenant
+    post :pay_rules
     post :fulfillment_workflow
     post :oauth_credentials
     post :oauth_domains

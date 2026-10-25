@@ -1,22 +1,24 @@
-<%# One person's pay for a Thursday-Wednesday week (EmployeePayWeek): hours, rate per hour, base pay, commission,
+<%# One person's pay for one pay period (EmployeePayWeek, PayRules): hours, rate per hour, base pay, commission,
     tips and the all-in total, with a week picker. Used on the employee record and on the employee's own Pay tab.
     locals: pay, week_url (lambda: Date or nil -> path), form_url, title %>
 <% money = ->(cents) { cents.nil? ? 'Unavailable' : number_to_currency(cents / 100.0) } %>
+<% rules = pay.rules %>
+<% step = rules.period_days %>
 <section id="pay-week" class="section-card" aria-labelledby="pay-week-title">
   <div class="card-head">
     <div>
       <h2 id="pay-week-title" class="section-title"><%= title %></h2>
-      <p class="card-hint"><%= pay.start_date.strftime('%a %b %-d') %> – <%= pay.end_date.strftime('%a %b %-d, %Y') %> · Thursday to Wednesday</p>
+      <p class="card-hint"><%= pay.start_date.strftime('%a %b %-d') %> – <%= pay.end_date.strftime('%a %b %-d, %Y') %> · <%= rules.summary %><% unless rules.chosen? %> · <span class="pill-taupe" data-pay-period-unchosen>Pay period not chosen yet</span><% end %></p>
     </div>
     <nav aria-label="Pay week" class="card-head-actions">
       <%= form_with url: form_url, method: :get, class: 'flex items-center gap-2' do %>
         <div class="date-stepper">
-          <%= link_to '‹', week_url.call(pay.start_date - 7), class: 'btn-ghost btn-sm', aria: { label: 'Previous week' }, title: 'Previous week' %>
-          <%= date_field_tag :week, pay.start_date, class: 'input', 'aria-label': 'Any date in the week to show' %>
-          <%= link_to '›', week_url.call(pay.start_date + 7), class: 'btn-ghost btn-sm', aria: { label: 'Next week' }, title: 'Next week' %>
+          <%= link_to '‹', week_url.call(pay.start_date - step), class: 'btn-ghost btn-sm', aria: { label: 'Previous pay period' }, title: 'Previous pay period' %>
+          <%= date_field_tag :week, pay.start_date, class: 'input', 'aria-label': 'Any date in the pay period to show' %>
+          <%= link_to '›', week_url.call(pay.start_date + step), class: 'btn-ghost btn-sm', aria: { label: 'Next pay period' }, title: 'Next pay period' %>
         </div>
         <%= submit_tag 'Apply', class: 'btn-ghost btn-sm', name: nil %>
-        <% unless Date.current.between?(pay.start_date, pay.end_date) %><%= link_to 'This week', week_url.call(nil), class: 'btn-ghost btn-sm' %><% end %>
+        <% unless Date.current.between?(pay.start_date, pay.end_date) %><%= link_to (rules.biweekly? ? 'This pay period' : 'This week'), week_url.call(nil), class: 'btn-ghost btn-sm' %><% end %>
       <% end %>
     </nav>
   </div>
@@ -24,12 +26,13 @@
     <% [['Hours worked', "#{number_with_precision(pay.hours, precision: 2)} h"],
         ['Rate per hour', pay.hourly_rate_cents ? money.call(pay.hourly_rate_cents) : (pay.pay_rate ? pay.pay_rate.label.to_s : 'Unavailable')],
         ['Base pay', money.call(pay.base_cents)],
+        *([['Overtime hours', "#{number_with_precision(pay.overtime_hours, precision: 2)} h"]] if rules.overtime_enabled?),
         ['Commission (1%)', money.call(pay.commission_cents)],
         ['Tips', money.call(pay.tip_cents)],
-        ['Total for the week', money.call(pay.total_cents)]].each do |label, value| %>
+        [rules.biweekly? ? 'Total for the period' : 'Total for the week', money.call(pay.total_cents)]].each do |label, value| %>
       <div class="stat"><dt class="stat-label"><%= label %></dt><dd class="stat-value-sm mt-1"><%= value %></dd></div>
     <% end %>
   </dl>
-  <p class="text-xs text-mocha">Total = base pay + commission + tips. Commission is 1% of before-tax sales (<%= money.call(pay.sales_cents) %>) rung up while clocked in. Tips are split evenly between everyone clocked in. Hours come from Rupert clock punches. An estimate only: it does not post to payroll.</p>
+  <p class="text-xs text-mocha">Total = base pay + commission + tips. Commission is 1% of before-tax sales (<%= money.call(pay.sales_cents) %>) rung up while clocked in. Tips are split evenly between the non-admins clocked in; administrators earn no commission or tips. Hours are Rupert clock punches as recorded, never rounded.<% if rules.overtime_enabled? %> Hours over <%= rules.to_h['overtime_threshold_hours'] %> in a work week are paid at <%= rules.overtime_multiplier.to_s('F') %>× in base pay.<% else %> No overtime is calculated.<% end %> An estimate only: it does not post to payroll.</p>
   <% pay.notes.each do |note| %><p class="text-xs text-mocha"><%= note %></p><% end %>
 </section>

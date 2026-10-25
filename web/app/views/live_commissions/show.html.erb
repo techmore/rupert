@@ -17,7 +17,7 @@
         <table class="table">
           <thead><tr><th scope="col" class="th">Worker</th><th scope="col" class="th num">Matched sales</th><th scope="col" class="th num">Eligible item subtotal</th><th scope="col" class="th num">1% estimate</th></tr></thead>
           <tbody>
-            <% @preview.rows.each do |row| %><tr><td class="td"><%= row[:employee] %></td><td class="td num"><%= row[:order_count] %></td><td class="td num"><%= @preview.currency %> <%= number_with_precision(row[:sales_cents] / 100.0, precision: 2) %></td><td class="td num font-semibold"><%= @preview.currency %> <%= number_with_precision(row[:commission_cents] / 100.0, precision: 2) %></td></tr><% end %>
+            <% @preview.rows.each do |row| %><tr><td class="td"><%= row[:employee] %><% if row[:admin] %> <span class="pill-taupe" data-admin-row>Admin · no commission or tips</span><% end %></td><td class="td num"><%= row[:order_count] %></td><td class="td num"><%= @preview.currency %> <%= number_with_precision(row[:sales_cents] / 100.0, precision: 2) %></td><td class="td num font-semibold"><%= @preview.currency %> <%= number_with_precision(row[:commission_cents] / 100.0, precision: 2) %></td></tr><% end %>
             <% if @preview.rows.empty? %><tr><td colspan="4" class="empty-row">No shift commissions yet today.</td></tr><% end %>
           </tbody>
         </table>

@@ -11,8 +11,10 @@ class AuthorizeNetSaleLinkTest < ActiveSupport::TestCase
     @order.mark_paid!
     @order.order_lines.create!(name: 'Item', quantity: 1, unit_cents: 10000, line_cents: 10000)
     @order.payments.create!(method: 'card', amount_cents: 11000, paid_at: @order.occurred_at)
-    @employee = People::Employee.create!(user: @user, first_name: 'Shift', last_name: 'Worker')
-    ClockShift.create!(user: @user, employee: @employee, employee_key: @employee.id.to_s, employee_name: @employee.name,
+    # A cashier on shift: administrators earn no commission (#423).
+    worker_user = User.create!(tenant: @user.tenant, email: 'sale-link-worker@example.com', role: 'cashier', password: 'password')
+    @employee = People::Employee.create!(user: worker_user, first_name: 'Shift', last_name: 'Worker')
+    ClockShift.create!(user: worker_user, employee: @employee, employee_key: @employee.id.to_s, employee_name: @employee.name,
       employment_type: @employee.employment_type, started_at: Time.zone.parse('2026-10-10 09:00'),
       ended_at: Time.zone.parse('2026-10-10 11:00'), request_token: SecureRandom.uuid)
     @payment = AuthorizeNetTransaction.create!(environment: 'production', gateway_id: '12345', source_transaction_id: '9001',

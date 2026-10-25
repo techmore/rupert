@@ -10,6 +10,17 @@ class TimeRangePickerTest < ActiveSupport::TestCase
     [preset.from, preset.to]
   end
 
+  test 'pay-period ranges follow the chosen pay rules' do
+    Current.tenant = tenants(:default_tenant)
+    PayRules.save!({ pay_period: 'biweekly', week_start_day: 'thursday', anchor_date: '2026-10-01' }, actor: users(:regular_user))
+    assert_equal [Date.new(2026, 10, 15), Date.new(2026, 10, 28)], dates('this_pay_week')
+    assert_equal [Date.new(2026, 10, 1), Date.new(2026, 10, 14)], dates('last_pay_week')
+    assert_equal [Date.new(2026, 10, 29), Date.new(2026, 11, 11)], dates('next_pay_week')
+    assert_equal 'This pay period', TimeRangePicker.preset('this_pay_week', TODAY).label
+  ensure
+    Current.reset
+  end
+
   test 'named ranges use Thursday–Wednesday pay weeks and Monday–Sunday weeks' do
     assert_equal %w[today yesterday this_pay_week last_pay_week next_pay_week this_week last_week this_month last_month
       this_quarter last_quarter year_to_date last_year], TimeRangePicker.presets(TODAY).map(&:key)

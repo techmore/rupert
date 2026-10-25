@@ -231,6 +231,20 @@ class SettingsController < AuthenticatedController
     redirect_to(settings_path, notice: 'Business settings saved.')
   end
 
+  # POST /settings/pay_rules — the pay period (weekly or every two weeks, start day) and overtime
+  # (off unless turned on). Saving marks the pay period chosen, which ticks it off the release gate.
+  def pay_rules
+    attrs = params.permit(:pay_period, :week_start_day, :anchor_date, :overtime_enabled, :overtime_threshold_hours, :overtime_multiplier).to_h
+    attrs['overtime_enabled'] = attrs['overtime_enabled'] == '1'
+    attrs['anchor_date'] = nil unless attrs['pay_period'] == 'biweekly'
+    rules = PayRules.save!(attrs, actor: Current.user)
+    ActivityLogger.log('pay_rules_saved', details: "#{rules.summary}#{" from #{rules.anchor_date.iso8601}" if rules.biweekly?}; " \
+      "overtime #{rules.overtime_enabled? ? "on over #{rules.to_h['overtime_threshold_hours']}h at #{rules.overtime_multiplier.to_s('F')}x" : 'off'}")
+    redirect_to(settings_path(anchor: 'pay-rules'), notice: 'Pay rules saved.')
+  rescue PayRules::Invalid => e
+    redirect_to(settings_path(anchor: 'pay-rules'), alert: e.message)
+  end
+
   # POST /settings/fulfillment_workflow — enable/disable the office fulfillment
   # status workflow on orders.
   def fulfillment_workflow
