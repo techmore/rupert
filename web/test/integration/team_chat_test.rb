@@ -208,6 +208,51 @@ class TeamChatTest < ActionDispatch::IntegrationTest
     end
   end
 
+  # Issue #408: chat is its own conversation record. Messages never become
+  # project or task rows; only an approved proposal creates tracked work, and
+  # that work points back at the conversation it came from.
+  test 'chat messages are their own records and become tracked work only through an approved proposal' do
+    sign_in(@admin)
+    get team_chat_path
+    room = TeamChat::Room.find_by!(slug: 'admins')
+    room.update!(assistant_mode: 'mentions')
+    assert_equal 'chat_messages', TeamChat::Message.table_name
+    assert_not_equal Projects::Project.table_name, TeamChat::Message.table_name
+    assert_not_equal Projects::Task.table_name, TeamChat::Message.table_name
+
+    assert_no_difference ['Projects::Project.count', 'Projects::Task.count'] do
+      assert_difference -> { room.messages.count }, 3 do
+        post team_chat_messages_path('admins'), params: { body: 'We need to restock the tea shelf' }, as: :json
+        post team_chat_messages_path('admins'), params: { body: 'Please make a project for the spring launch' }, as: :json
+        post team_chat_messages_path('admins'), params: { body: 'And a task to call the vendor' }, as: :json
+      end
+    end
+
+    trigger = room.messages.where(author_kind: 'person').order(:id).last
+    reply = room.messages.create!(author_kind: 'assistant', status: 'done', meta: { 'asked_by' => @admin.id, 'trigger_id' => trigger.id })
+    TeamChat::Run.for_reply!(reply).update!(state: 'succeeded')
+    card = nil
+    assert_no_difference -> { Projects::Task.count } do
+      card = TeamChat::Actions.propose!(reply, tool: 'create_task', arguments: { 'title' => 'Call the vendor' }, proposed_for: @admin)
+    end
+    approval = TeamChat::Approval.find_by!(source_message_id: reply.id, public_id: card['id'])
+    assert_equal 'proposed', approval.state
+
+    assert_no_difference -> { Projects::Project.count } do
+      assert_difference -> { Projects::Task.count }, 1 do
+        post team_chat_action_path(room.slug, reply.id, card['id']), params: { decision: 'approve' }, as: :json
+        assert_response :success
+      end
+    end
+    task = Projects::Task.order(:id).last
+    assert_equal 'Call the vendor', task.title
+    assert_includes task.description.to_s, "/chat/admins?message=#{trigger.id}"
+    approval.reload
+    assert_equal [@admin.id, trigger.id, room.id], approval.provenance.values_at('requester_id', 'trigger_id', 'room_id')
+    assert_equal 'And a task to call the vendor', approval.provenance['last_chat']
+    assert TeamChat::Message.exists?(trigger.id), 'the conversation record stays after the work is created'
+  end
+
   test 'approval retries return the saved receipt and create one task and notice' do
     sign_in(@admin)
     get team_chat_path
