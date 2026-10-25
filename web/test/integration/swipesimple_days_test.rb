@@ -265,6 +265,28 @@ class SwipesimpleDaysTest < ActionDispatch::IntegrationTest
     assert_select 'a[href^=?]', swipesimple_days_path, count: 0
   end
 
+  test 'card tenders matched section pairs Rupert card tenders and lists both unmatched sides' do
+    import(ROWS)
+    get swipesimple_days_path(date: '2026-10-14')
+    assert_select '#close-tenders [data-tender-match=none]', text: /Rupert recorded no card tenders on Oct 14, 2026\..*2 SwipeSimple card sales/m
+
+    Current.tenant = @tenant
+    at = ActiveSupport::TimeZone['America/New_York'].parse('2026-10-14 09:02')
+    order = Core::Order.create!(source: 'rupert_pos', source_order_id: 'synthetic-pos-1', order_number: 'RP-1', channel: 'pos',
+      currency: 'USD', occurred_at: at, gross_cents: 5000, tax_cents: 0, tip_cents: 0)
+    order.payments.create!(method: 'card', amount_cents: 5000, status: 'completed', paid_at: at, reference: 'synthetic')
+    order.payments.create!(method: 'card', amount_cents: 1111, status: 'completed', paid_at: at, reference: 'synthetic-2')
+    Current.reset
+    get swipesimple_days_path(date: '2026-10-14')
+    assert_response :success
+    assert_select '#close-tenders [data-tender-count=matched]', text: /1 matched/
+    assert_select '#close-tenders [data-tender-pair]', 1
+    assert_select '#close-tenders [data-tender-pair]', text: /SYN-1/
+    assert_select '#close-tenders [data-tender-unmatched=rupert]', text: /RP-1.*\$11\.11/m
+    assert_select '#close-tenders [data-tender-unmatched=swipesimple]', text: /SYN-3/
+    assert_select '#close-tenders .pill-clay', 'Needs attention'
+  end
+
   private
 
   def switch_to(user)
