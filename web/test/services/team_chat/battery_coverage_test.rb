@@ -121,6 +121,13 @@ class TeamChatBatteryCoverageTest < ActiveSupport::TestCase
     end
   end
 
+  test 'every metric in the catalog has a battery question that calls it' do
+    asked = %w[default finance cross].flat_map { |set| TeamChat::Battery.items(TeamChat::Battery.config_for(set)) }
+                                     .flat_map(&:checks).filter_map { |check| check.is_a?(Hash) && check['tool'] == 'metric' ? check.dig('args', 'name') : nil }
+    missing = Metrics.catalog.map(&:key) - asked
+    assert_empty missing, "Metrics without a battery question: #{missing.join(', ')}"
+  end
+
   test 'rake coverage task writes the fixture result report' do
     Rails.application.load_tasks unless Rake::Task.task_defined?('team_chat:battery_coverage')
     task = Rake::Task['team_chat:battery_coverage']
