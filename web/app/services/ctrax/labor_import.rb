@@ -38,7 +38,7 @@ module Ctrax
       @fingerprint = Digest::SHA256.hexdigest([@connection.id, credentials].to_json)
       @origin = credentials.fetch('api_url')
       @publication_key = 'ctrax_labor_publication:' + Digest::SHA256.hexdigest(@origin)
-      @publication_token = Setting.find_by(tenant_id: Current.tenant_id, key: @publication_key)&.value
+      @publication_token = Setting.for_tenant(@publication_key)&.value
       client = Client.new(credentials)
       stores = client.stores.map { |store| store.fetch(:id).to_s }
       rows = [false, true].flat_map do |in_progress|
@@ -56,7 +56,7 @@ module Ctrax
 
         authorize!
         CtraxLaborSync.verify!(@sync_configuration) if @sync_configuration
-        if Setting.find_by(tenant_id: Current.tenant_id, key: @publication_key)&.value != @publication_token
+        if Setting.for_tenant(@publication_key)&.value != @publication_token
           raise Error.new('A newer complete C-Trax read was already published; retry the read.', reason: :changed)
         end
         unless @fingerprint == credentials_fingerprint

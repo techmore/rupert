@@ -5,7 +5,7 @@ class CtraxLaborSync
   KEY = 'ctrax_labor_schedule'
 
   def self.configuration
-    value = JSON.parse(Setting.find_by(tenant_id: Current.tenant_id, key: KEY)&.value || '{}')
+    value = JSON.parse(Setting.for_tenant(KEY)&.value || '{}')
     value.is_a?(Hash) ? value : {}
   rescue JSON::ParserError
     {}

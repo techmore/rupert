@@ -54,4 +54,19 @@ class DashboardPresenterTest < ActiveSupport::TestCase
 
     assert_equal 0, DashboardPresenter.new.sku_mismatches
   end
+
+  test 'sales_freshness reads only the current workspace sync watermarks' do
+    other = Tenant.create!(name: 'Other shop', subdomain: 'freshness-other', status: 'active')
+    Setting.create!(key: 'sync_watermark_shopify', value: '2026-01-01T00:00:00Z', tenant_id: other.id)
+    Setting.create!(key: 'sync_watermark_square', value: '2026-01-02T00:00:00Z', tenant_id: other.id)
+    Setting.create!(key: 'sync_watermark_shopify', value: '2026-03-03T00:00:00Z', tenant_id: @tenant.id)
+
+    mine = DashboardPresenter.new.sales_freshness
+    assert_equal Time.zone.parse('2026-03-03T00:00:00Z'), mine['shopify'][:pulled_at]
+    assert_nil mine['square'][:pulled_at]
+
+    theirs = Current.set(tenant: other) { DashboardPresenter.new.sales_freshness }
+    assert_equal Time.zone.parse('2026-01-01T00:00:00Z'), theirs['shopify'][:pulled_at]
+    assert_equal Time.zone.parse('2026-01-02T00:00:00Z'), theirs['square'][:pulled_at]
+  end
 end

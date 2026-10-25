@@ -59,7 +59,7 @@ class FulfillmentMonitor
   end
 
   def previous_signature
-    Setting.find_by(key: SIGNATURE_KEY, tenant_id: Current.tenant_id)&.value
+    Setting.for_tenant(SIGNATURE_KEY)&.value
   end
 
   def update_signature(signature)

@@ -92,7 +92,7 @@ class StockIdentityFindings
     @candidates = {}
     return unless shopify && ctrax
 
-    value = Setting.find_by(key: self.class.key(shopify, ctrax), tenant_id: Current.tenant_id)&.value
+    value = Setting.for_tenant(self.class.key(shopify, ctrax))&.value
     return if value.blank?
     raise ArgumentError if value.bytesize > MAX_BYTES
 

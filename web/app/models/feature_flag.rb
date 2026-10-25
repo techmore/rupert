@@ -14,7 +14,7 @@ class FeatureFlag
       key = FLAGS.fetch(flag.to_sym)
       cache = (Current.metadata[:feature_flags] ||= {})
       cache.fetch([Current.tenant_id, key]) do
-        cache[[Current.tenant_id, key]] = Setting.find_by(key: key, tenant_id: Current.tenant_id)&.value == '1'
+        cache[[Current.tenant_id, key]] = Setting.for_tenant(key)&.value == '1'
       end
     end
 

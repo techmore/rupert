@@ -161,7 +161,7 @@ class SyncEngine
     end
 
     def read_watermark(source)
-      value = Setting.find_by(key: watermark_key(source), tenant_id: Current.tenant_id)&.value
+      value = Setting.for_tenant(watermark_key(source))&.value
       value.present? ? Time.zone.parse(value) : nil
     rescue ArgumentError, TypeError
       nil
