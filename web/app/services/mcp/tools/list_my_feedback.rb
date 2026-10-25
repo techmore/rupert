@@ -6,7 +6,8 @@ module Mcp
       tool 'list_my_feedback',
         title: 'Status of feedback sent with this token',
         description: 'Lists feedback this token has submitted with submit_feedback, newest first, with the owner\'s status ' \
-                     '(new, triaged, planned, done, wont_fix). Only this token\'s own submissions are visible. Read-only.'
+                     '(new, triaged, planned, done, wont_fix) and, for a request, the triage decision (accepted, merged, ' \
+                     'declined with the reason). Only this token\'s own submissions are visible. Read-only.'
 
       input_schema(
         type: 'object',

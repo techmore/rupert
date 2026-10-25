@@ -200,8 +200,10 @@ class McpOperationsTest < ActionDispatch::IntegrationTest
     assert_equal false, result.dig('structuredContent', 'ready_for_development')
     assert result.dig('structuredContent', 'ready_denied_reason')
     assert_match(/NOT marked ready/, result.dig('content', 0, 'text'))
-    assert result.dig('structuredContent', 'task_id')
+    # A request that is not ready waits in the request queue instead of opening a task (#406).
+    assert_nil result.dig('structuredContent', 'task_id')
     report = AgentFeedback.find(result.dig('structuredContent', 'id'))
+    assert report.awaiting_triage?
     assert_equal ['buzz', 'evt-mcp-1'], [report.source, report.source_ref]
 
     again = call(secret, 'submit_feedback', args.merge(source_sender: allowed, ready_for_development: true))
@@ -211,6 +213,7 @@ class McpOperationsTest < ActionDispatch::IntegrationTest
 
     ready = call(secret, 'submit_feedback', args.merge(source_ref: 'evt-mcp-2', source_sender: allowed, ready_for_development: true))
     assert_equal true, ready.dig('structuredContent', 'ready_for_development')
+    assert ready.dig('structuredContent', 'task_id'), 'a request marked ready by an allow-listed sender opens its task at once'
 
     _, read_only = issue(scopes: ['roadmap:read'])
     denied = call(read_only, 'submit_feedback', args.merge(source_ref: 'evt-mcp-3', source_sender: allowed, ready_for_development: true))

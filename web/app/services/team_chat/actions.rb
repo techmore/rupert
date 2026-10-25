@@ -179,9 +179,18 @@ module TeamChat
         task.update!(description: [task.description.presence, "Requested by #{source['requester_name'] || 'unknown'} via team chat. #{source['chat_url']}"].compact.join("\n\n"))
       end
       subject = task || (AgentFeedback.find_by(id: data[:id]) if record.proposal['tool'] == 'submit_feedback')
+      link_feedback_to_chat!(subject, record.provenance) if subject.is_a?(AgentFeedback)
       ActivityLog.create!(tenant_id: record.tenant_id, user_id: user.id, actor_name: user.display_name, action: 'team_chat_action',
         subject_type: subject&.class&.name, subject_id: subject&.id&.to_s,
         details: JSON.generate(approval_id: record.id, tool: record.proposal['tool'], outcome: 'done', source: record.provenance))
+    end
+
+    # A request filed from chat belongs to the person who asked and links back to their message.
+    # The chat stays its own record (#408): only the link is kept.
+    def link_feedback_to_chat!(feedback, source)
+      requester = User.find_by(id: source['requester_id'], tenant_id: feedback.tenant_id) if source['requester_id']
+      feedback.update!({ conversation_kind: 'team_chat', conversation_id: source['room_id'], conversation_message_id: source['trigger_id'],
+                         conversation_url: source['chat_url'].to_s.first(300).presence, user_id: requester&.id || feedback.user_id }.compact)
     end
 
     def provenance(reply, requester, legacy: false)

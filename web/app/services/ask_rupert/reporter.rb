@@ -19,9 +19,10 @@ module AskRupert
       new(...).file!
     end
 
-    def initialize(user:, conversation:, kind:, summary:, details: nil)
+    def initialize(user:, conversation:, kind:, summary:, details: nil, message: nil)
       @user = user
       @conversation = conversation
+      @message = message
       @kind = kind.to_s
       @summary = summary
       @details = details
@@ -37,14 +38,15 @@ module AskRupert
       feedback = AgentFeedback.new(
         source: 'app', user_id: @user.id, kind: KINDS.fetch(@kind), severity: 'normal', summary: summary, agent_name: AGENT_NAME,
         details: AgentFeedback.clean(Redactor.clean(@details), AgentFeedback::DETAILS_MAX, multiline: true).presence,
-        related_reference: 'Ask Rupert chat',
+        related_reference: 'Ask Rupert chat', conversation_kind: 'ask_rupert', conversation_id: @conversation.id, conversation_message_id: @message&.id,
         context: JSON.generate('source' => 'ask_rupert', 'conversation' => @conversation.id, 'role' => @user.role, 'build' => BuildInfo.current.short_revision)
       )
       AgentFeedback.transaction do
         feedback.save!
         feedback.attachments.create!(kind: 'conversation', content_type: 'text/plain', text_body: FeedbackAttachment.clip('conversation', transcript))
       end
-      open_task(feedback)
+      # A request waits in the request queue for a reviewer (#406); bugs and questions open a task at once.
+      open_task(feedback) unless feedback.assistant_request?
       ActivityLogger.log('feedback_reported', subject: feedback, actor: @user,
         details: "source=ask_rupert; kind=#{feedback.kind}; conversation=#{@conversation.id}")
       feedback

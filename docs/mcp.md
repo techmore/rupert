@@ -167,7 +167,7 @@ task. Arguments:
 | `severity` | no | `low`, `normal` (default), `high` |
 | `agent_name`, `agent_model` | no | e.g. "Claude Code", model name |
 | `context` | no | Small JSON object, ≤4000 bytes |
-| `open_task` | no | `true` also opens a task in the **Rupert Feedback** project for the owner to review (bug, request, direction, suggestion and question kinds) |
+| `open_task` | no | `true` also opens a task in the **Rupert Feedback** project for the owner to review (bug and question kinds; a request, direction or suggestion waits in the request queue for a reviewer unless an allow-listed sender marked it ready, see `docs/ops/feedback-reports.md`) |
 | `source`, `source_ref`, `source_sender` | no | Where it came from: `source` is `agent` (default); `buzz` is still accepted for compatibility with older callers. `source_ref` is the caller's message id (the same message is filed only once); `source_sender` is the sender's public key, checked against the ready-for-development allow-list |
 | `ready_for_development` | no | Requests "ready for development". Honoured only when the token has `tasks:write` **and** `source_sender` is on the owner's allow-list (Settings → Environment, `FEEDBACK_READY_SENDERS`); otherwise the report is still created, for review, and the reply says so |
 

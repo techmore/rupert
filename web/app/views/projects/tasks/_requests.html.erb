@@ -1,0 +1,18 @@
+<%# Requests this task tracks: the one it was approved from and any merged duplicates (#406). %>
+<% requests = @task.source_requests.includes(:user).order(:created_at, :id).to_a %>
+<% if requests.any? %>
+  <section id="requests" class="card card-pad" aria-labelledby="task-requests-title">
+    <h2 id="task-requests-title" class="font-display text-lg text-ink">Requests</h2>
+    <ul class="mt-3 space-y-3 text-sm">
+      <% requests.each do |request| %>
+        <li>
+          <p class="font-medium text-ink"><%= request.summary %></p>
+          <p class="text-xs text-taupe">
+            <%= request.triage_label || 'Linked' %> · <%= request.user&.display_name || request.agent_name || 'An assistant' %> · <%= l(request.created_at, format: :short) %>
+            <% if request.conversation_url.present? %> · <%= link_to request.conversation_label || 'Chat', request.conversation_url, class: 'underline' %><% end %>
+          </p>
+        </li>
+      <% end %>
+    </ul>
+  </section>
+<% end %>

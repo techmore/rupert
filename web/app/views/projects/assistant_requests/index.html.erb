@@ -1,0 +1,83 @@
+<%# Requests: a List page (docs/ui-standards.md §4). A queue of assistant-filed requests, then recent decisions. %>
+<% decision_pill = { 'accepted' => 'pill-fern', 'merged' => 'pill-olive', 'declined' => 'pill-taupe' } %>
+<% project_options = [["#{FeedbackTask::PROJECT_NAME} (default)", '']] + @projects.reject { |project| project.name == FeedbackTask::PROJECT_NAME }.map { |project| [project.name, project.id] } %>
+<% people_options = [['Project default', '']] + @people.map { |person| [person.display_name, person.id] } %>
+<div class="space-y-6">
+  <%= page_header 'Requests', subtitle: 'Feature and work requests from Ask Rupert, team chat and AI assistants, waiting for a decision.' %>
+
+  <section class="section-card" aria-labelledby="request-queue-title">
+    <%= section_heading "Waiting (#{@queue.size})", id: 'request-queue-title', hint: 'Approve one as a task, merge it into a task that already covers it, or reject it with a reason. The requester sees the decision.' %>
+    <% if @queue.empty? %>
+      <%= empty_state 'No requests are waiting.', hint: 'Requests an assistant files from a chat appear here.' %>
+    <% else %>
+      <ul class="row-list">
+        <% @queue.each do |request| %>
+          <li class="row-item items-start" id="<%= dom_id(request) %>">
+            <div class="min-w-0 flex-1 space-y-2">
+              <p class="font-semibold text-ink"><%= request.summary %></p>
+              <p class="text-xs text-taupe">
+                #<%= request.id %> · <%= request.kind_label %> · <%= request.user&.display_name || request.agent_name || 'An assistant' %> · <%= l(request.created_at, format: :short) %>
+                <% if request.conversation_label || request.agent_name %> · <%= request.conversation_label || request.agent_name %><% end %>
+                <% if request.conversation_url.present? %> · <%= link_to 'Open chat', request.conversation_url, class: 'underline' %><% end %>
+              </p>
+              <% if request.details.present? %>
+                <details class="explainer"><summary class="explainer-summary">What was asked</summary><p class="mt-2 whitespace-pre-wrap break-words text-sm"><%= request.details %></p></details>
+              <% end %>
+              <details class="explainer" data-request-review>
+                <summary class="explainer-summary">Review</summary>
+                <div class="mt-3 grid gap-4 lg:grid-cols-3">
+                  <%= form_with url: accept_projects_request_path(request), scope: :decision, class: 'space-y-3', aria: { label: "Approve request #{request.id} as a task" } do |f| %>
+                    <h3 class="card-title">Approve as a task</h3>
+                    <div><%= f.label :title, 'Title', class: 'field-label', for: "accept-title-#{request.id}" %><%= f.text_field :title, value: request.summary, maxlength: RequestTriage::TITLE_MAX, id: "accept-title-#{request.id}", class: 'input w-full' %></div>
+                    <div><%= f.label :project_id, 'Project', class: 'field-label', for: "accept-project-#{request.id}" %><%= f.select :project_id, project_options, {}, id: "accept-project-#{request.id}", class: 'select w-full' %></div>
+                    <div><%= f.label :assignee_id, 'Assignee', class: 'field-label', for: "accept-assignee-#{request.id}" %><%= f.select :assignee_id, people_options, {}, id: "accept-assignee-#{request.id}", class: 'select w-full' %></div>
+                    <div><%= f.label :priority, 'Priority', class: 'field-label', for: "accept-priority-#{request.id}" %><%= f.select :priority, Projects::Task::PRIORITIES.map { |p| [p.capitalize, p] }, { selected: FeedbackTask::PRIORITIES.fetch(request.severity, 'medium') }, id: "accept-priority-#{request.id}", class: 'select w-full' %></div>
+                    <%= f.submit 'Approve', class: 'btn-ghost btn-sm', data: { turbo_submits_with: 'Saving…' } %>
+                  <% end %>
+                  <%= form_with url: merge_projects_request_path(request), scope: :decision, class: 'space-y-3', aria: { label: "Merge request #{request.id} into a task" } do |f| %>
+                    <h3 class="card-title">Merge into a task</h3>
+                    <% if @open_tasks.empty? %>
+                      <p class="text-sm text-mocha">No open tasks to merge into.</p>
+                    <% else %>
+                      <div><%= f.label :task_id, 'Task it duplicates', class: 'field-label', for: "merge-task-#{request.id}" %><%= f.select :task_id, @open_tasks.map { |title, id| ["##{id} #{title.truncate(80)}", id] }, { include_blank: 'Choose a task' }, id: "merge-task-#{request.id}", required: true, class: 'select w-full' %></div>
+                      <%= f.submit 'Merge', class: 'btn-ghost btn-sm', data: { turbo_submits_with: 'Saving…' } %>
+                    <% end %>
+                  <% end %>
+                  <%= form_with url: decline_projects_request_path(request), scope: :decision, class: 'space-y-3', aria: { label: "Reject request #{request.id}" } do |f| %>
+                    <h3 class="card-title">Reject</h3>
+                    <div><%= f.label :reason, 'Reason the requester will read', class: 'field-label', for: "decline-reason-#{request.id}" %><%= f.text_area :reason, rows: 3, maxlength: AgentFeedback::DECLINE_REASON_MAX, required: true, id: "decline-reason-#{request.id}", class: 'input w-full' %></div>
+                    <%= f.submit 'Reject', class: 'btn-ghost btn-sm', data: { turbo_submits_with: 'Saving…' } %>
+                  <% end %>
+                </div>
+              </details>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </section>
+
+  <section class="section-card" aria-labelledby="request-decided-title">
+    <%= section_heading 'Recently decided', id: 'request-decided-title' %>
+    <% if @decided.empty? %>
+      <%= empty_state 'No decisions yet.', hint: 'Requests you approve, merge or reject are listed here.' %>
+    <% else %>
+      <ul class="row-list">
+        <% @decided.each do |request| %>
+          <li class="row-item" id="<%= dom_id(request, :decided) %>">
+            <div class="min-w-0">
+              <p class="font-medium text-ink"><%= request.summary %></p>
+              <p class="text-xs text-taupe">
+                #<%= request.id %> · <%= request.user&.display_name || request.agent_name || 'An assistant' %> · asked <%= l(request.created_at, format: :short) %>
+                <% if request.triaged_by %> · <%= request.triaged_by.display_name %><% end %>
+                <% if request.task %> · <%= link_to "Task ##{request.task.id}", projects_task_path(request.task), class: 'underline' %><% end %>
+              </p>
+              <% if request.decline_reason.present? %><p class="text-sm text-mocha whitespace-pre-wrap break-words"><%= request.decline_reason %></p><% end %>
+            </div>
+            <div class="row-item-end"><span class="<%= decision_pill.fetch(request.triage_decision, 'pill-taupe') %>"><%= request.triage_label %></span></div>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </section>
+</div>
