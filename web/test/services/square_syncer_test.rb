@@ -39,4 +39,29 @@ class SquareSyncerTest < ActiveSupport::TestCase
     movement = InventoryMovement.find_by(sku: 'HERB-1')
     assert_nil movement.syncRunId
   end
+
+  test 'catalog ids owned by another workspace are refused before any upsert' do
+    other = Tenant.create!(name: 'Other shop', subdomain: 'square-other', status: 'active')
+    SquareItem.unscoped.create!(id: 'I1', name: 'Theirs', tenant_id: other.id)
+    SquareVariation.unscoped.create!(id: 'V9', itemId: 'I1', sku: 'THEIRS', name: 'Theirs', tenant_id: other.id)
+    stub_square_api
+
+    error = assert_raises(SquareClient::Error) { SquareSyncer.sync! }
+    assert_match(/belong to another workspace/, error.message)
+    assert_equal other.id, SquareItem.unscoped.find('I1').tenant_id
+    assert_equal 'Theirs', SquareItem.unscoped.find('I1').name
+    assert_not SquareVariation.unscoped.exists?(id: 'V1')
+
+    SquareItem.unscoped.where(id: 'I1').delete_all
+    SquareClient.stubs(:catalog).returns([{ itemId: 'I2', variationId: 'V9', sku: 'HERB-1', name: 'Herb 1' }])
+    assert_raises(SquareClient::Error) { SquareSyncer.sync! }
+    assert_equal other.id, SquareVariation.unscoped.find('V9').tenant_id
+  end
+
+  test 'the same tenant re-syncing its own catalog ids is allowed' do
+    stub_square_api
+    SquareSyncer.sync!
+    SquareSyncer.sync!
+    assert_equal tenants(:default_tenant).id, SquareItem.find('I1').tenant_id
+  end
 end

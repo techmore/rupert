@@ -66,7 +66,7 @@ module Training
 
     def check(item)
       tenant_id = item.tenant_id || Current.tenant_id
-      valid = item.source_type == 'TrainingModule' && TrainingModule.unscoped.exists?(tenant_id: tenant_id, id: item.source_id)
+      valid = item.source_type == 'TrainingModule' && TrainingModule.tenant_unscoped(tenant_id).exists?(id: item.source_id)
       item.errors.add(:training_module, 'must belong to this workspace') unless valid
       item.errors.add(:assignee, 'must be an active person in this workspace') if item.assignee_id.blank?
       item.errors.add(:parent, 'is not used for training') if item.parent_id.present?

@@ -73,7 +73,7 @@ class InventoryCount < ApplicationRecord
   private
 
   def location_belongs_to_tenant
-    return if locationId.blank? || Location.unscoped.exists?(id: locationId, tenant_id: tenant_id)
+    return if locationId.blank? || Location.tenant_unscoped(tenant_id).exists?(id: locationId)
 
     errors.add(:locationId, 'must belong to this workspace')
   end

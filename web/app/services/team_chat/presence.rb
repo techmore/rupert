@@ -24,7 +24,7 @@ module TeamChat
 
     # { 'everyone' => 'choice', 'roles' => { 'manager' => 'on' } } for the current workspace.
     def policy
-      raw = Setting.find_by(key: SETTING, tenant_id: Current.tenant_id)&.value
+      raw = Setting.for_tenant(SETTING)&.value
       data = raw.present? ? JSON.parse(raw) : {}
       everyone = MODES.key?(data['everyone']) ? data['everyone'] : 'choice'
       roles = data['roles'].is_a?(Hash) ? data['roles'].select { |role, mode| User.roles.key?(role) && MODES.key?(mode) } : {}

@@ -96,7 +96,7 @@ class ConnectionCredentials
   end
 
   def self.version(service)
-    rows = Setting.where(tenant_id: Current.tenant_id, key: fields(service).pluck(:key)).order(:key)
+    rows = Setting.of_tenant.where(key: fields(service).pluck(:key)).order(:key)
       .pluck(:id, :key, :updated_at).map { |id, key, time| [id, key, time&.utc&.iso8601(6)] }
     Digest::SHA256.hexdigest(rows.to_json)
   end

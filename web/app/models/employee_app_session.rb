@@ -34,7 +34,7 @@ class EmployeeAppSession < ApplicationRecord
   def usable?
     revoked_at.nil? && expires_at > Time.current && user&.active? && tenant&.status == 'active' &&
       user.tenant_id == tenant_id && employee&.active? && employee.tenant_id == tenant_id && employee.user_id == user_id &&
-      People::Employee.unscoped.where(tenant_id: tenant_id, user_id: user_id, status: 'active').count == 1 &&
+      People::Employee.tenant_unscoped(tenant_id).where(user_id: user_id, status: 'active').count == 1 &&
       ActiveSupport::SecurityUtils.secure_compare(password_fingerprint, Digest::SHA256.hexdigest(user.password_digest))
   end
 end

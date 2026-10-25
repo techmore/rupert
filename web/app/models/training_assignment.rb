@@ -114,7 +114,7 @@ class TrainingAssignment < Work::Item
   def one_open_assignment
     return unless training_module && assignee_id
 
-    scope = self.class.unscoped.where(tenant_id: tenant_id, source_type: 'TrainingModule', source_id: training_module.id,
+    scope = self.class.tenant_unscoped(tenant_id).where(source_type: 'TrainingModule', source_id: training_module.id,
       assignee_id: assignee_id.to_s, status: OPEN_STATUSES)
     errors.add(:base, :already_open, message: 'This person already has this training open') if scope.exists?
   end

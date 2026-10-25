@@ -200,7 +200,7 @@ module Finance
     end
 
     def set_expense
-      @expense = Finance::Expense.unscoped.find_by!(tenant_id: Current.tenant_id, id: params[:id])
+      @expense = Finance::Expense.with_discarded.find_by!(id: params[:id])
     end
 
     def expense_params

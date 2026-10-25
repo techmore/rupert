@@ -79,6 +79,8 @@ gem "pundit"
 gem "discard"
 # Audit trail / versioning of critical records
 gem "paper_trail"
+# Used directly (per-request settings caches); ApplicationJob clears it around each job.
+gem "request_store"
 # In-app + email notifications
 gem "noticed"
 # Excel export for ledger/reports/sales

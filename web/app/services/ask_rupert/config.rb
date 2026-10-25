@@ -32,7 +32,7 @@ module AskRupert
     end
 
     def self.stored
-      raw = Setting.find_by(key: KEY, tenant_id: Current.tenant_id)&.value
+      raw = Setting.for_tenant(KEY)&.value
       parsed = raw.present? ? JSON.parse(raw) : {}
       parsed.is_a?(Hash) ? parsed : {}
     rescue JSON::ParserError

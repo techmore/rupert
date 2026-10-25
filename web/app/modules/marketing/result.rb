@@ -50,12 +50,12 @@ module Marketing
     private
 
     def event_in_workspace
-      found = Work::Item.unscoped.exists?(id: work_item_id, tenant_id: tenant_id, kind: 'marketing_event')
+      found = Work::Item.tenant_unscoped(tenant_id).exists?(id: work_item_id, kind: 'marketing_event')
       errors.add(:event, 'must be a marketing event in this workspace') unless found
     end
 
     def one_basis_per_code
-      other = self.class.unscoped.where(tenant_id: tenant_id, work_item_id: work_item_id, code: code).where.not(basis: basis)
+      other = self.class.tenant_unscoped(tenant_id).where(work_item_id: work_item_id, code: code).where.not(basis: basis)
       other = other.where.not(id: id) if persisted?
       return unless other.exists?
 

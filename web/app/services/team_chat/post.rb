@@ -161,7 +161,7 @@ module TeamChat
     end
 
     def limited?
-      Message.unscoped.where(tenant_id: @room.tenant_id, author_kind: 'assistant', created_at: WINDOW.ago..)
+      Message.tenant_unscoped(@room.tenant_id).where(author_kind: 'assistant', created_at: WINDOW.ago..)
              .where('meta LIKE ?', "%\"asked_by\":#{@user.id},%").count >= REPLIES_PER_WINDOW
     end
   end

@@ -123,12 +123,12 @@ class GettingStartedChecklist
   end
 
   def training_completed_in_workspace?
-    TrainingAssignment.unscoped.where(tenant_id: user.tenant_id, status: 'completed').exists?
+    TrainingAssignment.tenant_unscoped(user.tenant_id).where(status: 'completed').exists?
   end
 
   # {'open' => n, 'completed' => n} for this person's own assignments.
   def my_training_counts
-    TrainingAssignment.unscoped.where(tenant_id: user.tenant_id, assignee_id: user.id.to_s, status: TrainingAssignment::STATUSES - ['cancelled'])
+    TrainingAssignment.tenant_unscoped(user.tenant_id).where(assignee_id: user.id.to_s, status: TrainingAssignment::STATUSES - ['cancelled'])
       .group(Arel.sql("CASE WHEN status = 'completed' THEN 'completed' ELSE 'open' END")).count
   end
 

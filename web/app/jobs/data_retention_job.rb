@@ -2,7 +2,7 @@
 
 # Nightly retention pruning, per tenant (TenantScoped models need a tenant in
 # context). One tenant failing must not stop the others.
-class DataRetentionJob < ActiveJob::Base
+class DataRetentionJob < ApplicationJob
   queue_as :default
 
   def perform
