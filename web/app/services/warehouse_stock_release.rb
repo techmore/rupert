@@ -24,7 +24,7 @@ class WarehouseStockRelease
 
       latest = holds.map { |hold| hold.warehouse_payment_attempt&.submitted_at || order.occurred_at }.max
       raise Error, 'Source adjustment must be after the held checkout.' if time < latest
-      levels = InventoryLevel.unscoped.where(tenant_id: order.tenant_id, source: 'shopify', shopifyVariantId: holds.map(&:variant_id))
+      levels = InventoryLevel.tenant_unscoped(order.tenant_id).where(source: 'shopify', shopifyVariantId: holds.map(&:variant_id))
       stamps = levels.group(:shopifyVariantId).minimum(:updatedAt)
       latest_stamps = levels.group(:shopifyVariantId).maximum(:updatedAt)
       unless holds.all? { |hold| stamps[hold.variant_id] && stamps[hold.variant_id] >= time && latest_stamps[hold.variant_id] <= Time.current }

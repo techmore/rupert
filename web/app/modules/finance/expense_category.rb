@@ -73,7 +73,7 @@ module Finance
       keywords.to_s.split(/[,\n]/).map { |word| word.strip.downcase }.reject { |word| word.length < 2 }.uniq
     end
 
-    def in_use_count = Finance::Expense.unscoped.where(tenant_id: tenant_id, category: key).count
+    def in_use_count = Finance::Expense.tenant_unscoped(tenant_id).where(category: key).count
 
     private
 

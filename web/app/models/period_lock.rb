@@ -131,7 +131,7 @@ class PeriodLock < ApplicationRecord
 
         snapshot = PeriodSnapshot.new(from: from, to: to)
         archive = action == 'lock' ? retain_archive!(kind, from, to, snapshot, user) : nil
-        previous = unscoped.where(tenant_id: Current.tenant_id).order(:id).last
+        previous = tenant_unscoped.order(:id).last
         record = new(action: action, period_kind: kind, period_from: from, period_to: to,
           fingerprint: snapshot.fingerprint, summary_json: snapshot.totals.to_json, reason: reason.to_s.strip.presence,
           archive_document_id: archive&.id, actor: user, actor_name: user.display_name || user.email,

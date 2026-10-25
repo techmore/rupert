@@ -10,7 +10,7 @@ module TeamChat
 
     def self.summary(run)
       run.reload
-      rows = unscoped.where(run_id: run.id, tenant_id: run.tenant_id).order(:id).to_a
+      rows = tenant_unscoped(run.tenant_id).where(run_id: run.id).order(:id).to_a
       usage = rows.select { |row| %w[provider_attempt cli_usage].include?(row.kind) }
       incomplete = rows.any? { |row| %w[running interrupted].include?(row.outcome) } ||
                    rows.any? { |row| row.kind == 'cli_inference' && row.facts.fetch('usage_reports', 0).zero? }

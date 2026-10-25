@@ -29,8 +29,8 @@ class ShopifyVariant < ApplicationRecord
   def self.warehouse_catalog(tenant_id:)
     return none if tenant_id.blank?
 
-    products = ShopifyProduct.unscoped.active.where(tenant_id: tenant_id)
-    unscoped.where(tenant_id: tenant_id, catalog_present: [nil, true], productId: products.select(:id))
+    products = ShopifyProduct.tenant_unscoped(tenant_id).active
+    tenant_unscoped(tenant_id).where(catalog_present: [nil, true], productId: products.select(:id))
       .where(arel_table[:price].gt(0))
   end
 

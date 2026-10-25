@@ -48,7 +48,7 @@ class BookApproval < ApplicationRecord
 
     transaction do
       Tenant.unscoped.where(id: Current.tenant_id).update_all(updated_at: Arel.sql('updated_at'))
-      previous = unscoped.where(tenant_id: Current.tenant_id).order(:id).last
+      previous = tenant_unscoped.order(:id).last
       record = new(
         period_kind: period.kind, period_from: period.from, period_to: period.to, status: status,
         report_digest: period.digest, summary_json: period.summary.to_json, notes: notes.to_s.strip.presence,
