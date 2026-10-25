@@ -1,5 +1,9 @@
 # Rupert read API v1
 
+The shared rules for every Rupert API (authentication, scopes, error shapes,
+pagination, idempotency, versioning and deprecation) are in
+[API standards](api-standards.md).
+
 The first API release exposes tenant-scoped catalog, mirrored inventory and the
 feature roadmap. It does not write inventory, change listings, trigger platform
 syncs, process orders or send messages. Shopify and Square connectors continue
@@ -7,7 +11,7 @@ to operate independently.
 
 ## Create and rotate a token
 
-An operator with `settings.write` opens **System → API integrations**, gives the
+An operator with `settings.write` opens **System → API access**, gives the
 integration a name, selects scopes and optionally sets an expiry. The default
 expiry in the form is 90 days. Copy the new token immediately: the full secret is
 displayed only in the creation response. Rupert stores a SHA256 digest and a
@@ -30,13 +34,18 @@ hostnames and query parameters cannot change the token's tenant.
 | `catalog:read` | `GET /api/v1/catalog` | `inventory.read` |
 | `inventory:read` | `GET /api/v1/inventory` | `inventory.read` |
 | `roadmap:read` | `GET /api/v1/roadmap` | Active owner |
-
+| `reports:read` | `GET /api/v1/metrics`, `GET /api/v1/metrics/:name` | `reports.read` |
 | `uploads:write` | `POST /api/v1/uploads` | `uploads.write` |
 | `uploads:read` | `GET /api/v1/uploads`, `GET /api/v1/uploads/:id` | `uploads.read` |
 
 `POST /api/v1/uploads` sends a file to the Uploads inbox (multipart field `file`, or repeated `files[]`; up to 10 files, 10 MiB each, 25 MiB per request). It can receive a file but never approve an import. See [Uploads inbox](ops/uploads-inbox.md) for the request, status codes and a `curl` example.
 
-The scopes `reports:read`, `finance:read`, `timesheets:read`, `tasks:read`, `alerts:read`,
+`GET /api/v1/metrics` lists the business figures Rupert computes;
+`GET /api/v1/metrics/:name` returns one, for a named `period` or `from`/`to`
+dates, with optional `compare=previous|last_year|none` and `source`. These are
+the same figures the MCP `metric` tool returns.
+
+The scopes `reports:read` (beyond metrics), `finance:read`, `timesheets:read`, `tasks:read`, `alerts:read`, `customers:read`, `marketing:read`, `purchasing:read`,
 `system:read`, `feedback:read` and `tasks:write` currently gate only tools on the MCP server for AI assistants
 (`POST /mcp`). See [docs/mcp.md](mcp.md) for connecting Claude, ChatGPT and
 other assistants with the same tokens, the tool list and the feedback channel.
