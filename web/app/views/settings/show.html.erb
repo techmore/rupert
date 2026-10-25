@@ -40,7 +40,11 @@
     <% if Current.user.super_admin? %>
       <div class="flex flex-wrap items-center gap-3">
         <%= link_to "Download backup", backup_settings_path, class: "btn-primary", data: { turbo: false } %>
+        <%= link_to "Open backup encryption", settings_backups_path, class: "btn-ghost" %>
       </div>
+      <% unless BackupEncryptionKey.current %>
+        <p class="flash flash-alert text-sm" role="status">Server backups are not encrypted yet and will be refused. Create a backup key in backup encryption.</p>
+      <% end %>
       <p class="text-xs text-taupe">Database restores need offline maintenance with web and jobs stopped and a verified recovery backup. Contact the instance operator.</p>
       <p data-settings-target="restoreResult" class="text-xs"></p>
     <% else %>

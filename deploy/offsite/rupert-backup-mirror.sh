@@ -2,13 +2,14 @@
 # Off-machine mirror of Rupert's encrypted backups. Runs on ANOTHER computer (a laptop, a NAS, a second server) as
 # a user timer and pulls the already-encrypted sets from the SER8 host over SSH (Tailscale). Every other copy of the
 # database lives on SER8's one NVMe disk; this is the copy that survives that disk, the host, or the room.
-#   - pulls only *.enc and *.sha256 (ciphertext and digests; the key never leaves SER8 and the password manager),
+#   - pulls only ciphertext and its sidecars: *.age with .sha256/.key (#421; the private key is only in the owner's
+#     recovery kit) and, until they age out, the older *.enc sets. Never a plaintext file,
 #   - verifies every pulled database archive against its stored digest before anything is pruned,
 #   - keeps the newest KEEP sets (default 14) and refuses to run when the mirror disk has under MIN_FREE_MB free,
 #   - optionally pushes the mirror on to a cloud bucket with rclone (RCLONE_REMOTE, e.g. "b2:rupert-backups") for a
 #     third copy that is not in anyone's house,
 #   - reports to System → Backups (layer "offsite") through the SER8 host.
-# Restore: see docs/ops/backups.md (needs ~/.config/rupert/offhost.key from the password manager).
+# Restore: see docs/ops/backups.md (bin/backup-decrypt with the recovery kit from the password manager).
 #
 #   install -Dm755 deploy/offsite/rupert-backup-mirror.sh ~/.local/bin/rupert-backup-mirror.sh
 #   install -Dm644 deploy/offsite/rupert-backup-mirror.service deploy/offsite/rupert-backup-mirror.timer -t ~/.config/systemd/user/
@@ -44,10 +45,10 @@ avail=$(free_bytes "$OUT")
 
 # Ciphertext and digests only. No --delete: pruning is by our own KEEP below, so a wiped source cannot wipe the mirror.
 rsync -a --timeout=120 -e "ssh -o BatchMode=yes" \
-  --include='*.enc' --include='*.sha256' --exclude='*' \
+  --include='*.age' --include='*.age.sha256' --include='*.age.key' --include='*.enc' --include='*.enc.sha256' --exclude='*' \
   "$SSH_HOST:$SOURCE_DIR/" "$OUT/" || fail "rsync from $SSH_HOST failed"
 
-mapfile -t sets < <(ls -1t "$OUT"/rupert-sqlite-*.sql.gz.enc 2>/dev/null || true)
+mapfile -t sets < <(ls -1t "$OUT"/rupert-*.sqlite3.gz.age "$OUT"/rupert-sqlite-*.sql.gz.enc 2>/dev/null || true)
 [ "${#sets[@]}" -gt 0 ] || fail "no encrypted sets found at $SSH_HOST:$SOURCE_DIR"
 # Verify what we hold against the digests written at backup time; a bad copy is removed and the run fails loudly.
 bad=0
@@ -59,8 +60,14 @@ done
 [ "$bad" -eq 0 ] || fail "$bad mirrored archive(s) failed their digest check"
 
 for f in "${sets[@]:$KEEP}"; do
-  stamp="${f##*/rupert-sqlite-}"; stamp="${stamp%%.sql.gz.enc}"
-  rm -f "$f" "$f.sha256" "$f.plain.sha256" "$OUT/settings-$stamp.sql.enc" "$OUT/settings-$stamp.sql.enc".*sha256 "$OUT/env-sqlite-$stamp.enc" "$OUT/env-sqlite-$stamp.enc".*sha256
+  case "$f" in
+    *.sqlite3.gz.age)
+      stamp="${f##*/rupert-}"; stamp="${stamp%%.sqlite3.gz.age}"
+      rm -f "$f" "$f.sha256" "$f.key" "$OUT/settings-$stamp.sql.age" "$OUT/settings-$stamp.sql.age".{sha256,key} ;;
+    *)
+      stamp="${f##*/rupert-sqlite-}"; stamp="${stamp%%.sql.gz.enc}"
+      rm -f "$f" "$f.sha256" "$f.plain.sha256" "$OUT/settings-$stamp.sql.enc" "$OUT/settings-$stamp.sql.enc".*sha256 "$OUT/env-sqlite-$stamp.enc" "$OUT/env-sqlite-$stamp.enc".*sha256 ;;
+  esac
 done
 
 cloud=""
@@ -70,7 +77,7 @@ if [ -n "$RCLONE_REMOTE" ]; then
   cloud="; cloud copy at $RCLONE_REMOTE"
 fi
 
-kept=$(ls -1 "$OUT"/rupert-sqlite-*.sql.gz.enc | wc -l)
+kept=$(ls -1 "$OUT"/rupert-*.sqlite3.gz.age "$OUT"/rupert-sqlite-*.sql.gz.enc 2>/dev/null | wc -l)
 newest="${sets[0]}"
 write_status ok "mirror on $(hostname) verified; $kept sets kept$cloud" "$newest" "$(stat -c %s "$newest")" "$kept"
 echo "mirror ok: $kept sets in $OUT (newest $(basename "$newest"))$cloud"

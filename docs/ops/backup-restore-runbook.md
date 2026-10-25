@@ -16,13 +16,14 @@ matching encryption keys.
 Before relying on recovery, record all of the following for a recent encrypted
 backup from outside SER8:
 
-- The ciphertext digest verifies, and decryption succeeds with the separately
-  escrowed key.
+- The ciphertext digest verifies, and `bin/backup-decrypt` succeeds with the
+  owner's recovery kit (the age private key is held only there; see
+  [Rupert backups](backups.md#restore-drill-420)).
 - The restored SQLite file passes `PRAGMA integrity_check` and
   `PRAGMA foreign_key_check`; expected table counts and retained files match
   the selected recovery point.
-- The matching environment copy contains the original Rails encryption keys,
-  and a designated nonproduction restore can read encrypted settings.
+- The recovery kit's `RAILS_ENCRYPTION_*` values let a designated
+  nonproduction restore read encrypted settings.
 - The measured restore time and backup age meet the owner's recovery targets.
 - The installed host and mirror scripts match the reviewed repository versions;
   the latest backup and restore-drill status is fresh and successful.

@@ -213,8 +213,8 @@ scope. `test/models/work/marketing_kinds_test.rb` and `test/integration/work_cal
 check that marketing items change no task count, listing, project progress, task page or MCP task
 tool.
 
-**Migration** `20261025210000_create_marketing_results`: creates `marketing_results` only (additive,
-no rewrite of `tasks`). Rollback: `bin/rails db:migrate:down VERSION=20261025210000` drops the
+**Migration** `20261026100000_create_marketing_results`: creates `marketing_results` only (additive,
+no rewrite of `tasks`). Rollback: `bin/rails db:migrate:down VERSION=20261026100000` drops the
 results; marketing event and campaign task rows in `tasks` then block the phase 1 rollback until they
 are removed.
 

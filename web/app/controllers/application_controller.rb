@@ -146,6 +146,8 @@ class ApplicationController < ActionController::Base
     reset_session
     session[:user_id] = user.id
     session[:auth_method] = method
+    # When this sign-in happened: sensitive actions (the backup recovery kit) ask for a recent one.
+    session[:authenticated_at] = Time.current.to_i
     session[:authentication_fingerprint] = Digest::SHA256.hexdigest(user.password_digest)
     if method == 'google'
       session[:google_login_email] = google_email

@@ -8,6 +8,9 @@
   <%= section_heading 'Backups', hint: 'Five layers, each for a different way of losing data.' do %>
     <span class="<%= headline[1] %>"><%= headline[0] %></span>
   <% end %>
+  <% unless BackupEncryptionKey.current %>
+    <p class="flash flash-alert text-sm" role="status" data-backup-key-missing>No backup key is active, so new backups are refused rather than written unencrypted. <%= link_to 'Create a backup key', settings_backups_path, class: 'underline' %>.</p>
+  <% end %>
   <ul class="divide-y divide-fog">
     <% backups.each do |layer| %>
       <% state = layer.state(now) %>
@@ -25,6 +28,7 @@
               <% if layer.report.bytes.positive? %>· <%= number_to_human_size(layer.report.bytes) %><% end %>
               <% if layer.report.kept.positive? %>· <%= layer.report.kept %> kept<% end %>
               <% if layer.report.free_bytes.positive? %>· <%= number_to_human_size(layer.report.free_bytes) %> free there<% end %>
+              <% if layer.report.key_fingerprint %>· key <span class="font-mono"><%= layer.report.key_fingerprint %></span><% end %>
             </p>
             <p class="text-xs <%= state == 'failed' ? 'text-rose font-semibold' : 'text-taupe' %>"><%= layer.report.message %></p>
           <% else %>
