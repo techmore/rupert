@@ -661,6 +661,11 @@ Rails.application.routes.draw do
   get '/live/commissions', to: 'live_commissions#show', as: :live_commissions
   post '/webhooks/authorize_net/:connection_id', to: 'authorize_net_webhooks#create', as: :authorize_net_webhook
 
+  # Settings → Backups: backup encryption key and the owner's recovery kit (#421).
+  get '/settings/backups', to: 'backup_keys#show', as: :settings_backups
+  post '/settings/backups/key', to: 'backup_keys#create', as: :settings_backup_key
+  post '/settings/backups/key/activate', to: 'backup_keys#activate', as: :activate_settings_backup_key
+
   resource :settings, only: :show do
     post :tenant
     post :pay_rules

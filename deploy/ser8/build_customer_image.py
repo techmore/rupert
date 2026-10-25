@@ -25,7 +25,7 @@ def main():
     run(['incus', 'init', os_image, name, '-c', 'limits.cpu=1', '-c', 'limits.memory=2GiB', '-c', 'security.privileged=false', '-c', 'security.nesting=false'])
     run(['incus', 'start', name])
     print('Clean build instance started:', name, flush=True)
-    run(['incus', 'exec', name, '--', 'bash', '-c', 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ca-certificates curl git sqlite3 libyaml-0-2 libgmp10 libcrypt1 libreadline8 libffi8 libzstd1 zlib1g'], timeout=600)
+    run(['incus', 'exec', name, '--', 'bash', '-c', 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ca-certificates curl git sqlite3 age libyaml-0-2 libgmp10 libcrypt1 libreadline8 libffi8 libzstd1 zlib1g'], timeout=600)
     # Copy only the public Ruby interpreter/gems. Never copy /opt/rupert, homes,
     # /etc/rupert.env, storage, uploads or any database from the live instance.
     with tempfile.TemporaryDirectory(prefix='rupert-public-runtime-') as directory:

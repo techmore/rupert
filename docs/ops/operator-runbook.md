@@ -9,7 +9,7 @@ The one page for whoever keeps Rupert running day to day. Commands inside the SE
 3. **System** page: failed jobs `0` (or explained), worker heartbeat recent, disk/DB size trend sane.
 4. **Sync** page: last scheduled run `success`; no run older than 45 minutes still `running`.
 5. Yesterday's **Sales** total vs Shopify admin; a glance at **Alerts** for low stock.
-6. On Mondays: `systemctl --user list-timers` on the host shows `rupert-offhost-backup.timer` ran; `ls -1t ~/backups/rupert | head -3` is from today.
+6. On Mondays: `systemctl --user list-timers` on the host shows `rupert-offhost-backup.timer` ran; `ls -1t ~/backups/rupert/*.age | head -3` is from today and System → Backups shows every layer encrypted.
 
 | `/up/ready` check | Means | Do |
 | --- | --- | --- |
@@ -48,7 +48,7 @@ Shopify sends `customers/data_request`, `customers/redact`, `shop/redact`, `app/
 | Chat, payroll, HR and 1099 columns | database | encrypted at rest since #421; run `CONFIRM=1 bin/rails ops:encrypt_sensitive_fields` once after upgrading ([encryption-at-rest.md](encryption-at-rest.md)) | — |
 | Square access token | Settings → env (`SQUARE_ACCESS_TOKEN`) | create a new token in the Square developer dashboard for the same environment, save, run a Square sync | — |
 | Google OAuth / Drive | Settings → Google sign-in and Drive sections | regenerate the client secret in Google Cloud, save; reconnect Drive (consent) | Drive refresh token must be re-issued |
-| Off-host backup key | host `~/.config/rupert/offhost.key` | generate a new key, re-encrypt the retained sets (or accept that older sets need the old key, kept in the password manager) | — |
+| Backup encryption key (age) | public half in `backup_encryption_keys`; private half only in the owner's recovery kit (password manager) | Settings → Backups → Create backup key, save the new kit, type its check code; keep the old kit until its backups age out (~35 days) | — |
 | `SENTRY_DSN` | `/etc/rupert.env` | replace, restart | — |
 
 Every rotation: take a full backup first (`systemctl start rupert-backup.service`), note the date in the Activity page or the operator log.

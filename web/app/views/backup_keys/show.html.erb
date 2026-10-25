@@ -1,0 +1,94 @@
+<%# Settings → Backups: the Settings template (docs/ui-standards.md §4). Backup encryption key and recovery kit (#421). %>
+<div class="page-medium space-y-6">
+  <%= page_header 'Backups', subtitle: 'Backups are encrypted to a key whose private half lives only in your recovery kit.' %>
+
+  <section class="section-card" id="backup-key" data-backup-key-state="<%= @current ? 'active' : 'missing' %>">
+    <%= section_heading 'Backup encryption', hint: 'The server keeps only the public key; it can lock backups but never open them.' do %>
+      <% if @current %>
+        <span class="pill-fern">Encrypted</span>
+      <% else %>
+        <span class="pill-rose">No key</span>
+      <% end %>
+    <% end %>
+    <% if @current %>
+      <dl class="facts">
+        <div><dt>Key fingerprint</dt><dd class="font-mono" data-current-fingerprint><%= @current.fingerprint %></dd></div>
+        <div><dt>Active since</dt><dd><%= @current.activated_at.strftime('%b %-d, %Y %-l:%M %p') %></dd></div>
+      </dl>
+      <p class="text-xs text-taupe">Every backup file has a <code>.key</code> file beside it naming this fingerprint. Open a backup with the recovery kit that shows the same fingerprint.</p>
+    <% else %>
+      <p class="flash flash-alert text-sm" role="status">Backups are refused until a key is active: the server will not write unencrypted backups. Create a backup key below.</p>
+    <% end %>
+  </section>
+
+  <% if @pending %>
+    <section class="section-card" id="backup-key-pending">
+      <%= section_heading 'Confirm the recovery kit', hint: 'Type the check code printed on the kit you just saved.' %>
+      <p class="text-sm text-mocha">Key <span class="font-mono"><%= @pending.fingerprint %></span> is waiting. It starts protecting backups only after you enter its check code, so no backup depends on a kit you did not keep. The code expires an hour after the kit was made.</p>
+      <%= form_with(url: activate_settings_backup_key_path, method: :post, local: true, data: { turbo: false }, class: 'space-y-3') do %>
+        <div>
+          <%= label_tag :check_code, 'Check code', class: 'field-label' %>
+          <%= text_field_tag :check_code, nil, required: true, autocomplete: 'off', spellcheck: false, placeholder: 'ABCD-EFGH', class: 'input font-mono', data: { lpignore: 'true', '1p-ignore': 'true' } %>
+        </div>
+        <div class="form-actions">
+          <%= submit_tag 'Activate key', class: 'btn-primary' %>
+        </div>
+      <% end %>
+    </section>
+  <% end %>
+
+  <section class="section-card" id="backup-key-create">
+    <%= section_heading(@current ? 'Rotate the backup key' : 'Create backup key', hint: 'Makes a new key pair and downloads its recovery kit PDF once.') %>
+    <details class="explainer text-sm text-mocha" open>
+      <summary class="explainer-summary">What the recovery kit holds and where to keep it</summary>
+      <p class="mt-1">The PDF holds the private key that opens the backups, the database encryption keys a restored copy needs, the fingerprint and the restore steps. Rupert does not keep the private key, and the PDF cannot be downloaded again.</p>
+      <p class="mt-1">Save it in your password manager as a separate <strong>secure note</strong> named “Rupert backup recovery kit — <%= @workspace %>”. It is not a login: sign-in uses Google, so leave the site login entry alone.</p>
+      <% if @current %>
+        <p class="mt-1">Rotating keeps older backups readable with the old kit; keep both until the old backups have aged out.</p>
+      <% end %>
+    </details>
+    <% if @recent_sign_in || @password_session %>
+      <%= form_with(url: settings_backup_key_path, method: :post, local: true, data: { turbo: false }, class: 'space-y-3') do %>
+        <% unless @recent_sign_in %>
+          <div>
+            <%= label_tag :password, 'Your Rupert password', class: 'field-label' %>
+            <%= password_field_tag :password, nil, required: true, autocomplete: 'current-password', class: 'input' %>
+          </div>
+        <% end %>
+        <label class="flex items-start gap-2 text-sm text-ink">
+          <%= check_box_tag :acknowledge, '1', false, required: true %>
+          <span>I will store the recovery kit as a secure note now. Without it these backups cannot be opened.</span>
+        </label>
+        <div class="form-actions">
+          <%= submit_tag 'Create backup key', class: 'btn-primary' %>
+        </div>
+      <% end %>
+    <% else %>
+      <p class="text-sm text-mocha">For safety, creating a key needs a sign-in from the last <%= BackupKeysController::REAUTH_WINDOW.in_minutes.to_i %> minutes. Sign out, sign in again with Google, then come back to Settings → Backups.</p>
+      <div class="form-actions">
+        <%= button_to 'Sign out', logout_path, method: :delete, class: 'btn-ghost', form: { data: { turbo: false } } %>
+      </div>
+    <% end %>
+  </section>
+
+  <section class="section-card" id="backup-key-history">
+    <%= section_heading 'Key history', hint: 'Fingerprints of every key, newest first. Old kits still open the backups made with them.' %>
+    <% if @keys.any? %>
+      <div class="table-region"><table class="table">
+        <thead><tr><th>Fingerprint</th><th>Created</th><th>State</th></tr></thead>
+        <tbody>
+          <% @keys.each do |key| %>
+            <tr data-key-state="<%= key.state %>">
+              <td class="font-mono"><%= key.fingerprint %></td>
+              <td><%= key.created_at.strftime('%b %-d, %Y') %></td>
+              <td><span class="<%= { 'active' => 'pill-fern', 'pending' => 'pill-clay', 'expired' => 'pill-taupe', 'retired' => 'pill-taupe' }.fetch(key.state) %>"><%= key.state.capitalize %></span></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table></div>
+    <% else %>
+      <div class="empty-state"><p>No backup keys yet.</p><p class="empty-state-hint">Create a backup key to start encrypted backups.</p></div>
+    <% end %>
+    <p class="text-xs text-taupe">Restore steps: <%= link_to 'docs/ops/backups.md', 'https://github.com/techmore/rupert/blob/main/docs/ops/backups.md', class: 'underline' %>.</p>
+  </section>
+</div>
