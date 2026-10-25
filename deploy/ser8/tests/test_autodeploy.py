@@ -5,20 +5,55 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import hashlib
 import unittest
 
 SCRIPT = Path(__file__).parents[1] / 'rupert-autodeploy.sh'
+PRINTER = Path(__file__).parents[1] / 'rupert-deploy-receipt'
 
-# Stand-ins for the host tools. Each records its call in $CALLS; curl serves the
-# check-runs JSON from $CHECKS and answers the health check with $HEALTH.
+# Stand-ins for the host tools. Each records its call in $CALLS. curl serves the
+# check-runs JSON from $CHECKS (or $CHECKS_DIR/<sha>.json), answers the health
+# check with $HEALTH, renders the smoke page with an X-Rupert-Build of the app
+# checkout's HEAD (or $SERVED_BUILD) and serves assets (a path containing
+# $BROKEN_ASSET answers 404 with an empty body).
+PAGE = ('<link rel="stylesheet" href="/api/assets/tailwind-' + 'a' * 64 + '.css" />'
+        '<link rel="modulepreload" href="/api/assets/application-' + 'b' * 64 + '.js">'
+        '<link rel="modulepreload" href="/api/assets/controllers/application-' + 'c' * 64 + '.js">'
+        '<link rel="modulepreload" href="/api/assets/turbo.min-' + 'd' * 64 + '.js">')
 STUBS = {
-    'curl': '''#!/bin/sh
-echo "curl $*" >> "$CALLS"
-case "$*" in
-  *check-runs*) sha=$(printf %s "$*" | sed 's#.*/commits/\\([0-9a-f]*\\)/check-runs.*#\\1#')
-    if [ -f "$CHECKS_DIR/$sha.json" ]; then cat "$CHECKS_DIR/$sha.json"; else cat "$CHECKS"; fi ;;
-  *) printf %s "$HEALTH" ;;
-esac
+    'curl': '''#!/usr/bin/env python3
+import os, re, subprocess, sys
+args = sys.argv[1:]
+with open(os.environ['CALLS'], 'a') as f:
+    f.write('curl ' + ' '.join(args) + '\\n')
+url = args[-1]
+def opt(name):
+    return args[args.index(name) + 1] if name in args else None
+def emit(body, code=None):
+    out = opt('-o')
+    if out and out != '/dev/null':
+        with open(out, 'w') as f:
+            f.write(body)
+    elif not out:
+        sys.stdout.write(body)
+    if code is not None:
+        sys.stdout.write(code)
+if '/check-runs' in url:
+    sha = re.search(r'/commits/([0-9a-f]+)/check-runs', url).group(1)
+    path = os.path.join(os.environ['CHECKS_DIR'], sha + '.json')
+    sys.stdout.write(open(path if os.path.exists(path) else os.environ['CHECKS']).read())
+elif url.endswith('/up'):
+    emit('', os.environ.get('HEALTH', '200'))
+elif '/assets/' in url:
+    broken = os.environ.get('BROKEN_ASSET')
+    emit('', '404') if broken and broken in url else emit('compiled ' + url, '200')
+else:
+    build = os.environ.get('SERVED_BUILD') or subprocess.run(
+        ['git', '-C', os.environ['RUPERT_AUTODEPLOY_APP'], 'rev-parse', 'HEAD'], capture_output=True, text=True).stdout.strip()
+    if opt('-D'):
+        with open(opt('-D'), 'w') as f:
+            f.write('HTTP/1.1 200 OK\\r\\nx-rupert-build: ' + build + '\\r\\n\\r\\n')
+    emit(os.environ.get('PAGE', ''' + repr(PAGE) + '''), os.environ.get('PAGE_CODE', '200'))
 ''',
     'systemctl': '#!/bin/sh\necho "systemctl $*" >> "$CALLS"\n',
     'sqlite3': '#!/bin/sh\necho "sqlite3 $*" >> "$CALLS"\n[ "${BACKUP_EXIT:-0}" = 0 ] || exit "$BACKUP_EXIT"\nset -- $2\ntouch "$2"\n',
@@ -29,8 +64,15 @@ esac
 
 
 def check_runs(*runs):
-    return {'check_runs': [{'id': i, 'name': n, 'status': 'completed' if c else 'in_progress', 'conclusion': c}
-                           for i, (n, c) in enumerate(runs)]}
+    """(name, conclusion) or (name, conclusion, status); no conclusion means still in progress."""
+    out = []
+    for i, run in enumerate(runs):
+        name, conclusion = run[:2]
+        status = run[2] if len(run) > 2 else ('completed' if conclusion else 'in_progress')
+        out.append({'id': 1000 + i, 'name': name, 'status': status, 'conclusion': conclusion,
+                    'html_url': f'https://github.com/techmore/rupert/runs/{1000 + i}',
+                    'completed_at': '2026-10-25T12:00:00Z' if status == 'completed' else None})
+    return {'check_runs': out}
 
 
 REQUIRED = ('CI (sqlite3)', 'Product site consistency', 'Dependency and static scan')
@@ -46,7 +88,7 @@ class AutodeployTest(unittest.TestCase):
         for name, body in STUBS.items():
             (bin_dir / name).write_text(body)
             (bin_dir / name).chmod(0o755)
-        (self.tmp / 'rupert.env').write_text('')
+        (self.tmp / 'rupert.env').write_text('SECRET_KEY_BASE=do-not-leak-this\n')
         self.calls = self.tmp / 'calls'
         self.checks = self.tmp / 'checks.json'
         self.checks_dir = self.tmp / 'checks'
@@ -378,6 +420,248 @@ class AutodeployTest(unittest.TestCase):
         self.assertTrue((self.inbox / 'install-requested').is_symlink())
         self.assertEqual(secret.read_text(), 'do not read')
         self.assertNotIn('do not read', (self.tmp / 'state' / 'status.json').read_text())
+
+    # --- Failures block promotion: anything but success on every required check ---
+
+    def assert_not_deployed(self, state, word):
+        result, calls = self.run_deploy()
+        self.assertIn(f'is {word}, not deploying', result.stdout)
+        self.assertEqual(self.head(self.tmp / 'app'), self.old)
+        self.assertNotIn('sqlite3', calls)
+        self.assertNotIn('systemctl', calls)
+        self.assertEqual(self.status()['state'], state)
+        self.assertNotIn(self.status()['state'], ('deployed', 'deploying', 'ready'))
+        self.assertEqual(self.receipts(), [])
+
+    def test_every_non_success_conclusion_blocks_and_reports_red(self):
+        self.commit('feature')
+        for conclusion in ('skipped', 'neutral', 'cancelled', 'failure', 'timed_out', 'action_required', 'stale'):
+            for name in REQUIRED:
+                with self.subTest(check=name, conclusion=conclusion):
+                    self.set_checks(check_runs(*[(n, conclusion if n == name else 'success') for n in REQUIRED]))
+                    self.assert_not_deployed('ci_failed', 'red')
+
+    def test_missing_required_check_blocks_and_waits(self):
+        self.commit('feature')
+        for name in REQUIRED:
+            with self.subTest(missing=name):
+                self.set_checks(check_runs(*[(n, 'success') for n in REQUIRED if n != name]))
+                self.assert_not_deployed('waiting_ci', 'pending')
+        with self.subTest(missing='all'):
+            self.set_checks(check_runs())
+            self.assert_not_deployed('waiting_ci', 'pending')
+
+    def test_pending_required_check_blocks_and_waits(self):
+        self.commit('feature')
+        for status in ('queued', 'in_progress', 'waiting', 'requested', 'pending'):
+            with self.subTest(status=status):
+                self.set_checks(check_runs(*[(n, None, status) if n == 'CI (sqlite3)' else (n, 'success') for n in REQUIRED]))
+                self.assert_not_deployed('waiting_ci', 'pending')
+
+    def test_rerun_in_progress_after_a_pass_is_pending_not_green(self):
+        self.commit('feature')
+        self.set_checks(check_runs(*[(n, 'success') for n in REQUIRED], ('CI (sqlite3)', None, 'queued')))
+        self.assert_not_deployed('waiting_ci', 'pending')
+
+    def test_a_later_skipped_rerun_overrides_an_earlier_success(self):
+        self.commit('feature')
+        self.set_checks(check_runs(*[(n, 'success') for n in REQUIRED], ('Product site consistency', 'skipped')))
+        self.assert_not_deployed('ci_failed', 'red')
+
+    def test_unreadable_checks_are_unknown_not_green(self):
+        self.commit('feature')
+        self.checks.write_text('not json')
+        self.assert_not_deployed('waiting_ci', 'unknown')
+
+    def test_skipped_cancelled_or_missing_mobile_validate_blocks(self):
+        mobile = self.commit('mobile change', path='mobile/src/task.js')
+        for runs, state, word in [((('validate', 'skipped'),), 'ci_failed', 'red'),
+                                  ((('validate', 'neutral'),), 'ci_failed', 'red'),
+                                  ((('validate', 'cancelled'),), 'ci_failed', 'red'),
+                                  ((('validate', None, 'queued'),), 'waiting_ci', 'pending'),
+                                  ((), 'waiting_ci', 'pending')]:
+            with self.subTest(validate=runs):
+                self.set_checks(check_runs(*[(n, 'success') for n in REQUIRED], *runs), sha=mobile)
+                self.assert_not_deployed(state, word)
+
+    # --- Release receipts ---
+
+    def receipts(self):
+        directory = self.tmp / 'state' / 'receipts'
+        return sorted(p.name for p in directory.glob('*.json')) if directory.exists() else []
+
+    def receipt(self, name):
+        return json.loads((self.tmp / 'state' / 'receipts' / name).read_text())
+
+    def test_successful_deploy_writes_an_exact_sha_receipt(self):
+        migration = 'web/db/migrate/20261025000000_add_thing.rb'
+        new = self.commit('add thing', path=migration)
+        result, _ = self.run_deploy()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.receipts(), [f'{new}.json'])
+        path = self.tmp / 'state' / 'receipts' / f'{new}.json'
+        self.assertEqual(path.stat().st_mode & 0o777, 0o644)
+        self.assertEqual((path.parent).stat().st_mode & 0o777, 0o755)
+        receipt = self.receipt(f'{new}.json')
+
+        self.assertEqual((receipt['result'], receipt['deployed_sha'], receipt['previous_sha'], receipt['running_sha']),
+                         ('deployed', new, self.old, new))
+        self.assertIsNone(receipt['failed_stage'])
+        checks = receipt['required_checks']
+        self.assertEqual((checks['sha'], checks['verdict']), (new, 'green'))
+        self.assertEqual([c['name'] for c in checks['checks']], list(REQUIRED))
+        for check in checks['checks']:
+            self.assertEqual(check['conclusion'], 'success')
+            self.assertEqual(check['url'], f"https://github.com/techmore/rupert/runs/{check['id']}")
+        self.assertIsNone(receipt['mobile_checks'])
+        self.assertEqual(receipt['migrations'], {'new': [migration], 'db_migrate': 'succeeded', 'reverted': False})
+        backup = Path(receipt['backup']['path'])
+        self.assertTrue(backup.is_file())
+        self.assertEqual(backup.parent, self.tmp / 'backups')
+        self.assertEqual(receipt['backup']['sha256'], hashlib.sha256(backup.read_bytes()).hexdigest())
+        self.assertEqual((receipt['health']['result'], receipt['health']['last_http_code']), ('passed', '200'))
+        smoke = receipt['smoke']
+        self.assertEqual((smoke['result'], smoke['page'], smoke['page_http_code'], smoke['served_build']),
+                         ('passed', '/login', '200', new))
+        paths = [a['path'] for a in smoke['assets']]
+        self.assertEqual(paths, ['/api/assets/tailwind-' + 'a' * 64 + '.css', '/api/assets/application-' + 'b' * 64 + '.js'])
+        for asset in smoke['assets']:
+            self.assertEqual(asset['http_code'], '200')
+            self.assertEqual(asset['sha256'], hashlib.sha256(f"compiled localhost:3000{asset['path']}".encode()).hexdigest())
+        self.assertEqual(receipt['rollback'], 'not_needed')
+        self.assertLessEqual(receipt['started_at'][:19], receipt['finished_at'][:19])
+        self.assertEqual(self.status('last-deploy.json')['receipt'], str(path))
+        self.assertEqual(self.status()['receipt'], str(path))
+
+    def test_receipt_never_contains_secrets(self):
+        self.commit('feature')
+        self.run_deploy()
+        self.commit('broken', path='web/db/migrate/20261020000000_broken.rb')
+        self.run_deploy(MIGRATE_EXIT='1')
+        self.assertEqual(len(self.receipts()), 2)
+        for name in self.receipts():
+            text = (self.tmp / 'state' / 'receipts' / name).read_text()
+            self.assertNotIn('do-not-leak-this', text)
+            self.assertNotIn('SECRET_KEY_BASE', text)
+
+    def test_mobile_deploy_receipt_records_the_validate_sha(self):
+        mobile = self.commit('mobile change', path='mobile/src/task.js')
+        later = self.commit('web change after it')
+        self.set_checks(GREEN, sha=later)
+        self.set_checks(check_runs(('validate', 'success')), sha=mobile)
+        self.run_deploy()
+        receipt = self.receipt(f'{later}.json')
+        self.assertEqual((receipt['mobile_checks']['sha'], receipt['mobile_checks']['verdict']), (mobile, 'green'))
+        self.assertEqual([c['name'] for c in receipt['mobile_checks']['checks']], ['validate'])
+        self.assertEqual(receipt['required_checks']['sha'], later)
+
+    def assert_failure_receipt(self, new, stage, rollback):
+        names = self.receipts()
+        self.assertNotIn(f'{new}.json', names)
+        self.assertEqual(len(names), 1, names)
+        self.assertTrue(names[0].startswith(f'{new}.failed-'), names)
+        receipt = self.receipt(names[0])
+        self.assertEqual((receipt['result'], receipt['deployed_sha'], receipt['target_sha'], receipt['running_sha']),
+                         ('failed', None, new, self.old))
+        self.assertEqual((receipt['failed_stage'], receipt['rollback']), (stage, rollback))
+        self.assertEqual(self.status('last-deploy.json')['receipt'], str(self.tmp / 'state' / 'receipts' / names[0]))
+        return receipt
+
+    def test_failed_migration_writes_a_failure_receipt(self):
+        migration = 'web/db/migrate/20261020000000_broken.rb'
+        new = self.commit('broken migration', path=migration)
+        self.run_deploy(MIGRATE_EXIT='1')
+        receipt = self.assert_failure_receipt(new, 'db_migrate', 'healthy')
+        self.assertEqual(receipt['migrations'], {'new': [migration], 'db_migrate': 'failed', 'reverted': False})
+        self.assertTrue(receipt['backup']['sha256'])
+        self.assertEqual(receipt['health']['result'], 'not_run')
+        self.assertIsNone(receipt['smoke'])
+
+    def test_unhealthy_deploy_writes_a_failure_receipt(self):
+        new = self.commit('feature')
+        self.run_deploy(HEALTH='502')
+        receipt = self.assert_failure_receipt(new, 'health', 'unhealthy')
+        self.assertEqual(receipt['health'], {'url': '/up', 'host': 'herbalhealers.rupertpos.com', 'result': 'failed',
+                                             'last_http_code': '502', 'attempts': 15})
+        self.assertEqual(receipt['migrations']['db_migrate'], 'succeeded')
+
+    def test_missing_compiled_asset_rolls_back_with_a_failure_receipt(self):
+        new = self.commit('feature')
+        result, _ = self.run_deploy(BROKEN_ASSET='tailwind')
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('failed at asset_smoke', result.stdout)
+        self.assertEqual(self.head(self.tmp / 'app'), self.old)
+        self.assertEqual((self.tmp / 'state' / 'failed-sha').read_text().strip(), new)
+        receipt = self.assert_failure_receipt(new, 'asset_smoke', 'healthy')
+        self.assertEqual(receipt['health']['result'], 'passed')
+        self.assertEqual(receipt['smoke']['result'], 'failed')
+        css = receipt['smoke']['assets'][0]
+        self.assertEqual((css['http_code'], css['sha256'], css['ok']), ('404', None, False))
+
+    def test_wrong_served_build_or_no_assets_fails_the_smoke_check(self):
+        for env in ({'SERVED_BUILD': 'f' * 40}, {'PAGE': '<html>no assets</html>'}, {'PAGE_CODE': '500'}):
+            with self.subTest(env=env):
+                shutil.rmtree(self.tmp / 'state', ignore_errors=True)
+                new = self.commit(f'feature {env}')
+                result, _ = self.run_deploy(**env)
+                self.assertIn('failed at asset_smoke', result.stdout)
+                self.assertEqual(self.head(self.tmp / 'app'), self.old)
+                self.assert_failure_receipt(new, 'asset_smoke', 'healthy')
+
+    def test_backup_failure_writes_a_failure_receipt(self):
+        new = self.commit('feature')
+        self.run_deploy(BACKUP_EXIT='1')
+        names = self.receipts()
+        self.assertEqual(len(names), 1)
+        receipt = self.receipt(names[0])
+        self.assertEqual((receipt['result'], receipt['failed_stage'], receipt['target_sha']), ('failed', 'backup', new))
+        self.assertIsNone(receipt['backup']['path'])
+
+    def test_retry_after_failure_keeps_both_receipts(self):
+        new = self.commit('broken migration', path='web/db/migrate/20261020000000_broken.rb')
+        self.run_deploy(MIGRATE_EXIT='1')
+        self.request_install(1_800_000_000)
+        self.run_deploy()
+        names = self.receipts()
+        self.assertIn(f'{new}.json', names)
+        self.assertEqual(len(names), 2)
+        self.assertEqual(self.receipt(f'{new}.json')['result'], 'deployed')
+        self.assertTrue(self.receipt(f'{new}.json')['install_requested'])
+
+    def test_no_receipt_without_an_install_attempt(self):
+        self.run_deploy()
+        self.commit('feature')
+        self.run_deploy(DRY_RUN='1')
+        (self.inbox / 'manual').write_text('')
+        self.run_deploy()
+        self.assertEqual(self.receipts(), [])
+
+    def test_printer_shows_the_latest_receipt_read_only(self):
+        env = {**os.environ, 'RUPERT_AUTODEPLOY_STATE': str(self.tmp / 'state')}
+        printed = subprocess.run(['python3', str(PRINTER)], env=env, capture_output=True, text=True)
+        self.assertEqual(printed.returncode, 1)
+        self.assertIn('no deploy receipt', printed.stderr)
+
+        first = self.commit('feature')
+        self.run_deploy()
+        second = self.commit('broken', path='web/db/migrate/20261020000000_broken.rb')
+        self.run_deploy(MIGRATE_EXIT='1')
+        before = {n: (self.tmp / 'state' / 'receipts' / n).read_text() for n in self.receipts()}
+
+        printed = subprocess.run(['python3', str(PRINTER)], env=env, capture_output=True, text=True)
+        self.assertEqual(printed.returncode, 0, printed.stderr)
+        self.assertIn(f'FAILED  {second[:12]}', printed.stdout)
+        self.assertIn('failed at: db_migrate', printed.stdout)
+
+        printed = subprocess.run(['python3', str(PRINTER), first[:8], '--json'], env=env, capture_output=True, text=True)
+        self.assertEqual(json.loads(printed.stdout)['deployed_sha'], first)
+        printed = subprocess.run(['python3', str(PRINTER), first[:8]], env=env, capture_output=True, text=True)
+        self.assertIn('CI (sqlite3): success (id 1000) https://github.com/techmore/rupert/runs/1000', printed.stdout)
+        self.assertIn('smoke:     passed', printed.stdout)
+
+        printed = subprocess.run(['python3', str(PRINTER), '--list'], env=env, capture_output=True, text=True)
+        self.assertEqual(len(printed.stdout.splitlines()), 2)
+        self.assertEqual(before, {n: (self.tmp / 'state' / 'receipts' / n).read_text() for n in self.receipts()})
 
 
 if __name__ == '__main__':
