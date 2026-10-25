@@ -22,6 +22,8 @@ module Metrics
     Definition.new('orders', 'Orders', 'count', 'Number of paid and fulfilled orders, per currency, with each source.'),
     Definition.new('average_order_value', 'Average order value', 'money', 'Gross sales divided by orders, per currency.'),
     Definition.new('best_day', 'Best sales day', 'day', 'The day with the highest gross sales in the period (and its orders).'),
+    Definition.new('worst_day', 'Slowest sales day', 'day', 'The day with the lowest gross sales among days with stored sales in the period (and its orders).'),
+    Definition.new('sales_by_weekday', 'Sales by weekday', 'share', 'Gross, orders, days with sales and average per sales day for each weekday, with its share.'),
     Definition.new('sales_by_source', 'Sales by source', 'share', 'Gross and orders per source and its share of the currency total.'),
     Definition.new('top_products', 'Top products', 'share', 'The ten products with the most revenue, with units and share of product revenue.'),
     Definition.new('refund_rate', 'Refund rate', 'percent', 'Refunds recorded in the period as a percent of gross sales, with the amount and count.'),
@@ -66,6 +68,8 @@ module Metrics
     case key
     when 'gross_sales', 'orders', 'average_order_value', 'sales_by_source' then { values: per_currency(orders, key) }
     when 'best_day' then { values: best_day(orders) }
+    when 'worst_day' then { values: worst_day(orders) }
+    when 'sales_by_weekday' then { values: sales_by_weekday(orders) }
     when 'top_products' then { values: top_products(orders) }
     when 'refund_rate' then { values: refund_rate(orders, window, source) }
     when 'expenses_by_category' then { values: expenses_by_category(window) }
@@ -97,17 +101,47 @@ module Metrics
     end
   end
 
-  def best_day(orders)
+  # { currency => { date => [gross_cents, orders] } }, days in the workspace time zone. Only days with stored orders.
+  def daily_totals(orders)
     by_currency = Hash.new { |hash, key| hash[key] = Hash.new { |inner, day| inner[day] = [0, 0] } }
     orders.pluck(:currency, :occurred_at, :gross_cents).each do |currency, at, cents|
       day = by_currency[currency][at.in_time_zone.to_date]
       day[0] += cents.to_i
       day[1] += 1
     end
-    by_currency.sort_by { |currency, _| currency.to_s }.map do |currency, days|
-      date, (cents, count) = days.max_by { |_, (amount, _)| amount }
-      { currency: currency, value: date.iso8601, formatted: "#{date.strftime('%A %b %-d, %Y')}: #{money(cents, currency)} from #{count} orders",
-        gross_cents: cents, gross: money(cents, currency), orders: count, days_with_sales: days.size }
+    by_currency.sort_by { |currency, _| currency.to_s }
+  end
+
+  def best_day(orders)
+    daily_totals(orders).map { |currency, days| day_row(currency, days, days.max_by { |date, (amount, _)| [amount, -date.jd] }) }
+  end
+
+  # Lowest of the days that have stored sales: a day with no stored orders is unknown, not a zero-sales day.
+  def worst_day(orders)
+    daily_totals(orders).map { |currency, days| day_row(currency, days, days.min_by { |date, (amount, _)| [amount, date.jd] }) }
+  end
+
+  def day_row(currency, days, (date, (cents, count)))
+    { currency: currency, value: date.iso8601, formatted: "#{date.strftime('%A %b %-d, %Y')}: #{money(cents, currency)} from #{count} orders",
+      gross_cents: cents, gross: money(cents, currency), orders: count, days_with_sales: days.size }
+  end
+
+  # Weekdays Monday first; only weekdays that have stored sales are listed.
+  def sales_by_weekday(orders)
+    daily_totals(orders).map do |currency, days|
+      total = days.values.sum(&:first)
+      weekdays = days.group_by { |date, _| date.cwday }.sort.map do |cwday, list|
+        cents = list.sum { |_, (amount, _)| amount }
+        { weekday: Date::DAYNAMES[cwday % 7], gross_cents: cents, gross: money(cents, currency),
+          orders: list.sum { |_, (_, count)| count }, days_with_sales: list.size,
+          average_per_sales_day_cents: (cents / list.size.to_f).round,
+          average_per_sales_day: money((cents / list.size.to_f).round, currency),
+          share_percent: (total.positive? ? (cents * 100.0 / total).round(1) : nil) }
+      end
+      ranked = weekdays.sort_by { |row| [-row[:gross_cents], Date::DAYNAMES.index(row[:weekday])] }
+      { currency: currency, value: ranked.first[:weekday],
+        formatted: ranked.map { |row| "#{row[:weekday]} #{row[:gross]}#{" (#{row[:share_percent]}%)" if row[:share_percent]}" }.join(', '),
+        gross_cents: total, days_with_sales: days.size, weekdays: weekdays }
     end
   end
 
@@ -206,6 +240,13 @@ module Metrics
       end
     end
     list << 'Refunds are counted by refund date; some refund sales from an earlier period.' if key == 'refund_rate'
+    if key == 'worst_day'
+      list << 'Lowest of the days with stored sales. Days with no stored orders are unknown, not zero, and are not counted.'
+    end
+    if key == 'sales_by_weekday'
+      list << 'Weekdays are business days in the workspace time zone. Averages are per day with stored sales; days with no ' \
+              'stored orders are unknown and not counted, and a weekday that is not listed had no stored orders (not proof of zero sales).'
+    end
     list
   end
 
