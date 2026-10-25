@@ -1,0 +1,1618 @@
+questions:
+- id: system-001
+  module: system
+  question: is rupert up?
+  tools:
+  - instance_status
+  - system_status
+  answerable: 'yes'
+- id: system-002
+  module: system
+  question: how's the system doing
+  tools:
+  - system_status
+  answerable: 'yes'
+- id: system-003
+  module: system
+  question: is everything ok with rupert right now
+  tools:
+  - system_status
+  - instance_status
+  answerable: 'yes'
+- id: system-004
+  module: system
+  question: system status pls
+  tools:
+  - system_status
+  answerable: 'yes'
+- id: system-005
+  module: system
+  question: rupert feels slow today, anything wrong?
+  tools:
+  - instance_status
+  - recent_errors
+  answerable: partial
+  gap: no response-time or latency metrics tool
+- id: system-006
+  module: system
+  question: is the server healthy?
+  tools:
+  - instance_status
+  answerable: 'yes'
+- id: system-007
+  module: system
+  question: how much disk space is left on the server
+  tools:
+  - instance_status
+  answerable: partial
+  gap: no confirmed disk-space figure in instance_status
+- id: system-008
+  module: system
+  question: whats the memory usage on rupert
+  tools:
+  - instance_status
+  answerable: partial
+  gap: no memory/CPU metrics tool
+- id: system-009
+  module: system
+  question: how long has rupert been running without a restart
+  tools:
+  - instance_status
+  answerable: partial
+  gap: uptime may not be exposed
+- id: system-010
+  module: system
+  question: did rupert restart overnight?
+  tools:
+  - instance_status
+  - deploy_status
+  answerable: partial
+  gap: no restart history, only deploys and current status
+- id: system-011
+  module: system
+  question: any outages this week
+  tools:
+  - recent_errors
+  - instance_status
+  answerable: partial
+  gap: no uptime or outage history tool
+- id: system-012
+  module: system
+  question: is the database ok
+  tools:
+  - instance_status
+  answerable: partial
+  gap: no database-specific health detail
+- id: system-013
+  module: system
+  question: is the background job queue backed up?
+  tools:
+  - instance_status
+  answerable: partial
+  gap: no job queue depth tool
+- id: system-014
+  module: system
+  question: why is the page not loading
+  tools:
+  - system_status
+  - recent_errors
+  answerable: partial
+  gap: cannot diagnose a specific browser or page problem
+- id: system-015
+  module: system
+  question: give me a quick health check before i start closing the books
+  tools:
+  - system_status
+  - sync_health
+  - backup_freshness
+  answerable: 'yes'
+- id: system-016
+  module: system
+  question: whats the time zone and store name rupert is using
+  tools:
+  - get_workspace_info
+  answerable: 'yes'
+- id: system-017
+  module: system
+  question: what's today's date according to rupert
+  tools:
+  - get_workspace_info
+  answerable: 'yes'
+- id: system-018
+  module: system
+  question: when does the ssl cert expire
+  tools: []
+  answerable: 'no'
+  gap: no certificate/expiry tool
+- id: system-019
+  module: system
+  question: can you check if outgoing email is working
+  tools: []
+  answerable: 'no'
+  gap: no mail delivery status tool
+- id: system-020
+  module: system
+  question: is anyone else logged in right now
+  tools: []
+  answerable: 'no'
+  gap: no access log or presence tool
+- id: system-021
+  module: system
+  question: anything red on the system page?
+  tools:
+  - system_status
+  - recent_errors
+  answerable: 'yes'
+- id: system-022
+  module: system
+  question: any errors lately?
+  tools:
+  - recent_errors
+  answerable: 'yes'
+- id: system-023
+  module: system
+  question: show me the last 10 errors
+  tools:
+  - recent_errors
+  answerable: 'yes'
+- id: system-024
+  module: system
+  question: what broke yesterday
+  tools:
+  - recent_errors
+  answerable: 'yes'
+- id: system-025
+  module: system
+  question: errors in the past hour
+  tools:
+  - recent_errors
+  answerable: 'yes'
+- id: system-026
+  module: system
+  question: are there any repeated errors
+  tools:
+  - recent_errors
+  answerable: 'yes'
+- id: system-027
+  module: system
+  question: what's the most common error this week
+  tools:
+  - recent_errors
+  answerable: partial
+  gap: no aggregation of errors by type over a period
+- id: system-028
+  module: system
+  question: did anything crash overnight
+  tools:
+  - recent_errors
+  answerable: 'yes'
+- id: system-029
+  module: system
+  question: any 500s today
+  tools:
+  - recent_errors
+  answerable: partial
+  gap: HTTP status codes may not be filterable
+- id: system-030
+  module: system
+  question: got an error on the sales page when i filter by source, can you see it in the logs
+  tools:
+  - recent_errors
+  - submit_feedback
+  answerable: partial
+  gap: cannot tie an error to one user session
+- id: system-031
+  module: system
+  question: are there errors from the shopify sync
+  tools:
+  - recent_errors
+  - sync_health
+  answerable: partial
+  gap: no per-source error filter
+- id: system-032
+  module: system
+  question: any failed background jobs
+  tools:
+  - recent_errors
+  answerable: partial
+  gap: no job failure tool
+- id: system-033
+  module: system
+  question: has the error count gone up since the last update
+  tools:
+  - recent_errors
+  - deploy_status
+  answerable: partial
+  gap: no error trend compared to deploys
+- id: system-034
+  module: system
+  question: show errors from last month
+  tools:
+  - recent_errors
+  answerable: partial
+  gap: recent_errors covers only a recent window
+- id: system-035
+  module: system
+  question: can i see the full server log
+  tools: []
+  answerable: 'no'
+  gap: no raw log tool
+- id: system-036
+  module: system
+  question: what does 'undefined method for nil' mean
+  tools:
+  - recent_errors
+  answerable: partial
+  gap: no error explanation tool
+- id: system-037
+  module: system
+  question: is anything erroring right now
+  tools:
+  - recent_errors
+  - system_status
+  answerable: 'yes'
+- id: system-038
+  module: system
+  question: were there errors during the last deploy
+  tools:
+  - recent_errors
+  - deploy_status
+  answerable: partial
+  gap: no correlation across deploy window
+- id: system-039
+  module: system
+  question: quiet day on errors?
+  tools:
+  - recent_errors
+  answerable: 'yes'
+- id: system-040
+  module: system
+  question: what version of rupert is running
+  tools:
+  - deploy_status
+  answerable: 'yes'
+- id: system-041
+  module: system
+  question: when was the last deploy
+  tools:
+  - deploy_status
+  answerable: 'yes'
+- id: system-042
+  module: system
+  question: whats new in the latest update
+  tools:
+  - deploy_status
+  answerable: partial
+  gap: no release notes or changelog tool
+- id: system-043
+  module: system
+  question: did the deploy go through
+  tools:
+  - deploy_status
+  answerable: 'yes'
+- id: system-044
+  module: system
+  question: who deployed last
+  tools:
+  - deploy_status
+  answerable: partial
+  gap: deployer identity may not be exposed
+- id: system-045
+  module: system
+  question: what commit is live
+  tools:
+  - deploy_status
+  answerable: 'yes'
+- id: system-046
+  module: system
+  question: was there a deploy right before the errors started
+  tools:
+  - deploy_status
+  - recent_errors
+  answerable: partial
+  gap: manual comparison of timestamps
+- id: system-047
+  module: system
+  question: can you roll back the last deploy
+  tools: []
+  answerable: 'no'
+  gap: no rollback action tool
+- id: system-048
+  module: system
+  question: is the fix for my bug live yet
+  tools:
+  - list_my_feedback
+  - deploy_status
+  answerable: partial
+  gap: no link between feedback item and release
+- id: system-049
+  module: system
+  question: when will the next update ship
+  tools: []
+  answerable: 'no'
+  gap: no release schedule or roadmap tool
+- id: system-050
+  module: system
+  question: deployed today?
+  tools:
+  - deploy_status
+  answerable: 'yes'
+- id: system-051
+  module: system
+  question: what changed in the last release
+  tools:
+  - deploy_status
+  answerable: partial
+  gap: no changelog tool
+- id: system-052
+  module: system
+  question: is a deploy in progress
+  tools:
+  - deploy_status
+  answerable: 'yes'
+- id: system-053
+  module: system
+  question: rupert version?
+  tools:
+  - deploy_status
+  answerable: 'yes'
+- id: system-054
+  module: system
+  question: did last nights update finish ok
+  tools:
+  - deploy_status
+  answerable: 'yes'
+- id: system-055
+  module: system
+  question: did shopify sync
+  tools:
+  - sync_health
+  answerable: 'yes'
+- id: system-056
+  module: system
+  question: when did square last sync
+  tools:
+  - sync_health
+  answerable: 'yes'
+- id: system-057
+  module: system
+  question: c-trax sync ok?
+  tools:
+  - sync_health
+  answerable: 'yes'
+- id: system-058
+  module: system
+  question: swipesimple last synced when
+  tools:
+  - sync_health
+  answerable: 'yes'
+- id: system-059
+  module: system
+  question: authorize.net sync status
+  tools:
+  - sync_health
+  answerable: 'yes'
+- id: system-060
+  module: system
+  question: did the bank reports come in
+  tools:
+  - sync_health
+  - list_uploads
+  - history_summary
+  answerable: partial
+  gap: bank reports arrive by upload, sync_health may not list them
+- id: system-061
+  module: system
+  question: any sync failures?
+  tools:
+  - sync_health
+  answerable: 'yes'
+- id: system-062
+  module: system
+  question: which sources are failing
+  tools:
+  - sync_health
+  answerable: 'yes'
+- id: system-063
+  module: system
+  question: how r syncs
+  tools:
+  - sync_health
+  answerable: 'yes'
+- id: system-064
+  module: system
+  question: shopify sync has been failing since tuesday, why
+  tools:
+  - sync_health
+  - recent_errors
+  answerable: partial
+  gap: no root-cause explanation per failure
+- id: system-065
+  module: system
+  question: force a square sync now
+  tools: []
+  answerable: 'no'
+  gap: no tool to trigger a sync
+- id: system-066
+  module: system
+  question: how often does shopify sync
+  tools:
+  - sync_health
+  - how_do_i
+  answerable: partial
+  gap: sync schedule may not be exposed
+- id: system-067
+  module: system
+  question: how many sync failures this week vs last
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: system-068
+  module: system
+  question: is the c-trax daily close data current
+  tools:
+  - sync_health
+  - history_summary
+  answerable: partial
+  gap: close-day freshness not separately reported
+- id: system-069
+  module: system
+  question: how far behind is swipesimple
+  tools:
+  - sync_health
+  answerable: 'yes'
+- id: system-070
+  module: system
+  question: are all the sources up to date as of this morning?
+  tools:
+  - sync_health
+  answerable: 'yes'
+- id: system-071
+  module: system
+  question: sync health for orders only
+  tools:
+  - sync_health
+  answerable: partial
+  gap: no filter by data type
+- id: system-072
+  module: system
+  question: why did the authorize.net sync fail
+  tools:
+  - sync_health
+  - recent_errors
+  answerable: partial
+  gap: no failure reason detail
+- id: system-073
+  module: system
+  question: retry the failed syncs
+  tools: []
+  answerable: 'no'
+  gap: no tool to retry a sync
+- id: system-074
+  module: system
+  question: is the nab iris deposit report up to date
+  tools:
+  - history_summary
+  - list_uploads
+  answerable: partial
+  gap: deposit reports arrive by upload, freshness not in sync_health
+- id: system-075
+  module: system
+  question: when was the last time square payments were pulled in
+  tools:
+  - sync_health
+  answerable: 'yes'
+- id: system-076
+  module: system
+  question: whats the latest shopify order rupert has
+  tools:
+  - history_summary
+  - search
+  answerable: partial
+  gap: latest-record lookup is indirect
+- id: system-077
+  module: system
+  question: do any of the pos syncs have missing days
+  tools:
+  - history_summary
+  - sync_health
+  answerable: partial
+  gap: no per-day gap report
+- id: system-078
+  module: system
+  question: has the zelle report been loaded for this month
+  tools:
+  - list_uploads
+  - history_summary
+  answerable: partial
+  gap: no direct per-month coverage check
+- id: system-079
+  module: system
+  question: did anything fail to sync last night
+  tools:
+  - sync_health
+  answerable: 'yes'
+- id: system-080
+  module: system
+  question: whats the sync schedule
+  tools:
+  - sync_health
+  - how_do_i
+  answerable: partial
+  gap: schedule not exposed by tools
+- id: system-081
+  module: system
+  question: square sync broken?
+  tools:
+  - sync_health
+  answerable: 'yes'
+- id: system-082
+  module: system
+  question: compare sync times across all sources
+  tools:
+  - sync_health
+  answerable: 'yes'
+- id: system-083
+  module: system
+  question: how come the stock numbers look old
+  tools:
+  - sync_health
+  - stock_comparison
+  answerable: partial
+  gap: cannot tell if the source system itself is stale
+- id: system-084
+  module: system
+  question: is there a fresh backup?
+  tools:
+  - backup_freshness
+  answerable: 'yes'
+- id: system-085
+  module: system
+  question: when was the last backup
+  tools:
+  - backup_freshness
+  answerable: 'yes'
+- id: system-086
+  module: system
+  question: where do backups go
+  tools:
+  - backup_freshness
+  - data_guide
+  answerable: partial
+  gap: storage location may not be reported
+- id: system-087
+  module: system
+  question: is the latest backup verified
+  tools:
+  - backup_freshness
+  answerable: 'yes'
+- id: system-088
+  module: system
+  question: is the offsite backup current
+  tools:
+  - backup_freshness
+  - compliance_check
+  answerable: 'yes'
+- id: system-089
+  module: system
+  question: how big is the backup
+  tools:
+  - backup_freshness
+  answerable: partial
+  gap: backup size may not be reported
+- id: system-090
+  module: system
+  question: can i restore from yesterdays backup
+  tools:
+  - how_do_i
+  answerable: partial
+  gap: no restore action tool, steps only
+- id: system-091
+  module: system
+  question: did last nights backup run
+  tools:
+  - backup_freshness
+  answerable: 'yes'
+- id: system-092
+  module: system
+  question: backups ok? the books check keeps flagging it
+  tools:
+  - backup_freshness
+  - compliance_check
+  answerable: 'yes'
+- id: system-093
+  module: system
+  question: how many backups do we keep
+  tools:
+  - backup_freshness
+  answerable: partial
+  gap: retention count not exposed
+- id: system-094
+  module: system
+  question: how do i do a restore drill
+  tools:
+  - how_do_i
+  answerable: partial
+  gap: steps only, if documented
+- id: system-095
+  module: system
+  question: is the drive retention copy working
+  tools:
+  - compliance_check
+  answerable: partial
+  gap: only a fix/watch/ok status
+- id: system-096
+  module: system
+  question: backup history for the last month
+  tools:
+  - backup_freshness
+  answerable: partial
+  gap: only latest verified backup, no history
+- id: system-097
+  module: system
+  question: did my file arrive
+  tools:
+  - list_uploads
+  answerable: 'yes'
+- id: system-098
+  module: system
+  question: what happened to the file i just uploaded
+  tools:
+  - list_uploads
+  answerable: 'yes'
+- id: system-099
+  module: system
+  question: uploads inbox
+  tools:
+  - list_uploads
+  answerable: 'yes'
+- id: system-100
+  module: system
+  question: any uploads stuck
+  tools:
+  - list_uploads
+  answerable: 'yes'
+- id: system-101
+  module: system
+  question: show failed uploads
+  tools:
+  - list_uploads
+  answerable: 'yes'
+- id: system-102
+  module: system
+  question: did the bank statement i sent go through
+  tools:
+  - list_uploads
+  answerable: 'yes'
+- id: system-103
+  module: system
+  question: which uploads are still waiting to be processed
+  tools:
+  - list_uploads
+  answerable: 'yes'
+- id: system-104
+  module: system
+  question: i uploaded the swipesimple report, did it land
+  tools:
+  - list_uploads
+  answerable: 'yes'
+- id: system-105
+  module: system
+  question: why was my csv rejected
+  tools:
+  - list_uploads
+  answerable: partial
+  gap: rejection reason detail may be limited
+- id: system-106
+  module: system
+  question: where do i upload a bank statement
+  tools:
+  - where_is
+  - how_do_i
+  answerable: 'yes'
+- id: system-107
+  module: system
+  question: how do i send a file to the inbox
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: system-108
+  module: system
+  question: what file types does the inbox take
+  tools:
+  - how_do_i
+  - data_guide
+  answerable: partial
+  gap: accepted formats only if documented
+- id: system-109
+  module: system
+  question: reprocess the failed upload
+  tools: []
+  answerable: 'no'
+  gap: no reprocess action tool
+- id: system-110
+  module: system
+  question: how many files are in the inbox
+  tools:
+  - list_uploads
+  answerable: 'yes'
+- id: system-111
+  module: system
+  question: anything in the inbox needing attention?
+  tools:
+  - compliance_check
+  - list_uploads
+  answerable: 'yes'
+- id: system-112
+  module: system
+  question: upload from yesterday afternoon, status?
+  tools:
+  - list_uploads
+  answerable: 'yes'
+- id: system-113
+  module: system
+  question: is the zelle csv processed
+  tools:
+  - list_uploads
+  answerable: 'yes'
+- id: system-114
+  module: system
+  question: what does rupert do with uploads after theyre processed
+  tools:
+  - data_guide
+  answerable: 'yes'
+- id: system-115
+  module: system
+  question: which connections are set up
+  tools:
+  - sync_health
+  answerable: partial
+  gap: no connections list tool, only sync sources
+- id: system-116
+  module: system
+  question: is shopify connected
+  tools:
+  - sync_health
+  answerable: partial
+  gap: sync status only, not auth/connection state
+- id: system-117
+  module: system
+  question: is square still authorized
+  tools:
+  - sync_health
+  answerable: partial
+  gap: no token or authorization state tool
+- id: system-118
+  module: system
+  question: does the square token expire
+  tools: []
+  answerable: 'no'
+  gap: no connection credential detail tool
+- id: system-119
+  module: system
+  question: reconnect shopify
+  tools: []
+  answerable: 'no'
+  gap: no reconnect action tool
+- id: system-120
+  module: system
+  question: list pos connections
+  tools:
+  - sync_health
+  answerable: partial
+  gap: no POS connections tool
+- id: system-121
+  module: system
+  question: how many registers are connected
+  tools:
+  - sync_health
+  answerable: partial
+  gap: no connected-register count tool
+- id: system-122
+  module: system
+  question: which c-trax stores are linked
+  tools:
+  - sync_health
+  answerable: partial
+  gap: no POS connections tool
+- id: system-123
+  module: system
+  question: how do i add a new pos connection
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: system-124
+  module: system
+  question: where do i manage connections
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: system-125
+  module: system
+  question: is swipesimple connected
+  tools:
+  - sync_health
+  answerable: partial
+  gap: sync status only, not connection state
+- id: system-126
+  module: system
+  question: disconnect square
+  tools: []
+  answerable: 'no'
+  gap: no connection change tool
+- id: system-127
+  module: system
+  question: how do i connect the bank
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: system-128
+  module: system
+  question: when did i last re-authorize shopify
+  tools: []
+  answerable: 'no'
+  gap: no authorization history tool
+- id: system-129
+  module: system
+  question: how do i add a second square location
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: system-130
+  module: system
+  question: pos connections page
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: system-131
+  module: system
+  question: why does it say shopify disconnected
+  tools:
+  - sync_health
+  - recent_errors
+  answerable: partial
+  gap: no connection diagnostics tool
+- id: system-132
+  module: system
+  question: where are settings
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: system-133
+  module: system
+  question: how do i change the time zone
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: system-134
+  module: system
+  question: what time zone is set
+  tools:
+  - get_workspace_info
+  answerable: 'yes'
+- id: system-135
+  module: system
+  question: whats the store name in settings
+  tools:
+  - get_workspace_info
+  answerable: 'yes'
+- id: system-136
+  module: system
+  question: what's the default low stock threshold
+  tools: []
+  answerable: 'no'
+  gap: no settings read tool
+- id: system-137
+  module: system
+  question: is sales tax enabled in settings
+  tools: []
+  answerable: 'no'
+  gap: no settings read tool
+- id: system-138
+  module: system
+  question: what notification settings do i have
+  tools: []
+  answerable: 'no'
+  gap: no settings read tool
+- id: system-139
+  module: system
+  question: turn on email alerts
+  tools: []
+  answerable: 'no'
+  gap: no settings write tool
+- id: system-140
+  module: system
+  question: who can change settings
+  tools:
+  - how_do_i
+  answerable: partial
+  gap: no permissions lookup for settings
+- id: system-141
+  module: system
+  question: change the fiscal year start
+  tools:
+  - how_do_i
+  answerable: partial
+  gap: steps only, no settings tool
+- id: system-142
+  module: system
+  question: whats the default currency
+  tools:
+  - get_workspace_info
+  answerable: partial
+  gap: currency may not be in workspace info
+- id: system-143
+  module: system
+  question: how do i change the store name
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: system-144
+  module: system
+  question: is two factor on for my account
+  tools: []
+  answerable: 'no'
+  gap: no account security tool
+- id: system-145
+  module: system
+  question: how do i make an api token
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: system-146
+  module: system
+  question: where are api access tokens
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: system-147
+  module: system
+  question: which api tokens exist
+  tools: []
+  answerable: 'no'
+  gap: no API token listing tool
+- id: system-148
+  module: system
+  question: when was the token last used
+  tools: []
+  answerable: 'no'
+  gap: no token usage tool
+- id: system-149
+  module: system
+  question: revoke the old token
+  tools: []
+  answerable: 'no'
+  gap: no token management tool
+- id: system-150
+  module: system
+  question: how do i connect claude to rupert via mcp
+  tools:
+  - how_do_i
+  answerable: partial
+  gap: steps only if documented
+- id: system-151
+  module: system
+  question: what can the mcp tools do
+  tools:
+  - data_guide
+  answerable: partial
+  gap: no tool catalog tool
+- id: system-152
+  module: system
+  question: is mcp access turned on
+  tools: []
+  answerable: 'no'
+  gap: no MCP access status tool
+- id: system-153
+  module: system
+  question: do tokens expire
+  tools:
+  - how_do_i
+  answerable: partial
+  gap: only if documented
+- id: system-154
+  module: system
+  question: how do i give read only access to an outside accountant
+  tools:
+  - how_do_i
+  answerable: partial
+  gap: steps only, no token scope tool
+- id: system-155
+  module: system
+  question: how many api calls this month
+  tools: []
+  answerable: 'no'
+  gap: no API usage tool
+- id: system-156
+  module: system
+  question: who did what yesterday
+  tools: []
+  answerable: 'no'
+  gap: no activity log tool
+- id: system-157
+  module: system
+  question: activity log for today
+  tools: []
+  answerable: 'no'
+  gap: no activity log tool
+- id: system-158
+  module: system
+  question: who changed that expense
+  tools: []
+  answerable: 'no'
+  gap: no activity log tool
+- id: system-159
+  module: system
+  question: who approved the timesheets
+  tools: []
+  answerable: 'no'
+  gap: no activity log tool
+- id: system-160
+  module: system
+  question: who signed in today
+  tools: []
+  answerable: 'no'
+  gap: no access log tool
+- id: system-161
+  module: system
+  question: when did Jo last log in
+  tools: []
+  answerable: 'no'
+  gap: no access log tool
+- id: system-162
+  module: system
+  question: any failed sign ins
+  tools: []
+  answerable: 'no'
+  gap: no access log tool
+- id: system-163
+  module: system
+  question: was there a sign in from a new location
+  tools: []
+  answerable: 'no'
+  gap: no access log tool
+- id: system-164
+  module: system
+  question: who deleted that order
+  tools: []
+  answerable: 'no'
+  gap: no activity log tool
+- id: system-165
+  module: system
+  question: where is the activity log
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: system-166
+  module: system
+  question: how long is the activity log kept
+  tools:
+  - data_guide
+  answerable: partial
+  gap: retention only if documented
+- id: system-167
+  module: system
+  question: who edited the vendor record
+  tools: []
+  answerable: 'no'
+  gap: no activity log tool
+- id: system-168
+  module: system
+  question: who was in rupert last night
+  tools: []
+  answerable: 'no'
+  gap: no access log tool
+- id: system-169
+  module: system
+  question: how do i see the access log
+  tools:
+  - how_do_i
+  - where_is
+  answerable: 'yes'
+- id: system-170
+  module: system
+  question: how many people used rupert this week
+  tools: []
+  answerable: 'no'
+  gap: no access log tool
+- id: system-171
+  module: system
+  question: did anyone export data this month
+  tools: []
+  answerable: 'no'
+  gap: no activity log tool
+- id: system-172
+  module: system
+  question: who unlocked the period
+  tools: []
+  answerable: 'no'
+  gap: no activity log tool
+- id: system-173
+  module: system
+  question: audit trail for that journal entry
+  tools: []
+  answerable: 'no'
+  gap: no activity log tool
+- id: system-174
+  module: system
+  question: who closed out the register on saturday
+  tools:
+  - search
+  answerable: partial
+  gap: no activity log, only any recorded close metadata
+- id: system-175
+  module: system
+  question: is the ai working
+  tools:
+  - ai_health
+  answerable: 'yes'
+- id: system-176
+  module: system
+  question: ai health
+  tools:
+  - ai_health
+  answerable: 'yes'
+- id: system-177
+  module: system
+  question: is ask rupert down
+  tools:
+  - ai_health
+  answerable: 'yes'
+- id: system-178
+  module: system
+  question: which ai model is rupert using
+  tools:
+  - ai_health
+  answerable: partial
+  gap: model name only if reported
+- id: system-179
+  module: system
+  question: how much has ask rupert cost this month
+  tools: []
+  answerable: 'no'
+  gap: no usage or cost tool
+- id: system-180
+  module: system
+  question: how many questions were asked this week
+  tools: []
+  answerable: 'no'
+  gap: no Ask Rupert usage tool
+- id: system-181
+  module: system
+  question: who uses ask rupert the most
+  tools: []
+  answerable: 'no'
+  gap: no Ask Rupert usage tool
+- id: system-182
+  module: system
+  question: ai provider status
+  tools:
+  - ai_health
+  answerable: 'yes'
+- id: system-183
+  module: system
+  question: why is the chat slow
+  tools:
+  - ai_health
+  - recent_errors
+  answerable: partial
+  gap: no latency metrics
+- id: system-184
+  module: system
+  question: did the ai gateway error out today
+  tools:
+  - ai_health
+  - recent_errors
+  answerable: partial
+  gap: errors may not be separable by component
+- id: system-185
+  module: system
+  question: is the local model reachable
+  tools:
+  - ai_health
+  answerable: 'yes'
+- id: system-186
+  module: system
+  question: how do i change which model the chat uses
+  tools:
+  - how_do_i
+  answerable: partial
+  gap: steps only, if documented
+- id: system-187
+  module: system
+  question: i found a bug, how do i report it
+  tools:
+  - how_do_i
+  - submit_feedback
+  answerable: 'yes'
+- id: system-188
+  module: system
+  question: file a bug, the ladybug button does nothing
+  tools:
+  - submit_feedback
+  answerable: 'yes'
+- id: system-189
+  module: system
+  question: status of my bug reports
+  tools:
+  - list_my_feedback
+  answerable: 'yes'
+- id: system-190
+  module: system
+  question: did anyone look at my feedback
+  tools:
+  - list_my_feedback
+  answerable: 'yes'
+- id: system-191
+  module: system
+  question: show all open feedback
+  tools:
+  - list_feedback
+  answerable: 'yes'
+- id: system-192
+  module: system
+  question: feedback from this week
+  tools:
+  - list_feedback
+  answerable: 'yes'
+- id: system-193
+  module: system
+  question: is the bug i reported fixed
+  tools:
+  - list_my_feedback
+  answerable: 'yes'
+- id: system-194
+  module: system
+  question: report that the cash flow chart is cut off on my phone
+  tools:
+  - submit_feedback
+  - report_context
+  answerable: 'yes'
+- id: system-195
+  module: system
+  question: feature request, export the ledger to excel
+  tools:
+  - submit_feedback
+  answerable: 'yes'
+- id: system-196
+  module: system
+  question: what context was attached to my last report
+  tools:
+  - report_context
+  - list_my_feedback
+  answerable: 'yes'
+- id: system-197
+  module: system
+  question: how many bugs are open
+  tools:
+  - list_feedback
+  answerable: 'yes'
+- id: system-198
+  module: system
+  question: who reported the sales page issue
+  tools:
+  - list_feedback
+  answerable: partial
+  gap: reporter name may be hidden
+- id: system-199
+  module: system
+  question: mark my bug as resolved
+  tools: []
+  answerable: 'no'
+  gap: no feedback status update tool
+- id: system-200
+  module: system
+  question: assign this bug to someone
+  tools: []
+  answerable: 'no'
+  gap: no feedback assignment tool
+- id: system-201
+  module: system
+  question: where do i see my bug reports
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: system-202
+  module: system
+  question: what feedback is waiting on me
+  tools:
+  - list_my_feedback
+  answerable: partial
+  gap: no waiting-on-me flag
+- id: system-203
+  module: system
+  question: any duplicate bug reports
+  tools:
+  - list_feedback
+  answerable: partial
+  gap: no duplicate detection
+- id: system-204
+  module: system
+  question: 'send feedback: love the new dark mode'
+  tools:
+  - submit_feedback
+  answerable: 'yes'
+- id: system-205
+  module: system
+  question: how long do bug fixes usually take
+  tools:
+  - list_feedback
+  answerable: partial
+  gap: no resolution time stats
+- id: system-206
+  module: system
+  question: owner checklist
+  tools:
+  - compliance_check
+  answerable: partial
+  gap: no owner checklist tool, close checklists only
+- id: system-207
+  module: system
+  question: whats on my daily checklist
+  tools:
+  - compliance_check
+  answerable: partial
+  gap: no owner checklist tool
+- id: system-208
+  module: system
+  question: what do i need to do to close the month
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: system-209
+  module: system
+  question: is the weekly checklist done
+  tools:
+  - compliance_check
+  answerable: partial
+  gap: no owner checklist tool
+- id: system-210
+  module: system
+  question: show checklist items i skipped
+  tools: []
+  answerable: 'no'
+  gap: no owner checklist tool
+- id: system-211
+  module: system
+  question: where are owner checklists
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: system-212
+  module: system
+  question: how do i add a checklist item
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: system-213
+  module: system
+  question: whats on the roadmap
+  tools: []
+  answerable: 'no'
+  gap: no roadmap tool
+- id: system-214
+  module: system
+  question: what features are coming next
+  tools: []
+  answerable: 'no'
+  gap: no roadmap tool
+- id: system-215
+  module: system
+  question: is dark mode on the roadmap
+  tools: []
+  answerable: 'no'
+  gap: no roadmap tool
+- id: system-216
+  module: system
+  question: wheres the roadmap page
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: system-217
+  module: system
+  question: what does the roadmap say about payroll
+  tools: []
+  answerable: 'no'
+  gap: no roadmap tool
+- id: system-218
+  module: system
+  question: checklist for end of quarter
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: system-219
+  module: system
+  question: remind me to review the owner checklist friday
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: system-220
+  module: system
+  question: create a task to check the backup every monday
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: system-221
+  module: system
+  question: how far back does shopify history go
+  tools:
+  - history_summary
+  answerable: 'yes'
+- id: system-222
+  module: system
+  question: what history do we have for square
+  tools:
+  - history_summary
+  answerable: 'yes'
+- id: system-223
+  module: system
+  question: how many orders does rupert hold in total
+  tools:
+  - history_summary
+  answerable: 'yes'
+- id: system-224
+  module: system
+  question: do we have c-trax data before last year
+  tools:
+  - history_summary
+  answerable: 'yes'
+- id: system-225
+  module: system
+  question: whats the earliest bank statement loaded
+  tools:
+  - history_summary
+  answerable: 'yes'
+- id: system-226
+  module: system
+  question: is quickbooks history in there
+  tools:
+  - history_summary
+  answerable: 'yes'
+- id: system-227
+  module: system
+  question: how are orders stored
+  tools:
+  - data_guide
+  answerable: 'yes'
+- id: system-228
+  module: system
+  question: how is refund data stored
+  tools:
+  - data_guide
+  answerable: 'yes'
+- id: system-229
+  module: system
+  question: history coverage per source
+  tools:
+  - history_summary
+  answerable: 'yes'
+- id: system-230
+  module: system
+  question: any gaps in the history
+  tools:
+  - history_summary
+  answerable: partial
+  gap: coverage dates only, no gap detection
+- id: system-231
+  module: system
+  question: can i import 2022 data
+  tools:
+  - how_do_i
+  - history_summary
+  answerable: partial
+  gap: steps only, no import tool
+- id: system-232
+  module: system
+  question: what reports exist
+  tools:
+  - list_reports
+  answerable: 'yes'
+- id: system-233
+  module: system
+  question: where can i find the sales tax report
+  tools:
+  - list_reports
+  - where_is
+  answerable: 'yes'
+- id: system-234
+  module: system
+  question: what kind of data does rupert keep about customers
+  tools:
+  - data_guide
+  answerable: 'yes'
+- id: system-235
+  module: system
+  question: how is stock stored for shopify vs c-trax
+  tools:
+  - data_guide
+  answerable: 'yes'
+- id: system-236
+  module: system
+  question: where is the system page
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: system-237
+  module: system
+  question: how do i see system health in the app
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: system-238
+  module: system
+  question: where do i go to see sync status
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: system-239
+  module: system
+  question: how do i add a new user
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: system-240
+  module: system
+  question: how do i change my password
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: system-241
+  module: system
+  question: how do i turn on dark mode
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: system-242
+  module: system
+  question: where is the style guide
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: system-243
+  module: system
+  question: how do i install rupert on my phone
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: system-244
+  module: system
+  question: how do i log out of all devices
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: system-245
+  module: system
+  question: how do i export my data
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: system-246
+  module: system
+  question: where do i see audit info
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: system-247
+  module: system
+  question: how do i ask rupert a question
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: system-248
+  module: system
+  question: where did the uploads page go
+  tools:
+  - where_is
+  answerable: 'yes'
+- id: system-249
+  module: system
+  question: how do i turn a bug into a task
+  tools:
+  - how_do_i
+  answerable: 'yes'
+- id: system-250
+  module: system
+  question: assign the sync follow up to Jo
+  tools:
+  - update_task
+  answerable: 'yes'

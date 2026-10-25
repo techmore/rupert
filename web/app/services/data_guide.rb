@@ -35,7 +35,10 @@ module DataGuide
   end
 
   # Tool names for these topics, in order, without repeats.
-  def tools_for(topics) = Array(topics).flat_map(&:tools).uniq
+  # Offered with any topic: how the data is stored, and today's date and time zone.
+  ALWAYS_TOOLS = %w[data_guide get_workspace_info].freeze
+
+  def tools_for(topics) = Array(topics).flat_map(&:tools).uniq.then { |tools| tools.any? ? (tools + ALWAYS_TOOLS).uniq : tools }
 
   def markdown(list = topics)
     ["# How Rupert's data is stored, and which tool answers what", '',

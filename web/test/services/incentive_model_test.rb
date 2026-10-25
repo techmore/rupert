@@ -5,7 +5,8 @@ require 'test_helper'
 class IncentiveModelTest < ActiveSupport::TestCase
   setup do
     Current.tenant = tenants(:default_tenant)
-    @user = users(:regular_user)
+    # A cashier: administrators earn no commission or tips (#423).
+    @user = User.create!(tenant: Current.tenant, email: 'incentive_model-worker@example.com', role: 'cashier', password: 'password')
     @worker = People::Employee.create!(user: @user, first_name: 'First', last_name: 'Worker', employment_type: 'part_time')
     ClockShift.create!(user: @user, employee: @worker, employee_key: @worker.id.to_s, employee_name: @worker.name,
       employment_type: @worker.employment_type, started_at: Time.zone.parse('2026-10-10 09:00'),

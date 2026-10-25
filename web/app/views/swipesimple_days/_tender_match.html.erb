@@ -1,0 +1,71 @@
+<%# Rupert POS card tenders matched to SwipeSimple card sales. Locals: match (SwipesimpleTenderMatch), date. %>
+<% zone = SwipesimpleDayClose::ZONE %>
+<% money = ->(cents) { ctrax_money(cents) } %>
+<% at = ->(time) { local = time.in_time_zone(zone); local.to_date == date ? local.strftime('%-I:%M %p') : local.strftime('%b %-d, %-I:%M %p') } %>
+<% minutes = SwipesimpleTenderMatch::WINDOW.in_minutes.to_i %>
+<% tender_label = ->(tender) { "Rupert sale #{tender.order_number}" } %>
+<% row_label = ->(row) { "#{row.source_number} · #{row.swipesimple_export.merchant_account}" } %>
+<section id="close-tenders" class="retail-anchor section-card" aria-label="Card tenders matched">
+  <%= section_heading 'Card tenders matched', hint: "Each Rupert POS card tender paired with the SwipeSimple card sale of the same amount within #{minutes} minutes." do %>
+    <% unless match.no_tenders? && match.day_rows.empty? %>
+      <span class="<%= match.all_matched? ? 'pill-fern' : 'pill-clay' %>"><%= match.all_matched? ? 'All matched' : 'Needs attention' %></span>
+    <% end %>
+  <% end %>
+  <% if match.no_tenders? %>
+    <p class="text-sm" data-tender-match="none"><strong>Rupert recorded no card tenders on <%= date.strftime('%b %-d, %Y') %>.</strong>
+      <%= match.day_rows.empty? ? 'SwipeSimple has no approved card sales stored for this day either.' : "There is nothing to match the #{pluralize(match.day_rows.size, 'SwipeSimple card sale')} against." %></p>
+  <% else %>
+    <ul class="flex flex-wrap gap-x-4 gap-y-1 text-sm" aria-label="Card tender match counts">
+      <li data-tender-count="matched"><strong><%= match.pairs.size %></strong> matched</li>
+      <li data-tender-count="rupert_only"><strong><%= match.unmatched_tenders.size %></strong> Rupert <%= 'tender'.pluralize(match.unmatched_tenders.size) %> with no SwipeSimple sale</li>
+      <li data-tender-count="swipesimple_only"><strong><%= match.unmatched_rows.size %></strong> SwipeSimple <%= 'sale'.pluralize(match.unmatched_rows.size) %> with no Rupert tender</li>
+      <li data-tender-count="ambiguous"><strong><%= match.ambiguous.size %></strong> ambiguous <%= 'group'.pluralize(match.ambiguous.size) %></li>
+    </ul>
+
+    <% if match.ambiguous.any? %>
+      <%= section_heading 'Ambiguous: not paired', level: :h3, hint: 'Several card tenders or sales of the same amount fall close together in time. Rupert does not guess which belongs to which; check the receipts.' %>
+      <ul class="space-y-2 text-sm">
+        <% match.ambiguous.each do |group| %>
+          <li class="rounded-control border border-clay/30 bg-clay/10 p-3" data-tender-ambiguous>
+            <span class="pill-clay">Review</span> <strong><%= money.call(group.amount_cents) %></strong>:
+            <%= group.tenders.map { |tender| "#{tender_label.call(tender)} at #{at.call(tender.at)}" }.to_sentence %>;
+            SwipeSimple <%= group.rows.map { |row| "#{row_label.call(row)} at #{at.call(row.occurred_at)}" }.to_sentence %>.
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+
+    <% if match.pairs.any? %>
+      <%= section_heading 'Matched', level: :h3 %>
+      <div class="table-region" role="region" tabindex="0" aria-label="Matched card tenders">
+        <table class="table"><caption class="sr-only">Rupert card tenders and the SwipeSimple sale each one matched</caption>
+          <thead><tr><th scope="col" class="th">Rupert sale</th><th scope="col" class="th">Rupert time</th><th scope="col" class="th">SwipeSimple transaction</th><th scope="col" class="th">SwipeSimple time</th><th scope="col" class="th num">Amount</th><th scope="col" class="th num">Apart</th></tr></thead>
+          <tbody><% match.pairs.each do |pair| %><tr data-tender-pair>
+            <th scope="row" class="td text-left font-medium"><%= pair.tender.order_number %></th><td class="td"><%= at.call(pair.tender.at) %></td>
+            <td class="td"><span class="font-mono text-xs"><%= pair.row.source_number %></span><span class="block text-xs text-mocha"><%= pair.row.swipesimple_export.merchant_account %></span></td><td class="td"><%= at.call(pair.row.occurred_at) %></td>
+            <td class="td num"><%= money.call(pair.tender.amount_cents) %></td><td class="td num"><%= pair.seconds_apart < 60 ? 'under 1 min' : "#{pair.seconds_apart / 60} min" %></td>
+          </tr><% end %></tbody>
+        </table>
+      </div>
+    <% end %>
+
+    <% if match.unmatched_tenders.any? %>
+      <%= section_heading 'Rupert tenders with no SwipeSimple sale', level: :h3, hint: 'No SwipeSimple card sale of this amount is stored within the window. The terminal sale may be missing, keyed for a different amount, or not exported yet.' %>
+      <ul class="space-y-1 text-sm"><% match.unmatched_tenders.each do |tender| %><li data-tender-unmatched="rupert"><%= tender_label.call(tender) %> · <%= at.call(tender.at) %> · <strong><%= money.call(tender.amount_cents) %></strong></li><% end %></ul>
+    <% end %>
+
+    <% if match.unmatched_rows.any? %>
+      <%= section_heading 'SwipeSimple sales with no Rupert tender', level: :h3, hint: 'A card sale on the terminal with no Rupert POS card tender of the same amount within the window.' %>
+      <ul class="space-y-1 text-sm"><% match.unmatched_rows.each do |row| %><li data-tender-unmatched="swipesimple"><span class="font-mono text-xs"><%= row.source_number %></span> · <%= row.swipesimple_export.merchant_account %> · <%= at.call(row.occurred_at) %> · <strong><%= money.call(row.amount_cents) %></strong></li><% end %></ul>
+    <% end %>
+  <% end %>
+  <details class="explainer">
+    <summary class="explainer-summary">How tenders are matched</summary>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-xs text-mocha">
+      <li>Rupert side: completed card payments rung on Rupert POS. SwipeSimple side: approved card sales in the latest stored transaction export, every merchant account. Refunds, cash and excluded attempts are not matched.</li>
+      <li>A pair needs the exact same amount (tip included) and times no more than <%= minutes %> minutes apart, with no other tender or sale of that amount close enough to either. Otherwise the group is shown as ambiguous and nothing is paired.</li>
+      <li>Matching looks <%= minutes %> minutes past midnight on each side, so a sale rung just before midnight and stamped just after still pairs; it shows on both days with its date.</li>
+      <li>This is read-only. Nothing is changed in Rupert or at SwipeSimple.</li>
+    </ul>
+  </details>
+</section>

@@ -187,11 +187,11 @@ module People
 
     private
 
-    # Pay weeks may run Thursday through Wednesday. `wk=thu` snaps to Thursday,
+    # `wk=thu` snaps to the pay rules' work-week start day (Thursday by default),
     # `wk=custom` starts the seven days exactly on the chosen date, anything else is Monday-Sunday.
     def week_start_for(day)
       case params[:wk]
-      when 'thu' then day.beginning_of_week(:thursday)
+      when 'thu' then PayRules.current.week_start(day)
       when 'custom' then day
       else day.beginning_of_week
       end

@@ -227,4 +227,85 @@ class ScheduleTest < ActionDispatch::IntegrationTest
     patch people_scheduled_shift_path(late), params: { scheduled_shift: { starts_at: "#{sunday}T10:00", ends_at: "#{sunday}T20:00" } }
     assert_equal 'Shift updated.', flash[:notice]
   end
+  test 'a shift can name a store; Shifts and Team schedule filter by it and copy keeps it' do
+    sign_in(users(:regular_user), 'password')
+    main = Location.create!(name: 'Main Street', source: 'ctrax', externalId: 'store-main')
+    harbor = Location.create!(name: 'Harbor', source: 'square', externalId: 'store-harbor')
+    Location.create!(name: 'Shopify Online Store', source: 'shopify', externalId: 'default', kind: 'VIRTUAL')
+    get new_people_scheduled_shift_path(date: @monday.iso8601, location_id: main.id)
+    assert_select "select[name='scheduled_shift[location_id]'] option[selected][value='#{main.id}']"
+    assert_select "select[name='scheduled_shift[location_id]'] option", text: 'Harbor · Square'
+    assert_select "select[name='scheduled_shift[location_id]'] option", text: /Online Store/, count: 0
+
+    post people_scheduled_shifts_path, params: { scheduled_shift: { employee_id: @worker.id, starts_at: "#{@monday + 1}T10:00", ends_at: "#{@monday + 1}T14:00", location_id: main.id } }
+    at_main = People::ScheduledShift.order(:id).last
+    assert_equal main, at_main.location
+    patch people_scheduled_shift_path(@mine), params: { scheduled_shift: { location_id: harbor.id } }
+    assert_equal harbor.id, @mine.reload.location_id
+
+    get people_scheduled_shifts_path(week: @monday.iso8601)
+    assert_select "[data-shift-store='#{at_main.id}']", 'Main Street'
+    assert_includes response.body, 'PRIVATEOTHER'
+    get people_scheduled_shifts_path(week: @monday.iso8601, location_id: main.id)
+    assert_select "a[href='#{edit_people_scheduled_shift_path(at_main)}']"
+    assert_select "a[href='#{edit_people_scheduled_shift_path(@mine)}']", count: 0
+    refute_includes response.body, 'PRIVATEOTHER'
+    assert_select 'a[aria-label="Next week"][href=?]', people_scheduled_shifts_path(location_id: main.id, week: (@monday + 7).iso8601)
+
+    get people_team_schedule_path(week: @monday.iso8601, location_id: main.id)
+    assert_response :success
+    assert_includes response.body, 'Alex Planned'
+    refute_includes response.body, 'Someone Else'
+    get people_team_schedule_path(week: @monday.iso8601)
+    assert_includes response.body, 'Someone Else'
+
+    post copy_last_week_people_scheduled_shifts_path(week: (@monday + 7).iso8601)
+    copies = People::ScheduledShift.where('starts_at >= ?', (@monday + 7).in_time_zone)
+    assert_equal [main.id, harbor.id, nil].sort_by(&:to_s), copies.map(&:location_id).sort_by(&:to_s)
+  end
+
+  test 'a shift cannot name another workspace store' do
+    other = Tenant.create!(name: 'Other shop', subdomain: "other-#{SecureRandom.hex(4)}")
+    foreign = Current.set(tenant: other) { Location.create!(name: 'Elsewhere', source: 'ctrax', externalId: 'x1') }
+    shift = @worker.scheduled_shifts.new(starts_at: @monday.in_time_zone + 30.hours, ends_at: @monday.in_time_zone + 34.hours, location_id: foreign.id)
+    refute shift.valid?
+    assert_includes shift.errors.full_messages.to_sentence, 'store in this workspace'
+  end
+
+  test 'planned against worked hours: unknown when still clocked in or no punches, never zero' do
+    travel_to @monday.in_time_zone + 3.days
+    sign_in(users(:regular_user), 'password')
+    punch = lambda do |employee, user, from, to|
+      ClockShift.create!(user: user, employee: employee, employee_key: employee.id.to_s, employee_name: employee.name,
+        employment_type: employee.employment_type, started_at: from, ended_at: to, request_token: SecureRandom.hex(12))
+    end
+    punch.call(@worker, @user, @monday.in_time_zone + 9.hours, @monday.in_time_zone + 15.hours + 30.minutes)
+    late_user = User.create!(tenant: @tenant, email: 'schedule-open@example.com', password: 'password123', role: 'employee')
+    late = People::Employee.create!(first_name: 'Open', last_name: 'Punch', user: late_user)
+    late.scheduled_shifts.create!(starts_at: @monday.in_time_zone + 50.hours, ends_at: @monday.in_time_zone + 58.hours)
+    punch.call(late, late_user, @monday.in_time_zone + 2.days + 9.hours, nil)
+    walk_in_user = User.create!(tenant: @tenant, email: 'schedule-walkin@example.com', password: 'password123', role: 'employee')
+    walk_in = People::Employee.create!(first_name: 'Walk', last_name: 'In', user: walk_in_user)
+    punch.call(walk_in, walk_in_user, @monday.in_time_zone + 1.day + 10.hours, @monday.in_time_zone + 1.day + 12.hours)
+
+    queries = 0
+    counter = ->(*, payload) { queries += 1 if payload[:sql].to_s.include?('clock_shifts') }
+    ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') { get people_scheduled_shifts_path(week: @monday.iso8601) }
+    assert_response :success
+    assert_equal 1, queries, 'one clock query for every person'
+    assert_select "[data-planned-worked-row='#{@worker.id}'] td", text: '8 h'
+    assert_select "[data-planned-worked-row='#{@worker.id}'] td", text: '6.5 h'
+    assert_select "[data-planned-worked-row='#{@worker.id}'] td", text: '−1.5 h'
+    assert_select "[data-planned-worked-row='#{@other.id}']", text: /Unknown\s*No punches/
+    assert_select "[data-planned-worked-row='#{late.id}']", text: /Unknown\s*Still clocked in/
+    assert_select "[data-planned-worked-row='#{walk_in.id}'] td", text: '+2 h'
+    assert_select "[data-planned-worked-row='#{@other.id}'] td", text: '0 h', count: 0
+
+    # A store filter lists who is planned there; their hours still cover every store.
+    main = Location.create!(name: 'Main Street', source: 'ctrax', externalId: 'store-main')
+    @mine.update!(location: main)
+    get people_scheduled_shifts_path(week: @monday.iso8601, location_id: main.id)
+    assert_select '[data-planned-worked-row]', count: 1
+    assert_select "[data-planned-worked-row='#{@worker.id}'] td", text: '−1.5 h'
+  end
 end

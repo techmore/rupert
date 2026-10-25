@@ -8,7 +8,7 @@
 # when the dates were left as shown (or not sent at all), so the form works
 # without JavaScript: picking a preset and submitting applies it, and editing
 # the dates applies them. With JavaScript the dropdown and dates always agree.
-# Pay weeks run Thursday–Wednesday; calendar weeks run Monday–Sunday.
+# Pay weeks follow the pay rules (PayRules; Thursday–Wednesday weekly by default); calendar weeks run Monday–Sunday.
 class TimeRangePicker
   Preset = Data.define(:key, :label, :from, :to)
   Resolved = Data.define(:from, :to, :key)
@@ -17,16 +17,18 @@ class TimeRangePicker
   ALL = 'all'
 
   def self.presets(today = Date.current)
-    pay_week = today.beginning_of_week(:thursday)
+    rules = PayRules.current
+    pay_week, pay_end = rules.period_range(today)
+    span = rules.period_days
     week = today.beginning_of_week(:monday)
     last_month = today.prev_month
     last_quarter = today.beginning_of_quarter.prev_day
     [
       Preset.new('today', 'Today', today, today),
       Preset.new('yesterday', 'Yesterday', today - 1, today - 1),
-      Preset.new('this_pay_week', 'This pay week', pay_week, pay_week + 6),
-      Preset.new('last_pay_week', 'Last pay week', pay_week - 7, pay_week - 1),
-      Preset.new('next_pay_week', 'Next pay week', pay_week + 7, pay_week + 13),
+      Preset.new('this_pay_week', rules.biweekly? ? 'This pay period' : 'This pay week', pay_week, pay_end),
+      Preset.new('last_pay_week', rules.biweekly? ? 'Last pay period' : 'Last pay week', pay_week - span, pay_week - 1),
+      Preset.new('next_pay_week', rules.biweekly? ? 'Next pay period' : 'Next pay week', pay_end + 1, pay_end + span),
       Preset.new('this_week', 'This week', week, week + 6),
       Preset.new('last_week', 'Last week', week - 7, week - 1),
       Preset.new('this_month', 'This month', today.beginning_of_month, today.end_of_month),

@@ -1,16 +1,25 @@
 # frozen_string_literal: true
 
 # The release gate (config/release_blockers.yml): items the next release waits on that need an
-# outside account or a professional. Read from the file only, never the database or the network,
-# and re-read when the file changes so ticking an item off needs no code change.
+# outside account or a professional. Read from the file only, never the network, and re-read when
+# the file changes so ticking an item off needs no code change. An item may instead be ticked off by
+# a choice made in Rupert (`done_when:`, one of CONDITIONS): a single cheap lookup per request.
 class ReleaseBlockers
   PATH = Rails.root.join('config/release_blockers.yml')
   REPO_ISSUES_URL = 'https://github.com/techmore/rupert/issues'
   STATUSES = %w[open done].freeze
+  # done_when conditions: each is one cheap lookup, evaluated when the gate renders.
+  CONDITIONS = {
+    'pay_period_chosen' => -> { PayRules.pay_period_chosen? }
+  }.freeze
 
-  Item = Data.define(:id, :title, :needed, :issues, :status) do
-    def open? = status == 'open'
-    def done? = status == 'done'
+  Item = Data.define(:id, :title, :needed, :issues, :status, :done_when, :link, :link_label) do
+    def initialize(id:, title:, needed:, issues:, status:, done_when: nil, link: nil, link_label: nil)
+      super
+    end
+
+    def done? = status == 'done' || (done_when.present? && CONDITIONS.fetch(done_when).call)
+    def open? = !done?
     def issue_links = issues.map { |number| [number, "#{REPO_ISSUES_URL}/#{number}"] }
   end
 
@@ -33,8 +42,12 @@ class ReleaseBlockers
     status = raw['status'].to_s
     raise ArgumentError, "release blocker #{raw['id']}: status must be open or done" unless STATUSES.include?(status)
 
+    done_when = raw['done_when'].presence&.to_s
+    raise ArgumentError, "release blocker #{raw['id']}: unknown done_when #{done_when}" if done_when && !CONDITIONS.key?(done_when)
+
     Item.new(id: raw.fetch('id').to_s, title: raw.fetch('title').to_s, needed: raw['needed'].to_s,
-      issues: Array(raw['issues']).map { |number| Integer(number) }, status: status)
+      issues: Array(raw['issues']).map { |number| Integer(number) }, status: status, done_when: done_when,
+      link: raw['link'].presence&.to_s, link_label: raw['link_label'].presence&.to_s)
   end
   private_class_method :parse_item
 
@@ -45,7 +58,7 @@ class ReleaseBlockers
   end
 
   def open_items = items.select(&:open?)
-  def done_items = items.select(&:done?)
+  def done_items = items.reject(&:open?)
   def open_count = open_items.size
   def any_open? = open_count.positive?
   def title = ['Release', release, 'blockers'].compact.join(' ')

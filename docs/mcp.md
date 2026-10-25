@@ -98,8 +98,16 @@ unless marked.
 | `inventory_search` | `inventory:read` | `inventory.read` | Mirrored Shopify/Square stock per item and location. |
 | `stock_comparison` | `inventory:read` | `inventory.read` | Shopify vs C-Trax stock side by side, with issues. |
 | `swipesimple_items` | `inventory:read` | `inventory.read` | SwipeSimple item list matched to Shopify, Square and C-Trax. |
+| `stock_movements` | `inventory:read` | `inventory.read` | What moved: item stock changes (source, direction, change, before/after, reason, reference) with net change per SKU, or bulk material lots in grams. Default the last 7 days. |
+| `purchase_orders` | `purchasing:read` | `purchasing.read` | Purchase orders (vendor, status, ordered/expected/received dates, lines, ordered vs received, amounts, overdue) or vendors (open and overdue POs, spend, average lead days, on-time %). No vendor contact details. |
 | `time_keeping_report` | `timesheets:read` | `timesheets.read` | Scheduled vs worked hours (own hours only unless the owner reviews timesheets). |
+| `staff_schedule` | `timesheets:read` | `timesheets.read` | Who is scheduled each day (start, end, role, hours) with totals per person, or the staff list (name, position, department). Everyone's shifts only for people who can open the Team schedule page (`hr.read` or `schedule.write`); anyone else sees only their own. No contact or pay details. |
 | `list_tasks` | `tasks:read` | `projects.read` | Tasks board, most urgent first: status, priority, start and due dates, project, assignee, labels and the reason a blocked task is blocked. |
+| `list_projects` | `tasks:read` | `projects.read` | Projects with status, owner, members, dates and task counts (open, blocked, done, overdue), one project with its tasks, goals with target and progress, or project templates. |
+| `customer_lookup` | `customers:read` | `customers.read` | One customer by name, id or order number: CRM status, tags, lifetime spend per currency, recent orders, top products, open follow-ups and logged interactions. Never returns email, phone or address. |
+| `customer_insights` | `customers:read` | `customers.read` | Customer lists: top spenders, new, repeat, lapsed, follow-ups due, segments (CRM status, tag, source) and interactions, with counts. |
+| `marketing_summary` | `marketing:read` | `marketing.read` | How marketing is doing for a period: replies drafted and approved, offers live and ending, Shopify codes, gifts shipped with cost, influencer stages, collaborations. |
+| `marketing_records` | `marketing:read` | `marketing.read` | One kind of marketing record at a time: campaigns, communities, offers, discounts, reviews (approvals of our replies), influencers, engagements, gifts, events (change history). No usage counts, ratings or analytics are stored. |
 | `create_task` | `tasks:write` | `projects.write` | **Writes:** adds a task to Rupert's own Tasks board, marked as added by an AI assistant. |
 | `list_alerts` | `alerts:read` | `alerts.read` | Low-stock alerts with counts per status. |
 | `list_uploads` | `uploads:read` | `uploads.read` | "Did my file arrive and what happened to it?": each upload's status (received, recognized, needs_review, imported, rejected, duplicate), who sent it and when, size, SHA-256, detected type and confidence, and the reason for any hold or refusal. Find by id, file-name fragment or SHA-256 prefix. Never returns file contents; cannot upload or approve. See [Uploads inbox](ops/uploads-inbox.md). |
@@ -109,6 +117,7 @@ unless marked.
 | `sync_health` | `system:read` | `system.read` | Per source and operation: latest attempt, failure category, last success; latest catalog run; queue worker heartbeat. |
 | `backup_freshness` | `system:read` | `system.read` | Latest verified Drive backup and its age, newest local snapshot files (names and ages only). Platform administrator or private workspace owner only. |
 | `deploy_status` | `system:read` | `system.read` | What the host auto-deployer last reported (`/var/lib/rupert-autodeploy/status.json`, `last-deploy.json`) next to the running build. Platform administrator or private workspace owner only; empty where the deployer is not installed. |
+| `activity_log` | `system:read` | `system.read` and `settings.read` (as the Activity page) | Who did what in Rupert, newest first: action, person, record, time, with counts by action and person. Filters by person, action, record and text. Assistants' own calls hidden by default; IPs, emails and secrets removed. |
 | `list_feedback` | `feedback:read` | `settings.read` | Every report and piece of feedback in the store (ladybug, assistants, older Buzz chat reports): status, severity, source, task, ready-for-development flag. Administrator owner only. |
 | `report_context` | `feedback:read` | `settings.read` | One report with its attachments: browser details, JavaScript errors, server log lines, SQL queries (literals removed), page snapshot, screenshot metadata. Administrator owner only. |
 

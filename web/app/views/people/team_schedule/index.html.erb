@@ -1,16 +1,18 @@
 <% content_for :title, "Team schedule" %>
+<% store = @location_id.present? ? { location_id: @location_id } : {} %>
 <div class="space-y-6">
   <%= page_header 'Team schedule', subtitle: 'Hours worked per staff member per day.' do %><%= full_window_button %><% end %>
 
   <section class="toolbar-band">
     <nav class="toolbar" aria-label="Week">
       <div class="date-stepper">
-        <%= link_to '‹', people_team_schedule_path(week: @prev_week.iso8601), class: 'btn-ghost btn-sm', aria: { label: 'Previous week' }, title: 'Previous week' %>
+        <%= link_to '‹', people_team_schedule_path(store.merge(week: @prev_week.iso8601)), class: 'btn-ghost btn-sm', aria: { label: 'Previous week' }, title: 'Previous week' %>
         <h2 class="section-title"><%= @week.strftime('%b %-d') %> – <%= (@week + 6).strftime('%b %-d, %Y') %></h2>
-        <%= link_to '›', people_team_schedule_path(week: @next_week.iso8601), class: 'btn-ghost btn-sm', aria: { label: 'Next week' }, title: 'Next week' %>
+        <%= link_to '›', people_team_schedule_path(store.merge(week: @next_week.iso8601)), class: 'btn-ghost btn-sm', aria: { label: 'Next week' }, title: 'Next week' %>
       </div>
-      <% unless Date.current.between?(@week, @week + 6) %><%= link_to 'This week', people_team_schedule_path, class: 'btn-ghost btn-sm' %><% end %>
+      <% unless Date.current.between?(@week, @week + 6) %><%= link_to 'This week', people_team_schedule_path(store), class: 'btn-ghost btn-sm' %><% end %>
     </nav>
+    <%= render 'people/scheduled_shifts/store_filter', url: people_team_schedule_path, week: @week, locations: @locations, location_id: @location_id %>
   </section>
 
   <div class="card">
@@ -38,7 +40,9 @@
               <td class="td num font-semibold text-ink"><%= number_with_precision(total, precision: 1) %>h</td>
             </tr>
           <% end %>
-          <% if @employees.empty? %>
+          <% if @employees.empty? && @location_id %>
+            <tr><td colspan="9" class="empty-row">No one is planned at this store this week. Choose All stores to see everyone.</td></tr>
+          <% elsif @employees.empty? %>
             <tr><td colspan="9" class="empty-row">No active staff. Add a staff member to see their hours here.</td></tr>
           <% end %>
         </tbody>
@@ -56,5 +60,5 @@
     </div>
   </div>
 
-  <p class="text-xs text-taupe">Read-only. Hours combine Rupert punches, Square timecards and C-Trax shifts per day; overlapping hours from several sources are summed, so review before relying on totals.</p>
+  <p class="text-xs text-taupe">Read-only. Hours combine Rupert punches, Square timecards and C-Trax shifts per day; overlapping hours from several sources are summed, so review before relying on totals.<% if @location_id %> The store filter lists people planned at that store this week; punches record no store, so their hours cover every store.<% end %></p>
 </div>

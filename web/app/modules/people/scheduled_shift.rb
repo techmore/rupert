@@ -8,16 +8,19 @@ module People
     self.table_name = 'scheduled_shifts'
 
     # Planning warnings only (#469); neither ever blocks a save. Hours are planned
-    # hours in a Thursday-Wednesday pay week (EmployeePayWeek), not overtime pay.
+    # hours in a seven-day pay week (EmployeePayWeek.week_start, Thursday unless the pay rules say otherwise), not overtime pay.
     PLANNED_HOURS_LIMIT = 40
     MIN_REST_HOURS = 10
 
     belongs_to :employee, class_name: 'People::Employee'
+    # Optional store (#469). Clock punches carry no store, so worked hours are never split by it.
+    belongs_to :location, class_name: 'Location', optional: true
 
     validates :starts_at, :ends_at, presence: true
     validates :role_label, length: { maximum: 80 }
     validates :notes, length: { maximum: 2000 }
     validate :employee_in_workspace
+    validate :location_in_workspace
     validate :ordered_interval
     validate :non_overlapping_interval
 
@@ -84,7 +87,7 @@ module People
       transaction do
         between(week - 7, week - 1).where('starts_at >= ?', (week - 7).in_time_zone).chronological.includes(:employee).each do |source|
           shift = new(employee: source.employee, starts_at: source.starts_at + 7.days, ends_at: source.ends_at + 7.days,
-            role_label: source.role_label, notes: source.notes)
+            role_label: source.role_label, notes: source.notes, location_id: source.location_id)
           if source.employee&.status == 'active' && shift.save
             copied << shift
           else
@@ -103,6 +106,12 @@ module People
 
     def employee_in_workspace
       errors.add(:employee, 'must belong to this workspace') unless employee && employee.tenant_id == tenant_id
+    end
+
+    def location_in_workspace
+      return if location_id.blank?
+
+      errors.add(:location, 'must be a store in this workspace') unless Location.exists?(id: location_id)
     end
 
     def ordered_interval

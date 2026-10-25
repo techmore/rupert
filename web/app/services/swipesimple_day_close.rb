@@ -112,6 +112,11 @@ class SwipesimpleDayClose
     end
   end
 
+  # Rupert POS card tenders paired with SwipeSimple card sales (read-only).
+  def tender_match
+    @tender_match ||= SwipesimpleTenderMatch.new(window)
+  end
+
   def unknown_tip_rows
     approved.select { |row| row.tip_cents.nil? }
   end

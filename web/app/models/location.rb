@@ -13,6 +13,15 @@ class Location < ApplicationRecord
     dependent: :destroy
 
   scope :by_source, ->(source) { where(source: source) }
+  # Physical stores a shift can be planned at: active, not the online store.
+  scope :for_shifts, -> { where(active: true).where("kind IS NULL OR kind <> 'VIRTUAL'").order(:name, :source) }
+
+  SOURCE_NAMES = { 'ctrax' => 'C-Trax', 'square' => 'Square', 'shopify' => 'Shopify' }.freeze
+
+  # "Main St · Square": the same store can arrive from several sources.
+  def picker_label
+    [name, SOURCE_NAMES.fetch(source.to_s, source.to_s.titleize).presence].compact.join(' · ')
+  end
 
   # The app's primary Shopify / Square locations. Several writers need the
   # canonical location when pushing inventory adjustments; centralizes it.

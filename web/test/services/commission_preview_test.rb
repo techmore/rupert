@@ -5,7 +5,8 @@ require 'test_helper'
 class CommissionPreviewTest < ActiveSupport::TestCase
   setup do
     Current.tenant = tenants(:default_tenant)
-    @user = users(:regular_user)
+    # A cashier: administrators earn no commission or tips (#423).
+    @user = User.create!(tenant: Current.tenant, email: 'commission_preview-worker@example.com', role: 'cashier', password: 'password')
     @worker = People::Employee.create!(user: @user, first_name: 'First', last_name: 'Worker', employment_type: 'contractor')
     @second_user = User.create!(tenant: Current.tenant, email: 'second-commission@example.com', role: 'cashier', password: 'password')
     @second = People::Employee.create!(user: @second_user, first_name: 'Second', last_name: 'Worker', employment_type: 'part_time')
@@ -61,7 +62,7 @@ class CommissionPreviewTest < ActiveSupport::TestCase
     correction = TimeClockService.request_correction(user: @second_user, shift_id: ClockShift.find_by(employee: @second).id,
       attributes: { proposed_started_at: Time.zone.parse('2026-10-10 09:00'), proposed_ended_at: Time.zone.parse('2026-10-10 11:00'), reason: 'Clock-in correction' })
     assert_no_difference -> { People::Payslip.count + People::Timesheet.count } do
-      TimeClockService.review(correction: correction, reviewer: @user, approve: true)
+      TimeClockService.review(correction: correction, reviewer: users(:regular_user), approve: true)
     end
     after = preview.rows.find { |row| row[:employee] == @second.name }
     assert_equal 100, after[:commission_cents]
@@ -90,7 +91,24 @@ class CommissionPreviewTest < ActiveSupport::TestCase
       attributes: { proposed_started_at: Time.zone.parse('2026-10-10 08:00'), proposed_ended_at: Time.zone.parse('2026-10-10 09:00'), reason: 'Remote correction' })
     Current.tenant = Tenant.create!(name: 'Other clock context', subdomain: 'other-clock-context')
     assert_raises(ActiveRecord::RecordNotFound) { shift.serialize_change { shift.update!(ended_at: Time.current) } }
-    assert_raises(ActiveRecord::RecordNotFound) { TimeClockService.review(correction: correction, reviewer: @user, approve: true) }
+    assert_raises(ActiveRecord::RecordNotFound) { TimeClockService.review(correction: correction, reviewer: users(:regular_user), approve: true) }
+  end
+
+  test 'administrators get no commission or tip share; a tip with only admins clocked in is unassigned' do
+    admin = People::Employee.create!(user: users(:regular_user), first_name: 'Owner', last_name: 'Admin', employment_type: 'full_time')
+    shift(admin, users(:regular_user), '12:00', '14:00')
+    shared = sale('10:30')
+    shared.update!(tip_cents: 600)
+    alone = sale('13:00')
+    alone.update!(tip_cents: 500)
+    result = preview
+    admin_row = result.rows.find { |row| row[:employee] == admin.name }
+    assert admin_row[:admin]
+    assert_equal [10_000, 0, 0], admin_row.values_at(:sales_cents, :commission_cents, :tip_cents)
+    first = result.rows.find { |row| row[:employee] == @worker.name }
+    assert_equal [100, 300], first.values_at(:commission_cents, :tip_cents)
+    assert_not first[:admin]
+    assert_equal 500, result.unassigned_tip_cents, 'kept and shown, never dropped'
   end
 
   private

@@ -12,7 +12,10 @@ module People
       raise Date::Error unless (1900..2100).cover?(day.year)
 
       @week = day.beginning_of_week
-      @shifts = People::ScheduledShift.between(@week, @week + 6).chronological.includes(:employee)
+      @locations = Location.for_shifts.to_a
+      @location_id = params[:location_id].presence&.to_s
+      @shifts = People::ScheduledShift.between(@week, @week + 6).chronological.includes(:employee, :location)
+      @shifts = @shifts.where(location_id: @location_id) if @location_id
       @by_employee = @shifts.group_by(&:employee).sort_by { |employee, _| [employee.last_name.to_s, employee.first_name.to_s] }
       leave = People::LeaveRequest.where(status: 'approved', employee_id: @shifts.map(&:employee_id).uniq)
         .where('starts_on <= ? AND ends_on >= ?', @week + 7, @week).to_a
@@ -20,6 +23,7 @@ module People
         leave.any? { |item| item.employee_id == shift.employee_id && item.starts_on <= shift.ends_at.to_date && item.ends_on >= shift.starts_at.to_date }
       end.map(&:id).to_set
       load_hours_warnings
+      load_planned_and_worked
     end
 
     # Copies last week's shifts into the week shown (#469). Overlaps are skipped, never replaced.
@@ -40,7 +44,7 @@ module People
     def new
       authorize(:module, :schedule_write?)
       day = params[:date].present? ? Date.iso8601(params[:date]) : Date.current
-      @shift = People::ScheduledShift.new(employee_id: params[:employee_id], starts_at: day.in_time_zone + 9.hours, ends_at: day.in_time_zone + 17.hours)
+      @shift = People::ScheduledShift.new(employee_id: params[:employee_id], location_id: params[:location_id].presence, starts_at: day.in_time_zone + 9.hours, ends_at: day.in_time_zone + 17.hours)
       load_employees
     end
 
@@ -87,14 +91,16 @@ module People
 
     def load_employees
       @employees = People::Employee.active.ordered
+      @locations = Location.for_shifts.to_a
+      @locations.unshift(@shift.location) if @shift.location && @locations.exclude?(@shift.location)
     end
 
     def shift_params
-      params.require(:scheduled_shift).permit(:employee_id, :starts_at, :ends_at, :role_label, :notes)
+      params.require(:scheduled_shift).permit(:employee_id, :starts_at, :ends_at, :role_label, :notes, :location_id)
     end
 
     def shift_details
-      "#{@shift.employee&.full_name} · #{@shift.starts_at.strftime('%b %-d %-l:%M %p')} – #{@shift.ends_at.strftime('%-l:%M %p')}"
+      "#{@shift.employee&.full_name} · #{@shift.starts_at.strftime('%b %-d %-l:%M %p')} – #{@shift.ends_at.strftime('%-l:%M %p')}#{" · #{@shift.location.name}" if @shift.location}"
     end
 
     # Warnings only: the shift is already saved.
@@ -115,7 +121,7 @@ module People
     # Planned hours only; this does not calculate pay.
     def load_hours_warnings
       @pay_weeks = [EmployeePayWeek.week_start(@week), EmployeePayWeek.week_start(@week + 6)]
-      nearby = People::ScheduledShift.between(@pay_weeks.first, @pay_weeks.last + 6).includes(:employee).to_a
+      nearby = @nearby = People::ScheduledShift.between(@pay_weeks.first, @pay_weeks.last + 6).includes(:employee).to_a
       limit = People::ScheduledShift::PLANNED_HOURS_LIMIT
       @over_hours = nearby.group_by(&:employee).filter_map do |employee, list|
         weeks = @pay_weeks.filter_map do |start|
@@ -133,6 +139,43 @@ module People
         end
       end
     end
+
+    # Planned against worked for the Monday-Sunday week shown (#469 gap 10). Planned
+    # comes from shifts at every store (reusing the rows loaded for the warnings);
+    # worked from Rupert clock punches, which record no store. An open punch, or no
+    # punch at all that week, makes worked hours unknown: never counted as zero.
+    def load_planned_and_worked
+      from = @week.in_time_zone
+      to = (@week + 7).in_time_zone
+      planned = Hash.new(0.0)
+      @nearby.each { |shift| planned[shift.employee_id] += shift.hours_within(from, to) }
+      people = @by_employee.map(&:first)
+      punches = ClockShift.where.not(employee_id: nil).where('started_at < ? AND (ended_at IS NULL OR ended_at > ?)', to, from)
+      punches = punches.where(employee_id: people.map(&:id)) if @location_id
+      worked = {}
+      open = Set.new
+      punches.pluck(:employee_id, :started_at, :ended_at).each do |employee_id, started_at, ended_at|
+        open << employee_id if ended_at.nil?
+        span = ended_at && [([ended_at, to].min - [started_at, from].max) / 3600.0, 0].max
+        worked[employee_id] = worked.fetch(employee_id, 0.0) + span.to_f
+      end
+      missing = worked.keys - people.map(&:id)
+      people += People::Employee.where(id: missing).to_a if missing.any?
+      @planned_worked = people.uniq.sort_by { |employee| [employee.last_name.to_s, employee.first_name.to_s] }.map do |employee|
+        known = worked.key?(employee.id) && open.exclude?(employee.id)
+        reason = ('Still clocked in' if open.include?(employee.id)) || ('No punches' unless worked.key?(employee.id))
+        { employee: employee, planned: planned[employee.id], worked: (worked[employee.id] if known), reason: reason }
+      end
+    end
+
+    # "+1.5", "−2", "0": a real minus sign for fewer hours worked than planned.
+    def hours_difference(value)
+      rounded = value.round(2)
+      return '0' if rounded.zero?
+
+      "#{rounded.negative? ? '−' : '+'}#{hours_label(rounded.abs)}"
+    end
+    helper_method :hours_difference
 
     def hours_label(value)
       helpers.number_with_precision(value, precision: 2, strip_insignificant_zeros: true)

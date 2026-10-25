@@ -125,14 +125,14 @@ class TeamChatLocalAgentsTest < ActiveSupport::TestCase
     assert_includes tools, 'where_is'
     assert_not_includes tools, 'list_alerts'
     assert_not_includes tools, 'create_task'
-    assert_operator tools.size, :<, 12
+    assert_operator tools.size, :<, Mcp::Registry.tools.size / 2
     question = requests.first['messages'].last['content']
     assert_includes question, 'About this question'
     assert_match(/Sales tax \(tools: sales_tax_report, metric\): .*never add sources together/, question)
     assert_not_includes requests.first['messages'].first['content'], 'Sales tax (tools', 'per-question notes stay out of the cached instructions'
     last_month = Date.current.prev_month
     assert_includes question, "last month = #{last_month.beginning_of_month.iso8601} to #{last_month.end_of_month.iso8601}"
-    assert_equal %w[tax sales], reply.reload.meta['topics']
+    assert_equal %w[tax comparison sales], reply.reload.meta['topics']
   end
 
   test 'a question with no topic keeps every tool' do

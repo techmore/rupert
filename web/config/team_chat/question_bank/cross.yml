@@ -1,0 +1,1905 @@
+questions:
+- id: cross-001
+  module: cross
+  question: what are my top sellers this month and are any of them low on stock?
+  tools:
+  - metric
+  - list_alerts
+  answerable: 'yes'
+- id: cross-002
+  module: cross
+  question: top 5 products last week - do we have enough of each?
+  tools:
+  - metric
+  - inventory_search
+  answerable: partial
+  gap: no single join of top products with on-hand; needs one inventory_search per product
+- id: cross-003
+  module: cross
+  question: which best sellers are on the low stock list
+  tools:
+  - metric
+  - list_alerts
+  answerable: 'yes'
+- id: cross-004
+  module: cross
+  question: should we reorder Calm Gummies 30ct?
+  tools:
+  - sales_summary
+  - inventory_search
+  - purchase_orders
+  - stock_movements
+  answerable: partial
+  gap: vendor lead time, open PO lines and movement history are available; there is no sell-through rate, days-of-cover or reorder-point tool
+- id: cross-005
+  module: cross
+  question: do we need to reorder the tea shelf stuff
+  tools:
+  - list_alerts
+  - order_queues
+  answerable: partial
+  gap: alerts show low items but no velocity; no category filter on alerts
+- id: cross-006
+  module: cross
+  question: what sold the most yesterday and how much is left
+  tools:
+  - metric
+  - inventory_search
+  answerable: partial
+  gap: needs one stock lookup per top product
+- id: cross-007
+  module: cross
+  question: r we gonna run out of anything we sell a lot of?
+  tools:
+  - metric
+  - list_alerts
+  - inventory_search
+  answerable: partial
+  gap: no stockout forecast from sales velocity
+- id: cross-008
+  module: cross
+  question: how many days of stock do we have on our top 3 products
+  tools:
+  - metric
+  - inventory_search
+  answerable: 'no'
+  gap: no days-of-cover or sell-through calculation tool
+- id: cross-009
+  module: cross
+  question: low stock items that also sold this week
+  tools:
+  - list_alerts
+  - sales_summary
+  answerable: partial
+  gap: alerts and sales both exist, join by SKU is left to the bot
+- id: cross-010
+  module: cross
+  question: which low stock alerts matter most based on sales
+  tools:
+  - list_alerts
+  - metric
+  answerable: partial
+  gap: no ranking of alerts by sales velocity
+- id: cross-011
+  module: cross
+  question: what did we sell the most of last month vs what we have left on the shelf
+  tools:
+  - metric
+  - stock_comparison
+  answerable: partial
+  gap: stock_comparison is Shopify vs C-Trax, not shelf vs sales; join by item manual
+- id: cross-012
+  module: cross
+  question: is the best seller in stock at both the store and online?
+  tools:
+  - metric
+  - stock_comparison
+  - inventory_search
+  answerable: 'yes'
+- id: cross-013
+  module: cross
+  question: top seller at the register vs top seller online, and stock for each
+  tools:
+  - metric
+  - inventory_search
+  answerable: partial
+  gap: top_products is shares; per-source top products need sales_summary and manual stock lookups
+- id: cross-014
+  module: cross
+  question: which products sold out this week
+  tools:
+  - list_alerts
+  - sales_summary
+  - stock_movements
+  answerable: partial
+  gap: stock_movements shows quantity after each change so zero-stock events can be found; there is no dedicated sold-out report
+- id: cross-015
+  module: cross
+  question: what's selling fast but not on any purchase order
+  tools:
+  - metric
+  - purchase_orders
+  answerable: partial
+  gap: top sellers and open PO lines (by item and SKU) are each available; matching them is left to the bot
+- id: cross-016
+  module: cross
+  question: slow movers vs overstocked items
+  tools:
+  - metric
+  - inventory_search
+  answerable: 'no'
+  gap: no slow-mover or overstock report; no inventory valuation by turnover
+- id: cross-017
+  module: cross
+  question: what items have stock but never sell
+  tools:
+  - metric
+  - inventory_search
+  answerable: 'no'
+  gap: no zero-sales-with-stock report
+- id: cross-018
+  module: cross
+  question: did the promo sell down stock on the gummies
+  tools:
+  - metric
+  - stock_movements
+  - marketing_records
+  answerable: partial
+  gap: stock movement history and offer dates are available; there is no link between a promo and stock sell-down
+- id: cross-019
+  module: cross
+  question: how much inventory value do we have in our top 10 sellers
+  tools:
+  - metric
+  - inventory_search
+  answerable: 'no'
+  gap: no cost/valuation data exposed by tools
+- id: cross-020
+  module: cross
+  question: compare yesterday's sales to what the low stock list says we're short on
+  tools:
+  - metric
+  - list_alerts
+  answerable: partial
+  gap: narrative comparison only; no shortage-per-sale join
+- id: cross-021
+  module: cross
+  question: which of last week's top products have open stock requests
+  tools:
+  - metric
+  - order_queues
+  answerable: partial
+  gap: order_queues counts stock requests but not per product
+- id: cross-022
+  module: cross
+  question: low stock + highest margin items?
+  tools:
+  - list_alerts
+  answerable: 'no'
+  gap: no margin or cost data in tools
+- id: cross-023
+  module: cross
+  question: anything in the alerts that we literally sold yesterday
+  tools:
+  - list_alerts
+  - sales_summary
+  answerable: partial
+  gap: manual SKU join
+- id: cross-024
+  module: cross
+  question: how long will our current Calm Gummies stock last at this pace
+  tools:
+  - sales_summary
+  - inventory_search
+  answerable: partial
+  gap: bot can estimate by hand but no forecast tool
+- id: cross-025
+  module: cross
+  question: what sold on Shopify vs the store this week and does the store need restocking
+  tools:
+  - metric
+  - stock_comparison
+  answerable: partial
+  gap: stock_comparison shows counts per platform but no restock logic
+- id: cross-026
+  module: cross
+  question: are we short on anything for the weekend rush
+  tools:
+  - list_alerts
+  - period_review
+  answerable: partial
+  gap: no day-of-week demand forecast
+- id: cross-027
+  module: cross
+  question: the top selling size of the tincture and stock of each size
+  tools:
+  - metric
+  - inventory_search
+  answerable: partial
+  gap: top products may not split by size; no size-level sales report tool
+- id: cross-028
+  module: cross
+  question: biggest seller this quarter and its stock position
+  tools:
+  - metric
+  - inventory_search
+  answerable: 'yes'
+- id: cross-029
+  module: cross
+  question: whats hot and whats low
+  tools:
+  - metric
+  - list_alerts
+  answerable: 'yes'
+- id: cross-030
+  module: cross
+  question: should I order more of what's been selling this month
+  tools:
+  - metric
+  - list_alerts
+  - order_queues
+  answerable: partial
+  gap: no recommended order quantity; judgement left to the bot
+- id: cross-031
+  module: cross
+  question: orders waiting to ship and do we have the stock for them
+  tools:
+  - order_queues
+  - inventory_search
+  answerable: partial
+  gap: order_queues gives counts and age but not order lines; manual stock check
+- id: cross-032
+  module: cross
+  question: unshipped orders and low stock - connected?
+  tools:
+  - order_queues
+  - list_alerts
+  answerable: partial
+  gap: no order-line to SKU link in order_queues
+- id: cross-033
+  module: cross
+  question: how many paid orders haven't shipped and is anything backordered
+  tools:
+  - order_queues
+  answerable: partial
+  gap: backorders appear only as stock requests counts, no per-order mapping
+- id: cross-034
+  module: cross
+  question: oldest unshipped order, is the item in stock?
+  tools:
+  - order_queues
+  - inventory_search
+  answerable: partial
+  gap: order_queues gives age but not item; search by order text could help
+- id: cross-035
+  module: cross
+  question: do we have enough stock to fill everything waiting to ship
+  tools:
+  - order_queues
+  - inventory_search
+  answerable: partial
+  gap: no list of items on unshipped orders
+- id: cross-036
+  module: cross
+  question: any orders stuck because of a stock shortage
+  tools:
+  - order_queues
+  - list_alerts
+  answerable: partial
+  gap: no reason code on unshipped orders
+- id: cross-037
+  module: cross
+  question: whats waiting and what's low
+  tools:
+  - order_queues
+  - list_alerts
+  answerable: 'yes'
+- id: cross-038
+  module: cross
+  question: online orders unshipped >2 days and stock of those items
+  tools:
+  - order_queues
+  - inventory_search
+  answerable: partial
+  gap: order_queues provides age but not items
+- id: cross-039
+  module: cross
+  question: are unpaid orders holding any stock reservations
+  tools:
+  - order_queues
+  - inventory_search
+  answerable: 'no'
+  gap: stock_reservations page has no tool
+- id: cross-040
+  module: cross
+  question: what's reserved vs what's available for top sellers
+  tools:
+  - metric
+  - inventory_search
+  answerable: partial
+  gap: inventory_search shows platform stock but reservations not exposed
+- id: cross-041
+  module: cross
+  question: show me wholesale holds and the stock they need
+  tools:
+  - order_queues
+  - inventory_search
+  answerable: partial
+  gap: order_queues shows warehouse holds without line items
+- id: cross-042
+  module: cross
+  question: did the stock requests for the store get filled and do counts match now
+  tools:
+  - order_queues
+  - stock_comparison
+  answerable: partial
+  gap: no stock request history, only open counts
+- id: cross-043
+  module: cross
+  question: how many orders went out yesterday vs how many came in
+  tools:
+  - sales_summary
+  - order_queues
+  answerable: partial
+  gap: no shipped-orders count; only paid vs currently unshipped
+- id: cross-044
+  module: cross
+  question: shipping backlog and sales trend this week
+  tools:
+  - order_queues
+  - metric
+  answerable: 'yes'
+- id: cross-045
+  module: cross
+  question: is the backlog because of a sales spike?
+  tools:
+  - order_queues
+  - sales_summary
+  answerable: partial
+  gap: no capacity data; spike detection manual via daily series
+- id: cross-046
+  module: cross
+  question: any orders from the last 3 days we haven't shipped, and was there a stockout then
+  tools:
+  - order_queues
+  - stock_movements
+  answerable: partial
+  gap: unshipped orders and stock movement history are available; there is no stockout timeline or order-to-item link
+- id: cross-047
+  module: cross
+  question: cancelled orders because of stock?
+  tools:
+  - sales_summary
+  answerable: 'no'
+  gap: no cancel reason data
+- id: cross-048
+  module: cross
+  question: sales vs expenses this month
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: cross-049
+  module: cross
+  question: are we making money this month?
+  tools:
+  - period_review
+  - metric
+  answerable: partial
+  gap: expenses are partial; no full profit and loss from tools, financial reports not exposed
+- id: cross-050
+  module: cross
+  question: how do this month's expenses compare to sales
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: cross-051
+  module: cross
+  question: what was our biggest expense category vs last month
+  tools:
+  - period_review
+  answerable: partial
+  gap: period_review gives total expenses only, not by category
+- id: cross-052
+  module: cross
+  question: did expenses go up when sales went up
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: cross-053
+  module: cross
+  question: last quarter sales minus expenses
+  tools:
+  - metric
+  - period_review
+  answerable: partial
+  gap: simple difference but expenses may be restricted by role
+- id: cross-054
+  module: cross
+  question: profit margin on sales this week
+  tools:
+  - period_review
+  answerable: 'no'
+  gap: no cost of goods or margin data
+- id: cross-055
+  module: cross
+  question: is rent or payroll eating our sales
+  tools:
+  - period_review
+  answerable: 'no'
+  gap: no expense category breakdown tool; payroll not exposed
+- id: cross-056
+  module: cross
+  question: what did we spend vs what we took in last week
+  tools:
+  - period_review
+  - metric
+  answerable: 'yes'
+- id: cross-057
+  module: cross
+  question: net income for the month, honestly
+  tools:
+  - period_review
+  answerable: partial
+  gap: no income statement tool; expenses may be incomplete if books not closed
+- id: cross-058
+  module: cross
+  question: sales tax collected vs sales for last quarter
+  tools:
+  - sales_tax_report
+  - metric
+  answerable: 'yes'
+- id: cross-059
+  module: cross
+  question: how much tax do we owe on this month's sales and have we filed
+  tools:
+  - sales_tax_report
+  - compliance_check
+  answerable: partial
+  gap: filings are unknown to compliance_check; no payment/filing status
+- id: cross-060
+  module: cross
+  question: cash in vs cash out this week
+  tools:
+  - period_review
+  answerable: partial
+  gap: cash_flow and bank data not exposed; only sales and expenses
+- id: cross-061
+  module: cross
+  question: will we be able to cover payroll next week
+  tools:
+  - period_review
+  - time_keeping_report
+  answerable: 'no'
+  gap: no cash forecast or payroll amount tool
+- id: cross-062
+  module: cross
+  question: sales per labor hour this week
+  tools:
+  - metric
+  - time_keeping_report
+  answerable: 'yes'
+- id: cross-063
+  module: cross
+  question: are we overstaffed on slow days
+  tools:
+  - time_keeping_report
+  - sales_summary
+  - staff_schedule
+  answerable: partial
+  gap: needs a daily series join of sales and scheduled hours; no staffing target
+- id: cross-064
+  module: cross
+  question: sales by day vs hours worked by day last week
+  tools:
+  - sales_summary
+  - time_keeping_report
+  answerable: 'yes'
+- id: cross-065
+  module: cross
+  question: which day had the worst sales per hour worked
+  tools:
+  - sales_summary
+  - time_keeping_report
+  answerable: partial
+  gap: no combined ratio tool; bot calculates per day
+- id: cross-066
+  module: cross
+  question: how many hours did we schedule vs work, and what were sales
+  tools:
+  - time_keeping_report
+  - metric
+  answerable: 'yes'
+- id: cross-067
+  module: cross
+  question: did we have enough people on the busiest day
+  tools:
+  - metric
+  - time_keeping_report
+  - staff_schedule
+  answerable: partial
+  gap: busiest day via best_day and who was scheduled that day via staff_schedule; no coverage requirement defined
+- id: cross-068
+  module: cross
+  question: labor cost vs sales this month
+  tools:
+  - time_keeping_report
+  - metric
+  answerable: 'no'
+  gap: no wage rates or payroll cost exposed
+- id: cross-069
+  module: cross
+  question: who worked the most hours last week and what did the store sell
+  tools:
+  - time_keeping_report
+  - metric
+  answerable: 'yes'
+- id: cross-070
+  module: cross
+  question: overtime and sales spike correlation
+  tools:
+  - time_keeping_report
+  - sales_summary
+  answerable: partial
+  gap: no overtime flag or correlation tool
+- id: cross-071
+  module: cross
+  question: staff hours vs register sales by shift
+  tools:
+  - time_keeping_report
+  - sales_summary
+  answerable: 'no'
+  gap: sales are daily, not by shift
+- id: cross-072
+  module: cross
+  question: should I cut hours on tuesdays
+  tools:
+  - time_keeping_report
+  - sales_summary
+  answerable: partial
+  gap: needs several weeks of daily series; recommendation is judgement
+- id: cross-073
+  module: cross
+  question: who is clocked in right now and how are sales going today
+  tools:
+  - time_keeping_report
+  - metric
+  answerable: partial
+  gap: no live clock-in roster; hours by range only
+- id: cross-074
+  module: cross
+  question: were we understaffed when the register sales peaked
+  tools:
+  - time_keeping_report
+  - sales_summary
+  answerable: 'no'
+  gap: no hourly sales
+- id: cross-075
+  module: cross
+  question: did the schedule change line up with a sales drop
+  tools:
+  - time_keeping_report
+  - staff_schedule
+  - period_review
+  answerable: partial
+  gap: scheduled shifts per day are available; there is no history of schedule edits
+- id: cross-076
+  module: cross
+  question: is anyone missing hours that affect payroll this week
+  tools:
+  - time_keeping_report
+  - compliance_check
+  answerable: partial
+  gap: compliance_check lists timesheets awaiting approval and clock corrections; no payroll cost
+- id: cross-077
+  module: cross
+  question: can I trust last week's numbers?
+  tools:
+  - sync_health
+  - compliance_check
+  answerable: partial
+  gap: no per-figure confidence; bot reasons from sync failures and books check
+- id: cross-078
+  module: cross
+  question: did any sync fail last week that could change sales figures
+  tools:
+  - sync_health
+  - period_review
+  answerable: 'yes'
+- id: cross-079
+  module: cross
+  question: is the data fresh enough to trust today's sales
+  tools:
+  - sync_health
+  - metric
+  answerable: 'yes'
+- id: cross-080
+  module: cross
+  question: which sources are behind and what figures does that affect
+  tools:
+  - sync_health
+  answerable: partial
+  gap: no map of source to figure; bot must know source-to-report mapping via data_guide
+- id: cross-081
+  module: cross
+  question: shopify sync ok? are today's online sales right
+  tools:
+  - sync_health
+  - metric
+  answerable: 'yes'
+- id: cross-082
+  module: cross
+  question: register sales look low, is the pos sync broken
+  tools:
+  - sync_health
+  - metric
+  answerable: 'yes'
+- id: cross-083
+  module: cross
+  question: sales dropped and sync failed, which is it
+  tools:
+  - sync_health
+  - period_review
+  answerable: partial
+  gap: no way to separate real drop from missing data; compares failures to period
+- id: cross-084
+  module: cross
+  question: c-trax data gap this week?
+  tools:
+  - sync_health
+  - history_summary
+  answerable: 'yes'
+- id: cross-085
+  module: cross
+  question: how complete is our history for the register
+  tools:
+  - history_summary
+  - sync_health
+  answerable: 'yes'
+- id: cross-086
+  module: cross
+  question: swipesimple not syncing, what numbers are wrong
+  tools:
+  - sync_health
+  - data_guide
+  answerable: partial
+  gap: no impact analysis tool; data_guide explains storage only
+- id: cross-087
+  module: cross
+  question: last sync per source and my sales for that source today
+  tools:
+  - sync_health
+  - metric
+  answerable: 'yes'
+- id: cross-088
+  module: cross
+  question: are the store numbers missing yesterday?
+  tools:
+  - sync_health
+  - sales_summary
+  answerable: 'yes'
+- id: cross-089
+  module: cross
+  question: how does Rupert get card sales, and when did that last update
+  tools:
+  - data_guide
+  - sync_health
+  answerable: 'yes'
+- id: cross-090
+  module: cross
+  question: is the stock count current, when did inventory last sync
+  tools:
+  - sync_health
+  - stock_comparison
+  answerable: 'yes'
+- id: cross-091
+  module: cross
+  question: any errors lately that could affect order data
+  tools:
+  - recent_errors
+  - sync_health
+  answerable: 'yes'
+- id: cross-092
+  module: cross
+  question: why do shopify and c-trax stock disagree - sync or real?
+  tools:
+  - stock_comparison
+  - sync_health
+  - stock_movements
+  answerable: partial
+  gap: stock_movements shows recent sync and user changes per SKU, but there is no automatic verdict on stale sync versus a real count difference
+- id: cross-093
+  module: cross
+  question: can I trust the stock comparison page today
+  tools:
+  - stock_comparison
+  - sync_health
+  answerable: 'yes'
+- id: cross-094
+  module: cross
+  question: is yesterday's closing data complete
+  tools:
+  - sync_health
+  - compliance_check
+  answerable: 'yes'
+- id: cross-095
+  module: cross
+  question: when was the last time all sources synced cleanly
+  tools:
+  - sync_health
+  answerable: partial
+  gap: tool shows last sync and failures, not a clean-run history
+- id: cross-096
+  module: cross
+  question: which figures should I not quote to the accountant yet
+  tools:
+  - compliance_check
+  - sync_health
+  answerable: partial
+  gap: no per-figure reliability; bot summarizes fix items
+- id: cross-097
+  module: cross
+  question: backup fresh and sync healthy?
+  tools:
+  - backup_freshness
+  - sync_health
+  answerable: 'yes'
+- id: cross-098
+  module: cross
+  question: are today's order counts reliable
+  tools:
+  - sync_health
+  - sales_summary
+  answerable: 'yes'
+- id: cross-099
+  module: cross
+  question: if the last sync failed, did we lose orders
+  tools:
+  - sync_health
+  - data_guide
+  answerable: partial
+  gap: no lost-record detection; data_guide explains backfill
+- id: cross-100
+  module: cross
+  question: double counting between square and shopify?
+  tools:
+  - data_guide
+  - sales_summary
+  answerable: partial
+  gap: no duplicate detection tool
+- id: cross-101
+  module: cross
+  question: is sales tax data complete for this month
+  tools:
+  - sales_tax_report
+  - sync_health
+  answerable: partial
+  gap: sources overlap and are never summed; completeness inferred from sync
+- id: cross-102
+  module: cross
+  question: numbers look weird this week, check anything?
+  tools:
+  - sync_health
+  - recent_errors
+  - period_review
+  answerable: 'yes'
+- id: cross-103
+  module: cross
+  question: data quality check before I send the month to the accountant
+  tools:
+  - compliance_check
+  - sync_health
+  answerable: 'yes'
+- id: cross-104
+  module: cross
+  question: why is average order value so low this week - missing data?
+  tools:
+  - metric
+  - sync_health
+  answerable: partial
+  gap: cannot distinguish low data completeness from real change
+- id: cross-105
+  module: cross
+  question: do the sales sources add up to the total
+  tools:
+  - metric
+  - sales_summary
+  answerable: 'yes'
+- id: cross-106
+  module: cross
+  question: what overdue tasks are about stock?
+  tools:
+  - list_tasks
+  answerable: 'yes'
+- id: cross-107
+  module: cross
+  question: any overdue tasks mentioning inventory counts
+  tools:
+  - list_tasks
+  - inventory_search
+  answerable: partial
+  gap: no inventory count schedule tool to compare
+- id: cross-108
+  module: cross
+  question: open tasks related to reordering and the low stock list
+  tools:
+  - list_tasks
+  - list_alerts
+  answerable: 'yes'
+- id: cross-109
+  module: cross
+  question: did anyone do the count task? and what do the counts show
+  tools:
+  - list_tasks
+  - stock_comparison
+  answerable: partial
+  gap: no physical count results tool; stock_comparison only compares platforms
+- id: cross-110
+  module: cross
+  question: create a task to recount the Calm Gummies since stock is off
+  tools:
+  - create_task
+  - stock_comparison
+  answerable: 'yes'
+- id: cross-111
+  module: cross
+  question: add a task to reorder everything on the low stock list
+  tools:
+  - create_task
+  - list_alerts
+  answerable: 'yes'
+- id: cross-112
+  module: cross
+  question: make a task for Jo to check the tea shelf stock, due friday
+  tools:
+  - create_task
+  answerable: 'yes'
+- id: cross-113
+  module: cross
+  question: tasks overdue that block the month end close
+  tools:
+  - list_tasks
+  - compliance_check
+  answerable: partial
+  gap: no task-to-close-checklist link; bot matches text
+- id: cross-114
+  module: cross
+  question: which tasks relate to sales tax or the books
+  tools:
+  - list_tasks
+  - compliance_check
+  answerable: 'yes'
+- id: cross-115
+  module: cross
+  question: what should I be doing today - tasks, alerts and queue
+  tools:
+  - list_tasks
+  - list_alerts
+  - order_queues
+  answerable: 'yes'
+- id: cross-116
+  module: cross
+  question: push the stock count task to next week
+  tools:
+  - update_task
+  - list_tasks
+  answerable: 'yes'
+- id: cross-117
+  module: cross
+  question: reassign the overdue reorder task to Sam
+  tools:
+  - update_task
+  - list_tasks
+  answerable: 'yes'
+- id: cross-118
+  module: cross
+  question: tasks done this week vs stock alerts resolved
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: cross-119
+  module: cross
+  question: any overdue task about the bank reconciliation
+  tools:
+  - list_tasks
+  - compliance_check
+  answerable: 'yes'
+- id: cross-120
+  module: cross
+  question: open a high priority task for the unshipped order backlog
+  tools:
+  - create_task
+  - order_queues
+  answerable: 'yes'
+- id: cross-121
+  module: cross
+  question: how many stock alerts have been open longer than the task says
+  tools:
+  - list_alerts
+  - list_tasks
+  answerable: 'no'
+  gap: alerts have no open-since age in the tool output
+- id: cross-122
+  module: cross
+  question: are there tasks assigned to me about purchase orders
+  tools:
+  - list_tasks
+  - order_queues
+  answerable: 'yes'
+- id: cross-123
+  module: cross
+  question: overdue tasks and late POs - same problem?
+  tools:
+  - list_tasks
+  - order_queues
+  answerable: partial
+  gap: no link between tasks and POs
+- id: cross-124
+  module: cross
+  question: which tasks mention a vendor that has a late order
+  tools:
+  - list_tasks
+  - purchase_orders
+  answerable: partial
+  gap: vendors with overdue POs are available from purchase_orders; matching them to task text is left to the bot
+- id: cross-125
+  module: cross
+  question: make a task to fix the stock mismatch between shopify and c-trax
+  tools:
+  - create_task
+  - stock_comparison
+  answerable: 'yes'
+- id: cross-126
+  module: cross
+  question: tasks I assigned about unshipped orders
+  tools:
+  - list_tasks
+  - order_queues
+  answerable: 'yes'
+- id: cross-127
+  module: cross
+  question: close the task about restocking the gummies, they came in
+  tools:
+  - update_task
+  - inventory_search
+  answerable: 'yes'
+- id: cross-128
+  module: cross
+  question: anything overdue about the offsite backup
+  tools:
+  - list_tasks
+  - backup_freshness
+  answerable: 'yes'
+- id: cross-129
+  module: cross
+  question: remind me to recount shelf items after the sync is fixed
+  tools:
+  - create_task
+  - sync_health
+  answerable: 'yes'
+- id: cross-130
+  module: cross
+  question: what is blocking the month close?
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: cross-131
+  module: cross
+  question: books check items vs unresolved card payments
+  tools:
+  - compliance_check
+  - order_queues
+  answerable: 'yes'
+- id: cross-132
+  module: cross
+  question: can I close last month yet
+  tools:
+  - compliance_check
+  - sync_health
+  answerable: 'yes'
+- id: cross-133
+  module: cross
+  question: which deposits haven't been matched to payments
+  tools:
+  - compliance_check
+  - order_queues
+  answerable: partial
+  gap: bank deposit matching detail not exposed; only counts of unresolved items
+- id: cross-134
+  module: cross
+  question: is the bank reconciled for last month and were all sales deposited
+  tools:
+  - compliance_check
+  answerable: partial
+  gap: compliance_check shows bank lines and ledger balance status, not sales-to-deposit tie-out
+- id: cross-135
+  module: cross
+  question: sales vs deposits for last week
+  tools:
+  - sales_summary
+  - compliance_check
+  answerable: 'no'
+  gap: no bank deposit amounts or NAB IRIS data exposed
+- id: cross-136
+  module: cross
+  question: did card payments settle for yesterday
+  tools:
+  - order_queues
+  - swipesimple_items
+  answerable: partial
+  gap: unresolved card payments counted; settlement amounts not exposed
+- id: cross-137
+  module: cross
+  question: is the day close done for the register and does it match the sales
+  tools:
+  - compliance_check
+  - sales_summary
+  answerable: partial
+  gap: day close status but not variances
+- id: cross-138
+  module: cross
+  question: what's still open on the books check and which sales records are missing
+  tools:
+  - compliance_check
+  - history_summary
+  answerable: 'yes'
+- id: cross-139
+  module: cross
+  question: refunds not recorded in the books
+  tools:
+  - compliance_check
+  - sales_summary
+  answerable: partial
+  gap: compliance_check shows refund check; no list of unrecorded refunds
+- id: cross-140
+  module: cross
+  question: sales tax filing due? what do we owe
+  tools:
+  - sales_tax_report
+  - compliance_check
+  answerable: partial
+  gap: filing status unknown; due dates not exposed
+- id: cross-141
+  module: cross
+  question: any period locks missing before I file
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: cross-142
+  module: cross
+  question: do I have uploads waiting that stop the close
+  tools:
+  - list_uploads
+  - compliance_check
+  answerable: 'yes'
+- id: cross-143
+  module: cross
+  question: bank statement uploaded for last month?
+  tools:
+  - list_uploads
+  - compliance_check
+  answerable: 'yes'
+- id: cross-144
+  module: cross
+  question: what needs approving before we can close
+  tools:
+  - compliance_check
+  - list_tasks
+  answerable: 'yes'
+- id: cross-145
+  module: cross
+  question: are all timesheets approved so payroll can run
+  tools:
+  - compliance_check
+  - time_keeping_report
+  answerable: 'yes'
+- id: cross-146
+  module: cross
+  question: missing receipts holding up the books
+  tools:
+  - order_queues
+  - compliance_check
+  answerable: 'yes'
+- id: cross-147
+  module: cross
+  question: close checklist progress this quarter
+  tools:
+  - compliance_check
+  - period_review
+  answerable: 'yes'
+- id: cross-148
+  module: cross
+  question: we took $ in cash this week, is it deposited
+  tools:
+  - sales_summary
+  - compliance_check
+  answerable: 'no'
+  gap: no cash drawer or deposit tracking tool
+- id: cross-149
+  module: cross
+  question: card batch totals vs swipesimple sales
+  tools:
+  - sales_summary
+  - compliance_check
+  answerable: partial
+  gap: no swipesimple batch figures exposed
+- id: cross-150
+  module: cross
+  question: do Square sales line up with the bank
+  tools:
+  - sales_summary
+  - compliance_check
+  answerable: 'no'
+  gap: no bank line data via tools
+- id: cross-151
+  module: cross
+  question: daily review not approved for tuesday, why
+  tools:
+  - compliance_check
+  - sync_health
+  answerable: partial
+  gap: reason a review is unapproved isn't given
+- id: cross-152
+  module: cross
+  question: list what's failing in books_check and tell me what to fix first
+  tools:
+  - compliance_check
+  answerable: 'yes'
+- id: cross-153
+  module: cross
+  question: any unresolved payments older than a week
+  tools:
+  - order_queues
+  answerable: 'yes'
+- id: cross-154
+  module: cross
+  question: payments that never matched an order
+  tools:
+  - order_queues
+  - compliance_check
+  answerable: partial
+  gap: no unmatched payment list
+- id: cross-155
+  module: cross
+  question: how much is stuck in unresolved card payments
+  tools:
+  - order_queues
+  answerable: partial
+  gap: counts but maybe not amounts
+- id: cross-156
+  module: cross
+  question: is the ledger balanced after the QuickBooks import
+  tools:
+  - compliance_check
+  - history_summary
+  - list_uploads
+  answerable: partial
+  gap: ledger balance is checked; import validation detail not exposed
+- id: cross-157
+  module: cross
+  question: bank lines unmatched and sales missing for the same days
+  tools:
+  - compliance_check
+  - history_summary
+  answerable: partial
+  gap: no date-level join of gaps
+- id: cross-158
+  module: cross
+  question: refunds this month and which products
+  tools:
+  - metric
+  - sales_summary
+  answerable: partial
+  gap: refund_rate and counts but no per-product refunds
+- id: cross-159
+  module: cross
+  question: which product gets refunded the most
+  tools:
+  - metric
+  - sales_summary
+  answerable: 'no'
+  gap: no refunds by product tool
+- id: cross-160
+  module: cross
+  question: refund rate vs sales for the quarter
+  tools:
+  - metric
+  answerable: 'yes'
+- id: cross-161
+  module: cross
+  question: did refunds spike after the gummy launch
+  tools:
+  - metric
+  - sales_summary
+  answerable: partial
+  gap: refund counts per day but not by product
+- id: cross-162
+  module: cross
+  question: refunds this week and were they recorded in the books
+  tools:
+  - metric
+  - compliance_check
+  answerable: partial
+  gap: recorded status only as a check summary
+- id: cross-163
+  module: cross
+  question: how many orders were refunded last month and what's the rate
+  tools:
+  - sales_summary
+  - metric
+  answerable: 'yes'
+- id: cross-164
+  module: cross
+  question: are refunds higher online or in store
+  tools:
+  - sales_summary
+  - metric
+  answerable: partial
+  gap: refunded counts per source exist; rate per source only by manual calc
+- id: cross-165
+  module: cross
+  question: refunded orders that also had a stock return
+  tools:
+  - sales_summary
+  - inventory_search
+  answerable: 'no'
+  gap: no returns-to-stock tracking
+- id: cross-166
+  module: cross
+  question: refund for the tincture order, did the stock go back
+  tools:
+  - search
+  - inventory_search
+  answerable: 'no'
+  gap: refund stock restock not tracked
+- id: cross-167
+  module: cross
+  question: customers who got refunds more than once
+  tools:
+  - customer_lookup
+  - search
+  answerable: partial
+  gap: customer_lookup shows refunds for one named customer, but there is no list of customers ranked by refund count
+- id: cross-168
+  module: cross
+  question: refund rate by product line
+  tools:
+  - metric
+  - sales_summary
+  answerable: 'no'
+  gap: refund_rate is overall or per period only
+- id: cross-169
+  module: cross
+  question: did a refund hit our expenses
+  tools:
+  - period_review
+  - compliance_check
+  answerable: partial
+  gap: refunds and expenses are separate lines; no join
+- id: cross-170
+  module: cross
+  question: refunds vs complaints in feedback
+  tools:
+  - metric
+  - list_feedback
+  answerable: partial
+  gap: feedback is app bug reports not customer complaints; no customer review tool
+- id: cross-171
+  module: cross
+  question: tax on refunded orders this month
+  tools:
+  - sales_tax_report
+  - sales_summary
+  answerable: partial
+  gap: tax report may not break out refunds
+- id: cross-172
+  module: cross
+  question: net sales after refunds last week
+  tools:
+  - metric
+  - sales_summary
+  answerable: 'yes'
+- id: cross-173
+  module: cross
+  question: which POs are late and what's out of stock because of it
+  tools:
+  - purchase_orders
+  - list_alerts
+  answerable: partial
+  gap: overdue PO lines (item, SKU, short quantity) and low stock alerts are each available; matching them is left to the bot
+- id: cross-174
+  module: cross
+  question: late purchase orders vs low stock
+  tools:
+  - purchase_orders
+  - list_alerts
+  answerable: partial
+  gap: overdue PO lines (item, SKU) and low stock alerts are each available; matching them is left to the bot
+- id: cross-175
+  module: cross
+  question: is anything on the low stock list already on order?
+  tools:
+  - list_alerts
+  - purchase_orders
+  answerable: partial
+  gap: low stock alerts and open PO lines by SKU are each available; matching them is left to the bot
+- id: cross-176
+  module: cross
+  question: when is the gummy order arriving
+  tools:
+  - purchase_orders
+  - inventory_search
+  answerable: 'yes'
+- id: cross-177
+  module: cross
+  question: POs received this week and stock alerts cleared
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: cross-178
+  module: cross
+  question: did the shipment we received fix the stock levels
+  tools:
+  - period_review
+  - list_alerts
+  answerable: 'yes'
+- id: cross-179
+  module: cross
+  question: vendor delivery late, what stock runs out first
+  tools:
+  - purchase_orders
+  - metric
+  - inventory_search
+  answerable: partial
+  gap: late PO lines by vendor are available; the run-out order is estimated by hand from sales pace, there is no projection tool
+- id: cross-180
+  module: cross
+  question: how many purchase orders are waiting and what do they cover
+  tools:
+  - purchase_orders
+  answerable: 'yes'
+- id: cross-181
+  module: cross
+  question: whats on order vs whats low
+  tools:
+  - purchase_orders
+  - list_alerts
+  answerable: partial
+  gap: open PO lines by SKU and low stock alerts are each available; matching them is left to the bot
+- id: cross-182
+  module: cross
+  question: late POs and the tasks to chase them
+  tools:
+  - order_queues
+  - list_tasks
+  answerable: 'yes'
+- id: cross-183
+  module: cross
+  question: make a task to chase the late purchase order
+  tools:
+  - create_task
+  - order_queues
+  answerable: 'yes'
+- id: cross-184
+  module: cross
+  question: which vendor is always late
+  tools:
+  - purchase_orders
+  answerable: 'yes'
+- id: cross-185
+  module: cross
+  question: PO received but stock not updated?
+  tools:
+  - purchase_orders
+  - stock_movements
+  - inventory_search
+  answerable: partial
+  gap: PO received quantities and stock movements are each visible; there is no automatic receipt-to-inventory tie-out
+- id: cross-186
+  module: cross
+  question: how many POs did we receive this month vs last
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: cross-187
+  module: cross
+  question: stock requests pending and POs pending - are those the same items
+  tools:
+  - order_queues
+  - purchase_orders
+  answerable: partial
+  gap: PO lines are available but open stock requests have no line items, so the items cannot be compared
+- id: cross-188
+  module: cross
+  question: are we waiting on a PO for items that are already backordered online
+  tools:
+  - purchase_orders
+  - sales_summary
+  answerable: partial
+  gap: open PO lines are available; there is no backorder item list to match them against
+- id: cross-189
+  module: cross
+  question: expected stock arrival vs sales pace
+  tools:
+  - purchase_orders
+  - metric
+  answerable: partial
+  gap: PO expected dates and lines are available; there is no sales-velocity forecast, so the pace comparison is by hand
+- id: cross-190
+  module: cross
+  question: any items out of stock with no PO
+  tools:
+  - list_alerts
+  - purchase_orders
+  answerable: partial
+  gap: out-of-stock alerts and open PO lines by SKU are each available; matching them is left to the bot
+- id: cross-191
+  module: cross
+  question: did the campaign increase sales?
+  tools:
+  - metric
+  - period_review
+  - marketing_records
+  answerable: partial
+  gap: offer start and end dates (marketing_records) can mark the window; campaigns themselves have no dates or results, so compare periods by hand
+- id: cross-192
+  module: cross
+  question: sales lift during last week's promo
+  tools:
+  - metric
+  - sales_summary
+  - marketing_records
+  answerable: partial
+  gap: offer dates are available from marketing_records; no usage counts or attribution, so lift is a before/after comparison
+- id: cross-193
+  module: cross
+  question: did the discount code drive orders
+  tools:
+  - sales_summary
+  - search
+  - marketing_records
+  answerable: partial
+  gap: code terms and dates are visible in marketing_records; discount usage counts and revenue are not stored
+- id: cross-194
+  module: cross
+  question: how did we do the week of the newsletter vs the week before
+  tools:
+  - metric
+  answerable: partial
+  gap: send dates unknown; user must give dates
+- id: cross-195
+  module: cross
+  question: sales by source after the influencer post
+  tools:
+  - metric
+  - sales_summary
+  - marketing_records
+  answerable: partial
+  gap: influencer gift and collaboration dates are available; post performance and attributed sales are not stored
+- id: cross-196
+  module: cross
+  question: best campaign this quarter by sales
+  tools:
+  - metric
+  answerable: 'no'
+  gap: no campaign-level sales attribution
+- id: cross-197
+  module: cross
+  question: are we running a promo and did stock hold up
+  tools:
+  - inventory_search
+  - list_alerts
+  - marketing_records
+  answerable: partial
+  gap: active offers (marketing_records) and stock are available; there is no attribution of stock draw to the offer
+- id: cross-198
+  module: cross
+  question: did the sale make us run low on anything
+  tools:
+  - metric
+  - list_alerts
+  - marketing_records
+  answerable: partial
+  gap: offer dates are available from marketing_records; there is no sale-to-stock attribution
+- id: cross-199
+  module: cross
+  question: marketing spend vs sales
+  tools:
+  - period_review
+  - metric
+  - marketing_summary
+  answerable: partial
+  gap: influencer gift product and shipping cost are available; ad spend and campaign budgets are not stored
+- id: cross-200
+  module: cross
+  question: what was ad spend last month vs the sales
+  tools:
+  - period_review
+  answerable: 'no'
+  gap: no expense categories or ad platform data
+- id: cross-201
+  module: cross
+  question: did our top products change during the campaign
+  tools:
+  - metric
+  - marketing_records
+  answerable: partial
+  gap: offer dates are available to set the window; compare the two periods by hand
+- id: cross-202
+  module: cross
+  question: which discount got used the most
+  tools:
+  - sales_summary
+  answerable: 'no'
+  gap: no discount usage report
+- id: cross-203
+  module: cross
+  question: orders that used a promo code this month
+  tools:
+  - search
+  answerable: partial
+  gap: search by text can find codes but not aggregate
+- id: cross-204
+  module: cross
+  question: is the offer still live and how many sold
+  tools:
+  - marketing_records
+  - sales_summary
+  answerable: partial
+  gap: offer status and dates are available; how many were sold through the code is not stored, so use sales of the named product for those dates
+- id: cross-205
+  module: cross
+  question: average order value before and after the promo
+  tools:
+  - metric
+  - marketing_records
+  answerable: partial
+  gap: offer dates are available; the before and after periods must be compared by hand
+- id: cross-206
+  module: cross
+  question: did reviews or community posts bring in more sales
+  tools:
+  - marketing_records
+  - metric
+  answerable: partial
+  gap: community reply dates are available; customer reviews and any attribution to sales are not stored
+- id: cross-207
+  module: cross
+  question: influencer sales vs cost
+  tools:
+  - marketing_summary
+  - marketing_records
+  - sales_summary
+  answerable: partial
+  gap: influencer gift product and shipping cost are available; sales attributed to influencers and code usage are not stored
+- id: cross-208
+  module: cross
+  question: holiday campaign vs last year's sales
+  tools:
+  - metric
+  answerable: 'yes'
+- id: cross-209
+  module: cross
+  question: sales for the weekend promo only
+  tools:
+  - sales_summary
+  answerable: 'yes'
+- id: cross-210
+  module: cross
+  question: best day this month and was there a campaign
+  tools:
+  - metric
+  - marketing_records
+  answerable: partial
+  gap: offer and code dates are available; campaigns have no dates
+- id: cross-211
+  module: cross
+  question: online sales trend since we changed the offer
+  tools:
+  - metric
+  - sales_summary
+  - marketing_records
+  answerable: partial
+  gap: the marketing change history gives when an offer changed; the trend is a manual before/after comparison
+- id: cross-212
+  module: cross
+  question: did the promo hurt margin
+  tools:
+  - metric
+  answerable: 'no'
+  gap: no discount cost or margin tool
+- id: cross-213
+  module: cross
+  question: give me my morning briefing
+  tools:
+  - metric
+  - order_queues
+  - list_alerts
+  - list_tasks
+  answerable: 'yes'
+- id: cross-214
+  module: cross
+  question: morning rundown please
+  tools:
+  - metric
+  - order_queues
+  - list_alerts
+  - sync_health
+  - list_tasks
+  answerable: 'yes'
+- id: cross-215
+  module: cross
+  question: whats going on today
+  tools:
+  - metric
+  - order_queues
+  - list_tasks
+  answerable: 'yes'
+- id: cross-216
+  module: cross
+  question: 'daily brief: sales yesterday, queues, alerts, overdue tasks'
+  tools:
+  - metric
+  - order_queues
+  - list_alerts
+  - list_tasks
+  answerable: 'yes'
+- id: cross-217
+  module: cross
+  question: anything I need to worry about today?
+  tools:
+  - compliance_check
+  - sync_health
+  - order_queues
+  answerable: 'yes'
+- id: cross-218
+  module: cross
+  question: start of day check - sales, stock, books
+  tools:
+  - metric
+  - list_alerts
+  - compliance_check
+  answerable: 'yes'
+- id: cross-219
+  module: cross
+  question: how r we doing this week
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: cross-220
+  module: cross
+  question: week in review
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: cross-221
+  module: cross
+  question: quick monthly snapshot - sales, expenses, labor, stock
+  tools:
+  - period_review
+  - time_keeping_report
+  answerable: 'yes'
+- id: cross-222
+  module: cross
+  question: what happened yesterday
+  tools:
+  - sales_summary
+  - order_queues
+  - sync_health
+  answerable: 'yes'
+- id: cross-223
+  module: cross
+  question: end of day wrap up
+  tools:
+  - metric
+  - order_queues
+  - list_tasks
+  answerable: 'yes'
+- id: cross-224
+  module: cross
+  question: anything on fire?
+  tools:
+  - system_status
+  - recent_errors
+  - sync_health
+  - order_queues
+  answerable: 'yes'
+- id: cross-225
+  module: cross
+  question: is everything healthy - app, backups, syncs
+  tools:
+  - system_status
+  - backup_freshness
+  - sync_health
+  answerable: 'yes'
+- id: cross-226
+  module: cross
+  question: monday briefing with last week's numbers
+  tools:
+  - period_review
+  - list_tasks
+  - order_queues
+  answerable: 'yes'
+- id: cross-227
+  module: cross
+  question: what should i focus on first
+  tools:
+  - list_tasks
+  - order_queues
+  - compliance_check
+  answerable: partial
+  gap: prioritization is judgement; no priority score
+- id: cross-228
+  module: cross
+  question: brief me like i'm walking in the door
+  tools:
+  - metric
+  - order_queues
+  - list_alerts
+  answerable: 'yes'
+- id: cross-229
+  module: cross
+  question: what changed since last week
+  tools:
+  - period_review
+  answerable: 'yes'
+- id: cross-230
+  module: cross
+  question: friday summary for the owners
+  tools:
+  - period_review
+  - list_tasks
+  answerable: 'yes'
+- id: cross-231
+  module: cross
+  question: what do i tell the accountant this month
+  tools:
+  - compliance_check
+  - period_review
+  - sales_tax_report
+  answerable: partial
+  gap: no document generation; summary only
+- id: cross-232
+  module: cross
+  question: am i ready for the month end
+  tools:
+  - compliance_check
+  - period_review
+  answerable: 'yes'
+- id: cross-233
+  module: cross
+  question: what is outstanding across the whole business
+  tools:
+  - order_queues
+  - compliance_check
+  - list_tasks
+  answerable: 'yes'
+- id: cross-234
+  module: cross
+  question: how is the business doing overall
+  tools:
+  - period_review
+  - metric
+  answerable: partial
+  gap: no balance sheet or cash position tool
+- id: cross-235
+  module: cross
+  question: sales are down, why?
+  tools:
+  - period_review
+  - sync_health
+  - list_alerts
+  - metric
+  answerable: partial
+  gap: no root cause analysis; checks stockouts, sync gaps, source mix
+- id: cross-236
+  module: cross
+  question: which source is dragging sales down
+  tools:
+  - metric
+  answerable: 'yes'
+- id: cross-237
+  module: cross
+  question: compare this month to last year and tell me about stock
+  tools:
+  - metric
+  - list_alerts
+  answerable: partial
+  gap: no historical stock data
+- id: cross-238
+  module: cross
+  question: 'quarter so far: sales, tax, expenses'
+  tools:
+  - metric
+  - sales_tax_report
+  - period_review
+  answerable: 'yes'
+- id: cross-239
+  module: cross
+  question: anything unusual in the data this week
+  tools:
+  - period_review
+  - sync_health
+  - recent_errors
+  answerable: partial
+  gap: no anomaly detection tool
+- id: cross-240
+  module: cross
+  question: what would you fix first in the system
+  tools:
+  - system_status
+  - recent_errors
+  - list_feedback
+  - sync_health
+  answerable: partial
+  gap: open-ended prioritization
+- id: cross-241
+  module: cross
+  question: is the new release causing issues
+  tools:
+  - deploy_status
+  - recent_errors
+  answerable: 'yes'
+- id: cross-242
+  module: cross
+  question: summary of feedback and errors this week
+  tools:
+  - list_feedback
+  - recent_errors
+  answerable: 'yes'
+- id: cross-243
+  module: cross
+  question: AI down? and how many questions did the team ask
+  tools:
+  - ai_health
+  answerable: partial
+  gap: usage figures come from ask_rupert_usage page, no tool
+- id: cross-244
+  module: cross
+  question: which page do I use to compare stock and sales
+  tools:
+  - where_is
+  answerable: partial
+  gap: no combined page; stock_comparison and sales pages are separate
+- id: cross-245
+  module: cross
+  question: how do i check if sales are in the books
+  tools:
+  - how_do_i
+  - compliance_check
+  answerable: 'yes'
+- id: cross-246
+  module: cross
+  question: where do i see low stock and open POs together
+  tools:
+  - where_is
+  answerable: partial
+  gap: no single page combining both
+- id: cross-247
+  module: cross
+  question: how do I reorder from low stock alerts
+  tools:
+  - how_do_i
+  - list_alerts
+  answerable: 'yes'
+- id: cross-248
+  module: cross
+  question: how do I tie sales to deposits
+  tools:
+  - how_do_i
+  - where_is
+  answerable: partial
+  gap: procedure exists, no deposit matching tool
+- id: cross-249
+  module: cross
+  question: steps to close the month after fixing the sync
+  tools:
+  - how_do_i
+  - compliance_check
+  answerable: 'yes'
+- id: cross-250
+  module: cross
+  question: where can I see which hours go with which sales
+  tools:
+  - where_is
+  - time_keeping_report
+  answerable: 'yes'

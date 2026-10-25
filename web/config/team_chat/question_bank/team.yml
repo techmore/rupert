@@ -1,0 +1,1368 @@
+questions:
+  - id: team-001
+    module: team
+    question: how many hours did Jo work this week
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-002
+    module: team
+    question: hours worked last week total
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-003
+    module: team
+    question: whos got the most hours this pay week
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-004
+    module: team
+    question: hrs for alex last month
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-005
+    module: team
+    question: how many hours did the team work yesterday
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-006
+    module: team
+    question: total staff hours this month
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-007
+    module: team
+    question: hours worked year to date by person
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-008
+    module: team
+    question: show me everyone's hours for last pay week
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-009
+    module: team
+    question: Sam hours today
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-010
+    module: team
+    question: how much did Riley work between Oct 1 and Oct 15
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-011
+    module: team
+    question: labor hours this quarter vs last quarter
+    tools: [time_keeping_report, period_review]
+    answerable: "partial"
+    gap: period_review compares hours with the prior period but not per person for a quarter; no quarter-over-quarter hours tool
+  - id: team-012
+    module: team
+    question: are hours up or down vs last week
+    tools: [period_review, time_keeping_report]
+    answerable: "yes"
+  - id: team-013
+    module: team
+    question: hours worked this month compared with same month last year
+    tools: [time_keeping_report]
+    answerable: "partial"
+    gap: time_keeping_report has no year-over-year comparison; would need two separate queries
+  - id: team-014
+    module: team
+    question: who worked the least this month
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-015
+    module: team
+    question: did Jo work more than 40 hrs last week
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-016
+    module: team
+    question: how many hours did we pay out last pay period
+    tools: [time_keeping_report]
+    answerable: "partial"
+    gap: worked hours are available but paid hours (after adjustments) are not
+  - id: team-017
+    module: team
+    question: hours by department this month
+    tools: [time_keeping_report]
+    answerable: "partial"
+    gap: report is per staff member or total; no department grouping tool
+  - id: team-018
+    module: team
+    question: which day last week had the most staffing hours
+    tools: [time_keeping_report]
+    answerable: "partial"
+    gap: report gives range totals, not a per-day breakdown by default
+  - id: team-019
+    module: team
+    question: labour cost this week
+    tools: [time_keeping_report, period_review]
+    answerable: "partial"
+    gap: hours are available but no wage rates, so no labour cost figure
+  - id: team-020
+    module: team
+    question: how many hours has Alex clocked today so far
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-021
+    module: team
+    question: total hrs for the 1st half of oct
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-022
+    module: team
+    question: who worked on Saturday
+    tools: [time_keeping_report]
+    answerable: "partial"
+    gap: report is range based; needs a single-day query and does not name who is on the floor right now
+  - id: team-023
+    module: team
+    question: did anyone work less than scheduled last week
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-024
+    module: team
+    question: who worked more than they were scheduled
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-025
+    module: team
+    question: Jo scheduled vs actual last pay week
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-026
+    module: team
+    question: are we over on hours vs the schedule this month
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-027
+    module: team
+    question: how many scheduled hours do we have next week
+    tools: [time_keeping_report]
+    answerable: "partial"
+    gap: report covers scheduled hours for a range but may not include future weeks that are not yet published
+  - id: team-028
+    module: team
+    question: who is overtime this week
+    tools: [time_keeping_report]
+    answerable: "partial"
+    gap: no overtime flag or threshold in time_keeping_report; only raw hours
+  - id: team-029
+    module: team
+    question: how much overtime did we have last month
+    tools: [time_keeping_report]
+    answerable: "partial"
+    gap: no overtime calculation tool; only total hours per person
+  - id: team-030
+    module: team
+    question: is anyone close to overtime
+    tools: [time_keeping_report]
+    answerable: "partial"
+    gap: no overtime threshold or alert tool
+  - id: team-031
+    module: team
+    question: what's our overtime policy
+    tools: [data_guide]
+    answerable: "partial"
+    gap: policy text is not stored as data; only how hours are stored
+  - id: team-032
+    module: team
+    question: anyone going over 40 this week
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-033
+    module: team
+    question: what timesheets need approval
+    tools: [compliance_check]
+    answerable: "yes"
+  - id: team-034
+    module: team
+    question: timesheets awaiting approval?
+    tools: [compliance_check]
+    answerable: "yes"
+  - id: team-035
+    module: team
+    question: how many timesheets are waiting on me
+    tools: [compliance_check]
+    answerable: "yes"
+  - id: team-036
+    module: team
+    question: whose timesheet is not approved yet
+    tools: [compliance_check]
+    answerable: "partial"
+    gap: compliance_check reports timesheets awaiting approval as a count/status, not necessarily each person
+  - id: team-037
+    module: team
+    question: approve all timesheets for last week
+    tools: [how_do_i]
+    answerable: "no"
+    gap: no tool can approve timesheets; chat can only explain how
+  - id: team-038
+    module: team
+    question: approve Jo's timesheet
+    tools: [how_do_i]
+    answerable: "no"
+    gap: no approve action tool; must be done in the Timesheets page
+  - id: team-039
+    module: team
+    question: where do I approve timesheets
+    tools: [where_is]
+    answerable: "yes"
+  - id: team-040
+    module: team
+    question: how do i approve a timesheet
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-041
+    module: team
+    question: how do I reject a timesheet
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-042
+    module: team
+    question: can i unapprove a timesheet after approving
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-043
+    module: team
+    question: timesheets still open for the last pay period
+    tools: [compliance_check]
+    answerable: "yes"
+  - id: team-044
+    module: team
+    question: are all timesheets approved before payroll
+    tools: [compliance_check]
+    answerable: "yes"
+  - id: team-045
+    module: team
+    question: how long has the oldest timesheet been waiting
+    tools: [compliance_check]
+    answerable: "partial"
+    gap: oldest-age for timesheets is not given as a figure
+  - id: team-046
+    module: team
+    question: timesheet status for Riley
+    tools: [compliance_check]
+    answerable: "partial"
+    gap: no per-person timesheet status lookup
+  - id: team-047
+    module: team
+    question: who hasnt submitted their timesheet
+    tools: [compliance_check]
+    answerable: "partial"
+    gap: no missing-submission list
+  - id: team-048
+    module: team
+    question: remind staff to submit timesheets
+    tools: [how_do_i]
+    answerable: "no"
+    gap: no tool to send reminders to staff
+  - id: team-049
+    module: team
+    question: what is the difference between a timesheet and a time card
+    tools: [data_guide]
+    answerable: "yes"
+  - id: team-050
+    module: team
+    question: clock corrections waiting
+    tools: [compliance_check]
+    answerable: "yes"
+  - id: team-051
+    module: team
+    question: did Jo forget to clock out
+    tools: [compliance_check, time_keeping_report]
+    answerable: "partial"
+    gap: open-punch detection is not exposed by a tool except via clock corrections count
+  - id: team-052
+    module: team
+    question: who has an open punch
+    tools: [time_keeping_report]
+    answerable: "partial"
+    gap: no open or missing-punch list
+  - id: team-053
+    module: team
+    question: punch history for Sam this week
+    tools: [time_keeping_report]
+    answerable: "partial"
+    gap: report gives totals; individual punch in/out times are not exposed
+  - id: team-054
+    module: team
+    question: show me Alex's punches yesterday
+    tools: [time_keeping_report]
+    answerable: "partial"
+    gap: no punch-level tool; only hours totals
+  - id: team-055
+    module: team
+    question: when did Jo clock out last night
+    tools: [time_keeping_report]
+    answerable: "no"
+    gap: no punch-level tool
+  - id: team-056
+    module: team
+    question: who clocked in late today
+    tools: [time_keeping_report]
+    answerable: "no"
+    gap: no punch-level tool or lateness metric
+  - id: team-057
+    module: team
+    question: how many times was Sam late last month
+    tools: [time_keeping_report]
+    answerable: "no"
+    gap: no lateness data tool
+  - id: team-058
+    module: team
+    question: how do i fix a missed punch
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-059
+    module: team
+    question: where are clock corrections
+    tools: [where_is]
+    answerable: "yes"
+  - id: team-060
+    module: team
+    question: where is punch history
+    tools: [where_is]
+    answerable: "yes"
+  - id: team-061
+    module: team
+    question: how do i edit a punch
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-062
+    module: team
+    question: how do I approve a clock correction
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-063
+    module: team
+    question: punch edits made last week
+    tools: [search]
+    answerable: "no"
+    gap: no audit trail tool for punch edits
+  - id: team-064
+    module: team
+    question: are there duplicate punches
+    tools: [time_keeping_report]
+    answerable: "no"
+    gap: no punch-level duplicate check
+  - id: team-065
+    module: team
+    question: what's a clock correction
+    tools: [data_guide]
+    answerable: "yes"
+  - id: team-066
+    module: team
+    question: square timecards for last week
+    tools: [time_keeping_report]
+    answerable: "partial"
+    gap: report covers worked hours; source-level Square timecard detail is not separate
+  - id: team-067
+    module: team
+    question: ctrax timecard for Alex
+    tools: [time_keeping_report]
+    answerable: "partial"
+    gap: no per-source C-Trax timecard detail
+  - id: team-068
+    module: team
+    question: c-trax hours last pay week
+    tools: [time_keeping_report]
+    answerable: "partial"
+    gap: no per-source breakdown of hours
+  - id: team-069
+    module: team
+    question: do square and ctrax hours match
+    tools: [time_keeping_report]
+    answerable: "no"
+    gap: no cross-source timecard comparison tool
+  - id: team-070
+    module: team
+    question: where are the square timecards
+    tools: [where_is]
+    answerable: "yes"
+  - id: team-071
+    module: team
+    question: how do timecards from Square get into Rupert
+    tools: [data_guide, how_do_i]
+    answerable: "yes"
+  - id: team-072
+    module: team
+    question: when did Square timecards last sync
+    tools: [sync_health]
+    answerable: "yes"
+  - id: team-073
+    module: team
+    question: did the ctrax timesheets import fail
+    tools: [sync_health]
+    answerable: "yes"
+  - id: team-074
+    module: team
+    question: how are square timecards stored
+    tools: [data_guide]
+    answerable: "yes"
+  - id: team-075
+    module: team
+    question: are staff clocking in on square or in rupert
+    tools: [data_guide]
+    answerable: "partial"
+    gap: which clock staff use is a business practice; docs describe both sources
+  - id: team-076
+    module: team
+    question: why is Jo missing hours from Square
+    tools: [sync_health, time_keeping_report]
+    answerable: "partial"
+    gap: can check sync health and hours but not the cause of a specific missing shift
+  - id: team-077
+    module: team
+    question: history coverage for timecards
+    tools: [history_summary]
+    answerable: "yes"
+  - id: team-078
+    module: team
+    question: how far back do we have timecards
+    tools: [history_summary]
+    answerable: "yes"
+  - id: team-079
+    module: team
+    question: whos on the schedule tomorrow
+    tools: [time_keeping_report]
+    answerable: "no"
+    gap: no schedule tool to list shifts by day
+  - id: team-080
+    module: team
+    question: show me the schedule for next week
+    tools: [where_is]
+    answerable: "no"
+    gap: no schedule tool; can only point to the Schedule page
+  - id: team-081
+    module: team
+    question: who's working saturday
+    tools: [time_keeping_report]
+    answerable: "no"
+    gap: no schedule tool to list shifts by day
+  - id: team-082
+    module: team
+    question: am I working tomorrow
+    tools: [time_keeping_report]
+    answerable: "no"
+    gap: no schedule tool for personal shifts
+  - id: team-083
+    module: team
+    question: who is closing tonight
+    tools: [time_keeping_report]
+    answerable: "no"
+    gap: no schedule tool for shift roles
+  - id: team-084
+    module: team
+    question: how many people are scheduled on friday
+    tools: [time_keeping_report]
+    answerable: "no"
+    gap: no schedule tool for shift counts
+  - id: team-085
+    module: team
+    question: is the schedule published
+    tools: [where_is]
+    answerable: "no"
+    gap: no schedule status tool
+  - id: team-086
+    module: team
+    question: where is the team schedule
+    tools: [where_is]
+    answerable: "yes"
+  - id: team-087
+    module: team
+    question: how do i add a shift
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-088
+    module: team
+    question: how do I copy last week's schedule
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-089
+    module: team
+    question: how do I swap shifts between Jo and Sam
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-090
+    module: team
+    question: how do i publish the schedule
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-091
+    module: team
+    question: can staff see the schedule on their phone
+    tools: [how_do_i, data_guide]
+    answerable: "yes"
+  - id: team-092
+    module: team
+    question: are we short staffed this weekend
+    tools: [time_keeping_report]
+    answerable: "no"
+    gap: no schedule or coverage tool
+  - id: team-093
+    module: team
+    question: who has the next two weeks off
+    tools: [time_keeping_report]
+    answerable: "no"
+    gap: no schedule or leave tool
+  - id: team-094
+    module: team
+    question: any schedule conflicts next week
+    tools: [time_keeping_report]
+    answerable: "no"
+    gap: no schedule conflict check
+  - id: team-095
+    module: team
+    question: who requested time off
+    tools: [compliance_check]
+    answerable: "yes"
+  - id: team-096
+    module: team
+    question: any leave requests waiting
+    tools: [compliance_check]
+    answerable: "yes"
+  - id: team-097
+    module: team
+    question: pto requests pending?
+    tools: [compliance_check]
+    answerable: "yes"
+  - id: team-098
+    module: team
+    question: leave requests to approve
+    tools: [compliance_check]
+    answerable: "yes"
+  - id: team-099
+    module: team
+    question: is Jo on vacation next month
+    tools: [compliance_check]
+    answerable: "partial"
+    gap: no leave calendar tool
+  - id: team-100
+    module: team
+    question: how much PTO does Alex have left
+    tools: [data_guide]
+    answerable: "no"
+    gap: no leave balance tool
+  - id: team-101
+    module: team
+    question: pto balance for Sam
+    tools: [data_guide]
+    answerable: "no"
+    gap: no leave balance tool
+  - id: team-102
+    module: team
+    question: how many vacation days did Riley use this year
+    tools: [data_guide]
+    answerable: "no"
+    gap: no leave history or balance tool
+  - id: team-103
+    module: team
+    question: how does pto accrue
+    tools: [data_guide]
+    answerable: "partial"
+    gap: data_guide explains storage, accrual rules depend on policy
+  - id: team-104
+    module: team
+    question: where do I approve time off
+    tools: [where_is]
+    answerable: "yes"
+  - id: team-105
+    module: team
+    question: how do i approve a leave request
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-106
+    module: team
+    question: how do I deny a leave request
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-107
+    module: team
+    question: how do I add pto for someone
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-108
+    module: team
+    question: approve Sam's vacation request
+    tools: [how_do_i]
+    answerable: "no"
+    gap: no action tool to approve leave; must be done in the Leave page
+  - id: team-109
+    module: team
+    question: can we cover the 24th if Jo takes PTO
+    tools: [time_keeping_report]
+    answerable: "no"
+    gap: no schedule or coverage tool
+  - id: team-110
+    module: team
+    question: sick days taken this year
+    tools: [data_guide]
+    answerable: "no"
+    gap: no leave history tool
+  - id: team-111
+    module: team
+    question: leave policy
+    tools: [data_guide]
+    answerable: "partial"
+    gap: policy is not stored as data
+  - id: team-112
+    module: team
+    question: unpaid leave requests
+    tools: [compliance_check]
+    answerable: "partial"
+    gap: no leave type filter
+  - id: team-113
+    module: team
+    question: is there a draft pay run
+    tools: [compliance_check]
+    answerable: "yes"
+  - id: team-114
+    module: team
+    question: any pay runs waiting
+    tools: [compliance_check]
+    answerable: "yes"
+  - id: team-115
+    module: team
+    question: when is the next payday
+    tools: [get_workspace_info]
+    answerable: "no"
+    gap: no payroll schedule tool; only today's date and time zone available
+  - id: team-116
+    module: team
+    question: when do we run payroll
+    tools: [how_do_i]
+    answerable: "partial"
+    gap: how to run payroll is explained, but the schedule for the business is not stored in a tool
+  - id: team-117
+    module: team
+    question: how much was last payroll
+    tools: [data_guide]
+    answerable: "no"
+    gap: no payroll tool for pay run totals
+  - id: team-118
+    module: team
+    question: total payroll this month
+    tools: [data_guide]
+    answerable: "no"
+    gap: no payroll tool for pay run totals
+  - id: team-119
+    module: team
+    question: gross pay for alex last period
+    tools: [data_guide]
+    answerable: "no"
+    gap: no payroll tool
+  - id: team-120
+    module: team
+    question: payroll taxes owed
+    tools: [data_guide]
+    answerable: "no"
+    gap: no payroll tax tool
+  - id: team-121
+    module: team
+    question: what's our payroll liability
+    tools: [data_guide]
+    answerable: "no"
+    gap: no payroll liability tool
+  - id: team-122
+    module: team
+    question: payroll vs sales this month
+    tools: [metric, time_keeping_report]
+    answerable: "no"
+    gap: no payroll cost data; only hours and sales
+  - id: team-123
+    module: team
+    question: how do i run payroll
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-124
+    module: team
+    question: where is payroll
+    tools: [where_is]
+    answerable: "yes"
+  - id: team-125
+    module: team
+    question: how do I create a pay run
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-126
+    module: team
+    question: how do I approve a pay run
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-127
+    module: team
+    question: where are pay stubs
+    tools: [where_is]
+    answerable: "yes"
+  - id: team-128
+    module: team
+    question: how do I set Jo's pay rate
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-129
+    module: team
+    question: what is Jo's hourly rate
+    tools: [search]
+    answerable: "no"
+    gap: no payroll or rate lookup tool
+  - id: team-130
+    module: team
+    question: who is salaried vs hourly
+    tools: [search]
+    answerable: "no"
+    gap: no pay type listing tool
+  - id: team-131
+    module: team
+    question: did the pay run post to the books
+    tools: [compliance_check]
+    answerable: "no"
+    gap: no tool linking pay runs to journal entries
+  - id: team-132
+    module: team
+    question: how do pay runs hit the ledger
+    tools: [data_guide]
+    answerable: "yes"
+  - id: team-133
+    module: team
+    question: payroll history for this year
+    tools: [history_summary]
+    answerable: "partial"
+    gap: history_summary shows source coverage; payroll may not be listed
+  - id: team-134
+    module: team
+    question: how many employees do we have
+    tools: [search]
+    answerable: "partial"
+    gap: search finds records by text but no staff count tool
+  - id: team-135
+    module: team
+    question: who works here
+    tools: [search]
+    answerable: "partial"
+    gap: no dedicated staff list tool
+  - id: team-136
+    module: team
+    question: show employees
+    tools: [search]
+    answerable: "partial"
+    gap: no dedicated staff list tool
+  - id: team-137
+    module: team
+    question: find Jo's employee record
+    tools: [search]
+    answerable: "yes"
+  - id: team-138
+    module: team
+    question: is Alex active or inactive
+    tools: [search]
+    answerable: "yes"
+  - id: team-139
+    module: team
+    question: when did Sam start
+    tools: [search]
+    answerable: "partial"
+    gap: hire dates may not be surfaced in search results
+  - id: team-140
+    module: team
+    question: what is Riley's position
+    tools: [search]
+    answerable: "yes"
+  - id: team-141
+    module: team
+    question: who has the manager position
+    tools: [search]
+    answerable: "partial"
+    gap: no position filter tool
+  - id: team-142
+    module: team
+    question: list the departments
+    tools: [search]
+    answerable: "partial"
+    gap: no dedicated departments listing tool
+  - id: team-143
+    module: team
+    question: how many people are in each department
+    tools: [search]
+    answerable: "no"
+    gap: no department counts tool
+  - id: team-144
+    module: team
+    question: where are departments
+    tools: [where_is]
+    answerable: "yes"
+  - id: team-145
+    module: team
+    question: where are positions
+    tools: [where_is]
+    answerable: "yes"
+  - id: team-146
+    module: team
+    question: how do i add a department
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-147
+    module: team
+    question: how do i add an employee
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-148
+    module: team
+    question: how do I deactivate an employee
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-149
+    module: team
+    question: how do I rehire Alex
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-150
+    module: team
+    question: how do i change Jo's position
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-151
+    module: team
+    question: terminate Sam
+    tools: [how_do_i]
+    answerable: "no"
+    gap: no action tool for employee changes
+  - id: team-152
+    module: team
+    question: employee phone number for Riley
+    tools: [search]
+    answerable: "partial"
+    gap: contact details may not be returned by search
+  - id: team-153
+    module: team
+    question: birthdays this month
+    tools: [search]
+    answerable: "no"
+    gap: no birthday data tool
+  - id: team-154
+    module: team
+    question: who has an account in rupert
+    tools: [search]
+    answerable: "partial"
+    gap: no account listing tool
+  - id: team-155
+    module: team
+    question: who are the admins
+    tools: [search]
+    answerable: "partial"
+    gap: no role listing tool
+  - id: team-156
+    module: team
+    question: what permissions does Jo have
+    tools: [search]
+    answerable: "no"
+    gap: no permissions lookup tool
+  - id: team-157
+    module: team
+    question: can Alex see financials
+    tools: [search]
+    answerable: "no"
+    gap: no permissions lookup tool
+  - id: team-158
+    module: team
+    question: who can approve timesheets
+    tools: [search]
+    answerable: "no"
+    gap: no permissions lookup tool
+  - id: team-159
+    module: team
+    question: how do I change a role
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-160
+    module: team
+    question: how do I reset someone's password
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-161
+    module: team
+    question: how do I remove access for a former employee
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-162
+    module: team
+    question: where do I manage permissions
+    tools: [where_is]
+    answerable: "yes"
+  - id: team-163
+    module: team
+    question: what roles are there in rupert
+    tools: [data_guide]
+    answerable: "partial"
+    gap: roles are documented but no tool lists configured roles
+  - id: team-164
+    module: team
+    question: what's the difference between admin and staff
+    tools: [data_guide]
+    answerable: "partial"
+    gap: partly documented; actual role settings are not exposed
+  - id: team-165
+    module: team
+    question: who logged in today
+    tools: [search]
+    answerable: "no"
+    gap: no login lookup in this area; access log lives in System but has no tool
+  - id: team-166
+    module: team
+    question: did Jo log in this week
+    tools: [search]
+    answerable: "no"
+    gap: no login lookup tool
+  - id: team-167
+    module: team
+    question: what staff reports are there
+    tools: [list_reports]
+    answerable: "yes"
+  - id: team-168
+    module: team
+    question: where are employee reports
+    tools: [where_is]
+    answerable: "yes"
+  - id: team-169
+    module: team
+    question: staff report for last month
+    tools: [list_reports, time_keeping_report]
+    answerable: "partial"
+    gap: only hours are available as data; the other employee reports are not tools
+  - id: team-170
+    module: team
+    question: headcount report
+    tools: [list_reports]
+    answerable: "partial"
+    gap: report may exist but no headcount tool
+  - id: team-171
+    module: team
+    question: attendance report for the quarter
+    tools: [time_keeping_report]
+    answerable: "partial"
+    gap: hours only; no attendance or absence analysis
+  - id: team-172
+    module: team
+    question: who has been absent the most
+    tools: [time_keeping_report]
+    answerable: "no"
+    gap: no absence tracking tool
+  - id: team-173
+    module: team
+    question: staff summary for the owners meeting
+    tools: [period_review, time_keeping_report]
+    answerable: "partial"
+    gap: covers hours worked but not headcount, leave, or pay
+  - id: team-174
+    module: team
+    question: export staff hours to a csv
+    tools: [where_is]
+    answerable: "partial"
+    gap: export is on the pages; chat cannot create files
+  - id: team-175
+    module: team
+    question: employee hours report by department
+    tools: [list_reports]
+    answerable: "partial"
+    gap: no department grouping
+  - id: team-176
+    module: team
+    question: which reports are under team
+    tools: [list_reports]
+    answerable: "yes"
+  - id: team-177
+    module: team
+    question: where is learn rupert
+    tools: [where_is]
+    answerable: "yes"
+  - id: team-178
+    module: team
+    question: what is learn rupert
+    tools: [data_guide]
+    answerable: "yes"
+  - id: team-179
+    module: team
+    question: who completed training
+    tools: [search]
+    answerable: "no"
+    gap: no training progress tool
+  - id: team-180
+    module: team
+    question: has Jo finished the onboarding lesson
+    tools: [search]
+    answerable: "no"
+    gap: no training progress tool
+  - id: team-181
+    module: team
+    question: who hasn't done training yet
+    tools: [search]
+    answerable: "no"
+    gap: no training progress tool
+  - id: team-182
+    module: team
+    question: training completion by person
+    tools: [search]
+    answerable: "no"
+    gap: no training progress tool
+  - id: team-183
+    module: team
+    question: assign a training lesson to Sam
+    tools: [how_do_i]
+    answerable: "no"
+    gap: no training assignment tool
+  - id: team-184
+    module: team
+    question: how do i complete a lesson
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-185
+    module: team
+    question: how do new hires get started in rupert
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-186
+    module: team
+    question: is there a lesson on timesheets
+    tools: [where_is]
+    answerable: "partial"
+    gap: page can be found; lesson contents not searchable by tool
+  - id: team-187
+    module: team
+    question: which lessons are required
+    tools: [where_is]
+    answerable: "no"
+    gap: no training requirements tool
+  - id: team-188
+    module: team
+    question: training due dates
+    tools: [where_is]
+    answerable: "no"
+    gap: no training schedule tool
+  - id: team-189
+    module: team
+    question: who is certified on the register
+    tools: [search]
+    answerable: "no"
+    gap: no certification tracking tool
+  - id: team-190
+    module: team
+    question: new hire checklist
+    tools: [list_tasks]
+    answerable: "partial"
+    gap: only if the checklist exists as tasks; no onboarding tool
+  - id: team-191
+    module: team
+    question: create a task to train Sam on the register
+    tools: [create_task]
+    answerable: "yes"
+  - id: team-192
+    module: team
+    question: make a task for Jo to finish the safety lesson by friday
+    tools: [create_task]
+    answerable: "yes"
+  - id: team-193
+    module: team
+    question: move the training task to done
+    tools: [update_task]
+    answerable: "yes"
+  - id: team-194
+    module: team
+    question: open training tasks
+    tools: [list_tasks]
+    answerable: "yes"
+  - id: team-195
+    module: team
+    question: my hours last pay week
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-196
+    module: team
+    question: my scheduled vs worked hours
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-197
+    module: team
+    question: what is my total for this month
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-198
+    module: team
+    question: am i clocked in
+    tools: [time_keeping_report]
+    answerable: "no"
+    gap: no clock-status tool
+  - id: team-199
+    module: team
+    question: clock me out
+    tools: [how_do_i]
+    answerable: "no"
+    gap: no tool can punch the clock
+  - id: team-200
+    module: team
+    question: how do i clock in
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-201
+    module: team
+    question: where is the time clock
+    tools: [where_is]
+    answerable: "yes"
+  - id: team-202
+    module: team
+    question: how do i start a break
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-203
+    module: team
+    question: how do I ask for a correction on my own punch
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-204
+    module: team
+    question: how do i see my timesheet
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-205
+    module: team
+    question: where are my receipts
+    tools: [where_is]
+    answerable: "yes"
+  - id: team-206
+    module: team
+    question: how do i add a receipt
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-207
+    module: team
+    question: receipts to review
+    tools: [order_queues]
+    answerable: "yes"
+  - id: team-208
+    module: team
+    question: how many receipts are waiting for review
+    tools: [order_queues]
+    answerable: "yes"
+  - id: team-209
+    module: team
+    question: what receipts did I submit this month
+    tools: [search]
+    answerable: "partial"
+    gap: search finds records by text; no per-user receipt listing
+  - id: team-210
+    module: team
+    question: did my receipt get approved
+    tools: [search]
+    answerable: "partial"
+    gap: no per-receipt status lookup by person
+  - id: team-211
+    module: team
+    question: what do I do with a receipt for supplies
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-212
+    module: team
+    question: what is the Me page
+    tools: [data_guide]
+    answerable: "yes"
+  - id: team-213
+    module: team
+    question: my tasks
+    tools: [list_tasks]
+    answerable: "yes"
+  - id: team-214
+    module: team
+    question: tasks assigned to me due this week
+    tools: [list_tasks]
+    answerable: "yes"
+  - id: team-215
+    module: team
+    question: where is team chat
+    tools: [where_is]
+    answerable: "yes"
+  - id: team-216
+    module: team
+    question: how do i start a chat with the bot
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-217
+    module: team
+    question: how do I ask rupert a question
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-218
+    module: team
+    question: what can i ask rupert about staff
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-219
+    module: team
+    question: can the bot approve timesheets
+    tools: [data_guide]
+    answerable: "yes"
+  - id: team-220
+    module: team
+    question: can i add someone to the team chat
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-221
+    module: team
+    question: who can use team chat
+    tools: [data_guide]
+    answerable: "partial"
+    gap: access rules are documented; no tool lists current chat users
+  - id: team-222
+    module: team
+    question: how do I clear the chat
+    tools: [how_do_i]
+    answerable: "yes"
+  - id: team-223
+    module: team
+    question: report a problem with the time clock
+    tools: [submit_feedback]
+    answerable: "yes"
+  - id: team-224
+    module: team
+    question: feature request show who is working now
+    tools: [submit_feedback]
+    answerable: "yes"
+  - id: team-225
+    module: team
+    question: did my earlier feedback about schedules get looked at
+    tools: [list_my_feedback]
+    answerable: "yes"
+  - id: team-226
+    module: team
+    question: is there a place to message staff
+    tools: [where_is]
+    answerable: "partial"
+    gap: team chat is for the owners and bots; no staff messaging tool
+  - id: team-227
+    module: team
+    question: announce the holiday hours to everyone
+    tools: [how_do_i]
+    answerable: "no"
+    gap: no tool can send announcements
+  - id: team-228
+    module: team
+    question: what is today's date
+    tools: [get_workspace_info]
+    answerable: "yes"
+  - id: team-229
+    module: team
+    question: what time zone are the timesheets in
+    tools: [get_workspace_info]
+    answerable: "yes"
+  - id: team-230
+    module: team
+    question: what is the pay week
+    tools: [data_guide]
+    answerable: "yes"
+  - id: team-231
+    module: team
+    question: what dates is this pay week
+    tools: [metric, get_workspace_info]
+    answerable: "partial"
+    gap: named periods resolve dates but the tool returns figures; date range may be inferred
+  - id: team-232
+    module: team
+    question: how many hours did we work last week vs the week before
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-233
+    module: team
+    question: how are hours and sales this week
+    tools: [period_review]
+    answerable: "yes"
+  - id: team-234
+    module: team
+    question: hours worked and sales last month
+    tools: [period_review]
+    answerable: "yes"
+  - id: team-235
+    module: team
+    question: sales per labor hour this week
+    tools: [metric, time_keeping_report]
+    answerable: "partial"
+    gap: both inputs exist but no combined sales-per-hour metric
+  - id: team-236
+    module: team
+    question: who has the best sales per hour
+    tools: [metric, time_keeping_report]
+    answerable: "no"
+    gap: sales are not attributed to staff by tool
+  - id: team-237
+    module: team
+    question: sales by cashier
+    tools: [sales_summary]
+    answerable: "no"
+    gap: no staff attribution on sales in the tools
+  - id: team-238
+    module: team
+    question: which employee rang the most sales yesterday
+    tools: [sales_summary]
+    answerable: "no"
+    gap: no staff attribution on sales
+  - id: team-239
+    module: team
+    question: who deposited the drawer
+    tools: [search]
+    answerable: "no"
+    gap: no staff attribution tool
+  - id: team-240
+    module: team
+    question: cash drawer shortages by employee
+    tools: [search]
+    answerable: "no"
+    gap: no per-employee drawer variance tool
+  - id: team-241
+    module: team
+    question: anything team-related I should fix before close
+    tools: [compliance_check]
+    answerable: "yes"
+  - id: team-242
+    module: team
+    question: team items needing attention
+    tools: [compliance_check]
+    answerable: "yes"
+  - id: team-243
+    module: team
+    question: whats waiting in team
+    tools: [compliance_check, order_queues]
+    answerable: "yes"
+  - id: team-244
+    module: team
+    question: timesheets leave and pay runs outstanding
+    tools: [compliance_check]
+    answerable: "yes"
+  - id: team-245
+    module: team
+    question: pls show hrs for everyone lst week
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-246
+    module: team
+    question: whos wrking overtime
+    tools: [time_keeping_report]
+    answerable: "partial"
+    gap: no overtime computation; only raw hours
+  - id: team-247
+    module: team
+    question: hrs worked by jo and sam this month
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-248
+    module: team
+    question: and last month?
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-249
+    module: team
+    question: what about Riley
+    tools: [time_keeping_report]
+    answerable: "yes"
+  - id: team-250
+    module: team
+    question: break that down by person
+    tools: [time_keeping_report]
+    answerable: "yes"
