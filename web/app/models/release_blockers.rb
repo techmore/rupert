@@ -26,7 +26,7 @@ class ReleaseBlockers
   def self.load(path)
     data = YAML.safe_load_file(path) || {}
     new(release: data['release'].presence, tracker_issue: data['tracker_issue'],
-        items: Array(data['items']).map { |raw| parse_item(raw) })
+      items: Array(data['items']).map { |raw| parse_item(raw) })
   end
 
   def self.parse_item(raw)
@@ -34,7 +34,7 @@ class ReleaseBlockers
     raise ArgumentError, "release blocker #{raw['id']}: status must be open or done" unless STATUSES.include?(status)
 
     Item.new(id: raw.fetch('id').to_s, title: raw.fetch('title').to_s, needed: raw['needed'].to_s,
-             issues: Array(raw['issues']).map { |number| Integer(number) }, status: status)
+      issues: Array(raw['issues']).map { |number| Integer(number) }, status: status)
   end
   private_class_method :parse_item
 

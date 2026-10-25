@@ -48,7 +48,7 @@ class ReleaseGateTest < ActionDispatch::IntegrationTest
   test 'staff and readers never see the gate' do
     %w[manager reader].each do |role|
       user = User.create!(tenant: Current.tenant, email: "gate-#{role}@example.com", role: role,
-                          password: 'password123')
+        password: 'password123')
       post login_path, params: { email: user.email, password: 'password123' }
       get root_path
       assert_select '[data-release-gate]', count: 0
