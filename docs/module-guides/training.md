@@ -25,7 +25,7 @@ Staff reach their assignments from **Training** in the staff workspace navigatio
 
 ### Training (owner-made modules)
 
-Migration `20261025140000_create_training_assignments`:
+Migration `20261025150000_create_training_assignments`:
 
 - `training_modules`: `title`, `body` (plain text, up to 50,000 characters), `video_url` (https
   only), `revision`, `created_by_id`, `updated_by_id`. `revision` goes up whenever the title, text,
