@@ -21,12 +21,17 @@ class EmployeeWorkSummaryTest < ActiveSupport::TestCase
     EmployeeWorkSummary.new(employee: @worker, from: @from, to: @from + 6)
   end
 
-  test 'estimate uses effective dated rates marked overtime and never a future rate' do
+  test 'estimate uses effective dated rates and never a future rate; overtime is straight time while pay rules leave it off' do
     assert_equal 10, summary.hours
-    assert_equal 23500, summary.gross_cents
+    assert_equal 21000, summary.gross_cents
     assert_equal 2000, summary.rate_for(@from).hourly_rate_cents
     assert_equal 2500, summary.rate_for(@from + 2).hourly_rate_cents
     assert_equal 2500, @worker.current_pay_rate.hourly_rate_cents
+  end
+
+  test 'entries marked overtime earn the pay rules multiplier once overtime is turned on' do
+    PayRules.save!({ overtime_enabled: true, overtime_multiplier: '2' }, actor: @user)
+    assert_equal 26000, summary.gross_cents
   end
 
   test 'missing and salary rates do not invent zero pay or a salary amount' do
@@ -41,7 +46,7 @@ class EmployeeWorkSummaryTest < ActiveSupport::TestCase
     assert_equal 2, summary.clock_hours
     assert_equal 2, summary.clock_hours(@from)
     assert_equal 10, summary.hours
-    assert_equal 23500, summary.gross_cents
+    assert_equal 21000, summary.gross_cents
   end
 
   test 'record from a foreign workspace and excessive report windows are rejected' do

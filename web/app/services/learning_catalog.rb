@@ -139,7 +139,7 @@ class LearningCatalog
     'reserve' => ['Minimum reserve', 'The cash level you want to stay above. Weeks whose projected closing falls below it are highlighted; leaving it blank checks for negative cash only.'],
     # People: pay
     'gross_pay' => ['Gross pay', 'Pay before deductions: hours multiplied by the pay rate, or the salary share for the period, plus any manual payslip amount. Finalizing locks it; it is not a payslip sent to anyone.'],
-    'deductions' => ['Deductions', 'Amounts withheld from gross pay. Unless entered by hand, Rupert fills a flat 15% estimate when a run is finalized, which is a placeholder and not a tax calculation.'],
+    'deductions' => ['Deductions', 'Amounts withheld from gross pay. Unless entered by hand, Rupert fills a flat 15% estimate when payslips are generated or a run is finalized. It is a placeholder, not a tax calculation; real deductions need a qualified payroll review.'],
     'net_pay' => ['Net to pay', 'Gross pay minus deductions for each payslip, added across the run. Marking a run paid records that decision; Rupert does not move money.']
   }.freeze
 

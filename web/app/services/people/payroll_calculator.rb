@@ -3,11 +3,20 @@
 module People
   # Turns approved timesheets (and current pay rates) into payslips for a pay
   # run. Hourly employees are paid from their approved hours; salaried staff are
-  # paid a prorated slice of their annual salary. Deductions default to a flat
-  # 15% payroll-tax estimate and can be adjusted per payslip before finalizing.
+  # paid a prorated slice of their annual salary.
+  #
+  # Overtime follows the workspace PayRules (#423): off by default, so every
+  # hour is paid at the hourly rate. When an owner turns it on, worked hours
+  # (regular and overtime entries; not PTO or holiday) over the threshold in
+  # each seven-day work week are paid at the multiplier. Only days inside the
+  # pay run count toward a week that straddles the pay run's start or end.
+  #
+  # Deductions are a PLACEHOLDER: a flat 15% estimate on any payslip without a
+  # hand-entered amount. It is not a tax or withholding calculation; real
+  # deductions wait for qualified payroll review (#424, #425).
   class PayrollCalculator
     TAX_ESTIMATE = 0.15
-    OVERTIME_MULTIPLIER = 1.5
+    WORKED_TYPES = %w[regular overtime].freeze
 
     # Rebuilds the payslips for a draft pay run. Returns the payslips.
     def self.generate!(pay_run)
@@ -20,7 +29,9 @@ module People
 
         pay_run.payslips.destroy_all
 
-        approved_hours(pay_run).each do |employee_id, (hours, overtime)|
+        rules = PayRules.load(pay_run.tenant_id)
+        approved_hours(pay_run).each do |employee_id, days|
+          hours = days.values.sum { |types| types.values.sum }
           employee = People::Employee.find(employee_id)
           rate = employee.current_pay_rate
           next if rate.nil?
@@ -29,7 +40,7 @@ module People
             employee: employee,
             pay_rate: rate,
             hours: hours,
-            gross_cents: gross_for(employee, hours, overtime, pay_run),
+            gross_cents: gross_for(employee, hours, overtime_hours(days, rules), rules, pay_run),
             deductions_cents: 0,
             net_cents: 0
           )
@@ -39,7 +50,7 @@ module People
       end
     end
 
-    # Applies the default tax estimate to every payslip that has none.
+    # Applies the placeholder 15% estimate to every payslip that has none.
     def self.apply_default_deductions(pay_run)
       pay_run.payslips.each do |slip|
         next if slip.deductions_cents.positive?
@@ -52,13 +63,15 @@ module People
       end
     end
 
-    def self.gross_for(employee, hours, overtime, pay_run)
+    # Hourly: every hour at the rate, plus the premium (multiplier − 1) on
+    # overtime hours. Overtime hours are zero unless PayRules turns it on.
+    def self.gross_for(employee, hours, overtime, rules, pay_run)
       rate = employee.current_pay_rate
       return 0 if rate.nil?
 
       if rate.pay_type == 'hourly'
-        regular = [hours.to_f - overtime.to_f, 0].max
-        ((regular * rate.hourly_rate_cents) + (overtime.to_f * rate.hourly_rate_cents * OVERTIME_MULTIPLIER)).round
+        premium = overtime.to_d * rate.hourly_rate_cents * (rules.overtime_multiplier - 1)
+        ((hours.to_d * rate.hourly_rate_cents) + premium).round.to_i
       else
         salary_for(rate, pay_run)
       end
@@ -86,23 +99,35 @@ module People
       end
     end
 
-    # Approved hours per employee inside the pay window: [total, overtime].
+    # Hours over the PayRules threshold in each seven-day work week, counting
+    # worked entries only. Zero when overtime is off (the default).
+    def self.overtime_hours(days, rules)
+      return 0 unless rules.overtime_enabled?
+
+      weeks = Hash.new(0.to_d)
+      days.each do |day, types|
+        weeks[rules.week_start(day)] += WORKED_TYPES.sum { |type| types.fetch(type, 0).to_d }
+      end
+      weeks.values.sum { |worked| [worked - rules.overtime_threshold_hours, 0].max }
+    end
+
+    # Approved hours per employee inside the pay window:
+    # { employee_id => { worked_on => { work_type => hours } } }.
     def self.approved_hours(pay_run)
       rows = People::Timesheet.non_demo.approved
                               .where('period_start <= ? AND period_end >= ?', pay_run.period_end, pay_run.period_start)
                               .joins(:entries)
                               .where(timesheet_entries: { worked_on: pay_run.period_start..pay_run.period_end, tenant_id: Current.tenant_id })
-                              .group('timesheets.employee_id', 'timesheet_entries.work_type')
+                              .group('timesheets.employee_id', 'timesheet_entries.worked_on', 'timesheet_entries.work_type')
                               .sum('timesheet_entries.hours')
 
-      totals = Hash.new { |hash, key| hash[key] = [0.0, 0.0] }
-      rows.each do |(employee_id, work_type), hours|
-        total, overtime = totals[employee_id]
-        totals[employee_id] = [total + hours, work_type == 'overtime' ? overtime + hours : overtime]
+      totals = Hash.new { |hash, employee| hash[employee] = Hash.new { |days, day| days[day] = {} } }
+      rows.each do |(employee_id, worked_on, work_type), hours|
+        totals[employee_id][worked_on.to_date][work_type] = hours.to_d
       end
       totals
     end
 
-    private_class_method :gross_for, :salary_for, :approved_hours
+    private_class_method :gross_for, :salary_for, :approved_hours, :overtime_hours
   end
 end
