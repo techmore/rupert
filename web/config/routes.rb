@@ -721,6 +721,7 @@ Rails.application.routes.draw do
 
   get '/w/:token/orders/:order_number', to: 'warehouse_orders#show', as: :warehouse_order
 
+  get '/calendar', to: 'calendar#show', as: :calendar
   get '/marketing', to: 'marketing/workspace#index', as: :marketing
   post '/marketing/toggle', to: 'marketing/workspace#toggle', as: :marketing_toggle
   namespace :marketing do
@@ -755,6 +756,15 @@ Rails.application.routes.draw do
       post :review, on: :member
     end
     resources :campaigns, only: %i[new create edit update]
+    resources :events, only: %i[index show new create edit update] do
+      post :transition, on: :member
+      resources :work_items, controller: 'event_work_items', path: 'work', only: [:create] do
+        post :transition, on: :member
+      end
+      resources :results, controller: 'event_results', only: %i[create destroy] do
+        post :count, on: :collection
+      end
+    end
     resources :communities, only: %i[new create edit update] do
       post :check_rules, on: :member
     end

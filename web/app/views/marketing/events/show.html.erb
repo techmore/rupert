@@ -1,0 +1,128 @@
+<% content_for :title, @event.title %>
+<% details = @event.details %>
+<% kind = @event.kind_definition %>
+<% menu = [] %>
+<% menu << ['Edit', edit_marketing_event_path(@event)] if @can_write %>
+<% menu << ['Open calendar', calendar_path(show: 'marketing', month: @event.start_on&.strftime('%Y-%m'))] %>
+<% menu << ['Event link', details['url'], { target: '_blank', rel: 'noopener noreferrer' }] if details['url'].present? %>
+<% events = @can_write ? kind.events_from(@event.status).select { |name| @event.may_transition?(name, Current.user) } : [] %>
+<div class="space-y-6">
+  <%= page_header @event.title, subtitle: event_when(@event), eyebrow: 'Marketing · Event', menu: menu do %>
+    <%= work_status_pill(@event.status) %>
+    <% events.each_with_index do |name, index| %>
+      <%= button_to work_event_label(name), transition_marketing_event_path(@event), params: { event: name }, class: index.zero? ? 'btn-primary' : 'btn-ghost', form_class: 'contents' %>
+    <% end %>
+  <% end %>
+
+  <section class="section-card" aria-label="Event details">
+    <dl class="facts">
+      <div><dt>When</dt><dd><%= event_when(@event) %></dd></div>
+      <div><dt>Time zone</dt><dd><%= details['time_zone'] %></dd></div>
+      <div><dt>Venue</dt><dd><%= details['venue'].presence || 'None' %></dd></div>
+      <div><dt>Channel</dt><dd><%= Marketing::WorkKinds::CHANNELS[details['channel']] || 'None' %></dd></div>
+      <div><dt>Store location</dt><dd><%= @location&.picker_label || 'Any location' %></dd></div>
+      <div><dt>Campaign</dt><dd><%= @campaign&.name || 'None' %></dd></div>
+      <div><dt>Discount code</dt><dd><%= @offer&.code || 'None' %></dd></div>
+      <div><dt>Owner</dt><dd><%= @event.assignee&.display_name || 'Unassigned' %></dd></div>
+      <div><dt>Status</dt><dd><%= work_status_label(@event.status) %></dd></div>
+    </dl>
+    <% if @event.description.present? %><p class="whitespace-pre-wrap text-sm"><%= @event.description %></p><% end %>
+  </section>
+
+  <section class="section-card" id="event-work" aria-label="Work for this event">
+    <%= section_heading 'Work for this event', hint: 'Campaign tasks share the status, owner and history of every other task.' %>
+    <% if @work.empty? %>
+      <p class="text-sm text-mocha">No tasks yet.<%= ' Add the first thing that needs doing before the event.' if @can_write %></p>
+    <% else %>
+      <ul class="divide-y divide-fog text-sm">
+        <% @work.first(100).each do |item| %>
+          <% overdue = item.due_on && item.due_on < Date.current && !item.kind_definition.done_statuses.include?(item.status) %>
+          <li class="flex flex-wrap items-center justify-between gap-2 py-2">
+            <span><span class="font-medium text-ink"><%= item.title %></span> <span class="text-xs text-taupe">· <%= item.assignee&.display_name || 'Unassigned' %><% if item.due_on %> · due <%= item.due_on.strftime('%b %-d, %Y') %><% end %></span></span>
+            <span class="flex flex-wrap items-center gap-2">
+              <%= work_status_pill(item.status, overdue: overdue) %>
+              <% item.kind_definition.events_from(item.status).select { |name| item.may_transition?(name, Current.user) }.each do |name| %>
+                <%= button_to work_event_label(name), transition_marketing_event_work_item_path(@event, item), params: { event: name }, class: 'btn-ghost btn-sm', form_class: 'contents' %>
+              <% end %>
+            </span>
+          </li>
+        <% end %>
+      </ul>
+      <% if @work.length > 100 %><p class="text-xs text-taupe">First 100 tasks shown.</p><% end %>
+    <% end %>
+    <% if @can_write %>
+      <%= form_with url: marketing_event_work_items_path(@event), scope: :work_item, class: 'toolbar' do |f| %>
+        <div class="toolbar-field"><%= f.label :title, 'Task', class: 'field-label' %><%= f.text_field :title, maxlength: 200, required: true, class: 'input w-full', placeholder: 'Print flyers' %></div>
+        <div class="toolbar-field"><%= f.label :assignee_id, 'Owner', class: 'field-label' %><%= f.select :assignee_id, @people.map { |p| [p.display_name, p.id.to_s] }, { include_blank: 'Unassigned' }, class: 'select w-full' %></div>
+        <div class="toolbar-field"><%= f.label :due_on, 'Due', class: 'field-label' %><%= f.date_field :due_on, value: @event.start_on, class: 'input' %></div>
+        <div class="toolbar-actions"><%= f.submit 'Add task', class: 'btn-ghost', data: { turbo_submits_with: 'Saving…' } %></div>
+      <% end %>
+    <% end %>
+  </section>
+
+  <section class="section-card" id="event-results" aria-label="Redemptions and results">
+    <%= section_heading 'Redemptions and results', hint: 'Counted from orders Rupert already stores, or entered by hand. Nothing is read from or sent to Shopify or Square here.' %>
+    <% if @results.empty? %>
+      <p class="text-sm text-mocha">No results yet.<%= ' Count the code from stored orders after the event, or enter a tally by hand.' if @can_write %></p>
+    <% else %>
+      <div class="table-region" role="region" tabindex="0" aria-label="Results">
+        <table class="table">
+          <thead><tr>
+            <th scope="col" class="th">Code</th><th scope="col" class="th">Counted from</th><th scope="col" class="th">Order source</th>
+            <th scope="col" class="th num">Redemptions</th><th scope="col" class="th num">Revenue</th><th scope="col" class="th">Summary</th>
+            <th scope="col" class="th"><span class="sr-only">Actions</span></th>
+          </tr></thead>
+          <tbody>
+            <% @results.first(200).each do |result| %>
+              <tr>
+                <td class="td font-medium text-ink"><%= result.code.presence || 'No code' %></td>
+                <td class="td text-mocha"><%= result.basis_label %><% if result.window_starts_at %><span class="block text-xs text-taupe"><%= result.window_starts_at.in_time_zone(details['time_zone']).strftime('%b %-d, %-l:%M %p') %> – <%= result.window_ends_at&.in_time_zone(details['time_zone'])&.strftime('%b %-d, %-l:%M %p %Z') %></span><% end %></td>
+                <td class="td text-mocha"><%= Location::SOURCE_NAMES.fetch(result.order_source, result.order_source.titleize).presence || 'Any' %></td>
+                <td class="td num"><%= number_with_delimiter(result.redemptions) %></td>
+                <td class="td num"><%= result_money(result.revenue_cents, result.currency) %></td>
+                <td class="td text-mocha"><%= result.summary %></td>
+                <td class="td text-right"><% if @can_write %><%= button_to 'Remove', marketing_event_result_path(@event, result), method: :delete, class: 'btn-ghost btn-sm', form_class: 'contents', data: { turbo_confirm: 'Remove this result?' } %><% end %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      <% totals = @results.group_by(&:currency) %>
+      <p class="text-sm text-mocha">Total: <%= safe_join(totals.map { |currency, rows| "#{number_with_delimiter(rows.sum(&:redemptions))} redemptions, #{result_money(rows.sum(&:revenue_cents), currency)}" }, '; ') %>. Each currency is totalled on its own.</p>
+    <% end %>
+    <% if @can_write %>
+      <% zone = Marketing::WorkKinds.zone_for(@event) %>
+      <%= form_with url: count_marketing_event_results_path(@event), class: 'toolbar' do |f| %>
+        <div class="toolbar-field"><%= f.label :code, 'Code', class: 'field-label' %><%= f.text_field :code, value: @offer&.code, maxlength: 80, required: true, class: 'input w-full' %></div>
+        <div class="toolbar-field"><%= f.label :from, 'From', class: 'field-label' %><%= f.datetime_local_field :from, value: details['starts_at'], class: 'input' %></div>
+        <div class="toolbar-field"><%= f.label :to, 'To', class: 'field-label' %><%= f.datetime_local_field :to, value: details['ends_at'], class: 'input' %></div>
+        <div class="toolbar-actions"><%= f.submit 'Count from stored orders', class: 'btn-ghost', data: { turbo_submits_with: 'Counting…' } %></div>
+      <% end %>
+      <details class="explainer">
+        <summary>Enter a result by hand</summary>
+        <%= form_with url: marketing_event_results_path(@event), scope: :result, class: 'toolbar mt-3' do |f| %>
+          <div class="toolbar-field"><%= f.label :code, 'Code', class: 'field-label' %><%= f.text_field :code, value: @offer&.code, maxlength: 80, class: 'input w-full' %></div>
+          <div class="toolbar-field"><%= f.label :redemptions, 'Redemptions', class: 'field-label' %><%= f.number_field :redemptions, min: 0, required: true, class: 'input' %></div>
+          <div class="toolbar-field"><%= f.label :revenue, 'Revenue', class: 'field-label' %><%= f.text_field :revenue, inputmode: 'decimal', placeholder: '0.00', class: 'input' %></div>
+          <div class="toolbar-field"><%= f.label :currency, 'Currency', class: 'field-label' %><%= f.text_field :currency, value: 'USD', maxlength: 3, class: 'input' %></div>
+          <div class="toolbar-field"><%= f.label :summary, 'Summary', class: 'field-label' %><%= f.text_field :summary, maxlength: 2000, class: 'input w-full', placeholder: 'Paper tally at the booth' %></div>
+          <div class="toolbar-actions"><%= f.submit 'Save', class: 'btn-ghost', data: { turbo_submits_with: 'Saving…' } %></div>
+        <% end %>
+      </details>
+      <%= fold_explainer("Counting reads only the orders Rupert has already synced: orders between the two times#{" (#{zone.name})" if zone} that used the code, are not cancelled or refunded#{', and came from the event’s store location' if details['location_id'].present?}. An order another event already counted is not counted again. Revenue is the order total before tax and tips, kept apart per currency.", class: 'text-sm text-mocha') %>
+    <% end %>
+  </section>
+
+  <section class="section-card" aria-label="History">
+    <%= section_heading 'History' %>
+    <% if @history.empty? %>
+      <p class="text-sm text-mocha">No changes recorded yet.</p>
+    <% else %>
+      <ul class="divide-y divide-fog text-sm">
+        <% @history.each do |row| %>
+          <li class="py-2"><span class="font-medium text-ink"><%= row.label %></span><% if row.action == 'transitioned' %> · <%= work_status_label(row.from_status) %> → <%= work_status_label(row.to_status) %><% end %> <span class="text-xs text-taupe">· <%= row.actor_name %> · <%= row.created_at.strftime('%b %-d, %Y %-l:%M %p') %></span></li>
+        <% end %>
+      </ul>
+    <% end %>
+  </section>
+</div>

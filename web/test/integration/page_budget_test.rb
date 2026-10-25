@@ -16,7 +16,7 @@ class PageBudgetTest < ActionDispatch::IntegrationTest
     root_path: 75, sales_path: 25, inventory_index_path: 25, customers_path: 25, bookkeeping_path: 25,
     finance_expenses_path: 30, finance_cash_flow_path: 40, people_employees_path: 30, people_team_schedule_path: 15,
     people_scheduled_shifts_path: 15, people_timesheets_path: 45, projects_tasks_path: 20, connections_path: 75,
-    system_path: 35, notifications_path: SHELL + 6, books_desk_path: 170, reports_path: 15
+    system_path: 35, notifications_path: SHELL + 6, books_desk_path: 170, reports_path: 15, calendar_path: 20
   }.freeze
 
   setup do

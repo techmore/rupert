@@ -1,0 +1,57 @@
+<% content_for :title, 'Events' %>
+<% can_write = Current.user.can?('marketing.write') %>
+<% filtered = params[:status].present? || params[:campaign_id].present? || params[:when] == 'past' %>
+<div class="space-y-6">
+  <%= page_header 'Events', subtitle: 'Dated promotions with their place or channel, discount code and results.', menu: [['Open calendar', calendar_path(show: 'marketing')]] do %>
+    <% if can_write %><%= link_to 'Add event', new_marketing_event_path, class: 'btn-primary' %><% end %>
+  <% end %>
+
+  <%= form_with url: marketing_events_path, method: :get, class: 'toolbar' do |f| %>
+    <div class="toolbar-field"><%= f.label :when, 'When', class: 'field-label' %><%= f.select :when, [['Upcoming and current', 'upcoming'], ['Past', 'past']], { selected: params[:when] }, class: 'select w-full' %></div>
+    <div class="toolbar-field"><%= f.label :status, 'Status', class: 'field-label' %><%= f.select :status, Work::Registry.fetch('marketing_event').statuses.map { |s| [work_status_label(s), s] }, { include_blank: 'All statuses', selected: params[:status] }, class: 'select w-full' %></div>
+    <div class="toolbar-field"><%= f.label :campaign_id, 'Campaign', class: 'field-label' %><%= f.select :campaign_id, @campaigns.map { |c| [c.name, c.id] }, { include_blank: 'All campaigns', selected: params[:campaign_id] }, class: 'select w-full' %></div>
+    <div class="toolbar-actions"><%= f.submit 'Apply', class: 'btn-primary' %><% if filtered %><%= link_to 'Clear', marketing_events_path, class: 'btn-ghost' %><% end %></div>
+  <% end %>
+
+  <% if @events.empty? %>
+    <section class="card">
+      <% if filtered %>
+        <%= empty_state 'No events match these filters', hint: 'Clear the filters to see upcoming events.' do %><%= link_to 'Clear filters', marketing_events_path, class: 'btn-ghost' %><% end %>
+      <% else %>
+        <%= empty_state 'No upcoming events yet', hint: 'Add an event with its date, place or channel and the code it promotes.' do %>
+          <% if can_write %><%= link_to 'Add event', new_marketing_event_path, class: 'btn-ghost' %><% end %>
+        <% end %>
+      <% end %>
+    </section>
+  <% else %>
+    <section class="card overflow-hidden" aria-label="Events">
+      <div class="table-region" role="region" tabindex="0" aria-label="Events">
+        <table class="table">
+          <thead><tr>
+            <th scope="col" class="th">Event</th><th scope="col" class="th">When</th><th scope="col" class="th">Where</th>
+            <th scope="col" class="th">Campaign</th><th scope="col" class="th">Owner</th><th scope="col" class="th">Status</th>
+            <th scope="col" class="th"><span class="sr-only">Actions</span></th>
+          </tr></thead>
+          <tbody>
+            <% @events.first(30).each do |event| %>
+              <tr>
+                <td class="td font-medium text-ink"><%= link_to event.title, marketing_event_path(event), class: 'text-olive-deep hover:underline' %></td>
+                <td class="td whitespace-nowrap text-mocha"><%= event_when(event) %></td>
+                <td class="td text-mocha"><%= event_place(event, @locations) %></td>
+                <td class="td text-mocha"><%= event.source.try(:name) || 'None' %></td>
+                <td class="td text-mocha"><%= event.assignee&.display_name || 'Unassigned' %></td>
+                <td class="td"><%= work_status_pill(event.status) %></td>
+                <td class="td text-right"><%= link_to 'Open', marketing_event_path(event), class: 'btn-ghost btn-sm' %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  <% end %>
+
+  <nav class="flex gap-3" aria-label="Event pages">
+    <% if @page > 1 %><%= link_to 'Previous', marketing_events_path(request.query_parameters.merge(page: @page - 1)), class: 'btn-ghost btn-sm' %><% end %>
+    <% if @events.length > 30 %><%= link_to 'Next', marketing_events_path(request.query_parameters.merge(page: @page + 1)), class: 'btn-ghost btn-sm' %><% end %>
+  </nav>
+</div>

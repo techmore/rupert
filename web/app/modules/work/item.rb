@@ -39,6 +39,8 @@ module Work
 
     # A new item starts in its kind's first status unless one was given (the column default belongs to tasks).
     before_validation(on: :create) { self.status = kind_definition.initial_status if known_kind? && (status.blank? || !status_changed?) }
+    # A kind may derive shared columns from its own fields (an event's start_on/due_on from its local start and end).
+    before_validation { kind_definition.prepare&.call(self) if known_kind? && !kind_definition.bespoke? }
 
     scope :of_kind, ->(key) { where(kind: key.to_s) }
     scope :assigned_to, ->(user_id) { where(assignee_id: user_id.to_s) }
@@ -131,6 +133,7 @@ module Work
       end
       errors.add(:status, 'is not a status of this kind') unless definition.statuses.include?(status.to_s)
       definition.validate_details(self, details)
+      definition.check&.call(self)
     end
 
     def status_changed_by_transition
