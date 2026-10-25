@@ -21,8 +21,12 @@ Under `web/app/modules/projects/`: `Projects::Project`, `ProjectMember`, `Projec
 downloads) and `TaskDependency`. `Project` and `Task` include `TenantScoped`. `projects.goal_id`
 must point at a goal in the same workspace.
 
-There is no shared "project" table for requests, orders, campaigns or training yet; that
-decision is open ([#407](https://github.com/techmore/rupert/issues/407)).
+Tasks live in the shared work-item table ([#407](https://github.com/techmore/rupert/issues/407),
+[design](../architecture/shared-work-items.md)): the `tasks` table carries a `kind` (`task` for
+every task), and `Projects::Task` reads only that kind. `Work::Item` reads every kind, and
+`work_item_events` keeps an append-only history of each task's creation, field changes, status
+changes and deletion, with who did it. Requests, training, marketing work and order follow-up move
+in during later phases.
 
 ## Permissions and tenant boundary
 
@@ -78,7 +82,9 @@ outside system. Notifications are in-app only (no email or push).
 The task controller writes Activity log entries (`task_created`, `task_updated`,
 `task_deleted`, `task_transitioned`, `task_moved`), and the task page shows the latest 25.
 Tasks created by an assistant are marked as such; a task approved from team chat links back to
-the chat message and records who asked. CSV exports are logged.
+the chat message and records who asked. CSV exports are logged. Every save of a task, from any
+path (web, MCP, team chat, request triage, jobs), also writes a `work_item_events` row with the
+field before/after values; those rows cannot be edited or deleted and outlive the task.
 
 ## Failure and recovery
 
@@ -94,12 +100,15 @@ the chat message and records who asked. CSV exports are logged.
 `test/integration/tasks_flow_test.rb`, `project_management_test.rb`,
 `employee_tasks_access_test.rb`, `projects_guide_test.rb`, `task_ai_activity_test.rb`,
 `mcp_server_test.rb`, `test/policies/projects_task_policy_test.rb`,
-`test/javascript/task_board_test.mjs`, and the team chat approval tests
+`test/javascript/task_board_test.mjs`, `test/models/work/item_test.rb`,
+`test/services/shared_work_items_migration_test.rb`, and the team chat approval tests
 (`test/services/team_chat/actions_test.rb`).
 
 ## Open gaps
 
-- [#407](https://github.com/techmore/rupert/issues/407): decide on one shared project model.
+- [#407](https://github.com/techmore/rupert/issues/407): decided (one shared table); phase 1 moved
+  tasks in. Later phases are listed in the [design](../architecture/shared-work-items.md). The item
+  history is not shown on the task page yet.
 - [#417](https://github.com/techmore/rupert/issues/417): one calendar for task deadlines and
   marketing events, with time zone, location, status and links.
 - [#406](https://github.com/techmore/rupert/issues/406): assistant requests triaged into tracked
