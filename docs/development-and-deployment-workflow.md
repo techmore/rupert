@@ -102,6 +102,9 @@ application JS it links to must answer 200 with a body; a failure there also
 rolls back. It records a failed SHA to avoid retry loops. A manual
 request can retry a failed SHA. See the [SER8 updater runbook](../deploy/ser8/README.md#auto-deploy-rupert-autodeploy)
 for file state, commands and limitations.
+The operator steps for a normal install, verification, a stable tag and
+rollback (revert PR, or an emergency manual rollback in click-only mode) are in
+the [release process](ops/release-process.md).
 
 A stable `v*` tag/release, an automatic `main` install, a successful `/up`, and
 product/operator acceptance are separate events. A release must target the

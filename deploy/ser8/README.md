@@ -63,8 +63,12 @@ and fetches every compiled stylesheet and the `application-<digest>.js` script t
 answer 200 with a non-empty body. If any step, the health check or the smoke check fails it rolls the code back to the previous commit and restarts; **database migrations are not reverted**, so
 migrations must stay backward compatible (the log says how many new migrations the commit carried and names the
 pre-deploy backup). A commit that failed is recorded in `/var/lib/rupert-autodeploy/failed-sha` and is not retried
-until `main` moves on, so a broken release does not restart the app every 5 minutes; delete that file to retry. A running scheduled job is interrupted by the restart. It does not take the
-shared manual-deploy lock, so avoid deploying by hand at the same moment.
+until `main` moves on, so a broken release does not restart the app every 5 minutes; delete that file to retry. A running scheduled job is interrupted by the restart. It serializes on
+`/run/rupert-autodeploy.lock`, not the older manual `/var/lock/rupert-deploy.lock` named in earlier deployment
+receipts; any hand-run step in `/opt/rupert` (an emergency rollback, replacing this script) takes
+`/run/rupert-autodeploy.lock` with `flock`, and a manual rollback first switches to click-only mode or the next poll
+moves the checkout back to `main`. The normal, emergency and stable-release paths are in the
+[release process](../../docs/ops/release-process.md).
 
 ```sh
 install -m755 deploy/ser8/rupert-autodeploy.sh /usr/local/sbin/

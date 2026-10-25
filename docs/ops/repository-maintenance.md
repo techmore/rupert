@@ -44,21 +44,18 @@ Employee mobile workflow; signing and distributing a binary are separate.
 
 ## Git and deployment
 
-On October 16, 2026, the `0cd3be6` running release had 259 commits beyond
-`main`, while `main` had 11 commits absent from that release. This is a
-stacked release history, not an interchangeable set of checkouts. Pending
-feature branches and PRs must be reviewed in dependency order; deleting
-branches or replacing production with `main` would lose deployed features.
+Production now tracks `main`: start each change from current `origin/main` in
+its own worktree and land it through a PR. Once merged and green on the exact
+integrated SHA, the SER8 updater installs it (automatically by default, or on
+request in click-only mode) and writes a release receipt. The rules are in the
+[development and deployment workflow](../development-and-deployment-workflow.md)
+and the [release process](release-process.md). Keep other active chats'
+uncommitted changes in their own checkouts.
 
-Before editing, record the actual production revision and start from that
-revision when preparing a release. Keep each change committed and pushed.
-Use a PR against its immediate base so the diff contains the intended work.
-Keep other active chats' uncommitted changes in their own checkouts.
-
-Before promotion, require a clean live checkout and compare its revision
-to the tested base under the deployment lock. If another release advanced
-production, incorporate that release and retest the combined candidate.
-Retain prior source and deployment receipts. A Git push does not deploy.
+Earlier, the running release was a hand-promoted stack ahead of
+`main` (on October 16, `0cd3be6` had 259 commits beyond `main`). That history
+is why older deployment receipts mention `/var/lock/rupert-deploy.lock` and
+promoting a reviewed revision by hand; it no longer describes how changes ship.
 
 ## Branding
 
