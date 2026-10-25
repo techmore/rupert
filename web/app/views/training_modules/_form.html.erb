@@ -1,0 +1,28 @@
+<div class="card card-pad">
+  <%= form_with model: training_module, url: (training_module.persisted? ? training_module_path(training_module) : training_modules_path), class: 'space-y-6' do |f| %>
+    <% if training_module.errors.any? %><div role="alert" class="flash flash-alert"><%= training_module.errors.full_messages.to_sentence %></div><% end %>
+    <fieldset class="space-y-4">
+      <legend class="card-title">Training module</legend>
+      <div>
+        <%= f.label :title, 'Title', class: 'field-label' %>
+        <%= f.text_field :title, class: 'input', required: true, maxlength: 200, autocomplete: 'off', aria: { invalid: training_module.errors[:title].any? || nil } %>
+        <% if training_module.errors[:title].any? %><p class="mt-1 text-xs text-rose">Title <%= training_module.errors[:title].to_sentence %></p><% end %>
+      </div>
+      <div>
+        <%= f.label :body, 'What to read and do', class: 'field-label' %>
+        <%= f.text_area :body, rows: 10, maxlength: TrainingModule::BODY_LIMIT, class: 'input', aria: { describedby: 'training-body-help' } %>
+        <p id="training-body-help" class="mt-1 text-xs text-mocha">Plain text. Blank lines start a new paragraph. Add files on the module page after saving.</p>
+      </div>
+      <div>
+        <%= f.label :video_url, 'Video link (optional)', class: 'field-label' %>
+        <%= f.url_field :video_url, class: 'input', maxlength: 500, placeholder: 'https://', aria: { invalid: training_module.errors[:video_url].any? || nil, describedby: 'training-video-help' } %>
+        <% if training_module.errors[:video_url].any? %><p class="mt-1 text-xs text-rose">Video link <%= training_module.errors[:video_url].to_sentence %></p><% end %>
+        <p id="training-video-help" class="mt-1 text-xs text-mocha">The video opens on its own site in a new tab. Rupert does not store or embed video.</p>
+      </div>
+    </fieldset>
+    <div class="form-actions">
+      <%= f.submit 'Save', class: 'btn-primary', data: { turbo_submits_with: 'Saving…' } %>
+      <%= link_to 'Cancel', (training_module.persisted? ? training_module_path(training_module) : training_modules_path), class: 'btn-ghost' %>
+    </div>
+  <% end %>
+</div>

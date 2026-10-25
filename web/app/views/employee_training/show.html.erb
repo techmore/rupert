@@ -1,0 +1,38 @@
+<% training_module = @assignment.training_module %>
+<% content_for :title, training_module.title %>
+<%= page_header training_module.title, eyebrow: 'Training' do %>
+  <% if @assignment.may?('start', Current.user) %>
+    <%= button_to 'Start', start_employee_training_path(@assignment), class: 'btn-primary', data: { turbo_submits_with: 'Saving…' } %>
+  <% elsif @assignment.may?('complete', Current.user) %>
+    <%= button_to 'Mark complete', complete_employee_training_path(@assignment), class: 'btn-primary', data: { turbo_submits_with: 'Saving…' } %>
+  <% end %>
+<% end %>
+<dl class="facts">
+  <div><dt>Status</dt><dd><%= training_status_pill(@assignment) %></dd></div>
+  <div><dt>Due</dt><dd><%= @assignment.due_on ? @assignment.due_on.strftime('%b %-d, %Y') : 'No due date' %></dd></div>
+  <% if @assignment.completed? %><div><dt>Completed</dt><dd><%= @assignment.completed_at.strftime('%b %-d, %Y %-l:%M %p') %></dd></div><% end %>
+</dl>
+<% if @assignment.status == 'assigned' %><p class="text-sm text-mocha">Start the training to record that you are working on it, then mark it complete when you have finished.</p><% end %>
+<section class="card card-pad space-y-3">
+  <h2 class="card-title">What to read and do</h2>
+  <% if training_module.body.present? %><div class="space-y-2 text-sm"><%= simple_format(training_module.body) %></div><% else %><p class="text-sm text-mocha">No text for this module.</p><% end %>
+  <% if training_module.video_url.present? %><p class="text-sm"><%= training_video_link(training_module) %> <span class="text-xs text-mocha">Opens on the video’s own site in a new tab.</span></p><% end %>
+</section>
+<% if @attachments.any? %>
+  <section class="card card-pad space-y-3">
+    <h2 class="card-title">Files</h2>
+    <ul class="row-list">
+      <% @attachments.each do |file| %>
+        <li class="row-item text-sm"><span class="min-w-0 break-all"><%= file.filename %> <span class="text-xs text-taupe"><%= number_to_human_size(file.byte_size) %></span></span><span class="row-item-end"><%= link_to 'Download', employee_training_file_path(@assignment, file), class: 'btn-ghost btn-sm' %></span></li>
+      <% end %>
+    </ul>
+  </section>
+<% end %>
+<section class="card card-pad space-y-3">
+  <h2 class="card-title">History</h2>
+  <ol class="row-list">
+    <% @events.each do |event| %>
+      <li class="row-item text-sm"><span><strong><%= event.label %></strong> · by <%= event.actor_name %></span><span class="row-item-end text-xs text-mocha"><%= event.created_at.strftime('%b %-d, %Y %-l:%M %p') %></span></li>
+    <% end %>
+  </ol>
+</section>

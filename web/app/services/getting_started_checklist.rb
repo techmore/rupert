@@ -12,7 +12,7 @@ class GettingStartedChecklist
   end
 
   ITEM_KEYS = %w[choose_path tour first_lesson finish_path connect_source first_read invite_team check_day customize_dashboard
-                 clock_in open_pos review_queue].freeze
+                 clock_in open_pos review_queue training_module my_training].freeze
 
   attr_reader :user, :journey
 
@@ -93,6 +93,16 @@ class GettingStartedChecklist
           path: '/', done: journey.config.key?('widgets') || manual?('customize_dashboard'), manual: true)
       end
     end
+    if user.can?('hr.write') && !user.employee?
+      # Setup step (#399): configure a module, assign it, and see it completed. Ticks only from real records.
+      list << Item.new(key: 'training_module', title: 'Configure, assign and complete a training module',
+        hint: 'Add a module with text, files or a video link, assign it, and have the person mark it complete.',
+        path: '/training', done: training_completed_in_workspace?, manual: false)
+    end
+    if (mine = my_training_counts).values.sum.positive?
+      list << Item.new(key: 'my_training', title: 'Complete your assigned training', hint: 'Start it, read it through, then mark it complete.',
+        path: '/employee/training', done: mine.fetch('open', 0).zero?, manual: false)
+    end
     list << Item.new(key: 'finish_path', title: "Finish “#{journey.focus[:label]}”", hint: 'Every lesson in your path, at your pace.',
       path: '/learning#your-path', done: journey.path_complete?, manual: false)
     list
@@ -110,6 +120,16 @@ class GettingStartedChecklist
     SyncRun.where(tenant_id: user.tenant_id, status: 'success').exists?
   rescue StandardError
     false
+  end
+
+  def training_completed_in_workspace?
+    TrainingAssignment.unscoped.where(tenant_id: user.tenant_id, status: 'completed').exists?
+  end
+
+  # {'open' => n, 'completed' => n} for this person's own assignments.
+  def my_training_counts
+    TrainingAssignment.unscoped.where(tenant_id: user.tenant_id, assignee_id: user.id, status: TrainingAssignment::STATUSES - ['cancelled'])
+      .group(Arel.sql("CASE WHEN status = 'completed' THEN 'completed' ELSE 'open' END")).count
   end
 
   def teammates?
