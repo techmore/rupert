@@ -1,0 +1,37 @@
+<% content_for :title, 'Training' %>
+<% can_write = Current.user.can?('hr.write') %>
+<div class="space-y-6">
+  <%= page_header 'Training', subtitle: 'Your own training modules, who they are assigned to and who has finished.' do %>
+    <% if can_write %><%= link_to 'Add training module', new_training_module_path, class: 'btn-primary' %><% end %>
+  <% end %>
+  <section class="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Training summary">
+    <div class="stat"><p class="stat-label">Assigned</p><p class="stat-value mt-1"><%= @totals.fetch('assigned', 0) %></p></div>
+    <div class="stat"><p class="stat-label">In progress</p><p class="stat-value mt-1"><%= @totals.fetch('in_progress', 0) %></p></div>
+    <div class="stat"><p class="stat-label">Completed</p><p class="stat-value mt-1"><%= @totals.fetch('completed', 0) %></p></div>
+    <div class="stat"><p class="stat-label">Overdue</p><p class="stat-value mt-1"><%= @overdue_total %></p></div>
+  </section>
+  <div class="card">
+    <div class="table-region" role="region" tabindex="0" aria-label="Training modules">
+      <table class="table">
+        <thead><tr><th scope="col" class="th">Module</th><th scope="col" class="th num">Assigned</th><th scope="col" class="th num">In progress</th><th scope="col" class="th num">Completed</th><th scope="col" class="th num">Overdue</th><th scope="col" class="th"><span class="sr-only">Actions</span></th></tr></thead>
+        <tbody>
+          <% if @modules.empty? %>
+            <tr><td colspan="6" class="empty-row">No training modules yet. <%= can_write ? 'Add your first training module.' : 'Someone with staff editing can add one.' %></td></tr>
+          <% end %>
+          <% @modules.each do |training_module| %>
+            <% counts = @counts[training_module.id] %>
+            <tr>
+              <td class="td"><p class="font-medium text-ink"><%= training_module.title %></p><p class="text-xs text-taupe">Revision <%= training_module.revision %> · updated <%= training_module.updated_at.strftime('%b %-d, %Y') %></p></td>
+              <td class="td num"><%= counts['assigned'] %></td>
+              <td class="td num"><%= counts['in_progress'] %></td>
+              <td class="td num"><%= counts['completed'] %></td>
+              <td class="td num"><%= @overdue.fetch(training_module.id, 0) %></td>
+              <td class="td text-right"><%= link_to 'Open', training_module_path(training_module), class: 'btn-ghost btn-sm' %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <%= fold_explainer('Staff see only the training assigned to them, under Training in their workspace. They start it, read the text and files, open the video link, and mark it complete. Each step is kept in the history with who did it, when, and which revision of the module they saw. Completing training does not change pay or permissions.', class: 'text-sm text-mocha') %>
+</div>

@@ -51,7 +51,7 @@ module NavigationIconsHelper
     'timesheets' => 'clock', 'time_keeping' => 'clock', 'reports' => 'report', 'books_desk' => 'review', 'register_summary' => 'report', 'sales_tax' => 'report', 'finance_reports' => 'report', 'time_clock' => 'clock',
     'settings' => 'settings', 'platform' => 'platform', 'owner_checklists' => 'review',
     'api_access_tokens' => 'shield', 'permissions' => 'shield', 'roadmap' => 'document', 'customers' => 'customers',
-    'learning' => 'learn', 'training' => 'learn', 'style_guide' => 'document'
+    'learning' => 'learn', 'training' => 'learn', 'training_modules' => 'learn', 'style_guide' => 'document'
   }.freeze
 
   def navigation_icon(key, css_class: 'nav-symbol')

@@ -63,6 +63,18 @@ Rails.application.routes.draw do
     get '/schedule', action: :schedule, as: :schedule
     get '/reports', action: :reports, as: :reports
   end
+  # Training assigned to the signed-in person (EmployeeTrainingController); never another person's.
+  get '/employee/training', to: 'employee_training#index', as: :employee_training_index
+  get '/employee/training/:id', to: 'employee_training#show', as: :employee_training
+  post '/employee/training/:id/start', to: 'employee_training#start', as: :start_employee_training
+  post '/employee/training/:id/complete', to: 'employee_training#complete', as: :complete_employee_training
+  get '/employee/training/:id/files/:file_id', to: 'employee_training#file', as: :employee_training_file
+  # Owner-made training modules, their files and assignments (managers: hr.read to see, hr.write to change).
+  resources :training_modules, path: 'training', only: %i[index show new create edit update] do
+    resources :attachments, only: %i[create show destroy], controller: 'training_attachments'
+    resources :assignments, only: :create, controller: 'training_assignments'
+  end
+  post '/training/assignments/:id/cancel', to: 'training_assignments#cancel', as: :cancel_training_assignment
   get '/employee/reports', to: 'employee_workspace#reports', as: :employee_reports
   get '/employee/pay', to: 'employee_workspace#pay', as: :employee_pay
   get '/employee/schedule', to: 'employee_workspace#schedule', as: :employee_schedule

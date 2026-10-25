@@ -14,6 +14,7 @@ class LearningController < AuthenticatedController
     @matching_lessons = LearningCatalog.search_lessons(@lessons, @query)
     @tours = PageTours.available(Current.user)
     @checklist = GettingStartedChecklist.new(Current.user, journey: @journey)
+    @open_training = TrainingAssignment.for_user(Current.user).open_items.count
 
     respond_to do |format|
       format.html

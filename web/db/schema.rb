@@ -3397,6 +3397,71 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_25_160000) do
     t.index ["tenant_id", "status"], name: "index_timesheets_on_tenant_id_and_status"
   end
 
+  create_table "training_assignment_events", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "training_assignment_id", null: false
+    t.bigint "actor_id"
+    t.string "actor_name", null: false
+    t.string "action", null: false
+    t.string "from_status"
+    t.string "to_status", null: false
+    t.integer "module_revision", null: false
+    t.string "note"
+    t.datetime "created_at", null: false
+    t.index ["tenant_id", "training_assignment_id", "created_at"], name: "idx_training_assignment_events_timeline"
+    t.index ["training_assignment_id"], name: "index_training_assignment_events_on_training_assignment_id"
+  end
+
+  create_table "training_assignments", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "training_module_id", null: false
+    t.bigint "assignee_id", null: false
+    t.bigint "assigned_by_id"
+    t.date "due_on"
+    t.string "status", default: "assigned", null: false
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.bigint "completed_by_id"
+    t.integer "completed_revision"
+    t.datetime "cancelled_at"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "assignee_id", "status"], name: "idx_training_assignments_by_assignee"
+    t.index ["tenant_id", "training_module_id", "status"], name: "idx_training_assignments_by_module"
+    t.index ["training_module_id"], name: "index_training_assignments_on_training_module_id"
+  end
+
+  create_table "training_attachments", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "training_module_id", null: false
+    t.bigint "uploaded_by_id"
+    t.string "filename", null: false
+    t.string "content_type", null: false
+    t.integer "byte_size", null: false
+    t.string "sha256", null: false
+    t.text "content_base64", null: false
+    t.datetime "removed_at"
+    t.bigint "removed_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "training_module_id"], name: "index_training_attachments_on_tenant_id_and_training_module_id"
+    t.index ["training_module_id"], name: "index_training_attachments_on_training_module_id"
+  end
+
+  create_table "training_modules", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "title", null: false
+    t.text "body"
+    t.string "video_url"
+    t.integer "revision", default: 1, null: false
+    t.bigint "created_by_id"
+    t.bigint "updated_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "title"], name: "index_training_modules_on_tenant_id_and_title"
+  end
+
   create_table "uploads", force: :cascade do |t|
     t.string "tenant_id", null: false
     t.string "status", default: "received", null: false
@@ -3913,6 +3978,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_25_160000) do
   add_foreign_key "task_time_entries", "tasks"
   add_foreign_key "tasks", "projects"
   add_foreign_key "tax_form_filings", "tax_payees"
+  add_foreign_key "training_assignment_events", "training_assignments"
+  add_foreign_key "training_assignments", "training_modules"
+  add_foreign_key "training_attachments", "training_modules"
   add_foreign_key "warehouse_payment_attempts", "warehouse_carts"
   add_foreign_key "warehouse_stock_holds", "orders"
   add_foreign_key "warehouse_stock_holds", "users", column: "released_by_id"
