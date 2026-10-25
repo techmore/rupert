@@ -2,8 +2,11 @@
 
 This workflow uses the repository's
 [development and deployment workflow](../development-and-deployment-workflow.md).
-Publishing a nightly prerelease does not itself install it on SER8; the live
-revision depends on the updater mode and must be verified separately.
+Publishing a nightly prerelease does not install anything on SER8. The live
+revision is whatever green `main` SHA the updater last installed (automatically,
+or on request in click-only mode); verify it with the updater's release receipt
+or `X-Rupert-Build`, as the [SER8 runbook](../../deploy/ser8/README.md#release-receipts)
+describes.
 
 The nightly Codex task runs at 02:00 America/New_York. It reviews integrated
 changes, investigates regressions, prepares tested fixes and release notes, and
@@ -75,7 +78,8 @@ honest unavailable state.
 
 Production behavior follows the installed updater and operator-selected mode;
 `deploy/ser8/README.md` documents automatic versus requested installs. Merging a
-green commit can make it eligible for that existing updater. This task does not
-invoke a production install or change updater mode. Check `/up`'s
+green commit makes it eligible for that updater, which in automatic mode installs
+it within minutes, independently of any nightly tag. This task does not invoke a
+production install or change updater mode. Check `/up`'s
 `X-Rupert-Build` and the rendered header before saying the live app is updated.
 A published prerelease is not merchant, payment, device or operator acceptance.
