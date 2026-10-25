@@ -4,7 +4,6 @@
 # plain-language flags. Nothing here approves, edits or pays anything.
 class TimesheetInsights
   LONG_DAY_HOURS = 12
-  WEEKLY_OVERTIME_HOURS = 40
 
   Summary = Struct.new(:regular, :overtime, :other, :total, :days_worked, :longest_day, :flags, keyword_init: true)
 
@@ -35,7 +34,10 @@ class TimesheetInsights
     flags = []
     flags << 'No entries' if summary.total.zero?
     flags << 'Overtime recorded' if summary.overtime.positive?
-    flags << "Over #{WEEKLY_OVERTIME_HOURS} hours without overtime" if summary.total - summary.other > WEEKLY_OVERTIME_HOURS && summary.overtime.zero? && (sheet.period_end - sheet.period_start) < 7
+    rules = PayRules.current
+    if summary.total - summary.other > rules.overtime_threshold_hours && summary.overtime.zero? && (sheet.period_end - sheet.period_start) < 7
+      flags << "Over #{rules.overtime_threshold_label} hours without overtime"
+    end
     flags << "Day over #{LONG_DAY_HOURS} hours" if summary.longest_day > LONG_DAY_HOURS
     flags << 'Staff member inactive' if sheet.employee && !sheet.employee.active?
     flags

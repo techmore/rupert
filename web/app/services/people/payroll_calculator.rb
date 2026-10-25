@@ -69,7 +69,7 @@ module People
     # overtime hours. Overtime hours are zero unless PayRules turns it on.
     def self.gross_for(rate, hours, overtime, pay_run, rules: nil)
       if rate.pay_type == 'hourly'
-        premium = overtime.to_d.zero? ? 0 : overtime.to_d * rate.hourly_rate_cents * ((rules || PayRules.current).overtime_multiplier - 1)
+        premium = (rules || PayRules.current).overtime_premium_cents(overtime.to_d, rate.hourly_rate_cents)
         ((hours.to_d * rate.hourly_rate_cents) + premium).round.to_i
       else
         salary_for(rate, pay_run)
@@ -107,7 +107,7 @@ module People
       days.each do |day, types|
         weeks[rules.week_start(day)] += WORKED_TYPES.sum { |type| types.fetch(type, 0).to_d }
       end
-      weeks.values.sum { |worked| [worked - rules.overtime_threshold_hours, 0].max }
+      weeks.values.sum { |worked| rules.hours_over_threshold(worked) }
     end
 
     # Approved hours per employee inside the pay window:
