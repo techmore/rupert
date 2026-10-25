@@ -20,6 +20,7 @@ module People
     validates :name, presence: true
     validates :period_start, :period_end, presence: true
     validate :period_end_after_start
+    validate :no_overlapping_pay_run, on: :create
 
     scope :recent, ->(limit = 100) { order(period_end: :desc).limit(limit) }
     scope :by_status, ->(status) { status.present? && status != 'all' ? where(status: status) : all }
@@ -60,6 +61,18 @@ module People
       return if period_start.nil? || period_end.nil?
 
       errors.add(:period_end, 'must be after the start') if period_end < period_start
+    end
+
+    # One pay run per day of work (#424): a second run over the same dates (a double-click, a retry, or a new run
+    # for a week already paid) would pay the same approved hours twice. Off-cycle amounts go on the existing run
+    # as manual payslips while it is a draft.
+    def no_overlapping_pay_run
+      return if period_start.nil? || period_end.nil? || period_end < period_start
+
+      other = self.class.where('period_start <= ? AND period_end >= ?', period_end, period_start).order(:period_start).first
+      return unless other
+
+      errors.add(:base, "#{other.name} (#{other.period_label}) already covers some of these dates. Open that pay run instead.")
     end
   end
 end

@@ -111,20 +111,24 @@ race on SQLite. Restore follows the
 `test/services/timesheet_production_readiness_test.rb`,
 `demo_timesheets_test.rb`, `time_keeping_test.rb`, `punch_history_test.rb`,
 `square_timecard_history_test.rb`, `ctrax_timesheet_schedule_test.rb`,
-`employee_source_timesheets_test.rb`, and the Square timecard service and job
+`employee_source_timesheets_test.rb`, the release-gate walkthrough
+`test/acceptance/timesheet_lifecycle_walkthrough_test.rb` (#422), and the Square timecard service and job
 tests under `test/services` and `test/jobs`.
 
 ## Open gaps
 
-- [#422](https://github.com/techmore/rupert/issues/422): a full synthetic
-  lifecycle walk (entry, correction, submit, review, reject/reopen, export,
-  timezone edges) has not been recorded.
-- DST: covered by `test/services/timesheet_production_readiness_test.rb` (an
-  overnight shift across the Nov 1 2026 change splits at local midnight and pays its
-  real 9 hours; a shift across the Wednesday/Thursday pay-week boundary pays each
-  part in its own pay run).
-- Hours on timesheet entries and payslips are stored to 0.01 h (36 seconds); each
-  day's part of a clock shift is rounded to that precision. Punch times themselves
-  are never rounded.
+- [#422](https://github.com/techmore/rupert/issues/422): the synthetic lifecycle walk
+  (clock, correction, submit, reject/reopen, approve, history, export, payroll lock) is
+  `test/acceptance/timesheet_lifecycle_walkthrough_test.rb`; the issue closed on its
+  recorded evidence.
+- Timezone and DST: clock shifts are split into days at local midnight (America/New_York)
+  and paid on elapsed time, so a shift across the November daylight-saving change counts
+  the repeated hour (22:00 EDT to 03:00 EST is 6 hours).
+  `test/services/timesheet_production_readiness_test.rb` covers an overnight shift across
+  the Nov 1 2026 change (splits at local midnight, pays its real 9 hours) and a shift
+  across the Wednesday/Thursday pay-week boundary (each part in its own pay run).
+- Hours on timesheet entries and payslips are stored to 0.01 h (36 seconds,
+  `decimal(6,2)`); each day's part of a clock shift is rounded to that precision. Punch
+  times themselves are never rounded.
 - Commission and tip estimates use Rupert clock shifts only; Square and C-Trax
   punches do not count as "punched in".

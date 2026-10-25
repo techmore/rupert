@@ -19,8 +19,16 @@ module People
 
     def show
       authorize(@pay_run)
-      @slip = People::Payslip.new(pay_run: @pay_run)
-      @employees = People::Employee.ordered
+      respond_to do |format|
+        format.html do
+          @slip = People::Payslip.new(pay_run: @pay_run)
+          @employees = People::Employee.ordered
+        end
+        format.csv do
+          ActivityLogger.log('data_exported', subject: @pay_run, details: "Pay run CSV · #{@pay_run.payslips.count} payslips")
+          send_data PayRunCsv.generate(@pay_run), filename: "pay-run-#{@pay_run.id}-#{@pay_run.period_start.iso8601}.csv", type: 'text/csv'
+        end
+      end
     end
 
     def new
@@ -92,6 +100,10 @@ module People
 
     def finalize
       authorize(:module, :payroll_write?)
+      unless @pay_run.draft?
+        return redirect_to(people_pay_run_path(@pay_run),
+          alert: @pay_run.paid? ? 'This pay run is already paid.' : 'This pay run is already finalized.')
+      end
       if @pay_run.payslips.empty?
         return redirect_to(people_pay_run_path(@pay_run),
           alert: 'Add at least one payslip first.')
@@ -100,7 +112,7 @@ module People
       People::PayrollCalculator.apply_default_deductions(@pay_run)
       # The amounts are encrypted (#421), so they are added up in Ruby.
       @pay_run.update!(total_gross_cents: @pay_run.total_gross_cents, total_net_cents: @pay_run.total_net_cents)
-      @pay_run.finalize! if @pay_run.may_finalize?
+      @pay_run.finalize!
       ActivityLogger.log('pay_run_finalized', subject: @pay_run,
         details: "$#{format('%.2f', @pay_run.total_net_cents / 100.0)}")
       redirect_to(people_pay_run_path(@pay_run), notice: 'Pay run finalized.')
@@ -129,11 +141,22 @@ module People
       params.require(:pay_run).permit(:name, :period_start, :period_end, :notes)
     end
 
+    # The form takes dollars (`gross`, `deductions`); `gross_cents`/`deductions_cents` are still accepted from older
+    # clients. Net is gross less deductions.
     def add_payslip_params
-      params.require(:payslip).permit(:employee_id, :pay_rate_id, :hours, :gross_cents, :deductions_cents, :notes)
-            .tap do |p|
-              p[:net_cents] = p[:gross_cents].to_i - p[:deductions_cents].to_i if p[:gross_cents].present?
-            end
+      raw = params.require(:payslip).permit(:employee_id, :pay_rate_id, :hours, :gross, :deductions, :gross_cents, :deductions_cents, :notes)
+      attrs = raw.except(:gross, :deductions).to_h
+      attrs[:gross_cents] = dollars_to_cents(raw[:gross]) if raw[:gross].present?
+      attrs[:deductions_cents] = dollars_to_cents(raw[:deductions]) if raw[:deductions].present?
+      attrs[:deductions_cents] = 0 if attrs[:deductions_cents].blank?
+      attrs[:net_cents] = attrs[:gross_cents].to_i - attrs[:deductions_cents].to_i if attrs[:gross_cents].present?
+      attrs
+    end
+
+    def dollars_to_cents(value)
+      (BigDecimal(value.to_s.delete(',$ ')) * 100).round.to_i
+    rescue ArgumentError
+      -1 # fails the payslip's "not negative" validation with a message instead of saving a wrong amount
     end
   end
 end

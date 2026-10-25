@@ -38,7 +38,8 @@ refuses a pay run from another tenant.
 ## Routes and API
 
 Web: `/people/pay_runs` (index, show, new, create, and `generate_payslips`,
-`add_payslip`, `remove_payslip`, `finalize`, `pay`), `/people/incentives`,
+`add_payslip`, `remove_payslip`, `finalize`, `pay`; `/people/pay_runs/:id.csv` downloads the
+payslips, `PayRunCsv`), `/people/incentives`,
 Settings → Pay rules (`/settings#pay-rules`). No `/api/v1` endpoint or MCP tool
 reads or writes payroll.
 
@@ -59,8 +60,11 @@ alert on the pay run page, never dropped silently. Every payslip
 without deductions gets a flat **15% placeholder estimate** (`TAX_ESTIMATE`),
 labelled "Deductions (estimate)" on the pay run page. It is not tax or
 withholding; real deductions await qualified payroll review (#424, #425).
-Finalize needs at least one payslip and stores the totals. Paying needs a
-finalized run and records today's date. A timesheet covered by a payslip
+Finalize needs a draft with at least one payslip and stores the totals; finalizing
+again is refused. Paying needs a finalized run and records today's date. Pay runs
+cannot overlap: a second run for any of the same dates (a double-click, a retry, a
+new run for a week already paid) is refused, so approved hours are paid once.
+Manual payslips are entered in dollars. A timesheet covered by a payslip
 cannot be reopened.
 
 ## UI patterns
@@ -86,7 +90,7 @@ table was found).
 Actions that are not allowed in the current state redirect with a one-sentence
 alert (for example "Finalize the pay run before paying."). Regeneration deletes
 and rebuilds a draft's payslips inside a tenant lock, so repeating it does not
-duplicate pay. There is no "unpay" or "unfinalize" action; recovery after a
+duplicate pay, and an overlapping second pay run is refused. There is no "unpay" or "unfinalize" action; recovery after a
 wrong finalize is Unknown beyond a database restore
 ([backup and restore runbook](../ops/backup-restore-runbook.md)).
 
@@ -99,7 +103,10 @@ wrong finalize is Unknown beyond a database restore
 `live_commissions_test.rb`, `test/services/payroll_calculator_test.rb`
 (overtime off by default, threshold/multiplier/week start from `PayRules`,
 straddled weeks, salaried, placeholder deductions) and
-`employee_work_summary_test.rb`. `test/services/sensitive_field_encryption_test.rb`
+`employee_work_summary_test.rb`. The release-gate walkthrough
+`test/acceptance/payroll_walkthrough_test.rb` (#424) runs a hand-computed pay run
+from clock punches through correction, finalize, CSV export and paid
+(`WALKTHROUGH_LOG=1` prints the steps). `test/services/sensitive_field_encryption_test.rb`
 covers ciphertext on disk, the Ruby totals and the backfill.
 
 ## Open gaps
@@ -110,8 +117,9 @@ covers ciphertext on disk, the Ruby totals and the backfill.
   work summary; whether the threshold method matches the owner's legal
   overtime rule still needs payroll review.
 - [#424](https://github.com/techmore/rupert/issues/424): reconcile synthetic
-  examples through draft, finalize, correction/reversal and export. No pay run
-  export or reversal exists.
+  examples through draft, finalize, correction/reversal and export. Draft
+  correction and CSV export are walked in `test/acceptance/payroll_walkthrough_test.rb`;
+  there is still no reversal after a run is finalized or paid.
 - [#425](https://github.com/techmore/rupert/issues/425): calculator output is
   not payroll-ready (flat 15% placeholder deduction, no tips or training bonuses in
   payslips, commission display-only).
