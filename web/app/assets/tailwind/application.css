@@ -2137,7 +2137,7 @@ body.tour-active { overflow-x:hidden; }
 .pos-cart[data-step="cart"] .pos-checkout,.pos-cart[data-step="cart"] .pos-back-button { display:none; }
 .pos-cart[data-step="checkout"] .pos-cart-form,.pos-cart[data-step="checkout"] .pos-checkout-button,.pos-cart[data-step="checkout"] .pos-recheck,.pos-cart[data-step="checkout"] .pos-cart-clear { display:none; }
 
-/* Checkout step: register, Cash / Card as two big buttons, cash received. */
+/* Checkout step: register, Cash / Card / Card (A920) as big buttons, cash received. */
 .pos-checkout { display:flex;flex:1;flex-direction:column;gap:.75rem;min-height:0;overflow-y:auto;padding:.75rem 1rem; }
 .pos-checkout-title { font-family:var(--font-display);font-size:1.15rem; }
 .pos-checkout-hint { font-size:.8rem;color:var(--color-mocha); }
@@ -2148,6 +2148,11 @@ body.tour-active { overflow-x:hidden; }
 .pos-tender:hover:not(:disabled) { border-color:var(--color-olive); }
 .pos-tender[aria-pressed="true"] { border-color:var(--color-olive);background:color-mix(in srgb,var(--color-olive) 12%,var(--color-paper));color:var(--color-olive-deep); }
 .pos-tender:disabled { opacity:.5;cursor:not-allowed; }
+/* Card (A920): full width under Cash / Card, with its ? help beside it (touch-sized). */
+.pos-tender-a920 { grid-column:1 / -1;display:grid;grid-template-columns:1fr auto;gap:.6rem;align-items:center; }
+.pos-tender-help > summary { min-width:2.75rem;min-height:2.75rem;justify-content:center; }
+.pos-tender-help .term-mark { width:1.75rem;height:1.75rem;font-size:.95rem; }
+.pos-tender-help .term-panel { left:auto;right:0; }
 .pos-tender-blockers { display:grid;gap:.3rem;font-size:.8rem;color:var(--color-mocha); }
 .pos-tender-blockers a { font-weight:600;color:var(--color-olive-deep);text-decoration:underline; }
 .pos-cash { display:grid;gap:.4rem; }

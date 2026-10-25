@@ -82,6 +82,8 @@ module PosScreenHelper
     if tender == 'card'
       return 'Card payments for this gateway are turned off until production use is confirmed' if setting&.gateway_provider == 'nmi' && !setting.nmi_sandbox?
       return 'Card payments are not set up for this store' unless setting&.card_enabled && setting.verified_at.present?
+    elsif tender == PosCheckout::TERMINAL_CARD
+      return 'Card (A920) is off until real cash and A920 sales are turned on for this store' unless setting&.cash_enabled
     else
       return 'Cash checkout is not turned on for this store' unless setting&.cash_enabled
     end
