@@ -121,15 +121,10 @@ end
 group :test do
   # Coverage for the sync engine and money paths (bin/check-coverage)
   gem "simplecov", require: false
-  # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
-  gem "capybara"
-  gem "selenium-webdriver", ">= 4.14"
   gem "webmock"
   gem "mocha"
   gem "minitest", "~> 6.0"
   gem "minitest-mock"
-  gem "factory_bot_rails"
-  gem "faker"
 end
 
 gem "shopify_app", "~> 23.0"
