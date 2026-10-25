@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 # Everything the item page shows about one Shopify variant, from every source Rupert reads: its real name (not
-# Shopify's "Default Title"), image, price, cost of goods from the paired C-Trax item, margin per unit, vendor and
-# type, stock on each platform and the last 30 days of sales by channel. Read-only; unknown stays unknown.
+# Shopify's "Default Title"), image, price, cost of goods (entered in Rupert, else from the paired C-Trax item), margin
+# per unit, vendor and type, stock on each platform and the last 30 days of sales by channel. Read-only; unknown
+# stays unknown.
 class ItemProfile
   SALES_DAYS = 30
   PLACEHOLDER_TITLES = ['Default Title', 'Default', 'Regular'].freeze
@@ -50,12 +51,28 @@ class ItemProfile
     end
   end
 
-  # Cost of goods as entered in C-Trax for the paired item, or nil (with why).
-  def cost_cents = ctrax&.dig(:record, 'cost_cents')
+  # The cost a person entered for this variant in Rupert, if any.
+  def item_cost
+    return @item_cost if defined?(@item_cost)
+
+    @item_cost = ItemCost.includes(:updated_by).find_by(shopify_variant_id: variant.id)
+  end
+
+  def ctrax_cost_cents = ctrax&.dig(:record, 'cost_cents')
+
+  # Cost of goods: entered in Rupert first, else as entered in C-Trax for the paired item, else nil (with why).
+  def cost_cents = item_cost ? item_cost.cost_cents : ctrax_cost_cents
+
+  def cost_source
+    if item_cost then :rupert
+    elsif ctrax_cost_cents then :ctrax
+    end
+  end
 
   def cost_note
+    return item_cost.note if item_cost
     return 'Not paired with a C-Trax item yet' unless ctrax
-    return 'Not entered in C-Trax' unless cost_cents
+    return 'Not entered in C-Trax' unless ctrax_cost_cents
 
     "As entered in C-Trax (#{ctrax[:how].downcase})"
   end
