@@ -5,7 +5,7 @@
 <% usd = close.groups.select { |group| group.currency == 'USD' } %>
 <% connection = close.connection %>
 <% latest = close.latest_transaction_export %>
-<% sections = [['Checks', '#close-checks'], ['Totals', '#close-totals'], ['Deposit', '#close-deposit'], ['Transactions', '#close-transactions']] %>
+<% sections = [['Checks', '#close-checks'], ['Totals', '#close-totals'], ['Deposit', '#close-deposit'], ['Card tenders', '#close-tenders'], ['Transactions', '#close-transactions']] %>
 <% sections << ['Review', '#close-review'] if retail_business_access?('sales.write') %>
 <% menu = [['Download CSV', swipesimple_days_path(date: @date, format: :csv)], ['C-Trax daily close for this date', ctrax_days_path(date: @date)]] %>
 <% menu << ['Day close for this date', financial_close_path(day: @date.iso8601, anchor: 'daily-close-swipesimple')] if Current.user.can?('reports.read') %>
@@ -162,6 +162,8 @@
       </details>
     <% end %>
   </section>
+
+  <%= render 'swipesimple_days/tender_match', match: close.tender_match, date: @date %>
 
   <section id="close-transactions" class="retail-anchor section-card">
     <%= section_heading 'Transactions', hint: 'Every transaction in the latest export, including excluded attempts.' %>
