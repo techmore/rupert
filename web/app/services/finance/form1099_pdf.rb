@@ -8,7 +8,7 @@ module Finance
   # Recipient copies (Copy B) of 1099-NEC and 1099-MISC on plain paper, a substitute format for the recipient, and a
   # payer summary for the records. Copy A for the IRS (and Form 1096) must be the official scannable red forms or an
   # electronic filing, so they are not produced here. The recipient TIN is truncated to its last four digits, which
-  # the IRS allows on recipient copies.
+  # the IRS allows on recipient copies. A corrected form has the CORRECTED box checked, as on the IRS form.
   class Form1099Pdf
     INK = '1C1917'
     MOCHA = '57534E'
@@ -16,6 +16,16 @@ module Finance
     COPY_B_NOTE = 'This is important tax information and is being furnished to the IRS. If you are required to file a ' \
                   'return, a negligence penalty or other sanction may be imposed on you if this income is taxable and the IRS ' \
                   'determines that it has not been reported.'
+
+    # A form to print from an issued snapshot (Finance::TaxFormFiling): the form, box, name and total as issued, with
+    # the payee's address on file.
+    Copy = Struct.new(:payee, :paid_cents, :corrected, keyword_init: true) do
+      def self.from(filing)
+        payee = filing.tax_payee.dup
+        payee.assign_attributes(form_type: filing.form_type, misc_box: filing.misc_box, legal_name: filing.legal_name, tin_last4: filing.tin_last4)
+        new(payee: payee, paid_cents: filing.paid_cents, corrected: filing.corrected?)
+      end
+    end
 
     def initialize(year:, rows:, payer:)
       @year = year
@@ -43,8 +53,10 @@ module Finance
       payee = row.payee
       nec = payee.form_type == 'nec'
       title = nec ? 'Form 1099-NEC' : 'Form 1099-MISC'
+      corrected = corrected?(row)
       pdf.fill_color(INK)
-      pdf.text("#{title} · #{@year}", size: 16, style: :bold)
+      corrected_box(pdf, corrected)
+      pdf.text("#{title} · #{@year}#{' · CORRECTED' if corrected}", size: 16, style: :bold)
       pdf.text(nec ? 'Nonemployee Compensation' : 'Miscellaneous Information', size: 10)
       pdf.text('Copy B · For Recipient', size: 10, style: :bold)
       pdf.move_down(10)
@@ -89,11 +101,24 @@ module Finance
       @rows.group_by { |row| row.payee.form_type }.each do |form, rows|
         pdf.text("#{Finance::TaxPayee::FORMS[form]}: #{rows.size} #{rows.size == 1 ? 'form' : 'forms'}, #{money(rows.sum(&:paid_cents))}", size: 11, style: :bold)
         rows.each do |row|
-          pdf.text("#{plain(row.payee.legal_name)} · TIN ending #{row.payee.tin_last4 || '----'} · #{plain(row.payee.form_label)} · #{money(row.paid_cents)}", size: 9)
+          pdf.text("#{plain(row.payee.legal_name)} · TIN ending #{row.payee.tin_last4 || '----'} · #{plain(row.payee.form_label)} · " \
+                 "#{money(row.paid_cents)}#{' · corrected' if corrected?(row)}", size: 9)
         end
         pdf.move_down(8)
       end
       pdf.text('No payees need a 1099 for this year.', size: 10) if @rows.empty?
+    end
+
+    def corrected?(row) = row.respond_to?(:corrected) && row.corrected.present?
+
+    # The IRS form's "CORRECTED (if checked)" box, above the form.
+    def corrected_box(pdf, checked)
+      top = pdf.cursor
+      pdf.stroke_color(INK)
+      pdf.stroke_rectangle([0, top], 9, 9)
+      pdf.draw_text('X', at: [1.5, top - 7.5], size: 9, style: :bold) if checked
+      pdf.draw_text('CORRECTED (if checked)', at: [14, top - 7.5], size: 8, style: :bold)
+      pdf.move_down(14)
     end
 
     def box(pdf, x, y, width, height, label, lines)

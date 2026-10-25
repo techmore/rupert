@@ -3,7 +3,7 @@
 module Finance
   # 1099 payees: who may get a 1099, which form and box, and their W-9 details (#472). The TIN is only ever shown masked.
   class TaxPayeesController < AuthenticatedController
-    before_action :set_payee, only: %i[edit update]
+    before_action :set_payee, only: %i[edit update correct form]
     before_action -> { response.headers['Cache-Control'] = 'private, no-store' }
 
     def index
@@ -12,6 +12,7 @@ module Finance
       default_year = Date.current.month <= 3 ? Date.current.year - 1 : Date.current.year
       @year = params[:year].to_i.between?(2000, Date.current.year) ? params[:year].to_i : default_year
       @totals = Finance::Form1099Totals.new(year: @year)
+      @lock = Finance::Form1099Lock.new(@totals)
       @payer = Finance::TaxPayer.load
       @can_write = Current.user.can?('tax.write')
       return unless request.format.csv?
@@ -20,7 +21,8 @@ module Finance
       send_data totals_csv, filename: "1099-totals-#{@year}.csv", type: 'text/csv'
     end
 
-    # Recipient copies (Copy B) for every payee who needs a 1099 that year, then a payer summary.
+    # Recipient copies (Copy B), then a payer summary. Before the year is issued: every payee who needs a 1099, from
+    # the current totals. Once issued: the latest form issued to each payee, as it was issued (corrections marked).
     def forms
       authorize(:module, :tax_read?)
       year = params[:year].to_i
@@ -29,10 +31,62 @@ module Finance
       payer = Finance::TaxPayer.load
       return redirect_to(payer_finance_tax_payees_path, alert: 'Add the payer details first: they print on every form.') unless payer.complete?
 
-      rows = Finance::Form1099Totals.new(year: year).needed
-      ActivityLogger.log('tax_forms_generated', details: "1099 recipient copies #{year}: #{rows.size}")
+      lock = Finance::Form1099Lock.new(Finance::Form1099Totals.new(year: year))
+      rows =
+        if lock.issued?
+          lock.entries.filter_map(&:filing).sort_by(&:legal_name).map { |filing| Finance::Form1099Pdf::Copy.from(filing) }
+        else
+          lock.totals.needed
+        end
+      ActivityLogger.log('tax_forms_generated', details: "1099 recipient copies #{year}: #{rows.size}#{' (as issued)' if lock.issued?}")
       send_data Finance::Form1099Pdf.new(year: year, rows: rows, payer: payer).render, filename: "1099-recipient-copies-#{year}.pdf",
         type: 'application/pdf', disposition: 'inline'
+    end
+
+    # Year-end lock: records the totals on every 1099 due for the year that has not been issued yet.
+    def issue
+      authorize(:module, :tax_write?)
+      year = params[:year].to_i
+      return redirect_to(finance_tax_payees_path, alert: 'Choose a tax year.') unless year.between?(2000, Date.current.year)
+
+      filings = Finance::Form1099Lock.new(Finance::Form1099Totals.new(year: year)).issue!
+      return redirect_to(finance_tax_payees_path(year: year), alert: "No 1099s left to issue for #{year}.") if filings.empty?
+
+      filings.each do |filing|
+        ActivityLogger.log('tax_form_issued', subject: filing.tax_payee,
+          details: "#{year} #{filing.form_label} · #{money_text(filing.paid_cents)}")
+      end
+      redirect_to finance_tax_payees_path(year: year),
+        notice: "#{helpers.pluralize(filings.size, '1099')} issued for #{year}. The totals are locked: print the recipient copies."
+    end
+
+    # A corrected 1099 from the recomputed totals, when they differ from the form last issued. The earlier form stays.
+    def correct
+      authorize(:module, :tax_write?)
+      year = params[:year].to_i
+      payer = Finance::TaxPayer.load
+      return redirect_to(payer_finance_tax_payees_path, alert: 'Add the payer details first: they print on every form.') unless payer.complete?
+
+      lock = Finance::Form1099Lock.new(Finance::Form1099Totals.new(year: year))
+      previous = lock.latest(@payee)
+      filing = lock.correct!(@payee)
+      return redirect_to(finance_tax_payees_path(year: year), alert: "#{@payee.legal_name}'s #{year} totals match the form issued.") unless filing
+
+      ActivityLogger.log('tax_form_corrected', subject: @payee,
+        details: "#{year} #{filing.form_label} · #{money_text(previous.paid_cents)} → #{money_text(filing.paid_cents)}")
+      redirect_to form_finance_tax_payee_path(@payee, filing: filing.id)
+    end
+
+    # One issued form (original or corrected) as Copy B.
+    def form
+      authorize(:module, :tax_read?)
+      filing = Finance::TaxFormFiling.where(tax_payee: @payee).find(params[:filing])
+      payer = Finance::TaxPayer.load
+      return redirect_to(payer_finance_tax_payees_path, alert: 'Add the payer details first: they print on every form.') unless payer.complete?
+
+      ActivityLogger.log('tax_forms_generated', subject: @payee, details: "1099 #{filing.kind} #{filing.tax_year}")
+      pdf = Finance::Form1099Pdf.new(year: filing.tax_year, rows: [Finance::Form1099Pdf::Copy.from(filing)], payer: payer)
+      send_data pdf.render, filename: "1099-#{filing.tax_year}-#{filing.kind}-#{@payee.id}.pdf", type: 'application/pdf', disposition: 'inline'
     end
 
     def payer
@@ -107,6 +161,7 @@ module Finance
     end
 
     def cents(value) = format('%.2f', value.to_i / 100.0)
+    def money_text(value) = helpers.number_to_currency(value.to_i / 100.0)
 
     # Spreadsheet formula injection guard.
     def safe_cell(value) = value.is_a?(String) && value.match?(/\A[=+\-@\t\r]/) ? "'#{value}" : value

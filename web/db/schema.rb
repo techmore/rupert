@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_25_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_25_010000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -3241,6 +3241,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_25_000000) do
     t.index ["tenant_id", "status"], name: "index_tasks_on_tenant_id_and_status"
   end
 
+  create_table "tax_form_filings", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "tax_payee_id", null: false
+    t.integer "tax_year", null: false
+    t.string "kind", null: false
+    t.string "form_type", null: false
+    t.string "misc_box"
+    t.bigint "paid_cents", null: false
+    t.string "legal_name", null: false
+    t.string "tin_last4"
+    t.integer "issued_by_id"
+    t.string "issued_by_name"
+    t.datetime "issued_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tax_payee_id"], name: "index_tax_form_filings_on_tax_payee_id"
+    t.index ["tenant_id", "tax_year", "tax_payee_id"], name: "index_tax_form_filings_on_tenant_year_payee"
+  end
+
   create_table "tax_payees", force: :cascade do |t|
     t.string "tenant_id", null: false
     t.string "payee_key", null: false
@@ -3838,6 +3857,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_25_000000) do
   add_foreign_key "task_dependencies", "tasks", column: "blocker_id"
   add_foreign_key "task_time_entries", "tasks"
   add_foreign_key "tasks", "projects"
+  add_foreign_key "tax_form_filings", "tax_payees"
   add_foreign_key "warehouse_payment_attempts", "warehouse_carts"
   add_foreign_key "warehouse_stock_holds", "orders"
   add_foreign_key "warehouse_stock_holds", "users", column: "released_by_id"

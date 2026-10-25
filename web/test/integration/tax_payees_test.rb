@@ -125,7 +125,152 @@ class TaxPayeesTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test 'issuing a year snapshots each 1099 with who and when, once, and the recipient copies print the issued totals' do
+    lawyer = payee
+    Finance::VendorPayment.create!(vendor: @vendor, amount_cents: 2_500_00, paid_on: Date.new(2026, 3, 1), method: 'check')
+    with_payer do
+      post login_path, params: { email: @admin.email, password: 'password' }
+      get finance_tax_payees_path(year: 2026)
+      assert_includes response.body, 'Not issued'
+      assert_select 'button', text: 'Issue 1 1099 for 2026'
+
+      assert_difference -> { Finance::TaxFormFiling.count }, 1 do
+        post issue_finance_tax_payees_path(year: 2026)
+      end
+      assert_redirected_to finance_tax_payees_path(year: 2026)
+      filing = Finance::TaxFormFiling.last
+      assert_equal [lawyer.id, 2026, 'original', 'misc', '10', 2_500_00, '6789', @admin.id],
+        [filing.tax_payee_id, filing.tax_year, filing.kind, filing.form_type, filing.misc_box, filing.paid_cents, filing.tin_last4, filing.issued_by_id]
+      assert filing.issued_at.present?
+      assert ActivityLog.exists?(action: 'tax_form_issued', subject_id: lawyer.id.to_s)
+
+      assert_no_difference -> { Finance::TaxFormFiling.count } do
+        post issue_finance_tax_payees_path(year: 2026)
+      end
+      get finance_tax_payees_path(year: 2026)
+      assert_includes response.body, 'Locked'
+      assert_includes response.body, 'Issued'
+      assert_raises(ActiveRecord::ReadOnlyRecord) { filing.reload.update!(paid_cents: 1) }
+      assert_raises(ActiveRecord::ReadOnlyRecord) { filing.destroy }
+    end
+  end
+
+  test 'a late payment after issue shows the difference, and a corrected form is marked and kept beside the original' do
+    lawyer = payee
+    Finance::VendorPayment.create!(vendor: @vendor, amount_cents: 2_500_00, paid_on: Date.new(2026, 3, 1), method: 'check')
+    with_payer do
+      post login_path, params: { email: @admin.email, password: 'password' }
+      post issue_finance_tax_payees_path(year: 2026)
+      original = Finance::TaxFormFiling.last
+      Finance::VendorPayment.create!(vendor: @vendor, amount_cents: 300_00, paid_on: Date.new(2026, 11, 1), method: 'check')
+
+      get finance_tax_payees_path(year: 2026)
+      assert_select 'span.pill-clay', text: 'Needs correction'
+      assert_includes response.body, '+$300.00'
+      text = pdf_text(get_pdf(forms_finance_tax_payees_path(year: 2026)))
+      assert_includes text, '$2,500.00'
+      refute_includes text, '$2,800.00'
+      refute_includes text, '2026 · CORRECTED'
+      assert_includes text, 'CORRECTED (if checked)'
+
+      assert_difference -> { Finance::TaxFormFiling.count }, 1 do
+        post correct_finance_tax_payee_path(lawyer, year: 2026)
+      end
+      corrected = Finance::TaxFormFiling.last
+      assert_redirected_to form_finance_tax_payee_path(lawyer, filing: corrected.id)
+      assert_equal 'corrected', corrected.kind
+      assert_equal 2_800_00, corrected.paid_cents
+      assert_equal 2_500_00, original.reload.paid_cents
+      assert ActivityLog.exists?(action: 'tax_form_corrected', subject_id: lawyer.id.to_s)
+
+      follow_redirect!
+      text = pdf_text(response.body)
+      assert_includes text, 'Form 1099-MISC · 2026 · CORRECTED'
+      assert_includes text, '$2,800.00'
+      assert_includes text, 'XXX-XX-6789'
+      refute_includes text, '123456789'
+      assert_includes pdf_text(get_pdf(form_finance_tax_payee_path(lawyer, filing: original.id))), '$2,500.00'
+
+      get finance_tax_payees_path(year: 2026)
+      assert_select 'span.pill-fern', text: 'Corrected'
+      assert_select 'span.pill-clay', text: 'Needs correction', count: 0
+      assert_no_difference -> { Finance::TaxFormFiling.count } do
+        post correct_finance_tax_payee_path(lawyer, year: 2026)
+      end
+      assert_includes pdf_text(get_pdf(forms_finance_tax_payees_path(year: 2026))), '2026 · CORRECTED'
+    end
+  end
+
+  test 'managers and cashiers cannot issue, correct or download issued 1099s' do
+    lawyer = payee
+    Finance::VendorPayment.create!(vendor: @vendor, amount_cents: 2_500_00, paid_on: Date.new(2026, 3, 1), method: 'check')
+    filing = Finance::TaxFormFiling.issue!(Finance::Form1099Totals.new(year: 2026).needed.first, year: 2026, kind: 'original', by: @admin)
+    Finance::VendorPayment.create!(vendor: @vendor, amount_cents: 300_00, paid_on: Date.new(2026, 11, 1), method: 'check')
+    with_payer do
+      %w[manager cashier].each do |role|
+        user = User.create!(tenant: Current.tenant, email: "tax-lock-#{role}@example.com", role: role, password: 'password123')
+        post login_path, params: { email: user.email, password: 'password123' }
+        assert_no_difference -> { Finance::TaxFormFiling.count } do
+          post issue_finance_tax_payees_path(year: 2026)
+          assert_includes [302, 303, 403], response.status, role
+          post correct_finance_tax_payee_path(lawyer, year: 2026)
+          assert_includes [302, 303, 403], response.status, role
+        end
+        get form_finance_tax_payee_path(lawyer, filing: filing.id)
+        assert_includes [302, 303, 403], response.status, role
+        refute_equal 'application/pdf', response.media_type
+        delete logout_path
+      end
+    end
+  end
+
+  test 'issued 1099s stay inside their workspace' do
+    lawyer = payee
+    Finance::VendorPayment.create!(vendor: @vendor, amount_cents: 2_500_00, paid_on: Date.new(2026, 3, 1), method: 'check')
+    other = Tenant.create!(name: 'Other Co', subdomain: 'other-1099')
+    Current.tenant = other
+    vendor = Purchasing::Vendor.create!(name: 'Other Vendor')
+    stranger = Finance::TaxPayee.create!(payee_key: "v:#{vendor.id}", legal_name: 'Other Vendor', tax_classification: 'individual', form_type: 'nec')
+    Finance::VendorPayment.create!(vendor: vendor, amount_cents: 9_000_00, paid_on: Date.new(2026, 3, 1), method: 'check')
+    foreign = Finance::TaxFormFiling.issue!(Finance::Form1099Totals.new(year: 2026).needed.first, year: 2026, kind: 'original')
+    assert_equal other.id, foreign.tenant_id
+    Current.tenant = tenants(:default_tenant)
+
+    lock = Finance::Form1099Lock.new(Finance::Form1099Totals.new(year: 2026))
+    refute lock.issued?
+    assert_equal [lawyer], lock.not_issued.map { |entry| entry.row.payee }
+    assert_raises(ActiveRecord::RecordInvalid) do
+      Finance::TaxFormFiling.create!(tax_payee: stranger, tax_year: 2026, kind: 'original', form_type: 'nec', paid_cents: 1,
+        legal_name: 'x', issued_at: Time.current)
+    end
+    with_payer do
+      post login_path, params: { email: @admin.email, password: 'password' }
+      post issue_finance_tax_payees_path(year: 2026)
+      assert_equal [lawyer.id], Finance::TaxFormFiling.pluck(:tax_payee_id)
+      get form_finance_tax_payee_path(stranger, filing: foreign.id)
+      assert_response :not_found
+      get form_finance_tax_payee_path(lawyer, filing: foreign.id)
+      assert_response :not_found
+      post correct_finance_tax_payee_path(stranger, year: 2026)
+      assert_response :not_found
+      assert_equal 1, Finance::TaxFormFiling.unscoped.where(tenant_id: other.id).count
+    end
+  end
+
   private
+
+  def with_payer
+    Finance::TaxPayer.new.update(name: 'Rupert Test Shop LLC', street: '1 Main St', city: 'Albany', state: 'NY', zip: '12207', tin: '12-3456789')
+    yield
+  ensure
+    Finance::TaxPayer::FIELDS.each_value { |key| EnvStore.set(key, nil) }
+  end
+
+  def get_pdf(path)
+    get path
+    assert_equal 'application/pdf', response.media_type
+    response.body
+  end
 
   # Prawn's text operators, decoded (as in the stock comparison PDF test).
   def pdf_text(body)
