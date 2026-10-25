@@ -8,7 +8,7 @@ module People
     self.table_name = 'scheduled_shifts'
 
     # Planning warnings only (#469); neither ever blocks a save. Hours are planned
-    # hours in a Thursday-Wednesday pay week (EmployeePayWeek), not overtime pay.
+    # hours in a seven-day pay week (EmployeePayWeek.week_start, Thursday unless the pay rules say otherwise), not overtime pay.
     PLANNED_HOURS_LIMIT = 40
     MIN_REST_HOURS = 10
 

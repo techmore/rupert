@@ -4,13 +4,17 @@ require 'set'
 
 # A read-only estimate, not a payroll posting. Every matching worker receives
 # their own 1%; overlapping workers never divide a shared commission pool.
+# Admins (PayRules.admin_keys) earn no commission and no tip share: a tip is split
+# only between the non-admins on shift, and a tip left while no non-admin was
+# clocked in is reported as unassigned_tip_cents rather than dropped.
 class CommissionPreview
   class Error < StandardError; end
   SOURCES = %w[shopify square swipesimple].freeze
   MAX_ORDERS = 5000
   MAX_SHIFTS = 1000
 
-  attr_reader :gateway_matched_orders, :gateway_excluded_orders, :rows, :eligible_orders, :excluded_orders, :source, :currency, :start_date, :end_date
+  attr_reader :gateway_matched_orders, :gateway_excluded_orders, :rows, :eligible_orders, :excluded_orders, :source, :currency, :start_date, :end_date,
+    :unassigned_tip_cents
 
   # Within a block, the same preview (dates, source, currency) is built once and shared, so the incentive model can
   # ask for many employees over many weeks without recounting the same orders.
@@ -68,10 +72,12 @@ class CommissionPreview
       .where('quantity IS NULL OR unit_cents IS NULL OR quantity <= 0 OR unit_cents < 0 OR (unit_cents = 0 AND line_cents > 0)')
       .distinct.pluck(:order_id).to_set
     groups = shifts.group_by(&:employee_key)
-    totals = groups.transform_values do |worker_shifts|
-      { employee: worker_shifts.max_by(&:started_at).employee_name, employee_id: worker_shifts.first.employee_id,
-        employment_type: worker_shifts.first.employment_type, sales_cents: 0, commission_cents: 0, order_count: 0, tip_cents: 0 }
+    admins = PayRules.admin_keys(shifts)
+    totals = groups.to_h do |key, worker_shifts|
+      [key, { employee: worker_shifts.max_by(&:started_at).employee_name, employee_id: worker_shifts.first.employee_id, admin: admins.include?(key),
+        employment_type: worker_shifts.first.employment_type, sales_cents: 0, commission_cents: 0, order_count: 0, tip_cents: 0 }]
     end
+    @unassigned_tip_cents = 0
     @eligible_orders = 0
     @excluded_orders = 0
     now = Time.current
@@ -85,12 +91,16 @@ class CommissionPreview
       on_shift = groups.select do |_key, intervals|
         intervals.any? { |shift| order.occurred_at >= shift.started_at && order.occurred_at < (shift.ended_at || now) }
       end
-      # Commission is never shared; a tip is split evenly between everyone on shift, rounded down.
-      tip_share = on_shift.empty? ? 0 : order.tip_cents.to_i / on_shift.size
+      # Commission is never shared; a tip is split evenly between the non-admins on shift, rounded down.
+      sharers = on_shift.keys.reject { |key| admins.include?(key) }
+      tip_share = sharers.empty? ? 0 : order.tip_cents.to_i / sharers.size
+      @unassigned_tip_cents += order.tip_cents.to_i if sharers.empty?
       on_shift.each_key do |key|
         totals[key][:sales_cents] += base
-        totals[key][:commission_cents] += (base + 50) / 100
         totals[key][:order_count] += 1
+        next if admins.include?(key)
+
+        totals[key][:commission_cents] += (base + 50) / 100
         totals[key][:tip_cents] += tip_share
       end
     end

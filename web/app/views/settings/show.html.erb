@@ -1,7 +1,7 @@
 <%# Settings: the Settings template (docs/ui-standards.md §4). One section card per topic. %>
 <% can_write = Current.user.can?("settings.write") %>
 <div class="page-medium space-y-6">
-  <%= page_header 'Settings', subtitle: 'Environment keys, backups, business details, sign-in and integrations.' %>
+  <%= page_header 'Settings', subtitle: 'Environment keys, backups, business details, pay rules, sign-in and integrations.' %>
 
   <section id="env" class="section-card" data-controller="settings">
     <%= section_heading 'Environment (.env)', hint: 'Paste or import a .env file to update managed keys.' do %>
@@ -83,6 +83,68 @@
         <div><dt>Sales tax rate</dt><dd><%= TenantSettings.sales_tax_rate.presence || 'No estimate' %></dd></div>
       </dl>
     <% end %>
+  </section>
+
+  <% pay_rules = PayRules.current %>
+  <section id="pay-rules" class="section-card scroll-mt-24" aria-labelledby="pay-rules-title">
+    <%= section_heading 'Pay rules', id: 'pay-rules-title', hint: 'The pay period and overtime used by pay estimates, timesheets and the schedule.' do %>
+      <% if pay_rules.chosen? %>
+        <span class="pill-fern" data-pay-period-chosen>Chosen</span>
+      <% else %>
+        <span class="pill-clay" data-pay-period-unchosen>Not chosen</span>
+      <% end %>
+    <% end %>
+    <p class="text-sm text-mocha">
+      <% if pay_rules.chosen? %>
+        Pay period: <%= pay_rules.summary %><% if pay_rules.biweekly? %>, counted from <%= l(pay_rules.anchor_date, format: :long) %><% end %>. Chosen by <%= pay_rules.chosen_by || 'an administrator' %> on <%= l(pay_rules.chosen_at.to_date, format: :long) %>.
+      <% else %>
+        The pay period has not been chosen yet. Until it is, Rupert uses <%= pay_rules.summary %>.
+      <% end %>
+    </p>
+    <% if can_write %>
+      <%= form_tag pay_rules_settings_path, method: :post, class: 'space-y-4' do %>
+        <fieldset class="grid gap-4 sm:grid-cols-3">
+          <legend class="sr-only">Pay period</legend>
+          <div>
+            <label class="field-label" for="pay_period">Pay period</label>
+            <%= select_tag :pay_period, options_for_select(PayRules::PERIOD_LABELS.invert, pay_rules.pay_period), class: 'select w-full' %>
+          </div>
+          <div>
+            <label class="field-label" for="week_start_day">Week starts on</label>
+            <%= select_tag :week_start_day, options_for_select(PayRules::DAYS.map { |day| [day.capitalize, day] }, pay_rules.week_start_day), class: 'select w-full' %>
+          </div>
+          <div>
+            <label class="field-label" for="anchor_date">First day of one period</label>
+            <%= date_field_tag :anchor_date, pay_rules.anchor_date, class: 'input', aria: { describedby: 'anchor_date_hint' } %>
+            <p id="anchor_date_hint" class="mt-1 text-xs text-mocha">Every two weeks only: any date a pay period starts, on the start day.</p>
+          </div>
+        </fieldset>
+        <fieldset class="grid gap-4 sm:grid-cols-3">
+          <legend class="field-label">Overtime</legend>
+          <label class="flex items-center gap-2 text-sm text-ink"><%= check_box_tag :overtime_enabled, '1', pay_rules.overtime_enabled?, class: 'checkbox' %> Pay overtime</label>
+          <div>
+            <label class="field-label" for="overtime_threshold_hours">After hours in a work week</label>
+            <input type="number" id="overtime_threshold_hours" name="overtime_threshold_hours" value="<%= pay_rules.to_h['overtime_threshold_hours'] %>" min="1" max="<%= PayRules::MAX_THRESHOLD_HOURS %>" step="0.5" class="input">
+          </div>
+          <div>
+            <label class="field-label" for="overtime_multiplier">Rate multiplier</label>
+            <input type="number" id="overtime_multiplier" name="overtime_multiplier" value="<%= pay_rules.overtime_multiplier.to_s('F') %>" min="1" max="<%= PayRules::MAX_MULTIPLIER %>" step="0.05" class="input">
+          </div>
+        </fieldset>
+        <div class="form-actions">
+          <%= submit_tag 'Save pay rules', class: 'btn-primary' %>
+        </div>
+      <% end %>
+    <% else %>
+      <dl class="facts">
+        <div><dt>Pay period</dt><dd><%= pay_rules.summary %><%= ' (not chosen yet)' unless pay_rules.chosen? %></dd></div>
+        <div><dt>Overtime</dt><dd><%= pay_rules.overtime_enabled? ? "Over #{pay_rules.to_h['overtime_threshold_hours']} hours at #{pay_rules.overtime_multiplier.to_s('F')}×" : 'Off' %></dd></div>
+      </dl>
+    <% end %>
+    <details class="explainer text-sm text-mocha">
+      <summary class="explainer-summary">How pay is estimated</summary>
+      <p class="mt-1">Tips are split evenly between everyone clocked in when the tip was left, except administrators. Commission is 1% of before-tax, after-discount sales rung up while each person was clocked in, each their own 1%; administrators earn none. A tip left while only administrators were clocked in is shown as unassigned. Clock punches are used as recorded, never rounded. Overtime is only calculated when turned on here.</p>
+    </details>
   </section>
 
   <section class="section-card">

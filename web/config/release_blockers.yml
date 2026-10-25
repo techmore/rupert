@@ -1,8 +1,9 @@
 # Release gate: the things the next release is waiting on that need an outside account or a
 # professional, shown to owners and platform administrators as the gate icon in the top bar
 # (shared/_header_gate). Tick an item off by changing its status to done; the badge counts the
-# open ones and the icon disappears when none are left. Read at render time from this file only:
-# no database, no network.
+# open ones and the icon disappears when none are left. Read at render time from this file, no
+# network. An item with `done_when:` (see ReleaseBlockers::CONDITIONS) ticks itself off when that
+# choice is made in Rupert; `link:` points to the page where it is made.
 release: v0.2.1
 tracker_issue: 326
 items:
@@ -16,6 +17,14 @@ items:
     needed: A payroll professional checks the calculator and a draft pay run.
     issues: [424, 425]
     status: open
+  - id: pay_period
+    title: 'Pay period: Jan to choose'
+    needed: Choose weekly or every two weeks and the day the pay week starts, under Settings → Pay rules.
+    issues: [423]
+    status: open
+    done_when: pay_period_chosen
+    link: /settings#pay-rules
+    link_label: Choose the pay period
   - id: tax_preparer_review
     title: Tax preparer review of 1099s
     needed: A tax preparer checks the 1099-NEC and 1099-MISC totals and copies.

@@ -62,6 +62,19 @@ Staff member password and Google sign-ins land at `/employee`: a simple home wit
 
 Staff on leave retain personal read access and time-off requests but cannot clock in while their worker record is on leave. Terminated or ambiguous links do not authorize a personal workspace. Staff can also save private time/pay/time-off problem reports at `/employee/reports`. Reports retain the original request, track open/in-review/resolved status and show the latest administrator response. Submission keys make retries safe without duplicate reports. Only active account administrators with HR read/write access can review/respond at `/people/work_reports`; a reviewer must reload stale forms before overwriting another response. The intake sends no email, external message or background job. Reports follow canonical staff profiles during consolidation, and deleting a staff member with report history is blocked. Clock corrections remain available from the staff member's own time-clock history and require review. All personal pages and exports are `no-store`, sensitive form parameters are filtered from request logs, and cross-worker/tenant identifiers never select the personal worker.
 
+## Pay rules (owner decisions, #423)
+
+The owner set these on 2026-10-25. They drive the pay estimate on the staff page and the Pay tab (`EmployeePayWeek`), the commission preview (`CommissionPreview`) and the incentive model. They are estimates only; nothing posts to payroll.
+
+- **Tips** are split evenly between everyone clocked in when the tip was left, **excluding administrators**. If only administrators were clocked in, the tip is shown as *unassigned* on the commission preview, never dropped.
+- **Commission** is 1% of the before-tax, after-discount sales rung up during each person's punched-in hours. Each person on shift gets their own 1%; nobody divides a pool. **Administrators earn no commission.**
+- An **administrator** is a worker whose linked sign-in account has the `admin` or `super_admin` role. A worker with no linked sign-in is not an administrator.
+- **Overtime**: none. The code supports it, but it is **off by default**. When turned on under Settings → Pay rules, hours over the threshold (default 40) in each seven-day work week are estimated at the multiplier (default 1.5×). The schedule's "over 40 planned hours" warning is a planning note only and is unchanged.
+- **Clock rounding**: none. Hours are the recorded seconds between clock-in and clock-out; Rupert only syncs punch times as recorded.
+- **Pay period**: weekly or every two weeks, with the day the week starts; every-two-weeks periods are counted from the first day of any one period. Jan (bookkeeper/manager) chooses it at **Settings → Pay rules** (`/settings#pay-rules`, needs the settings permission). Until it is chosen Rupert keeps weekly Thursday–Wednesday and says "not chosen"; the release gate in the top bar lists "Pay period: Jan to choose" until it is saved. Saving is recorded in the activity log.
+
+The rules are stored as one `Setting` row (`tenant_pay_rules`) and read once per request (`PayRules.current`).
+
 ## Native build and distribution
 
 See [mobile/README.md](../mobile/README.md). iPhone and Android source and EAS profiles are included. Signing, real device acceptance, and store/team distribution are separate release steps requiring the owner's developer accounts; no signed IPA/APK/AAB is claimed by this change.

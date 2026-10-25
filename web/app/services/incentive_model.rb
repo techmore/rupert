@@ -52,7 +52,7 @@ class IncentiveModel
 
   private
 
-  # Whole Thursday-Wednesday weeks that have ended, single Saturdays, or custom dates cut at week boundaries.
+  # Whole work weeks (PayRules start day, Thursday by default) that have ended, single Saturdays, or custom dates cut at week boundaries.
   def build_ranges(from, to)
     this_week = EmployeePayWeek.week_start(@today)
     case @period
@@ -95,7 +95,8 @@ class IncentiveModel
       row = Row.new(employee: employee, hours: 0.0, sales_cents: 0, current_cents: 0, plan_cents: 0, training_weeks: 0)
       ranges.each do |first, last|
         part = EmployeePayWeek.new(employee: employee, from: first, to: last)
-        whole_week = first == EmployeePayWeek.week_start(first) && last == first + 6 ? part : EmployeePayWeek.new(employee: employee, week_of: first)
+        week_start = EmployeePayWeek.week_start(first)
+        whole_week = first == week_start && last == first + 6 ? part : EmployeePayWeek.new(employee: employee, from: week_start, to: week_start + 6)
         training = plan.trainees.include?(employee.id.to_s) && whole_week.hours > plan.training_hours
         rate = training ? plan.training_rate : plan.shift_rate
         row.hours += part.hours
