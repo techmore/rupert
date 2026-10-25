@@ -14,7 +14,11 @@ SCRIPT = Path(__file__).parents[1] / 'rupert-autodeploy.sh'
 STUBS = {
     'curl': '''#!/bin/sh
 echo "curl $*" >> "$CALLS"
-case "$*" in *check-runs*) cat "$CHECKS" ;; *) printf %s "$HEALTH" ;; esac
+case "$*" in
+  *check-runs*) sha=$(printf %s "$*" | sed 's#.*/commits/\\([0-9a-f]*\\)/check-runs.*#\\1#')
+    if [ -f "$CHECKS_DIR/$sha.json" ]; then cat "$CHECKS_DIR/$sha.json"; else cat "$CHECKS"; fi ;;
+  *) printf %s "$HEALTH" ;;
+esac
 ''',
     'systemctl': '#!/bin/sh\necho "systemctl $*" >> "$CALLS"\n',
     'sqlite3': '#!/bin/sh\necho "sqlite3 $*" >> "$CALLS"\n[ "${BACKUP_EXIT:-0}" = 0 ] || exit "$BACKUP_EXIT"\nset -- $2\ntouch "$2"\n',
@@ -45,9 +49,11 @@ class AutodeployTest(unittest.TestCase):
         (self.tmp / 'rupert.env').write_text('')
         self.calls = self.tmp / 'calls'
         self.checks = self.tmp / 'checks.json'
+        self.checks_dir = self.tmp / 'checks'
+        self.checks_dir.mkdir()
         self.set_checks(GREEN)
         self.env = {
-            'HOME': str(self.tmp), 'CALLS': str(self.calls), 'CHECKS': str(self.checks), 'HEALTH': '200',
+            'HOME': str(self.tmp), 'CALLS': str(self.calls), 'CHECKS': str(self.checks), 'CHECKS_DIR': str(self.checks_dir), 'HEALTH': '200',
             'GIT_AUTHOR_NAME': 't', 'GIT_AUTHOR_EMAIL': 't@example.org',
             'GIT_COMMITTER_NAME': 't', 'GIT_COMMITTER_EMAIL': 't@example.org',
             'RUPERT_AUTODEPLOY_APP': str(self.tmp / 'app'),
@@ -82,8 +88,8 @@ class AutodeployTest(unittest.TestCase):
         self.git('commit', '-q', '-m', message, cwd=self.origin)
         return self.head(self.origin)
 
-    def set_checks(self, data):
-        self.checks.write_text(json.dumps(data))
+    def set_checks(self, data, sha=None):
+        (self.checks_dir / f'{sha}.json' if sha else self.checks).write_text(json.dumps(data))
 
     def run_deploy(self, **env):
         if self.calls.exists():
@@ -155,6 +161,20 @@ class AutodeployTest(unittest.TestCase):
         self.set_checks(check_runs(*[(name, 'success') for name in REQUIRED], ('validate', 'success')))
         result, _ = self.run_deploy()
         self.assertIn('healthy', result.stdout)
+
+    def test_mobile_check_is_read_from_the_last_mobile_commit_not_a_later_one(self):
+        mobile = self.commit('mobile change', path='mobile/src/task.js')
+        later = self.commit('web change after it')
+        self.set_checks(GREEN, sha=later)  # the mobile workflow never runs on the web-only commit
+        self.set_checks(check_runs(*[(name, 'success') for name in REQUIRED], ('validate', 'failure')), sha=mobile)
+        result, _ = self.run_deploy()
+        self.assertIn(f'CI for {mobile[:8]} is red', result.stdout)
+        self.assertEqual(self.head(self.tmp / 'app'), self.old)
+
+        self.set_checks(check_runs(*[(name, 'success') for name in REQUIRED], ('validate', 'success')), sha=mobile)
+        result, _ = self.run_deploy()
+        self.assertIn('healthy', result.stdout)
+        self.assertEqual(self.head(self.tmp / 'app'), later)
 
     def test_retired_postgresql_check_is_ignored(self):
         self.commit('feature')
