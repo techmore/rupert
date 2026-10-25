@@ -5,6 +5,7 @@ module Api
     # Employee credentials have no catalog, ERP, or administrator scopes.
     class EmployeeBaseController < ActionController::API
       around_action :isolated_context
+      before_action :require_employee_app_enabled
       before_action :authenticate_employee
       rescue_from ActiveRecord::RecordNotFound, with: :not_found
       rescue_from Pundit::NotAuthorizedError, with: :forbidden
@@ -19,6 +20,15 @@ module Api
         yield
       ensure
         Current.reset
+      end
+
+      # Runs before every action, sign-in included, so a disabled app never
+      # issues or accepts a token.
+      def require_employee_app_enabled
+        return if EmployeeAppSession.enabled?
+
+        render json: { error: 'employee_app_disabled', message: 'The Rupert staff app is turned off for this workspace.' },
+          status: :service_unavailable
       end
 
       def authenticate_employee

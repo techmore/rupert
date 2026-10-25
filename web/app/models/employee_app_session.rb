@@ -9,6 +9,8 @@ class EmployeeAppSession < ApplicationRecord
   validates :token_digest, :expires_at, :password_fingerprint, presence: true
 
   def self.issue!(user:, device_name:)
+    raise TimesheetWorkflow::Error, 'The Rupert staff app is turned off.' unless enabled?
+
     employee = TimeClockService.worker_for(user)
     raise TimesheetWorkflow::Error, 'Ask an administrator to link one active staff record to your account.' unless employee
     secret = "rupert_employee_#{SecureRandom.urlsafe_base64(32)}"
@@ -18,7 +20,12 @@ class EmployeeAppSession < ApplicationRecord
     [session, secret]
   end
 
+  # The install-wide kill switch (config/initializers/employee_app.rb).
+  def self.enabled? = Rails.application.config.x.employee_app_enabled == true
+
   def self.authenticate(secret)
+    return nil unless enabled?
+
     return unless secret.to_s.match?(/\Arupert_employee_[A-Za-z0-9_-]{43}\z/)
     record = unscoped.includes(:user, :tenant, :employee).find_by(token_digest: Digest::SHA256.hexdigest(secret))
     record if record&.usable?
