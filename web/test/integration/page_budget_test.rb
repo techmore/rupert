@@ -20,6 +20,8 @@ class PageBudgetTest < ActionDispatch::IntegrationTest
   }.freeze
 
   setup do
+    # A fixed Sunday: the Books desk's largest day count, so budgets don't move by weekday.
+    travel_to Time.zone.parse('2026-10-25 12:00')
     @admin = users(:regular_user)
     @admin.update!(role: 'super_admin')
     post login_path, params: { email: @admin.email, password: 'password' }
