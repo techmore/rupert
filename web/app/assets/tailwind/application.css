@@ -2213,3 +2213,5 @@ body.tour-active { overflow-x:hidden; }
 .item-hero-facts dd { margin:.15rem 0 0;font-size:1.05rem;font-weight:700;color:var(--color-ink);font-variant-numeric:tabular-nums; }
 .item-hero-facts p { margin:.2rem 0 0;font-size:.68rem;color:var(--color-taupe); }
 @media (max-width:639px) { .item-hero-facts { grid-template-columns:1fr; } }
+.item-cost-edit { width:min(40rem,100%); }
+.item-cost-form { display:grid;gap:.4rem;max-width:16rem;margin:.5rem auto 0;text-align:left; }

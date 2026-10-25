@@ -449,6 +449,7 @@ Rails.application.routes.draw do
     member do
       post :link
       post :unlink
+      patch :cost
     end
   end
   resources :inventory_counts do
