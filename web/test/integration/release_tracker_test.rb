@@ -54,6 +54,8 @@ class ReleaseTrackerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select 'h1', 'v0.2.1 release blockers'
     assert_select 'h2', text: 'Payroll'
+    assert_select '#jan-actions [data-jan-release-blocker]', count: ReleaseBlockers.current.items.size
+    assert_select '#jan-actions a[href="/settings#drive"]', text: 'Authorize and approve Google Drive'
     assert_select 'a[href=?]', 'https://github.com/x/426'
     assert_select "a[href='#{release_tracker_path}'][data-release-open='3']"
     delete logout_path

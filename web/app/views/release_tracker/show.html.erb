@@ -5,6 +5,27 @@
   <%= page_header(tracker ? "#{tracker.title} release blockers" : 'Release blockers',
         subtitle: 'What must be fixed before the next release, from the GitHub milestone.', menu: menu) %>
 
+  <% if ReleaseBlockers.visible_to?(Current.user) %>
+    <section id="jan-actions" class="space-y-3" aria-labelledby="jan-actions-title">
+      <h2 id="jan-actions-title" class="text-lg font-semibold text-ink">Jan’s decisions and approvals</h2>
+      <p class="text-sm text-mocha">All outside-account and professional-review gates in one place. Use the setup link where available; otherwise describe the requested choice or review result in the linked issue. Keep credentials, payroll records and private documents in Rupert’s secure settings or the approved private folder. Completing setup does not certify the release.</p>
+      <div class="card"><ul class="row-list">
+        <% ReleaseBlockers.current.items.each do |item| %>
+          <li class="row-item" data-jan-release-blocker="<%= item.id %>">
+            <div class="min-w-0 space-y-2">
+              <h3 class="font-semibold text-ink"><%= item.title %> <span class="<%= item.done? ? 'pill-fern' : 'pill-clay' %>"><%= item.done? ? 'Done' : 'Needs action' %></span></h3>
+              <p class="text-sm text-mocha"><%= item.needed %></p>
+              <p class="flex flex-wrap gap-3">
+                <% if item.link && item.open? %><%= link_to item.link_label || 'Open setup', item.link, class: 'btn-ghost btn-sm' %><% end %>
+                <% item.issue_links.each do |number, url| %><%= link_to "Describe decision / evidence · ##{number}", url, target: '_blank', rel: 'noopener', class: 'gate-link' %><% end %>
+              </p>
+            </div>
+          </li>
+        <% end %>
+      </ul></div>
+    </section>
+  <% end %>
+
   <% if tracker %>
     <section class="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Release progress">
       <div class="stat"><div class="stat-label">Open</div><p class="stat-value mt-2 tabular-nums"><%= tracker.open_count %></p></div>
