@@ -9,12 +9,14 @@ tracker_issue: 326
 items:
   - id: google_drive_backup
     title: Google Drive backup consent
-    needed: Grant Rupert access to the backup Drive folder (consent currently fails with access denied); this unblocks the restore drills.
+    needed: "Jan: authorize and approve the backup destination using a herbalhealerscbd.com Google account. Only available for herbalhealerscbd.com addresses. A platform administrator must open Google Drive setup and complete consent because backups contain every workspace. If Google says access denied, the Google Cloud project administrator must approve the account or Workspace consent configuration. A connection alone does not pass this gate: verify upload, downloaded checksum and an isolated restore. Keep whole-instance backups in Rupert Backups, workspace documents in Rupert Document Retention — workspace name / year / month / source / category, and incoming files in a separate import folder. Retained documents include date, record ID, checksum prefix and original filename."
+    link: /settings#drive
+    link_label: Authorize and approve Google Drive
     issues: [419, 418, 420, 421]
     status: open
   - id: payroll_review
     title: Payroll professional review
-    needed: A payroll professional checks the calculator and a draft pay run.
+    needed: "Jan: nominate the payroll reviewer and provide the agreed pay rules, a synthetic draft pay run and expected totals. The reviewer must check overtime, tips, bonuses, deductions, corrections and exports. Record the reviewer, date, result and remaining corrections in the linked gate; do not upload employee information to GitHub."
     issues: [424, 425]
     status: open
   - id: pay_period
@@ -27,27 +29,29 @@ items:
     link_label: Choose the pay period
   - id: approval_change_rule
     title: 'Approved periods: Jan to review'
-    needed: Decide whether a manual journal entry or reversal in an already-approved period should mark that approval as changed. Turning it on marks every existing approval as changed once.
+    needed: "Jan: describe your choice in the linked issue: should manual journal entries and reversals dated inside an approved period require approval again? State yes or no, who can reapprove and how historical approvals should be handled. Engineering must implement and verify the agreed behavior; there is no live toggle for this decision yet."
     issues: [169]
     status: open
   - id: iris_header_check
     title: IRIS CSV header check
-    needed: Download the 1099-NEC and 1099-MISC CSV templates inside the IRS IRIS portal and compare their header rows with Rupert's export before the first upload.
+    needed: "Jan or your tax preparer: sign in to IRS IRIS, download the current 1099-NEC and 1099-MISC CSV templates, and compare their exact header rows with Rupert’s export before uploading. Record tax year, template date and the comparison result in the linked gate. Keep taxpayer records private."
     issues: [472]
     status: open
   - id: tax_preparer_review
     title: Tax preparer review of 1099s
-    needed: A tax preparer checks the 1099-NEC and 1099-MISC totals and copies.
+    needed: "Jan: nominate the tax preparer, confirm tax year and legal payer, and arrange a private review of 1099-NEC and 1099-MISC totals, recipient details and copies. Record dated acceptance or corrections in the linked gate before filing."
     issues: [472]
     status: open
   - id: wallet_payments
     title: Apple Pay and Google Pay
-    needed: Set up the payment gateway and the Apple and Google merchant accounts.
+    needed: "Jan and owner: Rupert website checkout runs on a terminal, possibly an iPad. Checkout hostname is herbalhealers.rupertpos.com on the rupertpos.com platform. Decide between merchant-owned Apple setup and Apple-approved platform registration before creating merchant credentials. Prepare the Apple Merchant ID, verified domain and Merchant Identity certificate now. Authorize.net and Valmar merchant/domain approval is pending; Authorize.net must supply its payment-processing certificate request before that certificate is issued and returned to the gateway. Complete Google Pay production enrollment for the approved gateway too. This is a web wallet flow, not contactless tap acceptance on the iPad. Record provider approval, sandbox results and separately authorized live payment/refund evidence before enabling live payments."
+    link: /connections
+    link_label: Review payment and wallet setup
     issues: [479]
     status: open
   - id: pos_hardware
     title: POS hardware
-    needed: Terminal details and a hardware plan agreed with North.
+    needed: "Jan: choose the checkout device (iPad or another web terminal), locations, receipt printer/scanner needs and whether customer phone payment or contactless tap is required. Agree a supported payment terminal and hardware plan with North; a browser wallet button does not turn an iPad into a tap reader. Record models, provider compatibility and an on-device acceptance result in the linked gate."
     issues: [478]
     status: open
   - id: branch_protection
