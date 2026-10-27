@@ -109,19 +109,32 @@ module Metrics
     by_currency = Hash.new { |hash, key| hash[key] = Hash.new { |inner, day| inner[day] = [0, 0] } }
     orders.pluck(:currency, :occurred_at, :gross_cents).each do |currency, at, cents|
       day = by_currency[currency][at.in_time_zone.to_date]
-      day[0] += cents.to_i
+      day[0] = cents.nil? || day[0].nil? ? nil : day[0] + cents
       day[1] += 1
     end
     by_currency.sort_by { |currency, _| currency.to_s }
   end
 
   def best_day(orders)
-    daily_totals(orders).map { |currency, days| day_row(currency, days, days.max_by { |date, (amount, _)| [amount, -date.jd] }) }
+    daily_totals(orders).map do |currency, days|
+      next unknown_daily_row(currency, days) if days.values.any? { |amount, _| amount.nil? }
+
+      day_row(currency, days, days.max_by { |date, (amount, _)| [amount, -date.jd] })
+    end
   end
 
   # Lowest of the days that have stored sales: a day with no stored orders is unknown, not a zero-sales day.
   def worst_day(orders)
-    daily_totals(orders).map { |currency, days| day_row(currency, days, days.min_by { |date, (amount, _)| [amount, date.jd] }) }
+    daily_totals(orders).map do |currency, days|
+      next unknown_daily_row(currency, days) if days.values.any? { |amount, _| amount.nil? }
+
+      day_row(currency, days, days.min_by { |date, (amount, _)| [amount, date.jd] })
+    end
+  end
+
+  def unknown_daily_row(currency, days)
+    { currency: currency, value: nil, formatted: "#{currency.presence || 'USD'}: unknown (gross not recorded on every order)",
+      gross_cents: nil, gross: nil, orders: nil, days_with_sales: days.size }
   end
 
   def day_row(currency, days, (date, (cents, count)))
@@ -132,6 +145,10 @@ module Metrics
   # Weekdays Monday first; only weekdays that have stored sales are listed.
   def sales_by_weekday(orders)
     daily_totals(orders).map do |currency, days|
+      if days.values.any? { |amount, _| amount.nil? }
+        next unknown_daily_row(currency, days).except(:gross, :orders).merge(weekdays: [])
+      end
+
       total = days.values.sum(&:first)
       weekdays = days.group_by { |date, _| date.cwday }.sort.map do |cwday, list|
         cents = list.sum { |_, (amount, _)| amount }

@@ -96,6 +96,29 @@ class MetricsTest < ActiveSupport::TestCase
     assert_empty metric('sales_by_weekday', period: 'last_quarter', compare: 'none')[:values]
   end
 
+  test 'daily sales rankings are unknown when any order has no gross amount' do
+    order(TODAY - 3, 10_000)
+    missing = order(TODAY - 3, 5_000)
+    missing.update_columns(gross_cents: nil)
+    missing_first = order(TODAY - 4, 1_000)
+    missing_first.update_columns(gross_cents: nil)
+    order(TODAY - 4, 3_000)
+    order(TODAY - 2, 2_000)
+    order(TODAY - 2, 7_000, currency: 'CAD')
+    window = { from: (TODAY - 7).iso8601, to: TODAY.iso8601, compare: 'none' }
+
+    %w[best_day worst_day sales_by_weekday].each do |name|
+      result = metric(name, **window)
+      usd = result[:values].find { |row| row[:currency] == 'USD' }
+      assert_nil usd[:value], name
+      assert_nil usd[:gross_cents], name
+      assert_match(/unknown.*gross not recorded/, usd[:formatted], name)
+      assert_match(/unknown.*gross not recorded/, result[:text], name)
+      refute_nil result[:values].find { |row| row[:currency] == 'CAD' }[:value], name
+    end
+    assert_empty metric('sales_by_weekday', **window)[:values].find { |row| row[:currency] == 'USD' }[:weekdays]
+  end
+
   test 'same dates last year, an empty period, and bad requests' do
     order(TODAY - 1, 8_000)
     order((TODAY - 1).prev_year, 10_000)
