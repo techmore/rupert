@@ -42,6 +42,20 @@ class PosCardPaymentTest < ActiveSupport::TestCase
   end
   teardown { Current.reset }
 
+  test 'reconciliation rotates past unresolved attempts without sending charges' do
+    51.times do |i|
+      PosPaymentAttempt.create!(pos_checkout: @checkout, invoice: "pending-#{i}", nonce_digest: "digest-#{i}",
+        status: 'unknown', submitted_at: 1.hour.ago)
+    end
+    attempted = []
+    Pos::CardPayment.stubs(:reconcile!).with { |attempt| attempted << attempt.id; true }
+    PosPaymentReconciliationJob.perform_now
+    assert_equal 50, attempted.uniq.size
+    PosPaymentReconciliationJob.perform_now
+    assert_equal 51, attempted.uniq.size
+    assert_equal 0, @charge_count
+  end
+
   test 'only gateway verified approval creates one paid order including confirmed tip' do
     Pos::CardPayment.call(@checkout, nonce: 'fixture-nonce')
     assert @checkout.reload.paid?

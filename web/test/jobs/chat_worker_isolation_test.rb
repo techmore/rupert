@@ -19,6 +19,14 @@ module ChatWorkerIsolationProbes
     end
   end
 
+  class Battery < TeamChat::BatteryJob
+    self.queue_adapter = :solid_queue
+    def perform
+      STARTED << :battery
+      RELEASE.pop
+    end
+  end
+
   class Sync < SyncJob
     self.queue_adapter = :solid_queue
     def perform = FINISHED << :sync
@@ -46,15 +54,16 @@ class ChatWorkerIsolationTest < ActiveSupport::TestCase
     Rails.application.eager_load!
     %w[development test production].each do |environment|
       workers = worker_config(environment)
-      assert_equal 2, workers.size
+      assert_equal 3, workers.size
       # The default worker also serves Solid Queue's own recurring housekeeping queue (it had no worker before).
-      assert_equal [%w[default solid_queue_recurring], 'chat'], workers.pluck('queues')
-      assert_equal [1, 1], workers.last.values_at('threads', 'processes')
+      assert_equal [%w[default solid_queue_recurring], 'chat', 'battery'], workers.pluck('queues')
+      assert_equal [1, 1], workers[1].values_at('threads', 'processes')
     end
     assert_equal 'chat', TeamChat::ReplyJob.queue_name
     assert_equal 'chat', AskRupertReplyJob.queue_name
+    assert_equal 'battery', TeamChat::BatteryJob.queue_name
     ApplicationJob.descendants.select { |job| job.instance_method(:perform).source_location&.first&.start_with?(Rails.root.join('app/jobs').to_s) }.each do |job|
-      assert_includes %w[default chat], job.queue_name, "#{job.name} has no configured worker"
+      assert_includes %w[default chat battery], job.queue_name, "#{job.name} has no configured worker"
     end
   end
 
@@ -66,6 +75,8 @@ class ChatWorkerIsolationTest < ActiveSupport::TestCase
     probes::Chat.perform_later
     workers.each(&:start)
     assert_equal :chat, Timeout.timeout(10) { probes::STARTED.pop }
+    probes::Battery.perform_later
+    assert_equal :battery, Timeout.timeout(10) { probes::STARTED.pop }
     probes::Chat.perform_later # keep the inference queue saturated
     probes::Sync.perform_later
     probes::Monitor.perform_later
@@ -76,10 +87,10 @@ class ChatWorkerIsolationTest < ActiveSupport::TestCase
     assert_equal 1, SolidQueue::ClaimedExecution.joins(:job).where(solid_queue_jobs: { class_name: probes::Chat.name }).count
     assert_equal 1, SolidQueue::ReadyExecution.joins(:job).where(solid_queue_jobs: { class_name: probes::Chat.name }).count
   ensure
-    2.times { probes::RELEASE << true } if probes
+    3.times { probes::RELEASE << true } if probes
     workers&.each(&:stop)
     if probes
-      SolidQueue::Job.where(class_name: [probes::Chat.name, probes::Sync.name, probes::Monitor.name, probes::Backup.name]).destroy_all
+      SolidQueue::Job.where(class_name: [probes::Chat.name, probes::Battery.name, probes::Sync.name, probes::Monitor.name, probes::Backup.name]).destroy_all
       [probes::STARTED, probes::RELEASE, probes::FINISHED].each { |queue| queue.pop until queue.empty? }
     end
     Current.reset
