@@ -24,7 +24,7 @@
           <%= label_tag 'ask_rupert_provider_mode', 'Which model answers', class: 'field-label' %>
           <%= select_tag 'ask_rupert[provider_mode]', options_for_select(AskRupert::Config::MODES.map { |key, label| [label, key] }, @config.mode), id: 'ask_rupert_provider_mode', class: 'select' %>
           <p class="mt-1 text-xs text-taupe">
-            Cloud: <%= AskRupert::Providers::Opencode.new.model %> through OpenCode. Local: <%= @config.local_configured? ? "#{@config.local_model} (Ollama on this network)" : 'not set up on this server (set OLLAMA_URL and ASK_RUPERT_LOCAL_MODEL)' %>.
+            Cloud: <%= AskRupert::Providers::Opencode.new.model %> through OpenCode. Local: <%= AskRupert::Providers.local_label(@config) %>.
             The panel tells everyone which one is in use.
           </p>
         </div>

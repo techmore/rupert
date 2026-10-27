@@ -32,9 +32,12 @@ module AskRupert
       private
 
       def build_prompt(system, messages)
-        transcript = messages.map { |message| "#{message[:role] == 'assistant' ? 'Rupert' : message[:role] == 'tool' ? 'Tool result' : 'Person'}: #{message[:content]}" }
-        prompt = [system, '--- Conversation so far ---', *transcript, '--- Your turn ---', 'Reply as Rupert now (a plain-text answer, or one TOOL_CALL line).'].join("\n\n")
-        prompt.length > MAX_PROMPT_CHARS ? prompt.last(MAX_PROMPT_CHARS) : prompt
+        ending = ['--- Your turn ---', 'Reply as Rupert now (a plain-text answer, or one TOOL_CALL line).'].join("\n\n")
+        header = [system, '--- Conversation so far ---'].join("\n\n")
+        budget = MAX_PROMPT_CHARS - header.length - ending.length - 4
+        kept = PromptBudget.messages(messages, budget: budget)
+        transcript = kept.map { |message| "#{message[:role] == 'assistant' ? 'Rupert' : message[:role] == 'tool' ? 'Tool result' : 'Person'}: #{message[:content]}" }
+        [header, *transcript, ending].join("\n\n")
       end
 
       def stream(prompt, deadline:, checkpoint:, telemetry:)
