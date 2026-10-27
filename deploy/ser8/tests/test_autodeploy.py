@@ -233,6 +233,15 @@ class AutodeployTest(unittest.TestCase):
         self.assertFalse((backups / 'old backup 1.sqlite3').exists())
         self.assertTrue((backups / 'old backup 2.sqlite3').exists())
 
+    def test_backup_directory_with_spaces_is_used_for_backup_and_receipt(self):
+        backups = self.tmp / 'backup directory with spaces'
+        new = self.commit('feature')
+        result, _ = self.run_deploy(RUPERT_AUTODEPLOY_BACKUPS=str(backups))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        backup = Path(self.receipt(f'{new}.json')['backup']['path'])
+        self.assertEqual(backup.parent, backups)
+        self.assertTrue(backup.is_file())
+
     def test_backup_retention_preserves_current_backup_when_older_files_have_future_mtimes(self):
         backups = self.tmp / 'backups'
         backups.mkdir()
@@ -261,7 +270,7 @@ class AutodeployTest(unittest.TestCase):
         sqlite.write_text(f'#!/bin/sh\nexec "{shutil.which("sqlite3")}" "$@"\n')
         sqlite.chmod(0o755)
         new = self.commit('feature')
-        result, _ = self.run_deploy()
+        result, _ = self.run_deploy(RUPERT_AUTODEPLOY_BACKUPS=str(self.tmp / 'backup directory with spaces'))
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         receipt = self.receipt(f'{new}.json')
         with closing(sqlite3.connect(receipt['backup']['path'])) as db:

@@ -263,7 +263,7 @@ backup="$BACKUPS/production-$(date +%Y%m%d-%H%M%S)-${CUR:0:8}-$attempt_id.sqlite
 db_path=$(cd "$APP/web" && set -a && . "$ENV_FILE" && printf '%s' "${RUPERT_SQLITE_DATABASE_PRODUCTION-storage/production.sqlite3}") || db_path=""
 case "$db_path" in /*) ;; '') ;; *) db_path="$APP/web/$db_path" ;; esac
 if [ -z "$db_path" ] || [ ! -f "$db_path" ] || [ ! -s "$db_path" ] ||
-   ! ( umask 077; sqlite3 -readonly "$db_path" ".backup $backup" ) ||
+   ! ( umask 077; cd "$BACKUPS" && sqlite3 -readonly "$db_path" ".backup ${backup##*/}" ) ||
    [ "$(sqlite3 -readonly "$backup" 'PRAGMA quick_check;' 2>/dev/null)" != ok ]; then
   rm -f "$backup"
   backup=""; write_receipt failed "backup failed, aborting"; report failed "backup failed, aborting"; exit 1
