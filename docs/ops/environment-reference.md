@@ -46,6 +46,7 @@ Two kinds of configuration exist. **Boot-time variables** live in `/etc/rupert.e
 | `RUPERT_GOOGLE_OAUTH_HOST` | `HOST` in production; any host elsewhere | The one host whose Google callback is registered. Every Google sign-in and sign-up is sent there, so other hostnames and the iPhone app need no callback of their own. A bare hostname or a URL |
 | `RUPERT_SWIPESIMPLE_INBOX` | unset (off) | Absolute directory that `SwipesimpleInboxJob` imports reports from; only for an explicit trusted producer, not for webpage sync. See [swipesimple-reporting.md](swipesimple-reporting.md) |
 | `RUPERT_BACKUP_STATUS_DIR` | `web/storage/backups` | Where System → Backups reads the status JSON written by the backup scripts; must match their `STATUS_DIR` / `STATUS_PATH`. See [backups.md](backups.md) |
+| `RUPERT_ENCRYPTION_STATUS_FILE` | `web/storage/ops/encryption_status.json` | Where `bin/rails ops:encryption_status` writes, and System reads, the last plaintext-row check for encrypted fields |
 | `RUPERT_INSTANCE_LABEL` | `Not configured` | Deployment label on the platform instance page (80 characters, no control characters). See [private-workspaces.md](private-workspaces.md) |
 
 ### Logging and the System page
