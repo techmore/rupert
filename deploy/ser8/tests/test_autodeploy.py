@@ -216,6 +216,22 @@ class AutodeployTest(unittest.TestCase):
         self.assertNotIn('db:migrate', calls)
         self.assertEqual(self.status()['state'], 'failed')
 
+    def test_backup_retention_handles_filenames_with_spaces(self):
+        backups = self.tmp / 'backups'
+        backups.mkdir()
+        for i in range(6):
+            path = backups / f'old backup {i}.sqlite3'
+            path.write_text('backup')
+            os.utime(path, (1_600_000_000 + i, 1_600_000_000 + i))
+        self.commit('feature')
+        result, _ = self.run_deploy()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        remaining = {path.name for path in backups.glob('*.sqlite3')}
+        self.assertEqual(len(remaining), 5)
+        self.assertFalse((backups / 'old backup 0.sqlite3').exists())
+        self.assertFalse((backups / 'old backup 1.sqlite3').exists())
+        self.assertTrue((backups / 'old backup 2.sqlite3').exists())
+
     @unittest.skipUnless(shutil.which('sqlite3'), 'the SQLite CLI is required')
     def test_real_sqlite_backup_contains_configured_database(self):
         configured = self.tmp / 'custom data.sqlite3'

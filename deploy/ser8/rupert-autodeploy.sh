@@ -268,7 +268,18 @@ if [ -z "$db_path" ] || [ ! -f "$db_path" ] || [ ! -s "$db_path" ] ||
   rm -f "$backup"
   backup=""; write_receipt failed "backup failed, aborting"; report failed "backup failed, aborting"; exit 1
 fi
-ls -1t "$BACKUPS"/*.sqlite3 | tail -n +6 | xargs -r rm -f
+# Keep filenames intact, including spaces and newlines. Never follow symlinks
+# while pruning the private backup directory.
+python3 - "$BACKUPS" <<'PY' || log "could not prune old deploy backups"
+import os, sys
+
+with os.scandir(sys.argv[1]) as entries:
+    backups = [(entry.stat(follow_symlinks=False).st_mtime_ns, entry.name)
+               for entry in entries
+               if entry.name.endswith('.sqlite3') and entry.is_file(follow_symlinks=False)]
+for _, name in sorted(backups, reverse=True)[5:]:
+    os.unlink(os.path.join(sys.argv[1], name))
+PY
 
 # Persist the target before changing the checkout. A killed updater must not
 # automatically retry a partially migrated or partially installed revision.
