@@ -181,15 +181,17 @@ module Metrics
   end
 
   def refund_rate(orders, window, source)
-    gross = orders.group(:currency).sum(:gross_cents)
+    gross = orders.group(:currency).pluck(:currency, Arel.sql('SUM(gross_cents)'), Arel.sql('COUNT(*)'), Arel.sql('COUNT(gross_cents)'))
+                  .to_h { |currency, total, count, known| [currency, known == count ? total.to_i : nil] }
     refunds = Core::Refund.joins(:order).where(refunded_at: window.times)
     refunds = refunds.where(orders: { source: source }) if source.present?
     refunded = refunds.group('orders.currency').pluck(Arel.sql('orders.currency'), Arel.sql('COUNT(*)'), Arel.sql('SUM(refunds.amount_cents)')).to_h { |currency, n, cents| [currency, [n, cents.to_i]] }
     (gross.keys | refunded.keys).compact.sort.map do |currency|
-      sales = gross[currency].to_i
+      sales = gross[currency]
       count, cents = refunded.fetch(currency, [0, 0])
-      rate = sales.positive? ? (cents * 100.0 / sales).round(2) : nil
-      { currency: currency, value: rate, formatted: (rate ? "#{rate}%" : 'unknown (no sales)'), refunds: count,
+      rate = sales&.positive? ? (cents * 100.0 / sales).round(2) : nil
+      reason = sales.nil? ? 'unknown (gross sales not fully recorded)' : 'unknown (no sales)'
+      { currency: currency, value: rate, formatted: (rate ? "#{rate}%" : reason), refunds: count,
         refunded_cents: cents, refunded: money(cents, currency), gross_cents: sales, gross: money(sales, currency) }
     end
   end

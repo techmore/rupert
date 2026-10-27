@@ -119,6 +119,30 @@ class MetricsTest < ActiveSupport::TestCase
     assert_empty metric('sales_by_weekday', **window)[:values].find { |row| row[:currency] == 'USD' }[:weekdays]
   end
 
+  test 'refund rate is unknown when gross sales are incomplete or absent' do
+    known = order(TODAY - 2, 10_000)
+    missing = order(TODAY - 1, 1_000)
+    missing.update_columns(gross_cents: nil)
+    Core::Refund.create!(order: known, amount_cents: 1_000, refunded_at: (TODAY - 1).in_time_zone.change(hour: 9), method: 'card')
+    order(TODAY - 1, 5_000, currency: 'CAD')
+
+    result = metric('refund_rate', from: (TODAY - 2).iso8601, to: TODAY.iso8601, compare: 'none')
+    usd = result[:values].find { |row| row[:currency] == 'USD' }
+    assert_nil usd[:value]
+    assert_nil usd[:gross_cents]
+    assert_equal 1_000, usd[:refunded_cents]
+    assert_match(/gross sales not fully recorded/, usd[:formatted])
+    assert_equal 0.0, result[:values].find { |row| row[:currency] == 'CAD' }[:value]
+
+    earlier = order(TODAY - 10, 3_000, source: 'rupert_pos')
+    Core::Refund.create!(order: earlier, amount_cents: 500, refunded_at: (TODAY - 1).in_time_zone.change(hour: 9), method: 'card')
+    no_sales = metric('refund_rate', from: (TODAY - 1).iso8601, to: (TODAY - 1).iso8601,
+      source: 'rupert_pos', compare: 'none')
+    assert_nil no_sales[:values].first[:value]
+    assert_nil no_sales[:values].first[:gross_cents]
+    assert_equal 500, no_sales[:values].first[:refunded_cents]
+  end
+
   test 'same dates last year, an empty period, and bad requests' do
     order(TODAY - 1, 8_000)
     order((TODAY - 1).prev_year, 10_000)
