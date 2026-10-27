@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,7 +29,7 @@ export function verifyBackports({ apply = false } = {}) {
   for (const [target, content] of writes) writeFileSync(target, content);
   return manifest;
 }
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && existsSync(process.argv[1]) && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   verifyBackports({ apply: process.argv.includes('--apply') });
   console.log('Pinned braces/node-forge security backports verified.');
 }
