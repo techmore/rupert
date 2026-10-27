@@ -132,8 +132,9 @@ class PurchasingFlowTest < ActionDispatch::IntegrationTest
     Purchasing::PurchaseOrder.create!(tenant_id: @tenant.id, vendor_id: vendor.id, order_number: 'PO-OLD')
 
     get_page new_purchasing_purchase_order_path
+    assert_response :success
 
-    suggested = css_select("input[name='purchase_order[order_number]']").first['value']
+    suggested = css_select("input[name$='[order_number]']").first['value']
     assert suggested.start_with?(prefix), suggested
     assert_not_includes Purchasing::PurchaseOrder.pluck(:order_number), suggested
   end
