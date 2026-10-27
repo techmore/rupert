@@ -16,6 +16,8 @@ jobs:
   scan:
     name: Dependency and static scan
     runs-on: ubuntu-latest
+    # Typically 1-2 minutes.
+    timeout-minutes: 10
     container:
       image: ruby:4.0
     steps:
