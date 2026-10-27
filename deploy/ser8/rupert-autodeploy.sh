@@ -268,16 +268,18 @@ if [ -z "$db_path" ] || [ ! -f "$db_path" ] || [ ! -s "$db_path" ] ||
   rm -f "$backup"
   backup=""; write_receipt failed "backup failed, aborting"; report failed "backup failed, aborting"; exit 1
 fi
-# Keep filenames intact, including spaces and newlines. Never follow symlinks
-# while pruning the private backup directory.
-python3 - "$BACKUPS" <<'PY' || log "could not prune old deploy backups"
+# Keep the current deployment's backup even if older files have future mtimes.
+# Keep filenames intact and never follow symlinks while pruning.
+python3 - "$BACKUPS" "$backup" <<'PY' || log "could not prune old deploy backups"
 import os, sys
 
+current = os.path.basename(sys.argv[2])
 with os.scandir(sys.argv[1]) as entries:
     backups = [(entry.stat(follow_symlinks=False).st_mtime_ns, entry.name)
                for entry in entries
-               if entry.name.endswith('.sqlite3') and entry.is_file(follow_symlinks=False)]
-for _, name in sorted(backups, reverse=True)[5:]:
+               if entry.name != current and entry.name.endswith('.sqlite3')
+               and entry.is_file(follow_symlinks=False)]
+for _, name in sorted(backups, reverse=True)[4:]:
     os.unlink(os.path.join(sys.argv[1], name))
 PY
 

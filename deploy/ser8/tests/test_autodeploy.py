@@ -8,6 +8,7 @@ import sqlite3
 import subprocess
 import tempfile
 import hashlib
+import time
 import unittest
 
 SCRIPT = Path(__file__).parents[1] / 'rupert-autodeploy.sh'
@@ -231,6 +232,22 @@ class AutodeployTest(unittest.TestCase):
         self.assertFalse((backups / 'old backup 0.sqlite3').exists())
         self.assertFalse((backups / 'old backup 1.sqlite3').exists())
         self.assertTrue((backups / 'old backup 2.sqlite3').exists())
+
+    def test_backup_retention_preserves_current_backup_when_older_files_have_future_mtimes(self):
+        backups = self.tmp / 'backups'
+        backups.mkdir()
+        future = int(time.time()) + 86400
+        for i in range(5):
+            path = backups / f'old-{i}.sqlite3'
+            path.write_text('backup')
+            os.utime(path, (future + i, future + i))
+        new = self.commit('feature')
+        result, _ = self.run_deploy()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        current = Path(self.receipt(f'{new}.json')['backup']['path'])
+        self.assertTrue(current.is_file())
+        self.assertEqual(len(list(backups.glob('*.sqlite3'))), 5)
+        self.assertFalse((backups / 'old-0.sqlite3').exists())
 
     @unittest.skipUnless(shutil.which('sqlite3'), 'the SQLite CLI is required')
     def test_real_sqlite_backup_contains_configured_database(self):
