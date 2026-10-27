@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { constants, generateKeyPairSync, privateEncrypt } from 'node:crypto';
@@ -135,6 +135,10 @@ test('installer fails closed on skipped, tampered or unknown upstream source', (
       }
     }
     const run = (...args) => spawnSync(process.execPath, [join(root, 'scripts/security-backports.mjs'), ...args], { encoding: 'utf8' });
+    symlinkSync('scripts', join(root, 'scripts-link'), 'dir');
+    const viaLink = spawnSync(process.execPath, [join(root, 'scripts-link/security-backports.mjs')], { encoding: 'utf8' });
+    assert.notEqual(viaLink.status, 0, 'a symlinked script path must still verify the backports');
+    assert.match(viaLink.stderr, /Security backport missing or altered/);
     assert.notEqual(run().status, 0, 'skipping postinstall cannot pass verification');
     assert.equal(run('--apply').status, 0);
     assert.equal(run('--apply').status, 0, 'application is idempotent');
