@@ -3,7 +3,6 @@
 # Builds deterministic management briefs from the canonical store database.
 # No model calls are involved; every figure is reproducible from stored rows.
 class OperationsBrief
-  TIME_ZONE = 'America/New_York'
   REVENUE_STATUSES = %w[paid fulfilled].freeze
 
   class << self
@@ -18,7 +17,7 @@ class OperationsBrief
   end
 
   def publish!
-    Time.use_zone(TIME_ZONE) do
+    BusinessClock.use do
       content, period_key = build
       return false if already_published?(period_key)
 
@@ -130,8 +129,9 @@ class OperationsBrief
     SyncRun.where(status: 'failed', startedAt: (end_date - 7.days)...end_date).count
   end
 
+  # Plain chat text: ASCII minus, no thousands separator.
   def money(cents)
-    format('$%.2f', cents.to_f / 100.0)
+    Money.format(cents.to_i, minus: '-', delimiter: '')
   end
 
   def announcements_channel

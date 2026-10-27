@@ -10,7 +10,7 @@
           <p class="font-semibold"><%= number_with_delimiter(source['period_records']) %> <%= source['unit'] %> in this period</p>
           <% if source['period_records'].zero? %><p class="text-sm text-mocha">No evidence stored for this period. Confirm coverage before treating this as zero activity.</p><% end %>
           <p class="text-xs text-mocha"><%= number_with_delimiter(source['stored_records']) %> stored overall · observed dates <%= source['first_date'] || 'Unknown' %> to <%= source['last_date'] || 'Unknown' %></p>
-          <p class="text-xs text-mocha">Last source read: <%= source['last_read'] ? retail_event_time(source['last_read'], timezone: 'America/New_York') : 'Unconfirmed' %></p>
+          <p class="text-xs text-mocha">Last source read: <%= source['last_read'] ? retail_event_time(source['last_read'], timezone: BusinessClock.zone_name) : 'Unconfirmed' %></p>
         </article>
       <% end %>
     </div>

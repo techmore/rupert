@@ -7,7 +7,7 @@ class DailyReconciliationArchiveJob < ApplicationJob
   def perform
     Tenant.where(status: 'active').find_each do |tenant|
       Current.set(tenant: tenant) do
-        Time.use_zone('America/New_York') do
+        BusinessClock.use(tenant: tenant) do
           (1..7).each { |days_ago| DailyMoneyReconciliation.new(day: (Date.current - days_ago).iso8601).archive! }
         end
       end

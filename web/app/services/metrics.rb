@@ -109,19 +109,32 @@ module Metrics
     by_currency = Hash.new { |hash, key| hash[key] = Hash.new { |inner, day| inner[day] = [0, 0] } }
     orders.pluck(:currency, :occurred_at, :gross_cents).each do |currency, at, cents|
       day = by_currency[currency][at.in_time_zone.to_date]
-      day[0] += cents.to_i
+      day[0] = cents.nil? || day[0].nil? ? nil : day[0] + cents
       day[1] += 1
     end
     by_currency.sort_by { |currency, _| currency.to_s }
   end
 
   def best_day(orders)
-    daily_totals(orders).map { |currency, days| day_row(currency, days, days.max_by { |date, (amount, _)| [amount, -date.jd] }) }
+    daily_totals(orders).map do |currency, days|
+      next unknown_daily_row(currency, days) if days.values.any? { |amount, _| amount.nil? }
+
+      day_row(currency, days, days.max_by { |date, (amount, _)| [amount, -date.jd] })
+    end
   end
 
   # Lowest of the days that have stored sales: a day with no stored orders is unknown, not a zero-sales day.
   def worst_day(orders)
-    daily_totals(orders).map { |currency, days| day_row(currency, days, days.min_by { |date, (amount, _)| [amount, date.jd] }) }
+    daily_totals(orders).map do |currency, days|
+      next unknown_daily_row(currency, days) if days.values.any? { |amount, _| amount.nil? }
+
+      day_row(currency, days, days.min_by { |date, (amount, _)| [amount, date.jd] })
+    end
+  end
+
+  def unknown_daily_row(currency, days)
+    { currency: currency, value: nil, formatted: "#{currency.presence || 'USD'}: unknown (gross not recorded on every order)",
+      gross_cents: nil, gross: nil, orders: nil, days_with_sales: days.size }
   end
 
   def day_row(currency, days, (date, (cents, count)))
@@ -132,6 +145,10 @@ module Metrics
   # Weekdays Monday first; only weekdays that have stored sales are listed.
   def sales_by_weekday(orders)
     daily_totals(orders).map do |currency, days|
+      if days.values.any? { |amount, _| amount.nil? }
+        next unknown_daily_row(currency, days).except(:gross, :orders).merge(weekdays: [])
+      end
+
       total = days.values.sum(&:first)
       weekdays = days.group_by { |date, _| date.cwday }.sort.map do |cwday, list|
         cents = list.sum { |_, (amount, _)| amount }
@@ -164,15 +181,17 @@ module Metrics
   end
 
   def refund_rate(orders, window, source)
-    gross = orders.group(:currency).sum(:gross_cents)
+    gross = orders.group(:currency).pluck(:currency, Arel.sql('SUM(gross_cents)'), Arel.sql('COUNT(*)'), Arel.sql('COUNT(gross_cents)'))
+                  .to_h { |currency, total, count, known| [currency, known == count ? total.to_i : nil] }
     refunds = Core::Refund.joins(:order).where(refunded_at: window.times)
     refunds = refunds.where(orders: { source: source }) if source.present?
     refunded = refunds.group('orders.currency').pluck(Arel.sql('orders.currency'), Arel.sql('COUNT(*)'), Arel.sql('SUM(refunds.amount_cents)')).to_h { |currency, n, cents| [currency, [n, cents.to_i]] }
     (gross.keys | refunded.keys).compact.sort.map do |currency|
-      sales = gross[currency].to_i
+      sales = gross[currency]
       count, cents = refunded.fetch(currency, [0, 0])
-      rate = sales.positive? ? (cents * 100.0 / sales).round(2) : nil
-      { currency: currency, value: rate, formatted: (rate ? "#{rate}%" : 'unknown (no sales)'), refunds: count,
+      rate = sales&.positive? ? (cents * 100.0 / sales).round(2) : nil
+      reason = sales.nil? ? 'unknown (gross sales not fully recorded)' : 'unknown (no sales)'
+      { currency: currency, value: rate, formatted: (rate ? "#{rate}%" : reason), refunds: count,
         refunded_cents: cents, refunded: money(cents, currency), gross_cents: sales, gross: money(sales, currency) }
     end
   end
@@ -315,11 +334,9 @@ module Metrics
     "#{metric.title}, #{window.label} (#{window.from} to #{window.to}): #{parts.join('; ')}."
   end
 
+  # Assistant/MCP text: ASCII minus, other currencies after the amount ("5.00 CAD").
   def money(cents, currency = 'USD')
-    return nil if cents.nil?
-
-    amount = ActiveSupport::NumberHelper.number_to_delimited(format('%.2f', cents.abs / 100.0))
-    currency.to_s.upcase == 'USD' || currency.blank? ? "#{'-' if cents.negative?}$#{amount}" : "#{'-' if cents.negative?}#{amount} #{currency}"
+    Money.format(cents, currency: currency.presence || 'USD', code: :suffix, minus: '-', missing: nil)
   end
 
   def signed(number) = number.to_f.positive? ? "+#{number}" : number.to_s

@@ -7,6 +7,9 @@
 #   Rupert keeps weekly Thursday-Wednesday and says the period is not chosen.
 # - Overtime: off by default. When turned on, hours over the threshold in each seven-day work week
 #   are estimated at the multiplier.
+# - Commission: 1% (COMMISSION_RATE) of before-tax, after-discount sales, in whole cents with half a
+#   cent rounded away from zero. Not configurable; every estimate (pay week, commission preview,
+#   timesheet compensation) asks PayRules.commission_cents.
 # - Admins: a worker whose linked sign-in account is an administrator (admin or platform admin)
 #   gets no tip share and no commission. A worker with no linked account is not an admin.
 #
@@ -29,6 +32,7 @@ class PayRules
   }.freeze
   MAX_THRESHOLD_HOURS = 168
   MAX_MULTIPLIER = 3
+  COMMISSION_RATE = BigDecimal('0.01')
 
   class Invalid < StandardError; end
 
@@ -119,7 +123,46 @@ class PayRules
 
   # The first day of the seven-day work week holding `date` (overtime and the schedule's planned
   # hours are counted per work week, whatever the pay period).
-  def week_start(date) = date.to_date.beginning_of_week(week_start_day.to_sym)
+  #
+  # view: how a page lays out its week (the timesheets `wk` parameter). 'thu'/'pay' (the default)
+  # is the pay rules' work week (Thursday until chosen), 'custom' starts exactly on `date`, and
+  # anything else (blank, 'mon') is the calendar week, Monday to Sunday.
+  def week_start(date, view: 'pay')
+    case view.to_s
+    when 'pay', 'thu' then date.to_date.beginning_of_week(week_start_day.to_sym)
+    when 'custom' then date.to_date
+    else date.to_date.beginning_of_week
+    end
+  end
+
+  # Hours over the overtime threshold in one work week's `worked_hours` (never negative). Keeps the
+  # caller's number type: Float hours compare against a Float threshold, decimals against the decimal.
+  def hours_over_threshold(worked_hours)
+    threshold = worked_hours.is_a?(Float) ? overtime_threshold_hours.to_f : overtime_threshold_hours
+    [worked_hours - threshold, 0].max
+  end
+
+  # "40" / "37.5": the threshold as people read it.
+  def overtime_threshold_label = overtime_threshold_hours.to_s('F').delete_suffix('.0')
+
+  # The extra over straight time for `overtime_hours` at `hourly_rate_cents`: hours × rate ×
+  # (multiplier − 1), unrounded so the caller rounds once with base pay. Zero for zero hours.
+  def overtime_premium_cents(overtime_hours, hourly_rate_cents)
+    return 0 if overtime_hours.zero?
+
+    overtime_hours * hourly_rate_cents * (overtime_multiplier - 1)
+  end
+
+  # Rate multiplier for a timesheet entry: the overtime multiplier for an overtime-labelled entry
+  # when overtime is on, else 1.
+  def multiplier_for(work_type) = work_type.to_s == 'overtime' && overtime_enabled? ? overtime_multiplier : 1
+
+  # Commission on `base_cents` of eligible sales, whole cents (1%; a half cent rounds away from zero).
+  def self.commission_cents(base_cents)
+    (BigDecimal(Integer(base_cents)) * COMMISSION_RATE).round(0, BigDecimal::ROUND_HALF_UP).to_i
+  end
+
+  def commission_cents(base_cents) = self.class.commission_cents(base_cents)
 
   # The first day of the pay period holding `date`.
   def period_start(date)

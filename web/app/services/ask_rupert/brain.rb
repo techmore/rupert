@@ -77,7 +77,9 @@ module AskRupert
       last_error = nil
       candidates.each do |provider|
         @provider = provider
-        reply = provider.complete(system: system, messages: messages) { |partial| publish(partial) }
+        options = { system: system, messages: messages }
+        options[:tools] = @tools.definitions if provider.respond_to?(:native_tools?) && provider.native_tools?
+        reply = provider.complete(**options) { |partial| publish(partial) }
         @tokens_in += reply.tokens_in.to_i
         @tokens_out += reply.tokens_out.to_i
         return reply

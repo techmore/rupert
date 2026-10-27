@@ -68,7 +68,7 @@ class EmployeeWorkSummary
     return unless rate&.pay_type == 'hourly' && rate.hourly_rate_cents.positive?
 
     # Overtime-labelled entries earn the PayRules multiplier only when overtime is turned on.
-    multiplier = entry.work_type == 'overtime' && PayRules.current.overtime_enabled? ? PayRules.current.overtime_multiplier : 1
+    multiplier = PayRules.current.multiplier_for(entry.work_type)
     (entry.hours * rate.hourly_rate_cents * multiplier).round.to_i
   end
 

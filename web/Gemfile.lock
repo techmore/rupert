@@ -99,7 +99,7 @@ GEM
     caxlsx_rails (0.7.2)
       actionpack (>= 6.1)
       caxlsx (>= 4.0)
-    chartkick (5.2.1)
+    chartkick (5.3.0)
     concurrent-ruby (1.3.8)
     connection_pool (3.0.2)
     crack (1.0.1)
@@ -128,7 +128,7 @@ GEM
       tzinfo
     event_emitter (0.2.6)
     eventmachine (1.2.7)
-    faraday (2.15.0)
+    faraday (2.15.1)
       faraday-net_http (>= 2.0, < 3.6)
       json
       logger
@@ -148,7 +148,7 @@ GEM
       raabro (~> 1.4)
     globalid (1.4.0)
       activesupport (>= 6.1)
-    google-apis-core (1.3.2)
+    google-apis-core (1.4.0)
       addressable (~> 2.9)
       faraday (~> 2.13)
       faraday-follow_redirects (~> 0.3)
@@ -157,7 +157,7 @@ GEM
       multi_json (~> 1.11)
       representable (~> 3.0)
       retriable (>= 3.1, < 5.0)
-    google-apis-drive_v3 (0.88.0)
+    google-apis-drive_v3 (0.89.0)
       google-apis-core (>= 0.15.0, < 2.a)
     google-cloud-env (2.4.1)
       base64 (~> 0.2)
@@ -268,7 +268,7 @@ GEM
       uri
       yaml
     parallel (2.3.0)
-    parser (3.3.12.0)
+    parser (3.3.13.0)
       ast (~> 2.4.1)
       racc
     pdf-core (0.10.0)
@@ -282,7 +282,7 @@ GEM
       prawn (>= 1.3.0, < 3.0.0)
     prettyprint (0.2.1)
     prism (1.9.0)
-    pstore (0.2.1)
+    pstore (0.3.0)
     public_suffix (7.0.5)
     puma (8.0.2)
       nio4r (~> 2.0)
@@ -296,7 +296,7 @@ GEM
     rack-session (2.1.2)
       base64 (>= 0.1.0)
       rack (>= 3.0.0)
-    rack-test (2.2.0)
+    rack-test (2.3.0)
       rack (>= 1.3)
     rackup (2.3.1)
       rack (>= 3)
@@ -362,7 +362,7 @@ GEM
       rack (>= 1.4)
     retriable (4.2.0)
     rexml (3.4.4)
-    rubocop (1.92.0)
+    rubocop (1.92.1)
       json (>= 2.3)
       language_server-protocol (~> 3.17.0.2)
       lint_roller (~> 1.1.0)
@@ -394,12 +394,13 @@ GEM
     rubyzip (3.7.0)
     schematist (1.1.0)
     securerandom (0.4.1)
-    sentry-rails (5.28.1)
-      railties (>= 5.0)
-      sentry-ruby (~> 5.28.1)
-    sentry-ruby (5.28.1)
+    sentry-rails (7.1.0)
+      railties (>= 5.2.0)
+      sentry-ruby (~> 7.1.0)
+    sentry-ruby (7.1.0)
       bigdecimal
       concurrent-ruby (~> 1.0, >= 1.0.2)
+      logger
     shopify_api (16.3.0)
       activesupport
       addressable (~> 2.7)
@@ -538,8 +539,8 @@ DEPENDENCIES
   rubocop
   rubocop-shopify
   ruby_llm (~> 2.1)
-  sentry-rails (~> 5.22)
-  sentry-ruby (~> 5.22)
+  sentry-rails (~> 7.1)
+  sentry-ruby (~> 7.1)
   shopify_app (~> 23.0)
   signet
   simplecov
@@ -578,10 +579,9 @@ CHECKSUMS
   bip-schnorr (0.7.1) sha256=737f579966df7cffaf7bff0c05dd00e5f806b8f287a3bb4b7e2c4e6ce673c1a6
   bootsnap (1.26.0) sha256=ca96237015e6cd74a02963d5821cf00ac5ea134653b323e8cd6d702a7718bf1b
   builder (3.3.0) sha256=497918d2f9dca528fdca4b88d84e4ef4387256d984b8154e9d5d3fe5a9c8835f
-  bundler (4.0.16) sha256=d6ca5dd440c24f9abce9844cf44cc8e18c6a553de65a47efb4544137af92c47d
   caxlsx (4.5.0) sha256=e3d98d859f148df05d5462086b5079b523f29c1766b569535f1d68629ce743ff
   caxlsx_rails (0.7.2) sha256=c7169c96a878a4548568f04742734c59826e3e473894867781796c2e13d1f52a
-  chartkick (5.2.1) sha256=2848d7de87189f30f28d077eb0bbdebc8a1f0f6f81de1ded95008fe564369949
+  chartkick (5.3.0) sha256=19a2bba39decf54c4939d3f31460535f8814c85045672ba2ed616c6897325b00
   concurrent-ruby (1.3.8) sha256=b2f1be836e968ccc78ccfce277ea79c72a88633f22306782c16ff23fb415d1e1
   connection_pool (3.0.2) sha256=33fff5ba71a12d2aa26cb72b1db8bba2a1a01823559fb01d29eb74c286e62e0a
   crack (1.0.1) sha256=ff4a10390cd31d66440b7524eb1841874db86201d5b70032028553130b6d4c7e
@@ -601,7 +601,7 @@ CHECKSUMS
   et-orbi (1.4.2) sha256=bb555dae668419cb24caa2a293a170e58be6d4df1e017c51f5030bdc133cd20c
   event_emitter (0.2.6) sha256=c72697bd5cce9d36594be1972c17f1c9a573236f44303a4d1d548080364e1391
   eventmachine (1.2.7) sha256=994016e42aa041477ba9cff45cbe50de2047f25dd418eba003e84f0d16560972
-  faraday (2.15.0) sha256=3be0eff0187ed913a1b4f679e9fcfe845b542cdd4f75b76cd6181a4ae1335fff
+  faraday (2.15.1) sha256=8708154deda739c5e86cc42b74960e23e8491fce0eba9e11639a6a34b1ac288f
   faraday-follow_redirects (0.5.0) sha256=5cde93c894b30943a5d2b93c2fe9284216a6b756f7af406a1e55f211d97d10ad
   faraday-multipart (1.2.0) sha256=7d89a949693714176f612323ca13746a2ded204031a6ba528adee788694ef757
   faraday-net_http (3.5.0) sha256=2e7094c34e38754ee048cc3df47376f8657005d9375f8473bce1c3b526a22e36
@@ -609,8 +609,8 @@ CHECKSUMS
   faye-websocket (0.12.0) sha256=ad9f7dfcd0306d0a13baeee450729657661129af15bb5f38716c242484ab42e1
   fugit (1.14.0) sha256=e311a9cc85a54bb67649df45060e721282a1e2c8ebad40e41874a3a7d576f37e
   globalid (1.4.0) sha256=037f12fbf1d9d7a014d501c2d5c77356fd4ddd96d7a7991d6700bba96706f427
-  google-apis-core (1.3.2) sha256=dec616d1fee423b4337ca3a802efc61cff0739aa6a6de1ebd16ba30c1b7b6dd7
-  google-apis-drive_v3 (0.88.0) sha256=2e71bf7ce6c2e370206aeb29f0582259beba84865cf519a27a4848cc2e26b0f9
+  google-apis-core (1.4.0) sha256=74e838a334926e79ce685d3ff9f418956cc23e48c5fd7cade779fea933e96582
+  google-apis-drive_v3 (0.89.0) sha256=07f84451e4b00a2157b04436acffa5e79b884f4b322195cdc70a1de26a11ddf0
   google-cloud-env (2.4.1) sha256=987cc58afc50ce2903128ab4dcd442159be4457246b8137e41d49d5c3fc590dd
   google-logging-utils (0.2.1) sha256=73945c3ac6800eba802c26b1744765d5057cc4d89182c7255ee1347b0ca96dc7
   googleauth (1.17.6) sha256=d4fd30f99aeb28ae46ef521cf8ac50927a453b8c6600f8940437ac11ad90bdfc
@@ -661,14 +661,14 @@ CHECKSUMS
   ostruct (0.6.3) sha256=95a2ed4a4bd1d190784e666b47b2d3f078e4a9efda2fccf18f84ddc6538ed912
   pagy (43.8.1) sha256=8f136a4bded93b04c87bc385e8be24c8b5adbaab1c0fac1c4c0c63eddae9c2ff
   parallel (2.3.0) sha256=f75a3e904101ce6a1ccb6b8dc800cbafd42166d83330192438dcf29395167a6f
-  parser (3.3.12.0) sha256=21a6d7f755d5a24dfbdc6e6b772e4e879a52e7631a88bc5a3a134606052c9828
+  parser (3.3.13.0) sha256=e02f9b63c2fe05b0c68f692ba4df89b3cb113b663964f75d988fbebfd6c3deca
   pdf-core (0.10.0) sha256=0a5d101e2063c01e3f941e1ee47cbb97f1adfc1395b58372f4f65f1300f3ce91
   pp (0.6.4) sha256=dfcb0fce700c41456265922884f9fe195d7fbb0674a3578e6c0f69588e82b570
   prawn (2.5.0) sha256=f4e20e3b4f30bf5b9ae37dad15eb421831594553aa930b2391b0fa0a99c43cb6
   prawn-table (0.2.2) sha256=336d46e39e003f77bf973337a958af6a68300b941c85cb22288872dc2b36addb
   prettyprint (0.2.1) sha256=d555d57ea6d7cf001d4774b693546a6bd88bec1e778ddffb5c60b68ceec4b7d4
   prism (1.9.0) sha256=7b530c6a9f92c24300014919c9dcbc055bf4cdf51ec30aed099b06cd6674ef85
-  pstore (0.2.1) sha256=03904d0f2c66579e96d1e6704cdabc0c88df7ea8ed8782d9f3569f6f6c702c1a
+  pstore (0.3.0) sha256=97888d57cdc8b99b3587dde5e1d01fc5ca4a9124dfeb2afb84e3dd982e78f829
   public_suffix (7.0.5) sha256=1a8bb08f1bbea19228d3bed6e5ed908d1cb4f7c2726d18bd9cadf60bc676f623
   puma (8.0.2) sha256=c8ed871dfbbe66448ea9ffd46692342d9804d4071522b52b5331b7b6e7b686fb
   pundit (2.5.2) sha256=e374152baa24f90b630428293faf4b4c5468fc3cc010165f7d8fcb44ce108bbd
@@ -677,7 +677,7 @@ CHECKSUMS
   rack (3.2.7) sha256=93e13e1c24f93556671d85d2d79fa228c3485815c50d7e2f265b5330c6528fb7
   rack-attack (6.8.0) sha256=f2499fdebf85bcc05573a22dff57d24305ac14ec2e4156cd3c28d47cafeeecf2
   rack-session (2.1.2) sha256=595434f8c0c3473ae7d7ac56ecda6cc6dfd9d37c0b2b5255330aa1576967ffe8
-  rack-test (2.2.0) sha256=005a36692c306ac0b4a9350355ee080fd09ddef1148a5f8b2ac636c720f5c463
+  rack-test (2.3.0) sha256=b118d177cc002c572fc1b6fd8d19c9ed5881a36e8d6f689f9e618f9f861241e8
   rackup (2.3.1) sha256=6c79c26753778e90983761d677a48937ee3192b3ffef6bc963c0950f94688868
   rails (8.1.4) sha256=5f3ecdf9a2a3b79b2e31b8fee3b64a00f7284d76e5631f87d0e58e665911a33b
   rails-dom-testing (2.3.0) sha256=8acc7953a7b911ca44588bf08737bc16719f431a1cc3091a292bca7317925c1d
@@ -697,7 +697,7 @@ CHECKSUMS
   request_store (1.7.0) sha256=e1b75d5346a315f452242a68c937ef8e48b215b9453a77a6c0acdca2934c88cb
   retriable (4.2.0) sha256=90c3b257472a1c02f2a3dfa64dd35a420f7a624cef1a5981e20fdac5730f8cdc
   rexml (3.4.4) sha256=19e0a2c3425dfbf2d4fc1189747bdb2f849b6c5e74180401b15734bc97b5d142
-  rubocop (1.92.0) sha256=2af68041fb2e70bd9321d0479b49fad07f8008a3d0758c83347b4917128c56e0
+  rubocop (1.92.1) sha256=a905381a5344215a79abcfe80f6c94366447e6a55347c9a525b5a24990e33f62
   rubocop-ast (1.50.0) sha256=b9ca88300da0803ee222ad20cdb30494c0a784eed06fdc35d254b06d662788db
   rubocop-shopify (3.1.0) sha256=0345309997d5d9b544c13b967ca64e51437bd573bdc79a30f1e0e72956d85c29
   ruby-progressbar (1.13.0) sha256=80fc9c47a9b640d6834e0dc7b3c94c9df37f08cb072b7761e4a71e22cff29b33
@@ -706,8 +706,8 @@ CHECKSUMS
   rubyzip (3.7.0) sha256=65c19294da75297a939006f3516deacc33185fbd721ff1954f7a231db6d3e121
   schematist (1.1.0) sha256=905d8f0286830926e77e0d631bee325ee741c4b99640bc99735593b40ba73e7b
   securerandom (0.4.1) sha256=cc5193d414a4341b6e225f0cb4446aceca8e50d5e1888743fac16987638ea0b1
-  sentry-rails (5.28.1) sha256=43a5f884622c60fa459ba05dc8bd22fbd5f28daaced1d00dbcfc4669eaf93807
-  sentry-ruby (5.28.1) sha256=1162d474271e8b82202c984b1116db234007a084c5b73293e921468898d07e99
+  sentry-rails (7.1.0) sha256=21e2092f8ab013ec384a4a3e406622a1c2a04d6638c697b8f922d9d46da634fa
+  sentry-ruby (7.1.0) sha256=bd6d2d022d879268526f62f0dccfb76aac99542bfce355e2b6a49cd1a81c0102
   shopify_api (16.3.0) sha256=60ead2c0d07a6d12b51d63c91ceefe4fa25130083d94c39bce48140022a715bc
   shopify_app (23.0.3) sha256=78fad2640934d46bb71417c7b9b6c31317a8369fe81dea1b579857565689fc45
   signet (0.22.1) sha256=6e73e9f2bdc2f038a5fdc8a89d248792b1b55e9ca50ee1ba458d8f1d9f0a2151

@@ -90,8 +90,8 @@ gem "rack-attack", "~> 6.7"
 gem "strong_migrations", "~> 2.5"
 
 # Error tracking; inert unless SENTRY_DSN is set — config/initializers/sentry.rb
-gem "sentry-ruby", "~> 5.22"
-gem "sentry-rails", "~> 5.22"
+gem "sentry-ruby", "~> 7.1"
+gem "sentry-rails", "~> 7.1"
 
 # Use Sass to process CSS
 # gem "sassc-rails"

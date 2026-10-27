@@ -191,7 +191,7 @@ module TeamChat
     end
 
     def dollars(cents)
-      "#{'-' if cents.negative?}$#{ActiveSupport::NumberHelper.number_to_delimited(format('%.2f', cents.abs / 100.0))}"
+      Money.format(cents, minus: '-')
     end
 
     def propose(name, args)

@@ -14,7 +14,7 @@ namespace :finance do
       puts "Tenant: #{tenant.id}"
     end
 
-    def finance_money(cents) = format('$%<amount>.2f', amount: cents.to_i / 100.0)
+    def finance_money(cents) = Money.format(cents.to_i, minus: '-', delimiter: '')
 
     desc 'Post completed payments and refunds that have no ledger entry yet (dry run unless CONFIRM=1)'
     task backfill: :environment do

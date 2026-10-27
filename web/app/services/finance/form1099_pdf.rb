@@ -132,7 +132,8 @@ module Finance
       end
     end
 
-    def money(cents) = "$#{ActiveSupport::NumberHelper.number_to_delimited(format('%.2f', cents.to_i / 100.0))}"
+    # PDF text: ASCII minus (Prawn's built-in fonts have no U+2212).
+    def money(cents) = Money.format(cents.to_i, minus: '-')
     def plain(text) = text.to_s.encode('Windows-1252', invalid: :replace, undef: :replace, replace: '?').encode('UTF-8')
   end
 end

@@ -9,7 +9,7 @@ class CtraxSalesSyncJob < ApplicationJob
   # Today and yesterday on every run, plus any of the last week never stored; once a night (the run in the 3 a.m.
   # hour) the whole last week, so a correction to an older day in C-Trax is read again.
   def self.dates_to_read(now: Time.current)
-    local = now.in_time_zone('America/New_York')
+    local = now.in_time_zone(BusinessClock.zone)
     today = local.to_date
     week = (0...RECHECK_DAYS).map { |back| today - back }
     return week if local.hour == NIGHTLY_HOUR && local.min < 30

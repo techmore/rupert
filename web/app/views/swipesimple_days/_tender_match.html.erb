@@ -1,5 +1,5 @@
 <%# Rupert POS card tenders matched to SwipeSimple card sales. Locals: match (SwipesimpleTenderMatch), date. %>
-<% zone = SwipesimpleDayClose::ZONE %>
+<% zone = BusinessClock.zone %>
 <% money = ->(cents) { ctrax_money(cents) } %>
 <% at = ->(time) { local = time.in_time_zone(zone); local.to_date == date ? local.strftime('%-I:%M %p') : local.strftime('%b %-d, %-I:%M %p') } %>
 <% minutes = SwipesimpleTenderMatch::WINDOW.in_minutes.to_i %>

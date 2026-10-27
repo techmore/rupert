@@ -30,7 +30,9 @@ module Mcp
         def time_value(value)
           return value if value.nil? || value.respond_to?(:iso8601)
 
-          Time.zone.parse(value.to_s)
+          # SQLite returns raw datetime aggregates as UTC strings. Parse them as
+          # UTC before converting to the app zone, or dates near midnight shift.
+          Time.find_zone!('UTC').parse(value.to_s).in_time_zone
         end
 
         def money_row(currency, cents_value, extra = {})

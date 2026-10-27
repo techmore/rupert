@@ -44,4 +44,17 @@ class SystemBackupsTest < ActionDispatch::IntegrationTest
     get system_path
     assert_redirected_to root_path
   end
+
+  test 'the system page shows the last encryption status, or how to run it' do
+    file = @dir.join('encryption_status.json')
+    ENV['RUPERT_ENCRYPTION_STATUS_FILE'] = file.to_s
+    get system_path
+    assert_select '[data-encryption-status=unknown]', text: /ops:encryption_status/
+
+    file.write({ at: 5.minutes.ago.iso8601, plaintext: 3, models: 62, skipped: [] }.to_json)
+    get system_path
+    assert_select '[data-encryption-status="3"]', text: /3 rows · 62 models · checked 5 minutes ago/
+  ensure
+    ENV.delete('RUPERT_ENCRYPTION_STATUS_FILE')
+  end
 end

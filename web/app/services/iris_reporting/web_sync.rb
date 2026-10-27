@@ -22,7 +22,7 @@ module IrisReporting
       return { busy: true } unless claimed == 1
 
       version += 1
-      month = Time.use_zone('America/New_York') { Date.current.beginning_of_month }
+      month = BusinessClock.today.beginning_of_month
       snapshots = WebClient.new(@connection.credential_values).fetch(merchants: Client.merchants(@connection.account_reference), months: [month.prev_month, month])
       @connection.with_lock do
         raise WebClient::Error, :changed unless @connection.lock_version == version

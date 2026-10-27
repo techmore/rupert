@@ -19,6 +19,10 @@
               Can't compare: this build has no git revision
             <% elsif @check.nil? %>
               Checking…
+            <% elsif @check.diverged? %>
+              <span class="pill-rose">Running build and GitHub main have diverged; the updater cannot fast-forward.</span>
+            <% elsif @check.ahead_of_main? %>
+              <span class="pill-rose">Running build is ahead of GitHub main; the updater cannot fast-forward.</span>
             <% elsif @check.available? %>
               <span class="pill-olive"><%= pluralize(@check.behind_by, "newer change") %></span>
               <% if @check.url&.start_with?("https://github.com/") %><%= link_to "See what changed", @check.url, target: "_blank", rel: "noopener", class: "ml-2 underline" %><% end %>
@@ -65,7 +69,11 @@
         <% if waiting %>
           <div class="rounded-control bg-haze px-4 py-3 text-sm" data-update-request>
             Install requested <%= time_ago_in_words(@requested_at) %> ago.
-            <%= unseen ? "The updater picks it up within a few minutes." : "It runs as soon as CI passes." %>
+            <% if @status.state == 'recovery_required' %>
+              Manual recovery is required before any update can run.
+            <% else %>
+              <%= unseen ? "The updater picks it up within a few minutes." : "It runs as soon as CI passes." %>
+            <% end %>
             <% if @can_control && !@status.busy? %>
               <%= button_to "Cancel request", cancel_system_updates_path, method: :delete, class: "btn-ghost btn-sm mt-2" %>
             <% end %>
@@ -73,7 +81,7 @@
         <% end %>
 
         <% if @can_control && !@status.busy? %>
-          <% if !waiting && (@status.failed? || @status.state.in?(%w[ready waiting_ci]) || @check&.available?) %>
+          <% if !waiting && @status.state != 'recovery_required' && (@status.failed? || @status.state.in?(%w[ready waiting_ci]) || @check&.available?) %>
             <div>
               <%= button_to (@status.failed? ? "Retry update" : "Install update now"), install_system_updates_path, method: :post, class: "btn-primary",
                     form: { data: { turbo_confirm: "Install the newest code from GitHub main?\n\nThe updater installs it only if its checks passed. It backs up the database first, and Rupert restarts, so everyone on this server is briefly disconnected." } } %>
@@ -91,7 +99,7 @@
         <% if @last_deploy %>
           <p class="flex flex-wrap items-center gap-2 text-sm">
             <%= update_state_pill(@last_deploy) %>
-            <span><%= commit_link(@last_deploy.current) %> → <%= commit_link(@last_deploy.target) %></span>
+            <span><%= commit_link(@last_deploy.previous.presence || @last_deploy.current) %> → <%= commit_link(@last_deploy.target) %></span>
           </p>
           <p class="font-mono text-xs text-taupe"><%= @last_deploy.message %></p>
           <% if @last_deploy.at %><p class="text-xs text-taupe" title="<%= @last_deploy.at.in_time_zone.iso8601 %>"><%= time_ago_in_words(@last_deploy.at) %> ago</p><% end %>

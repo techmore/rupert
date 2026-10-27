@@ -3,21 +3,13 @@
 # Money and status display for the Money workspace (finance, close, books).
 # Amounts are always integer cents; nothing here rounds, converts or sums.
 module FinanceHelper
-  MINUS = '−'
+  MINUS = Money::MINUS
 
   # Plain-text amount: "$1,234.56", "−$0.01", "CAD 5.00". A nil amount is
   # missing, not zero, and reads as +missing+ ("—" unless overridden).
   # zero: :dash shows "—" for an exact zero (debit/credit columns).
   def finance_money_text(cents, currency: 'USD', zero: :show, missing: '—')
-    return missing if cents.nil?
-
-    cents = Integer(cents)
-    return '—' if cents.zero? && zero == :dash
-
-    whole, fraction = cents.abs.divmod(100)
-    digits = "#{number_with_delimiter(whole)}.#{format('%02d', fraction)}"
-    prefix = currency == 'USD' ? '$' : "#{currency.presence || 'Unknown currency'} "
-    "#{cents.negative? ? MINUS : ''}#{prefix}#{digits}"
+    Money.format(cents, currency: currency, zero: zero, missing: missing)
   end
 
   # HTML amount with tabular digits. Negatives carry a real minus sign and a
@@ -49,10 +41,7 @@ module FinanceHelper
 
   # Exact decimal for CSV: 12550 -> "125.50". No floats.
   def self.cents_to_decimal(cents)
-    return '' if cents.nil?
-
-    whole, fraction = Integer(cents).abs.divmod(100)
-    "#{'-' if Integer(cents).negative?}#{whole}.#{format('%02d', fraction)}"
+    cents.nil? ? '' : Money.format_cents(Integer(cents))
   end
 
   # Active period locks as JSON for form scripts: [{from:, to:, label:}].

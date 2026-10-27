@@ -91,7 +91,7 @@ class ShopifyVariantsController < AuthenticatedController
 
   def cost_subject = "#{ItemProfile.display_name(@variant)} (#{@variant.sku.presence || @variant.id})"
 
-  def format_cents(cents) = ActiveSupport::NumberHelper.number_to_currency(cents / 100.0)
+  def format_cents(cents) = Money.format(cents, minus: '-')
 
   def handle_mapping_database_error(error)
     raise error unless %w[SQLite3::BusyException SQLite3::LockedException].include?(error.cause.class.name)

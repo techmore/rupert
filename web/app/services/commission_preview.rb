@@ -102,7 +102,7 @@ class CommissionPreview
         totals[key][:order_count] += 1
         next if admins.include?(key)
 
-        totals[key][:commission_cents] += (base + 50) / 100
+        totals[key][:commission_cents] += PayRules.commission_cents(base)
         totals[key][:tip_cents] += tip_share
       end
     end

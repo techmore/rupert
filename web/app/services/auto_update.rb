@@ -14,7 +14,7 @@ require 'json'
 class AutoUpdate
   STALE_AFTER = 20.minutes
 
-  Report = Struct.new(:state, :message, :current, :target, :mode, :install_requested, :at, keyword_init: true) do
+  Report = Struct.new(:state, :message, :current, :target, :previous, :mode, :install_requested, :at, :request_mtime_ns, keyword_init: true) do
     # An install that has gone quiet (the updater died mid-way) is not treated
     # as running, so the page offers Install again.
     def busy? = state == 'deploying' && !AutoUpdate.stale?(self)
@@ -56,11 +56,13 @@ class AutoUpdate
       nil
     end
 
-    # A request the deployer has not reported on yet. Whole seconds, like the
-    # deployer (stat %Y, status times): the file's sub-second mtime would
-    # otherwise look newer than a report written in the same second.
+    # Prefer the updater's exact request mtime, so a second request in the same
+    # second isn't hidden. Older updater reports fall back to whole seconds.
     def request_unseen?(report = status)
-      (at = requested_at).present? && (report&.at.nil? || at.to_i > report.at.to_i)
+      return false unless (at = requested_at)
+      return (at.to_r * 1_000_000_000).to_i > report.request_mtime_ns if report&.request_mtime_ns.is_a?(Integer)
+
+      report&.at.nil? || at.to_i > report.at.to_i
     end
 
     private
@@ -70,8 +72,8 @@ class AutoUpdate
       return unless data.is_a?(Hash)
 
       Report.new(state: data['state'].to_s, message: data['message'].to_s, current: data['current'].to_s,
-        target: data['target'].to_s, mode: data['mode'].to_s, install_requested: data['install_requested'] == true,
-        at: parse_time(data['at']))
+        target: data['target'].to_s, previous: data['previous'].to_s, mode: data['mode'].to_s, install_requested: data['install_requested'] == true,
+        at: parse_time(data['at']), request_mtime_ns: data['request_mtime_ns'])
     rescue Errno::ENOENT, Errno::EACCES, Errno::ENOTDIR, JSON::ParserError
       nil
     end

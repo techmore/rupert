@@ -119,9 +119,7 @@ module Mcp
     end
 
     def money(cents)
-      return 'unavailable' if cents.nil?
-
-      format('%.2f', cents / 100.0)
+      Money.format(cents, unit: false, minus: '-', delimiter: '', missing: 'unavailable')
     end
 
     def iso(time)
