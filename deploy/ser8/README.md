@@ -3,9 +3,12 @@
 For the end-to-end branch, CI, deployment, receipt and acceptance policy, see
 the [development and deployment workflow](../../docs/development-and-deployment-workflow.md).
 
-`rupert-sync-watch` runs on the SER8 **host** as a user timer (every 15 minutes) and fails when Rupert's newest
-successful sync is older than 45 minutes or `rupert-jobs` is not active. A failed run is visible in Cockpit and in
+`rupert-sync-watch` runs on the SER8 **host** as a user timer (every 15 minutes) and fails when a configured Shopify or Square catalog in an active workspace has no successful acquisition within 45 minutes,
+or when an enabled C-Trax, Square timecard, SwipeSimple, Authorize.net or bank channel needs attention under the same source-health rules used in Connections,
+when the database volume cannot be checked or is low on space, when `/up/ready` fails, or when `rupert-jobs` is not active. It runs the read-only
+Rails check `web/script/sync_watch.rb` in the container so encrypted configuration can be evaluated without exposing secrets. A failed run is visible in Cockpit and in
 `systemctl --user --failed`. It is read-only: it never restarts anything.
+The readiness check defaults to container localhost; `READY_URL` can override it with an externally reachable URL.
 
 It lives outside the container on purpose: the in-app monitors run on the same job worker, so they cannot report it
 being down. That worker was down from 2026-10-02 to 2026-10-13 and nobody noticed.
@@ -37,9 +40,9 @@ one poll a minute while idle; `RUPERT_PROVISIONER_MAX_IDLE_SECONDS=15` keeps the
 
 ## Backups
 
-Five layers (5-minute rolling snapshot and 6-hourly sets inside the container, an encrypted copy on the host, a mirror on
-another machine and a weekly restore drill), each reporting to **System → Backups**. Scripts, units, install steps and the
-restore procedure are in [docs/ops/backups.md](../../docs/ops/backups.md).
+Reporting layers cover rolling snapshots, local sets, an encrypted host copy, an off-machine mirror, a weekly
+encrypted-copy check and a manual recovery-kit drill. The weekly check cannot decrypt; the drill runs on a trusted
+computer. Scripts, units, install steps and the restore procedure are in [docs/ops/backups.md](../../docs/ops/backups.md).
 
 ## Auto-deploy (`rupert-autodeploy`)
 
