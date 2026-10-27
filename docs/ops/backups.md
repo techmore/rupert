@@ -73,6 +73,9 @@ If System → Backups shows "skipped: … MB free", free disk space first; the n
 
 Ad-hoc copies taken by hand during deployments live under `/var/backups/rupert/<name>/` in the container and are not
 pruned by anything. Review and delete them when the disk is tight (`du -sh /var/backups/rupert/* | sort -h`).
+The backup scripts remove their own specifically named on-disk temporary work directories after acquiring their locks,
+including leftovers from an interrupted run. Older generic `.work.*` directories are not automatically deleted because
+their provenance is not certain; review them privately. Memory-backed scratch is cleared on reboot.
 
 ## Install
 

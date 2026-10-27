@@ -3,6 +3,7 @@
 The fake age tool is deliberately not cryptographic; real encryption is covered
 by test_encrypted_backups.py when the age binaries are available.
 """
+import hashlib
 import os
 from pathlib import Path
 import sqlite3
@@ -12,6 +13,7 @@ import unittest
 from deploy.ser8.tests.test_encrypted_backups import SQLITE_STUB
 
 SCRIPT = Path(__file__).resolve().parents[3] / 'bin' / 'backup.sh'
+FREQUENT = Path(__file__).resolve().parents[1] / 'rupert-backup-frequent.sh'
 
 class BackupPublicationTest(unittest.TestCase):
     def setUp(self):
@@ -79,3 +81,31 @@ pathlib.Path(name).write_bytes(b'age-encryption.org/v1\\n' + sys.stdin.buffer.re
             stamp = database.name.removeprefix('rupert-').removesuffix('.sqlite3.gz.age')
             self.assertTrue((self.out / f'settings-{stamp}.sql.age').exists())
             self.assertTrue((self.out / f'env-{stamp}.age').exists())
+
+    def test_interrupted_work_cleanup_is_limited_to_this_script(self):
+        self.out.mkdir()
+        stale = self.out / '.rupert-backup-work.ABC123'
+        stale.mkdir()
+        (stale / 'snapshot.sqlite3').write_bytes(b'old temporary plaintext')
+        unrelated = self.out / '.work.ABC123'
+        unrelated.mkdir()
+        (unrelated / 'keep').write_text('not owned by the new cleanup rule')
+        result = self.run_backup()
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse(stale.exists())
+        self.assertTrue((unrelated / 'keep').exists())
+
+    def test_frequent_snapshot_publishes_data_with_metadata_and_cleans_its_work(self):
+        self.out.mkdir()
+        stale = self.out / '.rupert-frequent-work.ABC123'
+        stale.mkdir()
+        (stale / 'snapshot.sqlite3').write_bytes(b'old temporary plaintext')
+        result = subprocess.run(['bash', str(FREQUENT)], env=self.env, capture_output=True, text=True)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse(stale.exists())
+        snapshots = list(self.out.glob('rupert-*.sqlite3.gz.age'))
+        self.assertEqual(1, len(snapshots))
+        for suffix in ('.sha256', '.key'):
+            self.assertTrue(Path(str(snapshots[0]) + suffix).is_file())
+        digest, name = Path(str(snapshots[0]) + '.sha256').read_text().split()
+        self.assertEqual((hashlib.sha256(snapshots[0].read_bytes()).hexdigest(), snapshots[0].name), (digest, name))

@@ -39,6 +39,14 @@ chmod 0700 "$OUT"
 exec 9>"$OUT/.backup.lock"
 flock -w 900 9 || { echo "another backup held the lock for 15 minutes" >&2; exit 1; }
 
+# EXIT traps cannot run after SIGKILL or power loss. Remove only our own
+# specifically named work directories after acquiring the backup lock.
+cleanup_work() {
+  [ -d "$1" ] || return 0
+  find "$1" -mindepth 1 -maxdepth 1 -type d -uid "$(id -u)" -name "$2" -exec rm -rf -- {} +
+}
+cleanup_work "$OUT" '.rupert-backup-work.??????'
+
 KEY_FPR=""
 json_escape() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | tr -d '\n'; }
 free_bytes() { df -B1 --output=avail "$1" 2>/dev/null | tail -1 | tr -d ' '; }
@@ -79,7 +87,7 @@ need=$(( db_bytes + db_bytes / 4 + MIN_FREE_MB * 1024 * 1024 ))
 if [ -d "$SCRATCH" ] && [ "$(free_bytes "$SCRATCH" || echo 0)" -ge $(( db_bytes * 2 )) ]; then
   WORK="$(mktemp -d -p "$SCRATCH" rupert-backup.XXXXXX)"
 else
-  WORK="$(mktemp -d -p "$OUT" .work.XXXXXX)"
+  WORK="$(mktemp -d -p "$OUT" .rupert-backup-work.XXXXXX)"
 fi
 SNAP="$WORK/snapshot.sqlite3"
 trap 'rm -rf "$WORK"; for dest in "$DB_OUT" "$SET_OUT" "$ENV_OUT"; do rm -f "$dest.partial" "$dest.sha256.partial" "$dest.key.partial"; done' EXIT
