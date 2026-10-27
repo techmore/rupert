@@ -6,9 +6,18 @@ on:
   issue_comment:
     types: [created]
 
+# The CLA action checks signatures against Shopify's service (cla-token), then
+# comments, labels and sets a commit status; nothing is stored in this repo.
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  statuses: write
+
 jobs:
   cla:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     env:
       CLA_TOKEN: ${{ secrets.CLA_TOKEN }}
     if: |
