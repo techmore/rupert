@@ -20,7 +20,7 @@ class SystemBackupsTest < ActionDispatch::IntegrationTest
   end
 
   def write(layer, at:, state: 'ok', message: 'snapshot ok; 30 kept')
-    @dir.join("#{layer}.json").write({ layer: layer, state: state, at: at.utc.iso8601, message: message, file: '/var/backups/x.gz', bytes: 41_000_000, kept: 30, free_bytes: 90_000_000_000 }.to_json)
+    @dir.join("#{layer}.json").write({ layer: layer, state: state, at: at.utc.iso8601, message: message, file: '/var/backups/x.gz', bytes: 41_000_000, kept: 30, free_bytes: 90_000_000_000, encrypted: true }.to_json)
   end
 
   test 'the system page shows every backup layer with its state and message' do
@@ -35,6 +35,7 @@ class SystemBackupsTest < ActionDispatch::IntegrationTest
     assert_select '[data-backup-layer=offhost][data-backup-state=failed]', text: /verification failed for rupert-20261021.sql.gz/
     assert_select '[data-backup-layer=offsite][data-backup-state=missing]', text: /Never reported on this server/
     assert_select '[data-backup-layer=verify][data-backup-state=missing]'
+    assert_select '[data-backup-layer=restore][data-backup-state=missing]'
     assert_select '#backups', text: /A backup layer failed/
     assert_select '#backups', text: /39.1 MB/
   end

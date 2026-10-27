@@ -5,7 +5,7 @@
 <% headline = { 'ok' => ['All backup layers are fresh', 'pill-fern'], 'failed' => ['A backup layer failed', 'pill-rose'],
                 'stale' => ['A backup layer is overdue', 'pill-clay'], 'missing' => ['A backup layer has never reported', 'pill-clay'] }.fetch(summary) %>
 <section class="section-card" id="backups" data-backups-summary="<%= summary %>">
-  <%= section_heading 'Backups', hint: 'Five layers, each for a different way of losing data.' do %>
+  <%= section_heading 'Backups', hint: 'Backup copies, checks and recovery evidence.' do %>
     <span class="<%= headline[1] %>"><%= headline[0] %></span>
   <% end %>
   <% unless BackupEncryptionKey.current %>

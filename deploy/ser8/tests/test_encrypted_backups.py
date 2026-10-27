@@ -163,7 +163,7 @@ class EncryptedBackupTest(unittest.TestCase):
         self.activate(self.recipient)
         r = self.run_backup()
         self.assertEqual(0, r.returncode, r.stderr)
-        files = sorted(p.name for p in self.local.iterdir() if p.is_file())
+        files = sorted(p.name for p in self.local.iterdir() if p.is_file() and p.name != '.backup.lock')
         self.assertTrue(files)
         for name in files:
             self.assertRegex(name, r'\.(age|age\.sha256|age\.key)$', 'no plaintext file is left behind')
@@ -198,7 +198,7 @@ class EncryptedBackupTest(unittest.TestCase):
             status = self.status_of('local')
             self.assertEqual('failed', status['state'])
             self.assertFalse(status['encrypted'])
-            self.assertEqual([], [p for p in self.local.iterdir() if p.is_file()])
+            self.assertEqual([], [p for p in self.local.iterdir() if p.is_file() and p.name != '.backup.lock'])
 
     def test_backup_rejects_a_malformed_recipient(self):
         self.activate("age1'; touch /tmp/pwned; '")
@@ -387,6 +387,26 @@ class EncryptedBackupTest(unittest.TestCase):
         r, out = self.decrypt(db, '--identity-file', str(self.key_file))
         self.assertEqual(1, r.returncode)
         self.assertIn('readable only by you', r.stderr)
+
+    def test_restore_receipt_is_written_only_after_verified_database_recovery(self):
+        db = self.make_set()
+        receipt = self.tmp / 'restore.json'
+        r, out = self.decrypt(db, '--identity-file', str(self.key_file), '--receipt', str(receipt))
+        self.assertEqual(0, r.returncode, r.stderr)
+        report = json.loads(receipt.read_text())
+        self.assertEqual(('restore', 'ok', True), (report['layer'], report['state'], report['encrypted']))
+        self.assertEqual(db.name, report['file'])
+        self.assertNotIn(self.identity, receipt.read_text())
+        self.assertEqual(0o600, stat.S_IMODE(receipt.stat().st_mode))
+        out.unlink()
+        receipt.unlink()
+        with db.open('r+b') as f:
+            f.seek(-20, os.SEEK_END)
+            f.write(b'corrupt')
+        r, out = self.decrypt(db, '--identity-file', str(self.key_file), '--receipt', str(receipt))
+        self.assertNotEqual(0, r.returncode)
+        self.assertFalse(receipt.exists())
+        self.assertFalse(out.exists())
 
     def test_decrypt_rejects_tampered_ciphertext_and_the_wrong_kit(self):
         db = self.make_set()
