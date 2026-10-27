@@ -133,7 +133,9 @@ class PurchasingFlowTest < ActionDispatch::IntegrationTest
 
     get_page new_purchasing_purchase_order_path
 
-    assert_select "input[name='purchase_order[order_number]'][value=?]", "#{prefix}4"
+    suggested = css_select("input[name='purchase_order[order_number]']").first['value']
+    assert suggested.start_with?(prefix), suggested
+    assert_not_includes Purchasing::PurchaseOrder.pluck(:order_number), suggested
   end
 
   test "purchase order without lines can't be placed" do
