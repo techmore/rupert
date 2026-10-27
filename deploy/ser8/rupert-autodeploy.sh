@@ -3,9 +3,9 @@
 # clean checkout only, DB backup first, health check, code rollback on failure.
 # A commit that failed to deploy is remembered and not retried until main moves.
 # Every install attempt leaves a release receipt in $STATE/receipts (see
-# deploy/ser8/README.md): <sha>.json after a healthy deploy, <sha>.failed-<time>.json
+# deploy/ser8/README.md): <sha>.json after a healthy deploy, <sha>.failed-<time>-<attempt>.json
 # after a failed or rolled-back one. `rupert-deploy-receipt` prints the latest.
-# DRY_RUN=1 reports what it would do without changing anything.
+# DRY_RUN=1 fetches and checks eligibility but stops before installation.
 # The RUPERT_AUTODEPLOY_* variables exist for the tests in deploy/ser8/tests.
 set -uo pipefail
 # Normal umask: git checkout and bundle install run as root here, and the app
@@ -37,11 +37,13 @@ log() { echo "autodeploy: $*"; }
 write_json() {
   [ "${DRY_RUN:-0}" = 1 ] && return 0
   mkdir -p "$STATE" && chmod 755 "$STATE"
-  python3 - "$STATE/$1" "$2" "$3" "${CUR:-}" "${NEW:-}" "$mode" "$requested" "${RECEIPT:-}" <<'PY' || log "could not write $1"
+  python3 - "$STATE/$1" "$2" "$3" "${CUR:-}" "${NEW:-}" "$mode" "$requested" "${RECEIPT:-}" "$requested_at" "${PREVIOUS:-}" <<'PY' || log "could not write $1"
 import datetime, json, os, sys
-path, state, message, current, target, mode, requested, receipt = sys.argv[1:]
+path, state, message, current, target, mode, requested, receipt, request_mtime_ns, previous = sys.argv[1:]
 body = {'state': state, 'message': message, 'current': current, 'target': target, 'mode': mode,
+        'previous': previous,
         'install_requested': requested == '1',
+        'request_mtime_ns': int(request_mtime_ns),
         'at': datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')}
 if receipt:
     body['receipt'] = receipt
@@ -55,7 +57,15 @@ PY
 report() { log "$2"; write_json status.json "$1" "$2"; }
 # The request was acted on (installed, failed or nothing to install): forget it.
 handle_request() {
-  [ "$requested" = 1 ] && [ "${DRY_RUN:-0}" != 1 ] && { mkdir -p "$STATE"; echo "$requested_at" > "$STATE/request-handled"; }
+  if [ "$requested" = 1 ] && [ "${DRY_RUN:-0}" != 1 ]; then
+    mkdir -p "$STATE" || return 1
+    # Keep the legacy marker for older installed updater copies, then commit
+    # the precise marker atomically. Do not install without a durable marker.
+    printf '%s\n' "$((requested_at / 1000000000))" > "$STATE/request-handled.tmp" &&
+      mv "$STATE/request-handled.tmp" "$STATE/request-handled" &&
+      printf '%s\n' "$requested_at" > "$STATE/request-handled-ns.tmp" &&
+      mv "$STATE/request-handled-ns.tmp" "$STATE/request-handled-ns" || return 1
+  fi
   requested=0
 }
 
@@ -63,8 +73,25 @@ exec 9>"$LOCK"
 flock -n 9 || { log "another deploy is running"; exit 0; }
 
 mode=automatic; [ -e "$INBOX/manual" ] && mode=manual
-requested_at=$(stat -c %Y "$INBOX/install-requested" 2>/dev/null) || requested_at=0
-handled_at=$(cat "$STATE/request-handled" 2>/dev/null); [[ $handled_at =~ ^[0-9]+$ ]] || handled_at=0
+request_mtime_ns() {
+  python3 - "$INBOX/install-requested" <<'PY'
+import os, sys
+try:
+    print(os.lstat(sys.argv[1]).st_mtime_ns)
+except OSError:
+    print(0)
+PY
+}
+requested_at=$(request_mtime_ns)
+handled_at=$(cat "$STATE/request-handled-ns" 2>/dev/null)
+legacy_handled=$(cat "$STATE/request-handled" 2>/dev/null)
+[[ $legacy_handled =~ ^[0-9]+$ ]] || legacy_handled=0
+if ! [[ $handled_at =~ ^[0-9]+$ ]] || [ "$legacy_handled" -gt "$((handled_at / 1000000000))" ]; then
+  handled_at=$legacy_handled
+  # An older updater tracked whole seconds: conservatively treat that entire
+  # second as handled so installing this version cannot replay an old request.
+  [ "$handled_at" = 0 ] || handled_at=$(((handled_at + 1) * 1000000000 - 1))
+fi
 requested=0; [ "$requested_at" -gt "$handled_at" ] && requested=1
 
 # Scratch space for this run's check-run and smoke evidence.
@@ -80,13 +107,20 @@ if [ "${DRY_RUN:-0}" != 1 ] && [ "$(git rev-parse --is-shallow-repository)" = tr
   git fetch -q --unshallow origin main || { report blocked "could not fetch full git history"; exit 0; }
 fi
 CUR=$(git rev-parse HEAD); NEW=$(git rev-parse origin/main)
-[ "$CUR" = "$NEW" ] && { handle_request; report up_to_date "up to date at ${CUR:0:8}"; exit 0; }
+if [ "$(cat "$STATE/failed-sha" 2>/dev/null)" = "$CUR" ]; then
+  interrupted=$CUR
+  CUR=""  # The checkout does not prove which build is serving.
+  handle_request || log 'could not record the pending request'
+  report recovery_required "${interrupted:0:8} may be an interrupted or failed install; manual recovery is required before any update"
+  exit 1
+fi
+[ "$CUR" = "$NEW" ] && { handle_request || { report blocked 'could not record the install request'; exit 1; }; report up_to_date "up to date at ${CUR:0:8}"; exit 0; }
 git merge-base --is-ancestor "$CUR" "$NEW" || { report blocked "origin/main is not a fast-forward of ${CUR:0:8}, skipping"; exit 0; }
 if [ "$requested" = 0 ] && [ "$(cat "$STATE/failed-sha" 2>/dev/null)" = "$NEW" ]; then
   report failed "${NEW:0:8} already failed to deploy, waiting for a newer commit (rm $STATE/failed-sha or request an install to retry)"; exit 0
 fi
 
-# Integrated main commits must pass all three source checks before deployment.
+# Integrated main commits must pass all three GitHub Actions source checks before deployment.
 # CLA is a PR-only check. Re-runs leave earlier check runs in the list, so only
 # the latest check run by ID for each required name counts. Missing, skipped or
 # pending checks never pass the gate.
@@ -103,8 +137,12 @@ gate() { # gate <sha> <comma-separated required check names> <evidence file> -> 
 import json, sys
 required, evidence, sha = sys.argv[1].split(","), sys.argv[2], sys.argv[3]
 latest = {}
-for r in json.load(sys.stdin)["check_runs"]:
-    if r["name"] in required and r["id"] > latest.get(r["name"], {"id": -1})["id"]:
+body = json.load(sys.stdin)
+runs = body["check_runs"]
+if not isinstance(body.get("total_count"), int) or body["total_count"] > len(runs):
+    raise ValueError("check run response is incomplete")
+for r in runs:
+    if r.get("app", {}).get("id") == 15368 and r["name"] in required and r["id"] > latest.get(r["name"], {"id": -1})["id"]:
         latest[r["name"]] = r
 if any(r.get("status") == "completed" and r.get("conclusion") != "success" for r in latest.values()): verdict = "red"
 elif all(name in latest and latest[name].get("status") == "completed" and latest[name].get("conclusion") == "success" for name in required): verdict = "green"
@@ -131,25 +169,38 @@ esac
 
 migration_files=$(git diff --name-only --diff-filter=A "$CUR" "$NEW" -- web/db/migrate)
 migrations=$(printf '%s' "$migration_files" | grep -c .)
+# A request or mode may have changed while the GitHub checks were fetched.
+# Leave a newer request for the next pass instead of spending the old one.
+if [ "$requested" = 1 ] && [ "$(request_mtime_ns)" != "$requested_at" ]; then
+  report blocked 'install request changed or was cancelled; checking again on the next run'
+  exit 0
+fi
+mode=automatic; [ -e "$INBOX/manual" ] && mode=manual
 if [ "$mode" = manual ] && [ "$requested" = 0 ]; then
   report ready "${NEW:0:8} is ready to install ($migrations new migration(s)); manual mode waits for an install request"; exit 0
 fi
-log "deploying ${CUR:0:8} -> ${NEW:0:8} ($migrations new migration(s))"
+log "preparing ${CUR:0:8} -> ${NEW:0:8} ($migrations new migration(s))"
 [ "${DRY_RUN:-0}" = 1 ] && { log "dry run, stopping"; exit 0; }
+if ! mkdir -p "$STATE" || ! chmod 755 "$STATE"; then
+  log 'cannot prepare updater state; not installing'
+  exit 1
+fi
 started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+attempt_id=$(python3 -c 'import secrets; print(secrets.token_hex(8))') || { log 'could not create attempt identifier'; exit 1; }
+PREVIOUS=$CUR
 backup=""; stage=backup; migrate_ran=0; health_result=not_run; health_code=""; health_attempts=0
-rollback_result=not_needed; RECEIPT=""
+rollback_result=not_needed; running_sha=""; RECEIPT=""
 # write_receipt RESULT MESSAGE: the durable record of this install attempt. It
 # holds commit IDs, check-run IDs/URLs, file names, checksums and HTTP results
 # only; nothing from $ENV_FILE, the database or the request inbox goes in it.
 write_receipt() {
   local dir="$STATE/receipts" name
   mkdir -p "$dir" && chmod 755 "$dir"
-  if [ "$1" = deployed ]; then name="$NEW.json"; else name="$NEW.failed-$(date -u +%Y%m%dT%H%M%SZ).json"; fi
+  if [ "$1" = deployed ]; then name="$NEW.json"; else name="$NEW.failed-$(date -u +%Y%m%dT%H%M%SZ)-$attempt_id.json"; fi
   RECEIPT="$dir/$name"
   R_RESULT=$1 R_MESSAGE=$2 R_CUR=$CUR R_NEW=$NEW R_MOBILE=$mobile_sha R_MODE=$mode R_REQUESTED=$install_request \
   R_STARTED=$started_at R_STAGE=$stage R_MIGRATIONS=$migration_files R_MIGRATE_RAN=$migrate_ran R_BACKUP=$backup \
-  R_HEALTH=$health_result R_HEALTH_CODE=$health_code R_HEALTH_ATTEMPTS=$health_attempts R_ROLLBACK=$rollback_result \
+  R_HEALTH=$health_result R_HEALTH_CODE=$health_code R_HEALTH_ATTEMPTS=$health_attempts R_ROLLBACK=$rollback_result R_RUNNING=$running_sha \
   R_WORK=$WORK R_HOST=$HOST R_SMOKE_PATH=$SMOKE_PATH python3 - "$RECEIPT" <<'PY' || log "could not write receipt $RECEIPT"
 import datetime, hashlib, json, os, sys
 e = os.environ
@@ -174,7 +225,7 @@ body = {
     'deployed_sha': e['R_NEW'] if e['R_RESULT'] == 'deployed' else None,
     'target_sha': e['R_NEW'],
     'previous_sha': e['R_CUR'],
-    'running_sha': e['R_NEW'] if e['R_RESULT'] == 'deployed' else e['R_CUR'],
+    'running_sha': e['R_RUNNING'] or None,
     'mode': e['R_MODE'],
     'install_requested': e['R_REQUESTED'] == '1',
     'failed_stage': None if e['R_RESULT'] == 'deployed' else e['R_STAGE'],
@@ -203,24 +254,54 @@ PY
 }
 # Recorded before the attempt so a failure is not retried by the same request.
 install_request=$requested
-handle_request
+handle_request || { report blocked 'could not record the install request'; exit 1; }
 write_json status.json deploying "installing ${NEW:0:8} ($migrations new migration(s))"
 
 mkdir -p "$BACKUPS" "$STATE"; chmod 700 "$BACKUPS"; chmod 755 "$STATE"
-backup="$BACKUPS/production-$(date +%Y%m%d-%H%M%S)-${CUR:0:8}.sqlite3"
-if ! ( umask 077; sqlite3 web/storage/production.sqlite3 ".backup $backup" ); then
+backup="$BACKUPS/production-$(date +%Y%m%d-%H%M%S)-${CUR:0:8}-$attempt_id.sqlite3"
+# Resolve the same production SQLite path as Rails, relative to Rails.root.
+db_path=$(cd "$APP/web" && set -a && . "$ENV_FILE" && printf '%s' "${RUPERT_SQLITE_DATABASE_PRODUCTION-storage/production.sqlite3}") || db_path=""
+case "$db_path" in /*) ;; '') ;; *) db_path="$APP/web/$db_path" ;; esac
+if [ -z "$db_path" ] || [ ! -f "$db_path" ] || [ ! -s "$db_path" ] ||
+   ! ( umask 077; sqlite3 -readonly "$db_path" ".backup $backup" ) ||
+   [ "$(sqlite3 -readonly "$backup" 'PRAGMA quick_check;' 2>/dev/null)" != ok ]; then
+  rm -f "$backup"
   backup=""; write_receipt failed "backup failed, aborting"; report failed "backup failed, aborting"; exit 1
 fi
 ls -1t "$BACKUPS"/*.sqlite3 | tail -n +6 | xargs -r rm -f
+
+# Persist the target before changing the checkout. A killed updater must not
+# automatically retry a partially migrated or partially installed revision.
+stage=latch
+if ! { printf '%s\n' "$NEW" > "$STATE/failed-sha.tmp" && mv "$STATE/failed-sha.tmp" "$STATE/failed-sha"; }; then
+  write_receipt failed 'could not persist the failed-commit latch; aborting'
+  report failed 'could not persist the failed-commit latch; aborting'
+  exit 1
+fi
 
 health() {
   health_attempts=0
   for _ in $(seq 1 15); do
     health_attempts=$((health_attempts + 1))
     health_code=$(curl -s --max-time 5 -o /dev/null -w '%{http_code}' -H "Host: $HOST" -H 'X-Forwarded-Proto: https' localhost:3000/up)
-    [ "$health_code" = 200 ] && systemctl is-active --quiet rupert-web rupert-jobs && return 0
+    [ "$health_code" = 200 ] && systemctl is-active --quiet rupert-web && systemctl is-active --quiet rupert-jobs && return 0
     sleep 2
   done; return 1
+}
+# A responsive server is not enough: verify that the prior build is serving.
+rollback_build_matches() {
+  local code headers="$WORK/rollback-headers"
+  code=$(curl -s --max-time 10 -D "$headers" -o /dev/null -w '%{http_code}' -H "Host: $HOST" -H 'X-Forwarded-Proto: https' "localhost:3000$SMOKE_PATH")
+  [ "$code" = 200 ] || return 1
+  python3 - "$headers" "$CUR" <<'PY'
+import sys
+try:
+    with open(sys.argv[1], errors='replace') as f:
+        values = [line.split(':', 1)[1].strip() for line in f if line.lower().startswith('x-rupert-build:')]
+    sys.exit(0 if values and values[-1] == sys.argv[2] else 1)
+except OSError:
+    sys.exit(1)
+PY
 }
 # asset_smoke: the rendered layout serves the new build (X-Rupert-Build), and
 # every compiled stylesheet plus the application script it links to answer 200
@@ -282,7 +363,6 @@ stage=checkout; git checkout -q --detach "$NEW" \
   && stage=health && health_result=failed && health && health_result=passed \
   && stage=asset_smoke && asset_smoke
 if [ $? -ne 0 ]; then
-  echo "$NEW" > "$STATE/failed-sha"
   if [ "$migrations" -gt 0 ]; then
     failure="${NEW:0:8} failed at $stage; $migrations migration(s) may have run and are NOT reverted, pre-deploy backup: $backup"
   else
@@ -291,23 +371,32 @@ if [ $? -ne 0 ]; then
   log "FAILED, rolling code back to ${CUR:0:8}; $failure"
   # Keep the failed attempt's health result for the receipt; the rollback check reuses health().
   attempt_health_code=$health_code attempt_health_attempts=$health_attempts
-  git checkout -q --detach "$CUR"
-  ( cd "$APP/web" && rails_env && bundle install --quiet && bundle exec rails assets:precompile >/dev/null ) || log "rollback rebuild failed"
+  rollback_ok=1
+  git checkout -q --detach "$CUR" || { log "rollback checkout failed"; rollback_ok=0; }
+  if [ "$rollback_ok" = 1 ]; then
+    ( cd "$APP/web" && rails_env && bundle install --quiet && bundle exec rails assets:precompile >/dev/null ) || { log "rollback rebuild failed"; rollback_ok=0; }
+  fi
   fix_owner
-  systemctl restart rupert-web rupert-jobs
-  if health; then
-    log "rollback healthy"; failure="$failure; rolled back to ${CUR:0:8}"; rollback_result=healthy
+  systemctl restart rupert-web rupert-jobs || { log "rollback restart failed"; rollback_ok=0; }
+  if [ "$rollback_ok" = 1 ] && health && rollback_build_matches; then
+    log "rollback healthy"; failure="$failure; rolled back to ${CUR:0:8}"; rollback_result=healthy; running_sha=$CUR
   else
-    log "ROLLBACK ALSO UNHEALTHY, needs a human"; failure="$failure; rollback to ${CUR:0:8} is ALSO UNHEALTHY, needs a human"
+    log "rollback failed or could not be verified; needs a human"; failure="$failure; rollback to ${CUR:0:8} failed or could not be verified; needs a human"
     rollback_result=unhealthy
   fi
   health_code=$attempt_health_code health_attempts=$attempt_health_attempts
   write_receipt failed "$failure"
+  [ "$rollback_result" = healthy ] || CUR=""
   write_json last-deploy.json failed "$failure"
-  write_json status.json failed "$failure"
+  if [ "$rollback_result" = healthy ]; then
+    write_json status.json failed "$failure"
+  else
+    write_json status.json recovery_required "$failure"
+  fi
   exit 1
 fi
 rm -f "$STATE/failed-sha"
+running_sha=$NEW
 write_receipt deployed "deployed ${NEW:0:8}, healthy"
 # The receipt keeps the previous SHA; from here on the running revision is NEW.
 CUR=$NEW

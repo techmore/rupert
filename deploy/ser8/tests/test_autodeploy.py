@@ -1,8 +1,10 @@
 import fcntl
+from contextlib import closing
 import json
 import os
 from pathlib import Path
 import shutil
+import sqlite3
 import subprocess
 import tempfile
 import hashlib
@@ -40,6 +42,11 @@ def emit(body, code=None):
         sys.stdout.write(code)
 if '/check-runs' in url:
     sha = re.search(r'/commits/([0-9a-f]+)/check-runs', url).group(1)
+    if os.environ.get('CANCEL_DURING_CHECKS'):
+        try: os.unlink(os.path.join(os.environ['RUPERT_AUTODEPLOY_INBOX'], 'install-requested'))
+        except FileNotFoundError: pass
+    if os.environ.get('MANUAL_DURING_CHECKS'):
+        open(os.path.join(os.environ['RUPERT_AUTODEPLOY_INBOX'], 'manual'), 'a').close()
     path = os.path.join(os.environ['CHECKS_DIR'], sha + '.json')
     sys.stdout.write(open(path if os.path.exists(path) else os.environ['CHECKS']).read())
 elif url.endswith('/up'):
@@ -55,11 +62,28 @@ else:
             f.write('HTTP/1.1 200 OK\\r\\nx-rupert-build: ' + build + '\\r\\n\\r\\n')
     emit(os.environ.get('PAGE', ''' + repr(PAGE) + '''), os.environ.get('PAGE_CODE', '200'))
 ''',
-    'systemctl': '#!/bin/sh\necho "systemctl $*" >> "$CALLS"\n',
-    'sqlite3': '#!/bin/sh\necho "sqlite3 $*" >> "$CALLS"\n[ "${BACKUP_EXIT:-0}" = 0 ] || exit "$BACKUP_EXIT"\nset -- $2\ntouch "$2"\n',
+    'systemctl': '''#!/bin/sh
+echo "systemctl $*" >> "$CALLS"
+if [ "$1" = is-active ] && [ -n "${INACTIVE_UNIT:-}" ]; then
+  # systemctl returns success when *any* requested unit is active.
+  for unit in "$@"; do
+    case "$unit" in rupert-web|rupert-jobs) [ "$unit" != "$INACTIVE_UNIT" ] && exit 0 ;; esac
+  done
+  exit 3
+fi
+if [ "$1" = restart ]; then exit "${RESTART_EXIT:-0}"; fi
+''',
+    'sqlite3': '''#!/bin/sh
+echo "sqlite3 $*" >> "$CALLS"
+[ "${BACKUP_EXIT:-0}" = 0 ] || exit "$BACKUP_EXIT"
+for arg in "$@"; do
+  case "$arg" in '.backup '*) set -- $arg; touch "$2" ;; 'PRAGMA quick_check;') echo "${BACKUP_INTEGRITY:-ok}" ;; esac
+done
+''',
     'bundle': '#!/bin/sh\necho "bundle $*" >> "$CALLS"\ncase "$*" in *db:migrate*) exit "${MIGRATE_EXIT:-0}" ;; *assets:precompile*) exit "${ASSETS_EXIT:-0}" ;; esac\n[ "$1" = install ] && exit "${INSTALL_EXIT:-0}"\n',
     'chown': '#!/bin/sh\necho "chown $*" >> "$CALLS"\n',
     'sleep': '#!/bin/sh\n',
+    'date': '#!/bin/sh\nif [ -n "${FIXED_DATE:-}" ]; then echo "$FIXED_DATE"; else exec /bin/date "$@"; fi\n',
 }
 
 
@@ -69,10 +93,10 @@ def check_runs(*runs):
     for i, run in enumerate(runs):
         name, conclusion = run[:2]
         status = run[2] if len(run) > 2 else ('completed' if conclusion else 'in_progress')
-        out.append({'id': 1000 + i, 'name': name, 'status': status, 'conclusion': conclusion,
+        out.append({'id': 1000 + i, 'name': name, 'status': status, 'conclusion': conclusion, 'app': {'id': 15368},
                     'html_url': f'https://github.com/techmore/rupert/runs/{1000 + i}',
                     'completed_at': '2026-10-25T12:00:00Z' if status == 'completed' else None})
-    return {'check_runs': out}
+    return {'total_count': len(out), 'check_runs': out}
 
 
 REQUIRED = ('CI (sqlite3)', 'Product site consistency', 'Dependency and static scan')
@@ -112,8 +136,10 @@ class AutodeployTest(unittest.TestCase):
         self.git('init', '-q', '-b', 'main', str(self.origin))
         (self.origin / 'web' / 'storage').mkdir(parents=True)
         (self.origin / 'web' / 'storage' / '.keep').write_text('')
+        (self.origin / 'web' / 'storage' / '.gitignore').write_text('production.sqlite3\n')
         self.commit('initial')
         self.git('clone', '-q', str(self.origin), str(self.tmp / 'app'))
+        (self.tmp / 'app' / 'web' / 'storage' / 'production.sqlite3').write_text('test database')
         self.old = self.head(self.tmp / 'app')
 
     def git(self, *args, cwd=None):
@@ -165,6 +191,62 @@ class AutodeployTest(unittest.TestCase):
         # Regression: status.json kept the old SHA as current until the next run.
         self.assertEqual((self.status()['current'], self.status()['target']), (new, new))
         self.assertEqual(self.status('last-deploy.json')['current'], new)
+        self.assertEqual(self.status('last-deploy.json')['previous'], self.old)
+
+    def test_inactive_job_worker_cannot_pass_health(self):
+        self.commit('feature')
+        result, _ = self.run_deploy(INACTIVE_UNIT='rupert-jobs')
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual(self.status()['state'], 'recovery_required')
+        self.assertNotIn('rollback healthy', result.stdout)
+
+    def test_backup_uses_configured_database_and_refuses_missing_database(self):
+        configured = self.tmp / 'custom.sqlite3'
+        configured.write_text('configured database')
+        (self.tmp / 'rupert.env').write_text(f'RUPERT_SQLITE_DATABASE_PRODUCTION={configured}\n')
+        self.commit('feature')
+        result, calls = self.run_deploy()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(f'sqlite3 -readonly {configured} .backup ', calls)
+
+        self.commit('next feature')
+        configured.unlink()
+        result, calls = self.run_deploy()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn('db:migrate', calls)
+        self.assertEqual(self.status()['state'], 'failed')
+
+    @unittest.skipUnless(shutil.which('sqlite3'), 'the SQLite CLI is required')
+    def test_real_sqlite_backup_contains_configured_database(self):
+        configured = self.tmp / 'custom data.sqlite3'
+        with closing(sqlite3.connect(configured)) as db:
+            db.execute('CREATE TABLE sample (value TEXT)')
+            db.execute('INSERT INTO sample VALUES (?)', ('verified',))
+            db.commit()
+        (self.tmp / 'rupert.env').write_text(f"RUPERT_SQLITE_DATABASE_PRODUCTION='{configured}'\n")
+        sqlite = self.tmp / 'bin' / 'sqlite3'
+        sqlite.write_text(f'#!/bin/sh\nexec "{shutil.which("sqlite3")}" "$@"\n')
+        sqlite.chmod(0o755)
+        new = self.commit('feature')
+        result, _ = self.run_deploy()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        receipt = self.receipt(f'{new}.json')
+        with closing(sqlite3.connect(receipt['backup']['path'])) as db:
+            self.assertEqual(db.execute('SELECT value FROM sample').fetchone(), ('verified',))
+            self.assertEqual(db.execute('PRAGMA quick_check').fetchone(), ('ok',))
+
+    def test_untrusted_or_incomplete_check_runs_cannot_pass_the_gate(self):
+        self.commit('feature')
+        fake = check_runs(*[(name, 'success') for name in REQUIRED])
+        for check in fake['check_runs']:
+            check['app']['id'] = 99999
+        self.set_checks(fake)
+        self.assert_not_deployed('waiting_ci', 'pending')
+
+        incomplete = check_runs(*[(name, 'success') for name in REQUIRED])
+        incomplete['total_count'] = 101
+        self.set_checks(incomplete)
+        self.assert_not_deployed('waiting_ci', 'unknown')
 
     def test_deployed_files_stay_readable_by_the_app_user(self):
         # Regression: umask 077 made Gemfile.lock and new gems root-only and the
@@ -274,6 +356,14 @@ class AutodeployTest(unittest.TestCase):
         self.assertEqual(self.head(self.tmp / 'app'), self.old)
         self.assertNotIn('db:migrate', calls)
 
+    def test_corrupt_backup_stops_before_checkout_or_build(self):
+        self.commit('feature')
+        result, calls = self.run_deploy(BACKUP_INTEGRITY='corrupt')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.head(self.tmp / 'app'), self.old)
+        self.assertNotIn('db:migrate', calls)
+        self.assertEqual(self.status()['state'], 'failed')
+
     def test_asset_build_failure_rolls_back_code(self):
         self.commit('feature')
 
@@ -282,10 +372,29 @@ class AutodeployTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn('no new migrations', result.stdout)
         self.assertEqual(self.head(self.tmp / 'app'), self.old)
+        self.assertIn('rollback failed or could not be verified', result.stdout)
+
+    def test_failed_rollback_checkout_never_claims_the_old_build_is_running(self):
+        new = self.commit('feature')
+        git_stub = self.tmp / 'bin' / 'git'
+        git_stub.write_text('''#!/bin/sh
+if [ "$1" = checkout ] && [ "$4" = "$ROLLBACK_SHA" ]; then exit 1; fi
+exec /usr/bin/git "$@"
+''')
+        git_stub.chmod(0o755)
+        result, _ = self.run_deploy(ASSETS_EXIT='1', ROLLBACK_SHA=self.old)
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(self.head(self.tmp / 'app'), new)
+        self.assertIn('rollback failed or could not be verified', result.stdout)
+        receipt = self.receipt(self.receipts()[0])
+        self.assertEqual(receipt['rollback'], 'unhealthy')
+        self.assertIsNone(receipt['running_sha'])
+        self.assertNotEqual(self.status()['current'], self.old)
 
     def test_shallow_checkout_is_completed_before_deploying(self):
         shutil.rmtree(self.tmp / 'app')
         self.git('clone', '-q', '--depth', '1', f'file://{self.origin}', str(self.tmp / 'app'))
+        (self.tmp / 'app' / 'web' / 'storage' / 'production.sqlite3').write_text('test database')
         new = self.commit('feature')
         self.assertEqual(self.git('rev-parse', '--is-shallow-repository', cwd=self.tmp / 'app'), 'true')
         result, _ = self.run_deploy()
@@ -318,12 +427,55 @@ class AutodeployTest(unittest.TestCase):
         self.assertIn(f'deployed {fixed[:8]}, healthy', result.stdout)
         self.assertFalse((self.tmp / 'state' / 'failed-sha').exists())
 
+    def test_install_stops_if_failed_commit_latch_cannot_be_persisted(self):
+        self.commit('feature')
+        (self.tmp / 'state' / 'failed-sha.tmp').mkdir(parents=True)
+        result, calls = self.run_deploy()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn('db:migrate', calls)
+        self.assertNotIn('systemctl restart', calls)
+        self.assertEqual(self.head(self.tmp / 'app'), self.old)
+
+    def test_failed_commit_latch_exists_before_migration(self):
+        new = self.commit('feature')
+        bundle = self.tmp / 'bin' / 'bundle'
+        bundle.write_text('''#!/bin/sh
+echo "bundle $*" >> "$CALLS"
+if [ "$1 $2 $3" = "exec rails db:migrate" ]; then
+  [ "$(cat "$RUPERT_AUTODEPLOY_STATE/failed-sha")" = "$EXPECTED_SHA" ] || exit 42
+fi
+exit 0
+''')
+        bundle.chmod(0o755)
+        result, _ = self.run_deploy(EXPECTED_SHA=new)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse((self.tmp / 'state' / 'failed-sha').exists())
+
+    def test_interrupted_install_on_target_is_not_reported_up_to_date(self):
+        new = self.commit('feature')
+        app = self.tmp / 'app'
+        self.git('fetch', '-q', 'origin', 'main', cwd=app)
+        self.git('checkout', '-q', '--detach', new, cwd=app)
+        (self.tmp / 'state').mkdir()
+        (self.tmp / 'state' / 'failed-sha').write_text(new + '\n')
+        self.request_install(1_800_000_000)
+        result, calls = self.run_deploy()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.status()['state'], 'recovery_required')
+        self.assertIn('manual recovery', self.status()['message'])
+        self.assertNotIn('db:migrate', calls)
+        self.commit('newer feature')
+        result, calls = self.run_deploy()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('manual recovery', self.status()['message'])
+        self.assertNotIn('db:migrate', calls)
+
     def test_unhealthy_deploy_rolls_back(self):
         self.commit('feature')
         result, _ = self.run_deploy(HEALTH='502')
         self.assertEqual(result.returncode, 1)
         self.assertIn('no new migrations', result.stdout)
-        self.assertIn('ROLLBACK ALSO UNHEALTHY', result.stdout)
+        self.assertIn('rollback failed or could not be verified', result.stdout)
         self.assertEqual(self.head(self.tmp / 'app'), self.old)
         self.assertEqual(self.status('last-deploy.json')['state'], 'failed')
         self.assertIn('needs a human', self.status()['message'])
@@ -386,6 +538,23 @@ class AutodeployTest(unittest.TestCase):
         result, _ = self.run_deploy()
         self.assertIn(f'deployed {new[:8]}, healthy', result.stdout)
 
+    def test_cancel_during_ci_check_does_not_start_manual_install(self):
+        (self.inbox / 'manual').write_text('')
+        self.commit('feature')
+        self.request_install(1_800_000_000)
+        result, calls = self.run_deploy(CANCEL_DURING_CHECKS='1')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn('sqlite3', calls)
+        self.assertNotIn('db:migrate', calls)
+        self.assertEqual(self.head(self.tmp / 'app'), self.old)
+
+    def test_switching_to_manual_during_ci_check_stops_automatic_install(self):
+        self.commit('feature')
+        result, calls = self.run_deploy(MANUAL_DURING_CHECKS='1')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn('sqlite3', calls)
+        self.assertEqual(self.head(self.tmp / 'app'), self.old)
+
     def test_request_while_up_to_date_does_not_approve_a_later_commit(self):
         (self.inbox / 'manual').write_text('')
         self.request_install(1_800_000_000)
@@ -394,6 +563,56 @@ class AutodeployTest(unittest.TestCase):
         result, calls = self.run_deploy()
         self.assertIn('ready to install', result.stdout)
         self.assertNotIn('systemctl', calls)
+
+    def test_new_request_in_same_second_is_not_lost(self):
+        (self.inbox / 'manual').write_text('')
+        request = self.inbox / 'install-requested'
+        request.write_text('first')
+        first = 1_800_000_000_100_000_000
+        os.utime(request, ns=(first, first))
+        self.run_deploy()  # Up to date: consume the first request.
+        new = self.commit('feature')
+        request.write_text('second')
+        second = first + 300_000_000
+        os.utime(request, ns=(second, second))
+        result, _ = self.run_deploy()
+        self.assertIn(f'deployed {new[:8]}, healthy', result.stdout)
+        self.assertEqual(self.head(self.tmp / 'app'), new)
+
+    def test_legacy_second_resolution_marker_does_not_replay_request(self):
+        (self.inbox / 'manual').write_text('')
+        self.commit('feature')
+        request = self.inbox / 'install-requested'
+        request.write_text('old request')
+        os.utime(request, ns=(1_800_000_000_900_000_000, 1_800_000_000_900_000_000))
+        (self.tmp / 'state').mkdir()
+        (self.tmp / 'state' / 'request-handled').write_text('1800000000\n')
+        result, calls = self.run_deploy()
+        self.assertIn('manual mode waits for an install request', result.stdout)
+        self.assertNotIn('sqlite3', calls)
+        self.assertEqual(self.head(self.tmp / 'app'), self.old)
+
+    def test_unwritable_request_receipt_prevents_install(self):
+        (self.inbox / 'manual').write_text('')
+        self.request_install(1_800_000_000)
+        self.commit('feature')
+        not_directory = self.tmp / 'not-a-directory'
+        not_directory.write_text('x')
+        result, calls = self.run_deploy(RUPERT_AUTODEPLOY_STATE=str(not_directory))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn('sqlite3', calls)
+        self.assertNotIn('db:migrate', calls)
+        self.assertEqual(self.head(self.tmp / 'app'), self.old)
+
+    def test_missing_state_directory_prevents_automatic_install(self):
+        self.commit('feature')
+        not_directory = self.tmp / 'not-a-directory'
+        not_directory.write_text('x')
+        result, calls = self.run_deploy(RUPERT_AUTODEPLOY_STATE=str(not_directory))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn('sqlite3', calls)
+        self.assertNotIn('db:migrate', calls)
+        self.assertEqual(self.head(self.tmp / 'app'), self.old)
 
     def test_request_retries_a_failed_commit_once(self):
         new = self.commit('broken migration', path='web/db/migrate/20261020000000_broken.rb')
@@ -565,7 +784,7 @@ class AutodeployTest(unittest.TestCase):
         self.assertTrue(names[0].startswith(f'{new}.failed-'), names)
         receipt = self.receipt(names[0])
         self.assertEqual((receipt['result'], receipt['deployed_sha'], receipt['target_sha'], receipt['running_sha']),
-                         ('failed', None, new, self.old))
+                         ('failed', None, new, self.old if rollback == 'healthy' else None))
         self.assertEqual((receipt['failed_stage'], receipt['rollback']), (stage, rollback))
         self.assertEqual(self.status('last-deploy.json')['receipt'], str(self.tmp / 'state' / 'receipts' / names[0]))
         return receipt
@@ -609,7 +828,8 @@ class AutodeployTest(unittest.TestCase):
                 result, _ = self.run_deploy(**env)
                 self.assertIn('failed at asset_smoke', result.stdout)
                 self.assertEqual(self.head(self.tmp / 'app'), self.old)
-                self.assert_failure_receipt(new, 'asset_smoke', 'healthy')
+                rollback = 'unhealthy' if 'SERVED_BUILD' in env or 'PAGE_CODE' in env else 'healthy'
+                self.assert_failure_receipt(new, 'asset_smoke', rollback)
 
     def test_backup_failure_writes_a_failure_receipt(self):
         new = self.commit('feature')
@@ -630,6 +850,18 @@ class AutodeployTest(unittest.TestCase):
         self.assertEqual(len(names), 2)
         self.assertEqual(self.receipt(f'{new}.json')['result'], 'deployed')
         self.assertTrue(self.receipt(f'{new}.json')['install_requested'])
+
+    def test_failed_retries_in_the_same_second_keep_both_receipts(self):
+        new = self.commit('broken migration', path='web/db/migrate/20261020000000_broken.rb')
+        self.run_deploy(MIGRATE_EXIT='1', FIXED_DATE='20261026T120000Z')
+        self.request_install(1_800_000_000)
+        self.run_deploy(MIGRATE_EXIT='1', FIXED_DATE='20261026T120000Z')
+        names = self.receipts()
+        self.assertEqual(len(names), 2, names)
+        self.assertTrue(all(name.startswith(f'{new}.failed-') for name in names))
+        backups = [self.receipt(name)['backup']['path'] for name in names]
+        self.assertEqual(len(set(backups)), 2)
+        self.assertTrue(all(Path(path).is_file() for path in backups))
 
     def test_no_receipt_without_an_install_attempt(self):
         self.run_deploy()

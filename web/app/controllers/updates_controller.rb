@@ -25,6 +25,10 @@ class UpdatesController < AuthenticatedController
   end
 
   def install
+    if AutoUpdate.status&.state == 'recovery_required'
+      return redirect_to system_updates_path, alert: 'Manual recovery is required before requesting another update.'
+    end
+
     AutoUpdate.request_install!(actor: @actor)
     ActivityLogger.log('update_install_requested', details: "Requested from build #{BuildInfo.current.short_revision}")
     redirect_to system_updates_path, notice: 'Install requested. The updater checks that CI passed, backs up the database and restarts Rupert; this page will be unavailable for a minute or two.'
@@ -35,10 +39,14 @@ class UpdatesController < AuthenticatedController
   def cancel
     AutoUpdate.cancel_request!
     ActivityLogger.log('update_install_cancelled')
-    redirect_to system_updates_path, notice: 'Install request cancelled.'
+    redirect_to system_updates_path, notice: 'Cancellation requested. An installation already starting may continue.'
   end
 
   def mode
+    unless %w[manual automatic].include?(params[:mode])
+      return redirect_to system_updates_path, alert: 'Choose either automatic or manual updates.'
+    end
+
     manual = params[:mode] == 'manual'
     AutoUpdate.manual!(manual)
     ActivityLogger.log('update_mode_changed', details: manual ? 'manual' : 'automatic')
@@ -52,6 +60,8 @@ class UpdatesController < AuthenticatedController
 
   def check_notice(result)
     return "Couldn't reach GitHub just now. Try again in a few minutes." if result.nil?
+    return 'The running build and GitHub main have diverged; the updater cannot fast-forward.' if result.diverged?
+    return 'The running build is ahead of GitHub main; the updater cannot fast-forward.' if result.ahead_of_main?
     return "#{helpers.pluralize(result.behind_by, 'newer change')} on GitHub main." if result.available?
 
     'This server runs the newest code on GitHub main.'

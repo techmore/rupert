@@ -9,7 +9,8 @@ module UpdatesHelper
     'ci_failed' => ['CI failed', 'pill-rose', "The newest code failed its checks, so it won't be installed. A fix on main is picked up automatically."],
     'deploying' => ['Installing', 'pill-olive', 'Installing now. Rupert restarts when it finishes.'],
     'deployed' => ['Installed', 'pill-fern', 'The update installed and Rupert came back healthy.'],
-    'failed' => ['Update failed', 'pill-rose', 'The last update failed and the code was rolled back. Retry it, or wait for a newer commit.'],
+    'failed' => ['Update failed', 'pill-rose', 'The last update failed. Check the updater message and receipt before retrying.'],
+    'recovery_required' => ['Recovery required', 'pill-rose', 'The updater could not verify recovery. An operator must investigate before any update.'],
     'blocked' => ['Blocked', 'pill-rose', "The updater can't install updates until this is fixed on the server."]
   }.freeze
 

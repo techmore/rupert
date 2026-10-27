@@ -14,8 +14,10 @@ class UpdateChecker
   TTL = 6.hours
   RETRY_AFTER = 30.minutes
 
-  Result = Struct.new(:current, :behind_by, :latest_message, :url, :checked_at, keyword_init: true) do
+  Result = Struct.new(:current, :behind_by, :latest_message, :url, :checked_at, :relation, keyword_init: true) do
     def available? = behind_by.to_i.positive?
+    def diverged? = relation == 'diverged'
+    def ahead_of_main? = relation == 'behind'
   end
 
   class << self
@@ -35,7 +37,7 @@ class UpdateChecker
       return unless enabled? && current != 'unversioned'
 
       result = Rails.cache.read(cache_key(current))
-      UpdateCheckJob.perform_later if result.nil? && Rails.cache.write('update_checker/queued', true, expires_in: RETRY_AFTER, unless_exist: true)
+      UpdateCheckJob.perform_later if result.nil? && Rails.cache.write('update_checker/v2/queued', true, expires_in: RETRY_AFTER, unless_exist: true)
       result
     end
 
@@ -52,13 +54,19 @@ class UpdateChecker
     end
 
     def build_result(current, compare)
+      relation = compare['status']
+      raise ArgumentError, 'Invalid GitHub comparison' unless %w[ahead behind identical diverged].include?(relation)
+      if relation == 'ahead' && (!compare['ahead_by'].is_a?(Integer) || compare['ahead_by'] <= 0)
+        raise ArgumentError, 'Invalid GitHub ahead count'
+      end
       commits = Array(compare['commits'])
       headline = commits.last&.dig('commit', 'message').to_s.lines.first.to_s.strip
       Result.new(current: current, behind_by: compare['status'] == 'ahead' ? compare['ahead_by'].to_i : 0,
-        latest_message: headline.presence, url: compare['html_url'], checked_at: Time.current)
+        latest_message: headline.presence, url: compare['html_url'], checked_at: Time.current, relation: relation)
     end
 
-    def cache_key(current) = "update_checker/#{current}"
+    # A new key avoids loading the older cached Result struct after deployment.
+    def cache_key(current) = "update_checker/v2/#{current}"
 
     private
 
