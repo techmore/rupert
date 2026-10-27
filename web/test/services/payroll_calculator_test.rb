@@ -37,6 +37,22 @@ class PayrollCalculatorTest < ActiveSupport::TestCase
     add('2026-08-03', 8, 'pto')
   end
 
+  test 'regenerating keeps manual payslips exactly as entered and rebuilds only the generated ones' do
+    add('2026-07-23', 8)
+    run = People::PayRun.create!(name: 'Regen', period_start: '2026-07-23', period_end: '2026-08-05')
+    @sheet.submit!
+    @sheet.approve!
+    People::PayrollCalculator.generate!(run)
+    bonus = run.payslips.create!(employee: @employee, hours: 0, gross_cents: 50_000, deductions_cents: 0, net_cents: 50_000, manual: true)
+
+    People::PayrollCalculator.generate!(run)
+
+    assert_equal 2, run.payslips.reload.count
+    assert_equal [50_000, 0, 50_000], bonus.reload.then { |slip| [slip.gross_cents, slip.deductions_cents, slip.net_cents] }
+    generated = run.payslips.find_by(manual: false)
+    assert_equal 16_000, generated.gross_cents
+  end
+
   test 'overtime is off by default, so every hour including marked overtime is straight time' do
     two_weeks
     slip = generate

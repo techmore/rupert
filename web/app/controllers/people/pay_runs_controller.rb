@@ -74,7 +74,7 @@ module People
           alert: 'Only draft pay runs can be edited.')
       end
 
-      @slip = @pay_run.payslips.new(add_payslip_params)
+      @slip = @pay_run.payslips.new(add_payslip_params.merge(manual: true))
       if @slip.save
         @pay_run.reload.update!(total_gross_cents: @pay_run.total_gross_cents,
           total_net_cents: @pay_run.total_net_cents)
