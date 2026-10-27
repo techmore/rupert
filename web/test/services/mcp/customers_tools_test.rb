@@ -93,6 +93,14 @@ class CustomersToolsTest < ActiveSupport::TestCase
     assert_raises(Mcp::ToolError) { lookup({}) }
   end
 
+  test 'interprets SQLite aggregate timestamps as UTC before applying the app time zone' do
+    helper = Object.new.extend(Mcp::Tools::CustomerLookup::Shared)
+
+    timestamp = helper.send(:time_value, '2025-12-30 00:30:00')
+
+    assert_equal Date.new(2025, 12, 29), timestamp.to_date
+  end
+
   test 'customer_insights ranks top, new, repeat and lapsed customers in SQL' do
     order(@asha, at: 200.days.ago, cents: 4000)
     order(@asha, at: 20.days.ago, cents: 6000)
