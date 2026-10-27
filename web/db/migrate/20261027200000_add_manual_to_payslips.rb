@@ -4,6 +4,6 @@
 # timesheets rebuilds only the generated ones instead of deleting the manual ones.
 class AddManualToPayslips < ActiveRecord::Migration[8.1]
   def change
-    add_column :payslips, :manual, :boolean, null: false, default: false
+    safety_assured { add_column :payslips, :manual, :boolean, null: false, default: false }
   end
 end
