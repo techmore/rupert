@@ -27,6 +27,18 @@ class BackupStatus
     end
 
     def ok?(now = Time.current) = state(now) == 'ok'
+
+    # A script can report success while its evidence is no longer sufficient.
+    # Explain the derived state instead of showing only the older success text.
+    def evidence_issue(now = Time.current)
+      return unless reported? && report.state == 'ok'
+      return 'This report does not confirm an age-encrypted backup.' unless report.encrypted == true
+      return 'The report time is in the future; check the system clock.' if report.at && report.at > now + 1.minute
+      if key == 'restore' && (active_fingerprint.blank? || report.key_fingerprint != active_fingerprint)
+        return 'Run a recovery-kit drill for the active backup key.'
+      end
+      nil
+    end
   end
 
   LAYERS = [

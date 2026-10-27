@@ -31,6 +31,9 @@
               <% if layer.report.key_fingerprint %>· key <span class="font-mono"><%= layer.report.key_fingerprint %></span><% end %>
             </p>
             <p class="text-xs <%= state == 'failed' ? 'text-rose font-semibold' : 'text-taupe' %>"><%= layer.report.message %></p>
+            <% if (issue = layer.evidence_issue(now)) %>
+              <p class="text-xs <%= state == 'failed' ? 'text-rose font-semibold' : 'text-taupe' %>"><%= issue %></p>
+            <% end %>
           <% else %>
             <p class="mt-1 text-sm text-taupe">Never reported on this server. Install it: see the backups guide.</p>
           <% end %>

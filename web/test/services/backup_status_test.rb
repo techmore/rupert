@@ -46,6 +46,7 @@ class BackupStatusTest < ActiveSupport::TestCase
 
     write('restore', at: @now - 1.day, key_fingerprint: 'retired-key')
     assert_equal 'stale', BackupStatus.layers.find { |layer| layer.key == 'restore' }.state(@now), 'a rotated key needs a new drill'
+    assert_match(/active backup key/, BackupStatus.layers.find { |layer| layer.key == 'restore' }.evidence_issue(@now))
 
     write('frequent', at: @now - 1.minute, state: 'unexpected')
     assert_equal 'failed', BackupStatus.layers.first.state(@now)
@@ -55,6 +56,7 @@ class BackupStatusTest < ActiveSupport::TestCase
 
     write('offhost', at: @now - 1.minute, encrypted: nil)
     assert_equal 'failed', BackupStatus.layers.find { |layer| layer.key == 'offhost' }.state(@now)
+    assert_match(/does not confirm/, BackupStatus.layers.find { |layer| layer.key == 'offhost' }.evidence_issue(@now))
     write('offsite', at: @now - 1.minute, encrypted: false)
     assert_equal 'failed', BackupStatus.layers.find { |layer| layer.key == 'offsite' }.state(@now)
 
