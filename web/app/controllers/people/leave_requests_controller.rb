@@ -21,7 +21,7 @@ module People
 
     def new
       authorize(:module, :leave_write?)
-      @leave_request = People::LeaveRequest.new(starts_on: Date.today, ends_on: Date.today)
+      @leave_request = People::LeaveRequest.new(starts_on: Date.current, ends_on: Date.current)
       @employees = People::Employee.active.ordered
     end
 

@@ -73,7 +73,7 @@ module People
 
     def new
       authorize(:module, :hr_write?)
-      @employee = People::Employee.new(hire_date: Date.today, employee_number: next_employee_number)
+      @employee = People::Employee.new(hire_date: Date.current, employee_number: next_employee_number)
     end
 
     def create
@@ -156,7 +156,7 @@ module People
       if %w[place_on_leave return_to_work terminate
             rehire].include?(event) && @employee.public_send("may_#{event}?")
         @employee.send("#{event}!")
-        @employee.update!(termination_date: event == 'terminate' ? Date.today : nil) if %w[terminate
+        @employee.update!(termination_date: event == 'terminate' ? Date.current : nil) if %w[terminate
                                                                                            rehire].include?(event)
         ActivityLogger.log("employee_#{event}", subject: @employee)
         redirect_to(people_employee_path(@employee), notice: "#{@employee.name} #{event.tr('_', ' ')}d.")

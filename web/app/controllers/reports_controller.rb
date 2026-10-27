@@ -234,7 +234,7 @@ class ReportsController < AuthenticatedController
     return unless params[:from].present? || params[:to].present?
 
     from = parse_date(params[:from]) || @days.days.ago.to_date
-    to = parse_date(params[:to]) || Date.today
+    to = parse_date(params[:to]) || Date.current
     from, to = to, from if from > to
     @days = (to - from).to_i.clamp(1, 3650)
     @range = from.beginning_of_day
