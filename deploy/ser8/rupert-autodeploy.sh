@@ -260,6 +260,7 @@ write_json status.json deploying "installing ${NEW:0:8} ($migrations new migrati
 mkdir -p "$BACKUPS" "$STATE"; chmod 700 "$BACKUPS"; chmod 755 "$STATE"
 backup="$BACKUPS/production-$(date +%Y%m%d-%H%M%S)-${CUR:0:8}-$attempt_id.sqlite3"
 # Resolve the same production SQLite path as Rails, relative to Rails.root.
+# shellcheck source=/dev/null # the env file is host config, not in the repo
 db_path=$(cd "$APP/web" && set -a && . "$ENV_FILE" && printf '%s' "${RUPERT_SQLITE_DATABASE_PRODUCTION-storage/production.sqlite3}") || db_path=""
 case "$db_path" in /*) ;; '') ;; *) db_path="$APP/web/$db_path" ;; esac
 if [ -z "$db_path" ] || [ ! -f "$db_path" ] || [ ! -s "$db_path" ] ||
