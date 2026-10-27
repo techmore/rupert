@@ -24,7 +24,11 @@ class ReleaseGateTest < ActionDispatch::IntegrationTest
       assert_select '#release-gate-title', text: 'Release v0.2.1 blockers'
       assert_select '[data-release-blocker]', count: 9
       assert_select '[data-release-blocker="pay_period"] a[href="/settings#pay-rules"]', text: 'Choose the pay period'
-      assert_select '[data-release-blocker="google_drive_backup"]', text: /Google Drive backup consent/
+      assert_select '[data-release-blocker="google_drive_backup"]' do
+        assert_select 'a[href="/settings#drive"]', text: 'Authorize and approve Google Drive'
+        assert_select 'p', text: /Only available for herbalhealerscbd.com addresses/
+      end
+      assert_select 'a[href="/release#jan-actions"]', text: 'Jan’s decisions and approvals'
       ISSUES.each do |number|
         assert_select "a[href='https://github.com/techmore/rupert/issues/#{number}'][target='_blank'][rel='noopener']"
       end
