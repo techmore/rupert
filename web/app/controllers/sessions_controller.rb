@@ -60,7 +60,7 @@ class SessionsController < ApplicationController
 
   def destroy
     AccessLogger.record(source: 'logout', status: 'success', request: request, user: Current.user)
-    session.delete(:user_id)
+    reset_session
     Current.user = nil
     redirect_to(login_path, notice: 'Signed out')
   end
