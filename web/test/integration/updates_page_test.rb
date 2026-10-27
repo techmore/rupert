@@ -64,7 +64,7 @@ class UpdatesPageTest < ActionDispatch::IntegrationTest
     UpdateChecker.stubs(:enabled?).returns(true)
     UpdateChecker.stubs(:latest).returns(available)
     write_status(at: 1.minute.ago.utc.iso8601)
-    write_status('last-deploy.json', state: 'deployed', message: 'deployed aaaaaaaa, healthy', current: 'c' * 40, target: CURRENT)
+    write_status('last-deploy.json', state: 'deployed', message: 'deployed aaaaaaaa, healthy', current: CURRENT, previous: 'c' * 40, target: CURRENT)
     AutoUpdate.manual!(true)
 
     get system_updates_path
@@ -72,6 +72,7 @@ class UpdatesPageTest < ActionDispatch::IntegrationTest
     assert_select '[data-update-state=ready]', 'Ready to install'
     assert_select '[data-update-check]', /2 newer changes/
     assert_select '[data-last-deploy] [data-update-state=deployed]'
+    assert_select '[data-last-deploy] a[href=?]', "https://github.com/techmore/rupert/commit/#{'c' * 40}", text: 'cccccccc'
     assert_select 'input[name=mode][value=manual][checked]'
     assert_select 'form[action=?] button', install_system_updates_path, 'Install update now'
 
@@ -96,6 +97,39 @@ class UpdatesPageTest < ActionDispatch::IntegrationTest
     get system_updates_path
     assert_select '[data-update-state=failed]', 'Update failed'
     assert_select 'form[action=?] button', install_system_updates_path, 'Retry update'
+    assert_select '[data-updater]', text: /Check the updater message and receipt/
+  end
+
+  test 'manual recovery hides retry and rejects a direct install request' do
+    @user.update!(role: 'super_admin')
+    UpdateChecker.stubs(:enabled?).returns(true)
+    UpdateChecker.stubs(:latest).returns(available)
+    write_status(state: 'recovery_required', message: 'manual recovery is required')
+    get system_updates_path
+    assert_select '[data-update-state=recovery_required]', 'Recovery required'
+    assert_select 'form[action=?]', install_system_updates_path, count: 0
+    post install_system_updates_path
+    assert_redirected_to system_updates_path
+    assert_nil AutoUpdate.requested_at
+  end
+
+  test 'a pending request does not imply it will run while recovery is required' do
+    @user.update!(role: 'super_admin')
+    write_status(state: 'recovery_required', at: 1.minute.ago.utc.iso8601)
+    AutoUpdate.request_install!(actor: nil)
+    get system_updates_path
+    assert_select '[data-update-request]', /Manual recovery is required/
+    assert_select '[data-update-request]', text: /as soon as CI passes/, count: 0
+  end
+
+  test 'a diverged build is not shown as up to date' do
+    @user.update!(role: 'super_admin')
+    UpdateChecker.stubs(:enabled?).returns(true)
+    UpdateChecker.stubs(:latest).returns(UpdateChecker::Result.new(current: CURRENT, behind_by: 0,
+      relation: 'diverged', checked_at: Time.current))
+    get system_updates_path
+    assert_select '[data-update-check]', /have diverged; the updater cannot fast-forward/
+    assert_select '[data-update-check]', text: /No newer changes/, count: 0
   end
 
   test 'a silent updater is called out' do
@@ -114,6 +148,17 @@ class UpdatesPageTest < ActionDispatch::IntegrationTest
     patch system_updates_mode_path, params: { mode: 'automatic' }
     assert_not AutoUpdate.manual?
     assert_equal %w[manual automatic], ActivityLog.where(action: 'update_mode_changed').order(:id).last(2).map(&:details)
+  end
+
+  test 'invalid mode never enables automatic updates' do
+    @user.update!(role: 'super_admin')
+    write_status
+    AutoUpdate.manual!(true)
+    assert_no_difference -> { ActivityLog.where(action: 'update_mode_changed').count } do
+      patch system_updates_mode_path, params: { mode: 'unexpected' }
+    end
+    assert_redirected_to system_updates_path
+    assert AutoUpdate.manual?
   end
 
   test 'the banner sends operators to the updates page and says what will happen' do

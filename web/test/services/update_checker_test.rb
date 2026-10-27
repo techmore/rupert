@@ -14,10 +14,12 @@ class UpdateCheckerTest < ActiveSupport::TestCase
     assert_equal 'Newest change', result.latest_message
   end
 
-  test 'identical, diverged and malformed comparisons are not updates' do
+  test 'identical and non-fast-forward comparisons are distinct' do
     assert_not UpdateChecker.build_result(SHA, { 'status' => 'identical', 'ahead_by' => 0 }).available?
-    assert_not UpdateChecker.build_result(SHA, { 'status' => 'behind', 'ahead_by' => 0 }).available?
-    assert_not UpdateChecker.build_result(SHA, {}).available?
+    assert UpdateChecker.build_result(SHA, { 'status' => 'behind', 'ahead_by' => 0 }).ahead_of_main?
+    assert UpdateChecker.build_result(SHA, { 'status' => 'diverged', 'ahead_by' => 2 }).diverged?
+    assert_raises(ArgumentError) { UpdateChecker.build_result(SHA, {}) }
+    assert_raises(ArgumentError) { UpdateChecker.build_result(SHA, { 'status' => 'ahead' }) }
   end
 
   test 'refresh swallows fetch failures' do

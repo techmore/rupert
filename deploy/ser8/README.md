@@ -48,6 +48,8 @@ Runs **inside the `rupert` Incus container** as root. Every 5 minutes it fetches
 checkout is clean, and the latest exact-SHA `CI (sqlite3)`, `Product site
 consistency`, and `Dependency and static scan` checks are green (read from the
 public GitHub API, no token; for a re-run only its latest check run counts).
+Only checks from GitHub Actions (app ID 15368) count. An incomplete or
+unreadable check-run response waits instead of assuming the missing runs passed.
 Only a `success` conclusion passes. Missing, queued and in-progress checks wait
 (`waiting_ci`); a completed check with any other conclusion (`failure`,
 `skipped`, `neutral`, `cancelled`, `timed_out`, `action_required`, `stale`)
@@ -56,7 +58,11 @@ is a pull-request check and is not expected on integrated `main`. Changes under
 `mobile/`, `bin/check-mobile-sdk.mjs`, or the employee-mobile workflow also
 require its exact-SHA `validate` check.
 
-Each deploy takes a SQLite backup first (last 5 kept in `/var/backups/rupert-autodeploy`), then runs `bundle install`,
+Each deploy takes a SQLite backup of the production database configured by
+`RUPERT_SQLITE_DATABASE_PRODUCTION` (or `web/storage/production.sqlite3` by
+default) first, refusing a missing or empty source and checking the backup's
+SQLite integrity before proceeding (last 5 kept in
+`/var/backups/rupert-autodeploy`), then runs `bundle install`,
 `db:migrate` and `assets:precompile`, restarts `rupert-web` and `rupert-jobs`, checks `/up`, then runs an asset smoke
 check: it renders `/login` (`RUPERT_AUTODEPLOY_SMOKE_PATH`), requires its `X-Rupert-Build` header to equal the new SHA,
 and fetches every compiled stylesheet and the `application-<digest>.js` script that page links to, each of which must
@@ -64,6 +70,13 @@ answer 200 with a non-empty body. If any step, the health check or the smoke che
 migrations must stay backward compatible (the log says how many new migrations the commit carried and names the
 pre-deploy backup). A commit that failed is recorded in `/var/lib/rupert-autodeploy/failed-sha` and is not retried
 until `main` moves on, so a broken release does not restart the app every 5 minutes; delete that file to retry. A running scheduled job is interrupted by the restart. It serializes on
+Before changing the checkout it records the target as in progress; a crash
+therefore suppresses automatic retry of that commit. If the checkout is still
+at the interrupted or failed target, all subsequent updates stop for manual
+recovery, even if a newer commit is available. Investigate the migration and
+restore and verify a safe running revision under the updater lock before
+clearing the marker; deleting it alone does not repair a partial install.
+The updater uses
 `/run/rupert-autodeploy.lock`, not the older manual `/var/lock/rupert-deploy.lock` named in earlier deployment
 receipts; any hand-run step in `/opt/rupert` (an emergency rollback, replacing this script) takes
 `/run/rupert-autodeploy.lock` with `flock`, and a manual rollback first switches to click-only mode or the next poll
@@ -83,15 +96,16 @@ Every install attempt (after the CI gate and mode check pass, so not dry runs, w
 in `/var/lib/rupert-autodeploy/receipts/` (directory 755, files 644):
 
 - `<sha>.json` — written only after a healthy deploy that passed the smoke check;
-- `<sha>.failed-<UTC time>.json` — a backup, build, migration, restart, health or smoke failure. The code was rolled
-  back; `rollback` says whether the old code came back `healthy` or `unhealthy`. No success receipt is written for it.
+- `<sha>.failed-<UTC time>-<attempt>.json` — a backup, build, migration, restart, health or smoke failure. `rollback`
+  records whether recovery was needed and whether the prior build was verified `healthy` or the rollback was
+  `unhealthy`/unverified. No success receipt is written for it.
 
 `status.json` and `last-deploy.json` carry the path of the newest receipt in `receipt`. A receipt records:
 
 | Field | Contents |
 | --- | --- |
-| `result`, `message`, `failed_stage` | `deployed` or `failed`; for a failure the stage (`backup`, `checkout`, `bundle_install`, `db_migrate`, `assets_precompile`, `restart`, `health`, `asset_smoke`) |
-| `deployed_sha`, `target_sha`, `previous_sha`, `running_sha` | full SHAs; `deployed_sha` is null on failure and `running_sha` is what serves after it |
+| `result`, `message`, `failed_stage` | `deployed` or `failed`; for a failure the stage (`backup`, `latch`, `checkout`, `bundle_install`, `db_migrate`, `assets_precompile`, `restart`, `health`, `asset_smoke`) |
+| `deployed_sha`, `target_sha`, `previous_sha`, `running_sha` | full SHAs; `deployed_sha` is null on failure and `running_sha` is null unless the deploy or rollback was verified |
 | `required_checks` | the SHA, verdict, and for `CI (sqlite3)`, `Product site consistency` and `Dependency and static scan` the check-run ID, status, conclusion, URL and completion time the gate used |
 | `mobile_checks` | the same for `validate` on the newest mobile commit, when the range touched mobile paths (else null) |
 | `migrations` | new migration files in the range, whether `db:migrate` `succeeded`/`failed`/`not_run`, `reverted: false` |
@@ -117,18 +131,20 @@ The app and the updater only exchange files; the app never gets root and never r
 
 | File | Written by | Meaning |
 | --- | --- | --- |
-| `/var/lib/rupert-autodeploy/status.json` | updater, every run | `state` (`up_to_date`, `ready`, `waiting_ci`, `ci_failed`, `deploying`, `deployed`, `failed`, `blocked`), message, current/target commit, mode, time |
-| `/var/lib/rupert-autodeploy/last-deploy.json` | updater, after an install | `deployed` or `failed`, from/to commit, message |
-| `/var/lib/rupert-autodeploy/request-handled` | updater | mtime of the last request it acted on |
+| `/var/lib/rupert-autodeploy/status.json` | updater, every run | `state` (`up_to_date`, `ready`, `waiting_ci`, `ci_failed`, `deploying`, `deployed`, `failed`, `recovery_required`, `blocked`), message, current/target commit, mode, time |
+| `/var/lib/rupert-autodeploy/last-deploy.json` | updater, after an install | `deployed` or `failed`, verified current, previous and target commit, message |
+| `/var/lib/rupert-autodeploy/request-handled`, `request-handled-ns` | updater | mtime of the last handled request in seconds (legacy) and nanoseconds |
 | `/opt/rupert/web/storage/autodeploy/manual` | app | present = install only when asked |
 | `/opt/rupert/web/storage/autodeploy/install-requested` | app | its mtime asks for an install; `rupert-autodeploy.path` starts the updater at once |
 
-The updater only reads the presence of `manual` and the mtime (`stat`, not following symlinks) of
+The updater only reads the presence of `manual` and the mtime (without following symlinks) of
 `install-requested`; it never opens, writes or deletes anything in the app's directory. A request still has to pass every
 gate above (green CI, fast-forward, clean checkout, backup, health check). It also clears a `failed-sha`, so a
 failed commit is retried once. A request is spent when the updater acts on it: after an install attempt, or
 straight away when there was nothing to install, so it never approves a commit that lands later. While CI is pending
-the request waits and the page offers to cancel it. The page warns when the updater has not reported for 20 minutes.
+the request waits and the page offers to cancel it. The updater rechecks the
+request and mode after fetching CI results, but cancellation cannot stop an
+install that has already started. The page warns when the updater has not reported for 20 minutes.
 `DRY_RUN=1` writes no status. Without the updater installed (no `status.json`), the page says updates are managed
 outside Rupert.
 
