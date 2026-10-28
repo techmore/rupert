@@ -18,6 +18,7 @@ module TeamChat
     def source_fallback(evidence, question:)
       text = question.to_s.downcase
       return unless text.match?(/\b(?:chart|graph|plot)\b/) && text.match?(/\b(?:sales|revenue)\b/) && text.match?(/\bby source\b/)
+      return if text.match?(/\b(?:no|without|omit|skip)\s+(?:(?:a|the|any)\s+)?(?:chart|graph|plot)\b/)
       return if text.match?(/\b(?:net|refund|tax|profit|compare|versus|except|exclude|only)\b/)
       return if text.match?(/\b(?:shopify|square|rupert[ _-]?pos|manual|ctrax|swipesimple)\b/) || text.match?(/\b\d{4}-\d{2}-\d{2}\b/)
 
@@ -55,6 +56,43 @@ module TeamChat
 
       with_safe_caption(view, evidence, question: question)
     rescue ArgumentError, TypeError
+      nil
+    end
+
+    def daily_fallback(evidence, question:)
+      text = question.to_s.downcase
+      return unless text.match?(/\b(?:chart|graph|plot)\b/) && text.match?(/\b(?:sales|revenue)\b/) && text.match?(/\btrend\b/)
+      return if text.match?(/\b(?:no|without|omit|skip)\s+(?:(?:a|the|any)\s+)?(?:chart|graph|plot)\b/)
+      return if text.match?(/\b(?:net|refund|tax|profit|compare|versus|except|exclude|only|shopify|square|rupert[ _-]?pos|manual|ctrax|swipesimple)\b/)
+      return if text.match?(/\b\d{4}-\d{2}-\d{2}\b/) || text.match?(/\b(?:no|without|omit|skip)\s+(?:daily|day[- ]by[- ]day|per[- ]day)\b/)
+
+      periods = { 'last week' => 'last_week', 'last month' => 'last_month' }.select { |phrase, _| text.include?(phrase) }
+      return unless periods.one?
+
+      window = Metrics::Window.resolve(period: periods.values.first)
+      period = { 'from' => window.from.iso8601, 'to' => window.to.iso8601 }
+      contexts = evidence.filter_map { |item| item['daily'] }.select { |daily| daily['period'] == period && daily['source'] == FinancialEvidence::ORDER_SOURCE && !daily['omitted'] }
+      return unless contexts.one?
+
+      cells = {}
+      contexts.first.fetch('rows').each do |row|
+        key = [row.fetch('date'), row.fetch('currency')]
+        return if cells.key?(key)
+
+        cents = row['gross_cents']
+        cells[key] = cents.nil? ? nil : (BigDecimal(cents.to_s) / 100).to_s('F')
+      end
+      currencies = cells.keys.map(&:last).uniq.sort
+      return if cells.empty? || currencies.size + 1 > Views::MAX_COLUMNS
+
+      rows = cells.keys.map(&:first).uniq.sort.map { |date| [date] + currencies.map { |currency| cells[[date, currency]] } }
+      args = { 'kind' => 'line_chart', 'title' => "Sales by day #{period['from']} to #{period['to']}",
+               'columns' => ['Date'] + currencies.map { |currency| "Gross sales #{currency}" }, 'rows' => rows }
+      view = Views.build(args, known_text: JSON.generate(evidence))
+      return if check(view, evidence, question: question)
+
+      with_safe_caption(view, evidence, question: question)
+    rescue ArgumentError, KeyError, TypeError
       nil
     end
 

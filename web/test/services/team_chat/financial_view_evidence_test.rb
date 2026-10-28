@@ -32,9 +32,27 @@ class TeamChatFinancialViewEvidenceTest < ActiveSupport::TestCase
       assert_nil check(view, @evidence, question)
       assert_nil TeamChat::FinancialViewEvidence.source_fallback(@evidence, question: 'Chart profit by source last week')
       assert_nil TeamChat::FinancialViewEvidence.source_fallback(@evidence, question: 'Chart Shopify sales by source last week')
+      assert_nil TeamChat::FinancialViewEvidence.source_fallback(@evidence, question: 'Last week sales by source without a chart')
       conflict = @evidence.deep_dup
       conflict.first['facts'] << conflict.first['facts'].first.merge('value' => '999')
       assert_nil TeamChat::FinancialViewEvidence.source_fallback(conflict, question: question)
+    end
+  end
+
+  test 'daily trend fallback leaves missing days blank and preserves recorded zero' do
+    travel_to Time.zone.parse('2026-10-27 12:00') do
+      data = @evidence.deep_dup
+      data.first['daily']['source'] = TeamChat::FinancialEvidence::ORDER_SOURCE
+      data.first['daily']['omitted'] = false
+      question = "Plot last week's recorded sales trend"
+      view = TeamChat::FinancialViewEvidence.daily_fallback(data, question: question)
+      assert_equal 'line_chart', view['kind']
+      assert_equal [['2026-10-19', '40.0'], ['2026-10-20', nil], ['2026-10-21', '0.0']], view['rows']
+      assert_nil check(view, data, question)
+      data.first['daily']['omitted'] = true
+      assert_nil TeamChat::FinancialViewEvidence.daily_fallback(data, question: question)
+      assert_nil TeamChat::FinancialViewEvidence.daily_fallback(@evidence, question: 'Plot Shopify sales trend last week')
+      assert_nil TeamChat::FinancialViewEvidence.daily_fallback(@evidence, question: 'Last week sales trend without a chart')
     end
   end
 

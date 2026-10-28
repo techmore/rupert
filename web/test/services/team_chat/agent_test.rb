@@ -775,6 +775,25 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     end
   end
 
+  test 'a sales trend requests daily evidence and can show a verified adjustable chart' do
+    travel_to Time.zone.parse('2026-10-27 12:00') do
+      args = { from: '2026-10-19', to: '2026-10-25' }
+      data = args.merge(lines: [], totals_by_currency: [], refunded_orders_by_source: {}, daily: [
+        { date: '2026-10-19', currency: 'USD', orders: 1, gross_cents: 4000 },
+        { date: '2026-10-20', currency: 'USD', orders: 0, gross_cents: 0 }
+      ])
+      Mcp::Tools::SalesSummary.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'sales', data: data))
+      script_model({ tool: 'sales_summary', arguments: args }, { text: 'I checked the sales.' })
+      reply = ask("@rupert Plot last week's recorded sales trend")
+      TeamChat::Agent.new(reply, config: team_chat_config).run
+      entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+      assert_equal true, entry.dig('arguments', 'include_daily')
+      view = reply.reload.meta.fetch('views').first
+      assert_equal 'line_chart', view['kind']
+      assert_equal [['2026-10-19', '40.0'], ['2026-10-20', nil]], view['rows']
+    end
+  end
+
   test 'a nonempty receipt count does not replace a request for receipt identities' do
     data = { queues: [{ name: 'Expense receipts waiting for review', count: 2 }],
              low_stock_available: false, oldest_unshipped: [] }

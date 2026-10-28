@@ -78,7 +78,8 @@ module TeamChat
     def add_verified_view_fallback!
       return if @views.any?
 
-      view = FinancialViewEvidence.source_fallback(@financial_evidence, question: @question)
+      view = FinancialViewEvidence.source_fallback(@financial_evidence, question: @question) ||
+        FinancialViewEvidence.daily_fallback(@financial_evidence, question: @question)
       @views << view if view
     end
 
@@ -176,7 +177,9 @@ module TeamChat
     # even when they select the right tool and dates. Keep explicit arguments.
     def complete_daily_arguments(name, arguments)
       return arguments unless name.to_s == 'sales_summary' && arguments.is_a?(Hash)
-      return arguments unless @question.match?(/\b(?:daily\s+(?:sales|orders|revenue|breakdown|series)|day[- ]by[- ]day|each day|per day)\b/i)
+      daily = @question.match?(/\b(?:daily\s+(?:sales|orders|revenue|breakdown|series)|day[- ]by[- ]day|each day|per day)\b/i)
+      trend = @question.match?(/\b(?:plot|chart|graph)\b/i) && @question.match?(/\b(?:sales|revenue)\b/i) && @question.match?(/\btrend\b/i)
+      return arguments unless daily || trend
       return arguments if @question.match?(/\b(?:no|without|omit|exclude|skip)\s+(?:(?:a|the|any)\s+)?(?:daily|day[- ]by[- ]day|per[- ]day)\b/i)
 
       args = arguments.deep_stringify_keys
