@@ -25,6 +25,13 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
 
   def render(item) = TeamChat::FinancialEvidence.render([item])
 
+  test 'repeated identical tool calls do not duplicate rendered facts' do
+    first = evidence
+    second = evidence(invocation: 'call-2')
+    text = TeamChat::FinancialEvidence.render([first, second])
+    assert_equal 1, text.scan('214.83 USD').length
+  end
+
   test 'product revenue preserves name currency and suppresses unsafe names' do
     payload = { metric: 'top_products', period: @period, source: nil,
                values: [{ currency: 'USD', products: [{ name: 'Tea', revenue_cents: 8000 }, { name: "Bad\nname", revenue_cents: 500 }] }] }

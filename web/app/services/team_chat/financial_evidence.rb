@@ -375,7 +375,9 @@ module TeamChat
     end
 
     def render(evidence)
-      facts = evidence.flat_map { |item| item['facts'] }
+      # Repeated identical calls are separate audit events but should not be
+      # presented to the user as separate products or financial results.
+      facts = evidence.flat_map { |item| item['facts'] }.uniq { |fact| fact.except('id', 'invocation') }
       lines = facts.first(12).map do |fact|
         number = BigDecimal(fact.fetch('value'))
         whole, fraction = number.to_s('F').split('.')
