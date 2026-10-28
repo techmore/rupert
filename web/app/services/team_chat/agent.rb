@@ -232,6 +232,9 @@ module TeamChat
       chat = @config.chat(session: "rupert-room-#{@room.id}", timeout: @execution.remaining, instrumenter: @telemetry)
       chat.with_instructions(system_prompt).with_temperature(0.2)
       chat.with_tools(*@toolbox.llm_tools).with_tool_options(concurrency: false)
+      # The last generation must produce an answer rather than another tool
+      # request. This also applies after resuming from a durable checkpoint.
+      chat.with_tool_options(choice: :none) if @toolbox.calls >= Toolbox::MAX_CALLS
       @execution.chat = chat
       chat.before_tool_call do |tool_call|
         @execution.check!

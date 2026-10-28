@@ -53,6 +53,21 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert tool_message, 'the tool result goes back to the model'
   end
 
+  test 'after the tool budget the final generation cannot request another tool' do
+    calls = Array.new(TeamChat::Toolbox::MAX_CALLS) do |i|
+      { tool: 'where_is', arguments: { query: 'timesheets' }, id: "call_#{i}" }
+    end
+    requests = script_model(*calls, { text: 'Timesheets are under Team.' })
+    reply = ask('@rupert where are timesheets? Also explain the approval workflow.')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal 'done', reply.reload.status
+    assert_equal TeamChat::Toolbox::MAX_CALLS + 1, requests.size
+    assert_equal 'none', requests.last['tool_choice']
+    assert_equal TeamChat::Toolbox::MAX_CALLS, TeamChat::Run.find_by!(message_id: reply.id).tool_results.size
+  end
+
   test 'financial drafts are replaced with typed source period currency and meaning' do
     order = Core::Order.create!(source: 'shopify', source_order_id: 'nc-1', occurred_at: 1.day.ago.change(hour: 12), gross_cents: 21_483, tax_cents: 0, currency: 'USD')
     order.mark_paid!
