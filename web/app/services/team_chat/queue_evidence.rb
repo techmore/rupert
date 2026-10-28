@@ -121,8 +121,10 @@ module TeamChat
       else
         lines << 'Low-stock alert matching was unavailable.'
       end
-      context['orders'].each do |order|
-        lines << "- Unshipped order #{order['order']} (#{order['source']}):"
+      context['orders'].each_with_index do |order, index|
+        # order_queues returns these in ascending order date (then ID).
+        label = index.zero? ? 'Oldest unshipped order' : 'Unshipped order'
+        lines << "- #{label} #{order['order']} (#{order['source']}):"
         order['lines'].each do |item|
           status = case item['low_stock']
                    when true then 'matching open low-stock alert'

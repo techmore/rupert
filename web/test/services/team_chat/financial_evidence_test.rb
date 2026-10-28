@@ -150,6 +150,7 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     item = evidence(payload, tool: 'order_queues', args: {})
     text = render(item)
     assert_includes text, 'Paid online orders not shipped: 2; 1 late'
+    assert_includes text, 'Oldest unshipped order A-1 (shopify)'
     assert_includes text, 'Tea (SKU TEA): no matching open low-stock alert'
     assert_includes text, 'does not establish current inventory coverage'
     assert_includes text, 'Additional unshipped orders were omitted'
