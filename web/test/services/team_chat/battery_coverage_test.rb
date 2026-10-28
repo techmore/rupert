@@ -35,6 +35,22 @@ class TeamChatBatteryCoverageTest < ActiveSupport::TestCase
 
   teardown { Current.reset }
 
+  test 'top products reference keeps currencies separate' do
+    date = Date.current.beginning_of_week - 1.day
+    %w[USD CAD].each_with_index do |currency, index|
+      order = Core::Order.create!(source: 'shopify', source_order_id: "benchmark-currency-#{currency}",
+        occurred_at: date.in_time_zone.noon, gross_cents: (index + 1) * 100, tax_cents: 0, currency: currency)
+      order.mark_paid!
+      order.order_lines.create!(name: 'Tea', quantity: 1, unit_cents: (index + 1) * 100, line_cents: (index + 1) * 100)
+    end
+    item = TeamChat::Battery.items.find { |question| question.id == 'w4' }
+    report = TeamChat::BatteryCoverage.new(user: @user, items: [item]).call
+    assert report.passed?, report.markdown
+    rows = report.questions.first.calls.first.data[:values]
+    assert_equal %w[CAD USD], rows.map { |row| row[:currency] }.sort
+    assert_equal [100, 200], rows.map { |row| row[:products].first[:revenue_cents] }.sort
+  end
+
   test 'checks declared paths without printing tool values and ignores an empty wildcard collection' do
     FakeTool.tool_name = 'fixture_read'
     FakeTool.available = true
