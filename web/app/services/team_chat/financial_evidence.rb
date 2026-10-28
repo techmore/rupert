@@ -19,6 +19,8 @@ module TeamChat
       'refund_rate' => ['Recorded refunds as a percentage of gross sales', 'percent'],
       'tax_collected' => ['Sales tax recorded on paid or fulfilled orders', 'money'],
       'effective_tax_rate' => ['Recorded sales tax as a percentage of sales before tax', 'percent'],
+      'best_day' => ['Highest recorded sales day', 'money'],
+      'worst_day' => ['Lowest recorded sales day', 'money'],
       'expenses_by_category' => ['Active expense-register total (not profit)', 'money'],
       'sales_by_source' => ['Gross sales by source', 'money']
     }.freeze
@@ -193,6 +195,18 @@ module TeamChat
     def metric_rows(out, rows, name, source, period, path)
       meaning, unit = MEANINGS.fetch(name)
       Array(rows).each_with_index do |row, index|
+        if %w[best_day worst_day].include?(name)
+          if row['value'].blank?
+            out['gaps'] << 'Sales day is unavailable; missing data does not prove zero.'
+            next
+          end
+          date = Date.iso8601(row['value'])
+          raise ArgumentError unless date.between?(Date.iso8601(period['from']), Date.iso8601(period['to']))
+
+          add(out, row['gross_cents'], 'money', row['currency'], source, period, "#{meaning}: #{date.iso8601}", "#{path}.#{index}.gross_cents")
+          out['gaps'] << 'Only days with recorded orders are considered; days without recorded orders are not zero-sales days.'
+          next
+        end
         if %w[tax_collected effective_tax_rate].include?(name)
           field = name == 'tax_collected' ? 'tax_cents' : 'effective_rate_percent'
           add(out, row['value'], unit, row['currency'], source, period, meaning, "#{path}.#{index}.value")

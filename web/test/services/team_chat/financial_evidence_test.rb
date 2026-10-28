@@ -25,6 +25,17 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
 
   def render(item) = TeamChat::FinancialEvidence.render([item])
 
+  test 'recorded sales days keep date currency and missing day qualification' do
+    payload = { metric: 'worst_day', period: @period, source: nil,
+                values: [{ currency: 'CAD', value: Date.current.iso8601, gross_cents: 1234 }] }
+    item = evidence(payload, tool: 'metric', args: { name: 'worst_day', period: 'today' })
+    assert_includes render(item), "Lowest recorded sales day: #{Date.current.iso8601}"
+    assert_includes render(item), '12.34 CAD'
+    assert_includes render(item), 'days without recorded orders are not zero-sales days'
+    payload[:values][0][:value] = (Date.current - 1).iso8601
+    assert_empty evidence(payload, tool: 'metric', args: { name: 'worst_day', period: 'today' })['facts']
+  end
+
   test 'tax metrics retain per source values and distinguish unknown from zero' do
     payload = @period.then { |period|
                 { metric: 'effective_tax_rate', period: period, source: nil,
