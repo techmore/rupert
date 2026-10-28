@@ -261,7 +261,7 @@ module TeamChat
         data = coverage.reference_data(outcome.data, check)
         raise Grader::Error, "reference tool #{name} could not be checked" unless coverage.checkable_data?(data)
         evidence[name] = data
-        summary = check.is_a?(Hash) && (check['select_title'].present? || check['select_area'].present?) ? '' : outcome.text
+        summary = check.is_a?(Hash) && (check['select_title'].present? || check['select_titles'].present? || check['select_area'].present?) ? '' : outcome.text
         text = AskRupert::Redactor.personal("#{summary}\n#{JSON.generate(data)}")
         raise Grader::Error, "reference tool #{name} output exceeds the judge limit" if text.length > Grader::REFERENCE_CHARS
 

@@ -56,6 +56,12 @@ module TeamChat
     # A question can request a single named compliance row; unrelated checks
     # should not fill the judge context or stand in for missing evidence.
     def reference_data(data, check)
+      if check.is_a?(Hash) && check['tool'] == 'compliance_check' && check['select_titles'].is_a?(Array)
+        items = data.is_a?(Hash) ? (data[:items] || data['items']) : nil
+        rows = Array(items).select { |row| row.is_a?(Hash) && check['select_titles'].include?(row[:title] || row['title']) }
+        return { items: rows }
+      end
+
       if check.is_a?(Hash) && check['tool'] == 'compliance_check' && check['select_area'].present?
         items = data.is_a?(Hash) ? (data[:items] || data['items']) : nil
         rows = Array(items).select { |row| row.is_a?(Hash) && (row[:area] || row['area']) == check['select_area'] }

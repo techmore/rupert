@@ -125,6 +125,20 @@ class TeamChatBatteryCoverageTest < ActiveSupport::TestCase
     refute coverage.need_present?(duplicate, 'required_row.detail')
   end
 
+  test 'multiple selected compliance rows require each named item' do
+    coverage = TeamChat::BatteryCoverage.new(user: @user, items: [])
+    check = { 'tool' => 'compliance_check', 'select_titles' => ['Review', 'Approval'] }
+    review = { title: 'Review', status: 'ok', count: 0 }
+    approval = { title: 'Approval', status: 'watch', count: 2 }
+    unrelated = { title: 'Other', status: 'ok', count: 8 }
+    missing = coverage.reference_data({ items: [review, unrelated] }, check)
+    assert coverage.need_present?(missing, 'items[title=Review].count')
+    refute coverage.need_present?(missing, 'items[title=Approval].count')
+    selected = coverage.reference_data({ items: [review, unrelated, approval] }, check)
+    assert_equal [review, approval], selected[:items]
+    assert coverage.need_present?(selected, 'items[title=Approval].count')
+  end
+
   test 'an unavailable check is an error' do
     FakeTool.tool_name = 'fixture_read'
     FakeTool.available = false

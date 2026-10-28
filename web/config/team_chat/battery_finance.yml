@@ -126,15 +126,15 @@ questions:
     module: bookkeeping
     question: Are there bank statement lines waiting to be matched?
     expect: Uses the compliance check and gives the number of bank lines waiting.
-    checks: [compliance_check]
-    needs: ["compliance_check:items[].title", "compliance_check:items[].status"]
+    checks: [{ tool: compliance_check, args: { include_ok: true }, select_title: Uploaded bank lines have a decision }]
+    needs: ["compliance_check:items[title=Uploaded bank lines have a decision].status", "compliance_check:items[title=Uploaded bank lines have a decision].count"]
   - id: f19
     cadence: books
     module: bookkeeping
     question: Are any daily money reviews or approvals overdue?
     expect: Identify relevant daily-review or approval items and their supported status; if the reference does not show a relevant item or its due state, say that it could not be established.
-    checks: [compliance_check]
-    needs: ["compliance_check:items[].title", "compliance_check:items[].status"]
+    checks: [{ tool: compliance_check, args: { include_ok: true }, select_titles: [Recent days have been reviewed, Recent days have been approved by a person] }]
+    needs: ["compliance_check:items[title=Recent days have been reviewed].status", "compliance_check:items[title=Recent days have been reviewed].count", "compliance_check:items[title=Recent days have been approved by a person].status", "compliance_check:items[title=Recent days have been approved by a person].count"]
   - id: f20
     cadence: honesty
     module: bookkeeping
