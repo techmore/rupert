@@ -11,7 +11,7 @@ module TeamChat
     VERSION = 1
     CURRENCIES = %w[USD CAD EUR GBP AUD NZD CHF CNY HKD SGD MXN BRL ZAR INR].freeze
     TOOLS = %w[metric sales_summary period_review business_pulse sales_tax_report daily_close].freeze
-    CONTRACTS = (TOOLS + %w[time_keeping_report purchase_orders]).freeze
+    CONTRACTS = (TOOLS + %w[time_keeping_report purchase_orders order_queues]).freeze
     MEANINGS = {
       'gross_sales' => ['Gross sales (paid or fulfilled orders)', 'money'],
       'orders' => ['Paid or fulfilled order count', 'count'],
@@ -194,10 +194,14 @@ module TeamChat
         out['pulse'] = pulse
       when 'purchase_orders'
         out['purchasing'] = PurchasingEvidence.build(data, args)
+      when 'order_queues'
+        out['queue_summary'] = QueueEvidence.build(data)
       else
         out['gaps'] << 'This financial tool does not yet provide a certified evidence contract.'
       end
-      out['gaps'] << 'No complete financial facts were returned; missing data does not prove zero.' if out['facts'].empty? && !out['purchasing']
+      if out['facts'].empty? && !out['purchasing'] && !out['queue_summary']
+        out['gaps'] << 'No complete financial facts were returned; missing data does not prove zero.'
+      end
       out['gaps'].uniq!
       if out['facts'].size > 12
         out['facts'] = out['facts'].first(12)
@@ -381,6 +385,11 @@ module TeamChat
         return unless data['tool'] == 'purchase_orders' && context.is_a?(Hash) &&
           context['id'] == Digest::SHA256.hexdigest(JSON.generate(context.except('id'))).first(16)
       end
+      if data['queue_summary']
+        context = data['queue_summary']
+        return unless data['tool'] == 'order_queues' && context.is_a?(Hash) &&
+          context['id'] == Digest::SHA256.hexdigest(JSON.generate(context.except('id'))).first(16)
+      end
 
       data
     rescue JSON::ParserError, TypeError
@@ -404,7 +413,7 @@ module TeamChat
     def checked_prose(text, evidence, today: Date.current)
       # Hours need their own semantic validation; render them deterministically
       # instead of accepting unchecked prose next to certified financial facts.
-      return nil if evidence.any? { |item| item['timekeeping'] || item['pulse'] || item['daily'] || item['purchasing'] }
+      return nil if evidence.any? { |item| item['timekeeping'] || item['pulse'] || item['daily'] || item['purchasing'] || item['queue_summary'] }
       return nil if evidence.any? { |item| item['gaps'].any? { |gap| gap.start_with?('Highest recorded source sales') } }
 
       facts = evidence.flat_map { |item| item['facts'] }
@@ -550,11 +559,14 @@ module TeamChat
         lines << '  - Missing stored orders do not prove there were no sales.'
       end
       evidence.filter_map { |item| item['purchasing'] }.uniq.each { |context| lines << PurchasingEvidence.render(context) }
+      evidence.filter_map { |item| item['queue_summary'] }.uniq.each { |context| lines << QueueEvidence.render(context) }
       lines.unshift('From Rupert’s records:') if lines.any?
       gaps = evidence.flat_map { |item| item['gaps'] }.uniq
       missing_metrics, other_gaps = gaps.partition { |gap| gap.start_with?('No metric rows were returned for the requested period') }
       lines = missing_metrics + lines
-      lines << 'I could not verify financial figures for this request.' if facts.empty? && evidence.none? { |item| item['purchasing'] }
+      if facts.empty? && evidence.none? { |item| item['purchasing'] || item['queue_summary'] }
+        lines << 'I could not verify financial figures for this request.'
+      end
       lines << 'Additional verified facts were omitted. Narrow the question for the remaining figures.' if facts.size > 12
       lines.concat(other_gaps)
       lines.join("\n")

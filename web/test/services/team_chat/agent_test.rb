@@ -161,6 +161,35 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_not_includes reply.body, 'There are orders waiting'
   end
 
+  test 'vendor lookup keeps purchase-order values separate from recorded payments' do
+    today = Date.current.iso8601
+    data = { view: 'vendors', from: today, to: today, currency: 'USD', meta: { has_more: false },
+             rows: [{ name: 'Tea supplier', spend_cents: 1200, paid_in_window_cents: 500 }] }
+    Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'one vendor', data: data))
+    script_model({ tool: 'purchase_orders', arguments: { view: 'vendors', from: today, to: today } }, { text: 'Payments were $12.00.' })
+    reply = ask('@rupert what did we order and pay this vendor today?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'placed PO value, not payments: 12.00 USD'
+    assert_includes reply.body, 'recorded vendor payments in the period: 5.00 USD'
+    assert_not_includes reply.body, 'Payments were $12.00'
+  end
+
+  test 'order queues with financial fields retain their operational counts' do
+    data = { queues: [{ name: 'Paid online orders not shipped', count: 1, late: 0 }], low_stock_available: false,
+             oldest_unshipped: [{ order: 'A-1', source: 'shopify', gross_cents: 1234, lines: [] }] }
+    Mcp::Tools::OrderQueues.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'one waiting', data: data))
+    script_model({ tool: 'order_queues', arguments: {} }, { text: 'Nothing is waiting.' })
+    reply = ask('@rupert what orders are waiting to ship?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Paid online orders not shipped: 1'
+    assert_includes reply.body, 'Low-stock alert matching was unavailable'
+    assert_not_includes reply.body, 'Nothing is waiting'
+  end
+
   test 'financial drafts are replaced with typed source period currency and meaning' do
     order = Core::Order.create!(source: 'shopify', source_order_id: 'nc-1', occurred_at: 1.day.ago.change(hour: 12), gross_cents: 21_483, tax_cents: 0, currency: 'USD')
     order.mark_paid!

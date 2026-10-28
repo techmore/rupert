@@ -126,6 +126,42 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_not_includes text, 'I could not verify financial figures'
   end
 
+  test 'vendor evidence distinguishes purchase orders, open due and actual payments' do
+    period = { from: (Date.current - 30).iso8601, to: Date.current.iso8601 }
+    payload = period.merge(view: 'vendors', currency: 'USD', meta: { has_more: false }, rows: [
+      { name: 'Tea supplier', spend_cents: 1200, open_due_cents: 300, paid_in_window_cents: 500,
+        open_orders: 1, average_lead_days: 4.5, lead_time_orders: 2 }
+    ])
+    item = evidence(payload, tool: 'purchase_orders', args: period.merge(view: 'vendors'))
+    text = render(item)
+    assert_includes text, 'placed PO value, not payments: 12.00 USD'
+    assert_includes text, 'currently due on open POs: 3.00 USD'
+    assert_includes text, 'recorded vendor payments in the period: 5.00 USD'
+    assert_includes text, 'average lead 4.5 days across received orders'
+    assert TeamChat::FinancialEvidence.decode(JSON.generate(item), @user.tenant_id, tool: 'purchase_orders')
+
+    assert_nil evidence(payload, tool: 'purchase_orders', args: period.merge(view: 'vendors', from: '2020-01-01'))['purchasing']
+  end
+
+  test 'queue evidence keeps counts and alert scope while omitting unverified order money' do
+    payload = { queues: [{ name: 'Paid online orders not shipped', count: 2, late: 1 }], low_stock_available: true,
+                waiting_on_low_stock: 0, oldest_unshipped: [{ order: 'A-1', source: 'shopify', gross_cents: 1234,
+                  lines: [{ name: 'Tea', sku: 'TEA', low_stock: false }] }] }
+    item = evidence(payload, tool: 'order_queues', args: {})
+    text = render(item)
+    assert_includes text, 'Paid online orders not shipped: 2; 1 late'
+    assert_includes text, 'Tea (SKU TEA): no matching open low-stock alert'
+    assert_includes text, 'does not establish current inventory coverage'
+    assert_includes text, 'Additional unshipped orders were omitted'
+    assert_not_includes text, '12.34'
+    assert TeamChat::FinancialEvidence.decode(JSON.generate(item), @user.tenant_id, tool: 'order_queues')
+
+    payload[:low_stock_available] = false
+    text = render(evidence(payload, tool: 'order_queues', args: {}))
+    assert_includes text, 'Low-stock alert matching was unavailable'
+    assert_includes text, 'Tea (SKU TEA): alert match unknown'
+  end
+
   test 'oversized daily close notes terminate with a bounded honest gap' do
     stores = 40.times.map do |i|
       { store: "Store #{i}", currency: 'USD', gross_cents: 100, notes: ["#{i}: #{'x' * 220}"] }
