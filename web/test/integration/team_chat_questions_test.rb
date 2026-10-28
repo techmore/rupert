@@ -77,6 +77,29 @@ class TeamChatQuestionsTest < ActionDispatch::IntegrationTest
       post run_team_chat_questions_path, params: { benchmark_mode: 'depth', agent: 'rupert' }
     end
     assert_match(/local bot/, flash[:alert])
+    get team_chat_questions_path(set: 'visualization')
+    assert_select 'nav.tabs a.tab-active', 'Visualizations'
+    assert_select 'tr#q-v01 strong', /bar chart/
+    assert_enqueued_with(job: TeamChat::BatteryJob, args: [@admin.id, 'visualization', 'qwen']) do
+      post run_team_chat_questions_path(set: 'visualization'), params: { agent: 'qwen' }
+    end
+  end
+
+  test 'model scores show whether a visualization was made and can be adjusted' do
+    Current.set(tenant: @admin.tenant, user: @admin) do
+      TeamChat::BatteryRun.create!(run_key: 'visualization-test', set_name: 'visualization-offline', status: 'done', questions: 2,
+        model: 'local-test', started_at: Time.current, results: [
+          { 'id' => 'v01', 'module' => 'visualization', 'question' => 'Chart sales', 'views' => [
+            { 'kind' => 'bar_chart', 'rows' => 2, 'adjustable' => true, 'unmatched_figures' => 1 }
+          ] },
+          { 'id' => 'v02', 'module' => 'visualization', 'question' => 'Plot sales', 'views' => [] }
+        ])
+    end
+    get team_chat_scores_path
+    assert_response :success
+    assert_includes response.body, 'bar_chart · 2 rows · adjustable · 1 unmatched figure'
+    assert_includes response.body, 'No side-panel view'
+    assert_includes response.body, 'Source, labels and period require review.'
   end
 
   test 'only people who can use team chat open it' do

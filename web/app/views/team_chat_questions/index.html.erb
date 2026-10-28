@@ -1,6 +1,6 @@
 <%# Test questions: the question sets that score the bots, as this workspace asks them (TeamChatQuestionsController). %>
 <% check_text = ->(check) { check.is_a?(Hash) ? ([check['tool'] || check[:tool]] + (check['args'] || check[:args] || {}).map { |key, value| "#{key}=#{value}" }).join(' ') : check.to_s } %>
-<% set_label = { 'default' => 'General', 'finance' => 'Finance', 'cross' => 'Across areas' } %>
+<% set_label = { 'default' => 'General', 'finance' => 'Finance', 'cross' => 'Across areas', 'visualization' => 'Visualizations' } %>
 <%= page_header 'Test questions', subtitle: 'The questions each bot is graded on. Reword them, add your own or take one out to test what matters to your books; the built-in set always stays available.' do %>
   <%= link_to 'Open Model scores', team_chat_scores_path, class: 'btn-ghost' %>
 <% end %>
@@ -12,16 +12,18 @@
     <h2 class="font-semibold"><%= pluralize(@items.size, 'question') %> in this set</h2>
     <p class="text-sm text-mocha">
       <% if @edits.any? %>Edited for this workspace: runs are scored as <code><%= @run_set %></code>, apart from the built-in set.<% else %>As shipped with Rupert.<% end %>
-      Each answer is graded 1–5 by DeepSeek against what the listed tools return.
+      <% if @set == 'visualization' %>Answers and view details are retained for independent review using a local bot.<% else %>Each answer is graded 1–5 by DeepSeek against what the listed tools return.<% end %>
     </p>
   </div>
   <% if @running %>
     <p class="text-sm text-mocha" role="status">A test run is going: <%= @running.label %>, started <%= time_ago_in_words(@running.started_at) %> ago.</p>
-  <% else %>
+  <% elsif @bots.any? %>
     <%= form_with url: run_team_chat_questions_path(set: @set), method: :post, class: 'flex flex-wrap items-end gap-2' do %>
       <label class="text-sm"><span class="field-label">Bot</span><%= select_tag :agent, options_for_select(@bots, 'rupert'), class: 'select' %></label>
       <%= submit_tag 'Run these questions', class: 'btn-primary' %>
     <% end %>
+  <% else %>
+    <p class="text-sm text-mocha">An available local bot without a hosted verifier is required.</p>
   <% end %>
 </section>
 

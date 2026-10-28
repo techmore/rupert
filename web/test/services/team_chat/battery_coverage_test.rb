@@ -183,7 +183,7 @@ class TeamChatBatteryCoverageTest < ActiveSupport::TestCase
   end
 
   test 'all battery tool checks execute against the fixture database with needs and cross questions stay within two calls' do
-    %w[default finance cross].each do |set|
+    %w[default finance cross visualization].each do |set|
       items = TeamChat::Battery.items(TeamChat::Battery.config_for(set))
       report = TeamChat::BatteryCoverage.new(user: @user, items: items).call
 

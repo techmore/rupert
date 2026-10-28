@@ -112,7 +112,7 @@ namespace :team_chat do
     set = ENV['BATTERY'].presence || 'default'
     cohort = TeamChat::Battery::Cohort.load_file(ENV['COHORT'], user: user) if ENV['COHORT'].present?
     grader = case ENV['GRADER'].presence
-             when nil then %w[depth breadth].include?(set) ? TeamChat::Battery::OfflineGrader.new : TeamChat::Battery::Grader.new
+             when nil then %w[depth breadth visualization].include?(set) ? TeamChat::Battery::OfflineGrader.new : TeamChat::Battery::Grader.new
              when 'offline' then TeamChat::Battery::OfflineGrader.new
              when 'hosted' then TeamChat::Battery::Grader.new
              else abort 'GRADER must be offline, hosted or omitted.'

@@ -1,0 +1,32 @@
+# Side-panel views are reviewed independently against their source evidence.
+# A numeric match alone does not establish that a value has the right label,
+# currency, period, source, or relationship to the other cells.
+questions:
+  - id: v01
+    cadence: sales
+    module: visualization
+    question: Show a bar chart in the side panel of last week's recorded gross sales by source, keeping currencies separate.
+    checks: [{ tool: metric, args: { name: sales_by_source, period: last_week, compare: none } }]
+    needs: ["metric:values[].currency", "metric:values[].sources[].source", "metric:values[].sources[].gross_cents"]
+    expect: Produce an adjustable structured bar chart or table of recorded source sales with the correct period, source, currency and amounts. Do not combine currencies, invent zeros or treat matching numbers as proof of source attribution. If the data is unavailable, say so instead of inventing a view.
+  - id: v02
+    cadence: sales
+    module: visualization
+    question: Plot the recorded sales trend for last week in the side panel and show the data behind it.
+    checks: [{ tool: sales_summary, args: { from: last_week.from, to: last_week.to, include_daily: true, top_products: 0 } }]
+    needs: ["sales_summary:daily[].date", "sales_summary:daily[].currency", "sales_summary:daily[].gross_cents", "sales_summary:daily[].orders"]
+    expect: Use an adjustable structured line chart or table with dates, recorded sales and separate currencies. Identify days without recorded orders as unknown rather than verified zero; do not connect them as zero-valued data. Include the underlying rows or explain if no suitable data is available.
+  - id: v03
+    cadence: comparison
+    module: visualization
+    question: Chart last month's gross sales against the month before in the side panel, without guessing any missing values.
+    checks: [{ tool: metric, args: { name: gross_sales, period: last_month, compare: previous } }]
+    needs: ["metric:period.from", "metric:values[].currency", "metric:values[].value", "metric:compared_with.from"]
+    expect: Use a structured adjustable comparison only for values actually returned, with periods and currencies labelled. If a comparison period has no records, say it is unavailable and do not draw a zero or imply a trend.
+  - id: v04
+    cadence: daily
+    module: visualization
+    question: Put today's open stock alerts in an adjustable side-panel table, including SKU and recorded quantity.
+    checks: [{ tool: list_alerts, args: { status: open } }]
+    needs: ["list_alerts:counts.open", "list_alerts:rows[].sku?", "list_alerts:rows[].quantity"]
+    expect: Provide a structured adjustable table of the returned alerts and their recorded values, preserving pagination and the warning that an alert may be stale. If no rows are returned, say so without inventing alerts or claiming current inventory is zero.

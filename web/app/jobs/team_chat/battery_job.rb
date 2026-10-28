@@ -13,7 +13,7 @@ module TeamChat
       Current.set(tenant: user.tenant, user: user) do
         next if BatteryRun.where(status: 'running', updated_at: 3.hours.ago..).exists?
 
-        if %w[depth breadth].include?(set)
+        if %w[depth breadth visualization].include?(set)
           local = LocalAgents.find(agent) || LocalAgents.trial(agent)
           raise ArgumentError, 'Combined benchmarks require a local model and no hosted verifier.' unless local && !local.cloud? && !Verify.enabled_for?(local)
 

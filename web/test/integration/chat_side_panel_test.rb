@@ -43,4 +43,18 @@ class ChatSidePanelTest < ActionDispatch::IntegrationTest
       assert_equal [view], reply.as_payload(viewer: @admin)[:views]
     end
   end
+
+  test 'a plot request rejects static HTML and can use an adjustable structured view' do
+    Current.set(tenant: @admin.tenant, user: @admin) do
+      room = TeamChat::Room.direct_for(@admin)
+      script_model({ tool: 'show_view', id: 'view-html', arguments: { title: 'Sales', kind: 'html', html: '<p>10</p>' } },
+        { tool: 'show_view', id: 'view-chart', arguments: { title: 'Sales', kind: 'bar_chart', columns: %w[Day Sales], rows: [['Mon', 10]] } },
+        { text: 'Here is the sales chart.' })
+      reply = TeamChat::Post.call(room: room, user: @admin, body: '@rupert plot our sales').reply
+      TeamChat::Agent.new(reply, config: team_chat_config).run
+      run = TeamChat::Run.find_by!(message_id: reply.id)
+      assert_includes run.tool_results.first['result'], 'use a structured table, bar chart or line chart'
+      assert_equal 'bar_chart', reply.reload.meta['views'].sole['kind']
+    end
+  end
 end

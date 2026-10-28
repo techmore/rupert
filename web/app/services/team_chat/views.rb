@@ -32,7 +32,8 @@ module TeamChat
 
     DESCRIPTION = 'Shows a table, bar chart, line chart or small HTML page beside the chat (a button under your reply opens it). ' \
                   'Use it when a comparison or list is clearer laid out than in a sentence, for example several days, stores or ' \
-                  'products side by side. Copy every figure exactly from tool results; figures that are not in them are flagged. ' \
+                  'products side by side. For plots use a structured table or chart, which can be adjusted; HTML cannot. ' \
+                  'Copy every figure exactly from tool results; figures that are not in them are flagged. ' \
                   'Say in your reply what the view shows.'
 
     module_function

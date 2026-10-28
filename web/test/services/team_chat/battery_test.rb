@@ -36,7 +36,7 @@ class TeamChatBatteryTest < ActiveSupport::TestCase
 
   test 'depth and breadth use distinct complete question sets' do
     depth = TeamChat::Battery.items_for('depth')
-    expected = %w[default finance cross].flat_map { |name| TeamChat::Battery.items(TeamChat::Battery.config_for(name)) }
+    expected = %w[default finance cross visualization].flat_map { |name| TeamChat::Battery.items(TeamChat::Battery.config_for(name)) }
     assert_equal expected.map(&:id), depth.map(&:id)
     assert_equal depth.size, depth.map(&:id).uniq.size
     breadth = TeamChat::Battery.items_for('breadth')
@@ -54,6 +54,17 @@ class TeamChatBatteryTest < ActiveSupport::TestCase
     assert_equal 'running', run.display_status
     run.updated_at = 3.hours.ago
     assert_equal 'stopped', run.display_status
+  end
+
+  test 'benchmark rows report view type and unchecked figures without claiming semantic verification' do
+    battery = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: TeamChat::Battery::OfflineGrader.new, items: [], out: nil)
+    result = TeamChat::Battery::Result.new(item: items.first, seconds: 1.0, tools: ['show_view'], status: 'done',
+      unverified: [], proposed_tools: [], views: [{ 'kind' => 'bar_chart', 'rows' => [[1, 2]], 'unchecked' => 1 },
+                                                  { 'kind' => 'html', 'unchecked' => 0 }])
+    views = battery.send(:result_row, result).fetch('views')
+    assert_equal({ 'kind' => 'bar_chart', 'rows' => 1, 'unmatched_figures' => 1, 'adjustable' => true }, views.first)
+    assert_equal false, views.last['adjustable']
+    assert_not views.first.key?('verified')
   end
 
   test 'combined benchmark job uses the offline grader and rejects a hosted verifier' do
@@ -205,7 +216,7 @@ class TeamChatBatteryTest < ActiveSupport::TestCase
     assert_match(/By cadence: daily 4.0 · monthly 4.0/, summary.body)
     assert_match(/Number check flagged figures in 0 of 2 replies; an unflagged reply is not necessarily verified/, summary.body)
     report = battery.report_markdown
-    assert_match(/\| 1 \| daily \| How did we do yesterday\? \| [\d.]+ s \| period_review \| 4 \|/, report)
+    assert_match(/\| 1 \| daily \| How did we do yesterday\? \| [\d.]+ s \| period_review \| — \| 4 \|/, report)
   end
 
   test 'each run is saved with its per-question results, and the same model, set and build counts as already done' do

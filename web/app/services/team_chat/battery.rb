@@ -22,7 +22,7 @@ module TeamChat
     class QuestionTimeout < Exception; end
 
     Item = Struct.new(:id, :cadence, :question, :checks, :expect, :module, :needs, keyword_init: true)
-    Result = Struct.new(:item, :seconds, :tools, :status, :answer, :grade, :grading_error, :tokens_in, :tokens_out, :unverified, :message_id, :load_seconds,
+    Result = Struct.new(:item, :seconds, :tools, :status, :answer, :grade, :grading_error, :tokens_in, :tokens_out, :unverified, :message_id, :load_seconds, :views,
       :verify, :proposed_tools, keyword_init: true)
 
     attr_reader :run_id, :room, :results, :record
@@ -54,7 +54,7 @@ module TeamChat
     def self.items_for(set, per: 5)
       case set.to_s
       when 'depth'
-        combined = %w[default finance cross].flat_map { |name| items(config_for(name)) }
+        combined = %w[default finance cross visualization].flat_map { |name| items(config_for(name)) }
         raise ArgumentError, 'Depth question IDs must be unique across sets.' unless combined.map(&:id).uniq.size == combined.size
 
         combined
@@ -102,8 +102,8 @@ module TeamChat
     # compared with runs of the built-in questions or of an earlier version of the edits.
     def self.run_set_name(set)
       if set.to_s == 'depth'
-        children = %w[default finance cross].map { |name| run_set_name(name) }
-        return 'depth' if children == %w[default finance cross]
+        children = %w[default finance cross visualization].map { |name| run_set_name(name) }
+        return 'depth' if children == %w[default finance cross visualization]
 
         return "depth-edited-#{Digest::SHA256.hexdigest(children.to_json).first(6)}"
       end
@@ -200,10 +200,11 @@ module TeamChat
     # Markdown for docs: one row per question.
     def report_markdown
       lines = ["### Run #{@run_id}#{" (#{@set})" unless @set == 'default'}: @#{handle} (#{model_name}), review: #{@grader.label}", '',
-               '| # | Cadence | Question | Time | Tools | Grade | Grader’s note |', '| --- | --- | --- | --- | --- | --- | --- |']
+               '| # | Cadence | Question | Time | Tools | Views | Grade | Grader’s note |', '| --- | --- | --- | --- | --- | --- | --- | --- |']
       @results.each_with_index do |result, index|
         lines << "| #{index + 1} | #{result.item.cadence} | #{result.item.question.tr('|', '/')} | #{format_seconds(result.seconds)} | " \
-                 "#{result.tools.join(', ').presence || '—'} | #{result.grade&.dig(:score) || '—'} | #{result.grade&.dig(:verdict).to_s.tr('|', '/').tr("\n", ' ')} |"
+                 "#{result.tools.join(', ').presence || '—'} | #{view_summary(result).map { |view| view['kind'] }.join(', ').presence || '—'} | " \
+                 "#{result.grade&.dig(:score) || '—'} | #{result.grade&.dig(:verdict).to_s.tr('|', '/').tr("\n", ' ')} |"
       end
       lines << '' << summary_text(nil)
       lines.join("\n")
@@ -242,14 +243,24 @@ module TeamChat
       log "    #{reply.status} in #{format_seconds(seconds)}#{" (#{format_seconds(load_seconds)} model load)" if load_seconds}#{check_note} · tools #{Array(meta['tools']).join(', ').presence || 'none'} · grade #{grade&.dig(:score) || '—'}"
       Result.new(item: item, seconds: seconds, tools: Array(meta['tools']), status: reply.status, answer: reply.body.to_s,
         grade: grade, grading_error: @last_grade_error, tokens_in: meta['tokens_in'], tokens_out: meta['tokens_out'], unverified: Array(meta['unverified']), message_id: reply.id,
-        load_seconds: load_seconds, verify: check&.except('draft'), proposed_tools: proposed_tools)
+        load_seconds: load_seconds, verify: check&.except('draft'), proposed_tools: proposed_tools, views: Array(meta['views']))
+    end
+
+    def view_summary(result)
+      Array(result.views).filter_map do |view|
+        next unless view.is_a?(Hash)
+
+        kind = view['kind'].to_s
+        { 'kind' => kind, 'rows' => Array(view['rows']).size, 'unmatched_figures' => view['unchecked'].to_i,
+          'adjustable' => %w[table bar_chart line_chart].include?(kind) }
+      end
     end
 
     def result_row(result)
       { 'id' => result.item.id, 'cadence' => result.item.cadence, 'module' => result.item.module, 'question' => result.item.question, 'status' => result.status,
         'seconds' => result.seconds.round(1), 'load_seconds' => result.load_seconds, 'verify' => result.verify, 'tools' => result.tools, 'grade' => result.grade&.dig(:score),
         'verdict' => result.grade&.dig(:verdict).to_s.first(300), 'grading_error' => result.grading_error, 'grader' => @grader.label,
-        'unverified' => result.unverified.to_a, 'proposed_tools' => result.proposed_tools.to_a, 'message_id' => result.message_id }
+        'unverified' => result.unverified.to_a, 'proposed_tools' => result.proposed_tools.to_a, 'views' => view_summary(result), 'message_id' => result.message_id }
     end
 
     def grade_for(item, reply)

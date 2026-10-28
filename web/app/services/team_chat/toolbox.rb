@@ -330,6 +330,10 @@ module TeamChat
     def show_view(args)
       return 'You already showed the most views allowed for one reply; answer now.' if @views.size >= Views::MAX_VIEWS
 
+      if args['kind'].to_s == 'html' && @question.match?(/\b(?:plot|graph|chart|visuali[sz]e)\b/i) && !@question.match?(/\bchart of accounts\b/i)
+        return 'The view was not shown: use a structured table, bar chart or line chart so the person can adjust it.'
+      end
+
       view = Views.build(args, known_text: @results.join("\n"))
       @views << view
       flagged = view['unchecked'].to_i.positive? ? " #{view['unchecked']} of its figures are not in your tool results and will be flagged; fix them if you can." : ''
