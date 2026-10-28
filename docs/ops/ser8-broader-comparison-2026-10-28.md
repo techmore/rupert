@@ -29,3 +29,7 @@ Synthetic local evidence is retained in `models-lfm3/benchmark-evidence/breadth-
 | **Ten-question cumulative total** | **36/50** | **33/50** | **39/50** | **LFM leads Qwen by 3 points on these ten; the last three are pending.** |
 
 These are single runs on one synthetic fixture, rated by one partially masked reviewer. The first five decisions were frozen and their labels opened before the second batch was masked; per-question label randomization continued, but reviewer exposure limits blindness. The second-batch masked inputs SHA-256 is `c9d1c6c44d60624f227fb9d601f2f77949cc5c791e7e0886fd7704e627062b2d`; decisions SHA-256 is `085376f497a427835bb8bb70a0dac4e68a52a3d8c4784c5cc3610c8f1d80931f`.
+
+## Targeted best-day replay
+
+On the same synthetic question, an LFM live replay with commit `d2fbc47e` returned the correct September 28–October 27 window and identified October 26 as the highest recorded day for both currencies. It also included unrelated source totals and caveats. The run completed in 9.6 seconds. This is a known-case replay, not an updated score for the frozen comparison; local evidence is in `models-lfm3/benchmark-evidence/best-day-replay-20261028`.
