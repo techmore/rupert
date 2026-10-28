@@ -147,7 +147,10 @@ module Purchasing
     end
 
     def next_order_number
-      "PO-#{Time.now.strftime('%Y%m')}-#{Purchasing::PurchaseOrder.count + 1}"
+      prefix = "PO-#{Time.current.strftime('%Y%m')}-"
+      sequence = Purchasing::PurchaseOrder.count + 1
+      sequence += 1 while Purchasing::PurchaseOrder.exists?(order_number: "#{prefix}#{sequence}")
+      "#{prefix}#{sequence}"
     end
   end
 end

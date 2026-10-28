@@ -23,7 +23,7 @@
     {
       "id": "updater-request-time-precision",
       "commit": "4cb18c75553898038eff724817203edecc0b6c4b",
-      "summary": "Compare update requests and updater reports in whole seconds so an already handled request no longer appears pending. A same-second regression test covers this case."
+      "summary": "Track handled update requests precisely so completed requests do not appear pending and new requests in the same second are not lost. Regression tests cover both cases; older updater reports retain a whole-second fallback."
     }
   ]
 }
