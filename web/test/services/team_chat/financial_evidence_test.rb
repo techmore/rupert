@@ -277,6 +277,20 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_includes render(item), '1 product with recorded revenue in USD for this period.'
   end
 
+  test 'product revenue share stays attached to the product and currency' do
+    payload = { metric: 'top_products', period: @period, source: nil,
+               values: [{ currency: 'USD', products: [{ name: 'Tea', revenue_cents: 8000, share_percent: 75.5 },
+                                                       { name: 'Coffee', revenue_cents: 2000, share_percent: nil }] },
+                        { currency: 'CAD', products: [{ name: 'Tea', revenue_cents: 1000, share_percent: 100.0 }] }] }
+    item = evidence(payload, tool: 'metric', args: { name: 'top_products', period: 'today' })
+    text = render(item)
+    assert_includes text, 'Share of product revenue: Tea: 75.5% (USD group)'
+    assert_includes text, 'Share of product revenue: Tea: 100% (CAD group)'
+    assert_includes text, 'unknown is not zero'
+    assert_no_match(/Share of product revenue: Coffee: 0%/, text)
+    assert_nil TeamChat::FinancialEvidence.checked_prose('Coffee has a 75.5% share.', [item])
+  end
+
   test 'recorded sales days keep date currency and missing day qualification' do
     payload = { metric: 'worst_day', period: @period, source: nil,
                 values: [{ currency: 'CAD', value: Date.current.iso8601, gross_cents: 1234 }] }

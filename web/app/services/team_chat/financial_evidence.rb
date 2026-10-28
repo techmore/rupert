@@ -290,6 +290,10 @@ module TeamChat
             end
             add(out, product['revenue_cents'], 'money', row['currency'], source, period, "Product revenue: #{label}",
               "#{path}.#{index}.products.#{product_index}.revenue_cents")
+            if product.key?('share_percent')
+              add(out, product['share_percent'], 'percent', row['currency'], source, period, "Share of product revenue: #{label}",
+                "#{path}.#{index}.products.#{product_index}.share_percent")
+            end
           end
           out['gaps'] << 'Product ranking covers at most ten products per currency.'
           next
@@ -429,7 +433,7 @@ module TeamChat
       facts = evidence.flat_map { |item| item['facts'] }
       # Numeric matching cannot verify that a model kept the product,
       # category, or date attached to the value. Render those facts directly.
-      return nil if facts.any? { |fact| fact['meaning'].to_s.match?(/\A(?:Product revenue:|Expense category:|Highest recorded sales day:|Lowest recorded sales day:)/) }
+      return nil if facts.any? { |fact| fact['meaning'].to_s.match?(/\A(?:Product revenue:|Share of product revenue:|Expense category:|Highest recorded sales day:|Lowest recorded sales day:)/) }
 
       prose = text.to_s.strip
       return nil if facts.empty? || prose.blank? || prose.match?(RELABEL)
