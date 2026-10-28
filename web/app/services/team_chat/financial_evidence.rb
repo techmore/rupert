@@ -25,11 +25,11 @@ module TeamChat
       'expenses_by_category' => ['Active expense-register total (not profit)', 'money'],
       'sales_by_source' => ['Gross sales by source', 'money']
     }.freeze
-    DAILY_CLOSE = [['net_cents', 'Store net sales (gross minus refunds; before tax and tips)'],
-                   ['gross_cents', 'Store gross sales (after discounts, before tax and tips)'],
-                   ['cash_cents', 'Cash taken at the store'], ['card_cents', 'Card taken at the store'],
-                   ['tax_cents', 'Sales tax collected at the store'], ['refunds_cents', 'Store refunds'],
-                   ['tips_cents', 'Tips at the store']].freeze
+    DAILY_CLOSE = [['net_cents', 'Daily-close net sales (gross minus refunds; before tax and tips)'],
+                   ['gross_cents', 'Daily-close gross sales (after discounts, before tax and tips)'],
+                   ['cash_cents', 'Daily-close cash'], ['card_cents', 'Daily-close card'],
+                   ['tax_cents', 'Daily-close sales tax'], ['refunds_cents', 'Daily-close refunds'],
+                   ['tips_cents', 'Daily-close tips']].freeze
     ORDER_SOURCE = 'canonical orders: Shopify, Square, Rupert POS and manual; C-Trax/SwipeSimple excluded'
 
     module_function

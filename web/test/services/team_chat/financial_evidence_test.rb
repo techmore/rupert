@@ -52,6 +52,8 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     text = render(evidence(payload, tool: 'daily_close', args: @period))
     assert_includes text, 'Online (Shopify); daily-close row'
     assert_not_includes text, 'in-person register'
+    assert_includes text, 'Daily-close gross sales'
+    assert_not_includes text, 'Store gross sales'
   end
 
   test 'oversized daily close notes terminate with a bounded honest gap' do
