@@ -266,12 +266,16 @@ module TeamChat
       return arguments if question.match?(/\b(?:compare|comparison|versus|vs\.?|previous|prior|before|after)\b/i)
 
       dates = question.scan(/\b\d{4}-\d{2}-\d{2}\b/)
-      match = question.match(/\bweek\s+ending\s+(\d{4}-\d{2}-\d{2})\b/i)
+      match = question.match(/\b(?:week|seven\s+days|7\s+days)\s+ending\s+(\d{4}-\d{2}-\d{2})\b/i)
       return arguments unless match && dates.one? && dates.first == match[1]
 
       last = Date.iso8601(match[1])
       corrected = arguments.except('period').merge('from' => (last - 6).iso8601, 'to' => last.iso8601)
       corrected['compare'] = 'none' if name.to_s == 'metric'
+      if name.to_s == 'metric' && corrected['name'] == 'gross_sales' && corrected['source'].blank? &&
+          question.match?(/\bby source\b/i) && !question.match?(/\b(?:shopify|square|rupert pos|manual|excluding|except|only)\b/i)
+        corrected['name'] = 'sales_by_source'
+      end
       corrected
     rescue Date::Error
       arguments

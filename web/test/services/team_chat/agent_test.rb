@@ -816,6 +816,17 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal 'previous', entry.dig('arguments', 'compare')
   end
 
+  test 'seven days ending uses the inclusive seven-day sales window' do
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'this_month' } }, { text: 'I checked.' })
+    reply = ask('@rupert Show sales by source for the seven days ending 2026-08-15.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal '2026-08-09', entry.dig('arguments', 'from')
+    assert_equal '2026-08-15', entry.dig('arguments', 'to')
+    assert_equal 'sales_by_source', entry.dig('arguments', 'name')
+    assert_equal 'none', entry.dig('arguments', 'compare')
+  end
+
   test 'a comparison of consecutive explicit dates uses those days' do
     script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'this_month', compare: 'last_year' } }, { text: 'I checked.' })
     reply = ask('@rupert Compare gross order sales for 2026-08-16 with 2026-08-15, keeping currencies separate.')
