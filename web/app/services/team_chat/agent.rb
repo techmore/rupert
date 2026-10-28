@@ -417,6 +417,7 @@ module TeamChat
       return if @toolbox&.financial? || text.match?(/[<\d$€£¥%]/)
       return if unchecked_operational_request?
       return if @toolbox && (alert_only_tool_mix? || compliance_only_tool_mix? || InventoryEvidence.uncertain?(@toolbox.inventory_results))
+      return if ComplianceEvidence.retention_question?(request_text)
 
       now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       return if now - @last_publish < PUBLISH_EVERY
@@ -435,6 +436,9 @@ module TeamChat
       if unchecked_operational_request?
         body = UNCHECKED_RECORDS
         @verify_meta['kept'] = 'guarded' if @verify_meta
+      elsif ComplianceEvidence.retention_question?(request_text)
+        entries = @execution.run.reload.tool_results
+        body = ComplianceEvidence.render_retention(entries) || 'I could not verify the recorded Google Drive document-retention status.'
       elsif @toolbox.financial? && (queue_answer = QueueEvidence.render_requested(@toolbox.financial_evidence, request_text))
         # For an entirely queue-specific request, show only the requested
         # verified counts, not unrelated tools the model also called.

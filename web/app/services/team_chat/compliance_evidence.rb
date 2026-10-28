@@ -6,10 +6,20 @@ module TeamChat
   module ComplianceEvidence
     module_function
 
+    RETENTION_TITLE = 'Google Drive document retention'
+
+    # Only a complete, single-subject status question uses the focused path.
+    def retention_question?(question)
+      text = question.to_s.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip.sub(/[?.!]+\z/, '').strip
+      return false if text.match?(/\b(?:and|or|but|also)\b|[;!?]/i)
+
+      text.match?(/\A(?:is|are|does|can|what|how)\b.{0,100}\bdocument(?:s)?\s+retention\b.{0,80}\bgoogle\s+drive(?:\s+(?:working|connected|enabled|current|operational|healthy|ok))?\z/i)
+    end
+
     # Keep structured evidence parseable within the toolbox's result limit.
     # Do not include unrelated fields or personal contact details.
-    def pack(data)
-      data = data.deep_stringify_keys
+    def pack(data = nil, requested_title: nil, **data_keywords)
+      data = (data || data_keywords).deep_stringify_keys
       items = data.fetch('items')
       raise ArgumentError unless items.is_a?(Array)
 
@@ -26,6 +36,9 @@ module TeamChat
       # Keep actionable and uncertain items ahead of completed checks when the
       # result must be shortened, while preserving their original relative order.
       rows = rows.partition { |row| row['status'] != 'ok' }.flatten(1)
+      if requested_title && (requested = rows.find { |row| row['title'] == requested_title })
+        rows = [requested] + rows.reject { |row| row.equal?(requested) }
+      end
       packed = { 'items' => rows.first(20), 'omitted' => rows.size > 20 }
       if data['counts'].is_a?(Hash)
         packed['counts'] = data['counts'].select { |key, value| %w[fix watch unknown ok].include?(key) && value.is_a?(Integer) && value >= 0 }
@@ -40,6 +53,22 @@ module TeamChat
     def render(entries)
       sections = entries.filter_map { |entry| section(entry) }.uniq
       sections.first(2).join("\n\n").presence
+    end
+
+    def render_retention(entries)
+      entries.each do |entry|
+        next unless entry['name'] == 'compliance_check'
+
+        data = JSON.parse(entry['result'].to_s.partition("\n").last)
+        row = Array(data['items']).find { |item| item.is_a?(Hash) && item['title'] == RETENTION_TITLE && %w[fix watch unknown ok].include?(item['status']) }
+        next unless row
+
+        detail = label(row['detail'])
+        return "Recorded document-retention status (#{row['status']}): #{detail.presence || 'No detail was returned.'}"
+      rescue JSON::ParserError, TypeError
+        next
+      end
+      nil
     end
 
     def section(entry)

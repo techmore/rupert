@@ -38,4 +38,17 @@ class TeamChatComplianceEvidenceTest < ActiveSupport::TestCase
     assert packed['omitted']
     assert_operator JSON.generate(packed).length, :<=, 5_000
   end
+
+  test 'retention status survives bounded packing, including an ok status' do
+    items = 25.times.map { |i| { title: "Review #{i}", area: 'Books', status: 'watch', detail: 'needs review' } }
+    items << { title: 'Google Drive document retention', area: 'Records', status: 'ok', detail: 'Connected' }
+    packed = TeamChat::ComplianceEvidence.pack({ items: items }, requested_title: TeamChat::ComplianceEvidence::RETENTION_TITLE)
+    assert_equal 'Google Drive document retention', packed['items'].first['title']
+    entries = [{ 'name' => 'compliance_check', 'result' => "result\n#{JSON.generate(packed)}" }]
+    assert_equal 'Recorded document-retention status (ok): Connected', TeamChat::ComplianceEvidence.render_retention(entries)
+    assert_nil TeamChat::ComplianceEvidence.render_retention([{ 'name' => 'compliance_check', 'result' => 'truncated' }])
+    assert TeamChat::ComplianceEvidence.retention_question?('@qwen Is our document retention to Google Drive working?')
+    assert_not TeamChat::ComplianceEvidence.retention_question?('Is our document retention to Google Drive working and are backups current?')
+    assert_not TeamChat::ComplianceEvidence.retention_question?('Is document retention to Google Drive working with backup status?')
+  end
 end

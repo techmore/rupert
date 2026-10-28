@@ -56,8 +56,13 @@ module TeamChat
     def definitions
       @definitions ||= begin
         available = lookup_definitions + mcp_definitions + write_definitions + view_definitions
-        if @only && QueueEvidence.count_question?(@question) && available.any? { |tool| tool.name == 'order_queues' }
-          available.select { |tool| %w[order_queues show_view].include?(tool.name) }
+        narrow = if QueueEvidence.count_question?(@question)
+          'order_queues'
+        elsif ComplianceEvidence.retention_question?(@question)
+          'compliance_check'
+        end
+        if @only && narrow && available.any? { |tool| tool.name == narrow }
+          available.select { |tool| [narrow, 'show_view'].include?(tool.name) }
         else
           available
         end
@@ -95,6 +100,7 @@ module TeamChat
       arguments = complete_tax_source_arguments(name, arguments)
       arguments = complete_order_day_comparison(name, arguments)
       arguments = complete_order_count_comparison(name, arguments)
+      arguments = complete_retention_arguments(name, arguments)
       arguments = complete_vendor_payment_arguments(name, arguments)
       arguments = complete_exact_vendor_filter(name, arguments)
       return call_once(name, arguments) unless @execution
@@ -174,6 +180,12 @@ module TeamChat
       return arguments unless question.match?(/\Ahow many (?:paid |fulfilled )?orders (?:were recorded|came in|were placed|did we get) (?:today|yesterday)\s*[?.!]*\z/i)
 
       arguments.merge('compare' => 'none')
+    end
+
+    def complete_retention_arguments(name, arguments)
+      return arguments unless name.to_s == 'compliance_check' && ComplianceEvidence.retention_question?(@question)
+
+      arguments.merge('include_ok' => true)
     end
 
     # A missing filter can otherwise turn a source-specific tax question into
@@ -311,7 +323,8 @@ module TeamChat
       tool = Mcp::Registry.find(name)
       outcome = tool.new(token: @token).call(args)
       if name == 'compliance_check'
-        packed = ComplianceEvidence.pack(outcome.data)
+        title = ComplianceEvidence::RETENTION_TITLE if ComplianceEvidence.retention_question?(@question)
+        packed = ComplianceEvidence.pack(outcome.data, requested_title: title)
         return "Compliance check (bounded; omitted items are indicated):\n#{JSON.generate(packed)}"
       end
       if FinancialEvidence::CONTRACTS.include?(name) || FinancialEvidence.financial_data?(outcome.data)

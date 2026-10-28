@@ -49,6 +49,41 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_includes reply.meta['tools'], 'compliance_check'
   end
 
+  test 'document retention requests include healthy results and select the named row' do
+    data = { items: [{ title: 'Other', area: 'Books', status: 'watch', detail: 'Unrelated' },
+                     { title: 'Google Drive document retention', area: 'Records', status: 'ok', detail: 'Connected' }] }
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: data))
+    script_model({ tool: 'compliance_check', arguments: { include_ok: false } }, { text: 'I checked.' })
+    reply = ask('@rupert Is our document retention to Google Drive working?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal 'Recorded document-retention status (ok): Connected', reply.reload.body
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal true, entry.dig('arguments', 'include_ok')
+    assert_equal false, entry.dig('original_arguments', 'include_ok')
+  end
+
+  test 'a missing retention record cannot be treated as a healthy connection' do
+    data = { items: [{ title: 'Other', area: 'Books', status: 'watch', detail: 'Unrelated' }] }
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: data))
+    script_model({ tool: 'compliance_check', arguments: {} }, { text: 'The drive is connected.' })
+    reply = ask('@rupert Is our document retention to Google Drive working?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal 'I could not verify the recorded Google Drive document-retention status.', reply.reload.body
+  end
+
+  test 'retention status drafts are not streamed before verification' do
+    reply = ask('@rupert Is our document retention to Google Drive working?')
+    agent = TeamChat::Agent.new(reply, config: team_chat_config)
+    agent.stubs(:request_text).returns('Is our document retention to Google Drive working?')
+    execution = mock
+    execution.expects(:write_reply!).never
+    agent.instance_variable_set(:@execution, execution)
+
+    agent.send(:publish, 'The drive is connected.')
+  end
+
   test 'a conceptual question remains answerable without a record lookup' do
     script_model({ text: 'A task is an item of work.' })
     reply = ask('@rupert what is a task?')
