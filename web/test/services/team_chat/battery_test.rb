@@ -142,7 +142,7 @@ class TeamChatBatteryTest < ActiveSupport::TestCase
     assert_match(/answered 2\/2/, summary.body)
     assert_match(%r{Average grade 4.0/5}, summary.body)
     assert_match(/By cadence: daily 4.0 · monthly 4.0/, summary.body)
-    assert_match(/Number check: figures not found in Rupert's data in 0 of 2 answers/, summary.body)
+    assert_match(/Number check flagged figures in 0 of 2 replies; an unflagged reply is not necessarily verified/, summary.body)
     report = battery.report_markdown
     assert_match(/\| 1 \| daily \| How did we do yesterday\? \| [\d.]+ s \| period_review \| 4 \|/, report)
   end

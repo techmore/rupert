@@ -309,7 +309,7 @@ module TeamChat
         "Graded #{graded.size}/#{@results.size}; #{@results.size - graded.size} ungraded.",
         ("Time per answer: average #{format_seconds(times.sum / times.size)}, fastest #{format_seconds(times.min)}, slowest #{format_seconds(times.max)}." if times.any?),
         ("By cadence: #{by_cadence.join(' · ')}." if by_cadence.any?),
-        "Number check: figures not found in Rupert's data in #{@results.count { |result| result.unverified.to_a.any? }} of #{@results.size} answers.",
+        "Number check flagged figures in #{@results.count { |result| result.unverified.to_a.any? }} of #{@results.size} replies; an unflagged reply is not necessarily verified.",
         ("Whole run took #{format_seconds(elapsed)}." if elapsed)
       ].compact.join("\n")
     end
