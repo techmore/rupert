@@ -27,12 +27,14 @@ questions:
     cadence: daily
     module: system
     question: Is sync healthy right now?
+    expect: Report the available channel statuses and queue worker state, including failures or unknowns; do not claim all sources are healthy if the reference does not establish that.
     checks: [sync_health]
     needs: ["sync_health:channels[].latest_status", "sync_health:channels[].last_success_at", "sync_health:queue_worker.state"]
   - id: d5
     cadence: daily
     module: stock
     question: Any open stock alerts I should look at today?
+    expect: Report the open alert count and relevant returned stock alerts, or say no open alerts were returned when the count is zero; do not invent products or quantities.
     checks: [list_alerts]
     needs: ["list_alerts:counts.open", "list_alerts:rows[].sku?", "list_alerts:rows[].quantity"]
   - id: w1
@@ -110,24 +112,28 @@ questions:
     cadence: compliance
     module: team
     question: Are there timesheets waiting for approval?
+    expect: Use the named Timesheets awaiting approval row and its count to answer; if the row or count is unavailable, say it could not be checked rather than guessing.
     checks: [{ tool: compliance_check, args: { include_ok: true }, select_title: Timesheets awaiting approval }]
     needs: ["compliance_check:items[title=Timesheets awaiting approval].status", "compliance_check:items[title=Timesheets awaiting approval].count"]
   - id: c3
     cadence: compliance
     module: system
     question: Is our document retention to Google Drive working?
+    expect: Describe the named Google Drive document retention row's status and detail, including disconnected or failed copies when shown; do not claim a live connectivity check beyond the evidence.
     checks: [{ tool: compliance_check, args: { include_ok: true }, select_title: Google Drive document retention }]
     needs: ["compliance_check:items[title=Google Drive document retention].status", "compliance_check:items[title=Google Drive document retention].detail"]
   - id: o1
     cadence: orders
     module: stock
     question: Are any purchase orders late or still waiting for delivery?
+    expect: Report the relevant purchase-order queues and their counts for late and awaiting-delivery orders; identify missing or unavailable queue evidence rather than inventing orders.
     checks: [order_queues]
     needs: ["order_queues:queues[].name", "order_queues:queues[].count"]
   - id: o2
     cadence: orders
     module: sell
     question: Are there any card payments stuck or not resolved?
+    expect: Report the relevant unresolved card-payment queue and count; if it is empty say no unresolved items are shown, and if unavailable say it could not be checked.
     checks: [order_queues]
     needs: ["order_queues:queues[].name", "order_queues:queues[].count"]
   - id: g1
