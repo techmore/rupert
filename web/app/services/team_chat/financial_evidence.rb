@@ -17,6 +17,8 @@ module TeamChat
       'orders' => ['Paid or fulfilled order count', 'count'],
       'average_order_value' => ['Average gross order value', 'money'],
       'refund_rate' => ['Recorded refunds as a percentage of gross sales', 'percent'],
+      'tax_collected' => ['Sales tax recorded on paid or fulfilled orders', 'money'],
+      'effective_tax_rate' => ['Recorded sales tax as a percentage of sales before tax', 'percent'],
       'expenses_by_category' => ['Active expense-register total (not profit)', 'money'],
       'sales_by_source' => ['Gross sales by source', 'money']
     }.freeze
@@ -191,6 +193,15 @@ module TeamChat
     def metric_rows(out, rows, name, source, period, path)
       meaning, unit = MEANINGS.fetch(name)
       Array(rows).each_with_index do |row, index|
+        if %w[tax_collected effective_tax_rate].include?(name)
+          field = name == 'tax_collected' ? 'tax_cents' : 'effective_rate_percent'
+          add(out, row['value'], unit, row['currency'], source, period, meaning, "#{path}.#{index}.value")
+          Array(row['sources']).each_with_index do |part, part_index|
+            add(out, part[field], unit, row['currency'], order_source(part.fetch('source')), period, meaning,
+                "#{path}.#{index}.sources.#{part_index}.#{field}")
+          end
+          next
+        end
         if name == 'sales_by_source'
           Array(row['sources']).each_with_index do |part, part_index|
             part_source = order_source(part.fetch('source'))
