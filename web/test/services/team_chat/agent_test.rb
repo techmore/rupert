@@ -239,6 +239,15 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     entries = TeamChat::Run.find_by!(message_id: reply.id).tool_results
     assert_equal %w[order_queues compliance_check], entries.map { |entry| entry['name'] }.first(2)
     assert_equal true, entries.find { |entry| entry['name'] == 'compliance_check' }.dig('arguments', 'include_ok')
+
+    queues[:queues].first[:count] = 4
+    compliance[:items].first.merge!(status: 'ok', detail: 'Connected for retained originals.')
+    script_model({ text: 'No receipts are waiting and retention is disconnected.' })
+    reply = ask('@rupert How many expense receipts are waiting for review and is document retention to Google Drive enabled?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'Expense receipts waiting for review: 4.'
+    assert_includes reply.body, 'Connected for retained originals.'
+    assert_not_includes reply.body, 'No receipts are waiting'
   end
 
   test 'uploaded bank-line status uses the compliance row rather than the uploads inbox' do
