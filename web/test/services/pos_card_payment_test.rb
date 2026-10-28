@@ -1,8 +1,11 @@
 # frozen_string_literal: true
 
 require 'test_helper'
+require 'tmpdir'
 class PosCardPaymentTest < ActiveSupport::TestCase
   setup do
+    @lock_directory = Pathname.new(Dir.mktmpdir('pos-reconciliation-test-'))
+    PosPaymentReconciliationJob.any_instance.stubs(:lock_directory).returns(@lock_directory)
     Current.tenant = tenants(:default_tenant)
     @location = Location.create!(source: 'ctrax', externalId: 'card-fixture/1', name: 'Card fixture')
     @user = users(:regular_user)
@@ -40,7 +43,10 @@ class PosCardPaymentTest < ActiveSupport::TestCase
       { status: 200, headers: { 'Content-Type' => 'application/json' }, body: data.merge(messages: { resultCode: 'Ok' }).to_json }
     end
   end
-  teardown { Current.reset }
+  teardown do
+    Current.reset
+    FileUtils.remove_entry(@lock_directory) if @lock_directory&.exist?
+  end
 
   test 'reconciliation rotates past unresolved attempts without sending charges' do
     51.times do |i|
