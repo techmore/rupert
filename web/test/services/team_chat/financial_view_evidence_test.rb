@@ -65,6 +65,17 @@ class TeamChatFinancialViewEvidenceTest < ActiveSupport::TestCase
     end
   end
 
+  test 'daily chart accepts one bounded explicit date range without extra filters' do
+    parser = TeamChat::FinancialViewEvidence
+    assert_equal({ 'from' => '2026-08-01', 'to' => '2026-08-03' },
+      parser.daily_period_for('Plot recorded daily gross sales for 2026-08-01 through 2026-08-03.'))
+    assert_nil parser.daily_period_for('Plot daily sales for tea from 2026-08-01 through 2026-08-03.')
+    assert_nil parser.daily_period_for('Plot daily sales by source from 2026-08-01 through 2026-08-03.')
+    assert_nil parser.daily_period_for('Plot daily sales from 2026-08-03 to 2026-08-01.')
+    assert_nil parser.daily_period_for('Plot daily sales from 2026-08-01 to 2026-09-30.')
+    assert_nil parser.daily_period_for('Plot daily sales from 2026-08-01 to 2026-08-03 versus 2026-07-01.')
+  end
+
   test 'source chart ties the value to the source, currency, period and unit' do
     view = { kind: 'bar_chart', title: 'Sales 2026-10-19 to 2026-10-25', columns: ['Source', 'Gross sales USD'],
              rows: [['Shopify', 72], ['Rupert POS', 40]] }

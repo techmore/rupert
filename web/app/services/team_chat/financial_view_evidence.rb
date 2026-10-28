@@ -68,10 +68,24 @@ module TeamChat
 
     def daily_period_for(question)
       text = question.to_s.downcase
-      return unless text.match?(/\b(?:chart|graph|plot)\b/) && text.match?(/\b(?:sales|revenue)\b/) && text.match?(/\btrend\b/)
+      return unless text.match?(/\b(?:chart|graph|plot)\b/) && text.match?(/\b(?:sales|revenue)\b/) &&
+        text.match?(/\b(?:trend|daily|day[- ]by[- ]day|each day|per day)\b/)
       return if text.match?(/\b(?:no|without|omit|skip)\s+(?:(?:a|the|any)\s+)?(?:chart|graph|plot)\b/)
       return if text.match?(/\b(?:net|refund|tax|profit|compare|versus|except|exclude|only|shopify|square|rupert[ _-]?pos|manual|ctrax|swipesimple)\b/)
-      return if text.match?(/\b\d{4}-\d{2}-\d{2}\b/) || text.match?(/\b(?:no|without|omit|skip)\s+(?:daily|day[- ]by[- ]day|per[- ]day)\b/)
+      return if text.match?(/\bby\s+(?:source|channel)\b/)
+      return if text.match?(/\b(?:no|without|omit|skip)\s+(?:daily|day[- ]by[- ]day|per[- ]day)\b/)
+
+      dates = text.scan(/\b\d{4}-\d{2}-\d{2}\b/)
+      if dates.any?
+        range = text.match(/\b(?:for|from)\s+(\d{4}-\d{2}-\d{2})\s+(?:through|to)\s+(\d{4}-\d{2}-\d{2})\b/)
+        return unless dates.size == 2 && range && dates == [range[1], range[2]]
+        return if extra_sales_filter?(text.sub(range[0], ''))
+
+        from, to = dates.map { |date| Date.iso8601(date) }
+        return unless from <= to && (to - from).to_i < 31
+
+        return { 'from' => from.iso8601, 'to' => to.iso8601 }
+      end
       return if extra_sales_filter?(text)
 
       periods = { 'last week' => 'last_week', 'last month' => 'last_month' }.select { |phrase, _| text.include?(phrase) }

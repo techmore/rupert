@@ -899,6 +899,24 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     end
   end
 
+  test 'an explicit daily sales chart fetches the exact period and keeps missing days blank' do
+    args = { from: '2026-08-01', to: '2026-08-03' }
+    data = args.merge(lines: [], totals_by_currency: [], refunded_orders_by_source: {}, daily: [
+      { date: '2026-08-01', currency: 'USD', orders: 1, gross_cents: 2345 },
+      { date: '2026-08-02', currency: 'USD', orders: 0, gross_cents: 0 },
+      { date: '2026-08-03', currency: 'USD', orders: 1, gross_cents: 6789 }
+    ])
+    Mcp::Tools::SalesSummary.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'sales', data: data))
+    script_model({ text: 'I could not draw that chart.' })
+    reply = ask('@rupert Plot recorded daily gross sales for 2026-08-01 through 2026-08-03.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal args.stringify_keys.merge('include_daily' => true, 'top_products' => 0), entry['arguments']
+    view = reply.reload.meta.fetch('views').first
+    assert_equal 'line_chart', view['kind']
+    assert_equal [['2026-08-01', '23.45'], ['2026-08-02', nil], ['2026-08-03', '67.89']], view['rows']
+  end
+
   test 'a nonempty receipt count does not replace a request for receipt identities' do
     data = { queues: [{ name: 'Expense receipts waiting for review', count: 2 }],
              low_stock_available: false, oldest_unshipped: [] }
