@@ -417,6 +417,7 @@ module TeamChat
       return if @toolbox&.financial? || text.match?(/[<\d$€£¥%]/)
       return if unchecked_operational_request?
       return if @toolbox && (alert_only_tool_mix? || compliance_only_tool_mix? || InventoryEvidence.uncertain?(@toolbox.inventory_results))
+      return if cash_flow_question?
       return if ComplianceEvidence.focused_title(request_text)
 
       now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -436,6 +437,8 @@ module TeamChat
       if unchecked_operational_request?
         body = UNCHECKED_RECORDS
         @verify_meta['kept'] = 'guarded' if @verify_meta
+      elsif cash_flow_question?
+        body = 'I could not verify cash flow from the available tool results. Recorded sales or expenses alone do not establish cash in and out; check recorded bank movements on the Cash flow page.'
       elsif ComplianceEvidence.timesheets_and_backup_question?(request_text)
         entries = @execution.run.reload.tool_results
         timesheets = ComplianceEvidence.render_focused_count(entries, ComplianceEvidence::TIMESHEETS_TITLE) || 'I could not verify the timesheet approval count.'
@@ -583,6 +586,18 @@ module TeamChat
       return false unless request_text.match?(/\b(?:stock|inventory)\b/i) && request_text.match?(/\b(?:still|current(?:ly)?|right now|today)\b/i)
 
       InventoryEvidence.render(@toolbox.inventory_results).blank?
+    end
+
+    # Financial sales metrics cannot establish bank movement. Leave mixed and
+    # navigation requests on their normal paths rather than dropping a second
+    # requested subject or replacing a page lookup with an inability message.
+    def cash_flow_question?
+      question = request_text.to_s.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip
+      return false unless question.match?(/\bcash[ -]?flow\b/i)
+      return false if question.match?(/\b(?:and|also|plus)\b/i) || question.match?(/\b(?:where|page|screen|navigate|open|find)\b/i)
+      return false unless question.match?(/\b(?:our|we|this|last|today|yesterday|week|month|quarter|year|positive|negative|dip|rise|fall)\b/i)
+
+      !@toolbox&.tools_used&.include?('cash_flow')
     end
 
     # A status answer without any lookup is not evidence, even when it

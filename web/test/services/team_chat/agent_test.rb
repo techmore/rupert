@@ -263,6 +263,21 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_not_includes reply.body, '2 on hand'
   end
 
+  test 'cash flow cannot be inferred from sales but navigation remains available' do
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'this_month', compare: 'none' } },
+      { text: 'Cash flow is positive because sales were strong.' })
+    reply = ask('@rupert Is our cash flow positive this month?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'could not verify cash flow'
+    assert_includes reply.body, 'sales or expenses alone do not establish cash in and out'
+    assert_not_includes reply.body, 'cash flow is positive'
+
+    script_model({ tool: 'where_is', arguments: { query: 'cash flow' } }, { text: 'Open the cash flow page.' })
+    reply = ask('@rupert Where is the cash flow page?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_not_includes reply.reload.body, 'could not verify cash flow'
+  end
+
   test 'timekeeping tool delivers worked hours even when sales are unavailable' do
     today = Date.current.iso8601
     requests = script_model({ tool: 'time_keeping_report', arguments: { from: today, to: today } }, { text: 'I checked timekeeping.' })
