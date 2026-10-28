@@ -448,6 +448,27 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_not_includes reply.body, 'Nothing is waiting'
   end
 
+  test 'an explicit order count does not add the metric default comparison' do
+    script_model({ tool: 'metric', arguments: { name: 'orders', period: 'yesterday' } }, { text: 'I checked.' })
+    reply = ask('@rupert How many orders were recorded yesterday?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'none', entry.dig('arguments', 'compare')
+    assert_not entry.fetch('original_arguments').key?('compare')
+
+    script_model({ tool: 'metric', arguments: { name: 'orders', period: 'yesterday', compare: 'previous' } }, { text: 'I checked.' })
+    reply = ask('@rupert How many orders were recorded yesterday?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'previous', entry.dig('arguments', 'compare')
+
+    script_model({ tool: 'metric', arguments: { name: 'orders', period: 'yesterday' } }, { text: 'I checked.' })
+    reply = ask('@rupert How many orders were recorded yesterday compared with the previous day?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_not entry.fetch('arguments').key?('compare')
+  end
+
   test 'a narrow queue answer omits unrelated results while a mixed question keeps them' do
     data = { queues: [{ name: 'Expense receipts waiting for review', count: 0 },
                       { name: 'Purchase orders awaiting delivery', count: 1, late: 0 },

@@ -94,6 +94,7 @@ module TeamChat
       arguments = complete_daily_arguments(name, arguments)
       arguments = complete_tax_source_arguments(name, arguments)
       arguments = complete_order_day_comparison(name, arguments)
+      arguments = complete_order_count_comparison(name, arguments)
       arguments = complete_vendor_payment_arguments(name, arguments)
       arguments = complete_exact_vendor_filter(name, arguments)
       return call_once(name, arguments) unless @execution
@@ -162,6 +163,17 @@ module TeamChat
       args = arguments.deep_stringify_keys
       args['include_daily'] = true unless args.key?('include_daily')
       args
+    end
+
+    # Metric defaults to a previous-period comparison. A standalone order-count
+    # question asks for the count only; keep any comparison the caller supplied.
+    def complete_order_count_comparison(name, arguments)
+      return arguments unless name.to_s == 'metric' && arguments['name'] == 'orders' && !arguments.key?('compare')
+
+      question = @question.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip
+      return arguments unless question.match?(/\Ahow many (?:paid |fulfilled )?orders (?:were recorded|came in|were placed|did we get) (?:today|yesterday)\s*[?.!]*\z/i)
+
+      arguments.merge('compare' => 'none')
     end
 
     # A missing filter can otherwise turn a source-specific tax question into
