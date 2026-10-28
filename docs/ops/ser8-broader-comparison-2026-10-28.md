@@ -48,3 +48,7 @@ Each model ran once on the same frozen runtime and synthetic reference data. Thi
 The frozen comparison predates the separate oversized-answer and period-chart fixes. A later replay showed the period chart can be produced, but it cannot replace the original model scores. The third-batch masked-input SHA-256 is `00b06de8cac2ba71e5ddded84b38564b7a5c4d80ac3d1f6b2aca3b5d4825bcb9`, and frozen decisions SHA-256 is `333e96422c566d6b8a22e66fef46247948dbd61e51965ff52482f245ba4eb3f0`. The reviewer already knew DeepSeek had failed the final chart, so that answer was not effectively blind.
 
 Per-question outcomes further limit the totals: LFM scored higher than Qwen on 2 questions, tied on 9, and scored lower on 2. DeepSeek scored higher than LFM on 4, tied on 7, and scored lower on 2. These are the same subjective scores above, not separate trials or a significance test.
+
+## Targeted receipt-and-retention replay
+
+On the same synthetic question, LFM with commit `8650834d` reported zero expense receipts awaiting review and the recorded disconnected Drive-retention status, using separate authorized lookup evidence. The response did not repeat the earlier unsupported count of two. The run took 11.8 seconds. This is a known-case replay and does not alter the frozen comparative score; evidence is retained under `models-lfm3/benchmark-evidence/receipt-retention-replay-20261028`.
