@@ -9,6 +9,9 @@ module TeamChat
   # TeamChat::Toolbox with the asker's permissions, and anything that would
   # change data becomes an action card a person must approve.
   class Agent
+    # Sent once when a data question was answered without looking anything up (see nudge_lookup!).
+    LOOKUP_NUDGE = 'You answered without looking anything up. Use one of your tools to get this from Rupert, then answer only from the tool result. If no tool applies, say what you could not check.'
+    GAVE_UP = /\b(could not|couldn.t|cannot|can.t|unable to|don.t have)\b.{0,30}\b(check|verify|find|look up|access)\b/i
     UNCHECKED_FIGURES = 'I could not verify those figures in Rupert’s records, so I won’t guess. Ask me something like “How were sales today?” or “Sales tax last month?” and I’ll look them up.'
     MAX_STEPS = 12
     CLI_TOOL_ROUNDS = 4
@@ -254,7 +257,7 @@ module TeamChat
         # Fresh request context applies the remaining whole-run budget to every
         # HTTP attempt; a later round cannot reuse the first round's timeout.
         chat = native_chat
-        break if chat.complete?
+        break if chat.complete? && !nudge_lookup!(chat)
         raise Failure.new(:error, 'too many steps') if @execution.run.steps >= MAX_STEPS
 
         buffer = +''
@@ -284,6 +287,20 @@ module TeamChat
       raise Failure.new(:timeout, e.message)
     rescue RubyLLM::Error => e
       raise Failure.new(:error, e.message)
+    end
+
+    # A small model sometimes answers a data question from memory, or gives up, without calling a tool. The figures then fail the check
+    # and the answer becomes a bare refusal. Send it back once to look the answer up; the transcript carries the nudge, so a restart does not repeat it.
+    def nudge_lookup!(chat)
+      return false if @toolbox.tools_used.any? || Array(@topics).empty? || @execution.run.steps >= MAX_STEPS - 2
+      return false if chat.messages.any? { |message| message.role == :user && message.content == LOOKUP_NUDGE }
+
+      draft = chat.messages.last&.content.to_s
+      return false unless FinancialEvidence.financial_text?(draft) || draft.match?(GAVE_UP)
+
+      chat.add_message(role: :user, content: LOOKUP_NUDGE)
+      @execution.checkpoint!(chat)
+      true
     end
 
     # Rebuild from the durable checkpoint after a refusal; never replay tools
