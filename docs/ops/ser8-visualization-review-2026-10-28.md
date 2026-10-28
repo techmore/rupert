@@ -30,3 +30,7 @@ A subsequent four-question replay on `bc2454d4` delivered two views: a source-sa
 ## Daily-series replay
 
 On `d214673d`, the four-question replay again produced the source chart and alert table; neither the daily trend nor month comparison produced a view. For the trend request, the model did not call the daily sales lookup, so the tested fallback had no series to use. The subsequent `8b33ada5` change adds a bounded authorized lookup for explicit supported trend-chart requests, then checks a complete date-by-currency series before constructing a view. It passed focused tests and is queued for live replay. Missing days remain blank; no source data are invented.
+
+## Daily prefetch replay
+
+On `8b33ada5`, the four-question replay produced three adjustable structured views: the source-sales bar chart, a daily line chart, and the alert table. The daily chart used the recorded 40.00 USD and 72.00 USD on their respective dates, with days lacking recorded orders left blank. The month comparison still produced no view; the answer said the earlier period had no recorded comparison rows and did not turn that absence into zero. This is one synthetic replay and does not establish general reliability.
