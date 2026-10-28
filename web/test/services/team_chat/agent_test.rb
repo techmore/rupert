@@ -202,6 +202,29 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     end
   end
 
+  test 'single-day order comparison corrects metric and period while retaining original arguments' do
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'last_year' } }, { text: 'Here is the comparison.' })
+    reply = ask('@rupert orders today vs same day last year')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    result = TeamChat::Run.find_by!(message_id: reply.id).tool_results.find { |entry| entry['name'] == 'metric' }
+    assert_equal({ 'name' => 'orders', 'period' => 'today', 'compare' => 'last_year' }, result['arguments'])
+    assert_equal({ 'name' => 'gross_sales', 'period' => 'last_year' }, result['original_arguments'])
+    assert_includes reply.reload.body, 'No metric rows were returned for the requested period'
+    assert_includes reply.body, 'No metric rows were returned for the comparison period'
+  end
+
+  test 'order comparison correction leaves mixed or excluded questions alone' do
+    ['@rupert sales and orders today vs same day last year', '@rupert orders today without comparing the same day last year'].each do |question|
+      original = { name: 'gross_sales', period: 'today' }
+      script_model({ tool: 'metric', arguments: original }, { text: 'Here are the results.' })
+      reply = ask(question)
+      TeamChat::Agent.new(reply, config: team_chat_config).run
+      result = TeamChat::Run.find_by!(message_id: reply.id).tool_results.find { |entry| entry['name'] == 'metric' }
+      assert_equal original.stringify_keys, result['arguments']
+    end
+  end
+
   test 'empty open purchase order lookup survives the financial guard' do
     data = { view: 'orders', rows: [], meta: { has_more: false }, totals: [{ placed_total_cents: 0 }] }
     Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'No purchase orders', data: data))

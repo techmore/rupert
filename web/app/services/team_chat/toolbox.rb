@@ -86,6 +86,7 @@ module TeamChat
       arguments = original_arguments
       arguments = complete_daily_arguments(name, arguments)
       arguments = complete_tax_source_arguments(name, arguments)
+      arguments = complete_order_day_comparison(name, arguments)
       arguments = complete_vendor_payment_arguments(name, arguments)
       arguments = complete_exact_vendor_filter(name, arguments)
       return call_once(name, arguments) unless @execution
@@ -167,6 +168,18 @@ module TeamChat
       return arguments unless match && sources == [match[1].downcase]
 
       arguments.merge('source' => match[1].downcase)
+    end
+
+    # A single-day order count against the same day last year has one clear
+    # metric and comparison window. Keep original arguments for replay.
+    def complete_order_day_comparison(name, arguments)
+      return arguments unless name.to_s == 'metric' && %w[orders gross_sales].include?(arguments['name'])
+
+      question = @question.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip
+      match = question.match(/\A(?:(?:how many|number of|count of)\s+)?orders\s+(today|yesterday)\s+(?:vs\.?|versus|compared\s+(?:to|with))\s+(?:the\s+)?same\s+(?:day|date)\s+last year[?.!]*\z/i)
+      return arguments unless match
+
+      arguments.except('from', 'to').merge('name' => 'orders', 'period' => match[1].downcase, 'compare' => 'last_year')
     end
 
     # A named vendor value/payment question needs the vendor view, not an
