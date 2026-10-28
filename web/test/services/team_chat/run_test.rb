@@ -247,4 +247,25 @@ class TeamChatRunTest < ActiveSupport::TestCase
   ensure
     ENV['RUPERT_LOCAL_LLM_URL'] = previous
   end
+
+  test 'repeated malformed local calls stop after one retry' do
+    previous = ENV['RUPERT_LOCAL_LLM_URL']
+    ENV['RUPERT_LOCAL_LLM_URL'] = LLM_BASE
+    chunks = [{ choices: [{ index: 0, delta: { role: 'assistant', tool_calls: [
+      { index: 0, id: 'broken', type: 'function', function: { name: 'create_task', arguments: '{broken' } }
+    ] }, finish_reason: nil }] }, { choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }] }]
+    broken = chunks.map { |chunk| "data: #{JSON.generate(chunk)}\n\n" }.join + "data: [DONE]\n\n"
+    stub_request(:post, "#{LLM_BASE}/chat/completions").to_return(status: 200, headers: { 'Content-Type' => 'text/event-stream' }, body: broken)
+    config = TeamChat::ModelConfig.new({ 'RUPERT_CHAT_PROVIDER' => 'local_gateway', 'RUPERT_CHAT_MODEL' => 'test-model', 'RUPERT_LOCAL_LLM_URL' => LLM_BASE })
+
+    assert_no_difference -> { Projects::Task.count } do
+      TeamChat::Agent.new(@reply, config: config).run
+    end
+    assert_equal 'failed', @run.reload.state
+    assert_empty @reply.reload.actions_list
+    assert_equal 1, TeamChat::Telemetry.where(run_id: @run.id, kind: 'generation_retry').count
+    assert_requested :post, "#{LLM_BASE}/chat/completions", times: 2
+  ensure
+    ENV['RUPERT_LOCAL_LLM_URL'] = previous
+  end
 end
