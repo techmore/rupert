@@ -455,6 +455,18 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_equal '0.0', facts[2]['value']
   end
 
+  test 'comparison identifies a currency missing only from the prior period' do
+    previous = (Date.current - 1).iso8601
+    payload = data.merge(values: [{ value: 10000, currency: 'USD' }, { value: 9999, currency: 'CAD' }],
+      compared_with: { from: previous, to: previous, values: [{ value: 6000, currency: 'USD' }] },
+      change: [{ currency: 'USD', change_percent: 66.7 }])
+    item = evidence(payload, args: { name: 'gross_sales', period: 'today', source: 'shopify', compare: 'previous' })
+    text = render(item)
+    assert_includes text, "No comparison metric rows were returned for CAD in #{previous} to #{previous}"
+    assert_includes text, 'missing rows do not prove zero'
+    assert_not_includes text, 'No comparison metric rows were returned for USD'
+  end
+
   test 'sales tax and gross with the same amount keep distinct meanings and fields' do
     payload = @period.merge(lines: [{ source: 'shopify', currency: 'CAD', gross_cents: 100, tax_cents: 100, orders: 1 }])
     item = evidence(payload, tool: 'sales_summary', args: @period.merge(source: 'shopify'))

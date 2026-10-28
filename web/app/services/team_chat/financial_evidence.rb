@@ -79,6 +79,15 @@ module TeamChat
           prior = { 'previous' => expected.previous, 'last_year' => expected.last_year }.fetch(args['compare'].presence || 'previous')
           old = window(data['compared_with'], prior.from.iso8601, prior.to.iso8601)
           metric_rows(out, data['compared_with']['values'], name, source, old, 'compared_with.values')
+          if args['compare'].present? && data['values'].is_a?(Array) && data['compared_with']['values'].is_a?(Array)
+            missing = data['values'].filter_map do |row|
+              currency = row['currency']
+              currency if CURRENCIES.include?(currency) && data['compared_with']['values'].none? { |prior_row| prior_row['currency'] == currency }
+            end.uniq
+            if missing.any?
+              out['gaps'] << "No comparison metric rows were returned for #{missing.join(', ')} in #{old['from']} to #{old['to']}; missing rows do not prove zero."
+            end
+          end
           if args['compare'].present? && data['compared_with']['values'].is_a?(Array) && data['compared_with']['values'].empty?
             out['gaps'] << "No metric rows were returned for the comparison period (#{old['from']} to #{old['to']}; #{source}). " \
                            'Missing rows do not prove zero.'
