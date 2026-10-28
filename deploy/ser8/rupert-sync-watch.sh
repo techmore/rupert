@@ -35,7 +35,9 @@ if [ -n "$READY_URL" ]; then
   code="$(curl -s -o /dev/null -m 10 -w '%{http_code}' "$READY_URL" || true)"
 else
   READY_URL='container localhost /up/ready'
-  code="$(incus exec "$INSTANCE" -- curl -s -o /dev/null -m 10 -w '%{http_code}' http://127.0.0.1:3000/up/ready 2>/dev/null || true)"
+  # The local request bypasses the TLS proxy; preserve its HTTPS indication so
+  # Rails checks readiness rather than redirecting the probe to HTTPS.
+  code="$(incus exec "$INSTANCE" -- curl -s -o /dev/null -m 10 -w '%{http_code}' -H 'X-Forwarded-Proto: https' http://127.0.0.1:3000/up/ready 2>/dev/null || true)"
 fi
 if [ "$code" != "200" ]; then
   echo "NOT READY: $READY_URL answered HTTP ${code:-none}" >&2
