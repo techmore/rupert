@@ -73,6 +73,37 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_includes requests.first['messages'].first['content'], 'Never add, subtract, average, convert'
   end
 
+  test 'a data question answered without any lookup is sent back once to look it up' do
+    order = Core::Order.create!(source: 'shopify', source_order_id: 'nl-1', occurred_at: 1.day.ago.change(hour: 12), gross_cents: 21_483, tax_cents: 0, currency: 'USD')
+    order.mark_paid!
+    requests = script_model({ text: 'Sales were $1,234.56 and the month before $999.99, up 23%.' },
+      { tool: 'sales_summary', arguments: { from: (Date.current - 1).iso8601, to: (Date.current - 1).iso8601 } },
+      { text: 'Yesterday there was one order.' })
+    reply = ask('@rupert how were sales yesterday compared with the day before?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    reply.reload
+
+    assert_equal 3, requests.size, 'first draft, then the nudged lookup, then the answer'
+    assert_equal TeamChat::Agent::LOOKUP_NUDGE, requests[1]['messages'].last['content']
+    assert_equal ['sales_summary'], reply.meta['tools']
+    assert_not_equal TeamChat::Agent::UNCHECKED_FIGURES, reply.body, 'the lookup replaced the bare refusal'
+    assert_not_includes reply.body, '1,234.56'
+    assert_includes reply.body, '214.83 USD'
+  end
+
+  test 'the nudge is sent at most once and never to a question with no data topic' do
+    requests = script_model({ text: 'Sales were $1,234.56 and the month before $999.99.' }, { text: 'Honestly it was $1,111.11 for sure.' })
+    reply = ask('@rupert how were sales yesterday?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_equal 2, requests.size, 'one nudge, then the answer is accepted as it is'
+    assert_equal TeamChat::Agent::UNCHECKED_FIGURES, reply.reload.body, 'figures with no lookup behind them are still refused'
+
+    requests = script_model({ text: 'Hello! I can help with your business.' })
+    reply = ask('@rupert hello there')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_equal 1, requests.size, 'a greeting is not a data question'
+  end
+
   test 'a reply whose figures all come from its tools has nothing flagged' do
     script_model({ text: 'Nothing to report.' })
     reply = ask('@rupert anything new?')
