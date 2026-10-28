@@ -117,8 +117,9 @@ module TeamChat
     def prefetch_requested_metric!
       text = @question.to_s.downcase
       return unless @execution && @calls < MAX_CALLS && names.include?('metric')
-      return if text.match?(/\b(?:compare|versus|also|plus|only|except|exclude|without|not|shopify|square|ctrax|swipesimple|manual|sku|vendor|customer|location|store|brand|category|usd|cad|eur|gbp)\b/)
+      return if text.match?(/\b(?:compar\w*|versus|vs|also|plus|only|except|exclude|without|not|shopify|square|ctrax|swipesimple|manual|sku|vendor|customer|location|store|brand|category|usd|cad|eur|gbp)\b/)
       return if text.match?(/\brupert[ _-]+pos\b/)
+      return if text.match?(/\bby\s+(?:source|channel)\b/)
       dates = text.scan(/\b\d{4}-\d{2}-\d{2}\b/)
       return unless dates.size == 2 && text.match?(/\b(?:from|for)\s+#{Regexp.escape(dates[0])}\s+(?:through|to)\s+#{Regexp.escape(dates[1])}\b/)
       return if text.match?(/\bfor\s+(?!\d{4}-\d{2}-\d{2}\b)/)

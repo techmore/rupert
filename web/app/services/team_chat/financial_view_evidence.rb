@@ -71,7 +71,7 @@ module TeamChat
       return unless text.match?(/\b(?:chart|graph|plot)\b/) && text.match?(/\b(?:sales|revenue)\b/) &&
         text.match?(/\b(?:trend|daily|day[- ]by[- ]day|each day|per day)\b/)
       return if text.match?(/\b(?:no|without|omit|skip)\s+(?:(?:a|the|any)\s+)?(?:chart|graph|plot)\b/)
-      return if text.match?(/\b(?:net|refund|tax|profit|compare|versus|except|exclude|only|shopify|square|rupert[ _-]?pos|manual|ctrax|swipesimple)\b/)
+      return if text.match?(/\b(?:net|refund|tax|profit|compar\w*|versus|vs|except|exclude|only|shopify|square|rupert[ _-]?pos|manual|ctrax|swipesimple)\b/)
       return if text.match?(/\bby\s+(?:source|channel)\b/)
       return if text.match?(/\b(?:no|without|omit|skip)\s+(?:daily|day[- ]by[- ]day|per[- ]day)\b/)
 

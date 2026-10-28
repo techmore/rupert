@@ -978,6 +978,17 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_empty TeamChat::Run.find_by!(message_id: reply.id).tool_results
   end
 
+  test 'product comparisons and source breakdowns do not prefetch aggregate metrics' do
+    Mcp::Tools::Metric.any_instance.expects(:call).never
+    ['Which products had the highest sales by source from 2026-08-01 to 2026-08-03?',
+      'Which products had the highest sales from 2026-08-01 to 2026-08-03 compared with the prior period?'].each do |question|
+      script_model({ text: 'I could not verify product sales.' })
+      reply = ask("@rupert #{question}")
+      TeamChat::Agent.new(reply, config: team_chat_config).run
+      assert_empty TeamChat::Run.find_by!(message_id: reply.id).tool_results
+    end
+  end
+
   test 'a nonempty receipt count does not replace a request for receipt identities' do
     data = { queues: [{ name: 'Expense receipts waiting for review', count: 2 }],
              low_stock_available: false, oldest_unshipped: [] }

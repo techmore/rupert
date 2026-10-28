@@ -646,7 +646,7 @@ module TeamChat
       text = question.to_s.downcase
       dates = text.scan(/\b\d{4}-\d{2}-\d{2}\b/)
       return facts unless dates.size == 2 && text.match?(/\b(?:from|for)\s+#{Regexp.escape(dates[0])}\s+(?:through|to)\s+#{Regexp.escape(dates[1])}\b/)
-      return facts if text.match?(/\b(?:compare|versus|vs|also|plus)\b/)
+      return facts if text.match?(/\b(?:compar\w*|versus|vs|also|plus)\b/)
 
       prefix = if text.match?(/\bproducts?\b/) && text.match?(/\b(?:highest|top|best|leading)\b/)
         'Product revenue:'

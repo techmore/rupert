@@ -17,7 +17,7 @@ module TeamChat
     def explicit_period_for(question)
       text = question.to_s.downcase
       return unless text.match?(/\borders?\b/) && text.match?(/\brefund(?:ed)?\b/) && text.match?(/\b(?:how many|count)\b/)
-      return if text.match?(/\b(?:transactions?|amount|rate|compare|versus|also|plus|only|shopify|square|manual|ctrax|swipesimple|product|sku|item|customer|location|store|brand|category)\b/)
+      return if text.match?(/\b(?:transactions?|amount|rate|compar\w*|versus|vs|also|plus|only|shopify|square|manual|ctrax|swipesimple|product|sku|item|customer|location|store|brand|category)\b/)
       return if text.match?(/\b(?:rupert[ _-]+pos|in person)\b/)
       return if text.match?(/\band\b/) && !text.match?(/\band (?:from )?which sources\b/)
       dates = text.scan(/\b\d{4}-\d{2}-\d{2}\b/)
