@@ -1,0 +1,74 @@
+<%# The 0–9 scoreboard (TeamChat::Scorecard): one score per axis, overall and per module, with the change since the previous run. %>
+<% axes = TeamChat::Scorecard::AXES %>
+<% cell = lambda do |value, change = nil| %>
+  <% if value.nil? %>
+    <span class="text-taupe" title="Not measured yet">—</span>
+  <% else %>
+    <span class="font-semibold <%= value >= 7 ? 'text-fern' : (value <= 3 ? 'text-clay' : 'text-ink') %>"><%= value %></span>
+    <% if change && change != 0 %>
+      <span class="text-xs <%= change.positive? ? 'text-fern' : 'text-clay' %>" title="Change since this model's previous run"><%= change.positive? ? '▲' : '▼' %><%= change.abs %></span>
+    <% end %>
+  <% end %>
+<% end %>
+
+<section class="mb-6" id="scorecard">
+  <div class="flex flex-wrap items-baseline gap-2">
+    <h2 class="font-display text-lg text-ink">Scoreboard</h2>
+    <span class="text-sm text-mocha">Each model’s latest test runs, 0–9 per axis (9 is best). Axes are kept separate, so fast-but-wrong and slow-but-right look different. ▲▼ is the change since that model’s previous run.</span>
+  </div>
+  <% if @scorecard.empty? %>
+    <p class="mt-2 text-sm text-mocha">No scored test runs yet.</p>
+  <% else %>
+    <div class="card mt-2 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="border-b border-fog bg-haze/60">
+            <tr>
+              <th scope="col" class="th">Model</th>
+              <% axes.each do |key, label| %>
+                <th scope="col" class="th text-right"><%= link_to label, team_chat_scores_path(days: @days, set: @run_set, axis: key, anchor: 'scorecard'), class: (@score_axis == key ? 'font-semibold text-fern' : '') %></th>
+              <% end %>
+              <th scope="col" class="th text-right">Questions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-fog">
+            <% @scorecard.each do |card| %>
+              <tr class="hover:bg-cream">
+                <td class="td whitespace-nowrap"><strong class="text-ink">@<%= card.handle %></strong> <span class="text-xs text-taupe"><%= card.model %> · <%= card.where %></span></td>
+                <% axes.each_key do |key| %>
+                  <td class="td text-right"><%= cell.call(card.overall[key], card.change[key]) %></td>
+                <% end %>
+                <td class="td text-right text-xs text-taupe"><%= card.graded %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <h3 class="mt-4 text-sm font-semibold text-ink"><%= axes[@score_axis] %> by module</h3>
+    <div class="card mt-2 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="border-b border-fog bg-haze/60">
+            <tr>
+              <th scope="col" class="th">Model</th>
+              <% TeamChat::Leaderboard::COLUMNS.each_value do |label| %><th scope="col" class="th text-right"><%= label %></th><% end %>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-fog">
+            <% @scorecard.each do |card| %>
+              <tr class="hover:bg-cream">
+                <td class="td whitespace-nowrap"><strong class="text-ink">@<%= card.handle %></strong></td>
+                <% TeamChat::Leaderboard::COLUMNS.each_key do |column| %>
+                  <td class="td text-right"><%= cell.call(card.modules.dig(column, @score_axis)) %></td>
+                <% end %>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="mt-2 text-xs text-taupe">Quality is the grader’s 1–5 mean mapped to 0–9. Speed is median answer time on a log scale (9 at <%= TeamChat::Scorecard::FAST_SECONDS.to_i %> s, 0 at the <%= TeamChat::Scorecard::SLOW_SECONDS.to_i %> s limit). Reliability is answered out of attempted. A dash means not measured yet (first-token time is not recorded per question), never zero. Click an axis heading to switch the module table. Scale <code><%= TeamChat::Scorecard.scale_hash %></code>.</p>
+  <% end %>
+</section>
