@@ -23,7 +23,7 @@ module TeamChat
 
     Definition = Struct.new(:name, :description, :schema, :kind, :activity, keyword_init: true)
 
-    attr_reader :calls, :tools_used, :results, :financial_evidence, :views
+    attr_reader :calls, :tools_used, :results, :financial_evidence, :inventory_results, :views
     attr_accessor :call_id, :execution_info
 
     # only: tool names to offer (the question's data guide topics, for local bots); nil offers every tool.
@@ -40,6 +40,7 @@ module TeamChat
       @calls = saved.size
       @tools_used = saved.pluck('name')
       @results = saved.pluck('result')
+      @inventory_results = saved.filter_map { |entry| entry['result'] if entry['name'] == 'inventory_search' }
       @financial_evidence = saved.filter_map { |entry| FinancialEvidence.decode(entry['result'], @user.tenant_id, tool: entry['name'], invocation: entry['id']) if FinancialEvidence::CONTRACTS.include?(entry['name']) }
       @financial = saved.any? { |entry| FinancialEvidence::TOOLS.include?(entry['name']) || FinancialEvidence.decode(entry['result'], @user.tenant_id).present? }
     end
@@ -227,6 +228,7 @@ module TeamChat
         details: "tool=#{name.to_s.gsub(/[^\w]/, '?').first(30)}; outcome=#{outcome}; duration_ms=#{ms}; room=#{@room.id}")
       text = text.to_s.first(MAX_RESULT_CHARS)
       @results << text
+      @inventory_results << text if name.to_s == 'inventory_search' && outcome == 'ok'
       text
     end
   end

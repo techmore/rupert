@@ -100,6 +100,24 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_includes requests.first['messages'].first['content'], 'Never add, subtract, average, convert'
   end
 
+  test 'financial verification retains separate inventory observations' do
+    product = ShopifyProduct.create!(id: 'chat-product', title: 'Tea')
+    variant = ShopifyVariant.create!(id: 'chat-variant', productId: product.id, sku: 'CHAT-TEA', title: '50g')
+    location = Location.create!(id: 'chat-location', source: 'shopify', externalId: 'chat-external', name: 'Tea shelf')
+    InventoryLevel.create!(id: 'chat-level', source: 'shopify', locationId: location.id, shopifyVariantId: variant.id, quantity: 12, available: 9)
+    Core::Order.create!(source: 'shopify', source_order_id: 'chat-order', occurred_at: Time.current, gross_cents: 21483, currency: 'USD').mark_paid!
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'today', source: 'shopify', compare: 'none' } },
+      { tool: 'inventory_search', arguments: { query: 'CHAT-TEA' } }, { text: 'Sales were $214.83 and tea has 999 available.' })
+    reply = ask('@rupert show sales today and tea stock')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, '214.83 USD'
+    assert_includes reply.body, 'Tea shelf (shopify): 9 available'
+    assert_not_includes reply.body, '999 available'
+    assert_equal false, reply.meta['prose_checked']
+  end
+
   test 'a reply whose figures all come from its tools has nothing flagged' do
     script_model({ text: 'Nothing to report.' })
     reply = ask('@rupert anything new?')

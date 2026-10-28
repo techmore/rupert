@@ -423,7 +423,14 @@ module TeamChat
         # The bot's own words when every figure checks out against the facts; else Ruby lists the facts.
         checked = FinancialEvidence.checked_prose(body, @toolbox.financial_evidence)
         @prose_checked = checked.present?
-        body = checked || FinancialEvidence.render(@toolbox.financial_evidence)
+        inventory = InventoryEvidence.render(@toolbox.inventory_results)
+        if inventory.present?
+          # Financial prose validation cannot certify product/stock bindings.
+          @prose_checked = false
+          body = [FinancialEvidence.render(@toolbox.financial_evidence), inventory].join("\n\n")
+        else
+          body = checked || FinancialEvidence.render(@toolbox.financial_evidence)
+        end
       elsif FinancialEvidence.financial_text?(body) && (@toolbox.tools_used.empty? || NumberCheck.call(body, @toolbox.results).any?)
         # Money talk with figures no tool gave (the conversation itself is not evidence).
         body = UNCHECKED_FIGURES
