@@ -68,6 +68,28 @@ class TeamChatBatteryTest < ActiveSupport::TestCase
     TeamChat::Battery.const_set(:QUESTION_TIMEOUT, original)
   end
 
+  test 'a timed out question retains the proposed tool after cancellation' do
+    item = TeamChat::Battery::Item.new(id: 'slow-action', cadence: 'general', question: 'Make a task', checks: [])
+    TeamChat::Agent.any_instance.stubs(:run).with do
+      reply = TeamChat::Message.where(author_kind: 'assistant', status: 'pending').last
+      TeamChat::Actions.propose!(reply, tool: 'create_task', arguments: { 'title' => 'Recount' }, proposed_for: @user)
+      sleep 2
+      true
+    end.returns(nil)
+    original = TeamChat::Battery::QUESTION_TIMEOUT
+    TeamChat::Battery.send(:remove_const, :QUESTION_TIMEOUT)
+    TeamChat::Battery.const_set(:QUESTION_TIMEOUT, 1)
+    battery = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: FakeGrader.new([]), items: [item], out: nil)
+    assert_no_difference -> { Projects::Task.count } do
+      battery.run
+    end
+    assert_equal ['create_task'], battery.record.reload.results_list.first['proposed_tools']
+    assert_equal 'dismissed', TeamChat::Message.where(author_kind: 'assistant').last.actions_list.first['status']
+  ensure
+    TeamChat::Battery.send(:remove_const, :QUESTION_TIMEOUT)
+    TeamChat::Battery.const_set(:QUESTION_TIMEOUT, original)
+  end
+
   test 'model scores exclude runs with ungraded questions while preserving the run' do
     complete = TeamChat::BatteryRun.create!(tenant_id: @tenant.id, run_key: 'complete', set_name: 'finance', model: 'complete-model',
       status: 'done', questions: 2, results: [{ 'grade' => 4 }, { 'grade' => 5 }], avg_grade: 4.5, started_at: Time.current)

@@ -197,7 +197,9 @@ module TeamChat
             'battery_timeout' => true))
       end
       reply.reload
-      proposed_tools = reply.actions_list.select { |action| action['status'] == 'proposed' }.filter_map { |action| action['tool'] }.uniq
+      # Every action card originates as a proposal. A timeout may already have
+      # dismissed it, so retain its tool name regardless of its current state.
+      proposed_tools = reply.actions_list.filter_map { |action| action['tool'] }.uniq
       dismiss_proposals(reply)
       meta = reply.meta.to_h
       seconds = meta['duration_ms'].to_f / 1000
