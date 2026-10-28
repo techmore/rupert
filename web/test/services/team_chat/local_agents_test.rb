@@ -136,6 +136,39 @@ class TeamChatLocalAgentsTest < ActiveSupport::TestCase
     ENV['RUPERT_LOCAL_TOOLS'] = previous
   end
 
+  test 'focused timesheet and bank questions offer compliance only when authorized' do
+    previous = ENV['RUPERT_LOCAL_TOOLS']
+    ENV['RUPERT_LOCAL_TOOLS'] = nil
+    ['Are there timesheets waiting for approval?', 'Are there bank statement lines waiting to be matched?'].each do |question|
+      requests = script_model({ text: 'I could not check that.' })
+      TeamChat::Agent.new(post("@qwen #{question}").replies.first).run
+      names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+      assert_includes names, 'compliance_check'
+      assert_not_includes names, 'search'
+    end
+    requests = script_model({ text: 'I could not check that.' })
+    TeamChat::Agent.new(post('@qwen Are there timesheets waiting for approval and are backups current?').replies.first).run
+    names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    assert_includes names, 'compliance_check'
+    assert_includes names, 'backup_freshness'
+
+    Mcp::Tools::ComplianceCheck.stubs(:available_to?).returns(false)
+    requests = script_model({ text: 'I could not check that.' })
+    TeamChat::Agent.new(post('@qwen Are there timesheets waiting for approval?').replies.first).run
+    names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    assert_not_includes names, 'compliance_check'
+    Mcp::Tools::ComplianceCheck.unstub(:available_to?)
+
+    ENV['RUPERT_LOCAL_TOOLS'] = 'all'
+    requests = script_model({ text: 'I could not check that.' })
+    TeamChat::Agent.new(post('@qwen Are there timesheets waiting for approval?').replies.first).run
+    names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    assert_includes names, 'compliance_check'
+    assert_includes names, 'backup_freshness'
+  ensure
+    ENV['RUPERT_LOCAL_TOOLS'] = previous
+  end
+
   test 'a local agent answers through the gateway with its own model and persona, and sees @rupert as another voice' do
     @room.messages.create!(author_kind: 'assistant', status: 'done', body: 'Earlier answer from Rupert.', meta: { 'asked_by' => @user.id })
     requests = script_model({ text: 'Hi, I am Qwen.' })

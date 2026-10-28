@@ -73,6 +73,59 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal 'I could not verify the recorded Google Drive document-retention status.', reply.reload.body
   end
 
+  test 'timesheet status includes ok rows and never infers zero from a missing row' do
+    data = { items: [{ title: 'Timesheets awaiting approval', area: 'People', status: 'ok', count: 0 }] }
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: data))
+    script_model({ tool: 'compliance_check', arguments: {} }, { text: 'I checked.' })
+    reply = ask('@rupert Are there timesheets waiting for approval?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_equal 'Recorded non-demo submitted timesheets awaiting approval: 0.', reply.reload.body
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal true, entry.dig('arguments', 'include_ok')
+
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: { items: [] }))
+    script_model({ tool: 'compliance_check', arguments: {} }, { text: 'No timesheets are waiting.' })
+    reply = ask('@rupert Are there timesheets waiting for approval?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_equal 'I could not verify the requested compliance count.', reply.reload.body
+  end
+
+  test 'a mixed timesheet and backup request does not mistake daily book approvals for timesheets' do
+    data = { items: [{ title: 'Timesheets awaiting approval', area: 'People', status: 'ok', count: 0 },
+                     { title: 'Recent days have been approved by a person', area: 'Books', status: 'watch', count: 2 }] }
+    backup = { drive: { fresh: true, fresh_within_hours: 8, last_success_age_hours: 2 } }
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: data))
+    Mcp::Tools::BackupFreshness.stubs(:available_to?).returns(true)
+    Mcp::Tools::BackupFreshness.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'backup', data: backup))
+    script_model({ tool: 'compliance_check', arguments: {} }, { tool: 'backup_freshness', arguments: {} }, { text: 'Two timesheets are waiting.' })
+    reply = ask('@rupert Are there timesheets waiting for approval and are backups current?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Recorded non-demo submitted timesheets awaiting approval: 0.'
+    assert_includes reply.body, 'last verified Google Drive backup was within the last 8 hours'
+    assert_not_includes reply.body, 'Two timesheets'
+
+    script_model({ tool: 'compliance_check', arguments: {} }, { text: 'Backups are current.' })
+    reply = ask('@rupert Are there timesheets waiting for approval and are backups current?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'I could not verify Google Drive backup freshness.'
+  end
+
+  test 'a mixed retention and backup request keeps the two records distinct' do
+    data = { items: [{ title: 'Google Drive document retention', area: 'Records', status: 'watch', detail: 'Not connected' }] }
+    backup = { drive: { fresh: false, fresh_within_hours: 8, last_success_age_hours: 12 } }
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: data))
+    Mcp::Tools::BackupFreshness.stubs(:available_to?).returns(true)
+    Mcp::Tools::BackupFreshness.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'backup', data: backup))
+    script_model({ tool: 'compliance_check', arguments: {} }, { tool: 'backup_freshness', arguments: {} }, { text: 'Both are connected.' })
+    reply = ask('@rupert Is our document retention to Google Drive working and are backups current?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Recorded document-retention status (watch): Not connected'
+    assert_includes reply.body, 'last verified Google Drive backup was more than 8 hours ago'
+    assert_not_includes reply.body, 'Both are connected'
+  end
+
   test 'retention status drafts are not streamed before verification' do
     reply = ask('@rupert Is our document retention to Google Drive working?')
     agent = TeamChat::Agent.new(reply, config: team_chat_config)

@@ -417,7 +417,7 @@ module TeamChat
       return if @toolbox&.financial? || text.match?(/[<\d$€£¥%]/)
       return if unchecked_operational_request?
       return if @toolbox && (alert_only_tool_mix? || compliance_only_tool_mix? || InventoryEvidence.uncertain?(@toolbox.inventory_results))
-      return if ComplianceEvidence.retention_question?(request_text)
+      return if ComplianceEvidence.focused_title(request_text)
 
       now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       return if now - @last_publish < PUBLISH_EVERY
@@ -436,9 +436,22 @@ module TeamChat
       if unchecked_operational_request?
         body = UNCHECKED_RECORDS
         @verify_meta['kept'] = 'guarded' if @verify_meta
+      elsif ComplianceEvidence.timesheets_and_backup_question?(request_text)
+        entries = @execution.run.reload.tool_results
+        timesheets = ComplianceEvidence.render_focused_count(entries, ComplianceEvidence::TIMESHEETS_TITLE) || 'I could not verify the timesheet approval count.'
+        backup = ComplianceEvidence.render_backup_freshness(entries) || 'I could not verify Google Drive backup freshness.'
+        body = [timesheets, backup].join("\n\n")
+      elsif ComplianceEvidence.retention_and_backup_question?(request_text)
+        entries = @execution.run.reload.tool_results
+        retention = ComplianceEvidence.render_retention(entries) || 'I could not verify the recorded Google Drive document-retention status.'
+        backup = ComplianceEvidence.render_backup_freshness(entries) || 'I could not verify Google Drive backup freshness.'
+        body = [retention, backup].join("\n\n")
       elsif ComplianceEvidence.retention_question?(request_text)
         entries = @execution.run.reload.tool_results
         body = ComplianceEvidence.render_retention(entries) || 'I could not verify the recorded Google Drive document-retention status.'
+      elsif (title = ComplianceEvidence.focused_title(request_text))
+        entries = @execution.run.reload.tool_results
+        body = ComplianceEvidence.render_focused_count(entries, title) || 'I could not verify the requested compliance count.'
       elsif @toolbox.financial? && (queue_answer = QueueEvidence.render_requested(@toolbox.financial_evidence, request_text))
         # For an entirely queue-specific request, show only the requested
         # verified counts, not unrelated tools the model also called.

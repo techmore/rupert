@@ -58,7 +58,7 @@ module TeamChat
         available = lookup_definitions + mcp_definitions + write_definitions + view_definitions
         narrow = if QueueEvidence.count_question?(@question)
           'order_queues'
-        elsif ComplianceEvidence.retention_question?(@question)
+        elsif ComplianceEvidence.narrow_title(@question)
           'compliance_check'
         end
         if @only && narrow && available.any? { |tool| tool.name == narrow }
@@ -101,7 +101,7 @@ module TeamChat
       arguments = complete_order_day_comparison(name, arguments)
       arguments = complete_order_count_comparison(name, arguments)
       arguments = complete_sales_by_source(name, arguments)
-      arguments = complete_retention_arguments(name, arguments)
+      arguments = complete_focused_compliance_arguments(name, arguments)
       arguments = complete_vendor_payment_arguments(name, arguments)
       arguments = complete_exact_vendor_filter(name, arguments)
       return call_once(name, arguments) unless @execution
@@ -198,8 +198,8 @@ module TeamChat
       corrected
     end
 
-    def complete_retention_arguments(name, arguments)
-      return arguments unless name.to_s == 'compliance_check' && ComplianceEvidence.retention_question?(@question)
+    def complete_focused_compliance_arguments(name, arguments)
+      return arguments unless name.to_s == 'compliance_check' && ComplianceEvidence.focused_title(@question)
 
       arguments.merge('include_ok' => true)
     end
@@ -339,7 +339,7 @@ module TeamChat
       tool = Mcp::Registry.find(name)
       outcome = tool.new(token: @token).call(args)
       if name == 'compliance_check'
-        title = ComplianceEvidence::RETENTION_TITLE if ComplianceEvidence.retention_question?(@question)
+        title = ComplianceEvidence.focused_title(@question)
         packed = ComplianceEvidence.pack(outcome.data, requested_title: title)
         return "Compliance check (bounded; omitted items are indicated):\n#{JSON.generate(packed)}"
       end
