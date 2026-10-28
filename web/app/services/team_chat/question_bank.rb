@@ -83,20 +83,26 @@ module TeamChat
     end
 
     def battery_item(question)
+      checks = question.checks || reference_checks(question.tools, question.question)
+      # A generic partial-answer rubric cannot establish facts for a data
+      # question whose reference arguments have not been authored.
+      expect = if question.answerable == 'partial' && question.expect.blank? && checks.empty?
+        nil
+      else
+        expectation(question)
+      end
       Battery::Item.new(id: question.id, cadence: question.answerable == 'no' ? 'honesty' : 'bank', module: question.module,
-        question: question.question, checks: question.checks || reference_checks(question.tools, question.question),
-        needs: question.needs, expect: expectation(question))
+        question: question.question, checks: checks, needs: question.needs, expect: expect)
     end
 
-    # Navigation lookups accept the question itself; other checks are included
-    # only when they require no arguments. Never guess financial tool inputs.
+    # Only a navigation-only question can safely use a generated reference.
+    # Defaults for data tools may silently select a different date or entity.
     def reference_checks(tools, question)
+      return [] if tools.any? { |name| !%w[where_is how_do_i].include?(name) }
+
       tools.filter_map do |name|
         if %w[where_is how_do_i].include?(name)
           { 'tool' => name, 'args' => { 'query' => question.to_s.first(120) } }
-        else
-          tool = Mcp::Registry.find(name)
-          tool.tool_name if tool && Array(tool.input_schema[:required]).empty?
         end
       end
     end

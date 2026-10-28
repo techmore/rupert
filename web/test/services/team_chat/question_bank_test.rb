@@ -82,4 +82,14 @@ class TeamChatQuestionBankTest < ActiveSupport::TestCase
     item = TeamChat::QuestionBank.battery_item(q('where do I approve timesheets', ['where_is']))
     assert_equal [{ 'tool' => 'where_is', 'args' => { 'query' => item.question } }], item.checks
   end
+
+  test 'unscoped data defaults do not become a misleading grading reference' do
+    quarter = TeamChat::QuestionBank.battery_item(q('sales tax by county for last quarter', ['sales_tax_report']))
+    assert_empty quarter.checks
+    assert_nil quarter.expect
+
+    partial = TeamChat::QuestionBank.battery_item(q('where and how much sold last week', %w[where_is sales_summary], 'partial'))
+    assert_empty partial.checks
+    assert_nil partial.expect
+  end
 end
