@@ -28,3 +28,7 @@ This is one run per model and one partially masked self-review. The first five l
 ## Targeted product-leader replay
 
 After the product-leader handling change, a live LFM replay of the known synthetic question gave both product rankings and amounts for both currencies, while still appending unrelated source information. It completed in 9.1 seconds. This replay is not an independent new score; evidence is under `models-lfm3/benchmark-evidence/product-leader-replay-20261028`.
+
+## Targeted bank-line replay
+
+After commit `242778a6`, LFM replayed the same synthetic bank-line question and returned the correct zero count from the compliance row, explicitly noting that decided lines may have been ignored and are not necessarily matched. It completed in 7.2 seconds. This known-case replay does not alter the frozen score; evidence remains under `models-lfm3/benchmark-evidence/bank-line-replay-20261028`.
