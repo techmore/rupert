@@ -21,3 +21,7 @@ Median per-question elapsed times were LFM 15.0 s, Qwen 28.6 s, and hosted DeepS
 The first priority is preserving the user's stated date window and comparison when model tool arguments are wrong. The chart and refund results provide encouraging evidence for the recent server changes, but the reused question families and fixture prevent a general improvement claim. Continue with fresh held-out questions, local real-data checks without exporting business data, and an independently assessed larger sample before claiming LFM beats Qwen.
 
 Evidence retained locally under `models-lfm3/benchmark-evidence/fresh2-review-20261028`: masked inputs SHA-256 `4a38105dc433d85d953f5a533676972820784a70455a5d83d3cc2690b1e2bbc1`; frozen decisions SHA-256 `e52d2e3789e239c8fd323ba5ca78662ad813de13ff0070a263e78ea69498ce07`.
+
+## Targeted seven-day replay
+
+After the review was frozen, commit `e77d1365` corrected explicit seven-day sales windows and the unfiltered source breakdown. On the same question and synthetic fixture, LFM's live replay returned the correct 2026-08-09 through 2026-08-15 dates and all three source/currency amounts. It also emitted unrelated monthly order counts, sync health and stock alerts; this is a known-case replay, not independent evidence of general improvement. The replay took 52.7 s and its local evidence is under `models-lfm3/benchmark-evidence/seven-day-replay-20261028`.
