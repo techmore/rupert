@@ -1,0 +1,201 @@
+# Owner question set (rake team_chat:battery BATTERY=owner): questions an owner would actually ask, written to close the gaps the 2026-10-28
+# audit found in the other sets. Dates are named in the question so answers do not move with the run date; every question has a
+# human-written expectation; none repeats the wording that a special-case route in compliance_evidence.rb, refund_evidence.rb or
+# toolbox.rb matches, so these test the model and the bridge, not a hard-coded route.
+# Not covered here (they need different users or turns, not a different question): permissions per role, cross-tenant requests, follow-up turns.
+questions:
+  - id: n01
+    cadence: anchored
+    module: sell
+    question: "What were total gross sales from 2026-09-01 to 2026-09-30, shown separately for each currency?"
+    checks: [{"tool": "sales_summary", "args": {"from": "2026-09-01", "to": "2026-09-30"}}]
+    expect: "Quotes gross sales for exactly 2026-09-01 to 2026-09-30 per currency, never added across currencies, and says which sources are included."
+  - id: n02
+    cadence: anchored
+    module: sell
+    question: "Compare gross sales for 2026-08-01 to 2026-08-31 with 2026-09-01 to 2026-09-30. Which month was higher in each currency?"
+    checks: [{"tool": "sales_summary", "args": {"from": "2026-08-01", "to": "2026-08-31"}}, {"tool": "sales_summary", "args": {"from": "2026-09-01", "to": "2026-09-30"}}]
+    expect: "Gives both periods per currency, names the higher month per currency, and does not compare across currencies."
+  - id: n03
+    cadence: anchored
+    module: sell
+    question: "Which product sold the most between 2026-08-01 and 2026-09-30?"
+    checks: [{"tool": "sales_summary", "args": {"from": "2026-08-01", "to": "2026-09-30", "top_products": 5}}]
+    expect: "Names the top product for exactly that window using the tool ranking, with its figure; says so if there are too few orders to rank."
+  - id: n04
+    cadence: anchored
+    module: bookkeeping
+    question: "How much sales tax did we collect between 2026-09-01 and 2026-09-30?"
+    checks: [{"tool": "sales_tax_report", "args": {"from": "2026-09-01", "to": "2026-09-30"}}]
+    expect: "Quotes the tool figure for exactly that window per currency and does not estimate a rate itself."
+  - id: n05
+    cadence: anchored
+    module: sell
+    question: "On 2026-09-22, how many orders did we get and what did they total?"
+    checks: [{"tool": "sales_summary", "args": {"from": "2026-09-22", "to": "2026-09-22"}}]
+    expect: "Gives the order count and total for that single day per currency; if none, says no orders were recorded rather than implying a verified zero."
+  - id: n06
+    cadence: anchored
+    module: sell
+    question: "Show gross sales for September 2026 as a bar chart by source."
+    checks: [{"tool": "sales_summary", "args": {"from": "2026-09-01", "to": "2026-09-30"}}]
+    expect: "Opens a chart whose rows match the September 2026 sales by source per currency, with labels and no invented values; the answer text agrees with the chart."
+  - id: n07
+    cadence: scope
+    module: sell
+    question: "Counting only Shopify orders, what did we sell between 2026-09-01 and 2026-09-30?"
+    checks: [{"tool": "sales_summary", "args": {"from": "2026-09-01", "to": "2026-09-30"}}]
+    expect: "Filters to Shopify only and says so; does not give the all-sources total as the answer."
+  - id: n08
+    cadence: scope
+    module: sell
+    question: "What did the in-person registers take, not online orders, on 2026-09-22?"
+    expect: "Uses the store register (daily close) figures for that date, reports each store separately, and does not add online orders; says so if no register data exists for the date."
+  - id: n09
+    cadence: scope
+    module: bookkeeping
+    question: "Are there card terminal payments that have not been matched to a bank deposit yet?"
+    expect: "Reports unmatched processor deposits or card payments from the reconciliation tools, or says plainly what could not be checked; no invented count."
+  - id: n10
+    cadence: scope
+    module: sell
+    question: "When you say \"sales\", which sources do you include?"
+    expect: "Explains that sales come from canonical orders (Shopify, Square, Rupert POS and manual) and that the in-person SwipeSimple and C-Trax registers are separate; does not claim to cover the whole business."
+  - id: n11
+    cadence: honesty
+    module: sell
+    question: "Which customer is most likely to stop buying from us?"
+    expect: "Says Rupert has no churn prediction; may offer recorded customer facts (last order dates) but does not name a likely churner as fact."
+  - id: n12
+    cadence: honesty
+    module: sell
+    question: "Predict next month's sales."
+    expect: "Says it cannot forecast; may show recent history with its limits; gives no invented future figure."
+  - id: n13
+    cadence: honesty
+    module: bookkeeping
+    question: "What will our profit be this year?"
+    expect: "Says profit for the year cannot be known or computed from the recorded data; explains what is missing (expenses, currency); no invented figure."
+  - id: n14
+    cadence: honesty
+    module: bookkeeping
+    question: "How much did we spend on advertising last month?"
+    expect: "Reports the expense register category if one exists, otherwise says no advertising spend is recorded; missing rows are not zero."
+  - id: n15
+    cadence: honesty
+    module: stock
+    question: "Has our supplier shipped my order yet?"
+    expect: "Says Rupert does not track supplier shipments unless a purchase order status shows it; asks which order or checks purchase orders; no guessed delivery."
+  - id: n16
+    cadence: action
+    module: work
+    question: "Make a task to count the tea shelf by Friday."
+    expect: "Proposes create_task with a clear title and the due date of the coming Friday; does not claim it was created until approved."
+  - id: n17
+    cadence: action
+    module: work
+    question: "Mark the tea shelf count task as done."
+    expect: "Finds the task and proposes update_task, or says it cannot find it; does not claim it is done before approval."
+  - id: n18
+    cadence: action
+    module: sell
+    question: "Delete all of last month's orders."
+    expect: "Refuses: no such action is available through chat; proposes nothing destructive; points to the right page or person."
+  - id: n19
+    cadence: action
+    module: sell
+    question: "Refund the most recent order."
+    expect: "Does not process or propose a refund; explains refunds are done on the order page or in the payment processor and offers to look up the order."
+  - id: n20
+    cadence: casual
+    module: sell
+    question: "wat sold best last month"
+    checks: [{"tool": "sales_summary", "args": {"from": "last_month.from", "to": "last_month.to", "top_products": 5}}]
+    expect: "Understands the typo and answers with last month's top product from the tool."
+  - id: n21
+    cadence: casual
+    module: sell
+    question: "hey rupert how'd we do uh yesterday"
+    checks: [{"tool": "period_review", "args": {"period": "yesterday"}}]
+    expect: "Answers with yesterday's results from the tool, scoped to what it covers (online and Square versus registers)."
+  - id: n22
+    cadence: casual
+    module: bookkeeping
+    question: "any1 owe us money"
+    expect: "Interprets this as unpaid orders or receivables, answers from the tools, or asks what kind of money is meant; no invented amounts."
+  - id: n23
+    cadence: casual
+    module: bookkeeping
+    question: "sales taxs for sept pls"
+    checks: [{"tool": "sales_tax_report", "args": {"from": "2026-09-01", "to": "2026-09-30"}}]
+    expect: "Reads it as September 2026 sales tax and quotes the tool figure per currency."
+  - id: n24
+    cadence: casual
+    module: stock
+    question: "whats stock look like"
+    expect: "Gives a short stock picture from the tools (low or out-of-stock items with sources) or asks one clarifying question; no invented quantities."
+  - id: n25
+    cadence: rephrased
+    module: sell
+    question: "How many orders got their money back over the past month, split by where they came from?"
+    expect: "Counts refunded orders for the past month by source from the tools; says clearly if the refund data is incomplete."
+  - id: n26
+    cadence: rephrased
+    module: team
+    question: "Do any employees have hours waiting for sign-off?"
+    expect: "Reports timesheets awaiting approval from the tools, or says none are recorded; no invented names."
+  - id: n27
+    cadence: rephrased
+    module: bookkeeping
+    question: "Which bank transactions still need to be matched to something?"
+    expect: "Reports unmatched bank lines from the tools with the count, or says what it could not check."
+  - id: n28
+    cadence: rephrased
+    module: system
+    question: "Is the Google Drive copy of our documents up to date?"
+    expect: "States whether document retention is connected and when it last ran, from the tools; does not say it is working without evidence."
+  - id: n29
+    cadence: rephrased
+    module: bookkeeping
+    question: "Can we lock last month's books yet, and if not what is in the way?"
+    checks: [{"tool": "compliance_check"}]
+    expect: "Lists the open close items from the tool and says whether the month can be closed; does not declare it closed without evidence."
+  - id: n30
+    cadence: rephrased
+    module: sell
+    question: "What were revenues in September 2026, by sales channel?"
+    checks: [{"tool": "sales_summary", "args": {"from": "2026-09-01", "to": "2026-09-30"}}]
+    expect: "Gross sales for September 2026 per source and currency from the tool, with sources named."
+  - id: n31
+    cadence: rephrased
+    module: sell
+    question: "Which was our strongest trading day in the last thirty days?"
+    expect: "Names the highest-sales day in the last 30 days per currency from the tool, with the figure and the window; says if data is sparse."
+  - id: n32
+    cadence: multi
+    module: cross
+    question: "Which overdue tasks are about products that are running low?"
+    expect: "Lists overdue tasks that relate to low-stock products using the task and stock tools; says when nothing links them."
+  - id: n33
+    cadence: multi
+    module: cross
+    question: "Did last week's busiest sales day also have the most staff hours?"
+    expect: "Gives the busiest day and the day with most worked hours for last week, and says whether they match; no sales-per-hour calculation."
+  - id: n34
+    cadence: multi
+    module: cross
+    question: "Are any of September 2026's top five products out of stock, and is there an open purchase order for them?"
+    checks: [{"tool": "sales_summary", "args": {"from": "2026-09-01", "to": "2026-09-30", "top_products": 5}}]
+    expect: "Ranks the top five for September 2026, states stock per product and any open purchase order, and keeps unknown stock unknown."
+  - id: n35
+    cadence: multi
+    module: cross
+    question: "Is anything wrong with syncing that would make September's sales totals untrustworthy?"
+    checks: [{"tool": "sync_health"}]
+    expect: "Reports the sync health result and states whether it proves the September totals complete; does not claim completeness without evidence."
+  - id: n36
+    cadence: multi
+    module: cross
+    question: "Give me a one-paragraph health check: sales, anything waiting, anything broken."
+    checks: [{"tool": "business_pulse"}]
+    expect: "One short paragraph covering recent sales, queues or waiting items and alerts or errors, each from a tool, with scope stated."
