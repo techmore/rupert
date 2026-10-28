@@ -16,9 +16,16 @@ module TeamChat
       rows = items.filter_map do |item|
         next unless item.is_a?(Hash) && %w[fix watch unknown ok].include?(item['status'])
 
-        { 'title' => label(item['title']), 'area' => label(item['area']), 'status' => item['status'],
-          'detail' => label(item['detail']) }
+        row = { 'title' => label(item['title']), 'area' => label(item['area']), 'status' => item['status'],
+                'detail' => label(item['detail']) }
+        if item['topics'].is_a?(Array)
+          row['topics'] = item['topics'].first(8).filter_map { |topic| label(topic).presence }
+        end
+        row
       end
+      # Keep actionable and uncertain items ahead of completed checks when the
+      # result must be shortened, while preserving their original relative order.
+      rows = rows.partition { |row| row['status'] != 'ok' }.flatten(1)
       packed = { 'items' => rows.first(20), 'omitted' => rows.size > 20 }
       if data['counts'].is_a?(Hash)
         packed['counts'] = data['counts'].select { |key, value| %w[fix watch unknown ok].include?(key) && value.is_a?(Integer) && value >= 0 }

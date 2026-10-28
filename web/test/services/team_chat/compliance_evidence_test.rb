@@ -27,4 +27,15 @@ class TeamChatComplianceEvidenceTest < ActiveSupport::TestCase
     assert_includes text, 'Review 0'
     assert_includes text, 'Additional compliance items were omitted'
   end
+
+  test 'bounded results prioritize blockers and preserve their topics' do
+    items = 25.times.map { |i| { title: "Done #{i}", status: 'ok' } }
+    items << { title: 'Unmatched payment', status: 'fix', topics: %w[payments sales] }
+    packed = TeamChat::ComplianceEvidence.pack(items: items)
+
+    assert_equal 'Unmatched payment', packed['items'].first['title']
+    assert_equal %w[payments sales], packed['items'].first['topics']
+    assert packed['omitted']
+    assert_operator JSON.generate(packed).length, :<=, 5_000
+  end
 end
