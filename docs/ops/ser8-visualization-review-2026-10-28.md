@@ -22,3 +22,7 @@ The later server guard checks supported structured financial views against recor
 ## Guarded LFM replay
 
 A four-question synthetic replay on server commit `7a93d896` produced one side-panel view: the open-alert table, with the recorded SKU and quantity. No sales view was delivered for the three sales requests. The first sales request attempted `show_view` but no view was accepted; the other two did not call the view tool. The alert response identified alert quantities as potentially stale. This shows the guard can withhold a proposed unsafe view in this run, but also exposes a substantial usability gap: one adjustable table out of four requests is not acceptable evidence of a working sales-chart experience. It is one run, not a reliability estimate.
+
+## Source fallback replay
+
+A subsequent four-question replay on `bc2454d4` delivered two views: a source-sales bar chart and the alert table. The sales chart showed the recorded synthetic Rupert POS amount of 40.00 USD and Shopify amount of 72.00 USD with the correct week and source labels. The daily trend and prior-month comparison still had no view. This improves the source-chart case in this run; it does not establish general chart reliability. A later daily-series handoff and fallback are covered by focused tests and await a separate live replay.
