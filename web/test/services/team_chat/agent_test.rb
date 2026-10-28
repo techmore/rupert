@@ -730,6 +730,43 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal 'square', entry.dig('arguments', 'source')
   end
 
+  test 'a stated week ending fixes wrong lookup dates without dropping source filters' do
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'this_month', source: 'shopify' } }, { text: 'I checked.' })
+    reply = ask('@rupert Show Shopify gross sales for the week ending 2026-08-16.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'this_month', entry.dig('original_arguments', 'period')
+    assert_equal '2026-08-10', entry.dig('arguments', 'from')
+    assert_equal '2026-08-16', entry.dig('arguments', 'to')
+    assert_equal 'shopify', entry.dig('arguments', 'source')
+    assert_equal 'none', entry.dig('arguments', 'compare')
+
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'last_week', compare: 'previous' } }, { text: 'I checked.' })
+    reply = ask('@rupert Compare gross sales for the week ending 2026-08-16 with the previous week.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'last_week', entry.dig('arguments', 'period')
+    assert_equal 'previous', entry.dig('arguments', 'compare')
+  end
+
+  test 'a comparison of consecutive explicit dates uses those days' do
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'this_month', compare: 'last_year' } }, { text: 'I checked.' })
+    reply = ask('@rupert Compare gross order sales for 2026-08-16 with 2026-08-15, keeping currencies separate.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'this_month', entry.dig('original_arguments', 'period')
+    assert_equal '2026-08-16', entry.dig('arguments', 'from')
+    assert_equal '2026-08-16', entry.dig('arguments', 'to')
+    assert_equal 'previous', entry.dig('arguments', 'compare')
+
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'this_month', compare: 'last_year' } }, { text: 'I checked.' })
+    reply = ask('@rupert Compare gross sales for 2026-08-16 with 2026-08-01.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'this_month', entry.dig('arguments', 'period')
+    assert_equal 'last_year', entry.dig('arguments', 'compare')
+  end
+
   test 'a narrow queue answer omits unrelated results while a mixed question keeps them' do
     data = { queues: [{ name: 'Expense receipts waiting for review', count: 0 },
                       { name: 'Purchase orders awaiting delivery', count: 1, late: 0 },

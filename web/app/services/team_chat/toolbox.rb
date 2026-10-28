@@ -120,6 +120,8 @@ module TeamChat
       original_arguments = arguments.is_a?(Hash) ? arguments.deep_stringify_keys : {}
       arguments = original_arguments
       arguments = complete_daily_arguments(name, arguments)
+      arguments = complete_week_ending_dates(name, arguments)
+      arguments = complete_consecutive_sales_comparison(name, arguments)
       arguments = complete_tax_source_arguments(name, arguments)
       arguments = complete_order_day_comparison(name, arguments)
       arguments = complete_order_count_comparison(name, arguments)
@@ -196,6 +198,49 @@ module TeamChat
       args = arguments.deep_stringify_keys
       args['include_daily'] = true unless args.key?('include_daily')
       args
+    end
+
+    # An explicit seven-day window should not become a different model-picked
+    # month or day. Leave comparisons and additional dates to the model.
+    def complete_week_ending_dates(name, arguments)
+      return arguments unless %w[metric sales_summary].include?(name.to_s) && arguments.is_a?(Hash)
+      return arguments if name.to_s == 'metric' && !%w[gross_sales sales_by_source].include?(arguments['name'])
+
+      question = @question.to_s.sub(/\A\s*(?:@[\w.-]+\s+)+/, '')
+      return arguments unless question.match?(/\b(?:sales|revenue)\b/i)
+      return arguments if question.match?(/\b(?:compare|comparison|versus|vs\.?|previous|prior|before|after)\b/i)
+
+      dates = question.scan(/\b\d{4}-\d{2}-\d{2}\b/)
+      match = question.match(/\bweek\s+ending\s+(\d{4}-\d{2}-\d{2})\b/i)
+      return arguments unless match && dates.one? && dates.first == match[1]
+
+      last = Date.iso8601(match[1])
+      corrected = arguments.except('period').merge('from' => (last - 6).iso8601, 'to' => last.iso8601)
+      corrected['compare'] = 'none' if name.to_s == 'metric'
+      corrected
+    rescue Date::Error
+      arguments
+    end
+
+    # The metric's previous-period comparison is appropriate only when the
+    # person explicitly compares two consecutive calendar dates.
+    def complete_consecutive_sales_comparison(name, arguments)
+      return arguments unless name.to_s == 'metric' && arguments.is_a?(Hash) && arguments['name'] == 'gross_sales'
+
+      question = @question.to_s.sub(/\A\s*(?:@[\w.-]+\s+)+/, '')
+      return arguments unless question.match?(/\bcompare\b/i) && question.match?(/\b(?:gross\s+sales|gross\s+order\s+sales)\b/i)
+      return arguments if question.match?(/\b(?:by source|versus last year|last year|excluding|except|without comparing)\b/i)
+
+      dates = question.scan(/\b\d{4}-\d{2}-\d{2}\b/)
+      match = question.match(/\b(\d{4}-\d{2}-\d{2})\s+(?:with|versus|vs\.?|against)\s+(\d{4}-\d{2}-\d{2})\b/i)
+      return arguments unless match && dates.size == 2 && dates == match.captures
+
+      earlier, later = match.captures.map { |date| Date.iso8601(date) }.sort
+      return arguments unless later - earlier == 1
+
+      arguments.except('period').merge('from' => later.iso8601, 'to' => later.iso8601, 'compare' => 'previous')
+    rescue Date::Error
+      arguments
     end
 
     # Metric defaults to a previous-period comparison. A standalone order-count
