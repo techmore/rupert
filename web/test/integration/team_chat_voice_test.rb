@@ -29,6 +29,21 @@ class TeamChatVoiceTest < ActionDispatch::IntegrationTest
     assert_equal '@rupert Hello Rupert', response.parsed_body['messages'].first['body']
   end
 
+  test 'a transcript with a date that looks misheard comes back with a reason to check it first' do
+    TeamChat::VoiceClient.any_instance.expects(:transcribe).returns('On September 20th, 2006, how many orders did we get?')
+    post transcribe_team_chat_voice_path('admins'), params: { audio: 'recording' }, as: :json
+    assert_response :success
+    assert_equal 'On September 20th, 2006, how many orders did we get?', response.parsed_body['text']
+    assert_match(/heard the year 2006/, response.parsed_body['review'])
+  end
+
+  test 'a clean transcript has no review field' do
+    TeamChat::VoiceClient.any_instance.expects(:transcribe).returns('How were sales yesterday?')
+    post transcribe_team_chat_voice_path('admins'), params: { audio: 'recording' }, as: :json
+    assert_response :success
+    assert_not response.parsed_body.key?('review')
+  end
+
   test 'only an existing finished assistant message in this room can be spoken' do
     room = TeamChat::Room.find_by!(slug: 'admins')
     answer = room.messages.create!(author_kind: 'assistant', status: 'done', body: 'Hello there')
