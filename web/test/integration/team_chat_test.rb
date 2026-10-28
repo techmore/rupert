@@ -1031,10 +1031,12 @@ class TeamChatTest < ActionDispatch::IntegrationTest
 
   test 'the bot key shows each bot latest test grades and the best local bot for money questions' do
     ENV['RUPERT_LOCAL_LLM_URL'] = 'http://10.0.0.7:8080/v1'
-    TeamChat::BatteryRun.create!(run_key: 'q-fin', set_name: 'finance', agent: 'qwen-4b', model: 'qwen3.5-4b', status: 'done', questions: 21, answered: 21, avg_grade: 4.52, started_at: 1.hour.ago)
-    TeamChat::BatteryRun.create!(run_key: 'q-old', set_name: 'finance', agent: 'qwen', model: 'qwen3.5-4b', status: 'done', questions: 21, answered: 21, avg_grade: 3.4, started_at: 1.day.ago)
-    TeamChat::BatteryRun.create!(run_key: 'l-fin', set_name: 'finance', agent: 'gemma', model: 'gemma-4-e4b', status: 'done', questions: 21, answered: 21, avg_grade: 3.4, started_at: 1.hour.ago)
-    TeamChat::BatteryRun.create!(run_key: 'l-gen', set_name: 'default', agent: 'gemma', model: 'gemma-4-e4b', status: 'done', questions: 21, answered: 21, avg_grade: 4.1, started_at: 1.hour.ago)
+    grades = Array.new(21) { { 'grade' => 4 } }
+    TeamChat::BatteryRun.create!(run_key: 'q-fin', set_name: 'finance', agent: 'qwen-4b', model: 'qwen3.5-4b', status: 'done', questions: 21, answered: 21, results: grades, avg_grade: 4.52, started_at: 1.hour.ago)
+    TeamChat::BatteryRun.create!(run_key: 'q-old', set_name: 'finance', agent: 'qwen', model: 'qwen3.5-4b', status: 'done', questions: 21, answered: 21, results: grades, avg_grade: 3.4, started_at: 1.day.ago)
+    TeamChat::BatteryRun.create!(run_key: 'q-incomplete', set_name: 'finance', agent: 'qwen', model: 'qwen3.5-4b', status: 'done', questions: 21, answered: 21, results: grades.first(20), avg_grade: 1.0, started_at: 1.minute.ago)
+    TeamChat::BatteryRun.create!(run_key: 'l-fin', set_name: 'finance', agent: 'gemma', model: 'gemma-4-e4b', status: 'done', questions: 21, answered: 21, results: grades, avg_grade: 3.4, started_at: 1.hour.ago)
+    TeamChat::BatteryRun.create!(run_key: 'l-gen', set_name: 'default', agent: 'gemma', model: 'gemma-4-e4b', status: 'done', questions: 21, answered: 21, results: grades, avg_grade: 4.1, started_at: 1.hour.ago)
     TeamChat::BatteryRun.create!(run_key: 'l-part', set_name: 'default (part)', agent: 'gemma', model: 'gemma-4-e4b', status: 'done', questions: 3, answered: 3, avg_grade: 1.0, started_at: 1.minute.ago)
     sign_in(@admin)
     get team_chat_path
