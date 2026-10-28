@@ -64,6 +64,21 @@ class TeamChatQuestionsTest < ActionDispatch::IntegrationTest
     assert_no_enqueued_jobs(only: TeamChat::BatteryJob) { post run_team_chat_questions_path(set: 'finance'), params: { agent: 'liquid' } }
   end
 
+  test 'combined benchmarks offer local offline modes and reject a hosted bot' do
+    TeamChat::LocalAgents.stubs(:enabled?).returns(true)
+    TeamChat::LocalAgents.stubs(:all).returns([TeamChat::LocalAgents::ALL.first])
+    get team_chat_questions_path
+    assert_select 'section[aria-label="Depth and breadth benchmarks"] option[value="depth"]', 'Depth'
+    assert_select 'section[aria-label="Depth and breadth benchmarks"] option[value="breadth"]', 'Breadth (full bank)'
+    assert_enqueued_with(job: TeamChat::BatteryJob, args: [@admin.id, 'breadth', 'qwen']) do
+      post run_team_chat_questions_path, params: { benchmark_mode: 'breadth', agent: 'qwen' }
+    end
+    assert_no_enqueued_jobs(only: TeamChat::BatteryJob) do
+      post run_team_chat_questions_path, params: { benchmark_mode: 'depth', agent: 'rupert' }
+    end
+    assert_match(/local bot/, flash[:alert])
+  end
+
   test 'only people who can use team chat open it' do
     delete logout_path
     reader = User.create!(tenant: @admin.tenant, email: 'questions-reader@example.com', name: 'Reader', role: 'reader', password: 'password123')

@@ -49,6 +49,30 @@ class TeamChatBatteryTest < ActiveSupport::TestCase
     assert_equal 'depth-offline', offline.record_set_name
   end
 
+  test 'long benchmarks remain running while results are still being saved' do
+    run = TeamChat::BatteryRun.new(status: 'running', started_at: 4.hours.ago, updated_at: Time.current)
+    assert_equal 'running', run.display_status
+    run.updated_at = 3.hours.ago
+    assert_equal 'stopped', run.display_status
+  end
+
+  test 'combined benchmark job uses the offline grader and rejects a hosted verifier' do
+    local = TeamChat::LocalAgents::ALL.first
+    TeamChat::LocalAgents.stubs(:find).with(local.handle).returns(local)
+    TeamChat::Verify.stubs(:enabled_for?).with(local).returns(false)
+    TeamChat::Battery.stubs(:items_for).with('breadth').returns([])
+    runner = mock('offline benchmark')
+    runner.expects(:already_done).returns(nil)
+    runner.expects(:run)
+    TeamChat::Battery.expects(:new).with(user: @user, agent: local.handle, items: [], set: 'breadth', out: nil,
+      grader: instance_of(TeamChat::Battery::OfflineGrader)).returns(runner)
+    TeamChat::BatteryJob.new.perform(@user.id, 'breadth', local.handle)
+
+    TeamChat::Verify.stubs(:enabled_for?).with(local).returns(true)
+    TeamChat::Battery.expects(:new).never
+    TeamChat::BatteryJob.new.perform(@user.id, 'breadth', local.handle)
+  end
+
   test 'does not grade an answer without usable reference or an authored expectation' do
     grader = FakeGrader.new([])
     battery = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: grader, items: [], out: nil)

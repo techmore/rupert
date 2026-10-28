@@ -30,7 +30,7 @@ module TeamChat
     def display_status
       return status unless status == 'running'
 
-      started_at && started_at < STALE_AFTER.ago ? 'stopped' : 'running'
+      updated_at && updated_at < STALE_AFTER.ago ? 'stopped' : 'running'
     end
 
     def label = "@#{agent.presence || 'rupert'} · #{model.presence || 'unknown model'}"
