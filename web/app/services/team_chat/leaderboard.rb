@@ -11,7 +11,7 @@ module TeamChat
     COLUMNS = MODULES.merge('cross' => 'Cross-discipline', 'honesty' => 'Honesty').freeze
     # A model needs this many graded questions to hold the trophy.
     MIN_QUESTIONS = 20
-    # A column's 🥇 needs at least this many graded questions in it.
+    # A column's 🥇 goes to its highest score, and only when at least this many graded questions are behind that score.
     MIN_COLUMN = 3
 
     Cell = Struct.new(:score, :count, :best, keyword_init: true)
@@ -26,9 +26,11 @@ module TeamChat
       leader = rows.find { |row| row.graded >= MIN_QUESTIONS }
       leader.leader = true if leader
       COLUMNS.each_key do |column|
-        eligible = rows.select { |row| row.cells[column] && row.cells[column].count >= MIN_COLUMN }
-        top = eligible.map { |row| row.cells[column].score }.max
-        eligible.each { |row| row.cells[column].best = true if row.cells[column].score == top } # ties share the medal
+        scored = rows.select { |row| row.cells[column] }
+        top = scored.map { |row| row.cells[column].score }.max
+        # The medal marks the highest score, never a lower one. It needs MIN_COLUMN questions behind it, so when the
+        # top score is on a thinner sample the column has no medal yet. Ties share it.
+        scored.each { |row| row.cells[column].best = true if row.cells[column].score == top && row.cells[column].count >= MIN_COLUMN }
       end
       rows
     end
