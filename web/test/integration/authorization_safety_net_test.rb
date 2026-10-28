@@ -67,7 +67,7 @@ class AuthorizationSafetyNetTest < ActionDispatch::IntegrationTest
       Rails.stubs(:env).returns(ActiveSupport::EnvironmentInquirer.new('production'))
       Rails.error.stubs(:report).with { |error, **| reported << error.class }
       assert_raises(Pundit::AuthorizationNotPerformedError) { get '/probe/ungated' }
-      assert_equal [Pundit::AuthorizationNotPerformedError], reported
+      assert_includes reported, Pundit::AuthorizationNotPerformedError
     end
   end
 

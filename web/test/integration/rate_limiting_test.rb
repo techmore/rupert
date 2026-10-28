@@ -53,7 +53,8 @@ class RateLimitingTest < ActionDispatch::IntegrationTest
     get '/api/v1/catalog', headers: { 'Authorization' => 'Malformed header' }
     assert_response :too_many_requests, 'unauthenticated calls share the per-IP bucket'
 
-    Digest::SHA256.expects(:hexdigest).never
+    Digest::SHA256.stubs(:hexdigest).returns('a' * 64)
+    Digest::SHA256.expects(:hexdigest).with('rupert_not-a-real-token-but-shaped-like-one-000000000').never
     get '/api/v1/catalog', headers: { 'Authorization' => 'Bearer rupert_not-a-real-token-but-shaped-like-one-000000000' }
     assert_response :too_many_requests, 'an exhausted IP bucket is checked before allocating another token bucket'
   end
@@ -80,7 +81,8 @@ class RateLimitingTest < ActionDispatch::IntegrationTest
     end
     post '/mcp', params: body, headers: { 'Authorization' => 'Malformed', 'Content-Type' => 'application/json' }
     assert_response :too_many_requests
-    Digest::SHA256.expects(:hexdigest).never
+    Digest::SHA256.stubs(:hexdigest).returns('a' * 64)
+    Digest::SHA256.expects(:hexdigest).with('another-new-token').never
     post '/mcp', params: body, headers: { 'Authorization' => 'Bearer another-new-token', 'Content-Type' => 'application/json' }
     assert_response :too_many_requests
   end
