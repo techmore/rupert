@@ -111,8 +111,8 @@ questions:
     module: bookkeeping
     question: Are last month's books closed? What is still open?
     expect: Says whether last month is locked (closed) and lists the open close-checklist items.
-    checks: [compliance_check]
-    needs: ["compliance_check:items[].title", "compliance_check:items[].status"]
+    checks: [{ tool: compliance_check, args: { include_ok: true }, select_area: Month close, required_title_suffix: ': Lock the month' }]
+    needs: ["compliance_check:required_row.title", "compliance_check:required_row.status", "compliance_check:required_row.detail", "compliance_check:items[].title", "compliance_check:items[].status"]
   - id: f18
     cadence: books
     module: bookkeeping

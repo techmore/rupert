@@ -110,6 +110,21 @@ class TeamChatBatteryCoverageTest < ActiveSupport::TestCase
     refute coverage.need_present?(coverage.reference_data(data, check.merge('select_title' => 'Missing')), 'items[title=Missing].status')
   end
 
+  test 'close references require exactly one lock row in the selected area' do
+    coverage = TeamChat::BatteryCoverage.new(user: @user, items: [])
+    check = { 'tool' => 'compliance_check', 'select_area' => 'Month close', 'required_title_suffix' => ': Lock the month' }
+    other = { area: 'Month close', title: 'September 2026: Save report', status: 'watch', detail: 'Open' }
+    lock = { area: 'Month close', title: 'September 2026: Lock the month', status: 'ok', detail: 'Locked' }
+    unrelated = { area: 'Quarter close', title: 'Q3 2026: Lock the quarter', status: 'ok', detail: 'Locked' }
+    missing = coverage.reference_data({ items: [other, unrelated] }, check)
+    refute coverage.need_present?(missing, 'required_row.detail')
+    data = coverage.reference_data({ items: [other, lock, unrelated] }, check)
+    assert coverage.need_present?(data, 'required_row.detail')
+    assert_equal [other, lock], data[:items]
+    duplicate = coverage.reference_data({ items: [other, lock, lock] }, check)
+    refute coverage.need_present?(duplicate, 'required_row.detail')
+  end
+
   test 'an unavailable check is an error' do
     FakeTool.tool_name = 'fixture_read'
     FakeTool.available = false
