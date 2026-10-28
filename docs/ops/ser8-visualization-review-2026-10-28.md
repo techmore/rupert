@@ -26,3 +26,7 @@ A four-question synthetic replay on server commit `7a93d896` produced one side-p
 ## Source fallback replay
 
 A subsequent four-question replay on `bc2454d4` delivered two views: a source-sales bar chart and the alert table. The sales chart showed the recorded synthetic Rupert POS amount of 40.00 USD and Shopify amount of 72.00 USD with the correct week and source labels. The daily trend and prior-month comparison still had no view. This improves the source-chart case in this run; it does not establish general chart reliability. A later daily-series handoff and fallback are covered by focused tests and await a separate live replay.
+
+## Daily-series replay
+
+On `d214673d`, the four-question replay again produced the source chart and alert table; neither the daily trend nor month comparison produced a view. For the trend request, the model did not call the daily sales lookup, so the tested fallback had no series to use. The subsequent `8b33ada5` change adds a bounded authorized lookup for explicit supported trend-chart requests, then checks a complete date-by-currency series before constructing a view. It passed focused tests and is queued for live replay. Missing days remain blank; no source data are invented.
