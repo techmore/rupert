@@ -227,6 +227,19 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert JSON.parse(result['result'].partition("\n").last)['omitted']
   end
 
+  test 'compliance-only answers retain status and omissions instead of model claims' do
+    items = 25.times.map { |i| { title: "Close item #{i}", area: 'Books', status: 'watch', detail: 'review required' } }
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'many items', data: { items: items }))
+    script_model({ tool: 'compliance_check', arguments: {} }, { text: 'Everything is complete and nothing was omitted.' })
+    reply = ask('@rupert what books checks need attention?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Close item 0 (Books; watch)'
+    assert_includes reply.body, 'Additional compliance items were omitted'
+    assert_not_includes reply.body, 'Everything is complete'
+  end
+
   test 'business pulse keeps operational sections in the final answer' do
     script_model({ tool: 'business_pulse', arguments: {} }, { text: 'Nothing is waiting.' })
     reply = ask('@rupert give me a business health check today')

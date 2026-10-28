@@ -436,7 +436,7 @@ module TeamChat
         else
           body = checked || FinancialEvidence.render(@toolbox.financial_evidence)
         end
-      elsif malformed_tool_text || InventoryEvidence.uncertain?(@toolbox.inventory_results)
+      elsif malformed_tool_text || InventoryEvidence.uncertain?(@toolbox.inventory_results) || compliance_only_tool_mix?
         # A model may emit tool-call markup as ordinary text after tool choice
         # is disabled. Never display it as an answer or execute it as a call.
         task = TaskEvidence.render(@execution.run.reload.tool_results)
@@ -519,6 +519,13 @@ module TeamChat
 
       entries[last] = entries[last].merge(content: "#{context_note}\n\n#{entries[last][:content]}")
       entries
+    end
+
+    # Compliance statuses are structured facts, not conclusions that can be
+    # safely inferred from the presence of matching numbers in a draft.
+    def compliance_only_tool_mix?
+      names = @toolbox.tools_used
+      names.include?('compliance_check') && (names - %w[compliance_check list_tasks inventory_search sync_health]).empty?
     end
 
     # What the bot was given: its tool results and the conversation it saw.
