@@ -25,6 +25,11 @@ class TeamChatViewsTest < ActiveSupport::TestCase
     assert_equal 1, view['unchecked']
   end
 
+  test 'opposite signs are not treated as matching figures' do
+    view = build({ title: 'Change', kind: 'bar_chart', columns: %w[Day Change], rows: [['Mon', 5], ['Tue', -5]] }, '{"change":-5}')
+    assert_equal 1, view['unchecked']
+  end
+
   test 'html is cleaned of scripts, styles, links and outside images' do
     view = build({ title: 'Note', kind: 'html', html: '<h2>Close</h2><script>alert(1)</script><style>body{}</style><img src="https://x.test/p.gif"><a href="https://x.test">x</a><table><tr><td colspan="2" onclick="go()">ok</td></tr></table>' })
     html = view['html']
