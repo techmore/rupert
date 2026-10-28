@@ -93,10 +93,14 @@ module Mcp
         out[:refunds] = Core::Refund.joins(:order).where(refunded_at: window).group('orders.currency')
                                     .pluck(Arel.sql('orders.currency'), Arel.sql('COUNT(*)'), Arel.sql('SUM(refunds.amount_cents)'))
                                     .map { |currency, count, cents| { currency: currency, refunds: count, amount_cents: cents.to_i } }
-        out[:top_products] = Core::OrderLine.where(order_id: orders.select(:id)).group(:name)
-                                            .pluck(:name, Arel.sql('SUM(line_cents)'), Arel.sql('SUM(quantity)'))
-                                            .sort_by { |row| -row[1].to_i }.first(5)
-                                            .map { |name, cents, units| { name: name, revenue_cents: cents.to_i, units: units.to_i } }
+        rows = Core::OrderLine.where(order_id: orders.select(:id)).joins(:order).group('orders.currency', 'order_lines.name')
+                              .pluck(Arel.sql('orders.currency'), Arel.sql('order_lines.name'), Arel.sql('SUM(order_lines.line_cents)'),
+                                Arel.sql('SUM(order_lines.quantity)'))
+        out[:top_products] = rows.group_by(&:first).sort_by { |currency, _| currency.to_s }.flat_map do |currency, products|
+          products.sort_by { |_, name, cents, _| [-cents.to_i, name.to_s] }.first(5).map do |_, name, cents, units|
+            { currency: currency, name: name, revenue_cents: cents.to_i, units: units.to_i }
+          end
+        end
         out[:separate] = separate(from, to)
         out
       end

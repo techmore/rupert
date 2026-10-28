@@ -57,6 +57,17 @@ class BusinessReviewToolsTest < ActiveSupport::TestCase
     assert_raises(Mcp::ToolError) { call('period_review', { 'from' => '2026-10-10', 'to' => '2026-10-01' }) }
   end
 
+  test 'period review ranks product revenue within each currency' do
+    usd = order(at: 1.day.ago, cents: 1000, number: 'usd')
+    cad = order(at: 1.day.ago, cents: 2000, number: 'cad')
+    cad.update!(currency: 'CAD')
+
+    products = call('period_review', { 'period' => 'yesterday' }).data[:top_products]
+    assert_equal [['CAD', 'Tea 50g', 2000], ['USD', 'Tea 50g', 1000]],
+      products.map { |row| row.values_at(:currency, :name, :revenue_cents) }
+    assert_equal 'USD', usd.reload.currency
+  end
+
   test 'order_queues lists unshipped paid orders, the oldest first, and what is late' do
     late = order(at: 3.days.ago, cents: 2500, number: 'late')
     order(at: 2.hours.ago, cents: 1500, number: 'fresh')
