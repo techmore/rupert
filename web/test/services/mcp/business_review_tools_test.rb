@@ -84,6 +84,22 @@ class BusinessReviewToolsTest < ActiveSupport::TestCase
     end
   end
 
+  test 'sales summary keeps daily and product amounts separate by currency' do
+    date = 1.day.ago
+    usd = order(at: date, cents: 1000, number: 'sales-usd')
+    cad = order(at: date, cents: 2000, number: 'sales-cad')
+    cad.update!(currency: 'CAD')
+    outcome = call('sales_summary', { 'from' => date.to_date.iso8601, 'to' => date.to_date.iso8601, 'include_daily' => true })
+
+    assert_equal [['CAD', 2000], ['USD', 1000]], outcome.data[:daily].map { |row| row.values_at(:currency, :gross_cents) }
+    assert_equal [['CAD', 2000], ['USD', 1000]], outcome.data[:top_products].map { |row| row.values_at(:currency, :revenue_cents) }
+
+    usd.update_columns(gross_cents: nil)
+    outcome = call('sales_summary', { 'from' => date.to_date.iso8601, 'to' => date.to_date.iso8601, 'include_daily' => true })
+    assert_nil outcome.data[:daily].find { |row| row[:currency] == 'USD' }[:gross_cents]
+    assert_equal 2000, outcome.data[:daily].find { |row| row[:currency] == 'CAD' }[:gross_cents]
+  end
+
   test 'order_queues lists unshipped paid orders, the oldest first, and what is late' do
     late = order(at: 3.days.ago, cents: 2500, number: 'late')
     order(at: 2.hours.ago, cents: 1500, number: 'fresh')

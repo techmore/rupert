@@ -10,7 +10,7 @@ module Mcp
         title: 'Sales summary',
         description: 'Orders and gross sales from Rupert\'s canonical order store (Shopify, Square, Rupert POS and manual ' \
                      'sales) for a date range, one line per source and currency, plus a per-currency total, refunded ' \
-                     'order counts, optional daily series and top products joined to separate stock observations per ' \
+                     'order counts, optional daily series per currency and top products ranked within each currency, joined to separate stock observations per ' \
                      'platform/location when inventory access is allowed, with open alert IDs when alert access is allowed. ' \
                      'C-Trax and SwipeSimple snapshots are NOT ' \
                      'included (use sales_tax_report for those). Amounts are integer cents. Defaults to the last 30 days. Read-only.',
@@ -23,7 +23,7 @@ module Mcp
           to: DATE_PROPERTY.merge(description: 'Last day (inclusive), YYYY-MM-DD. Default: today.'),
           source: { type: 'string', enum: SOURCES, description: 'Only this order source.' },
           include_daily: { type: 'boolean', description: 'Add a per-day series (ranges up to 92 days). Default false.' },
-          top_products: { type: 'integer', minimum: 0, maximum: 25, description: 'How many top products by revenue to include. Default 10.' }
+          top_products: { type: 'integer', minimum: 0, maximum: 25, description: 'How many top products by revenue to include per currency. Default 10.' }
         },
         additionalProperties: false
       )
@@ -70,24 +70,32 @@ module Mcp
         raise ToolError.new('include_daily works for ranges of 92 days or fewer.', kind: 'invalid_arguments') if (to - from).to_i >= 92
 
         counts = Hash.new { |hash, key| hash[key] = { orders: 0, gross_cents: 0 } }
-        scope.pluck(:occurred_at, :gross_cents).each do |at, gross|
-          day = counts[at.in_time_zone.to_date.iso8601]
+        scope.pluck(:occurred_at, :currency, :gross_cents).each do |at, currency, gross|
+          day = counts[[at.in_time_zone.to_date.iso8601, currency]]
           day[:orders] += 1
-          day[:gross_cents] += gross.to_i
+          day[:gross_cents] = gross.nil? || day[:gross_cents].nil? ? nil : day[:gross_cents] + gross
         end
-        (from..to).map { |date| { date: date.iso8601 }.merge(counts.fetch(date.iso8601, { orders: 0, gross_cents: 0 })) }
+        currencies = counts.keys.map(&:last).uniq.sort_by(&:to_s)
+        (from..to).flat_map do |date|
+          currencies.map do |currency|
+            { date: date.iso8601, currency: currency }.merge(counts.fetch([date.iso8601, currency], { orders: 0, gross_cents: 0 }))
+          end
+        end
       end
 
       def top_products(window, source, limit)
         orders = Core::Order.where(occurred_at: window, status: COUNTED, source: source || SOURCES).select(:id)
-        rows = Core::OrderLine.where(order_id: orders).group(:name, :sku)
-          .pluck(:name, :sku, Arel.sql('SUM(line_cents)'), Arel.sql('SUM(quantity)'), Arel.sql('COUNT(DISTINCT order_id)'))
-          .sort_by { |row| -row[2].to_i }.first(limit)
+        rows = Core::OrderLine.where(order_id: orders).joins(:order).group('orders.currency', 'order_lines.name', 'order_lines.sku')
+          .pluck(Arel.sql('orders.currency'), Arel.sql('order_lines.name'), Arel.sql('order_lines.sku'),
+            Arel.sql('SUM(order_lines.line_cents)'), Arel.sql('SUM(order_lines.quantity)'), Arel.sql('COUNT(DISTINCT order_lines.order_id)'))
+          .group_by(&:first).sort_by { |currency, _| currency.to_s }.flat_map do |_, products|
+            products.sort_by { |_, name, sku, cents, *| [-cents.to_i, name.to_s, sku.to_s] }.first(limit)
+          end
         inventory_allowed = user.can?('inventory.read')
         alerts_allowed = user.can?('alerts.read')
-        stock = inventory_allowed ? StockEnrichment.for_skus(rows.map { |row| row[1] }, include_alerts: alerts_allowed) : {}
-        rows.map do |name, sku, line_cents, units, order_count|
-          { name: name, sku: sku, revenue_cents: line_cents.to_i, units: units.to_i, orders: order_count,
+        stock = inventory_allowed ? StockEnrichment.for_skus(rows.map { |row| row[2] }, include_alerts: alerts_allowed) : {}
+        rows.map do |currency, name, sku, line_cents, units, order_count|
+          { currency: currency, name: name, sku: sku, revenue_cents: line_cents.to_i, units: units.to_i, orders: order_count,
             stock: stock.fetch(sku, { available: inventory_allowed, observations: [], low: nil, alerts_available: alerts_allowed }) }
         end
       end
