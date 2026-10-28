@@ -434,6 +434,18 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_equal 'percent', item['facts'].sole['unit']
   end
 
+  test 'refund metric retains transaction amount count and refund-date scope' do
+    payload = data(12.5).merge(metric: 'refund_rate', values: [{ value: 12.5, currency: 'USD', refunded_cents: 1250, refunds: 2 }])
+    item = evidence(payload, args: { name: 'refund_rate', period: 'today', source: 'shopify' })
+    text = render(item)
+    assert_includes text, 'Recorded refund transaction amount: 12.50 USD'
+    assert_includes text, 'Recorded refund transaction count: 2 (USD group)'
+    assert_includes text, 'counted by refund date'
+    assert_includes text, 'sales may be from an earlier period'
+    payload[:values][0][:refunded_cents] = nil
+    assert_includes render(evidence(payload, args: { name: 'refund_rate', period: 'today', source: 'shopify' })), 'unknown is not zero'
+  end
+
   test 'comparison values retain their own period and relative changes name the baseline' do
     payload = data.merge(compared_with: { from: (Date.current - 1).iso8601, to: (Date.current - 1).iso8601, values: [{ value: 21483, currency: 'USD' }] }, change: [{ change_percent: 0, currency: 'USD' }])
     facts = evidence(payload)['facts']

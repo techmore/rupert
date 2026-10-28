@@ -291,6 +291,13 @@ module TeamChat
     def metric_rows(out, rows, name, source, period, path)
       meaning, unit = MEANINGS.fetch(name)
       Array(rows).each_with_index do |row, index|
+        if name == 'refund_rate'
+          add(out, row['value'], unit, row['currency'], source, period, meaning, "#{path}.#{index}.value")
+          add(out, row['refunded_cents'], 'money', row['currency'], source, period, 'Recorded refund transaction amount', "#{path}.#{index}.refunded_cents") if row.key?('refunded_cents')
+          add(out, row['refunds'], 'count', row['currency'], source, period, 'Recorded refund transaction count', "#{path}.#{index}.refunds") if row.key?('refunds')
+          out['gaps'] << 'Refund transactions are counted by refund date; the associated sales may be from an earlier period.'
+          next
+        end
         if name == 'expenses_by_category'
           add(out, row['value'], unit, row['currency'], source, period, meaning, "#{path}.#{index}.value")
           Array(row['categories']).each_with_index do |category, category_index|
