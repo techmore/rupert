@@ -193,7 +193,11 @@ module TeamChat
       end
       out['gaps'] << 'No complete financial facts were returned; missing data does not prove zero.' if out['facts'].empty?
       out['gaps'].uniq!
-      while (JSON.generate(out).length > 5_500 || out['facts'].size > 12) && out['facts'].any?
+      if out['facts'].size > 12
+        out['facts'] = out['facts'].first(12)
+        out['gaps'] |= ['Some facts were omitted to fit the response budget. Narrow the question for remaining figures.']
+      end
+      while JSON.generate(out).length > 5_500 && out['facts'].any?
         out['facts'].pop
         out['gaps'] |= ['Some facts were omitted to fit the response budget. Narrow the question for remaining figures.']
       end
