@@ -97,7 +97,8 @@ module TeamChat
           add(out, row['gross_cents'], 'money', row['currency'], order_source(args['source']), period,
             'Gross sales total (paid or fulfilled orders)', "totals_by_currency.#{index}.gross_cents")
         end
-        out['gaps'] << 'Daily and product breakdowns are not certified by this contract.' if data['daily'].present? || data['top_products'].present?
+        out['daily'] = daily_evidence(data['daily'], period, order_source(args['source'])) if args['include_daily'] == true
+        out['gaps'] << 'Product breakdowns are not certified by this contract.' if data['top_products'].present?
       when 'period_review'
         period = window(data, args['from'], args['to'])
         if args['from'].blank? && args['to'].blank?
@@ -212,6 +213,23 @@ module TeamChat
     rescue ArgumentError, KeyError, TypeError, Date::Error
       { 'version' => VERSION, 'tool' => tool, 'tenant_id' => tenant_id, 'invocation' => invocation, 'facts' => [],
         'gaps' => ['Financial evidence has incomplete or inconsistent source, period, currency or meaning; no figures can be certified.'] }
+    end
+
+    def daily_evidence(rows, period, source)
+      raise ArgumentError unless rows.is_a?(Array)
+
+      checked = rows.map do |row|
+        date = Date.iso8601(row.fetch('date'))
+        raise ArgumentError unless date.between?(Date.iso8601(period['from']), Date.iso8601(period['to']))
+        raise ArgumentError unless CURRENCIES.include?(row['currency']) && row['orders'].is_a?(Integer) && row['orders'] >= 0
+        raise ArgumentError unless row['gross_cents'].nil? || row['gross_cents'].is_a?(Integer)
+        raise ArgumentError if row['orders'].zero? && row['gross_cents'].present? && row['gross_cents'] != 0
+
+        row.slice('date', 'currency', 'orders', 'gross_cents')
+      end
+      daily = { 'period' => period, 'source' => source, 'rows' => checked.first(20), 'omitted' => checked.size > 20 }
+      daily['id'] = Digest::SHA256.hexdigest(JSON.generate(daily)).first(16)
+      daily
     end
 
     def window(data, expected_from = nil, expected_to = nil)
@@ -350,6 +368,11 @@ module TeamChat
         return unless data['tool'] == 'business_pulse' && context.is_a?(Hash) &&
           context['id'] == Digest::SHA256.hexdigest(JSON.generate(context.except('id'))).first(16)
       end
+      if data['daily']
+        context = data['daily']
+        return unless data['tool'] == 'sales_summary' && context.is_a?(Hash) &&
+          context['id'] == Digest::SHA256.hexdigest(JSON.generate(context.except('id'))).first(16)
+      end
 
       data
     rescue JSON::ParserError, TypeError
@@ -373,7 +396,7 @@ module TeamChat
     def checked_prose(text, evidence, today: Date.current)
       # Hours need their own semantic validation; render them deterministically
       # instead of accepting unchecked prose next to certified financial facts.
-      return nil if evidence.any? { |item| item['timekeeping'] || item['pulse'] }
+      return nil if evidence.any? { |item| item['timekeeping'] || item['pulse'] || item['daily'] }
       return nil if evidence.any? { |item| item['gaps'].any? { |gap| gap.start_with?('Highest recorded source sales') } }
 
       facts = evidence.flat_map { |item| item['facts'] }
@@ -498,6 +521,25 @@ module TeamChat
         else
           lines << '  - Waiting queues: unavailable.'
         end
+      end
+      evidence.filter_map { |item| item['daily'] }.uniq.each do |daily|
+        lines << "- Daily sales (#{daily['source']}; #{daily.dig('period', 'from')} to #{daily.dig('period', 'to')}):"
+        lines << '  - No daily sales rows were returned.' if daily['rows'].empty?
+        daily['rows'].each do |row|
+          if row['orders'].zero?
+            lines << "  - #{row['date']} (#{row['currency']}): no paid or fulfilled orders stored."
+          else
+            amount = if row['gross_cents'].nil?
+              "#{row['currency']} gross unavailable"
+            else
+              whole, fraction = (BigDecimal(row['gross_cents'].to_s) / 100).to_s('F').split('.')
+              "#{whole}.#{fraction.to_s.ljust(2, '0')} #{row['currency']} gross"
+            end
+            lines << "  - #{row['date']}: #{amount}; #{row['orders']} recorded orders."
+          end
+        end
+        lines << '  - Additional daily rows were omitted; narrow the date range.' if daily['omitted']
+        lines << '  - Missing stored orders do not prove there were no sales.'
       end
       lines.unshift('From Rupert’s records:') if lines.any?
       gaps = evidence.flat_map { |item| item['gaps'] }.uniq

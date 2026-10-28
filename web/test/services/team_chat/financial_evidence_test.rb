@@ -56,6 +56,35 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_not_includes text, 'Store gross sales'
   end
 
+  test 'daily sales preserve dates currencies unknowns and missing-order caveat' do
+    yesterday = (Date.current - 1).iso8601
+    today = Date.current.iso8601
+    payload = { from: yesterday, to: today, lines: [], totals_by_currency: [], daily: [
+      { date: yesterday, currency: 'USD', orders: 1, gross_cents: 900719925474099301 },
+      { date: yesterday, currency: 'CAD', orders: 1, gross_cents: nil },
+      { date: today, currency: 'USD', orders: 0, gross_cents: 0 }
+    ] }
+    item = evidence(payload, tool: 'sales_summary', args: { from: yesterday, to: today, include_daily: true })
+    text = render(item)
+    assert_includes text, "#{yesterday}: 9007199254740993.01 USD gross"
+    assert_includes text, "#{yesterday}: CAD gross unavailable"
+    assert_includes text, "#{today} (USD): no paid or fulfilled orders stored"
+    assert_includes text, 'Missing stored orders do not prove there were no sales'
+    assert TeamChat::FinancialEvidence.decode(JSON.generate(item), @user.tenant_id, tool: 'sales_summary')
+    assert_nil prose('Sales were $0.00 today.', item)
+    payload[:daily].last[:gross_cents] = 100
+    assert_nil evidence(payload, tool: 'sales_summary', args: { from: yesterday, to: today, include_daily: true })['daily']
+  end
+
+  test 'long daily sales results disclose omitted rows' do
+    from = Date.current - 20
+    rows = (0..20).map { |i| { date: (from + i).iso8601, currency: 'USD', orders: 0, gross_cents: 0 } }
+    args = { from: from.iso8601, to: Date.current.iso8601, include_daily: true }
+    item = evidence(args.slice(:from, :to).merge(lines: [], totals_by_currency: [], daily: rows), tool: 'sales_summary', args: args)
+    assert_equal 20, item['daily']['rows'].size
+    assert_includes render(item), 'Additional daily rows were omitted'
+  end
+
   test 'oversized daily close notes terminate with a bounded honest gap' do
     stores = 40.times.map do |i|
       { store: "Store #{i}", currency: 'USD', gross_cents: 100, notes: ["#{i}: #{'x' * 220}"] }

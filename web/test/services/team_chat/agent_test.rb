@@ -117,6 +117,22 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_includes reply.body, 'hours worked'
   end
 
+  test 'daily sales requested through the tool remain in the final answer' do
+    yesterday = (Date.current - 1).iso8601
+    today = Date.current.iso8601
+    Core::Order.create!(source: 'shopify', source_order_id: 'chat-daily-series', occurred_at: 1.day.ago.change(hour: 12),
+      gross_cents: 21483, currency: 'USD').mark_paid!
+    script_model({ tool: 'sales_summary', arguments: { from: yesterday, to: today, include_daily: true } },
+      { text: 'Here are the sales.' })
+    reply = ask('@rupert show daily sales for yesterday and today')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, "#{yesterday}: 214.83 USD gross"
+    assert_includes reply.body, "#{today} (USD): no paid or fulfilled orders stored"
+    assert_includes reply.body, 'Missing stored orders do not prove there were no sales'
+  end
+
   test 'financial drafts are replaced with typed source period currency and meaning' do
     order = Core::Order.create!(source: 'shopify', source_order_id: 'nc-1', occurred_at: 1.day.ago.change(hour: 12), gross_cents: 21_483, tax_cents: 0, currency: 'USD')
     order.mark_paid!
