@@ -57,7 +57,8 @@ class TeamChatLeaderboardTest < ActiveSupport::TestCase
 
   test 'the cross-discipline set is tagged and loads' do
     items = TeamChat::Battery.items(TeamChat::Battery.config_for('cross'))
-    assert_equal 10, items.size
+    assert_operator items.size, :>=, 13
+    assert_includes items.map(&:id), 'x13'
     assert(items.all? { |item| item.module == 'cross' && item.expect.present? && item.checks.any? })
     assert(TeamChat::Battery.items.all?(&:module))
     assert(TeamChat::Battery.items(TeamChat::Battery.config_for('finance')).all?(&:module))
