@@ -1,0 +1,9 @@
+# LFM3 Text tax prompt experiment
+
+In the synthetic finance run, LFM3 Text averaged 1.0/5 on four tax questions while Qwen 3.5 4B averaged 3.5/5. LFM3 Text failed three of those four answers. This small, DeepSeek-graded tuning set identifies a useful target, not an independent measure of general assistant quality.
+
+`web/script/team_chat_liquid_prompt_experiment.rb` appends tax-specific tool guidance to the existing system prompt in the isolated fixture runner. It keeps the existing permissions, proposal approvals and evidence rules. The experiment is restricted to the LFM3 Text finance fixture and must not be loaded by production chat. Its rubric and encrypted cohort stay unchanged so the answers can be paired with the original run.
+
+Test two separately labeled conditions: the prompt with the original interface, and the same prompt with the increased tool-step budget. Repeat each three times on `f15`, `f16`, `f31` and `f32`, using the same model file, Vulkan settings, synthetic database and 120-second answer deadline. Record each answer, tool trace, grade, failure and answer latency locally. Compare each condition with the original LFM3 and Qwen answers on the same questions; distinguish prompt effects from the budget change. A single Qwen baseline and repeated Liquid outputs do not establish statistical significance.
+
+The four questions are used for tuning. Before claiming a general win, freeze the chosen configuration and evaluate separately on held-out questions across tax and other tasks, with paired denominators, latency distribution, human review of a stratified sample, and a judge independent of the competing models. Audio and image ability require separate tests. Keep the synthetic fixture, encrypted cohort and outputs private and local.
