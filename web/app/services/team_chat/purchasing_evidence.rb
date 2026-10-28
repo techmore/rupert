@@ -33,7 +33,22 @@ module TeamChat
         result['currency'] = row['currency']
         %w[total_cents due_cents].each { |key| result[key] = row[key] if row[key].is_a?(Integer) }
       end
-      result['lines_omitted'] = row['line_count'].is_a?(Integer) && row['line_count'].positive?
+      items = row['lines'].is_a?(Array) ? row['lines'].first(2).filter_map { |line| order_line(line) } : []
+      result['lines'] = items
+      result['lines_omitted'] = (row['line_count'].is_a?(Integer) && row['line_count'] > items.size) ||
+                                (row['lines'].is_a?(Array) && row['lines'].size > items.size)
+      result
+    end
+
+    def order_line(line)
+      return unless line.is_a?(Hash)
+
+      result = { 'name' => label(line['name'].presence || 'Unnamed item').first(60) }
+      result['sku'] = label(line['sku']).first(60) if line['sku'].present?
+      %w[quantity received_quantity].each do |key|
+        value = line[key]
+        result[key] = value if value.is_a?(Numeric) && value.finite? && value >= 0
+      end
       result
     end
 
@@ -50,8 +65,15 @@ module TeamChat
           whole, fraction = (BigDecimal(row[key].to_s) / 100).to_s('F').split('.')
           line += "; #{key == 'total_cents' ? 'order total' : 'still due'} #{whole}.#{fraction.to_s.ljust(2, '0')} #{row['currency']}"
         end
-        line += '; line items omitted' if row['lines_omitted']
         lines << "#{line}."
+        Array(row['lines']).each do |item|
+          detail = "  - #{item['name']}"
+          detail += " (SKU #{item['sku']})" if item['sku'].present?
+          detail += "; #{item['quantity']} ordered" if item.key?('quantity')
+          detail += "; #{item['received_quantity']} received" if item.key?('received_quantity')
+          lines << "#{detail}."
+        end
+        lines << '  - Additional line items were omitted or unavailable.' if row['lines_omitted']
       end
       lines << 'More orders may be available; narrow the filters or inspect the next page.' if context['more']
       lines.join("\n")

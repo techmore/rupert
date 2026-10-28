@@ -88,14 +88,17 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
   test 'purchase-order evidence preserves filters and separate order amounts' do
     payload = { view: 'orders', meta: { has_more: false }, rows: [
       { order_number: 'PO-10', vendor: 'Tea supplier', status: 'ordered', expected_date: '2026-10-31',
-        currency: 'USD', total_cents: 1200, due_cents: 300, line_count: 2 }
+        currency: 'USD', total_cents: 1200, due_cents: 300, line_count: 3,
+        lines: [{ name: 'Tea', sku: 'TEA', quantity: 3, received_quantity: 1 },
+                { name: 'Mint', quantity: 2, received_quantity: 0 }, { name: 'Jar', quantity: 1, received_quantity: 0 }] }
     ] }
     item = evidence(payload, tool: 'purchase_orders', args: { status: 'open' })
     text = render(item)
     assert_includes text, 'Purchase orders (status: open)'
     assert_includes text, 'PO-10 — Tea supplier (ordered)'
     assert_includes text, 'order total 12.00 USD; still due 3.00 USD'
-    assert_includes text, 'line items omitted'
+    assert_includes text, 'Tea (SKU TEA); 3 ordered; 1 received'
+    assert_includes text, 'Additional line items were omitted or unavailable'
     assert TeamChat::FinancialEvidence.decode(JSON.generate(item), @user.tenant_id, tool: 'purchase_orders')
     assert_nil prose('Every order has arrived.', item)
     payload[:rows].first[:status] = 'received'
