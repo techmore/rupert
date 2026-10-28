@@ -98,6 +98,7 @@ class TeamChatFinancialViewEvidenceTest < ActiveSupport::TestCase
       assert_nil TeamChat::FinancialViewEvidence.comparison_periods_for("Chart last month's gross sales against the month before for Shopify.")
       assert_nil TeamChat::FinancialViewEvidence.comparison_periods_for("Chart last month's gross sales against the month before in USD.")
       assert_nil TeamChat::FinancialViewEvidence.comparison_periods_for("Chart last month's gross sales and expenses against the month before.")
+      assert_nil TeamChat::FinancialViewEvidence.comparison_periods_for("Chart last month's gross sales for tea against the month before.")
     end
   end
 

@@ -21,6 +21,7 @@ module TeamChat
       return if text.match?(/\b(?:net|refunds?|tax(?:es)?|profits?|margins?|expenses?|costs?|cash|payments?|income|except|exclude|only|shopify|square|manual|ctrax|swipesimple|products?|locations?|stores?)\b/)
       return if text.match?(/\b(?:usd|cad|eur|gbp|aud|nzd|chf|cny|hkd|sgd|mxn|brl|zar|inr|also|plus)\b|\bby\s+(?:source|channel)\b/)
       return if text.match?(/\brupert[ _-]?pos\b|\b\d{4}-\d{2}-\d{2}\b/)
+      return if extra_sales_filter?(text)
 
       current = Metrics::Window.resolve(period: 'last_month')
       [current.previous, current].map { |window| { 'from' => window.from.iso8601, 'to' => window.to.iso8601 } }
