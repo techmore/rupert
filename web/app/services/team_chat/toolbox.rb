@@ -84,6 +84,7 @@ module TeamChat
       original_arguments = arguments.is_a?(Hash) ? arguments.deep_stringify_keys : {}
       arguments = original_arguments
       arguments = complete_daily_arguments(name, arguments)
+      arguments = complete_tax_source_arguments(name, arguments)
       arguments = complete_vendor_payment_arguments(name, arguments)
       arguments = complete_exact_vendor_filter(name, arguments)
       return call_once(name, arguments) unless @execution
@@ -152,6 +153,19 @@ module TeamChat
       args = arguments.deep_stringify_keys
       args['include_daily'] = true unless args.key?('include_daily')
       args
+    end
+
+    # A missing filter can otherwise turn a source-specific tax question into
+    # an unrelated aggregate. Do not infer one for comparisons or exclusions.
+    def complete_tax_source_arguments(name, arguments)
+      return arguments unless name.to_s == 'metric' && arguments['name'] == 'tax_collected' && arguments['source'].blank?
+      return arguments if @question.match?(/["“”‘’]/) || @question.match?(/\b(?:all|both|every|compare|comparison|versus|vs|except|excluding|exclude|without|not)\b/i)
+
+      sources = @question.scan(/\b(?:shopify|square|rupert[ _]pos|manual|ctrax|swipesimple)\b/i).map(&:downcase).uniq
+      match = @question.match(/\b(?:on|from|for)\s+(?:the\s+)?(shopify|square)\s+(?:orders|sales)\b/i)
+      return arguments unless match && sources == [match[1].downcase]
+
+      arguments.merge('source' => match[1].downcase)
     end
 
     # A named vendor value/payment question needs the vendor view, not an

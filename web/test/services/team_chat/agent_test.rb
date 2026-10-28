@@ -148,6 +148,33 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_not args.key?('include_daily')
   end
 
+  test 'source-specific tax completes a missing metric filter and retains the original request' do
+    script_model({ tool: 'metric', arguments: { name: 'tax_collected', period: 'last_month' } }, { text: 'Here is the recorded tax.' })
+    reply = ask('@rupert tax collected on Shopify orders last month')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    result = TeamChat::Run.find_by!(message_id: reply.id).tool_results.find { |entry| entry['name'] == 'metric' }
+    assert_equal 'shopify', result.dig('arguments', 'source')
+    assert_not result.fetch('original_arguments').key?('source')
+    assert_not_includes reply.reload.body, 'square canonical orders'
+  end
+
+  test 'tax source completion leaves comparisons, exclusions and explicit filters alone' do
+    cases = [
+      ['@rupert compare tax on Shopify orders with Square sales', { name: 'tax_collected' }],
+      ['@rupert tax on Shopify orders excluding Shopify', { name: 'tax_collected' }],
+      ['@rupert tax on Shopify orders', { name: 'tax_collected', source: 'square' }]
+    ]
+    cases.each do |question, arguments|
+      script_model({ tool: 'metric', arguments: arguments }, { text: 'Here is the recorded tax.' })
+      reply = ask(question)
+      TeamChat::Agent.new(reply, config: team_chat_config).run
+      result = TeamChat::Run.find_by!(message_id: reply.id).tool_results.find { |entry| entry['name'] == 'metric' }
+      assert_equal arguments.stringify_keys, result['arguments']
+    end
+  end
+
   test 'empty open purchase order lookup survives the financial guard' do
     data = { view: 'orders', rows: [], meta: { has_more: false }, totals: [{ placed_total_cents: 0 }] }
     Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'No purchase orders', data: data))
