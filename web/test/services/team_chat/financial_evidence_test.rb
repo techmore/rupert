@@ -194,6 +194,26 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_includes render(explicit), '12.34 USD'
   end
 
+  test 'empty explicit comparison keeps both period gaps without implying zero' do
+    same_day = Date.current.prev_year.iso8601
+    payload = data.merge(values: [], compared_with: { from: same_day, to: same_day, values: [] })
+    item = evidence(payload, args: { name: 'gross_sales', period: 'today', source: 'shopify', compare: 'last_year' })
+    text = render(item)
+
+    assert_includes text, 'No metric rows were returned for the requested period'
+    assert_includes text, 'No metric rows were returned for the comparison period'
+    assert_includes text, Date.current.iso8601
+    assert_includes text, same_day
+    assert_includes text, 'Missing rows do not prove zero'
+    assert_not_includes text, 'implicit prior-period comparison is omitted'
+  end
+
+  test 'empty metric without a comparison still identifies the requested period' do
+    item = evidence(data.merge(values: []), args: { name: 'gross_sales', period: 'today', source: 'shopify', compare: 'none' })
+    assert_includes render(item), 'No metric rows were returned for the requested period'
+    assert_not_includes render(item), 'implicit prior-period comparison is omitted'
+  end
+
   test 'expense categories preserve amounts and empty results describe the register' do
     payload = { metric: 'expenses_by_category', period: @period, source: nil,
                values: [{ currency: 'USD', value: 1200, categories: [{ name: 'Supplies', amount_cents: 1200 }] }] }

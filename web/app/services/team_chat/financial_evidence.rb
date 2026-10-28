@@ -69,13 +69,20 @@ module TeamChat
           out['gaps'] << 'No active expense-register records were found for this period; vendor payments are excluded. ' \
                          'Profit cannot be established from this evidence.'
         end
-        if data['values'].is_a?(Array) && data['values'].empty? && args['compare'].blank?
-          out['gaps'] << "No metric rows were returned for the requested period (#{period['from']} to #{period['to']}; #{source}); " \
-                         'an implicit prior-period comparison is omitted. Missing rows do not prove zero.'
-        elsif data['compared_with']
+        empty_current = data['values'].is_a?(Array) && data['values'].empty?
+        if empty_current
+          implicit = args['compare'].blank? ? ' An implicit prior-period comparison is omitted.' : ''
+          out['gaps'] << "No metric rows were returned for the requested period (#{period['from']} to #{period['to']}; #{source})." \
+                         "#{implicit} Missing rows do not prove zero."
+        end
+        if data['compared_with'] && !(empty_current && args['compare'].blank?)
           prior = { 'previous' => expected.previous, 'last_year' => expected.last_year }.fetch(args['compare'].presence || 'previous')
           old = window(data['compared_with'], prior.from.iso8601, prior.to.iso8601)
           metric_rows(out, data['compared_with']['values'], name, source, old, 'compared_with.values')
+          if args['compare'].present? && data['compared_with']['values'].is_a?(Array) && data['compared_with']['values'].empty?
+            out['gaps'] << "No metric rows were returned for the comparison period (#{old['from']} to #{old['to']}; #{source}). " \
+                           'Missing rows do not prove zero.'
+          end
           Array(data['change']).each_with_index do |row, index|
             add(out, row['change_percent'], 'percent', row['currency'], source, period,
               "#{MEANINGS.fetch(name).first}: change versus #{old['from']} to #{old['to']} (not percentage points)", "change.#{index}.change_percent")
