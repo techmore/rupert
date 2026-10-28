@@ -12,7 +12,10 @@ module TeamChat
 
     def close_scope(question)
       text = question.to_s.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip.downcase
-      return unless text.match?(/\A(?:is last month closed in the books|are last month's books closed)[?.!]*(?:\s+what (?:is|is still|is left|remains) (?:open|to do)[?.!]*)?\z/)
+      subject = /(?:last month's books|the books for last month|last month(?: in the books)?)/
+      status = /(?:closed|locked)/
+      tail = /(?:\s+what (?:is|is still|is left|remains) (?:open|to do)[?.!]*)?/
+      return unless text.match?(/\A(?:is|are) #{subject} #{status}(?: in the books)?[?.!]*#{tail}\z/)
 
       'Month close'
     end

@@ -92,6 +92,8 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     TeamChat::Agent.new(reply, config: team_chat_config).run
     assert_equal 'I could not verify the month-close checklist.', reply.reload.body
     assert_nil TeamChat::ComplianceEvidence.close_scope("Are last month's books closed and how did sales do?")
+    assert_equal 'Month close', TeamChat::ComplianceEvidence.close_scope('Are the books for last month locked?')
+    assert_equal 'Month close', TeamChat::ComplianceEvidence.close_scope('Is last month closed in the books? What is left to do?')
   end
 
   test 'a missing retention record cannot be treated as a healthy connection' do
