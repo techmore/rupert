@@ -240,6 +240,22 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_not_includes reply.body, 'Everything is complete'
   end
 
+  test 'unchecked compliance and uncertain inventory prose are not streamed as answers' do
+    agent = TeamChat::Agent.allocate
+    execution = mock('execution')
+    execution.expects(:write_reply!).never
+    agent.instance_variable_set(:@execution, execution)
+
+    toolbox = stub('toolbox', financial?: false, tools_used: ['compliance_check'], inventory_results: [])
+    agent.instance_variable_set(:@toolbox, toolbox)
+    agent.send(:publish, 'Everything is complete.')
+
+    toolbox = stub('toolbox', financial?: false, tools_used: ['inventory_search'],
+      inventory_results: ["result\n#{JSON.generate(rows: [], meta: {})}"])
+    agent.instance_variable_set(:@toolbox, toolbox)
+    agent.send(:publish, 'Everything is in stock.')
+  end
+
   test 'business pulse keeps operational sections in the final answer' do
     script_model({ tool: 'business_pulse', arguments: {} }, { text: 'Nothing is waiting.' })
     reply = ask('@rupert give me a business health check today')

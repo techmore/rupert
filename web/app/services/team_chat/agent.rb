@@ -405,6 +405,7 @@ module TeamChat
     def publish(text)
       # Never expose draft figures before their semantic evidence is checked.
       return if @toolbox&.financial? || text.match?(/[<\d$€£¥%]/)
+      return if @toolbox && (compliance_only_tool_mix? || InventoryEvidence.uncertain?(@toolbox.inventory_results))
 
       now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       return if now - @last_publish < PUBLISH_EVERY
