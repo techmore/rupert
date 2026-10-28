@@ -12,6 +12,7 @@ class TeamChatQueueEvidenceTest < ActiveSupport::TestCase
     assert_nil scope.call('What receipts need review and what are sales today?')
     assert_nil scope.call('How do I review receipts?')
     assert_nil scope.call('Receipts to review for the downtown store?')
+    assert_nil scope.call('Are any POS late?')
   end
 
   test 'requires every requested count and does not claim an unavailable late count is zero' do
