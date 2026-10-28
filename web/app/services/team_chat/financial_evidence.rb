@@ -65,7 +65,9 @@ module TeamChat
           raise ArgumentError
         end
         metric_rows(out, data['values'], name, source, period, 'values')
-        out['gaps'] << 'Category breakdowns are not certified by this contract; the expense total is shown separately.' if name == 'expenses_by_category'
+        if name == 'expenses_by_category' && data['values'].is_a?(Array) && data['values'].empty?
+          out['gaps'] << 'No active expense-register records were found for this period; vendor payments are excluded.'
+        end
         if data['compared_with']
           prior = { 'previous' => expected.previous, 'last_year' => expected.last_year }.fetch(args['compare'].presence || 'previous')
           old = window(data['compared_with'], prior.from.iso8601, prior.to.iso8601)
@@ -196,6 +198,19 @@ module TeamChat
     def metric_rows(out, rows, name, source, period, path)
       meaning, unit = MEANINGS.fetch(name)
       Array(rows).each_with_index do |row, index|
+        if name == 'expenses_by_category'
+          add(out, row['value'], unit, row['currency'], source, period, meaning, "#{path}.#{index}.value")
+          Array(row['categories']).each_with_index do |category, category_index|
+            label = category['name'].to_s
+            if label.blank? || label.length > 120 || label.match?(/[\r\n\x00-\x1f]/) || AskRupert::Redactor.personal(label) != label
+              out['gaps'] << 'An expense category name could not be displayed safely; its amount was omitted.'
+              next
+            end
+            add(out, category['amount_cents'], 'money', row['currency'], source, period, "Expense category: #{label}",
+              "#{path}.#{index}.categories.#{category_index}.amount_cents")
+          end
+          next
+        end
         if name == 'top_products'
           products = Array(row['products'])
           if products.size < 10 && CURRENCIES.include?(row['currency'])

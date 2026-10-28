@@ -25,6 +25,14 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
 
   def render(item) = TeamChat::FinancialEvidence.render([item])
 
+  test 'expense categories preserve amounts and empty results describe the register' do
+    payload = { metric: 'expenses_by_category', period: @period, source: nil,
+               values: [{ currency: 'USD', value: 1200, categories: [{ name: 'Supplies', amount_cents: 1200 }] }] }
+    args = { name: 'expenses_by_category', period: 'today' }
+    assert_includes render(evidence(payload, tool: 'metric', args: args)), 'Expense category: Supplies: 12.00 USD'
+    assert_includes render(evidence(payload.merge(values: []), tool: 'metric', args: args)), 'No active expense-register records'
+  end
+
   test 'repeated identical tool calls do not duplicate rendered facts' do
     first = evidence
     second = evidence(invocation: 'call-2')
