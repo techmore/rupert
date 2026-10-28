@@ -10,3 +10,7 @@ These are synthetic LFM-only runs using the older `53f0392f` runtime, not the la
 | **Total** | **510** | **474** | **36** | **341** | — |
 
 The failure messages include model connection failures and generic execution failures; the checkpoint alone does not establish a precise underlying cause for every case. The run uses a frozen earlier cohort, so the subsequently authored expectations do not retroactively grade it. Results cannot establish whether the latest LFM implementation beats Qwen. Current breadth work and the separate comparative review share the GPU through short batches.
+
+## Oversized comparison-chart reply
+
+A separate DeepSeek comparison run failed its month-over-month chart question with `ActiveRecord::RecordInvalid` after three view attempts were rejected. Reconstructing the financial evidence from its saved tool results produced 8,374 characters before additional sections, exceeding the message's 8,000-character validation limit. This supports a reply-size failure, though the stored telemetry did not record the invalid field. Commit `fbb4fc3c` bounds replies on complete lines and discloses omitted details and caveats; it does not itself make a rejected chart valid. A synthetic live replay is pending, and the original failure remains in the frozen comparison.
