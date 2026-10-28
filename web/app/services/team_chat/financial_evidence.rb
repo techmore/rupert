@@ -21,6 +21,7 @@ module TeamChat
       'effective_tax_rate' => ['Recorded sales tax as a percentage of sales before tax', 'percent'],
       'best_day' => ['Highest recorded sales day', 'money'],
       'worst_day' => ['Lowest recorded sales day', 'money'],
+      'top_products' => ['Product revenue', 'money'],
       'expenses_by_category' => ['Active expense-register total (not profit)', 'money'],
       'sales_by_source' => ['Gross sales by source', 'money']
     }.freeze
@@ -195,6 +196,19 @@ module TeamChat
     def metric_rows(out, rows, name, source, period, path)
       meaning, unit = MEANINGS.fetch(name)
       Array(rows).each_with_index do |row, index|
+        if name == 'top_products'
+          Array(row['products']).each_with_index do |product, product_index|
+            label = product['name'].to_s
+            if label.blank? || label.length > 120 || label.match?(/[\r\n\x00-\x1f]/) || AskRupert::Redactor.personal(label) != label
+              out['gaps'] << 'A product name could not be displayed safely; its revenue was omitted.'
+              next
+            end
+            add(out, product['revenue_cents'], 'money', row['currency'], source, period, "Product revenue: #{label}",
+              "#{path}.#{index}.products.#{product_index}.revenue_cents")
+          end
+          out['gaps'] << 'Product ranking covers at most ten products per currency.'
+          next
+        end
         if %w[best_day worst_day].include?(name)
           if row['value'].blank?
             out['gaps'] << 'Sales day is unavailable; missing data does not prove zero.'

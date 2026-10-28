@@ -25,6 +25,15 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
 
   def render(item) = TeamChat::FinancialEvidence.render([item])
 
+  test 'product revenue preserves name currency and suppresses unsafe names' do
+    payload = { metric: 'top_products', period: @period, source: nil,
+               values: [{ currency: 'USD', products: [{ name: 'Tea', revenue_cents: 8000 }, { name: "Bad\nname", revenue_cents: 500 }] }] }
+    item = evidence(payload, tool: 'metric', args: { name: 'top_products', period: 'today' })
+    assert_includes render(item), 'Product revenue: Tea: 80.00 USD'
+    assert_includes render(item), 'could not be displayed safely'
+    assert_equal 1, item['facts'].size
+  end
+
   test 'recorded sales days keep date currency and missing day qualification' do
     payload = { metric: 'worst_day', period: @period, source: nil,
                 values: [{ currency: 'CAD', value: Date.current.iso8601, gross_cents: 1234 }] }
