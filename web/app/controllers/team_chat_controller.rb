@@ -132,6 +132,49 @@ class TeamChatController < AuthenticatedController
     render json: { error: e.message }, status: :too_many_requests
   end
 
+  # Voice transcripts are sent as ordinary messages by the client, so the
+  # same room permissions, model routing and saved chat history apply.
+  def transcribe_voice
+    return head :forbidden if @room.dm? || (!@room.direct? && @room.assistant_mode == 'off')
+
+    render json: { text: TeamChat::VoiceClient.new.transcribe(params[:audio]) }
+  rescue TeamChat::VoiceClient::Error => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  # A channel answer is delivered to the asker's private room. Return only a
+  # speech URL for that person's own current request, never the private text.
+  def voice_handoff
+    return head :not_found if @room.direct? || @room.dm?
+
+    trigger = @room.messages.visible.find_by(id: params[:id], author_kind: 'person', user_id: Current.user.id)
+    return head :not_found unless trigger
+
+    private_room = TeamChat::Room.direct_for(Current.user)
+    reply = private_room.messages.visible.where(author_kind: 'assistant')
+      .where("json_valid(meta) AND json_extract(meta, '$.source_trigger_id') = ?", trigger.id)
+      .order(id: :desc).detect do |message|
+        message.meta.to_h['asked_by'] == Current.user.id &&
+          message.meta.to_h['source_request_revision'] == trigger.request_revision
+      end
+    return render json: { status: 'pending' } unless reply
+
+    result = { status: reply.status, room_url: team_chat_room_path(private_room) }
+    result[:speech_url] = speak_team_chat_message_path(private_room, reply.id) if reply.status == 'done' && reply.body.present?
+    render json: result
+  end
+
+  # The client supplies a message ID, never arbitrary text. Only a finished,
+  # visible assistant reply in this authorized room can be spoken.
+  def speak_message
+    message = @room.messages.visible.find(params[:id])
+    return head :unprocessable_entity unless message.assistant? && message.status == 'done' && message.body.present?
+
+    send_data TeamChat::VoiceClient.new.speak(message.body), type: 'audio/wav', disposition: 'inline'
+  rescue TeamChat::VoiceClient::Error => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
   # PATCH /chat/presence { hidden } — show or hide your own "recently active".
   def presence
     Current.user.update_column(:presence_hidden, ActiveModel::Type::Boolean.new.cast(params[:hidden]) ? true : nil)

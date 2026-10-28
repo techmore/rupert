@@ -139,3 +139,77 @@ test('side panel: charts draw one bar per row and series, labels from the first 
   assert.equal(Chat.numberOf('−$1,200.50'), -1200.5);
   assert.equal(Chat.numberOf('n/a'), null);
 });
+
+test('voice reply is played once when the saved assistant message finishes', () => {
+  const chat = new Chat();
+  chat.byId = new Map();
+  chat.voiceReplyIds = new Set([42]);
+  const played = [];
+  chat.playVoice = (message) => played.push(message.id);
+  chat.merge([{ id: 42, kind: 'assistant', status: 'pending', body: '', updated_at: 'a' }]);
+  chat.merge([{ id: 42, kind: 'assistant', status: 'done', body: 'Hello', updated_at: 'b' }]);
+  chat.merge([{ id: 42, kind: 'assistant', status: 'done', body: 'Hello', updated_at: 'b' }]);
+  assert.deepEqual(played, [42]);
+  assert.equal(chat.byId.get(42).body, 'Hello');
+});
+
+test('voice transcription is sent through the normal chat request', async () => {
+  context.FormData = FormData;
+  context.Blob = Blob;
+  context.clearTimeout = clearTimeout;
+  const chat = new Chat();
+  chat.element = { isConnected: true };
+  let stopped = 0;
+  chat.voiceStream = { getTracks: () => [{ stop: () => { stopped += 1; } }] };
+  chat.voiceTarget = { textContent: '', disabled: false, setAttribute() {} };
+  chat.voiceChunks = [new Blob(['audio'])];
+  chat.recorder = { mimeType: 'audio/webm' };
+  chat.voiceUrlValue = '/chat/admins/voice/transcribe';
+  chat.inputTarget = { value: '' };
+  chat.sendTarget = {};
+  chat.directValue = false;
+  chat.input = () => {};
+  chat.fetchJson = async (url, options) => {
+    assert.equal(url, '/chat/admins/voice/transcribe');
+    assert.equal(options.method, 'POST');
+    return { text: 'Hello Rupert' };
+  };
+  let sent;
+  chat.post = async (field, button, parent, voice) => { sent = [field.value, parent, voice]; };
+  await chat.finishVoice();
+  assert.deepEqual(sent, ['@rupert Hello Rupert', null, true]);
+  assert.equal(stopped, 1);
+  assert.equal(chat.voiceTarget.disabled, false);
+});
+
+test('voice transcription errors do not submit a message', async () => {
+  context.FormData = FormData;
+  context.Blob = Blob;
+  context.clearTimeout = clearTimeout;
+  const chat = new Chat();
+  chat.element = { isConnected: true };
+  chat.voiceStream = { getTracks: () => [] };
+  chat.voiceTarget = { textContent: '', disabled: false, setAttribute() {} };
+  chat.voiceChunks = [new Blob(['audio'])];
+  chat.recorder = { mimeType: 'audio/webm' };
+  chat.fetchJson = async () => null;
+  chat.post = async () => { throw new Error('should not post'); };
+  await chat.finishVoice();
+  assert.equal(chat.voiceTarget.disabled, false);
+});
+
+test('a channel voice handoff plays the private answer, not the channel redirect', async () => {
+  const chat = new Chat();
+  chat.element = { isConnected: true };
+  chat.urlValue = '/chat/admins/messages';
+  chat.voiceHandoffTimers = new Set();
+  context.fetch = async (url) => {
+    assert.equal(url, '/chat/admins/messages/12/voice_handoff');
+    return { ok: true, json: async () => ({ status: 'done', speech_url: '/chat/private/messages/34/speech' }) };
+  };
+  let played;
+  chat.playVoice = async (message, url) => { played = [message, url]; };
+  await chat.followVoiceHandoff(12);
+  assert.deepEqual(played, [null, '/chat/private/messages/34/speech']);
+  assert.equal(chat.voiceHandoffTimers.size, 0);
+});
