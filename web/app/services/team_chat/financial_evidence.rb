@@ -302,6 +302,7 @@ module TeamChat
       parts = row['sources']
       return unless CURRENCIES.include?(row['currency']) && parts.is_a?(Array) && parts.any?
       return unless parts.all? { |part| part.is_a?(Hash) && Metrics::SOURCES.include?(part['source']) && part['gross_cents'].is_a?(Integer) }
+      return unless row['gross_cents'].is_a?(Integer) && parts.sum { |part| part['gross_cents'] } == row['gross_cents']
 
       highest = parts.map { |part| part['gross_cents'] }.max
       leaders = parts.select { |part| part['gross_cents'] == highest }.map do |part|

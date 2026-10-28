@@ -223,9 +223,9 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
   end
 
   test 'source leaders are scoped by currency and ties without assuming unknown values' do
-    rows = [{ currency: 'USD', sources: [{ source: 'shopify', gross_cents: 6000, share_percent: 60, sync: { status: 'unknown' } },
+    rows = [{ currency: 'USD', gross_cents: 10000, sources: [{ source: 'shopify', gross_cents: 6000, share_percent: 60, sync: { status: 'unknown' } },
                                          { source: 'rupert_pos', gross_cents: 4000, share_percent: 40 }] },
-            { currency: 'CAD', sources: [{ source: 'shopify', gross_cents: 100, share_percent: 50 },
+            { currency: 'CAD', gross_cents: 200, sources: [{ source: 'shopify', gross_cents: 100, share_percent: 50 },
                                          { source: 'square', gross_cents: 100, share_percent: 50 }] }]
     payload = data.merge(source: nil, metric: 'sales_by_source', values: rows)
     args = { name: 'sales_by_source', period: 'today' }
@@ -236,6 +236,9 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_nil prose('Shopify made $60.00 today and sync is healthy.', evidence(payload, args: args))
 
     rows.first[:sources].last[:gross_cents] = nil
+    assert_not_includes render(evidence(payload, args: args)), 'Highest recorded source sales in USD'
+    rows.first[:sources].last[:gross_cents] = 4000
+    rows.first[:gross_cents] = 11000
     assert_not_includes render(evidence(payload, args: args)), 'Highest recorded source sales in USD'
   end
 
