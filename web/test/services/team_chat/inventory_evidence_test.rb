@@ -24,7 +24,9 @@ class TeamChatInventoryEvidenceTest < ActiveSupport::TestCase
     assert TeamChat::InventoryEvidence.uncertain?(['bad result'])
     assert TeamChat::InventoryEvidence.uncertain?(["result\n#{JSON.generate(rows: [{ available: 3, low: false }])}"])
     assert TeamChat::InventoryEvidence.uncertain?(["result\n#{JSON.generate(rows: [{ available: nil, low: nil }], meta: {})}"])
-    assert_not TeamChat::InventoryEvidence.uncertain?(["result\n#{JSON.generate(rows: [{ available: 3, low: false }], meta: {})}"])
+    assert TeamChat::InventoryEvidence.uncertain?(["result\n#{JSON.generate(rows: [{ available: 3, low: false }], meta: {})}"])
+    assert TeamChat::InventoryEvidence.uncertain?(["result\n#{JSON.generate(rows: [{ available: 3, low: false }], meta: { has_more: true })}"])
+    assert_not TeamChat::InventoryEvidence.uncertain?(["result\n#{JSON.generate(rows: [{ available: 3, low: false }], meta: { has_more: false })}"])
   end
 
   test 'distinguishes no rows from zero stock and removes contact information from labels' do
@@ -36,5 +38,6 @@ class TeamChatInventoryEvidenceTest < ActiveSupport::TestCase
     text = TeamChat::InventoryEvidence.render(["result\n#{JSON.generate(data)}"])
     assert_not_includes text, 'person@example.com'
     assert_includes text, '0 available; not marked low stock'
+    assert_includes text, 'Pagination status is unknown'
   end
 end

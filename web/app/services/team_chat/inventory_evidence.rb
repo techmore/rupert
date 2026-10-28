@@ -19,7 +19,7 @@ module TeamChat
         data = JSON.parse(result.to_s.partition("\n").last)
         rows = data.fetch('rows')
         meta = data.fetch('meta')
-        !meta.is_a?(Hash) || !rows.is_a?(Array) || rows.empty? || rows.any? do |row|
+        !meta.is_a?(Hash) || meta['has_more'] != false || !rows.is_a?(Array) || rows.empty? || rows.any? do |row|
           !row.is_a?(Hash) || !row['available'].is_a?(Numeric) || ![true, false].include?(row['low'])
         end
       rescue JSON::ParserError, KeyError, TypeError
@@ -45,6 +45,7 @@ module TeamChat
         "- #{name} at #{location} (#{source}): #{available} available#{low}."
       end
       lines << 'More stock rows are available; this lookup is paginated.' if meta['has_more'] == true
+      lines << 'Pagination status is unknown; this lookup may be incomplete.' unless [true, false].include?(meta['has_more'])
       lines
     rescue JSON::ParserError, KeyError, TypeError
       ['The stock lookup could not be presented; narrow the search.']
