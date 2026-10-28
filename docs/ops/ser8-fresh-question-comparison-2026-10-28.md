@@ -1,0 +1,7 @@
+# Fresh-question comparison on SER8
+
+A 12-question comparison was authored and frozen after the earlier depth review. It covers source and currency separation, profit limitations, queue and stock evidence, retention and close status, refunds, settlement deposits, pay-week sales, and sync completeness. The questions are new to this run, but the synthetic database fixture has been used before; this is not a new data distribution or a real-business-data comparison.
+
+All three model runs use the same Rupert runtime snapshot (`8b91593d`) and separate copies of the same synthetic fixture. The question file SHA-256 is `dd2e81f6c363a66be473b77fe05a54f5182937cfd8ade818f5f9db5cf9f8bf9a`; the frozen reference export SHA-256 is `10c5086ccdc4614b3aac3f639f427d646bca3c7a7507f89b7977d8bdd596f233`. The frozen cohort is `e1360dc347dc7fb7`, with zero capture errors; one question is evaluated against an authored capability expectation instead of a reference lookup. The questions, references, scripts and resulting synthetic answers reside in the local benchmark evidence directory, outside the runtime application.
+
+DeepSeek generates synthetic-fixture answers only. It does not grade itself. LFM and Qwen run locally on the SER8, queued around the ongoing breadth benchmark. Once all three runs finish, review the answers in shuffled per-question order and record judgments before revealing the mapping. The reviewer has seen earlier benchmark work, so this is masked rather than fully blind. Retain failed answers and disclose reference gaps rather than silently omitting them.
