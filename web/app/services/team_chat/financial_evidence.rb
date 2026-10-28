@@ -282,6 +282,7 @@ module TeamChat
           next
         end
         if name == 'sales_by_source'
+          source_leader(out, row, period) if source == ORDER_SOURCE
           Array(row['sources']).each_with_index do |part, part_index|
             part_source = order_source(part.fetch('source'))
             add(out, part['gross_cents'], 'money', row['currency'], part_source, period, 'Gross sales (paid or fulfilled orders)', "#{path}.#{index}.sources.#{part_index}.gross_cents")
@@ -291,6 +292,23 @@ module TeamChat
         end
         add(out, row['value'], unit, row['currency'], source, period, meaning, "#{path}.#{index}.value")
       end
+    end
+
+    # Only rank a complete set of source amounts within the same currency.
+    # Keep sync status separate from proof of complete sales coverage.
+    def source_leader(out, row, period)
+      parts = row['sources']
+      return unless CURRENCIES.include?(row['currency']) && parts.is_a?(Array) && parts.any?
+      return unless parts.all? { |part| part.is_a?(Hash) && Metrics::SOURCES.include?(part['source']) && part['gross_cents'].is_a?(Integer) }
+
+      highest = parts.map { |part| part['gross_cents'] }.max
+      leaders = parts.select { |part| part['gross_cents'] == highest }.map do |part|
+        status = part.dig('sync', 'status') if part['sync'].is_a?(Hash)
+        status = 'unknown' unless %w[ok success failed error running unknown not_available].include?(status)
+        "#{part['source']} (sync: #{status.tr('_', ' ')})"
+      end
+      out['gaps'] << "Highest recorded source sales in #{row['currency']} for #{period['from']} to #{period['to']}: #{leaders.join(', ')}. " \
+                     'Sync status alone does not establish complete coverage.'
     end
 
     def add(out, value, unit, currency, source, period, meaning, path)
@@ -353,6 +371,7 @@ module TeamChat
       # Hours need their own semantic validation; render them deterministically
       # instead of accepting unchecked prose next to certified financial facts.
       return nil if evidence.any? { |item| item['timekeeping'] || item['pulse'] }
+      return nil if evidence.any? { |item| item['gaps'].any? { |gap| gap.start_with?('Highest recorded source sales') } }
 
       facts = evidence.flat_map { |item| item['facts'] }
       # Numeric matching cannot verify that a model kept the product,

@@ -221,6 +221,23 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_not_includes render(evidence(data(nil))), '0.00 USD'
   end
 
+  test 'source leaders are scoped by currency and ties without assuming unknown values' do
+    rows = [{ currency: 'USD', sources: [{ source: 'shopify', gross_cents: 6000, share_percent: 60, sync: { status: 'unknown' } },
+                                         { source: 'rupert_pos', gross_cents: 4000, share_percent: 40 }] },
+            { currency: 'CAD', sources: [{ source: 'shopify', gross_cents: 100, share_percent: 50 },
+                                         { source: 'square', gross_cents: 100, share_percent: 50 }] }]
+    payload = data.merge(source: nil, metric: 'sales_by_source', values: rows)
+    args = { name: 'sales_by_source', period: 'today' }
+    text = render(evidence(payload, args: args))
+    assert_includes text, 'Highest recorded source sales in USD'
+    assert_includes text, 'shopify (sync: unknown)'
+    assert_includes text, 'shopify (sync: unknown), square (sync: unknown)'
+    assert_nil prose('Shopify made $60.00 today and sync is healthy.', evidence(payload, args: args))
+
+    rows.first[:sources].last[:gross_cents] = nil
+    assert_not_includes render(evidence(payload, args: args)), 'Highest recorded source sales in USD'
+  end
+
   test 'negative amounts and large integer cents are never converted through floats or absolute values' do
     assert_includes render(evidence(data(-1))), '-0.01 USD'
     assert_includes render(evidence(data(900719925474099301))), '9007199254740993.01 USD'
