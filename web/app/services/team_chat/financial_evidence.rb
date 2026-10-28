@@ -198,7 +198,7 @@ module TeamChat
           add(out, row['value'], unit, row['currency'], source, period, meaning, "#{path}.#{index}.value")
           Array(row['sources']).each_with_index do |part, part_index|
             add(out, part[field], unit, row['currency'], order_source(part.fetch('source')), period, meaning,
-                "#{path}.#{index}.sources.#{part_index}.#{field}")
+              "#{path}.#{index}.sources.#{part_index}.#{field}")
           end
           next
         end

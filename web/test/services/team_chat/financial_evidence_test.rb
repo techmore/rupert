@@ -26,7 +26,8 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
   def render(item) = TeamChat::FinancialEvidence.render([item])
 
   test 'tax metrics retain per source values and distinguish unknown from zero' do
-    payload = @period.then { |period| { metric: 'effective_tax_rate', period: period, source: nil,
+    payload = @period.then { |period|
+                { metric: 'effective_tax_rate', period: period, source: nil,
       values: [{ currency: 'USD', value: nil, sources: [{ source: 'square', effective_rate_percent: 0.0 },
                                                          { source: 'shopify', effective_rate_percent: nil }] }] } }
     item = evidence(payload, tool: 'metric', args: { name: 'effective_tax_rate', period: 'today' })
@@ -38,7 +39,7 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
 
   test 'mixed timekeeping and sales keep hours and currency separated' do
     payload = @period.merge(scope: 'all staff', totals: { worked: 7.5, scheduled: 8, ctrax: 2 },
-                            sales_same_days: @period.merge(available: true, gross_sales_by_currency: [{ currency: 'CAD', value: 12345 }]))
+      sales_same_days: @period.merge(available: true, gross_sales_by_currency: [{ currency: 'CAD', value: 12345 }]))
     item = evidence(payload, tool: 'time_keeping_report', args: @period)
     assert_equal '7.5', item.dig('timekeeping', 'hours', 'worked')
     assert_includes render(item), '7.5 hours worked'
