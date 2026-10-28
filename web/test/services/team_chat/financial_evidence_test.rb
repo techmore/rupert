@@ -75,6 +75,23 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_equal 1, text.scan('214.83 USD').length
   end
 
+  test 'business pulse preserves operational counts and unavailable sections' do
+    payload = { date: Date.current.iso8601, sales: { gross_sales_by_currency: [] },
+                waiting: { queues: [{ name: 'Orders waiting', count: 2 }] },
+                alerts: { available: true, count: 0 }, sync: { available: false },
+                overdue_tasks: { available: true, count: 3 } }
+    item = evidence(payload, tool: 'business_pulse', args: {})
+    text = render(item)
+    assert_includes text, 'Open alerts: 0'
+    assert_includes text, 'Failing syncs: unavailable'
+    assert_includes text, 'Overdue tasks: 3'
+    assert_includes text, 'Orders waiting: 2'
+    assert_nil TeamChat::FinancialEvidence.checked_prose('Nothing is waiting.', [item])
+    assert TeamChat::FinancialEvidence.decode(JSON.generate(item), @user.tenant_id, tool: 'business_pulse', invocation: 'call-1')
+    item['pulse']['sections']['Open alerts'] = 8
+    assert_nil TeamChat::FinancialEvidence.decode(JSON.generate(item), @user.tenant_id, tool: 'business_pulse', invocation: 'call-1')
+  end
+
   test 'product revenue preserves name currency and suppresses unsafe names' do
     payload = { metric: 'top_products', period: @period, source: nil,
                values: [{ currency: 'USD', products: [{ name: 'Tea', revenue_cents: 8000 }, { name: "Bad\nname", revenue_cents: 500 }] }] }

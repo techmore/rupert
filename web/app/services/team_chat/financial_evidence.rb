@@ -169,7 +169,22 @@ module TeamChat
       when 'business_pulse'
         period = window({ 'from' => data['date'], 'to' => data['date'] }, Date.current.iso8601, Date.current.iso8601)
         metric_rows(out, data.dig('sales', 'gross_sales_by_currency'), 'gross_sales', ORDER_SOURCE, period, 'sales.gross_sales_by_currency')
-        out['gaps'] << 'Non-sales pulse sections are not part of the financial evidence contract.'
+        pulse = { 'date' => period['from'], 'sections' => {} }
+        { 'alerts' => 'Open alerts', 'sync' => 'Failing syncs', 'overdue_tasks' => 'Overdue tasks' }.each do |key, label|
+          section = data[key]
+          if section.is_a?(Hash) && section['available'] == true && section['count'].is_a?(Integer) && section['count'] >= 0
+            pulse['sections'][label] = section['count']
+          else
+            pulse['sections'][label] = nil
+          end
+        end
+        queues = data.dig('waiting', 'queues')
+        if queues.is_a?(Array) && queues.all? { |queue| queue.is_a?(Hash) && queue['name'].is_a?(String) && queue['count'].is_a?(Integer) && queue['count'] >= 0 }
+          pulse['queues'] = queues.first(10).map { |queue| { 'name' => AskRupert::Redactor.personal(queue['name']).gsub(/[\r\n\[\]<>`]/, ' ').squish.first(100), 'count' => queue['count'] } }
+          pulse['queues_omitted'] = queues.size > 10
+        end
+        pulse['id'] = Digest::SHA256.hexdigest(JSON.generate(pulse)).first(16)
+        out['pulse'] = pulse
       else
         out['gaps'] << 'This financial tool does not yet provide a certified evidence contract.'
       end
@@ -298,6 +313,11 @@ module TeamChat
         return unless data['tool'] == 'time_keeping_report' && context.is_a?(Hash) &&
           context['id'] == Digest::SHA256.hexdigest(JSON.generate(context.except('id'))).first(16)
       end
+      if data['pulse']
+        context = data['pulse']
+        return unless data['tool'] == 'business_pulse' && context.is_a?(Hash) &&
+          context['id'] == Digest::SHA256.hexdigest(JSON.generate(context.except('id'))).first(16)
+      end
 
       data
     rescue JSON::ParserError, TypeError
@@ -321,7 +341,7 @@ module TeamChat
     def checked_prose(text, evidence, today: Date.current)
       # Hours need their own semantic validation; render them deterministically
       # instead of accepting unchecked prose next to certified financial facts.
-      return nil if evidence.any? { |item| item['timekeeping'] }
+      return nil if evidence.any? { |item| item['timekeeping'] || item['pulse'] }
 
       facts = evidence.flat_map { |item| item['facts'] }
       # Numeric matching cannot verify that a model kept the product,
@@ -428,6 +448,17 @@ module TeamChat
       evidence.filter_map { |item| item['timekeeping'] }.uniq.each do |context|
         hours = context.fetch('hours')
         lines << "- Timekeeping (#{context['scope']}; #{context.dig('period', 'from')} to #{context.dig('period', 'to')}): #{hours['worked']} hours worked, #{hours['scheduled']} hours scheduled; #{hours['ctrax']} C-Trax hours observed separately, not added."
+      end
+      evidence.filter_map { |item| item['pulse'] }.uniq.each do |pulse|
+        lines << "- Business pulse for #{pulse['date']}:"
+        pulse.fetch('sections').each { |label, count| lines << "  - #{label}: #{count.nil? ? 'unavailable' : count}." }
+        if pulse['queues']
+          lines << (pulse['queues'].empty? ? '  - No waiting queues were reported.' : '  - Waiting queues:')
+          pulse['queues'].each { |queue| lines << "    - #{queue['name']}: #{queue['count']}." }
+          lines << '  - Additional queues were omitted.' if pulse['queues_omitted']
+        else
+          lines << '  - Waiting queues: unavailable.'
+        end
       end
       lines.unshift('From Rupert’s records:') if lines.any?
       gaps = evidence.flat_map { |item| item['gaps'] }.uniq

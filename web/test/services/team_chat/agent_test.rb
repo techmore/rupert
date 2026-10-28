@@ -187,6 +187,18 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_not_includes reply.body, 'nothing needs review'
   end
 
+  test 'business pulse keeps operational sections in the final answer' do
+    script_model({ tool: 'business_pulse', arguments: {} }, { text: 'Nothing is waiting.' })
+    reply = ask('@rupert give me a business health check today')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Business pulse for'
+    assert_includes reply.body, 'Open alerts:'
+    assert_match(/waiting queues/i, reply.body)
+    assert_not_includes reply.body, 'Nothing is waiting.'
+  end
+
   test 'a reply whose figures all come from its tools has nothing flagged' do
     script_model({ text: 'Nothing to report.' })
     reply = ask('@rupert anything new?')
