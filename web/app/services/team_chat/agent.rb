@@ -443,7 +443,13 @@ module TeamChat
     def finish(text, started)
       body = AskRupert::ReplyFormat.tidy(without_echo(text))
       malformed_tool_text = @context_limited || body.match?(/<(?:tool_call|function|parameter)(?:[=>\s]|\z)/i)
-      if unchecked_operational_request?
+      denied_instruction_action = Toolbox.instruction_only?(request_text) && @reply.reload.actions_list.empty? &&
+        @execution.run.reload.tool_results.any? { |entry| entry['result'].to_s.include?('asked for instructions, not an action') }
+      unrequested_action_claim = denied_instruction_action && body.match?(/\b(?:created|proposed|added|submitted|waiting for approval)\b/i) &&
+        body.match?(/\b(?:task|feedback)\b/i)
+      if unrequested_action_claim
+        body = 'I could not verify the requested instructions. No task or feedback was proposed.'
+      elsif unchecked_operational_request?
         body = UNCHECKED_RECORDS
         @verify_meta['kept'] = 'guarded' if @verify_meta
       elsif pending_processor_deposits_question?

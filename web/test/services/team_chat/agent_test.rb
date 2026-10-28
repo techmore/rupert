@@ -1152,6 +1152,22 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert results.all? { |entry| entry['result'].include?('explicitly excluded') }
   end
 
+  test 'a how-to question cannot create an unsolicited task or falsely claim it did' do
+    script_model({ tool: 'create_task', arguments: { title: 'Make a journal entry' } },
+      { text: 'I created a task for the journal entry.' })
+    reply = ask('@rupert How do I make a journal entry?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_empty reply.reload.actions_list
+    assert_includes reply.body, 'No task or feedback was proposed'
+    result = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_includes result['result'], 'asked for instructions, not an action'
+  end
+
+  test 'a separate explicit action can accompany a how-to question' do
+    assert_not TeamChat::Toolbox.instruction_only?('How do I make an entry, and create a task to review it?')
+    assert TeamChat::Toolbox.instruction_only?('How do I create and manage tasks?')
+  end
+
   test 'a separate allowed feedback request is not blocked by a task exclusion' do
     script_model({ tool: 'create_task', arguments: { title: 'Courier arrives at four' } },
       { tool: 'submit_feedback', arguments: { kind: 'suggestion', summary: 'Courier note' } },

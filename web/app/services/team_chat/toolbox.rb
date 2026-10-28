@@ -27,6 +27,14 @@ module TeamChat
       'submit_feedback' => /\b(?:send(?:ing)?|submit(?:ting)?|fil(?:e|ing)|creat(?:e|ing))\b.{0,35}\bfeedback\b|\b(?:no|without)\s+(?:(?:a|any)\s+)*feedback\b/i
     }.freeze
 
+    def self.instruction_only?(text)
+      question = text.to_s.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip
+      return false unless question.match?(/\A(?:how (?:do|can|would) i|how to)\b/i)
+      return false if question.match?(/\b(?:and|then|also|plus)\s+(?:please\s+)?(?:create|make|add|update|submit|send|assign)\b/i)
+
+      true
+    end
+
     Definition = Struct.new(:name, :description, :schema, :kind, :activity, keyword_init: true)
 
     attr_reader :calls, :tools_used, :results, :financial_evidence, :inventory_results, :alert_results, :views
@@ -161,6 +169,9 @@ module TeamChat
       @tools_used << definition.name
       if definition.kind == :write && excluded_write?(definition.name)
         return log(name, started, 'denied', 'The person explicitly excluded this action; do not propose it.')
+      end
+      if definition.kind == :write && self.class.instruction_only?(@question)
+        return log(name, started, 'denied', 'The person asked for instructions, not an action. Do not propose a change.')
       end
       text = case definition.kind
              when :lookup then run_lookup(definition.name, coerced)
