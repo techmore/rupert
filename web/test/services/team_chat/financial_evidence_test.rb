@@ -25,6 +25,13 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
 
   def render(item) = TeamChat::FinancialEvidence.render([item])
 
+  test 'an aggregate amount does not prove a source specific claim' do
+    aggregate = evidence(data.merge(source: nil), args: { name: 'gross_sales', period: 'today' })
+    assert_nil TeamChat::FinancialEvidence.checked_prose('Rupert POS made 214.83 USD.', [aggregate])
+    assert TeamChat::FinancialEvidence.checked_prose('Shopify made 214.83 USD.', [evidence])
+    assert_nil TeamChat::FinancialEvidence.checked_prose('Square and Shopify made 214.83 USD.', [evidence])
+  end
+
   test 'empty daily close states that register records were not returned without claiming zero' do
     item = evidence(@period.merge(stores: []), tool: 'daily_close', args: @period)
     assert_includes render(item), 'No store register records were returned'

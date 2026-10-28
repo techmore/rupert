@@ -330,6 +330,17 @@ module TeamChat
       prose = text.to_s.strip
       return nil if facts.empty? || prose.blank? || prose.match?(RELABEL)
 
+      # When a source is named, compare every asserted figure against that
+      # source's own facts. Aggregate totals cannot prove a source attribution.
+      named_sources = { 'shopify' => /\bshopify\b/i, 'square' => /\bsquare\b/i,
+                        'rupert_pos' => /\brupert[ _-]+pos\b/i }.select { |_, pattern| prose.match?(pattern) }.keys
+      return nil if named_sources.size > 1
+      if named_sources.one?
+        prefix = "#{named_sources.first} canonical orders"
+        facts = facts.select { |fact| fact['source'].to_s.start_with?(prefix) }
+        return nil if facts.empty?
+      end
+
       meanings = facts.map { |fact| fact['meaning'].to_s }
       return nil if CONCEPTS.any? { |word, meaning| prose.match?(word) && meanings.none? { |known| known.match?(meaning) } }
       return nil unless periods_match?(prose, facts, today)
