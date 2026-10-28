@@ -118,6 +118,15 @@ These are read by scripts in `deploy/ser8`, from their own environment or system
 | `RUPERT_LLM_IMAGE` | `team-chat/setup-local-model.sh` | `images:ubuntu/24.04` | Its base image |
 | `RUPERT_LLM_MEMORY` | `team-chat/setup-local-model.sh` | `12GiB` | Its memory limit |
 | `RUPERT_LLM_CPUS` | `team-chat/setup-local-model.sh` | `6` | Its CPU limit |
+| `RUPERT_NAS_MOUNT` | `rupert-nas-recovery.sh` | required | Mounted NAS directory for the encrypted recovery copy |
+| `RUPERT_NAS_SOURCE` | `rupert-nas-recovery.sh` | required | Expected NFS source; the script refuses a mismatched mount |
+| `RUPERT_NAS_CONTAINER` | `rupert-nas-recovery.sh` | required | Incus container supplying the encrypted backup |
+| `RUPERT_NAS_READER_UID` | `rupert-nas-recovery.sh` | required | Mapped UID granted read access to the recovery set |
+| `RUPERT_BENCHMARK_CONTAINER` | `team-chat/benchmark-probes/local-snapshot.sh` | required | Isolated benchmark container, never production |
+| `RUPERT_BENCHMARK_FIXTURE_DIR` | `team-chat/benchmark-queue/run-gpu.sh` | required | Cohort and report directory inside the fixture container |
+| `RUPERT_BENCHMARK_GRADER_KEY` | `team-chat/benchmark-queue/run-gpu.sh` | required | Private grader credential; do not commit or log it |
+| `RUPERT_BENCHMARK_MODEL_ROOT` | `team-chat/benchmark-queue` and `benchmark-probes` | required | Local directory containing models and Vulkan builds |
+| `RUPERT_BENCHMARK_OUTPUT` | `team-chat/benchmark-queue` and `benchmark-probes` | required | Private local evidence directory |
 
 ## Mobile build (EAS)
 
