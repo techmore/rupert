@@ -40,7 +40,9 @@ module Mcp
         rows = uploads.map { |upload| row(upload) }
         text = "#{counts.values.sum} uploads in total (#{Upload::STATUSES.filter_map { |status| "#{counts[status]} #{status.tr('_', ' ')}" if counts[status] }.join(', ').presence || 'none yet'}). " \
                "#{rows.empty? ? 'No upload matches.' : rows.first(5).map { |r| "#{r[:filename]}: #{r[:status]}#{" — #{r[:note]}" if r[:note]}" }.join('; ')}"
-        result(text, { counts: counts, rows: rows, meta: meta })
+        note = 'This lists the current Uploads inbox only. An empty result cannot confirm whether a file was sent, imported another way, or failed before reaching this inbox.'
+        text = "#{text} #{note}" if rows.empty?
+        result(text, { counts: counts, rows: rows, meta: meta, note: note })
       end
 
       private
