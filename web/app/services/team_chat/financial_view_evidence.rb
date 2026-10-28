@@ -84,8 +84,10 @@ module TeamChat
       end
       currencies = cells.keys.map(&:last).uniq.sort
       return if cells.empty? || currencies.size + 1 > Views::MAX_COLUMNS
+      dates = (Date.iso8601(period['from'])..Date.iso8601(period['to'])).map(&:iso8601)
+      return unless currencies.all? { |currency| dates.all? { |date| cells.key?([date, currency]) } }
 
-      rows = cells.keys.map(&:first).uniq.sort.map { |date| [date] + currencies.map { |currency| cells[[date, currency]] } }
+      rows = dates.map { |date| [date] + currencies.map { |currency| cells[[date, currency]] } }
       args = { 'kind' => 'line_chart', 'title' => "Sales by day #{period['from']} to #{period['to']}",
                'columns' => ['Date'] + currencies.map { |currency| "Gross sales #{currency}" }, 'rows' => rows }
       view = Views.build(args, known_text: JSON.generate(evidence))

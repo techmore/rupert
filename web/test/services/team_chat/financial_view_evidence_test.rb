@@ -44,11 +44,15 @@ class TeamChatFinancialViewEvidenceTest < ActiveSupport::TestCase
       data = @evidence.deep_dup
       data.first['daily']['source'] = TeamChat::FinancialEvidence::ORDER_SOURCE
       data.first['daily']['omitted'] = false
+      (22..25).each { |day| data.first['daily']['rows'] << { 'date' => "2026-10-#{day}", 'currency' => 'USD', 'orders' => 0, 'gross_cents' => nil } }
       question = "Plot last week's recorded sales trend"
       view = TeamChat::FinancialViewEvidence.daily_fallback(data, question: question)
       assert_equal 'line_chart', view['kind']
-      assert_equal [['2026-10-19', '40.0'], ['2026-10-20', nil], ['2026-10-21', '0.0']], view['rows']
+      assert_equal [['2026-10-19', '40.0'], ['2026-10-20', nil], ['2026-10-21', '0.0']], view['rows'].first(3)
       assert_nil check(view, data, question)
+      incomplete = data.deep_dup
+      incomplete.first['daily']['rows'].pop
+      assert_nil TeamChat::FinancialViewEvidence.daily_fallback(incomplete, question: question)
       data.first['daily']['omitted'] = true
       assert_nil TeamChat::FinancialViewEvidence.daily_fallback(data, question: question)
       assert_nil TeamChat::FinancialViewEvidence.daily_fallback(@evidence, question: 'Plot Shopify sales trend last week')

@@ -782,6 +782,7 @@ class TeamChatAgentTest < ActiveSupport::TestCase
         { date: '2026-10-19', currency: 'USD', orders: 1, gross_cents: 4000 },
         { date: '2026-10-20', currency: 'USD', orders: 0, gross_cents: 0 }
       ])
+      (21..25).each { |day| data[:daily] << { date: "2026-10-#{day}", currency: 'USD', orders: 0, gross_cents: 0 } }
       Mcp::Tools::SalesSummary.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'sales', data: data))
       script_model({ tool: 'sales_summary', arguments: args }, { text: 'I checked the sales.' })
       reply = ask("@rupert Plot last week's recorded sales trend")
@@ -790,7 +791,7 @@ class TeamChatAgentTest < ActiveSupport::TestCase
       assert_equal true, entry.dig('arguments', 'include_daily')
       view = reply.reload.meta.fetch('views').first
       assert_equal 'line_chart', view['kind']
-      assert_equal [['2026-10-19', '40.0'], ['2026-10-20', nil]], view['rows']
+      assert_equal [['2026-10-19', '40.0'], ['2026-10-20', nil]], view['rows'].first(2)
     end
   end
 
