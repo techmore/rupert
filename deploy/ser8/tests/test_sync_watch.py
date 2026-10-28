@@ -29,7 +29,8 @@ class SyncWatchTest(unittest.TestCase):
 case "$*" in
   *"RUPERT_SQLITE_DATABASE_PRODUCTION"*) echo /opt/rupert/web/storage/production.sqlite3 ;;
   *"df -Pm"*) printf 'Filesystem 1024-blocks Used Available Capacity Mounted\\n/dev/test 10000 1 9999 1%% /\\n' ;;
-  *"/up/ready"*) printf "%s" "${READY_CODE:-200}" ;;
+  *"/up/ready"*)
+    case "$*" in *"X-Forwarded-Proto: https"*) printf "%s" "${READY_CODE:-200}" ;; *) printf 301 ;; esac ;;
   *"systemctl is-active"*) echo active ;;
   *"script/sync_watch.rb"*) echo 'STALE: test source' >&2; exit 1 ;;
   *) exit 2 ;;
