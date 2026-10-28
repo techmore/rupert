@@ -179,7 +179,7 @@ topics:
   - key: sales
     title: Online and Square sales and orders
     keywords: [sales, sold, sell, revenue, gross, orders, order value, average order, aov, top products, top-selling, top selling, best-selling, best selling, best day, best seller, worst day, slowest day, slow day, weekday, day of the week, busiest day, tax collected, effective tax rate, tax rate, shopify, square, rupert pos, website, web store, today, yesterday, sellers, selling, best sellers, top sellers, busiest, money came in, take in, took in, channel, channels, salez, sale]
-    tools: [metric, sales_summary, period_review, sync_health, order_queues]
+    tools: [metric, sales_summary, period_review, sync_health, order_queues, daily_close]
     card: >-
       For a single figure use metric (gross_sales, orders, average_order_value, best_day, worst_day, sales_by_weekday,
       sales_by_source, top_products,
