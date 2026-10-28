@@ -18,10 +18,6 @@ class UserCreationRoleTest < ActionDispatch::IntegrationTest
     Current.tenant = nil
   end
 
-  def sign_in(user)
-    post login_path, params: { email: user.email, password: 'password123' }
-  end
-
   test 'accounts created without a role start as employee, not admin' do
     sign_in(@admin)
     post users_path, params: { user: { name: 'New', email: 'new1@example.com', password: 'password123' } }

@@ -1,6 +1,6 @@
 # Automatic C-Trax timesheet refresh
 
-Release status: **enabled and verified on SER8 on October 17, 2026**. The Herbal Healers workspace now refreshes C-Trax labor history automatically every 15 minutes. The earlier [source-history release](employee-source-history-deployment-2026-10-17.md) remains the receipt for the initial manual import; the activation evidence below covers this schedule.
+Release status: **enabled and verified on SER8 on October 17, 2026**. The Herbal Healers workspace now refreshes C-Trax labor history automatically every 15 minutes. The earlier [source-history release](history/employee-source-history-deployment-2026-10-17.md) remains the receipt for the initial manual import; the activation evidence below covers this schedule.
 
 ## Enable or stop refresh
 

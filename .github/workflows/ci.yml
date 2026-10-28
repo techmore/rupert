@@ -22,6 +22,10 @@ jobs:
         run: git diff-tree --check "$(git hash-object -t tree /dev/null)" HEAD -- . ':(exclude)docs/audits/data' ':(exclude)*.txt' ':(exclude)*.csv'
       - run: python3 bin/build-product-site --check
       - run: python3 bin/check-doc-links
+      # shellcheck is preinstalled on ubuntu-latest. Accepted findings are
+      # disabled inline with a reason next to the line.
+      - name: Shellcheck deploy and app shell scripts
+        run: shellcheck deploy/ser8/*.sh web/bin/dev web/bin/prepare-sqlite
       # age encrypts backups (#421); the encrypted-backup script tests use the real CLI.
       - name: Install age
         run: sudo apt-get -o Acquire::Retries=5 update -qq && sudo apt-get -o Acquire::Retries=5 install -y -qq age
@@ -46,6 +50,8 @@ jobs:
       SCOPES: write_products
       HOST: app-host-name.io
       BUNDLE_GEMFILE: ${{ github.workspace }}/web/Gemfile
+      # Relative to web/ (every run step's working directory); cached below.
+      BUNDLE_PATH: vendor/bundle
       RAILS_ENV: test
     defaults:
       run:
@@ -65,8 +71,17 @@ jobs:
           puts "resolv #{version}"
           RUBY
 
+      # Keyed on the lockfile and the container's Ruby (keep in step with
+      # container.image above); a partial hit still saves most of the install.
+      - name: Cache gems
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: web/vendor/bundle
+          key: gems-${{ runner.os }}-ruby-4.0.9-${{ hashFiles('web/Gemfile.lock') }}
+          restore-keys: gems-${{ runner.os }}-ruby-4.0.9-
+
       - name: Install dependencies
-        run: bundle install
+        run: bundle install && bundle clean
 
       # The backup-key tests check generated keys against the real age CLI (#421).
       - name: Install age

@@ -260,6 +260,7 @@ write_json status.json deploying "installing ${NEW:0:8} ($migrations new migrati
 mkdir -p "$BACKUPS" "$STATE"; chmod 700 "$BACKUPS"; chmod 755 "$STATE"
 backup="$BACKUPS/production-$(date +%Y%m%d-%H%M%S)-${CUR:0:8}-$attempt_id.sqlite3"
 # Resolve the same production SQLite path as Rails, relative to Rails.root.
+# shellcheck source=/dev/null # the env file is host config, not in the repo
 db_path=$(cd "$APP/web" && set -a && . "$ENV_FILE" && printf '%s' "${RUPERT_SQLITE_DATABASE_PRODUCTION-storage/production.sqlite3}") || db_path=""
 case "$db_path" in /*) ;; '') ;; *) db_path="$APP/web/$db_path" ;; esac
 if [ -z "$db_path" ] || [ ! -f "$db_path" ] || [ ! -s "$db_path" ] ||
@@ -365,6 +366,7 @@ PY
 }
 # The build runs as root; hand anything it wrote back to the app user.
 fix_owner() { chown -R rupert:rupert web/storage web/public web/tmp web/log 2>/dev/null; return 0; }
+# shellcheck source=/dev/null # the env file is host config, not in the repo
 rails_env() { set -a && . "$ENV_FILE" && set +a; }
 in_web() { ( cd "$APP/web" && rails_env && "$@" ); }
 
@@ -375,6 +377,7 @@ stage=checkout; git checkout -q --detach "$NEW" \
   && stage=restart && fix_owner && systemctl restart rupert-web rupert-jobs \
   && stage=health && health_result=failed && health && health_result=passed \
   && stage=asset_smoke && asset_smoke
+# shellcheck disable=SC2181 # the && chain above records $stage; one status check keeps it readable
 if [ $? -ne 0 ]; then
   if [ "$migrations" -gt 0 ]; then
     failure="${NEW:0:8} failed at $stage; $migrations migration(s) may have run and are NOT reverted, pre-deploy backup: $backup"

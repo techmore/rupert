@@ -39,4 +39,4 @@ Website mode, saved encrypted credentials, explicit access authorization and dai
 
 No source deployment or credential change was needed for this check. Account identifiers, financial totals, digests, original files and the detailed verification receipt remain private. REST API authentication and native Health Center export compatibility remain unverified. Subsequent source promotions must preserve the latest live revision and use the shared `/var/lock/rupert-deploy.lock`; syncing this verification changes documentation only.
 
-See [setup and operation](iris-reporting.md#automatic-native-daily-deposits-website-pulls) and the [earlier native CSV deployment](iris-native-deposits-deployment-2026-10-15.md).
+See [setup and operation](iris-reporting.md#automatic-native-daily-deposits-website-pulls) and the [earlier native CSV deployment](history/iris-native-deposits-deployment-2026-10-15.md).

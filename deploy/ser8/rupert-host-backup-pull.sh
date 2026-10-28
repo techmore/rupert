@@ -107,6 +107,7 @@ for f in "${sets[@]:$KEEP}"; do
   done
 done
 
+# shellcheck disable=SC2012 # counting our own rupert-<timestamp> files; no odd names
 kept=$(ls -1 "$OUT"/rupert-*.sqlite3.gz.age | wc -l)
 dest="$OUT/rupert-$stamp.sqlite3.gz.age"
 write_status ok "encrypted set $stamp copied to the SER8 host and checked (age header, digest); key $KEY_FPR; $kept sets kept" "$dest" "$(stat -c %s "$dest")" "$kept"

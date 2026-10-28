@@ -4,8 +4,7 @@ require 'test_helper'
 
 class BulkSaleConsumptionTest < ActiveSupport::TestCase
   setup do
-    @tenant = Tenant.create!(name: 'Reviewed materials', subdomain: "reviewed-materials-#{SecureRandom.hex(4)}")
-    Current.tenant = @tenant
+    @tenant = create_workspace('Reviewed materials')
     @actor = 'inventory@example.invalid'
     @product = ShopifyProduct.create!(id: 'gid://shopify/Product/9001', title: 'Herbal tea')
     @variant = ShopifyVariant.create!(id: 'gid://shopify/ProductVariant/9002', productId: @product.id, sku: 'TEA', title: 'Small', inventoryQuantity: 99)
@@ -358,8 +357,7 @@ class BulkSaleConsumptionConcurrencyTest < ActiveSupport::TestCase
   self.use_transactional_tests = false
 
   setup do
-    @tenant = Tenant.create!(name: 'Sale material race', subdomain: "sale-material-race-#{SecureRandom.hex(4)}")
-    Current.tenant = @tenant
+    @tenant = create_workspace('Sale material race')
     @product = ShopifyProduct.create!(id: "gid://shopify/Product/#{SecureRandom.random_number(1_000_000) + 1}", title: 'Concurrent product')
     @variant = ShopifyVariant.create!(id: "gid://shopify/ProductVariant/#{SecureRandom.random_number(1_000_000) + 1}", productId: @product.id, title: 'Concurrent variant')
     @material = BulkMaterial.create!(name: 'Concurrent ingredient', unit: 'g')

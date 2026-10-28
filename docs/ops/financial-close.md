@@ -18,9 +18,9 @@ Reading requires reports.read; retaining close/forecast versions additionally re
 
 Daily reconciliation CSV and daily/weekly/monthly source summaries remain available from the close workspace. Source summaries preserve separate currencies and evidence layers; they are not substituted for bank reconciliation or a complete accounting P&L.
 
-The [October 16 deployment receipt](financial-close-deployment-2026-10-16.md) records the live release, employee-source preservation, exact CI, browser rehearsals and encrypted recovery verification.
+The [October 16 deployment receipt](history/financial-close-deployment-2026-10-16.md) records the live release, employee-source preservation, exact CI, browser rehearsals and encrypted recovery verification.
 
-The [close-blocker UX deployment receipt](financial-close-blockers-deployment-2026-10-16.md) records actionable missing reports and overdue follow-ups, cash shortfall navigation, changed-result safeguards and the subsequent verified release.
+The [close-blocker UX deployment receipt](history/financial-close-blockers-deployment-2026-10-16.md) records actionable missing reports and overdue follow-ups, cash shortfall navigation, changed-result safeguards and the subsequent verified release.
 
 The close workspace puts actionable blockers first: missing source/currency/location controls, comparison/coverage/import checks, open follow-ups and missing/stale/Needs attention review. Current review is explicitly required for any package; other unresolved checks block a complete close while allowing an explained exception package. Missing-report actions preserve exact scope and reuse an existing open request. The first overdue follow-ups expose next steps and progress actions. Reference stages remain in an expandable workflow section.
 
@@ -30,52 +30,52 @@ Across days now shows each date's close-check count, current/missing/stale revie
 
 The forecast baseline panel links to close evidence, comparison across dates and overdue work. Changing the entered close date hides the previous baseline status and asks for calculation to refresh it, while preserving entered cash assumptions. Open close checks do not prevent manual scenario planning or replace the reviewer’s close decision.
 
-The [across-date close deployment receipt](financial-close-across-days-deployment-2026-10-16.md) records verification and recovery for these changes.
+The [across-date close deployment receipt](history/financial-close-across-days-deployment-2026-10-16.md) records verification and recovery for these changes.
 
 Use the date-focus shortcuts to show overdue work, missing register reports, missing/stale reviews or changed close packages within the selected seven dates. Focus counts describe dates, not distinct requests; the global priority queue remains across all dates. The next action on each date and forecast baseline goes directly to the earliest overdue follow-up with its owner and latest note, or to the leading close check when no overdue work remains. These are navigation shortcuts: they do not change progress, send reminders or certify a close.
 
-The [next-action deployment receipt](financial-close-next-action-deployment-2026-10-16.md) records the combined employee-source validation, live checks and encrypted recovery checkpoint.
+The [next-action deployment receipt](history/financial-close-next-action-deployment-2026-10-16.md) records the combined employee-source validation, live checks and encrypted recovery checkpoint.
 
 Missing-report next actions on date cards and forecast baselines show the exact source/currency/location/date scope, with direct find/upload/tracking links and reuse of an existing request. Overdue next actions expose linked-original state and evidence actions. Progress opened through an overdue next-action link can save and return to the selected close workspace; the date must fall within the request's covered period, and validation errors preserve the context. These shortcuts retain the existing report-reader/writer and employee access boundaries.
 
-The [exact-action deployment receipt](financial-close-exact-actions-deployment-2026-10-16.md) records the live source, access-data preservation and recovery checks.
+The [exact-action deployment receipt](history/financial-close-exact-actions-deployment-2026-10-16.md) records the live source, access-data preservation and recovery checks.
 
 Missing-report requests opened from close checks, cash baselines or date cards keep the selected covered close date through creation, duplicate replay, original upload and progress saving. Upload errors retain that return context. Only an ISO business date within the request's coverage is accepted. The upload panel names the request and offers a direct return to progress; adding a file still requires an explicit evidence review and save.
 
 On the progress form, **Keep investigating**, **Waiting on report** and **Resolve follow-up** select the corresponding status and focus the note without saving. The next-step guidance explains the owner/date or closing reason needed, and switching decisions preserves entered text. The normal status selector remains available. A reviewer can document an exception without evidence; resolving a request never certifies reconciliation or financial close. No action sends email or messages.
 
-The [guided-resolution deployment receipt](financial-close-guided-resolution-deployment-2026-10-16.md) records the exact released source, lifecycle checks and access-preservation verification.
+The [guided-resolution deployment receipt](history/financial-close-guided-resolution-deployment-2026-10-16.md) records the exact released source, lifecycle checks and access-preservation verification.
 
 Searching retained originals from a follow-up, close priority card or cash baseline keeps the request and selected covered close date. The library shows the request's owner, due date, full coverage and matching-original count for the current page. Filter submissions, pagination, clearing filters and expired page recovery retain this context. Exact request matches offer **Review & use for this request**; partial coverage or a different source, kind or register scope cannot be selected. Evidence selection still requires an explicit progress note and save.
 
 An empty request search offers a return to that request instead of creating a duplicate. **Reset to requested scope** clears search terms and restores the requested source/period. Other across-date follow-up shortcuts remain available in a collapsed section. Searches opened from a close date before a request exists retain a validated return to close and carry that date into subsequent request tracking. Readers can inspect scope and originals, while evidence-link and upload actions remain writer-only.
 
-The [request-search deployment receipt](financial-close-request-search-deployment-2026-10-16.md) records the release, monthly-period handoff checks and preserved access data.
+The [request-search deployment receipt](history/financial-close-request-search-deployment-2026-10-16.md) records the release, monthly-period handoff checks and preserved access data.
 
 Overdue progress forms preview the next overdue request across all dates, including its due age, owner, covered period and linked-original state. **Save and work next overdue** saves only the current request and selects the earliest-due remaining item from the latest workspace queue, excluding the saved request. A changed or resolved preview target is not forced open. The selected close date carries forward only if the next request covers it. Blank notes, invalid changes and stale versions stay on the current form with entered text preserved.
 
 If there is no other overdue request, **Save and check overdue queue** returns to the queue after saving. This does not imply that the current request is resolved: a still-overdue item remains visible. Existing save, return-to-close and return-to-queue choices remain available. No automatic notes, evidence links, status changes to other requests, messages or emails are created.
 
-The [next-overdue deployment receipt](financial-close-next-overdue-deployment-2026-10-16.md) records the release, continuation checks and unchanged access data.
+The [next-overdue deployment receipt](history/financial-close-next-overdue-deployment-2026-10-16.md) records the release, continuation checks and unchanged access data.
 
 Missing-control searches opened from close, forecast baselines, daily attention or across-date gaps keep the exact source/currency/location/business-date scope. The library reloads that scope from current workspace activity instead of trusting query-supplied currency or location. Searching another date range does not change the report being investigated. Its panel offers scoped control upload, tracking, search reset and return to close. Follow-up creation is prefilled as a register-control request for that exact pool, not a generic source export.
 
 The search rechecks for an active request covering that pool and reuses it when one was created after the original prompt. If the control gap has since been filled, or the scope/date link is invalid, it asks for current close checks and suppresses the scoped tracking action. Readers can inspect scope without upload or tracking actions. Search never creates requests, links evidence, certifies review or sends messages.
 
-The [exact-control search deployment receipt](financial-close-control-search-deployment-2026-10-16.md) records scope continuity, request reuse and unchanged access checks.
+The [exact-control search deployment receipt](history/financial-close-control-search-deployment-2026-10-16.md) records scope continuity, request reuse and unchanged access checks.
 
 The cash-plan input checklist shows how many required entries are filled for the active forecast length and jumps directly to the next blank field. Its expandable list names each missing weekly receipt/payment, opening cash or scenario assumption. Explicit 0 counts as entered; whitespace does not. Inactive weeks are excluded from the checklist. Changing the horizon within the current form preserves their typed values; calculation uses only the selected weeks. Entry completion does not validate amounts or approve a close: calculate still runs the server checks.
 
 Editing a calculated plan shows a stale-results notice beside the totals as well as in the form, with a direct return to the checklist. Downloads and retention remain disabled until recalculation. The checklist performs no requests, storage writes, calculations or financial mutations; existing close-date context, original-report actions, forecast assumptions and access boundaries remain intact.
 
-The [cash-checklist deployment receipt](financial-close-cash-checklist-deployment-2026-10-16.md) records input guidance, stale-result checks and preserved access.
+The [cash-checklist deployment receipt](history/financial-close-cash-checklist-deployment-2026-10-16.md) records input guidance, stale-result checks and preserved access.
 
 The follow-up queue's **Work this view** panel counts overdue requests and missing reports without linked originals across every page of the current filters, and opens the earliest-due matching request or its scoped original search. Closed and filtered-out requests never enter these priorities. Report readers get review navigation rather than progress actions. Zero counts describe this view only and do not certify a close or account for reports not yet tracked.
 
 When a business day is selected, previous/next-day navigation preserves status, source, owner, purpose, evidence and original-coverage filters, discarding pagination. **All dates with these filters** broadens only the day; same-day financial close and cash-plan links keep the baseline date. Global shortcuts remain explicitly labeled across all dates. These are read-only navigation changes; saving progress and the global next-overdue continuation keep their existing behavior.
 
-The [filtered-priority deployment receipt](financial-close-filtered-priorities-deployment-2026-10-16.md) records queue-scope continuity, cross-page counts and preserved access.
+The [filtered-priority deployment receipt](history/financial-close-filtered-priorities-deployment-2026-10-16.md) records queue-scope continuity, cross-page counts and preserved access.
 
 Follow-ups opened from the queue retain its validated status, source, owner, purpose, evidence, original-coverage and business-day filters on the progress page. **Back to selected queue** returns without saving edits; **Save and return to selected queue** records the current progress note first. Ordinary Save progress retains this return context, and invalid/stale saves preserve it alongside entered notes. After saving, the queue uses the latest data: a resolved, reassigned, linked or rescheduled request may no longer match. Readers retain the return link without progress controls. Only structured local filters are accepted; foreign originals and invalid dates suppress the return context. The global next-overdue action keeps its all-dates behavior.
 
-The [selected-queue return deployment receipt](financial-close-queue-return-deployment-2026-10-16.md) records progress-save continuity, resolution rehearsals and unchanged access data.
+The [selected-queue return deployment receipt](history/financial-close-queue-return-deployment-2026-10-16.md) records progress-save continuity, resolution rehearsals and unchanged access data.

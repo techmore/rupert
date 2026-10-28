@@ -43,7 +43,7 @@ complexity, updatability — and returns evidence-cited, ranked findings without
 changing code.
 
 Prompt:
-> Read the repo (web/ plus legacy/ reference) read-only as a Rails expert.
+> Read the repo (web/, deploy/ and docs/) read-only as a Rails expert.
 > Assess how the code is broken up: structure/layering, duplicated or drifted
 > patterns, convention consistency, complexity hotspots, N+1s, dead code, and
 > how hard it is to update safely. For every claim cite file:line; show at

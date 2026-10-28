@@ -14,6 +14,7 @@ DB="${DB:-}"
 READY_URL="${READY_URL:-}"
 
 if [ -z "$DB" ]; then
+  # shellcheck disable=SC2016 # expanded by the container's shell, not here
   DB="$(incus exec "$INSTANCE" -- /bin/sh -c '
     . /etc/rupert.env || exit 1
     printf "%s" "${RUPERT_SQLITE_DATABASE_PRODUCTION:-storage/production.sqlite3}"
@@ -56,6 +57,7 @@ if ! [[ "$MAX_AGE_MIN" =~ ^[1-9][0-9]*$ ]]; then
   echo "Invalid MAX_AGE_MIN" >&2
   exit 1
 fi
+# shellcheck disable=SC2016 # expanded by the container's shell, not here
 timeout 90s incus exec "$INSTANCE" -- /bin/sh -c '
   set -a
   . /etc/rupert.env || exit 1

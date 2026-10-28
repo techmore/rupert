@@ -3,12 +3,15 @@
 ENV['RAILS_ENV'] ||= 'test'
 if ENV['COVERAGE'] == '1'
   require 'simplecov'
+  SimpleCov.start 'rails'
   SimpleCov.command_name "test-#{ENV.fetch('TEST_ENV_NUMBER', Process.pid)}"
 end
 require_relative '../config/environment'
 require 'rails/test_help'
 require_relative 'support/upload_fixtures'
 require_relative 'support/performance_audit'
+require_relative 'support/sign_in_helper'
+require_relative 'support/workspace_helper'
 
 require 'minitest/autorun'
 require 'minitest/mock'
@@ -33,6 +36,7 @@ end
 module ActiveSupport
   class TestCase
     include PushGuardTestHelper
+    include WorkspaceHelper
 
     # Run tests in parallel with specified workers
     parallelize(workers: :number_of_processors)
@@ -46,5 +50,11 @@ module ActiveSupport
     fixtures :all
 
     # Add more helper methods to be used by all tests here...
+  end
+end
+
+module ActionDispatch
+  class IntegrationTest
+    include SignInHelper
   end
 end

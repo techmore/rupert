@@ -1,6 +1,6 @@
 # NAB / IRIS integration investigation
 
-Investigated October 15, 2026, America/New_York. This records the available integration routes, evidence, implementation gaps and steps needed to enable unattended reporting. Read alongside the [operating runbook](iris-reporting.md) and [deployment record](iris-deployment-2026-10-15.md).
+Investigated October 15, 2026, America/New_York. This records the available integration routes, evidence, implementation gaps and steps needed to enable unattended reporting. Read alongside the [operating runbook](iris-reporting.md) and [deployment record](history/iris-deployment-2026-10-15.md).
 
 ## Finding and recommendation
 

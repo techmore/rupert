@@ -1,47 +1,36 @@
----
-name: "🐛 Bug Report"
-about: Something isn't working
-labels: "Type: Bug 🐛"
----
-
-# Issue summary
-
-Before opening this issue, I have:
-
-- [ ] Upgraded to the latest version of the package
-  - `shopify_api` version:
-  - `shopify_app` version:
-  - Ruby version:
-  - Operating system:
-- [ ] Set `log_level: :debug` [in my configuration](https://github.com/Shopify/shopify-api-ruby#setup-shopify-context), if applicable
-- [ ] Found a reliable way to reproduce the problem that indicates it's a problem with the package
-- [ ] Looked for similar issues in this repository
-- [ ] Checked that this isn't an issue with a Shopify API
-  - If it is, please create a post in the [Shopify community forums](https://community.shopify.com/c/partners-and-developers/ct-p/appdev) or report it to [Shopify Partner Support](https://help.shopify.com/en/support/partners/org-select)
-
 <!--
-Write a short description of the issue here.
-
-We can only fix issues for which there is a clear reproduction scenario.
-The more context you can provide, the easier it becomes for us to investigate and fix the issue.
+  Rupert is a public repository. Do not paste credentials, customer records,
+  merchant IDs, real exports, private logs or browser session data here.
+  Use synthetic examples instead.
 -->
 
-## Expected behavior
+## Outcome
 
-What do you think should happen?
+What should a person using Rupert be able to do, or what is going wrong?
 
-## Actual behavior
+## Where
 
-What actually happens?
+Page, module or job (for example `/timesheets`, Payroll, the SER8 updater), and
+the build shown in the footer or `X-Rupert-Build`, if known.
 
-## Steps to reproduce the problem
+## Steps to reproduce (for a bug)
 
 1.
-1.
-1.
+2.
+3.
 
-## Debug logs
+**Expected:**
 
-```
-// Paste any relevant logs here
-```
+**Actual:**
+
+## Scope and acceptance
+
+- In scope:
+- Out of scope:
+- Done when:
+
+## Impact
+
+Data, permission, provider (Shopify, Square, C-Trax, NAB, Authorize.net) or
+payroll effects, and whether live operator acceptance is needed. See
+[docs/development-and-deployment-workflow.md](../docs/development-and-deployment-workflow.md).

@@ -2,7 +2,7 @@
 
 Investigated October 15, 2026, America/New_York. This integration preserves processor reports for reconciliation in Rupert; C-Trax remains the retail inventory reference.
 
-Automatic native Daily Deposits website imports are enabled on SER8. The earlier six monthly Health Center snapshots remain separate visible-table transcriptions. See [deployment verification and remaining API access requirement](iris-deployment-2026-10-15.md). Live API authentication and native Health Center export formats remain unverified. The expanded [integration investigation](iris-integration-investigation.md) covers additional endpoints, native Daily Deposits CSV, documents, webhooks and delivery alternatives.
+Automatic native Daily Deposits website imports are enabled on SER8. The earlier six monthly Health Center snapshots remain separate visible-table transcriptions. See [deployment verification and remaining API access requirement](history/iris-deployment-2026-10-15.md). Live API authentication and native Health Center export formats remain unverified. The expanded [integration investigation](iris-integration-investigation.md) covers additional endpoints, native Daily Deposits CSV, documents, webhooks and delivery alternatives.
 
 ## Verified evidence and limits
 
@@ -66,7 +66,7 @@ English table matrices use month names across columns and the observed portal me
 
 ## Native Daily Deposits CSV
 
-Deployed to SER8; see [release, verification and recovery evidence](iris-native-deposits-deployment-2026-10-15.md).
+Deployed to SER8; see [release, verification and recovery evidence](history/iris-native-deposits-deployment-2026-10-15.md).
 
 Open **Import a native Daily Deposits CSV** on the IRIS connection page. In NAB, choose Deposits → Daily Deposits → Export → CSV. Supply the merchant selected in NAB, the source report month (`YYYY-MM`, 2000–2099) and the original CSV. API credentials are not needed. Settings-write permission and an active workspace are required.
 
