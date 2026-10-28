@@ -144,9 +144,11 @@ module TeamChat
       return arguments if @question.match?(/\b(?:line items?|line-item|sku|individual|which orders|order numbers?|status|open orders)\b/i)
 
       args = arguments.deep_stringify_keys
-      query = args['query'].to_s.strip
-      return arguments if args['vendor'].present? || ![nil, '', 'orders', 'vendors'].include?(args['view'])
-      return arguments if (args.keys - %w[view vendor query from to]).any?
+      return arguments if args.key?('vendor_exact') || (args['vendor'].present? && args['query'].present?)
+      return arguments unless [nil, '', 'orders', 'vendors'].include?(args['view'])
+      return arguments if args.key?('status') && args['status'] != 'all'
+      query = (args['vendor'].presence || args['query']).to_s.strip
+      return arguments if (args.keys - %w[view vendor query from to status]).any?
       if query.blank?
         match = @question.match(/\bfor\s+(.{1,80}?)\s+(?:this month|last month|today|yesterday)\b/i)
         query = match && match[1].strip
@@ -159,6 +161,7 @@ module TeamChat
 
       args['view'] = 'vendors'
       args.delete('query')
+      args.delete('status')
       args['vendor'] = query
       args['vendor_exact'] = true
       periods = { 'this month' => 'this_month', 'last month' => 'last_month', 'today' => 'today', 'yesterday' => 'yesterday' }

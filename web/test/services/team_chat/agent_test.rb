@@ -211,6 +211,37 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal({ 'view' => 'vendors', 'vendor' => vendor.name, 'vendor_exact' => true, 'from' => first, 'to' => today }, args)
   end
 
+  test 'a named vendor value question corrects an unfiltered all-status order lookup' do
+    vendor = Purchasing::Vendor.create!(name: 'Synthetic Tea Supply')
+    first = Date.current.beginning_of_month.iso8601
+    today = Date.current.iso8601
+    data = { view: 'vendors', from: first, to: today, currency: 'USD', meta: { has_more: false }, rows: [] }
+    Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'no vendors', data: data))
+    script_model({ tool: 'purchase_orders', arguments: { view: 'orders', status: 'all', from: first, to: today } }, { text: 'I checked.' })
+    reply = ask('@rupert For Synthetic Tea Supply this month, what was the PO value and vendor payments?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    args = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first['arguments']
+    assert_equal({ 'view' => 'vendors', 'vendor' => vendor.name, 'vendor_exact' => true, 'from' => first, 'to' => today }, args)
+  end
+
+  test 'a named vendor payment question makes an implicit vendor filter exact' do
+    vendor = Purchasing::Vendor.create!(name: 'Synthetic Tea Supply')
+    first = Date.current.beginning_of_month.iso8601
+    today = Date.current.iso8601
+    data = { view: 'vendors', from: first, to: today, currency: 'USD', meta: { has_more: false }, rows: [] }
+    Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'no vendors', data: data))
+    original = { view: 'vendors', vendor: vendor.name, from: first, to: today }
+    script_model({ tool: 'purchase_orders', arguments: original }, { text: 'I checked.' })
+    reply = ask('@rupert For Synthetic Tea Supply this month, what was the PO value and vendor payments?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    args = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first['arguments']
+    assert_equal original.stringify_keys.merge('vendor_exact' => true), args
+  end
+
   test 'vendor payment correction does not override a request for order line items' do
     Purchasing::Vendor.create!(name: 'Synthetic Tea Supply')
     data = { view: 'orders', rows: [], meta: { has_more: false } }
