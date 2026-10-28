@@ -708,6 +708,23 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_includes reply.body, 'Books closed'
   end
 
+  test 'refunded order questions use the scoped count rather than paid order totals' do
+    data = { from: (Date.current - 29).iso8601, to: Date.current.iso8601,
+             lines: [], totals_by_currency: [], refunded_orders_by_source: { 'shopify' => 2 } }
+    Mcp::Tools::SalesSummary.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'sales', data: data))
+    script_model({ tool: 'sales_summary', arguments: {} }, { text: 'No refunds occurred.' })
+    reply = ask('@rupert How many orders were refunded in the last 30 days, and from which sources?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'shopify: 2 orders'
+    assert_includes reply.body, 'order date and current order status'
+    assert_not_includes reply.body, 'No refunds occurred'
+
+    script_model({ text: 'No refunds occurred.' })
+    reply = ask('@rupert How many orders were refunded in the last 30 days?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_equal TeamChat::Agent::UNCHECKED_RECORDS, reply.reload.body
+  end
+
   test 'a nonempty receipt count does not replace a request for receipt identities' do
     data = { queues: [{ name: 'Expense receipts waiting for review', count: 2 }],
              low_stock_available: false, oldest_unshipped: [] }

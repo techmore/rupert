@@ -25,6 +25,28 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
 
   def render(item) = TeamChat::FinancialEvidence.render([item])
 
+  test 'refunded order counts preserve source and order-date scope without inventing missing refunds' do
+    from = (Date.current - 29).iso8601
+    to = Date.current.iso8601
+    args = { from: from, to: to }
+    payload = args.merge(lines: [], totals_by_currency: [], refunded_orders_by_source: { 'shopify' => 2, 'square' => 1 })
+    item = evidence(payload, tool: 'sales_summary', args: args)
+    text = TeamChat::RefundEvidence.render_requested([item])
+    assert_includes text, 'shopify: 2 orders'
+    assert_includes text, 'square: 1 order'
+    assert_includes text, 'order date and current order status'
+    assert_includes text, 'Missing source data does not prove no refunds'
+    assert TeamChat::FinancialEvidence.decode(JSON.generate(item), @user.tenant_id, tool: 'sales_summary')
+    item['refunded_orders']['counts']['shopify'] = 10
+    assert_nil TeamChat::FinancialEvidence.decode(JSON.generate(item), @user.tenant_id, tool: 'sales_summary')
+    empty = evidence(payload.merge(refunded_orders_by_source: {}), tool: 'sales_summary', args: args)
+    assert_includes TeamChat::RefundEvidence.render_requested([empty]), 'No refunded orders were returned'
+    invalid = evidence(payload.merge(refunded_orders_by_source: { 'shopify' => -1 }), tool: 'sales_summary', args: args)
+    assert_nil TeamChat::RefundEvidence.render_requested([invalid])
+    assert TeamChat::RefundEvidence.count_question?('How many orders were refunded in the last 30 days, and from which sources?')
+    assert_not TeamChat::RefundEvidence.count_question?('How many orders were refunded in the last 30 days and how much did we sell?')
+  end
+
   test 'missing metric scope precedes other figures without hiding them' do
     missing = evidence(data.merge(source: 'rupert_pos', values: []), args: { name: 'gross_sales', period: 'today', source: 'rupert_pos' })
     aggregate = evidence(data.merge(source: nil), args: { name: 'gross_sales', period: 'today' })

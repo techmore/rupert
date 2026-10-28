@@ -419,6 +419,7 @@ module TeamChat
       return if @toolbox && (alert_only_tool_mix? || compliance_only_tool_mix? || InventoryEvidence.uncertain?(@toolbox.inventory_results))
       return if cash_flow_question?
       return if ComplianceEvidence.focused_title(request_text)
+      return if RefundEvidence.count_question?(request_text)
 
       now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       return if now - @last_publish < PUBLISH_EVERY
@@ -455,6 +456,8 @@ module TeamChat
       elsif (title = ComplianceEvidence.focused_title(request_text))
         entries = @execution.run.reload.tool_results
         body = ComplianceEvidence.render_focused_count(entries, title) || 'I could not verify the requested compliance count.'
+      elsif RefundEvidence.count_question?(request_text)
+        body = RefundEvidence.render_requested(@toolbox.financial_evidence) || 'I could not verify refunded-order counts for the last 30 days.'
       elsif @toolbox.financial? && (queue_answer = QueueEvidence.render_requested(@toolbox.financial_evidence, request_text))
         # For an entirely queue-specific request, show only the requested
         # verified counts, not unrelated tools the model also called.

@@ -104,6 +104,7 @@ module TeamChat
           add(out, row['gross_cents'], 'money', row['currency'], order_source(args['source']), period,
             'Gross sales total (paid or fulfilled orders)', "totals_by_currency.#{index}.gross_cents")
         end
+        out['refunded_orders'] = RefundEvidence.build(data, period, args['source']) if data.key?('refunded_orders_by_source')
         out['daily'] = daily_evidence(data['daily'], period, order_source(args['source'])) if args['include_daily'] == true
         out['gaps'] << 'Product breakdowns are not certified by this contract.' if data['top_products'].present?
       when 'period_review'
@@ -408,6 +409,11 @@ module TeamChat
       if data['timekeeping']
         context = data['timekeeping']
         return unless data['tool'] == 'time_keeping_report' && context.is_a?(Hash) &&
+          context['id'] == Digest::SHA256.hexdigest(JSON.generate(context.except('id'))).first(16)
+      end
+      if data['refunded_orders']
+        context = data['refunded_orders']
+        return unless data['tool'] == 'sales_summary' && context.is_a?(Hash) &&
           context['id'] == Digest::SHA256.hexdigest(JSON.generate(context.except('id'))).first(16)
       end
       if data['pulse']

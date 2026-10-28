@@ -58,6 +58,8 @@ module TeamChat
         available = lookup_definitions + mcp_definitions + write_definitions + view_definitions
         narrow = if QueueEvidence.count_question?(@question)
           'order_queues'
+        elsif RefundEvidence.count_question?(@question)
+          'sales_summary'
         elsif ComplianceEvidence.narrow_title(@question)
           'compliance_check'
         end
