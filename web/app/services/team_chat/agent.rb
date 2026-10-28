@@ -10,6 +10,7 @@ module TeamChat
   # change data becomes an action card a person must approve.
   class Agent
     UNCHECKED_FIGURES = 'I could not verify those figures in Rupert’s records, so I won’t guess. Ask me something like “How were sales today?” or “Sales tax last month?” and I’ll look them up.'
+    UNCHECKED_RECORDS = 'I could not check those records in Rupert, so I cannot confirm their status. Please try again.'
     # Each tool round consumes a generation and an execution checkpoint. Allow
     # every advertised tool call plus the final generation, while retaining a
     # hard bound on repeated tool requests and the separate run deadline.
@@ -414,6 +415,7 @@ module TeamChat
     def publish(text)
       # Never expose draft figures before their semantic evidence is checked.
       return if @toolbox&.financial? || text.match?(/[<\d$€£¥%]/)
+      return if unchecked_operational_request?
       return if @toolbox && (alert_only_tool_mix? || compliance_only_tool_mix? || InventoryEvidence.uncertain?(@toolbox.inventory_results))
 
       now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -430,7 +432,10 @@ module TeamChat
     def finish(text, started)
       body = AskRupert::ReplyFormat.tidy(without_echo(text))
       malformed_tool_text = body.match?(/<(?:tool_call|function|parameter)(?:[=>\s]|\z)/i)
-      if @toolbox.financial?
+      if unchecked_operational_request?
+        body = UNCHECKED_RECORDS
+        @verify_meta['kept'] = 'guarded' if @verify_meta
+      elsif @toolbox.financial?
         # The bot's own words when every figure checks out against the facts; else Ruby lists the facts.
         checked = FinancialEvidence.checked_prose(body, @toolbox.financial_evidence) unless malformed_tool_text
         @prose_checked = checked.present?
@@ -542,6 +547,19 @@ module TeamChat
 
     def alert_only_tool_mix?
       @toolbox.tools_used.any? && (@toolbox.tools_used - ['list_alerts']).empty?
+    end
+
+    # A status answer without any lookup is not evidence, even when it
+    # happens to match the records. Keep navigation and proposed edits apart.
+    def unchecked_operational_request?
+      return false unless @toolbox && @toolbox.tools_used.empty?
+
+      question = request_text.sub(/\A\s*(?:@[\w.-]+\s+)+/, '')
+      return false if question.match?(/\A\s*(?:where|how do|how can)\b/i)
+      return false if question.match?(/\b(?:create|make|add|update|change|delete|send|assign|move)\b/i)
+
+      question.match?(/\b(?:any|which|list|show|how many|waiting|overdue|unresolved)\b/i) &&
+        question.match?(/\b(?:tasks?|alerts?|orders?|receipts?|follow[- ]?ups?|payments?|shifts?|timesheets?|queues?)\b/i)
     end
 
     # What the bot was given: its tool results and the conversation it saw.

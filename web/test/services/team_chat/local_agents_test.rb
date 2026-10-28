@@ -113,7 +113,7 @@ class TeamChatLocalAgentsTest < ActiveSupport::TestCase
     end
   end
 
-  test 'with RUPERT_VERIFY a local reply is the checked answer, and the check is recorded' do
+  test 'verification without tool data cannot bypass the status guard' do
     previous = ENV['RUPERT_VERIFY']
     ENV['RUPERT_VERIFY'] = 'qwen'
     script_model({ text: 'There were 12 orders.' })
@@ -129,8 +129,8 @@ class TeamChatLocalAgentsTest < ActiveSupport::TestCase
     reply.reload
 
     assert_equal 'There were 12 orders.', given[:draft]
-    assert_equal 'There were 14 orders.', reply.body
-    assert_equal({ 'claims' => 0, 'supported' => 0, 'failed' => [], 'fixed' => true, 'kept' => 'fixed', 'ms' => 900, 'draft' => 'There were 12 orders.' },
+    assert_equal TeamChat::Agent::UNCHECKED_RECORDS, reply.body
+    assert_equal({ 'claims' => 0, 'supported' => 0, 'failed' => [], 'fixed' => true, 'kept' => 'guarded', 'ms' => 900, 'draft' => 'There were 12 orders.' },
       reply.meta['verify'])
   ensure
     ENV['RUPERT_VERIFY'] = previous

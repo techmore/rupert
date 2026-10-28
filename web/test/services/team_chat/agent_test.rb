@@ -29,6 +29,23 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal @user.id, reply.meta['asked_by']
   end
 
+  test 'an operational status asserted without a lookup is not presented as checked' do
+    script_model({ text: 'There are no reconciliation follow-ups open.' })
+    reply = ask('@rupert are any reconciliation follow-ups open?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal TeamChat::Agent::UNCHECKED_RECORDS, reply.reload.body
+    assert_empty reply.meta['tools']
+  end
+
+  test 'a conceptual question remains answerable without a record lookup' do
+    script_model({ text: 'A task is an item of work.' })
+    reply = ask('@rupert what is a task?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal 'A task is an item of work.', reply.reload.body
+  end
+
   test 'the reply calls a Rupert tool natively and streams the answer into the room' do
     requests = script_model({ tool: 'where_is', arguments: { query: 'timesheets' } }, { text: 'Timesheets are under Team. Open [Timesheets](/people/timesheets).' })
     reply = ask('@rupert where are timesheets? Also explain the approval workflow.')
