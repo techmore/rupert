@@ -54,7 +54,8 @@ with open(os.environ['CALLS'], 'a') as f:
     f.write('incus ' + ' '.join(args) + '\n')
 root = os.environ['FAKE_ROOT']
 if args[0] == 'exec':
-    cmd = [a.replace('/var/backups/rupert', root + '/var/backups/rupert') for a in args[args.index('--') + 1:]]
+    cmd = [a if root + '/var/backups/rupert' in a else a.replace('/var/backups/rupert', root + '/var/backups/rupert')
+           for a in args[args.index('--') + 1:]]
     if cmd[:2] == ['systemctl', 'start']:
         if os.environ.get('BACKUP_EXIT', '0') != '0':
             sys.exit(int(os.environ['BACKUP_EXIT']))
@@ -222,7 +223,7 @@ class EncryptedBackupTest(unittest.TestCase):
         self.assertEqual(0, r.returncode, r.stderr)
         self.assertEqual(sorted(['env-20261020-0617', 'rupert-20261020-0617.sql.gz', 'settings-20261020-0617.sql']),
                          sorted(p.name for p in (self.local / 'legacy-plaintext').iterdir()))
-        left = sorted(p.name for p in self.local.iterdir() if p.is_file())
+        left = sorted(p.name for p in self.local.iterdir() if p.is_file() and p.name != '.backup.lock')
         self.assertEqual(2 * 9, len(left), left)
         self.assertFalse(any('20261001-0000' in n or '20261001-0001' in n for n in left), left)
         self.assertTrue(any('20261001-0002' in n for n in left))
