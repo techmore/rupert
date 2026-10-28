@@ -917,6 +917,42 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal [['2026-08-01', '23.45'], ['2026-08-02', nil], ['2026-08-03', '67.89']], view['rows']
   end
 
+  test 'an explicitly dated top-product request fetches the missing metric' do
+    data = { metric: 'top_products', source: nil, period: { from: '2026-08-01', to: '2026-08-03' }, values: [
+      { currency: 'USD', products: [{ name: 'Tea', revenue_cents: 2345, share_percent: 100.0 }] }
+    ] }
+    Mcp::Tools::Metric.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'top products', data: data))
+    script_model({ text: 'I could not check product sales.' })
+    reply = ask('@rupert Which products had the highest recorded sales from 2026-08-01 to 2026-08-03?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal({ 'name' => 'top_products', 'from' => '2026-08-01', 'to' => '2026-08-03', 'compare' => 'none' }, entry['arguments'])
+    assert_includes reply.reload.body, 'Product revenue: Tea: 23.45 USD'
+    assert_not_includes reply.body, 'could not check product sales'
+  end
+
+  test 'an explicitly dated refund transaction request fetches the matching metric' do
+    data = { metric: 'refund_rate', source: nil, period: { from: '2026-08-01', to: '2026-08-03' }, values: [
+      { currency: 'USD', value: 10.0, refunded_cents: 250, refunds: 1 }
+    ] }
+    Mcp::Tools::Metric.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'refunds', data: data))
+    script_model({ text: 'I could not check refunds.' })
+    reply = ask('@rupert What refund transactions were recorded from 2026-08-01 through 2026-08-03? Include amounts and counts.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'refund_rate', entry.dig('arguments', 'name')
+    assert_includes reply.reload.body, 'Recorded refund transaction amount: 2.50 USD'
+    assert_includes reply.body, 'Recorded refund transaction count: 1'
+  end
+
+  test 'a source-filtered product question does not prefetch an unfiltered metric' do
+    Mcp::Tools::Metric.any_instance.expects(:call).never
+    script_model({ text: 'I could not verify product sales.' })
+    reply = ask('@rupert Which Shopify products had the highest sales from 2026-08-01 to 2026-08-03?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_empty TeamChat::Run.find_by!(message_id: reply.id).tool_results
+  end
+
   test 'a nonempty receipt count does not replace a request for receipt identities' do
     data = { queues: [{ name: 'Expense receipts waiting for review', count: 2 }],
              low_stock_available: false, oldest_unshipped: [] }

@@ -82,6 +82,7 @@ module TeamChat
     end
 
     def financial? = @financial
+    def prefetched_requested_metric? = @prefetched_requested_metric == true
 
     def add_verified_view_fallback!
       return if @views.any?
@@ -100,6 +101,39 @@ module TeamChat
 
       self.call_id = "daily-chart-#{@execution.run.id}"
       call('sales_summary', period.merge('include_daily' => true, 'top_products' => 0))
+    end
+
+    # A narrow, explicitly dated question may require a metric the model did
+    # not request. Reuse the authorized tool, call budget and durable receipt.
+    def prefetch_requested_metric!
+      text = @question.to_s.downcase
+      return unless @execution && @calls < MAX_CALLS && names.include?('metric')
+      return if text.match?(/\b(?:compare|versus|also|plus|only|except|exclude|without|not|shopify|square|ctrax|swipesimple|manual|sku|vendor|customer|location|store|brand|category|usd|cad|eur|gbp)\b/)
+      return if text.match?(/\brupert[ _-]+pos\b/)
+      dates = text.scan(/\b\d{4}-\d{2}-\d{2}\b/)
+      return unless dates.size == 2 && text.match?(/\b(?:from|for)\s+#{Regexp.escape(dates[0])}\s+(?:through|to)\s+#{Regexp.escape(dates[1])}\b/)
+      return if text.match?(/\bfor\s+(?!\d{4}-\d{2}-\d{2}\b)/)
+
+      from, to = dates.map { |date| Date.iso8601(date) }
+      return unless from <= to && (to - from).to_i <= 366
+
+      name = if text.match?(/\bproducts?\b/) && text.match?(/\b(?:highest|top|best|leading)\b/) && text.match?(/\b(?:sales|revenue)\b/)
+        'top_products'
+      elsif text.match?(/\brefund\s+transactions?\b/) && text.match?(/\b(?:amounts?|counts?|rates?)\b/)
+        'refund_rate'
+      end
+      return unless name
+      return if @execution.run.reload.tool_results.any? do |entry|
+        args = entry['arguments'].to_h
+        entry['name'] == 'metric' && args['name'] == name && args['from'] == dates[0] && args['to'] == dates[1]
+      end
+
+      self.call_id = "requested-metric-#{@execution.run.id}"
+      before = @financial_evidence.size
+      call('metric', { 'name' => name, 'from' => dates[0], 'to' => dates[1], 'compare' => 'none' })
+      @prefetched_requested_metric = @financial_evidence.size > before
+    rescue Date::Error
+      nil
     end
 
     def names = definitions.map(&:name)

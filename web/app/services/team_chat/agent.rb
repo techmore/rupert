@@ -84,6 +84,7 @@ module TeamChat
         end
         @toolbox = Toolbox.new(user: @asker, room: @room, reply: @reply, only: only, execution: @execution, question: request_text)
         text = verified(answer)
+        @toolbox.prefetch_requested_metric!
         @toolbox.prefetch_daily_chart!
         finish(text, started)
       end
@@ -490,7 +491,7 @@ module TeamChat
         body = 'I could not verify the requested queue count from the available records.'
       elsif @toolbox.financial?
         # The bot's own words when every figure checks out against the facts; else Ruby lists the facts.
-        checked = FinancialEvidence.checked_prose(body, @toolbox.financial_evidence) unless malformed_tool_text
+        checked = FinancialEvidence.checked_prose(body, @toolbox.financial_evidence) unless malformed_tool_text || @toolbox.prefetched_requested_metric?
         @prose_checked = checked.present?
         inventory = InventoryEvidence.render(@toolbox.inventory_results)
         alerts = AlertEvidence.render(@toolbox.alert_results)
@@ -501,9 +502,9 @@ module TeamChat
         if inventory.present? || alerts.present? || task.present? || compliance.present? || sync.present?
           # Financial prose validation cannot certify other tool claims.
           @prose_checked = false
-          body = [FinancialEvidence.render(@toolbox.financial_evidence), compliance, sync, task, inventory, alerts].compact.join("\n\n")
+          body = [FinancialEvidence.render(@toolbox.financial_evidence, question: request_text), compliance, sync, task, inventory, alerts].compact.join("\n\n")
         else
-          body = checked || FinancialEvidence.render(@toolbox.financial_evidence)
+          body = checked || FinancialEvidence.render(@toolbox.financial_evidence, question: request_text)
         end
       elsif malformed_tool_text || InventoryEvidence.uncertain?(@toolbox.inventory_results) || compliance_only_tool_mix? || alert_only_tool_mix?
         # A model may emit tool-call markup as ordinary text after tool choice

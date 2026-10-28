@@ -576,12 +576,13 @@ module TeamChat
       "#{period['from']} to #{period['to']}"
     end
 
-    def render(evidence)
+    def render(evidence, question: nil)
       # Repeated identical calls are separate audit events but should not be
       # presented to the user as separate products or financial results.
       facts = evidence.flat_map { |item| item['facts'] }.uniq do |fact|
         fact.values_at('meaning', 'unit', 'value', 'currency', 'source', 'period', 'timezone')
       end
+      facts = prioritize_requested_facts(facts, question)
       lines = facts.first(12).map do |fact|
         number = BigDecimal(fact.fetch('value'))
         whole, fraction = number.to_s('F').split('.')
@@ -636,6 +637,28 @@ module TeamChat
       lines << 'Additional verified facts were omitted. Narrow the question for the remaining figures.' if facts.size > 12
       lines.concat(other_gaps)
       lines.join("\n")
+    end
+
+    # Prefer the requested facts when unrelated lookups filled the response
+    # budget. Only recognize a single explicit range; never promote data from
+    # a different period or treat refund transactions as refunded orders.
+    def prioritize_requested_facts(facts, question)
+      text = question.to_s.downcase
+      dates = text.scan(/\b\d{4}-\d{2}-\d{2}\b/)
+      return facts unless dates.size == 2 && text.match?(/\b(?:from|for)\s+#{Regexp.escape(dates[0])}\s+(?:through|to)\s+#{Regexp.escape(dates[1])}\b/)
+      return facts if text.match?(/\b(?:compare|versus|vs|also|plus)\b/)
+
+      prefix = if text.match?(/\bproducts?\b/) && text.match?(/\b(?:highest|top|best|leading)\b/)
+        'Product revenue:'
+      elsif text.match?(/\brefund\s+transactions?\b/)
+        'Recorded refund'
+      end
+      return facts unless prefix
+
+      facts.each_with_index.sort_by do |fact, index|
+        requested = fact['meaning'].to_s.start_with?(prefix) && fact['period'] == { 'from' => dates[0], 'to' => dates[1] }
+        [requested ? 0 : 1, index]
+      end.map(&:first)
     end
   end
 end

@@ -267,6 +267,18 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_equal 1, text.scan('214.83 CAD').length
   end
 
+  test 'requested product facts appear before unrelated facts only for their requested period' do
+    rows = [
+      { 'meaning' => 'Gross sales', 'period' => { 'from' => '2026-08-01', 'to' => '2026-08-03' } },
+      { 'meaning' => 'Product revenue: Tea', 'period' => { 'from' => '2026-08-01', 'to' => '2026-08-03' } },
+      { 'meaning' => 'Product revenue: Coffee', 'period' => { 'from' => '2026-07-01', 'to' => '2026-07-03' } }
+    ]
+    text = 'Highest product sales from 2026-08-01 to 2026-08-03'
+    ordered = TeamChat::FinancialEvidence.prioritize_requested_facts(rows, text)
+    assert_equal ['Product revenue: Tea', 'Gross sales', 'Product revenue: Coffee'], ordered.pluck('meaning')
+    assert_equal rows, TeamChat::FinancialEvidence.prioritize_requested_facts(rows, "#{text} versus 2026-07-01")
+  end
+
   test 'business pulse preserves operational counts and unavailable sections' do
     payload = { date: Date.current.iso8601, sales: { gross_sales_by_currency: [] },
                 waiting: { queues: [{ name: 'Orders waiting', count: 2 }] },
