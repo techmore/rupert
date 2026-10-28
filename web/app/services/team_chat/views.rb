@@ -32,7 +32,8 @@ module TeamChat
 
     DESCRIPTION = 'Shows a table, bar chart, line chart or small HTML page beside the chat (a button under your reply opens it). ' \
                   'Use it when a comparison or list is clearer laid out than in a sentence, for example several days, stores or ' \
-                  'products side by side. Copy every figure exactly from tool results; figures that are not in them are flagged. ' \
+                  'products side by side. For plots use a structured table or chart, which can be adjusted; HTML cannot. ' \
+                  'Copy every figure exactly from tool results; figures that are not in them are flagged. ' \
                   'Say in your reply what the view shows.'
 
     module_function
@@ -87,13 +88,18 @@ module TeamChat
 
     def html_text(html) = Nokogiri::HTML.fragment(html).text
 
-    # How many figures (money, percentages and plain numbers of two or more digits) are not in the tool results.
+    # How many figures are not found in tool results. This does not verify a
+    # figure's label, source, period, currency or relationship to a row.
     def unchecked(text, known_text)
-      figures = text.to_s.scan(/(?<![\w.])[-−]?\$?\d[\d,]*(?:\.\d+)?%?/).map { |raw| raw.delete('$,%−-') }.reject { |raw| raw.delete('.').length < 2 }
+      figures = text.to_s.scan(/(?<![\w.])[-−]?\$?\d[\d,]*(?:\.\d+)?%?/).map { |raw| raw.delete('$,%').tr('−', '-') }
       return 0 if figures.empty?
 
-      known = NumberCheck.known_values(known_text.to_s)
-      figures.count { |raw| known.none? { |value| (value.abs - raw.to_f).abs < 0.005 } }
+      known = known_text.to_s.scan(/(?<![\w.])[-−]?\d[\d,]*(?:\.\d+)?/).flat_map do |raw|
+        normalized = raw.delete(',').tr('−', '-')
+        value = normalized.to_f
+        normalized.match?(/\A-?\d+\z/) ? [value, value / 100] : [value]
+      end
+      figures.count { |raw| known.none? { |value| (value - raw.to_f).abs < 0.005 } }
     end
   end
 end

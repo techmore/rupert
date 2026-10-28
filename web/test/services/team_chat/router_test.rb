@@ -61,11 +61,11 @@ class TeamChatRouterTest < ActiveSupport::TestCase
   end
 
   test 'a local reply that repeats the question line first has it removed' do
-    script_model({ text: "#{@user.display_name}: @qwen how many tasks?\n\nThere are 3 open tasks." })
+    script_model({ text: "#{@user.display_name}: @qwen what is a task?\n\nA task is an item of work." })
     @room.update!(assistant_mode: 'mentions')
-    reply = post('@qwen how many tasks?').replies.first
+    reply = post('@qwen what is a task?').replies.first
     TeamChat::Agent.new(reply).run
 
-    assert_equal 'There are 3 open tasks.', reply.reload.body
+    assert_equal 'A task is an item of work.', reply.reload.body
   end
 end

@@ -283,8 +283,11 @@ questions:
   module: daily
   question: store sales today
   tools:
-  - metric
+  - daily_close
   answerable: 'yes'
+  expect: Report today's store register sales separately per store from daily close, and identify missing or unknown data without treating it as zero or adding stores together.
+  checks: [{ tool: daily_close, args: {} }]
+  needs: ['daily_close:stores[].store', 'daily_close:stores[].currency', 'daily_close:stores[].gross_cents?', 'daily_close:note']
 - id: daily-043
   module: daily
   question: how much did we make yesterday after refunds
@@ -1077,6 +1080,7 @@ questions:
   tools:
   - update_task
   answerable: 'yes'
+  expect: The answer should offer a reviewable reassignment or ask which reorder task or Sean is meant if ambiguous. It must not claim the task was reassigned without an approved action.
 - id: daily-162
   module: daily
   question: bump the bag order to high priority

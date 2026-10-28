@@ -20,6 +20,16 @@ class TeamChatViewsTest < ActiveSupport::TestCase
     assert_match(/needs numbers/, error.message)
   end
 
+  test 'one-digit chart values are flagged when absent from tool results' do
+    view = build({ title: 'Count', kind: 'bar_chart', columns: %w[Day Count], rows: [['Mon', 3], ['Tue', 0]] }, '{"count":0}')
+    assert_equal 1, view['unchecked']
+  end
+
+  test 'opposite signs are not treated as matching figures' do
+    view = build({ title: 'Change', kind: 'bar_chart', columns: %w[Day Change], rows: [['Mon', 5], ['Tue', -5]] }, '{"change":-5}')
+    assert_equal 1, view['unchecked']
+  end
+
   test 'html is cleaned of scripts, styles, links and outside images' do
     view = build({ title: 'Note', kind: 'html', html: '<h2>Close</h2><script>alert(1)</script><style>body{}</style><img src="https://x.test/p.gif"><a href="https://x.test">x</a><table><tr><td colspan="2" onclick="go()">ok</td></tr></table>' })
     html = view['html']

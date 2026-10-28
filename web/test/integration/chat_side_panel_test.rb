@@ -34,13 +34,27 @@ class ChatSidePanelTest < ActionDispatch::IntegrationTest
   test 'a bot can build a view; it is saved on the reply with its unchecked figures counted' do
     Current.set(tenant: @admin.tenant, user: @admin) do
       room = TeamChat::Room.direct_for(@admin)
-      script_model({ tool: 'show_view', arguments: { title: 'Two days', kind: 'table', columns: %w[Day Sales], rows: [['Mon', '$12.00'], ['Tue', '$5.00']] } },
+      script_model({ tool: 'show_view', arguments: { title: 'Two days', kind: 'table', columns: %w[Day Count], rows: [['Mon', '$12.00'], ['Tue', '$5.00']] } },
         { text: 'Here are the two days side by side.' })
       reply = TeamChat::Post.call(room: room, user: @admin, body: '@rupert show me two days in a table').reply
       TeamChat::Agent.new(reply, config: team_chat_config).run
       view = reply.reload.meta['views'].sole
       assert_equal ['Two days', 'table', 2], [view['title'], view['kind'], view['unchecked']]
       assert_equal [view], reply.as_payload(viewer: @admin)[:views]
+    end
+  end
+
+  test 'a plot request rejects static HTML and can use an adjustable structured view' do
+    Current.set(tenant: @admin.tenant, user: @admin) do
+      room = TeamChat::Room.direct_for(@admin)
+      script_model({ tool: 'show_view', id: 'view-html', arguments: { title: 'Counts', kind: 'html', html: '<p>10</p>' } },
+        { tool: 'show_view', id: 'view-chart', arguments: { title: 'Counts', kind: 'bar_chart', columns: %w[Day Count], rows: [['Mon', 10]] } },
+        { text: 'Here is the chart.' })
+      reply = TeamChat::Post.call(room: room, user: @admin, body: '@rupert plot the counts').reply
+      TeamChat::Agent.new(reply, config: team_chat_config).run
+      run = TeamChat::Run.find_by!(message_id: reply.id)
+      assert_includes run.tool_results.first['result'], 'use a structured table, bar chart or line chart'
+      assert_equal 'bar_chart', reply.reload.meta['views'].sole['kind']
     end
   end
 end

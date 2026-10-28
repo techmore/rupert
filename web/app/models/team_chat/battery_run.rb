@@ -21,11 +21,16 @@ module TeamChat
     def results_list = Array(results)
     def cadence_scores = by_cadence.to_h
 
+    # A mean over a subset is not comparable with a complete run.
+    def fully_graded?
+      questions.positive? && results_list.size == questions && results_list.all? { |row| row['grade'].is_a?(Numeric) && row['grade'].between?(1, 5) }
+    end
+
     # A run that stopped part-way (killed or the server restarted) shows as stopped.
     def display_status
       return status unless status == 'running'
 
-      started_at && started_at < STALE_AFTER.ago ? 'stopped' : 'running'
+      updated_at && updated_at < STALE_AFTER.ago ? 'stopped' : 'running'
     end
 
     def label = "@#{agent.presence || 'rupert'} · #{model.presence || 'unknown model'}"
@@ -50,6 +55,7 @@ module TeamChat
     def self.latest_scores
       rows = where(status: %w[done stopped running]).where.not(avg_grade: nil).where.not('set_name LIKE ?', '%(part)%').newest_first.to_a
       rows.each_with_object({}) do |run, scores|
+        next unless run.fully_graded?
         next if run.status != 'done' && (run.display_status == 'running' || run.answered < run.questions * 0.8)
 
         key = run.model.to_s

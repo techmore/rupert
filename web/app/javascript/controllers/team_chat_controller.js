@@ -1497,11 +1497,12 @@ export default class extends Controller {
       frame.title = view.title
       frame.srcdoc = `<!doctype html><meta charset="utf-8"><style>${this.constructor.VIEW_CSS}</style>${view.html}`
       body.append(frame)
-    } else if (view.kind === "table") {
-      body.append(this.tableNode(view.columns || [], view.rows || [], null))
     } else {
-      body.append(this.chartNode(view))
-      body.append(this.tableNode(view.columns || [], view.rows || [], null))
+      const context = document.createElement("p")
+      context.className = "chat-panel-note"
+      context.textContent = "Check the source, dates, currency and labels: matching numbers alone do not verify a view."
+      body.append(context)
+      body.append(this.adjustableViewNode(view))
     }
     if (view.note) {
       const note = document.createElement("p")
@@ -1509,6 +1510,77 @@ export default class extends Controller {
       note.textContent = view.note
       body.append(note)
     }
+  }
+
+  // Controls only reshape the returned snapshot; they never fetch new data.
+  adjustableViewNode(view) {
+    const wrap = document.createElement("div")
+    const controls = document.createElement("div")
+    controls.className = "chat-panel-controls"
+    const columns = view.columns || []
+    const rows = view.rows || []
+    const numeric = columns.slice(1).map((name, index) => ({ name, index: index + 1 }))
+      .filter((column) => rows.some((row) => this.constructor.numberOf(row[column.index]) !== null))
+    const field = (labelText, input) => {
+      const label = document.createElement("label")
+      label.textContent = labelText
+      label.append(input)
+      controls.append(label)
+    }
+    const option = (select, value, label) => {
+      const item = document.createElement("option")
+      item.value = value
+      item.textContent = label
+      select.append(item)
+    }
+    const kind = document.createElement("select")
+    kind.setAttribute("aria-label", "View type")
+    option(kind, "table", "Table")
+    if (numeric.length) { option(kind, "bar_chart", "Bar chart"); option(kind, "line_chart", "Line chart") }
+    kind.value = numeric.length && view.kind !== "table" ? view.kind : "table"
+    field("View", kind)
+    const series = document.createElement("select")
+    series.setAttribute("aria-label", "Data series")
+    option(series, "all", "All columns")
+    numeric.forEach((column) => option(series, String(column.index), column.name))
+    field("Series", series)
+    const start = document.createElement("input")
+    const end = document.createElement("input")
+    for (const [input, label, value] of [[start, "First row", 1], [end, "Last row", rows.length]]) {
+      input.type = "number"
+      input.min = "1"
+      input.max = String(rows.length)
+      input.value = String(value)
+      input.setAttribute("aria-label", label)
+      field(label, input)
+    }
+    const result = document.createElement("div")
+    const update = () => {
+      const selected = this.constructor.viewSelection(columns, rows, series.value, start.value, end.value)
+      start.value = String(selected.first)
+      end.value = String(selected.last)
+      result.replaceChildren()
+      if (kind.value !== "table") result.append(this.chartNode({ ...view, kind: kind.value, columns: selected.columns, rows: selected.rows }))
+      result.append(this.tableNode(selected.columns, selected.rows, null))
+    }
+    ;[kind, series, start, end].forEach((input) => input.addEventListener("change", update))
+    const hint = document.createElement("p")
+    hint.className = "chat-panel-note"
+    hint.textContent = "Adjust this snapshot here. Ask for a new view to change its source or date range." +
+      (numeric.length > 3 ? " Charts show the first three series; select another series to see it." : "")
+    wrap.append(controls, hint, result)
+    update()
+    return wrap
+  }
+
+  static viewSelection(columns, rows, series, first, last) {
+    const count = rows.length
+    const firstRow = Math.min(count, Math.max(1, Number.parseInt(first, 10) || 1))
+    const lastRow = Math.max(firstRow, Math.min(count, Number.parseInt(last, 10) || count))
+    const index = Number.parseInt(series, 10)
+    const selected = Number.isInteger(index) && index > 0 && index < columns.length ? [0, index] : columns.map((_, i) => i)
+    return { first: firstRow, last: lastRow, columns: selected.map((i) => columns[i]),
+      rows: rows.slice(firstRow - 1, lastRow).map((row) => selected.map((i) => row[i])) }
   }
 
   tableNode(columns, rows, note) {
@@ -1569,7 +1641,7 @@ export default class extends Controller {
     const pad = { left: 48, right: 12, top: 12, bottom: 48 }
     const series = columns.slice(1).map((name, index) => ({ name, index: index + 1 }))
       .filter((column) => rows.some((row) => this.numberOf(row[column.index]) !== null)).slice(0, 3)
-    const values = rows.flatMap((row) => series.map((column) => this.numberOf(row[column.index]) ?? 0))
+    const values = rows.flatMap((row) => series.map((column) => this.numberOf(row[column.index]))).filter((value) => value !== null)
     const max = Math.max(0, ...values)
     const min = Math.min(0, ...values)
     const span = max - min || 1
@@ -1588,12 +1660,23 @@ export default class extends Controller {
     series.forEach((column, seriesIndex) => {
       const color = colors[seriesIndex]
       if (kind === "line_chart") {
-        const points = rows.map((row, rowIndex) => `${pad.left + rowIndex * step + step / 2},${y(this.numberOf(row[column.index]) ?? 0)}`)
-        marks.push({ tag: "polyline", attrs: { points: points.join(" "), fill: "none", stroke: color, "stroke-width": 2 } })
+        let points = []
+        const flush = () => {
+          if (points.length === 1) marks.push({ tag: "circle", attrs: { cx: points[0][0], cy: points[0][1], r: 3, fill: color } })
+          if (points.length > 1) marks.push({ tag: "polyline", attrs: { points: points.map((point) => point.join(",")).join(" "), fill: "none", stroke: color, "stroke-width": 2 } })
+          points = []
+        }
+        rows.forEach((row, rowIndex) => {
+          const value = this.numberOf(row[column.index])
+          if (value === null) { flush(); return }
+          points.push([pad.left + rowIndex * step + step / 2, y(value)])
+        })
+        flush()
       } else {
         const barW = (step * 0.8) / series.length
         rows.forEach((row, rowIndex) => {
-          const value = this.numberOf(row[column.index]) ?? 0
+          const value = this.numberOf(row[column.index])
+          if (value === null) return
           const top = Math.min(y(value), y(0))
           marks.push({ tag: "rect", attrs: { x: pad.left + rowIndex * step + step * 0.1 + seriesIndex * barW, y: top, width: Math.max(barW - 2, 1),
             height: Math.abs(y(value) - y(0)), fill: color } })

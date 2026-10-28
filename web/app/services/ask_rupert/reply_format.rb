@@ -28,7 +28,9 @@ module AskRupert
 
     # Bounded, no stray tool lines, only same-site links.
     def tidy(text, closing: true)
-      cleaned = text.to_s.scrub('').gsub(Redactor::CONTROL, '').lines.reject { |line| line.start_with?('TOOL_CALL') }.join.strip
+      cleaned = text.to_s.scrub('').gsub(Redactor::CONTROL, '')
+      cleaned = cleaned.gsub(/<think\b[^>]*>.*?(?:<\/think\s*>|\z)/im, '').gsub(%r{</think\s*>}i, '')
+      cleaned = cleaned.lines.reject { |line| line.start_with?('TOOL_CALL') }.join.strip
       cleaned = cleaned.gsub(%r{\[([^\]]{1,120})\]\((?!/(?!/))[^)]*\)}, '\1')
       cleaned.length > MAX_REPLY_CHARS && closing ? "#{cleaned.first(MAX_REPLY_CHARS).rstrip}…" : cleaned.first(MAX_REPLY_CHARS + 1)
     end

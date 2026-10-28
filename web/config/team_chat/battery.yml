@@ -7,42 +7,49 @@ questions:
     cadence: daily
     module: sell
     question: How did we do yesterday compared with the day before?
+    expect: Summarize yesterday's stored order sales by currency and the provided comparison with the preceding day, identifying their scope; if the comparison or a source is unavailable, say so without inferring zero sales.
     checks: [{ tool: period_review, args: { period: yesterday } }]
     needs: ["period_review:sales[].gross_cents", "period_review:sales[].currency", "period_review:change[].gross_change_percent"]
   - id: d2
     cadence: daily
     module: sell
     question: What is waiting to be processed right now?
+    expect: Summarize the returned queue names and counts, identify anything waiting, and acknowledge unavailable queue evidence without inventing work or treating missing data as zero.
     checks: [order_queues]
     needs: ["order_queues:queues[].name", "order_queues:queues[].count"]
   - id: d3
     cadence: daily
     module: sell
     question: Are there paid online orders that have not shipped yet? Which one is the oldest?
+    expect: Report the paid-online unshipped queue and the oldest order if the reference identifies it; if the queue is empty say there is no oldest order, and if the oldest is unavailable say so.
     checks: [order_queues]
-    needs: ["order_queues:queues[].count", "order_queues:oldest_unshipped", "order_queues:oldest_unshipped[].order"]
+    needs: ["order_queues:queues[name=Paid online orders not shipped].count", "order_queues:oldest_unshipped", "order_queues:oldest_unshipped[].order"]
   - id: d4
     cadence: daily
     module: system
     question: Is sync healthy right now?
+    expect: Report the available channel statuses and queue worker state, including failures or unknowns; do not claim all sources are healthy if the reference does not establish that.
     checks: [sync_health]
     needs: ["sync_health:channels[].latest_status", "sync_health:channels[].last_success_at", "sync_health:queue_worker.state"]
   - id: d5
     cadence: daily
     module: stock
     question: Any open stock alerts I should look at today?
+    expect: Report the open alert count and relevant returned stock alerts, or say no open alerts were returned when the count is zero; do not invent products or quantities.
     checks: [list_alerts]
     needs: ["list_alerts:counts.open", "list_alerts:rows[].sku?", "list_alerts:rows[].quantity"]
   - id: w1
     cadence: weekly
     module: sell
     question: How was last week compared with the week before?
+    expect: Summarize last week's stored order sales by currency and the provided change from the prior week; acknowledge missing comparison or source coverage instead of inventing figures.
     checks: [{ tool: period_review, args: { period: last_week } }]
     needs: ["period_review:sales[].gross_cents", "period_review:change[].gross_change_percent"]
   - id: w2
     cadence: weekly
     module: work
     question: Which tasks are overdue?
+    expect: List the returned overdue tasks and their due dates when available, or say no overdue tasks were returned when the list is empty; do not invent tasks.
     checks: [{ tool: list_tasks, args: { overdue: true } }]
     needs: ["list_tasks:rows[].title", "list_tasks:rows[].due_on", "list_tasks:path"]
   - id: w3
@@ -56,12 +63,14 @@ questions:
     cadence: weekly
     module: sell
     question: What were our top products last week?
-    checks: [{ tool: period_review, args: { period: last_week } }]
-    needs: ["period_review:top_products[].name", "period_review:top_products[].revenue_cents"]
+    expect: Report the returned top products separately by currency for last week, without combining currencies; if no product data is returned, say that no product sales are stored rather than inventing rankings.
+    checks: [{ tool: metric, args: { name: top_products, period: last_week, compare: none } }]
+    needs: ["metric:values[].currency", "metric:values[].products[].name", "metric:values[].products[].revenue_cents"]
   - id: m1
     cadence: monthly
     module: sell
     question: How did last month go compared with the month before?
+    expect: Summarize last month's stored order sales by currency and the provided change from the prior month; acknowledge missing comparison or source coverage instead of inventing figures.
     checks: [{ tool: period_review, args: { period: last_month } }]
     needs: ["period_review:sales[].gross_cents", "period_review:change[].gross_change_percent"]
   - id: m2
@@ -69,8 +78,8 @@ questions:
     module: bookkeeping
     question: Is last month closed in the books? What is left to do?
     expect: Says whether last month is locked (closed) and lists what is still open.
-    checks: [compliance_check]
-    needs: ["compliance_check:items[].title", "compliance_check:items[].status"]
+    checks: [{ tool: compliance_check, args: { include_ok: true }, select_area: Month close, required_title_suffix: ': Lock the month' }]
+    needs: ["compliance_check:required_row.title", "compliance_check:required_row.status", "compliance_check:required_row.detail", "compliance_check:items[].title", "compliance_check:items[].status"]
   - id: m3
     cadence: monthly
     module: bookkeeping
@@ -82,52 +91,61 @@ questions:
     cadence: monthly
     module: bookkeeping
     question: How much have we spent on expenses so far this month?
+    expect: Report the expense figure for this month only when the reference makes expenses visible; otherwise explain that the total is unavailable rather than treating missing evidence as zero.
     checks: [{ tool: period_review, args: { period: this_month } }]
     needs: ["period_review:activity.expenses_cents", "period_review:money_summary.expenses_visible"]
   - id: q1
     cadence: quarterly
     module: sell
     question: How is this quarter going compared with last quarter?
+    expect: Summarize this quarter's stored order sales by currency and the provided comparison with the prior quarter; acknowledge missing comparison or source coverage instead of inventing figures.
     checks: [{ tool: period_review, args: { period: this_quarter } }]
     needs: ["period_review:sales[].gross_cents", "period_review:change[].gross_change_percent"]
   - id: q2
     cadence: quarterly
     module: bookkeeping
     question: How did last quarter go, and is it locked in the books?
-    checks: [{ tool: period_review, args: { period: last_quarter } }, compliance_check]
-    needs: ["period_review:sales[].gross_cents", "period_review:change[].gross_change_percent", "compliance_check:items[].title", "compliance_check:items[].status"]
+    expect: Summarize the stored order sales for last quarter by currency and report whether that quarter is locked using the close checklist's lock row; mention any recorded changes after locking and limitations in the evidence.
+    checks: [{ tool: period_review, args: { period: last_quarter } }, { tool: compliance_check, args: { include_ok: true }, select_area: Quarter close, required_title_suffix: ': Lock the quarter' }]
+    needs: ["period_review:sales[].gross_cents", "period_review:change[].gross_change_percent", "compliance_check:required_row.title", "compliance_check:required_row.status", "compliance_check:required_row.detail"]
   - id: c1
     cadence: compliance
     module: bookkeeping
     question: What is overdue for compliance or record keeping?
+    expect: Identify relevant returned compliance items and distinguish fix, watch, and unknown statuses; do not describe an item as overdue unless the reference supports that claim.
     checks: [compliance_check]
     needs: ["compliance_check:items[].title", "compliance_check:items[].status"]
   - id: c2
     cadence: compliance
     module: team
     question: Are there timesheets waiting for approval?
-    checks: [compliance_check]
-    needs: ["compliance_check:items[].title", "compliance_check:items[].status"]
+    expect: Use the named Timesheets awaiting approval row and its count to answer; if the row or count is unavailable, say it could not be checked rather than guessing.
+    checks: [{ tool: compliance_check, args: { include_ok: true }, select_title: Timesheets awaiting approval }]
+    needs: ["compliance_check:items[title=Timesheets awaiting approval].status", "compliance_check:items[title=Timesheets awaiting approval].count"]
   - id: c3
     cadence: compliance
     module: system
     question: Is our document retention to Google Drive working?
-    checks: [compliance_check]
-    needs: ["compliance_check:items[].title", "compliance_check:items[].status"]
+    expect: Describe the named Google Drive document retention row's status and detail, including disconnected or failed copies when shown; do not claim a live connectivity check beyond the evidence.
+    checks: [{ tool: compliance_check, args: { include_ok: true }, select_title: Google Drive document retention }]
+    needs: ["compliance_check:items[title=Google Drive document retention].status", "compliance_check:items[title=Google Drive document retention].detail"]
   - id: o1
     cadence: orders
     module: stock
     question: Are any purchase orders late or still waiting for delivery?
+    expect: Report the relevant purchase-order queues and their counts for late and awaiting-delivery orders; identify missing or unavailable queue evidence rather than inventing orders.
     checks: [order_queues]
-    needs: ["order_queues:queues[].name", "order_queues:queues[].count"]
+    needs: ["order_queues:queues[name=Purchase orders awaiting delivery].count", "order_queues:queues[name=Purchase orders awaiting delivery].late"]
   - id: o2
     cadence: orders
     module: sell
     question: Are there any card payments stuck or not resolved?
+    expect: Report the relevant unresolved card-payment queue and count; if it is empty say no unresolved items are shown, and if unavailable say it could not be checked.
     checks: [order_queues]
-    needs: ["order_queues:queues[].name", "order_queues:queues[].count"]
+    needs: ["order_queues:queues[name=Card payments not resolved].count"]
   - id: g1
     cadence: general
     module: team
     question: Where do I approve timesheets?
+    expect: Direct the reviewer to People → Timesheets, select submitted timesheets and open one for review and approval; do not invent a count.
     checks: []

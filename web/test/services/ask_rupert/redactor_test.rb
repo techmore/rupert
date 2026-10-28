@@ -16,4 +16,14 @@ class AskRupertRedactorTest < ActiveSupport::TestCase
   test 'control characters are stripped and newlines kept' do
     assert_equal "a\nb", AskRupert::Redactor.clean("a\u0000\nb\u0007")
   end
+
+  test 'keeps valid ISO dates and still removes phone numbers' do
+    assert_equal '2026-10-27 to 2026-10-28; call [phone]',
+      AskRupert::Redactor.personal('2026-10-27 to 2026-10-28; call 555-123-4567')
+    assert_equal '[phone]', AskRupert::Redactor.personal('2026-99-99')
+    assert_equal '2026-10-09 to 2026-10-09 (2026-10-09 to 2026-10-09):',
+      AskRupert::Redactor.personal('2026-10-09 to 2026-10-09 (2026-10-09 to 2026-10-09):')
+    assert_no_match(/555|123|4567/, AskRupert::Redactor.personal('2026-10-09 555-123-4567'))
+    assert_no_match(/2026-99-99/, AskRupert::Redactor.personal('2026-10-09 (2026-99-99)'))
+  end
 end

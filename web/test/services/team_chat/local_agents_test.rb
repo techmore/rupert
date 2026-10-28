@@ -50,6 +50,125 @@ class TeamChatLocalAgentsTest < ActiveSupport::TestCase
     assert_equal 'qwen', qwen_reply.as_payload(viewer: @user)[:author][:agent]
   end
 
+  test 'hours tool selection respects the availability of the timekeeping report' do
+    previous = ENV['RUPERT_LOCAL_TOOLS']
+    ENV['RUPERT_LOCAL_TOOLS'] = nil
+    requests = script_model({ text: 'I could not check that.' })
+    reply = post('@qwen show hours for everyone last week').replies.first
+    TeamChat::Agent.new(reply).run
+    names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    assert_includes names, 'time_keeping_report'
+    assert_not_includes names, 'staff_schedule'
+
+    Mcp::Tools::TimeKeepingReport.stubs(:available_to?).returns(false)
+    requests = script_model({ text: 'I could not check that.' })
+    reply = post('@qwen show hours for everyone last week').replies.first
+    TeamChat::Agent.new(reply).run
+    names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    assert_not_includes names, 'time_keeping_report'
+    assert_includes names, 'staff_schedule'
+  ensure
+    ENV['RUPERT_LOCAL_TOOLS'] = previous
+  end
+
+  test 'narrow local queue counts offer the authorized queue tool without unrelated tools' do
+    previous = ENV['RUPERT_LOCAL_TOOLS']
+    ENV['RUPERT_LOCAL_TOOLS'] = nil
+    requests = script_model({ text: 'I could not check that.' })
+    TeamChat::Agent.new(post('@qwen how many expense receipts are awaiting review?').replies.first).run
+    names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    assert_includes names, 'order_queues'
+    assert_not_includes names, 'compliance_check'
+    assert_not_includes names, 'search'
+
+    requests = script_model({ text: 'I could not check that.' })
+    TeamChat::Agent.new(post('@qwen which expense receipts require review?').replies.first).run
+    names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    assert_includes names, 'compliance_check'
+
+    Mcp::Tools::OrderQueues.stubs(:available_to?).returns(false)
+    requests = script_model({ text: 'I could not check that.' })
+    TeamChat::Agent.new(post('@qwen how many expense receipts are awaiting review?').replies.first).run
+    names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    assert_not_includes names, 'order_queues'
+    assert_includes names, 'compliance_check'
+    Mcp::Tools::OrderQueues.unstub(:available_to?)
+
+    ENV['RUPERT_LOCAL_TOOLS'] = 'all'
+    requests = script_model({ text: 'I could not check that.' })
+    TeamChat::Agent.new(post('@qwen how many expense receipts are awaiting review?').replies.first).run
+    names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    assert_includes names, 'order_queues'
+    assert_includes names, 'compliance_check'
+  ensure
+    ENV['RUPERT_LOCAL_TOOLS'] = previous
+  end
+
+  test 'a local document retention status question offers compliance without unrelated backup tools' do
+    previous = ENV['RUPERT_LOCAL_TOOLS']
+    ENV['RUPERT_LOCAL_TOOLS'] = nil
+    requests = script_model({ text: 'I could not check that.' })
+    TeamChat::Agent.new(post('@qwen Is our document retention to Google Drive working?').replies.first).run
+    names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    assert_includes names, 'compliance_check'
+    assert_not_includes names, 'backup_freshness'
+    assert_not_includes names, 'search'
+
+    requests = script_model({ text: 'I could not check that.' })
+    TeamChat::Agent.new(post('@qwen Is our document retention to Google Drive working and are backups current?').replies.first).run
+    names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    assert_includes names, 'backup_freshness'
+
+    Mcp::Tools::ComplianceCheck.stubs(:available_to?).returns(false)
+    requests = script_model({ text: 'I could not check that.' })
+    TeamChat::Agent.new(post('@qwen Is our document retention to Google Drive working?').replies.first).run
+    names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    assert_not_includes names, 'compliance_check'
+    Mcp::Tools::ComplianceCheck.unstub(:available_to?)
+
+    ENV['RUPERT_LOCAL_TOOLS'] = 'all'
+    requests = script_model({ text: 'I could not check that.' })
+    TeamChat::Agent.new(post('@qwen Is our document retention to Google Drive working?').replies.first).run
+    names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    assert_includes names, 'compliance_check'
+    assert_includes names, 'backup_freshness'
+  ensure
+    ENV['RUPERT_LOCAL_TOOLS'] = previous
+  end
+
+  test 'focused timesheet and bank questions offer compliance only when authorized' do
+    previous = ENV['RUPERT_LOCAL_TOOLS']
+    ENV['RUPERT_LOCAL_TOOLS'] = nil
+    ['Are there timesheets waiting for approval?', 'Are there bank statement lines waiting to be matched?'].each do |question|
+      requests = script_model({ text: 'I could not check that.' })
+      TeamChat::Agent.new(post("@qwen #{question}").replies.first).run
+      names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+      assert_includes names, 'compliance_check'
+      assert_not_includes names, 'search'
+    end
+    requests = script_model({ text: 'I could not check that.' })
+    TeamChat::Agent.new(post('@qwen Are there timesheets waiting for approval and are backups current?').replies.first).run
+    names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    assert_includes names, 'compliance_check'
+    assert_includes names, 'backup_freshness'
+
+    Mcp::Tools::ComplianceCheck.stubs(:available_to?).returns(false)
+    requests = script_model({ text: 'I could not check that.' })
+    TeamChat::Agent.new(post('@qwen Are there timesheets waiting for approval?').replies.first).run
+    names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    assert_not_includes names, 'compliance_check'
+    Mcp::Tools::ComplianceCheck.unstub(:available_to?)
+
+    ENV['RUPERT_LOCAL_TOOLS'] = 'all'
+    requests = script_model({ text: 'I could not check that.' })
+    TeamChat::Agent.new(post('@qwen Are there timesheets waiting for approval?').replies.first).run
+    names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    assert_includes names, 'compliance_check'
+    assert_includes names, 'backup_freshness'
+  ensure
+    ENV['RUPERT_LOCAL_TOOLS'] = previous
+  end
+
   test 'a local agent answers through the gateway with its own model and persona, and sees @rupert as another voice' do
     @room.messages.create!(author_kind: 'assistant', status: 'done', body: 'Earlier answer from Rupert.', meta: { 'asked_by' => @user.id })
     requests = script_model({ text: 'Hi, I am Qwen.' })
@@ -92,7 +211,7 @@ class TeamChatLocalAgentsTest < ActiveSupport::TestCase
     end
   end
 
-  test 'with RUPERT_VERIFY a local reply is the checked answer, and the check is recorded' do
+  test 'verification without tool data cannot bypass the status guard' do
     previous = ENV['RUPERT_VERIFY']
     ENV['RUPERT_VERIFY'] = 'qwen'
     script_model({ text: 'There were 12 orders.' })
@@ -108,8 +227,8 @@ class TeamChatLocalAgentsTest < ActiveSupport::TestCase
     reply.reload
 
     assert_equal 'There were 12 orders.', given[:draft]
-    assert_equal 'There were 14 orders.', reply.body
-    assert_equal({ 'claims' => 0, 'supported' => 0, 'failed' => [], 'fixed' => true, 'kept' => 'fixed', 'ms' => 900, 'draft' => 'There were 12 orders.' },
+    assert_equal TeamChat::Agent::UNCHECKED_RECORDS, reply.body
+    assert_equal({ 'claims' => 0, 'supported' => 0, 'failed' => [], 'fixed' => true, 'kept' => 'guarded', 'ms' => 900, 'draft' => 'There were 12 orders.' },
       reply.meta['verify'])
   ensure
     ENV['RUPERT_VERIFY'] = previous

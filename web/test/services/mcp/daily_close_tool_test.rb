@@ -64,14 +64,14 @@ class DailyCloseToolTest < ActiveSupport::TestCase
     outcome = call
     evidence = TeamChat::FinancialEvidence.build(tool: 'daily_close', data: outcome.data, arguments: {}, tenant_id: @user.tenant_id, invocation: 'call-1')
     facts = evidence['facts']
-    assert_equal ['Store net sales (gross minus refunds; before tax and tips)'] * 2, facts.first(2).pluck('meaning')
+    assert_equal ['Daily-close net sales (gross minus refunds; before tax and tips)'] * 2, facts.first(2).pluck('meaning')
     assert_equal %w[837.5 110.65], facts.first(2).pluck('value')
-    assert_includes facts.first['source'], 'separate from online orders'
+    assert_includes facts.first['source'], 'not added to canonical orders'
     assert(evidence['gaps'].any? { |gap| gap.include?('does not report sales tax') })
     assert_operator facts.size, :<=, 12
     kept = TeamChat::FinancialEvidence.checked_prose('The SwipeSimple register took $837.50 today and Main Street $110.65.', [evidence])
     assert kept
-    assert_includes kept, '✓ Store net sales'
+    assert_includes kept, '✓ Daily-close net sales'
     assert_nil TeamChat::FinancialEvidence.checked_prose('The store made $948.15 today.', [evidence]), 'stores are never added together'
   end
 end

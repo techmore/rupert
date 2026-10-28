@@ -16,10 +16,13 @@ class TeamChatQuestionsController < AuthenticatedController
     @items = TeamChat::Battery.items(TeamChat::Battery.config_for(@set))
     @removed = @edits.values.reject(&:active?).filter_map { |edit| @builtin[edit.question_id] }
     @run_set = TeamChat::Battery.run_set_name(@set)
-    @runs = TeamChat::BatteryRun.where(set_name: [@run_set, "#{@run_set}+verify"]).newest_first.limit(8).to_a
-    @running = TeamChat::BatteryRun.where(status: 'running', started_at: 3.hours.ago..).newest_first.first
+    @runs = TeamChat::BatteryRun.where(set_name: [@run_set, "#{@run_set}+verify", "#{@run_set}-offline"]).newest_first.limit(8).to_a
+    @running = TeamChat::BatteryRun.where(status: 'running', updated_at: 3.hours.ago..).newest_first.first
     @bots = [['@rupert', 'rupert']] + TeamChat::LocalAgents.all.map { |agent| ["@#{agent.handle} · #{agent.about}", agent.handle] } +
             (TeamChat::LocalAgents.enabled? ? TeamChat::LocalAgents::TRIALS.map { |agent| ["#{agent.name} (test only)", agent.handle] } : [])
+    available_local = TeamChat::LocalAgents.all + (TeamChat::LocalAgents.enabled? ? TeamChat::LocalAgents::TRIALS : [])
+    @benchmark_bots = available_local.reject { |agent| agent.cloud? || TeamChat::Verify.enabled_for?(agent) }.map { |agent| ["@#{agent.handle} · #{agent.about}", agent.handle] }
+    @bots = @benchmark_bots if @set == 'visualization'
     @tools = Mcp::Registry.tools.select(&:read_only).map(&:tool_name).sort
   end
 
@@ -55,6 +58,20 @@ class TeamChatQuestionsController < AuthenticatedController
   # POST /chat/models/questions/run { set, agent }
   def run
     agent = params[:agent].to_s
+    mode = params[:benchmark_mode].to_s
+    mode = 'visualization' if mode.blank? && @set == 'visualization'
+    if mode.present?
+      return redirect_to(team_chat_questions_path(set: @set), alert: 'Choose depth, breadth or visualization.') unless %w[depth breadth visualization].include?(mode)
+
+      local = TeamChat::LocalAgents.find(agent) || TeamChat::LocalAgents.trial(agent)
+      unless local && !local.cloud? && !TeamChat::Verify.enabled_for?(local)
+        return redirect_to(team_chat_questions_path(set: @set), alert: 'Choose an available local bot without a hosted verifier.')
+      end
+      TeamChat::BatteryJob.perform_later(Current.user.id, mode, agent)
+      ActivityLogger.log('team_chat_battery_started', actor: Current.user, details: "set=#{mode}; agent=#{agent}")
+      return redirect_to(team_chat_questions_path(set: @set), notice: "#{mode.capitalize} benchmark queued for @#{agent}; answers will be retained for independent review.")
+    end
+
     allowed = ['rupert'] + TeamChat::LocalAgents.all.map(&:handle) + (TeamChat::LocalAgents.enabled? ? TeamChat::LocalAgents::TRIALS.map(&:handle) : [])
     return redirect_to(team_chat_questions_path(set: @set), alert: 'Pick a bot that is running.') unless allowed.include?(agent)
 

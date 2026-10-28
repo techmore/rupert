@@ -25,6 +25,368 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
 
   def render(item) = TeamChat::FinancialEvidence.render([item])
 
+  test 'refunded order counts preserve source and order-date scope without inventing missing refunds' do
+    from = (Date.current - 29).iso8601
+    to = Date.current.iso8601
+    args = { from: from, to: to }
+    payload = args.merge(lines: [], totals_by_currency: [], refunded_orders_by_source: { 'shopify' => 2, 'square' => 1 })
+    item = evidence(payload, tool: 'sales_summary', args: args)
+    text = TeamChat::RefundEvidence.render_requested([item])
+    assert_includes text, 'shopify: 2 orders'
+    assert_includes text, 'square: 1 order'
+    assert_includes text, 'order date and current order status'
+    assert_includes text, 'Missing source data does not prove no refunds'
+    assert TeamChat::FinancialEvidence.decode(JSON.generate(item), @user.tenant_id, tool: 'sales_summary')
+    item['refunded_orders']['counts']['shopify'] = 10
+    assert_nil TeamChat::FinancialEvidence.decode(JSON.generate(item), @user.tenant_id, tool: 'sales_summary')
+    empty = evidence(payload.merge(refunded_orders_by_source: {}), tool: 'sales_summary', args: args)
+    assert_includes TeamChat::RefundEvidence.render_requested([empty]), 'No refunded orders were returned'
+    invalid = evidence(payload.merge(refunded_orders_by_source: { 'shopify' => -1 }), tool: 'sales_summary', args: args)
+    assert_nil TeamChat::RefundEvidence.render_requested([invalid])
+    assert TeamChat::RefundEvidence.count_question?('How many orders were refunded in the last 30 days, and from which sources?')
+    assert_not TeamChat::RefundEvidence.count_question?('How many orders were refunded in the last 30 days and how much did we sell?')
+  end
+
+  test 'refund status ranges are explicit, bounded and exclude other requests' do
+    travel_to Time.zone.parse('2026-10-27 12:00') do
+      parser = TeamChat::RefundEvidence
+      expected = { 'from' => '2026-10-07', 'to' => '2026-10-10' }
+      assert_equal expected, parser.explicit_period_for('How many orders placed October 7 through October 10 are currently refunded by source?')
+      assert_equal expected, parser.explicit_period_for('How many refunded orders were placed from 2026-10-07 to 2026-10-10?')
+      assert_nil parser.explicit_period_for('How many refunded Shopify orders from 2026-10-07 to 2026-10-10?')
+      assert_nil parser.explicit_period_for('How many refunded orders from 2026-10-07 to 2026-10-10 and what were total sales?')
+      assert_nil parser.explicit_period_for('How many refund transactions from 2026-10-07 to 2026-10-10?')
+      assert_nil parser.explicit_period_for('How many refunded orders from November 1 through November 5?')
+    end
+  end
+
+  test 'missing metric scope precedes other figures without hiding them' do
+    missing = evidence(data.merge(source: 'rupert_pos', values: []), args: { name: 'gross_sales', period: 'today', source: 'rupert_pos' })
+    aggregate = evidence(data.merge(source: nil), args: { name: 'gross_sales', period: 'today' })
+    text = TeamChat::FinancialEvidence.render([missing, aggregate])
+    assert_operator text.index('rupert_pos canonical orders'), :<, text.index('214.83 USD')
+    assert_includes text, 'canonical orders: Shopify, Square, Rupert POS and manual'
+  end
+
+  test 'an aggregate amount does not prove a source specific claim' do
+    aggregate = evidence(data.merge(source: nil), args: { name: 'gross_sales', period: 'today' })
+    assert_nil TeamChat::FinancialEvidence.checked_prose('Rupert POS made 214.83 USD.', [aggregate])
+    assert TeamChat::FinancialEvidence.checked_prose('Shopify made 214.83 USD.', [evidence])
+    assert_nil TeamChat::FinancialEvidence.checked_prose('Square and Shopify made 214.83 USD.', [evidence])
+  end
+
+  test 'empty daily close states that register records were not returned without claiming zero' do
+    item = evidence(@period.merge(stores: []), tool: 'daily_close', args: @period)
+    assert_includes render(item), 'No store register records were returned'
+    assert_includes render(item), "#{@period[:from]} to #{@period[:to]}"
+    assert_includes render(item), 'does not prove zero sales'
+    assert_empty item['facts']
+  end
+
+  test 'missing register warning keeps its own date when another day has sales' do
+    yesterday = (Date.current - 1).iso8601
+    missing = evidence(@period.merge(stores: []), tool: 'daily_close', args: @period)
+    prior = { from: yesterday, to: yesterday }
+    recorded = evidence(prior.merge(stores: [{ store: 'Online (Shopify)', currency: 'USD', net_cents: 1000 }]),
+      tool: 'daily_close', args: prior)
+    text = TeamChat::FinancialEvidence.render([missing, recorded])
+    assert_includes text, "No store register records were returned for #{@period[:from]} to #{@period[:to]}"
+    assert_includes text, "#{yesterday} to #{yesterday}"
+  end
+
+  test 'online daily close rows are not described as in-person registers' do
+    payload = @period.merge(stores: [{ store: 'Online (Shopify)', kind: 'shopify', currency: 'USD', gross_cents: 1000, notes: [] }])
+    text = render(evidence(payload, tool: 'daily_close', args: @period))
+    assert_includes text, 'Online (Shopify); daily-close row'
+    assert_not_includes text, 'in-person register'
+    assert_includes text, 'Daily-close gross sales'
+    assert_not_includes text, 'Store gross sales'
+  end
+
+  test 'daily sales preserve dates currencies unknowns and missing-order caveat' do
+    yesterday = (Date.current - 1).iso8601
+    today = Date.current.iso8601
+    payload = { from: yesterday, to: today, lines: [], totals_by_currency: [], daily: [
+      { date: yesterday, currency: 'USD', orders: 1, gross_cents: 900719925474099301 },
+      { date: yesterday, currency: 'CAD', orders: 1, gross_cents: nil },
+      { date: yesterday, currency: 'EUR', orders: 1, gross_cents: 0 },
+      { date: today, currency: 'USD', orders: 0, gross_cents: 0 }
+    ] }
+    item = evidence(payload, tool: 'sales_summary', args: { from: yesterday, to: today, include_daily: true })
+    text = render(item)
+    assert_includes text, "#{yesterday}: 9007199254740993.01 USD gross"
+    assert_includes text, "#{yesterday}: CAD gross unavailable"
+    assert_includes text, "#{today} (USD): no paid or fulfilled orders stored"
+    assert_nil item.fetch('daily').fetch('rows').last['gross_cents']
+    assert_equal 0, item.fetch('daily').fetch('rows')[2]['gross_cents']
+    assert_includes text, 'Missing stored orders do not prove there were no sales'
+    assert TeamChat::FinancialEvidence.decode(JSON.generate(item), @user.tenant_id, tool: 'sales_summary')
+    assert_nil prose('Sales were $0.00 today.', item)
+    payload[:daily].last[:gross_cents] = 100
+    assert_nil evidence(payload, tool: 'sales_summary', args: { from: yesterday, to: today, include_daily: true })['daily']
+  end
+
+  test 'long daily sales results disclose omitted rows' do
+    from = Date.current - 30
+    rows = (0..30).map { |i| { date: (from + i).iso8601, currency: 'USD', orders: 0, gross_cents: 0 } }
+    args = { from: from.iso8601, to: Date.current.iso8601, include_daily: true }
+    item = evidence(args.slice(:from, :to).merge(lines: [], totals_by_currency: [], daily: rows), tool: 'sales_summary', args: args)
+    assert_equal 30, item['daily']['rows'].size
+    assert_includes render(item), 'Additional daily rows were omitted'
+  end
+
+  test 'purchase-order evidence preserves filters and separate order amounts' do
+    payload = { view: 'orders', meta: { has_more: false }, rows: [
+      { order_number: 'PO-10', vendor: 'Tea supplier', status: 'ordered', expected_date: '2026-10-31',
+        currency: 'USD', total_cents: 1200, due_cents: 300, line_count: 3,
+        lines: [{ name: 'Tea', sku: 'TEA', quantity: 3, received_quantity: 1 },
+                { name: 'Mint', quantity: 2, received_quantity: 0 }, { name: 'Jar', quantity: 1, received_quantity: 0 }] }
+    ] }
+    item = evidence(payload, tool: 'purchase_orders', args: { status: 'open' })
+    text = render(item)
+    assert_includes text, 'Purchase orders (status: open)'
+    assert_includes text, 'PO-10 — Tea supplier (ordered)'
+    assert_includes text, 'order total 12.00 USD; still due 3.00 USD'
+    assert_includes text, 'Tea (SKU TEA); 3 ordered; 1 received'
+    assert_includes text, 'Additional line items were omitted or unavailable'
+    assert TeamChat::FinancialEvidence.decode(JSON.generate(item), @user.tenant_id, tool: 'purchase_orders')
+    assert_nil prose('Every order has arrived.', item)
+    payload[:rows].first[:status] = 'received'
+    assert_nil evidence(payload, tool: 'purchase_orders', args: { status: 'open' })['purchasing']
+  end
+
+  test 'empty and paginated purchase orders remain scoped to the lookup' do
+    item = evidence({ view: 'orders', rows: [], meta: { has_more: true } }, tool: 'purchase_orders', args: { status: 'open', query: 'tea' })
+    text = render(item)
+    assert_includes text, 'status: open, query: tea'
+    assert_includes text, 'No purchase orders were returned on this page'
+    assert_includes text, 'More orders may be available'
+    assert_not_includes text, 'I could not verify financial figures'
+  end
+
+  test 'vendor evidence distinguishes purchase orders, open due and actual payments' do
+    period = { from: (Date.current - 30).iso8601, to: Date.current.iso8601 }
+    payload = period.merge(view: 'vendors', currency: 'USD', meta: { has_more: false }, rows: [
+      { name: 'Tea supplier', spend_cents: 1200, open_due_cents: 300, paid_in_window_cents: 500,
+        open_orders: 1, average_lead_days: 4.5, lead_time_orders: 2 }
+    ])
+    item = evidence(payload, tool: 'purchase_orders', args: period.merge(view: 'vendors'))
+    text = render(item)
+    assert_includes text, 'placed PO value, not payments: 12.00 USD'
+    assert_includes text, 'currently due on open POs: 3.00 USD'
+    assert_includes text, 'recorded vendor payments in the period: 5.00 USD'
+    assert_includes text, 'average lead 4.5 days across received orders'
+    assert TeamChat::FinancialEvidence.decode(JSON.generate(item), @user.tenant_id, tool: 'purchase_orders')
+
+    assert_nil evidence(payload, tool: 'purchase_orders', args: period.merge(view: 'vendors', from: '2020-01-01'))['purchasing']
+  end
+
+  test 'queue evidence keeps counts and alert scope while omitting unverified order money' do
+    payload = { queues: [{ name: 'Paid online orders not shipped', count: 2, late: 1 }], low_stock_available: true,
+                waiting_on_low_stock: 0, oldest_unshipped: [{ order: 'A-1', source: 'shopify', gross_cents: 1234,
+                  lines: [{ name: 'Tea', sku: 'TEA', low_stock: false }] }] }
+    item = evidence(payload, tool: 'order_queues', args: {})
+    text = render(item)
+    assert_includes text, 'Paid online orders not shipped: 2; 1 late'
+    assert_includes text, 'Oldest unshipped order A-1 (shopify)'
+    assert_includes text, 'Tea (SKU TEA): no matching open low-stock alert'
+    assert_includes text, 'does not establish current inventory coverage'
+    assert_includes text, 'Additional unshipped orders were omitted'
+    assert_not_includes text, '12.34'
+    assert TeamChat::FinancialEvidence.decode(JSON.generate(item), @user.tenant_id, tool: 'order_queues')
+
+    payload[:low_stock_available] = false
+    text = render(evidence(payload, tool: 'order_queues', args: {}))
+    assert_includes text, 'Low-stock alert matching was unavailable'
+    assert_includes text, 'Tea (SKU TEA): alert match unknown'
+  end
+
+  test 'card payment queue identifies its combined scope' do
+    payload = { queues: [{ name: 'Card payments not resolved', count: 0 }], low_stock_available: false, oldest_unshipped: [] }
+    text = render(evidence(payload, tool: 'order_queues', args: {}))
+    assert_includes text, 'Card payments not resolved: 0'
+    assert_includes text, 'combines register and warehouse payment attempts'
+    assert_includes text, 'does not provide a processor-specific breakdown'
+  end
+
+  test 'oversized daily close notes terminate with a bounded honest gap' do
+    stores = 40.times.map do |i|
+      { store: "Store #{i}", currency: 'USD', gross_cents: 100, notes: ["#{i}: #{'x' * 220}"] }
+    end
+    item = evidence(@period.merge(stores: stores), tool: 'daily_close', args: @period)
+
+    assert_operator JSON.generate(item).length, :<=, 5_500
+    assert_empty item['facts']
+    assert_includes item['gaps'].join, 'exceeded the response budget'
+  end
+
+  test 'empty current metric does not answer using an implicit previous period' do
+    previous = (Date.current - 1).iso8601
+    payload = data.merge(values: [], compared_with: { from: previous, to: previous, values: [{ value: 1234, currency: 'USD' }] })
+    item = evidence(payload)
+    assert_empty item['facts']
+    assert_includes render(item), 'No metric rows were returned for the requested period'
+    assert_includes render(item), 'shopify canonical orders'
+    assert_includes render(item), Date.current.iso8601
+    assert_not_includes render(item), '12.34 USD'
+    explicit = evidence(payload, args: { name: 'gross_sales', period: 'today', source: 'shopify', compare: 'previous' })
+    assert_includes render(explicit), '12.34 USD'
+  end
+
+  test 'empty explicit comparison keeps both period gaps without implying zero' do
+    same_day = Date.current.prev_year.iso8601
+    payload = data.merge(values: [], compared_with: { from: same_day, to: same_day, values: [] })
+    item = evidence(payload, args: { name: 'gross_sales', period: 'today', source: 'shopify', compare: 'last_year' })
+    text = render(item)
+
+    assert_includes text, 'No metric rows were returned for the requested period'
+    assert_includes text, 'No metric rows were returned for the comparison period'
+    assert_includes text, Date.current.iso8601
+    assert_includes text, same_day
+    assert_includes text, 'Missing rows do not prove zero'
+    assert_not_includes text, 'implicit prior-period comparison is omitted'
+  end
+
+  test 'empty metric without a comparison still identifies the requested period' do
+    item = evidence(data.merge(values: []), args: { name: 'gross_sales', period: 'today', source: 'shopify', compare: 'none' })
+    assert_includes render(item), 'No metric rows were returned for the requested period'
+    assert_not_includes render(item), 'implicit prior-period comparison is omitted'
+  end
+
+  test 'expense categories preserve amounts and empty results describe the register' do
+    payload = { metric: 'expenses_by_category', period: @period, source: nil,
+               values: [{ currency: 'USD', value: 1200, categories: [{ name: 'Supplies', amount_cents: 1200 }] }] }
+    args = { name: 'expenses_by_category', period: 'today' }
+    assert_includes render(evidence(payload, tool: 'metric', args: args)), 'Expense category: Supplies: 12.00 USD'
+    assert_includes render(evidence(payload.merge(values: []), tool: 'metric', args: args)), 'No active expense-register records'
+    assert_includes render(evidence(payload.merge(values: []), tool: 'metric', args: args)), 'Profit cannot be established'
+  end
+
+  test 'repeated identical tool calls do not duplicate rendered facts' do
+    first = evidence
+    second = evidence(invocation: 'call-2')
+    text = TeamChat::FinancialEvidence.render([first, second])
+    assert_equal 1, text.scan('214.83 USD').length
+  end
+
+  test 'equivalent facts from different tools deduplicate without merging distinct scopes' do
+    first = evidence
+    duplicate = evidence(invocation: 'call-2')
+    duplicate['facts'][0]['tool'] = 'period_review'
+    duplicate['facts'][0]['field'] = 'sales.0.gross_cents'
+    distinct = evidence(data(21483, 'CAD'), invocation: 'call-3')
+    text = TeamChat::FinancialEvidence.render([first, duplicate, distinct])
+    assert_equal 1, text.scan('214.83 USD').length
+    assert_equal 1, text.scan('214.83 CAD').length
+  end
+
+  test 'requested product facts appear before unrelated facts only for their requested period' do
+    rows = [
+      { 'meaning' => 'Gross sales', 'period' => { 'from' => '2026-08-01', 'to' => '2026-08-03' } },
+      { 'meaning' => 'Product revenue: Tea', 'period' => { 'from' => '2026-08-01', 'to' => '2026-08-03' } },
+      { 'meaning' => 'Product revenue: Coffee', 'period' => { 'from' => '2026-07-01', 'to' => '2026-07-03' } }
+    ]
+    text = 'Highest product sales from 2026-08-01 to 2026-08-03'
+    ordered = TeamChat::FinancialEvidence.prioritize_requested_facts(rows, text)
+    assert_equal ['Product revenue: Tea', 'Gross sales', 'Product revenue: Coffee'], ordered.pluck('meaning')
+    led = 'Which products led recorded revenue from 2026-08-01 to 2026-08-03, separated by currency?'
+    assert_equal ['Product revenue: Tea', 'Gross sales', 'Product revenue: Coffee'],
+      TeamChat::FinancialEvidence.prioritize_requested_facts(rows, led).pluck('meaning')
+    assert_equal rows, TeamChat::FinancialEvidence.prioritize_requested_facts(rows, "#{text} versus 2026-07-01")
+  end
+
+  test 'business pulse preserves operational counts and unavailable sections' do
+    payload = { date: Date.current.iso8601, sales: { gross_sales_by_currency: [] },
+                waiting: { queues: [{ name: 'Orders waiting', count: 2 }] },
+                alerts: { available: true, count: 0 }, sync: { available: false },
+                overdue_tasks: { available: true, count: 3 } }
+    item = evidence(payload, tool: 'business_pulse', args: {})
+    text = render(item)
+    assert_includes text, 'No paid or fulfilled order sales rows were returned for today'
+    assert_includes text, 'missing records do not prove zero sales'
+    assert_includes text, 'Open alerts: 0'
+    assert_includes text, 'Failing syncs: unavailable'
+    assert_includes text, 'Overdue tasks: 3'
+    assert_includes text, 'Orders waiting: 2'
+    assert_nil TeamChat::FinancialEvidence.checked_prose('Nothing is waiting.', [item])
+    assert TeamChat::FinancialEvidence.decode(JSON.generate(item), @user.tenant_id, tool: 'business_pulse', invocation: 'call-1')
+    item['pulse']['sections']['Open alerts'] = 8
+    assert_nil TeamChat::FinancialEvidence.decode(JSON.generate(item), @user.tenant_id, tool: 'business_pulse', invocation: 'call-1')
+  end
+
+  test 'product revenue preserves name currency and suppresses unsafe names' do
+    payload = { metric: 'top_products', period: @period, source: nil,
+               values: [{ currency: 'USD', products: [{ name: 'Tea', revenue_cents: 8000 }, { name: "Bad\nname", revenue_cents: 500 }] }] }
+    item = evidence(payload, tool: 'metric', args: { name: 'top_products', period: 'today' })
+    assert_includes render(item), 'Product revenue: Tea: 80.00 USD'
+    assert_includes render(item), 'could not be displayed safely'
+    assert_equal 1, item['facts'].size
+    assert_nil TeamChat::FinancialEvidence.checked_prose('Coffee earned 80.00 USD.', [item])
+  end
+
+  test 'product results state the number returned for each currency' do
+    payload = { metric: 'top_products', period: @period, source: nil,
+               values: [{ currency: 'USD', products: [{ name: 'Tea', revenue_cents: 8000 }] }] }
+    item = evidence(payload, tool: 'metric', args: { name: 'top_products', period: 'today' })
+    assert_includes render(item), '1 product with recorded revenue in USD for this period.'
+  end
+
+  test 'product revenue share stays attached to the product and currency' do
+    payload = { metric: 'top_products', period: @period, source: nil,
+               values: [{ currency: 'USD', products: [{ name: 'Tea', revenue_cents: 8000, share_percent: 75.5 },
+                                                       { name: 'Coffee', revenue_cents: 2000, share_percent: nil }] },
+                        { currency: 'CAD', products: [{ name: 'Tea', revenue_cents: 1000, share_percent: 100.0 }] }] }
+    item = evidence(payload, tool: 'metric', args: { name: 'top_products', period: 'today' })
+    text = render(item)
+    assert_includes text, 'Share of product revenue: Tea: 75.5% (USD group)'
+    assert_includes text, 'Share of product revenue: Tea: 100% (CAD group)'
+    assert_includes text, 'unknown is not zero'
+    assert_no_match(/Share of product revenue: Coffee: 0%/, text)
+    assert_nil TeamChat::FinancialEvidence.checked_prose('Coffee has a 75.5% share.', [item])
+  end
+
+  test 'recorded sales days keep date currency and missing day qualification' do
+    payload = { metric: 'worst_day', period: @period, source: nil,
+                values: [{ currency: 'CAD', value: Date.current.iso8601, gross_cents: 1234 }] }
+    item = evidence(payload, tool: 'metric', args: { name: 'worst_day', period: 'today' })
+    assert_includes render(item), "Lowest recorded sales day: #{Date.current.iso8601}"
+    assert_includes render(item), '12.34 CAD'
+    assert_includes render(item), 'days without recorded orders are not zero-sales days'
+    payload[:values][0][:value] = (Date.current - 1).iso8601
+    assert_empty evidence(payload, tool: 'metric', args: { name: 'worst_day', period: 'today' })['facts']
+  end
+
+  test 'tax metrics retain per source values and distinguish unknown from zero' do
+    payload = @period.then { |period|
+                { metric: 'effective_tax_rate', period: period, source: nil,
+      values: [{ currency: 'USD', value: nil, sources: [{ source: 'square', effective_rate_percent: 0.0 },
+                                                         { source: 'shopify', effective_rate_percent: nil }] }] } }
+    item = evidence(payload, tool: 'metric', args: { name: 'effective_tax_rate', period: 'today' })
+    assert_includes render(item), '0% (USD group)'
+    assert_includes render(item), 'square canonical orders'
+    assert_includes render(item), 'unknown is not zero'
+    assert_equal 1, item['facts'].size
+  end
+
+  test 'mixed timekeeping and sales keep hours and currency separated' do
+    payload = @period.merge(scope: 'all staff', totals: { worked: 7.5, scheduled: 8, ctrax: 2 },
+      sales_same_days: @period.merge(available: true, gross_sales_by_currency: [{ currency: 'CAD', value: 12345 }]))
+    item = evidence(payload, tool: 'time_keeping_report', args: @period)
+    assert_equal '7.5', item.dig('timekeeping', 'hours', 'worked')
+    assert_includes render(item), '7.5 hours worked'
+    assert_includes render(item), '2.0 C-Trax hours observed separately, not added'
+    assert_includes render(item), '123.45 CAD'
+    assert_nil TeamChat::FinancialEvidence.checked_prose('We worked 999 hours and made 123.45 CAD.', [item])
+    assert TeamChat::FinancialEvidence.decode(JSON.generate(item), @user.tenant_id, tool: 'time_keeping_report')
+
+    unavailable = evidence(payload.merge(sales_same_days: { available: false }), tool: 'time_keeping_report', args: @period)
+    assert_includes render(unavailable), '7.5 hours worked'
+    assert_empty unavailable['facts']
+    assert_includes render(unavailable), 'Sales for these days are unavailable'
+    filtered = evidence(payload, tool: 'time_keeping_report', args: @period.merge(employee_id: 12))
+    assert_includes render(filtered), 'selected employee'
+  end
+
   test 'a fact binds its signed decimal value to source period currency meaning tool field and tenant' do
     fact = evidence.fetch('facts').sole
     assert_equal '214.83', fact['value']
@@ -62,17 +424,54 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_not_includes render(evidence(data(nil))), '0.00 USD'
   end
 
+  test 'source leaders are scoped by currency and ties without assuming unknown values' do
+    rows = [{ currency: 'USD', gross_cents: 10000, sources: [{ source: 'shopify', gross_cents: 6000, share_percent: 60, sync: { status: 'unknown' } },
+                                         { source: 'rupert_pos', gross_cents: 4000, share_percent: 40 }] },
+            { currency: 'CAD', gross_cents: 200, sources: [{ source: 'shopify', gross_cents: 100, share_percent: 50 },
+                                         { source: 'square', gross_cents: 100, share_percent: 50 }] }]
+    payload = data.merge(source: nil, metric: 'sales_by_source', values: rows)
+    args = { name: 'sales_by_source', period: 'today' }
+    text = render(evidence(payload, args: args))
+    assert_includes text, 'Gross sales total (paid or fulfilled orders): 100.00 USD'
+    assert_includes text, 'Gross sales total (paid or fulfilled orders): 2.00 CAD'
+    assert_includes text, 'Highest recorded source sales in USD'
+    assert_includes text, 'shopify (sync: unknown)'
+    assert_includes text, 'shopify (sync: unknown), square (sync: unknown)'
+    assert_nil prose('Shopify made $60.00 today and sync is healthy.', evidence(payload, args: args))
+
+    rows.first[:sources].last[:gross_cents] = nil
+    assert_not_includes render(evidence(payload, args: args)), 'Highest recorded source sales in USD'
+    rows.first[:sources].last[:gross_cents] = 4000
+    rows.first[:gross_cents] = 11000
+    assert_not_includes render(evidence(payload, args: args)), 'Highest recorded source sales in USD'
+  end
+
   test 'negative amounts and large integer cents are never converted through floats or absolute values' do
     assert_includes render(evidence(data(-1))), '-0.01 USD'
     assert_includes render(evidence(data(900719925474099301))), '9007199254740993.01 USD'
     assert_empty evidence(data(12.34))['facts']
+    assert_nil prose('Shopify took $0.01 today.', evidence(data(-1)))
+    assert_nil prose('Shopify took -$214.83 today.')
+    assert_nil prose('Shopify took -214.83 USD today.')
   end
 
   test 'refund rates remain percentages rather than money or percentage points' do
     item = evidence(data(-12.5).merge(metric: 'refund_rate'), args: { name: 'refund_rate', period: 'today', source: 'shopify' })
-    assert_includes render(item), '-12.5% USD'
+    assert_includes render(item), '-12.5% (USD group)'
     assert_includes render(item), 'percentage of gross sales'
     assert_equal 'percent', item['facts'].sole['unit']
+  end
+
+  test 'refund metric retains transaction amount count and refund-date scope' do
+    payload = data(12.5).merge(metric: 'refund_rate', values: [{ value: 12.5, currency: 'USD', refunded_cents: 1250, refunds: 2 }])
+    item = evidence(payload, args: { name: 'refund_rate', period: 'today', source: 'shopify' })
+    text = render(item)
+    assert_includes text, 'Recorded refund transaction amount: 12.50 USD'
+    assert_includes text, 'Recorded refund transaction count: 2 (USD group)'
+    assert_includes text, 'counted by refund date'
+    assert_includes text, 'sales may be from an earlier period'
+    payload[:values][0][:refunded_cents] = nil
+    assert_includes render(evidence(payload, args: { name: 'refund_rate', period: 'today', source: 'shopify' })), 'unknown is not zero'
   end
 
   test 'comparison values retain their own period and relative changes name the baseline' do
@@ -84,12 +483,26 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_equal '0.0', facts[2]['value']
   end
 
+  test 'comparison identifies a currency missing only from the prior period' do
+    previous = (Date.current - 1).iso8601
+    payload = data.merge(values: [{ value: 10000, currency: 'USD' }, { value: 9999, currency: 'CAD' }],
+      compared_with: { from: previous, to: previous, values: [{ value: 6000, currency: 'USD' }] },
+      change: [{ currency: 'USD', change_percent: 66.7 }])
+    item = evidence(payload, args: { name: 'gross_sales', period: 'today', source: 'shopify', compare: 'previous' })
+    text = render(item)
+    assert_includes text, "No comparison metric rows were returned for CAD in #{previous} to #{previous}"
+    assert_includes text, 'missing rows do not prove zero'
+    assert_not_includes text, 'No comparison metric rows were returned for USD'
+  end
+
   test 'sales tax and gross with the same amount keep distinct meanings and fields' do
     payload = @period.merge(lines: [{ source: 'shopify', currency: 'CAD', gross_cents: 100, tax_cents: 100, orders: 1 }])
     item = evidence(payload, tool: 'sales_summary', args: @period.merge(source: 'shopify'))
     assert_equal ['Gross sales (paid or fulfilled orders)', 'Order tax', 'Paid or fulfilled order count'], item['facts'].pluck('meaning')
     assert_equal 3, item['facts'].pluck('id').uniq.size
     assert_includes render(item), '1.00 CAD'
+    assert_includes render(item), 'Paid or fulfilled order count: 1 (CAD group)'
+    assert_not_includes render(item), 'order count: 1 CAD'
   end
 
   test 'review expenses with no currency cannot masquerade as USD or profit' do
@@ -98,6 +511,42 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_equal 1, item['facts'].size
     assert_not_includes render(item), '123.45'
     assert_includes render(item), 'Expenses without explicit currency'
+  end
+
+  test 'period review preserves prior amounts and changes without inventing missing currency comparisons' do
+    current = Metrics::Window.resolve(period: 'this_quarter')
+    previous = current.previous
+    payload = { from: current.from.iso8601, to: current.to.iso8601,
+                compared_with: { from: previous.from.iso8601, to: previous.to.iso8601 },
+                sales: [{ currency: 'USD', gross_cents: 26_200 }, { currency: 'CAD', gross_cents: 9_999 }],
+                previous_sales: [{ currency: 'USD', gross_cents: 8_000 }], change: [{ currency: 'USD', gross_change_percent: 227.5 }] }
+    item = evidence(payload, tool: 'period_review', args: { period: 'this_quarter' })
+    text = render(item)
+    assert_includes text, '80.00 USD'
+    assert_includes text, '227.5% (USD group)'
+    assert_includes text, "change versus #{previous.from} to #{previous.to}"
+    assert_includes text, 'No comparison sales rows were returned for CAD'
+    assert_includes text, 'missing rows do not prove zero'
+    payload[:compared_with][:from] = '2000-01-01'
+    assert_empty evidence(payload, tool: 'period_review', args: { period: 'this_quarter' })['facts']
+  end
+
+  test 'period review cannot certify a percentage without a positive prior sales amount' do
+    prior = Date.current - 1
+    payload = @period.merge(compared_with: { from: prior.iso8601, to: prior.iso8601 }, sales: [{ currency: 'USD', gross_cents: 100 }],
+      previous_sales: [{ currency: 'USD', gross_cents: 0 }], change: [{ currency: 'USD', gross_change_percent: 5 }])
+    item = evidence(payload, tool: 'period_review', args: { period: 'today' })
+    assert_empty item['facts']
+    assert_includes render(item), 'incomplete or inconsistent'
+  end
+
+  test 'period review comparison claims use deterministic evidence instead of unchecked prose' do
+    prior = Date.current - 1
+    payload = @period.merge(compared_with: { from: prior.iso8601, to: prior.iso8601 },
+      sales: [{ currency: 'USD', gross_cents: 8000 }], previous_sales: [], change: [])
+    item = evidence(payload, tool: 'period_review', args: { period: 'today' })
+    assert_nil TeamChat::FinancialEvidence.checked_prose('Sales were 80.00 USD and the tool reports a change.', [item])
+    assert_includes render(item), 'No comparison sales rows were returned for USD'
   end
 
   test 'unsupported financial tools and unknown metric meanings return no certified figures' do
@@ -121,7 +570,7 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     payload = data.merge(source: nil, metric: 'sales_by_source', values: [{ currency: 'USD', sources: [{ source: 'square', gross_cents: 100, share_percent: 25 }] }])
     item = evidence(payload, args: { name: 'sales_by_source', period: 'today' })
     assert_empty evidence(payload.merge(source: 'shopify'), args: { name: 'sales_by_source', period: 'today', source: 'shopify' })['facts']
-    assert_includes render(item), '25% USD'
+    assert_includes render(item), '25% (USD group)'
     assert_includes render(item), 'square canonical orders'
     assert_includes render(item), 'Share of gross sales in this currency'
   end
@@ -189,6 +638,7 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     agent.instance_variable_set(:@execution, context)
     agent.send(:publish, 'Profit $999.99')
     agent.send(:publish, '123')
+    agent.send(:publish, '<tool')
     toolbox = mock('financial toolbox')
     toolbox.stubs(:financial?).returns(true)
     agent.instance_variable_set(:@toolbox, toolbox)

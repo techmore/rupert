@@ -6,6 +6,9 @@ questions:
   - metric
   - list_alerts
   answerable: 'yes'
+  checks: [{ tool: metric, args: { name: top_products, period: this_month, compare: none } }, { tool: list_alerts, args: { status: open } }]
+  needs: ["metric:period.from", "metric:period.to", "metric:values[].currency", "metric:values[].products[].name", "metric:values[].products[].revenue_cents", "list_alerts:rows[]", "list_alerts:meta.has_more"]
+  expect: Report the current month's recorded product leaders by currency and identify a low-stock match only when the returned evidence supports the same product. An alert is potentially stale and does not establish current stock. Respect any alert pagination and unknown matches.
 - id: cross-002
   module: cross
   question: top 5 products last week - do we have enough of each?
@@ -477,7 +480,8 @@ questions:
   tools:
   - metric
   - time_keeping_report
-  answerable: 'yes'
+  answerable: partial
+  gap: both inputs exist but no combined sales-per-hour metric
 - id: cross-063
   module: cross
   question: are we overstaffed on slow days
@@ -1204,6 +1208,9 @@ questions:
   tools:
   - metric
   answerable: 'yes'
+  expect: Ask which quarter is intended, or state clearly that this quarter is being used and quote the recorded refund rate and amounts per currency without inventing a calculation.
+  checks: [{ tool: metric, args: { name: refund_rate, period: this_quarter } }]
+  needs: ['metric:values[].formatted', 'metric:values[].refunded', 'metric:values[].refunds', 'metric:values[].currency']
 - id: cross-161
   module: cross
   question: did refunds spike after the gummy launch

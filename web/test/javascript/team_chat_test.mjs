@@ -140,6 +140,41 @@ test('side panel: charts draw one bar per row and series, labels from the first 
   assert.equal(Chat.numberOf('n/a'), null);
 });
 
+test('side panel: missing chart values are not plotted as zero or joined across gaps', () => {
+  const rows = [['Mon', 10], ['Tue', null], ['Wed', 0], ['Thu', 'unknown'], ['Fri', 5]];
+  const bars = Chat.chartSpec(['Day', 'Sales'], rows, 'bar_chart');
+  assert.equal(bars.marks.filter((mark) => mark.tag === 'rect').length, 3);
+  const lines = Chat.chartSpec(['Day', 'Sales'], rows, 'line_chart');
+  assert.equal(lines.marks.filter((mark) => mark.tag === 'polyline').length, 0);
+  assert.equal(lines.marks.filter((mark) => mark.tag === 'circle').length, 3);
+});
+
+test('side panel: series and row selection preserve values and clamp the snapshot range', () => {
+  const rows = [['Mon', 10, null], ['Tue', 20, 3], ['Wed', 30, 0]];
+  const chosen = Chat.viewSelection(['Day', 'Store', 'Online'], rows, '2', '2', '8');
+  assert.deepEqual(plain(chosen), { first: 2, last: 3, columns: ['Day', 'Online'], rows: [['Tue', 3], ['Wed', 0]] });
+  assert.deepEqual(rows, [['Mon', 10, null], ['Tue', 20, 3], ['Wed', 30, 0]]);
+  assert.deepEqual(plain(Chat.viewSelection(['Day', 'Store'], rows, 'all', '3', '1').rows), [['Wed', 30]]);
+});
+
+test('side panel: controls update the displayed chart and table', () => {
+  const node = (tag) => ({ tag, children: [], attrs: {}, value: '', listeners: {},
+    setAttribute(name, value) { this.attrs[name] = value },
+    append(...kids) { this.children.push(...kids); if (this.tag === 'select' && !this.value && kids[0]?.tag === 'option') this.value = kids[0].value },
+    replaceChildren(...kids) { this.children = kids }, addEventListener(name, fn) { this.listeners[name] = fn } });
+  context.document.createElement = node;
+  const chat = Object.create(Chat.prototype);
+  chat.chartNode = (view) => ({ tag: 'chart', view });
+  chat.tableNode = (columns, rows) => ({ tag: 'table', columns, rows });
+  const wrap = chat.adjustableViewNode({ kind: 'bar_chart', columns: ['Day', 'Sales', 'Orders'], rows: [['Mon', 10, 1], ['Tue', 20, 2]] });
+  const controls = wrap.children[0].children.map((label) => label.children[0]);
+  controls[0].value = 'line_chart'; controls[1].value = '2'; controls[2].value = '2';
+  controls[2].listeners.change();
+  const result = wrap.children[2];
+  assert.equal(result.children[0].view.kind, 'line_chart');
+  assert.deepEqual(plain(result.children[1].rows), [['Tue', 2]]);
+});
+
 test('voice reply is played once when the saved assistant message finishes', () => {
   const chat = new Chat();
   chat.byId = new Map();

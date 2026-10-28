@@ -10,7 +10,11 @@ module TeamChat
   # change data becomes an action card a person must approve.
   class Agent
     UNCHECKED_FIGURES = 'I could not verify those figures in Rupert’s records, so I won’t guess. Ask me something like “How were sales today?” or “Sales tax last month?” and I’ll look them up.'
-    MAX_STEPS = 12
+    UNCHECKED_RECORDS = 'I could not check those records in Rupert, so I cannot confirm their status. Please try again.'
+    # Each tool round consumes a generation and an execution checkpoint. Allow
+    # every advertised tool call plus the final generation, while retaining a
+    # hard bound on repeated tool requests and the separate run deadline.
+    MAX_STEPS = (2 * Toolbox::MAX_CALLS) + 1
     CLI_TOOL_ROUNDS = 4
     HISTORY_MESSAGES = 30
     HISTORY_CHARS = 14_000
@@ -74,9 +78,21 @@ module TeamChat
         # Local bots get only the tools for what the question is about (smaller prompt, fewer wrong picks), unless
         # RUPERT_LOCAL_TOOLS=all: then every tool, so the instructions and tool list stay the same from question to
         # question and the model server reuses them from its cache, and the question names the tools to use.
-        only = DataGuide.tools_for(@topics) if @local_agent && @topics.any? && !all_tools?
-        @toolbox = Toolbox.new(user: @asker, room: @room, reply: @reply, only: only, execution: @execution)
+        if @local_agent && @topics.any? && !all_tools?
+          timekeeping = Mcp::Registry.find('time_keeping_report')&.available_to?(Token.new(@asker))
+          only = DataGuide.tools_for(@topics, question: (request_text if timekeeping))
+        end
+        @toolbox = Toolbox.new(user: @asker, room: @room, reply: @reply, only: only, execution: @execution, question: request_text)
+        # Reserve the daily evidence before repeated invalid model-produced
+        # views can consume the entire tool budget.
+        @toolbox.prefetch_daily_chart!
+        @toolbox.prefetch_comparison_chart!
+        @toolbox.prefetch_receipt_and_retention!
+        @toolbox.prefetch_bank_line_status!
         text = verified(answer)
+        @toolbox.prefetch_refunded_orders!
+        @toolbox.prefetch_requested_metric!
+        @toolbox.prefetch_daily_chart!
         finish(text, started)
       end
     rescue Run::Stopped
@@ -143,13 +159,19 @@ module TeamChat
         - Which tool: a quick business health check today → business_pulse plus daily_close; one figure (gross sales, orders, average order,
           best day, share by source, top products, refund rate), alone or vs the period before or last year → metric;
           a whole period overview → period_review; sales for a date range, top products or average order → sales_summary;
-          sales tax → sales_tax_report; hours worked and same-day sales → time_keeping_report; timesheets awaiting
+          the number of orders → metric name orders, not gross_sales. For the same day or period last year,
+          keep the requested current period and use metric compare last_year.
+          sales tax → sales_tax_report; hours or hrs worked for a period, with or without sales → time_keeping_report;
+          a schedule only shows planned shifts, not hours worked. Product availability at the store → inventory_search.
+          For a source-specific question, use that source's filter and do not substitute another source's figures.
+          Timesheets awaiting
           approval, books closed, overdue reviews or record keeping → compliance_check; what is waiting to be processed → order_queues.
         - Look it up instead of asking the person to clarify, unless the question names nothing you can look up.
         - show_view lays out a table, bar or line chart, or a small HTML page beside the chat. Use it when several rows or a
           comparison are clearer laid out (days, stores, products side by side); copy figures exactly from tool results and
           say in your reply what the view shows. It changes nothing.
         - create_task, update_task and submit_feedback only PROPOSE a change: a card with Approve appears under your reply. Propose only what was asked, then say it is waiting for approval.
+        - Respect exclusions in the request: if the person rules out a task, feedback or another action, do not propose it or offer it as an alternative.
         - "Assign X to Jan", "give Derek the shelf count", "move it to done", "due Friday": find the task with list_tasks (create it if it does not exist and they asked for a new one), then propose update_task or create_task with assignee set to the person's name or email. Work out dates like "Friday" from today's date. If a name matches more than one person, ask which one.
 
         ## Writing the reply
@@ -229,6 +251,9 @@ module TeamChat
       chat = @config.chat(session: "rupert-room-#{@room.id}", timeout: @execution.remaining, instrumenter: @telemetry)
       chat.with_instructions(system_prompt).with_temperature(0.2)
       chat.with_tools(*@toolbox.llm_tools).with_tool_options(concurrency: false)
+      # The last generation must produce an answer rather than another tool
+      # request. This also applies after resuming from a durable checkpoint.
+      chat.with_tool_options(choice: :none) if @toolbox.calls >= Toolbox::MAX_CALLS
       @execution.chat = chat
       chat.before_tool_call do |tool_call|
         @execution.check!
@@ -282,6 +307,11 @@ module TeamChat
       raise Failure.new(:unavailable, e.message)
     rescue Faraday::TimeoutError, Net::ReadTimeout => e
       raise Failure.new(:timeout, e.message)
+    rescue RubyLLM::ContextLengthExceededError => e
+      raise Failure.new(:error, e.message) if @toolbox.tools_used.empty?
+
+      @context_limited = true
+      ''
     rescue RubyLLM::Error => e
       raise Failure.new(:error, e.message)
     end
@@ -291,12 +321,21 @@ module TeamChat
     def generate_native(chat)
       loop do
         streamed = false
+        visible_text = false
         begin
           @execution.generate(chat) do |chunk|
             streamed = true
+            visible_text ||= chunk.content.present?
             yield chunk
           end
           return chat
+        rescue RubyLLM::ToolCallParseError
+          # A malformed tool call was never executed. Retry once from the
+          # durable checkpoint only if no text has been shown to the user.
+          raise unless @config.local? && !visible_text && @execution.reserve_retry!(0, status: nil)
+
+          activity!('Retrying model')
+          chat = native_chat
         rescue RubyLLM::Error => error
           delay = @config.local? || streamed ? nil : GenerationRetry.delay(error)
           raise unless delay && @execution.reserve_retry!(delay, status: error.response.status)
@@ -389,13 +428,21 @@ module TeamChat
 
     def publish(text)
       # Never expose draft figures before their semantic evidence is checked.
-      return if @toolbox&.financial? || text.match?(/[\d$€£¥%]/)
+      return if @toolbox&.financial? || text.match?(/[<\d$€£¥%]/)
+      return if unchecked_operational_request?
+      return if @toolbox && (alert_only_tool_mix? || compliance_only_tool_mix? || InventoryEvidence.uncertain?(@toolbox.inventory_results))
+      return if cash_flow_question?
+      return if pending_processor_deposits_question?
+      return if ComplianceEvidence.focused_title(request_text)
+      return if RefundEvidence.count_question?(request_text)
+      return if ComplianceEvidence.close_scope(request_text)
 
       now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       return if now - @last_publish < PUBLISH_EVERY
 
       @last_publish = now
-      @execution.write_reply!({ body: Links.for_user(AskRupert::ReplyFormat.tidy(text, closing: false), user: @asker), activity: 'Writing' })
+      draft = Links.for_user(AskRupert::ReplyFormat.tidy(text, closing: false), user: @asker)
+      @execution.write_reply!({ body: bounded_reply(draft), activity: 'Writing' })
     end
 
     def activity!(text)
@@ -404,21 +451,112 @@ module TeamChat
 
     def finish(text, started)
       body = AskRupert::ReplyFormat.tidy(without_echo(text))
-      if @toolbox.financial?
+      malformed_tool_text = @context_limited || body.match?(/<(?:tool_call|function|parameter)(?:[=>\s]|\z)/i)
+      denied_instruction_action = Toolbox.instruction_only?(request_text) && @reply.reload.actions_list.empty? &&
+        @execution.run.reload.tool_results.any? { |entry| entry['result'].to_s.include?('asked for instructions, not an action') }
+      unrequested_action_claim = denied_instruction_action && body.match?(/\b(?:created|proposed|added|submitted|waiting for approval)\b/i) &&
+        body.match?(/\b(?:task|feedback)\b/i)
+      if unrequested_action_claim
+        body = 'I could not verify the requested instructions. No task or feedback was proposed.'
+      elsif unchecked_operational_request?
+        body = UNCHECKED_RECORDS
+        @verify_meta['kept'] = 'guarded' if @verify_meta
+      elsif pending_processor_deposits_question?
+        body = 'I cannot verify which card processor deposits are still in transit from the available records. Check the processor’s settlement report and the corresponding bank transactions. An unresolved card payment is not the same as a deposit in transit.'
+      elsif received_processor_deposits_question?
+        body = 'I cannot verify how much the processor deposited into the bank from the available tool results. Recorded sales and payment attempts do not establish received bank deposits. Check the processor’s settlement report against the corresponding bank transactions.'
+      elsif cash_flow_question?
+        body = 'I could not verify cash flow from the available tool results. Recorded sales or expenses alone do not establish cash in and out; check recorded bank movements on the Cash flow page.'
+      elsif cash_forecast_question?
+        body = 'I cannot verify a cash forecast or predict when cash will run out from the available tool results. Recorded sales and tax alone do not establish bank balances or future cash movements. Check the Cash forecast page and its underlying assumptions.'
+      elsif payroll_affordability_question?
+        body = 'I cannot determine whether there will be enough cash to cover payroll from the available tool results. Recorded sales and worked hours do not establish the available bank balance, payroll liabilities or future cash movements. Check the cash forecast, bank balance and payroll due.'
+      elsif UploadEvidence.last_upload_question?(request_text) && @toolbox.tools_used.include?('list_uploads')
+        body = UploadEvidence.render_last(@execution.run.reload.tool_results) || 'I could not verify the latest upload from the available inbox lookup.'
+      elsif ComplianceEvidence.receipt_and_retention_question?(request_text)
+        entries = @execution.run.reload.tool_results
+        first = request_text.sub(/\s*,?\s+and\s+.*\z/i, '')
+        receipts = QueueEvidence.render_requested(@toolbox.financial_evidence, first) || 'I could not verify the number of receipts awaiting review.'
+        retention = ComplianceEvidence.render_retention(entries) || 'I could not verify the recorded document-retention status.'
+        body = [receipts, retention].join("\n\n")
+      elsif ComplianceEvidence.timesheets_and_backup_question?(request_text)
+        entries = @execution.run.reload.tool_results
+        timesheets = ComplianceEvidence.render_focused_count(entries, ComplianceEvidence::TIMESHEETS_TITLE) || 'I could not verify the timesheet approval count.'
+        backup = ComplianceEvidence.render_backup_freshness(entries) || 'I could not verify Google Drive backup freshness.'
+        body = [timesheets, backup].join("\n\n")
+      elsif ComplianceEvidence.retention_and_backup_question?(request_text)
+        entries = @execution.run.reload.tool_results
+        retention = ComplianceEvidence.render_retention(entries) || 'I could not verify the recorded Google Drive document-retention status.'
+        backup = ComplianceEvidence.render_backup_freshness(entries) || 'I could not verify Google Drive backup freshness.'
+        body = [retention, backup].join("\n\n")
+      elsif ComplianceEvidence.retention_question?(request_text)
+        entries = @execution.run.reload.tool_results
+        body = ComplianceEvidence.render_retention(entries) || 'I could not verify the recorded Google Drive document-retention status.'
+      elsif (area = ComplianceEvidence.close_scope(request_text))
+        body = ComplianceEvidence.render_close(@execution.run.reload.tool_results, area) || 'I could not verify the month-close checklist.'
+      elsif (title = ComplianceEvidence.focused_title(request_text))
+        entries = @execution.run.reload.tool_results
+        body = ComplianceEvidence.render_focused_count(entries, title) || 'I could not verify the requested compliance count.'
+      elsif RefundEvidence.count_question?(request_text)
+        body = RefundEvidence.render_requested(@toolbox.financial_evidence, question: request_text) || 'I could not verify refunded-order counts for the requested period.'
+      elsif @toolbox.financial? && (queue_answer = QueueEvidence.render_requested(@toolbox.financial_evidence, request_text))
+        # For an entirely queue-specific request, show only the requested
+        # verified counts, not unrelated tools the model also called.
+        @prose_checked = false
+        body = queue_answer
+      elsif QueueEvidence.count_question?(request_text)
+        # An unrelated lookup cannot establish the requested queue count.
+        body = 'I could not verify the requested queue count from the available records.'
+      elsif @toolbox.financial?
         # The bot's own words when every figure checks out against the facts; else Ruby lists the facts.
-        checked = FinancialEvidence.checked_prose(body, @toolbox.financial_evidence)
+        checked = FinancialEvidence.checked_prose(body, @toolbox.financial_evidence) unless malformed_tool_text || @toolbox.prefetched_requested_metric?
         @prose_checked = checked.present?
-        body = checked || FinancialEvidence.render(@toolbox.financial_evidence)
+        inventory = InventoryEvidence.render(@toolbox.inventory_results)
+        alerts = AlertEvidence.render(@toolbox.alert_results)
+        tool_results = @execution.run.reload.tool_results
+        task = TaskEvidence.render(tool_results)
+        compliance = ComplianceEvidence.render(tool_results)
+        sync = SyncEvidence.render(tool_results)
+        if inventory.present? || alerts.present? || task.present? || compliance.present? || sync.present?
+          # Financial prose validation cannot certify other tool claims.
+          @prose_checked = false
+          body = [FinancialEvidence.render(@toolbox.financial_evidence, question: request_text), compliance, sync, task, inventory, alerts].compact.join("\n\n")
+        else
+          body = checked || FinancialEvidence.render(@toolbox.financial_evidence, question: request_text)
+        end
+      elsif malformed_tool_text || InventoryEvidence.uncertain?(@toolbox.inventory_results) || compliance_only_tool_mix? || alert_only_tool_mix?
+        # A model may emit tool-call markup as ordinary text after tool choice
+        # is disabled. Never display it as an answer or execute it as a call.
+        task = TaskEvidence.render(@execution.run.reload.tool_results)
+        inventory = InventoryEvidence.render(@toolbox.inventory_results)
+        alerts = AlertEvidence.render(@toolbox.alert_results)
+        sync = SyncEvidence.render(@execution.run.tool_results)
+        compliance = ComplianceEvidence.render(@execution.run.tool_results)
+        body = if task.present? || inventory.present? || alerts.present? || sync.present? || compliance.present?
+          prefix = malformed_tool_text ? 'I could not complete my answer. These are the available lookup results:' : 'These are the available lookup results:'
+          [prefix, compliance, sync, task, inventory, alerts].compact.join("\n\n")
+        else
+          'I could not complete my answer. Please try again.'
+        end
       elsif FinancialEvidence.financial_text?(body) && (@toolbox.tools_used.empty? || NumberCheck.call(body, @toolbox.results).any?)
         # Money talk with figures no tool gave (the conversation itself is not evidence).
         body = UNCHECKED_FIGURES
       end
+      if current_stock_unverified?
+        body = "#{body}\n\nCurrent stock levels could not be verified from alert records alone."
+      end
+      if @context_limited
+        body = "The model reached its context limit before completing the answer. These are the lookup results available so far:\n\n#{body}"
+      end
       body = Links.for_user(body, user: @asker)
       body = FAILURES[:error] if body.blank? && @reply.reload.actions_list.empty?
+      body = bounded_reply(body)
       meta = meta_with(started, 'ok')
       meta['verify'] = @verify_meta if @verify_meta
       meta['financial_evidence'] = @toolbox.financial_evidence if @toolbox.financial?
       meta['prose_checked'] = @prose_checked if @toolbox.financial?
+      meta['context_limited'] = true if @context_limited
+      @toolbox.add_verified_view_fallback!
       meta['views'] = @toolbox.views if @toolbox.views.any?
       follow_ups = Suggestions.follow_ups(topics: Array(@topics).map(&:key), tools: @toolbox.tools_used, asked: request_text)
       meta['follow_ups'] = follow_ups if follow_ups.any?
@@ -431,6 +569,26 @@ module TeamChat
       @reply.reload
       note_ai_health('ok')
       note_slow(meta)
+    end
+
+    # Preserve complete lines and make omissions explicit rather than letting
+    # an oversized answer fail validation or cutting a financial fact in half.
+    def bounded_reply(text)
+      value = text.to_s
+      limit = TeamChat::Message::BODY_MAX * 2
+      return value if value.length <= limit
+
+      notice = 'Some answer details and caveats were omitted because the response was too long. Narrow the question for the rest.'
+      budget = limit - notice.length - 2
+      lines = []
+      length = 0
+      value.each_line do |line|
+        break if length + line.length > budget
+
+        lines << line
+        length += line.length
+      end
+      [lines.join.strip.presence, notice].compact.join("\n\n")
     end
 
     # The data guide topics a question is about: from its own words, else from the conversation just before it.
@@ -481,6 +639,90 @@ module TeamChat
       entries
     end
 
+    # Compliance statuses are structured facts, not conclusions that can be
+    # safely inferred from the presence of matching numbers in a draft.
+    def compliance_only_tool_mix?
+      names = @toolbox.tools_used
+      names.include?('compliance_check') && (names - %w[compliance_check list_tasks inventory_search sync_health show_view]).empty?
+    end
+
+    def alert_only_tool_mix?
+      names = @toolbox.tools_used
+      names.include?('list_alerts') && (names - %w[list_alerts list_tasks inventory_search sync_health show_view]).empty?
+    end
+
+    def current_stock_unverified?
+      return false unless @toolbox && @toolbox.tools_used.include?('list_alerts')
+      return false unless request_text.match?(/\b(?:stock|inventory)\b/i) && request_text.match?(/\b(?:still|current(?:ly)?|right now|today)\b/i)
+
+      InventoryEvidence.render(@toolbox.inventory_results).blank?
+    end
+
+    # Financial sales metrics cannot establish bank movement. Leave mixed and
+    # navigation requests on their normal paths rather than dropping a second
+    # requested subject or replacing a page lookup with an inability message.
+    def cash_flow_question?
+      question = request_text.to_s.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip
+      return false unless question.match?(/\bcash[ -]?flow\b/i)
+      return false if question.match?(/\b(?:and|also|plus)\b/i) || question.match?(/\b(?:where|page|screen|navigate|open|find)\b/i)
+      return false unless question.match?(/\b(?:our|we|this|last|today|yesterday|week|month|quarter|year|positive|negative|dip|rise|fall)\b/i)
+
+      !@toolbox&.tools_used&.include?('cash_flow')
+    end
+
+    # Recorded sales and tax are not a cash balance or a forecast. Preserve
+    # navigation, explanations and requests containing other subjects.
+    def cash_forecast_question?
+      question = request_text.to_s.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip
+      return false if question.match?(/\b(?:and|also|plus)\b/i)
+      return false if question.match?(/\b(?:where|page|screen|navigate|open|find|how does|how do|how can)\b/i)
+      return false if @toolbox&.tools_used&.include?('cash_forecast')
+
+      question.match?(/\b(?:cash[ -]?(?:forecast|projection)|(?:forecast|projected|project)\w* cash|run out\w* (?:of (?:our )?)?cash|how much cash (?:will|would) (?:we|i) have)\b/i)
+    end
+
+    def payroll_affordability_question?
+      question = request_text.to_s.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip
+      return false if question.match?(/\b(?:and|also|plus|compare|where|page|screen|how do|how can)\b/i)
+      return false unless question.match?(/\bpayroll\b/i)
+
+      question.match?(/\b(?:cover|afford|enough (?:cash|money|funds))\b/i)
+    end
+
+    # Payment attempts and bank lines do not establish which processor
+    # settlements are currently in transit. Leave multi-part questions on the
+    # general path so this limitation does not hide their other requests.
+    def pending_processor_deposits_question?
+      question = request_text.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip
+      return false if question.match?(/\b(?:and|also|plus|compare)\b/i)
+      return false unless question.match?(/\b(?:card|processor|settlement|payout)\b/i)
+      return false unless question.match?(/\b(?:deposits?|settlements?|payouts?)\b/i)
+
+      question.match?(/\b(?:in transit|on the way|still waiting|waiting to (?:arrive|be received)|not yet (?:received|arrived)|pending)\b/i)
+    end
+
+    def received_processor_deposits_question?
+      question = request_text.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip
+      return false if question.match?(/\b(?:and|also|plus|compare)\b/i)
+      return false if question.match?(/\b(?:where|page|screen|navigate|open|how do|how can)\b/i)
+      return false unless question.match?(/\b(?:processor|settlements?|payouts?)\b/i) && question.match?(/\bdeposits?\b/i)
+
+      question.match?(/\b(?:bank|landed|received|arrived|deposited)\b/i)
+    end
+
+    # A status answer without any lookup is not evidence, even when it
+    # happens to match the records. Keep navigation and proposed edits apart.
+    def unchecked_operational_request?
+      return false unless @toolbox && @toolbox.tools_used.empty?
+
+      question = request_text.sub(/\A\s*(?:@[\w.-]+\s+)+/, '')
+      return false if question.match?(/\A\s*(?:where|how do|how can)\b/i)
+      return false if question.match?(/\b(?:create|make|add|update|change|delete|send|assign|move)\b/i)
+
+      question.match?(/\b(?:any|which|list|show|how many|waiting|overdue|unresolved)\b/i) &&
+        question.match?(/\b(?:tasks?|alerts?|orders?|receipts?|follow[- ]?ups?|payments?|shifts?|timesheets?|queues?)\b/i)
+    end
+
     # What the bot was given: its tool results and the conversation it saw.
     # True when the answer used tools and every figure in it came from them, so the page can say so.
     # Financial answers are either the bot's own words checked fact by fact or Ruby's list of the facts.
@@ -488,7 +730,7 @@ module TeamChat
       return false if @toolbox.nil? || @toolbox.tools_used.empty? || unverified.any? || body == UNCHECKED_FIGURES
       return @prose_checked || @toolbox.financial_evidence.any? { |item| Array(item['facts']).any? } if @toolbox.financial?
 
-      NumberCheck.figures_in(body).any?
+      NumberCheck.figures_in(body).any? && NumberCheck.call(body, @toolbox.results).empty?
     end
 
     def checked_sources

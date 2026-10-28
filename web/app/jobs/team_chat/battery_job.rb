@@ -11,9 +11,16 @@ module TeamChat
       return unless user&.active? && user.tenant&.status == 'active'
 
       Current.set(tenant: user.tenant, user: user) do
-        next if BatteryRun.where(status: 'running', started_at: 3.hours.ago..).exists?
+        next if BatteryRun.where(status: 'running', updated_at: 3.hours.ago..).exists?
 
-        battery = Battery.new(user: user, agent: agent, items: Battery.items(Battery.config_for(set)), set: set, out: nil)
+        if %w[depth breadth visualization].include?(set)
+          local = LocalAgents.find(agent) || LocalAgents.trial(agent)
+          raise ArgumentError, 'Combined benchmarks require a local model and no hosted verifier.' unless local && !local.cloud? && !Verify.enabled_for?(local)
+
+          battery = Battery.new(user: user, agent: agent, items: Battery.items_for(set), set: set, out: nil, grader: Battery::OfflineGrader.new)
+        else
+          battery = Battery.new(user: user, agent: agent, items: Battery.items_for(set), set: set, out: nil)
+        end
         next if battery.already_done
 
         battery.run

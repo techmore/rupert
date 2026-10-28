@@ -107,6 +107,30 @@ class TeamChatRunTest < ActiveSupport::TestCase
     assert_equal 1, second_box.calls
   end
 
+  test 'replay keeps original model arguments when completed vendor arguments change' do
+    vendor = Purchasing::Vendor.create!(name: 'Synthetic Tea Supply')
+    first_day = Date.current.beginning_of_month.iso8601
+    today = Date.current.iso8601
+    data = { view: 'vendors', from: first_day, to: today, currency: 'USD', rows: [], meta: { has_more: false } }
+    Mcp::Tools::PurchaseOrders.any_instance.expects(:call).once.returns(Mcp::Result.new(text: 'no vendors', data: data))
+    question = 'For Synthetic Tea Supply this month, what was the PO value and vendor payments?'
+    original = { 'query' => vendor.name }
+    box = TeamChat::Toolbox.new(user: @user, room: @room, reply: @reply, execution: execution, question: question)
+    box.call_id = 'vendor-query'
+    first = box.call('purchase_orders', original)
+    entry = @run.reload.tool_results.sole
+    assert_equal original, entry['original_arguments']
+    assert_equal true, entry['arguments']['vendor_exact']
+
+    vendor.update!(name: 'Renamed vendor')
+    @run.update!(lease_until: 1.second.ago)
+    recovered = TeamChat::Toolbox.new(user: @user, room: @room, reply: @reply.reload, execution: execution, question: question)
+    recovered.call_id = 'vendor-query'
+    assert_equal first, recovered.call('purchase_orders', original)
+    assert_raises(RuntimeError) { recovered.call('purchase_orders', { 'query' => 'Different query' }) }
+    assert_equal 1, @run.reload.tool_results.size
+  end
+
   test 'an interrupted native run resumes its private transcript and does not repeat proposals' do
     tool = sse_for(tool: 'create_task', arguments: { title: 'Only one card' })
     calls = 0
@@ -188,5 +212,84 @@ class TeamChatRunTest < ActiveSupport::TestCase
     TeamChat::Agent.new(@reply, config: team_chat_config).run
     assert_equal 'failed', @run.reload.state
     assert_not_requested :post, "#{LLM_BASE}/chat/completions"
+  end
+
+  test 'the advertised tool budget leaves room for a final answer' do
+    calls = Array.new(TeamChat::Toolbox::MAX_CALLS) do |index|
+      { tool: 'where_is', id: "call_#{index}", arguments: { query: 'timesheets' } }
+    end
+    requests = script_model(*calls, { text: 'Open the timesheets page.' })
+    TeamChat::Agent.new(@reply, config: team_chat_config).run
+
+    assert_equal 'succeeded', @run.reload.state, @reply.reload.body
+    assert_equal TeamChat::Toolbox::MAX_CALLS + 1, requests.size
+    assert_equal TeamChat::Agent::MAX_STEPS, @run.steps
+    assert_match(/timesheets/i, @reply.reload.body)
+  end
+
+  test 'a malformed local tool call retries once without executing it' do
+    previous = ENV['RUPERT_LOCAL_LLM_URL']
+    ENV['RUPERT_LOCAL_LLM_URL'] = LLM_BASE
+    chunks = [{ choices: [{ index: 0, delta: { role: 'assistant', tool_calls: [
+      { index: 0, id: 'broken', type: 'function', function: { name: 'create_task', arguments: '{broken' } }
+    ] }, finish_reason: nil }] }, { choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }] }]
+    broken = chunks.map { |chunk| "data: #{JSON.generate(chunk)}\n\n" }.join + "data: [DONE]\n\n"
+    stub_request(:post, "#{LLM_BASE}/chat/completions").to_return(
+      { status: 200, headers: { 'Content-Type' => 'text/event-stream' }, body: broken },
+      { status: 200, headers: { 'Content-Type' => 'text/event-stream' }, body: sse_for(text: 'Please clarify the task.') })
+    stub_request(:get, "#{LLM_BASE}/health").to_return(body: '{"loaded":null}')
+    config = TeamChat::ModelConfig.new({ 'RUPERT_CHAT_PROVIDER' => 'local_gateway', 'RUPERT_CHAT_MODEL' => 'test-model', 'RUPERT_LOCAL_LLM_URL' => LLM_BASE })
+
+    assert_no_difference -> { Projects::Task.count } do
+      TeamChat::Agent.new(@reply, config: config).run
+    end
+    assert_equal 'succeeded', @run.reload.state
+    assert_match(/clarify/, @reply.reload.body)
+    assert_empty @reply.actions_list
+    assert_equal 1, TeamChat::Telemetry.where(run_id: @run.id, kind: 'generation_retry').count
+  ensure
+    ENV['RUPERT_LOCAL_LLM_URL'] = previous
+  end
+
+  test 'a malformed tool call after visible text is not retried' do
+    previous = ENV['RUPERT_LOCAL_LLM_URL']
+    ENV['RUPERT_LOCAL_LLM_URL'] = LLM_BASE
+    chunks = [{ choices: [{ index: 0, delta: { role: 'assistant', content: 'Working on it.', tool_calls: [
+      { index: 0, id: 'broken', type: 'function', function: { name: 'create_task', arguments: '{broken' } }
+    ] }, finish_reason: nil }] }, { choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }] }]
+    broken = chunks.map { |chunk| "data: #{JSON.generate(chunk)}\n\n" }.join + "data: [DONE]\n\n"
+    stub_request(:post, "#{LLM_BASE}/chat/completions").to_return(status: 200, headers: { 'Content-Type' => 'text/event-stream' }, body: broken)
+    config = TeamChat::ModelConfig.new({ 'RUPERT_CHAT_PROVIDER' => 'local_gateway', 'RUPERT_CHAT_MODEL' => 'test-model', 'RUPERT_LOCAL_LLM_URL' => LLM_BASE })
+
+    assert_no_difference -> { Projects::Task.count } do
+      TeamChat::Agent.new(@reply, config: config).run
+    end
+    assert_equal 'failed', @run.reload.state
+    assert_empty @reply.reload.actions_list
+    assert_not TeamChat::Telemetry.where(run_id: @run.id, kind: 'generation_retry').exists?
+    assert_requested :post, "#{LLM_BASE}/chat/completions", times: 1
+  ensure
+    ENV['RUPERT_LOCAL_LLM_URL'] = previous
+  end
+
+  test 'repeated malformed local calls stop after one retry' do
+    previous = ENV['RUPERT_LOCAL_LLM_URL']
+    ENV['RUPERT_LOCAL_LLM_URL'] = LLM_BASE
+    chunks = [{ choices: [{ index: 0, delta: { role: 'assistant', tool_calls: [
+      { index: 0, id: 'broken', type: 'function', function: { name: 'create_task', arguments: '{broken' } }
+    ] }, finish_reason: nil }] }, { choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }] }]
+    broken = chunks.map { |chunk| "data: #{JSON.generate(chunk)}\n\n" }.join + "data: [DONE]\n\n"
+    stub_request(:post, "#{LLM_BASE}/chat/completions").to_return(status: 200, headers: { 'Content-Type' => 'text/event-stream' }, body: broken)
+    config = TeamChat::ModelConfig.new({ 'RUPERT_CHAT_PROVIDER' => 'local_gateway', 'RUPERT_CHAT_MODEL' => 'test-model', 'RUPERT_LOCAL_LLM_URL' => LLM_BASE })
+
+    assert_no_difference -> { Projects::Task.count } do
+      TeamChat::Agent.new(@reply, config: config).run
+    end
+    assert_equal 'failed', @run.reload.state
+    assert_empty @reply.reload.actions_list
+    assert_equal 1, TeamChat::Telemetry.where(run_id: @run.id, kind: 'generation_retry').count
+    assert_requested :post, "#{LLM_BASE}/chat/completions", times: 2
+  ensure
+    ENV['RUPERT_LOCAL_LLM_URL'] = previous
   end
 end

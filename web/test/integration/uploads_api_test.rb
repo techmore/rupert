@@ -128,6 +128,14 @@ class UploadsApiTest < ActionDispatch::IntegrationTest
     assert_equal ['mystery.csv'], rows.map { |row| row['filename'] }
     assert_no_match(/alpha,beta/, result.to_json)
 
+    post mcp_path, params: { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'list_uploads', arguments: { query: 'not-present' } } }.to_json,
+      headers: bearer(secret).merge('Content-Type' => 'application/json', 'Accept' => 'application/json, text/event-stream')
+    assert_response :success
+    missing = response.parsed_body.fetch('result')
+    assert_empty missing.dig('structuredContent', 'rows')
+    assert_match(/An empty result cannot confirm whether a file was sent/, missing.dig('content', 0, 'text'))
+    assert_match(/current Uploads inbox only/, missing.dig('structuredContent', 'note'))
+
     post mcp_path, params: { jsonrpc: '2.0', id: 2, method: 'tools/list' }.to_json,
       headers: bearer(issue(['inventory:read'])).merge('Content-Type' => 'application/json', 'Accept' => 'application/json, text/event-stream')
     assert_not_includes response.parsed_body.dig('result', 'tools').map { |tool| tool['name'] }, 'list_uploads'

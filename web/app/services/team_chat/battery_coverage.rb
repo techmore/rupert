@@ -48,6 +48,37 @@ module TeamChat
       Report.new(questions: questions)
     end
 
+    # Shared by the live grader so a successful tool call with missing or
+    # uncheckable evidence cannot become an apparently reliable score.
+    def checkable_data?(data) = !uncheckable_result?(data)
+    def need_present?(data, path) = field_present?(data, path)
+
+    # A question can request a single named compliance row; unrelated checks
+    # should not fill the judge context or stand in for missing evidence.
+    def reference_data(data, check)
+      if check.is_a?(Hash) && check['tool'] == 'compliance_check' && check['select_titles'].is_a?(Array)
+        items = data.is_a?(Hash) ? (data[:items] || data['items']) : nil
+        rows = Array(items).select { |row| row.is_a?(Hash) && check['select_titles'].include?(row[:title] || row['title']) }
+        return { items: rows }
+      end
+
+      if check.is_a?(Hash) && check['tool'] == 'compliance_check' && check['select_area'].present?
+        items = data.is_a?(Hash) ? (data[:items] || data['items']) : nil
+        rows = Array(items).select { |row| row.is_a?(Hash) && (row[:area] || row['area']) == check['select_area'] }
+        suffix = check['required_title_suffix'].to_s
+        matches = suffix.present? ? rows.select { |row| (row[:title] || row['title']).to_s.end_with?(suffix) } : []
+        return { items: rows, required_row: matches.one? ? matches.first : nil }
+      end
+
+      title = check['select_title'] if check.is_a?(Hash) && check['tool'] == 'compliance_check'
+      return data if title.blank?
+
+      items = data.is_a?(Hash) ? (data[:items] || data['items']) : nil
+      return { items: [] } unless items.is_a?(Array)
+
+      { items: items.select { |row| row.is_a?(Hash) && (row[:title] || row['title']) == title } }
+    end
+
     private
 
     def run_check(check)
@@ -57,14 +88,15 @@ module TeamChat
       return Call.new(tool: name, status: :error) unless tool&.read_only && tool.available_to?(@token)
 
       outcome = tool.new(token: @token).call(args)
-      status = if uncheckable_result?(outcome.data)
+      data = reference_data(outcome.data, check)
+      status = if uncheckable_result?(data)
         :error
-      elsif empty_result?(outcome.data)
+      elsif empty_result?(data)
         :empty
       else
         :ok
       end
-      Call.new(tool: name, status: status, data: outcome.data)
+      Call.new(tool: name, status: status, data: data)
     rescue Mcp::ToolError, StandardError
       # Do not include exception text: it may contain data from the tool result.
       Call.new(tool: name, status: :error)
@@ -109,8 +141,9 @@ module TeamChat
       empty_wildcard = false
       segments = path.split('.')
       segments.each_with_index do |segment, index|
+        filter = segment.match(/\A([a-z_]\w*)\[([a-z_]\w*)=([^\]]+)\]\z/)
         wildcard = segment.end_with?('[]')
-        key = wildcard ? segment.delete_suffix('[]') : segment
+        key = filter ? filter[1] : (wildcard ? segment.delete_suffix('[]') : segment)
         next_values = []
         values.each do |value|
           symbol_key = key.to_sym
@@ -119,7 +152,14 @@ module TeamChat
           child = value.key?(symbol_key) ? value[symbol_key] : value[key]
           return false if child.nil? && !(nullable && index == segments.size - 1 && !wildcard)
 
-          if wildcard
+          if filter
+            return false unless child.is_a?(Array)
+
+            selected = child.select { |row| row.is_a?(Hash) && (row[filter[2]] || row[filter[2].to_sym]).to_s == filter[3] }
+            return false if selected.empty?
+
+            next_values.concat(selected)
+          elsif wildcard
             return false unless child.is_a?(Array)
             empty_wildcard ||= child.empty?
             next_values.concat(child)

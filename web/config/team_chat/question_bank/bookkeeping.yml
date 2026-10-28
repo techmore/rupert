@@ -5,6 +5,7 @@ questions:
   tools: []
   answerable: 'no'
   gap: no cash flow tool; cash_flow page data (inflows/outflows by account) is not exposed to the bot
+  expect: Explain that current net cash flow cannot be verified from the available data. Do not equate gross sales or recorded expenses with bank inflows and outflows; point to the cash-flow page if useful.
 - id: bookkeeping-002
   module: bookkeeping
   question: how much money came in last week
@@ -13,18 +14,23 @@ questions:
   - where_is
   answerable: partial
   gap: only sales are available, not actual cash received after refunds, fees and deposits
+  checks: [{ tool: sales_summary, args: { from: last_week.from, to: last_week.to, top_products: 0 } }]
+  needs: ["sales_summary:totals_by_currency[].currency", "sales_summary:totals_by_currency[].gross_cents"]
+  expect: Explain that recorded order sales are not cash received. If giving sales, report the requested week and separate currencies; do not infer bank deposits, fees or net cash from gross orders.
 - id: bookkeeping-003
   module: bookkeeping
   question: net cash flow for last quarter
   tools: []
   answerable: 'no'
   gap: no cash flow tool
+  expect: State that last quarter's net cash flow cannot be verified from available cash-in and cash-out records. Do not calculate it from sales or expense totals alone.
 - id: bookkeeping-004
   module: bookkeeping
   question: r we cash flow positive this month
   tools: []
   answerable: 'no'
   gap: no cash flow or cash balance tool
+  expect: State that the available records do not establish whether this month's cash flow is positive. Do not infer the answer from gross sales or expense totals.
 - id: bookkeeping-005
   module: bookkeeping
   question: where is the cash flow page
@@ -37,24 +43,28 @@ questions:
   tools: []
   answerable: 'no'
   gap: no cash in/out tool; only sales and expenses totals via period_review
+  expect: Explain that recorded sales and expenses do not establish this week's bank cash in and cash out. Do not present them as the requested cash-flow comparison.
 - id: bookkeeping-007
   module: bookkeeping
   question: whats our cash bal rn
   tools: []
   answerable: 'no'
   gap: no cash balance tool
+  expect: Say the current cash balance cannot be verified from the available tool evidence. Do not treat sales, payouts or a past statement as a current balance.
 - id: bookkeeping-008
   module: bookkeeping
   question: how much $ in the bank
   tools: []
   answerable: 'no'
   gap: no bank balance tool
+  expect: Say the current bank balance cannot be verified from the available tool evidence. Do not infer it from sales, deposits or historical statement totals.
 - id: bookkeeping-009
   module: bookkeeping
   question: did cash flow dip in august
   tools: []
   answerable: 'no'
   gap: no historical cash flow tool
+  expect: State that an August cash-flow change cannot be established from the available evidence. Do not infer a dip from sales or expense figures alone.
 - id: bookkeeping-010
   module: bookkeeping
   question: cash flow this month vs last month
@@ -73,9 +83,12 @@ questions:
 - id: bookkeeping-012
   module: bookkeeping
   question: biz snapshot pls
-  tools: []
-  answerable: 'no'
-  gap: no snapshot tool; page not exposed
+  tools: [business_pulse]
+  answerable: partial
+  gap: today's pulse covers recorded sales, waiting work and alerts, but not balances or profit
+  checks: [business_pulse]
+  needs: ["business_pulse:sales.gross_sales_by_currency[].gross_cents", "business_pulse:waiting.queues[]", "business_pulse:alerts.count"]
+  expect: Summarize the available current sales, waiting queues and alerts, with missing or unavailable sections identified. Do not infer profit or cash balances from sales.
 - id: bookkeeping-013
   module: bookkeeping
   question: give me a quick overview of how the business is doing
@@ -91,6 +104,9 @@ questions:
   - period_review
   answerable: partial
   gap: snapshot page figures like cash and payables are not exposed
+  checks: [{ tool: period_review, args: { period: last_month } }]
+  needs: ["period_review:from", "period_review:to", "period_review:sales[].currency", "period_review:sales[].gross_cents"]
+  expect: Summarize the available figures for last month with currencies separate and distinguish gross sales from profit or bank balances. State material missing evidence.
 - id: bookkeeping-015
   module: bookkeeping
   question: how are we doing vs last year
@@ -106,6 +122,9 @@ questions:
   - period_review
   answerable: partial
   gap: no snapshot tool; period_review covers sales and operations only
+  checks: [{ tool: period_review, args: { period: this_week } }]
+  needs: ["period_review:from", "period_review:to", "period_review:sales[].currency", "period_review:sales[].gross_cents"]
+  expect: Summarize the recorded sales and operational figures for the week, keeping currencies separate. Do not imply the figures establish cash balances or profit.
 - id: bookkeeping-017
   module: bookkeeping
   question: what are our biggest numbers on the snapshot page right now
@@ -118,24 +137,36 @@ questions:
   tools:
   - compliance_check
   answerable: 'yes'
+  checks: [compliance_check]
+  needs: ["compliance_check:items[].title", "compliance_check:items[].status"]
+  expect: Summarize returned fix and watch items and their statuses. Do not claim all books are clean if issues or uncheckable areas remain.
 - id: bookkeeping-019
   module: bookkeeping
   question: books check?
   tools:
   - compliance_check
   answerable: 'yes'
+  checks: [compliance_check]
+  needs: ["compliance_check:items[].title", "compliance_check:items[].status"]
+  expect: Summarize returned bookkeeping checks and distinguish fix, watch and unknown statuses; do not infer a clean bill of health.
 - id: bookkeeping-020
   module: bookkeeping
   question: anything red on books chk
   tools:
   - compliance_check
   answerable: 'yes'
+  checks: [compliance_check]
+  needs: ["compliance_check:items[].title", "compliance_check:items[].status"]
+  expect: Identify returned fix-status checks and distinguish them from watch or unavailable checks. If none are returned, avoid claiming untested areas are clean.
 - id: bookkeeping-021
   module: bookkeeping
   question: what do I need to fix in the books
   tools:
   - compliance_check
   answerable: 'yes'
+  checks: [compliance_check]
+  needs: ["compliance_check:items[].title", "compliance_check:items[].status"]
+  expect: Identify returned fix-status items and explain their recorded details. Distinguish watch items and unknown checks from confirmed fixes.
 - id: bookkeeping-022
   module: bookkeeping
   question: are all the sales records in the books
@@ -1169,6 +1200,9 @@ questions:
   tools:
   - metric
   answerable: 'yes'
+  expect: Quote the recorded refund rate, refund amount and count per currency for this month; do not calculate an unsupported rate.
+  checks: [{ tool: metric, args: { name: refund_rate, period: this_month } }]
+  needs: ['metric:values[].formatted', 'metric:values[].refunded', 'metric:values[].refunds', 'metric:values[].currency']
 - id: bookkeeping-188
   module: bookkeeping
   question: refund rate lq vs the quarter b4

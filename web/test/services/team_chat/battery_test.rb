@@ -34,6 +34,196 @@ class TeamChatBatteryTest < ActiveSupport::TestCase
      TeamChat::Battery::Item.new(id: 'm3', cadence: 'monthly', question: 'Sales tax last month?', checks: [{ 'tool' => 'sales_tax_report', 'args' => { 'from' => 'last_month.from', 'to' => 'last_month.to' } }])]
   end
 
+  test 'depth and breadth use distinct complete question sets' do
+    depth = TeamChat::Battery.items_for('depth')
+    expected = %w[default finance cross visualization].flat_map { |name| TeamChat::Battery.items(TeamChat::Battery.config_for(name)) }
+    assert_equal expected.map(&:id), depth.map(&:id)
+    assert_equal depth.size, depth.map(&:id).uniq.size
+    breadth = TeamChat::Battery.items_for('breadth')
+    assert_equal TeamChat::QuestionBank.questions.map(&:id), breadth.map(&:id)
+    assert_equal breadth.size, breadth.map(&:id).uniq.size
+    assert_operator breadth.size, :>, depth.size
+    assert_nil TeamChat::Battery::OfflineGrader.new.grade(question: 'test', answer: 'test', reference: '', tools_used: [])
+    offline = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: TeamChat::Battery::OfflineGrader.new,
+      items: depth, set: 'depth', out: nil)
+    assert_equal 'depth-offline', offline.record_set_name
+  end
+
+  test 'long benchmarks remain running while results are still being saved' do
+    run = TeamChat::BatteryRun.new(status: 'running', started_at: 4.hours.ago, updated_at: Time.current)
+    assert_equal 'running', run.display_status
+    run.updated_at = 3.hours.ago
+    assert_equal 'stopped', run.display_status
+  end
+
+  test 'benchmark rows report view type and unchecked figures without claiming semantic verification' do
+    battery = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: TeamChat::Battery::OfflineGrader.new, items: [], out: nil)
+    result = TeamChat::Battery::Result.new(item: items.first, seconds: 1.0, tools: ['show_view'], status: 'done',
+      unverified: [], proposed_tools: [], views: [{ 'kind' => 'bar_chart', 'rows' => [[1, 2]], 'unchecked' => 1 },
+                                                  { 'kind' => 'html', 'unchecked' => 0 }])
+    views = battery.send(:result_row, result).fetch('views')
+    assert_equal({ 'kind' => 'bar_chart', 'rows' => 1, 'unmatched_figures' => 1, 'adjustable' => true }, views.first)
+    assert_equal false, views.last['adjustable']
+    assert_not views.first.key?('verified')
+    visual = result.item.dup
+    visual.module = 'visualization'
+    result.item = visual
+    battery.instance_variable_set(:@results, [result])
+    assert_includes battery.send(:summary_text, nil), 'Side-panel views: 1/1 answers; 1 include an adjustable structured view'
+    assert_includes battery.send(:summary_text, nil), 'Data, labels and scope require review'
+  end
+
+  test 'a visualization benchmark records the view produced during a real run' do
+    item = TeamChat::Battery::Item.new(id: 'v01', cadence: 'daily', module: 'visualization', question: 'Plot the test values',
+      checks: [], expect: 'Show a structured chart', needs: [])
+    script_model({ tool: 'show_view', arguments: { title: 'Values', kind: 'bar_chart', columns: %w[Day Count], rows: [['Mon', 3]] } },
+      { text: 'Here is the chart.' })
+    battery = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: TeamChat::Battery::OfflineGrader.new, items: [item], set: 'visualization', out: nil)
+    result = battery.run.sole
+    assert_equal 'bar_chart', result.views.sole['kind']
+    row = battery.record.reload.results_list.sole
+    assert_equal true, row.fetch('views').sole.fetch('adjustable')
+    assert_equal 1, row.fetch('views').sole.fetch('unmatched_figures')
+    assert_nil row['grade']
+  end
+
+  test 'combined benchmark job uses the offline grader and rejects a hosted verifier' do
+    local = TeamChat::LocalAgents::ALL.first
+    TeamChat::LocalAgents.stubs(:find).with(local.handle).returns(local)
+    TeamChat::Verify.stubs(:enabled_for?).with(local).returns(false)
+    TeamChat::Battery.stubs(:items_for).with('breadth').returns([])
+    runner = mock('offline benchmark')
+    runner.expects(:already_done).returns(nil)
+    runner.expects(:run)
+    TeamChat::Battery.expects(:new).with(user: @user, agent: local.handle, items: [], set: 'breadth', out: nil,
+      grader: instance_of(TeamChat::Battery::OfflineGrader)).returns(runner)
+    TeamChat::BatteryJob.new.perform(@user.id, 'breadth', local.handle)
+
+    TeamChat::Verify.stubs(:enabled_for?).with(local).returns(true)
+    TeamChat::Battery.expects(:new).never
+    TeamChat::BatteryJob.new.perform(@user.id, 'breadth', local.handle)
+  end
+
+  test 'does not grade an answer without usable reference or an authored expectation' do
+    grader = FakeGrader.new([])
+    battery = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: grader, items: [], out: nil)
+    reply = Struct.new(:status, :body, :meta).new('done', 'An answer', {})
+    missing = TeamChat::Battery::Item.new(id: 'missing', question: 'Where?', checks: [])
+    unavailable = TeamChat::Battery::Item.new(id: 'bad', question: 'What?', checks: ['not_a_real_tool'])
+    assert_nil battery.send(:grade_for, missing, reply)
+    assert_nil battery.send(:grade_for, unavailable, reply)
+    assert_empty grader.calls
+    missing.expect = 'A correct answer explains that the information is unavailable.'
+    assert_equal 4, battery.send(:grade_for, missing, reply)[:score]
+  end
+
+  test 'a question exceeding its deadline is cancelled and scored as a failure' do
+    item = TeamChat::Battery::Item.new(id: 'slow', cadence: 'daily', question: 'A slow question?', checks: [])
+    grader = FakeGrader.new([])
+    TeamChat::Agent.any_instance.stubs(:run).with do
+      sleep 0.2
+      true
+    end.returns(nil)
+    original = TeamChat::Battery::QUESTION_TIMEOUT
+    TeamChat::Battery.send(:remove_const, :QUESTION_TIMEOUT)
+    TeamChat::Battery.const_set(:QUESTION_TIMEOUT, 0.02)
+    battery = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: grader, items: [item], out: nil)
+    result = battery.run.first
+    assert_equal 'failed', result.status
+    assert_equal 1, result.grade[:score]
+    assert_match(/120 seconds/, result.grade[:verdict])
+    assert_empty grader.calls
+  ensure
+    TeamChat::Battery.send(:remove_const, :QUESTION_TIMEOUT)
+    TeamChat::Battery.const_set(:QUESTION_TIMEOUT, original)
+  end
+
+  test 'context-limited lookup results are recorded as partial, not complete' do
+    data = { items: [{ title: 'Books check', area: 'Books', status: 'watch', detail: 'Needs review' }] }
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: data))
+    stub_request(:post, "#{TeamChatHelper::LLM_BASE}/chat/completions").to_return(
+      { status: 200, headers: { 'Content-Type' => 'text/event-stream' }, body: sse_for(tool: 'compliance_check', arguments: {}) },
+      { status: 400, headers: { 'Content-Type' => 'application/json' }, body: { error: { message: 'maximum context length exceeded' } }.to_json }
+    )
+    stub_request(:get, "#{TeamChatHelper::LLM_BASE}/health").to_return(body: { loaded: nil }.to_json)
+    item = TeamChat::Battery::Item.new(id: 'partial', cadence: 'daily', question: 'What is overdue for compliance?', checks: [])
+    battery = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: TeamChat::Battery::OfflineGrader.new, items: [item], out: nil)
+    result = battery.run.sole
+    assert_equal 'partial', result.status
+    assert_includes result.answer, 'context limit'
+    assert_equal 'partial', battery.record.reload.results_list.sole['status']
+    assert_equal 0, battery.record.answered
+  end
+
+  test 'a timed out question retains the proposed tool after cancellation' do
+    item = TeamChat::Battery::Item.new(id: 'slow-action', cadence: 'general', question: 'Make a task', checks: [])
+    TeamChat::Agent.any_instance.stubs(:run).with do
+      reply = TeamChat::Message.where(author_kind: 'assistant', status: 'pending').last
+      TeamChat::Actions.propose!(reply, tool: 'create_task', arguments: { 'title' => 'Recount' }, proposed_for: @user)
+      sleep 2
+      true
+    end.returns(nil)
+    original = TeamChat::Battery::QUESTION_TIMEOUT
+    TeamChat::Battery.send(:remove_const, :QUESTION_TIMEOUT)
+    TeamChat::Battery.const_set(:QUESTION_TIMEOUT, 1)
+    battery = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: FakeGrader.new([]), items: [item], out: nil)
+    assert_no_difference -> { Projects::Task.count } do
+      battery.run
+    end
+    assert_equal ['create_task'], battery.record.reload.results_list.first['proposed_tools']
+    assert_equal 'dismissed', TeamChat::Message.where(author_kind: 'assistant').last.actions_list.first['status']
+  ensure
+    TeamChat::Battery.send(:remove_const, :QUESTION_TIMEOUT)
+    TeamChat::Battery.const_set(:QUESTION_TIMEOUT, original)
+  end
+
+  test 'model scores exclude runs with ungraded questions while preserving the run' do
+    complete = TeamChat::BatteryRun.create!(tenant_id: @tenant.id, run_key: 'complete', set_name: 'finance', model: 'complete-model',
+      status: 'done', questions: 2, results: [{ 'grade' => 4 }, { 'grade' => 5 }], avg_grade: 4.5, started_at: Time.current)
+    partial = TeamChat::BatteryRun.create!(tenant_id: @tenant.id, run_key: 'ungraded', set_name: 'finance', model: 'partial-model',
+      status: 'done', questions: 2, results: [{ 'grade' => 5 }, { 'grade' => nil }], avg_grade: 5, started_at: Time.current)
+
+    assert complete.fully_graded?
+    refute partial.fully_graded?
+    assert_equal 4.5, TeamChat::BatteryRun.latest_scores.dig('complete-model', 'finance')
+    assert_nil TeamChat::BatteryRun.latest_scores['partial-model']
+    assert TeamChat::BatteryRun.exists?(partial.id)
+  end
+
+  test 'missing declared reference fields prevent grading' do
+    grader = FakeGrader.new([])
+    battery = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: grader, items: [], out: nil)
+    reply = Struct.new(:status, :body, :meta).new('done', 'An answer', {})
+    item = TeamChat::Battery::Item.new(id: 'missing', question: 'What?', checks: ['sync_health'], needs: ['sync_health:missing_field'])
+
+    assert_nil battery.send(:grade_for, item, reply)
+    assert_empty grader.calls
+  end
+
+  test 'navigation references use the asking user and contain a real page' do
+    battery = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: FakeGrader.new([]), items: [], out: nil)
+    item = TeamChat::Battery::Item.new(id: 'where', question: 'where are timesheets?',
+      checks: [{ 'tool' => 'where_is', 'args' => { 'query' => 'timesheets' } }])
+    assert_includes battery.send(:reference_for, item), '/people/timesheets'
+  end
+
+  test 'two models using one cohort save paired comparison results' do
+    item = TeamChat::Battery::Item.new(id: 'paired', cadence: 'general', question: 'Where?', checks: [],
+      expect: 'Direct the user to the appropriate page.', needs: [])
+    cohort = TeamChat::Battery::Cohort.capture(user: @user, items: [item]) { '' }
+    script_model({ text: 'Open the page.' }, { text: 'Open the page.' })
+    grader = FakeGrader.new([])
+    first = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: grader, items: [item], out: nil, cohort: cohort)
+    second = TeamChat::Battery.new(user: @user, agent: 'gemma', grader: grader, items: [item], out: nil, cohort: cohort)
+    first.run
+    second.run
+
+    assert_match(/-cohort-#{cohort.id}\z/, first.record.set_name)
+    comparison = TeamChat::Battery::Comparison.new(baseline: first.record, candidate: second.record).call
+    assert_equal [1, 0.0], comparison.values_at('paired_graded', 'mean_difference')
+    assert_equal 2, TeamChat::BatteryRun.where(id: [first.record.id, second.record.id]).count
+  end
+
   test 'asks each question to the bot on its own in its test room, times it, grades it and posts a pinned summary' do
     requests = script_model({ tool: 'period_review', arguments: { period: 'yesterday' } }, { text: 'Yesterday: 2 orders, $100.' }, { text: 'No tax data.' })
     grader = FakeGrader.new([])
@@ -61,9 +251,9 @@ class TeamChatBatteryTest < ActiveSupport::TestCase
     assert_match(/answered 2\/2/, summary.body)
     assert_match(%r{Average grade 4.0/5}, summary.body)
     assert_match(/By cadence: daily 4.0 · monthly 4.0/, summary.body)
-    assert_match(/Number check: figures not found in Rupert's data in 0 of 2 answers/, summary.body)
+    assert_match(/Number check flagged figures in 0 of 2 replies; an unflagged reply is not necessarily verified/, summary.body)
     report = battery.report_markdown
-    assert_match(/\| 1 \| daily \| How did we do yesterday\? \| [\d.]+ s \| period_review \| 4 \|/, report)
+    assert_match(/\| 1 \| daily \| How did we do yesterday\? \| [\d.]+ s \| period_review \| — \| 4 \|/, report)
   end
 
   test 'each run is saved with its per-question results, and the same model, set and build counts as already done' do
@@ -102,11 +292,13 @@ class TeamChatBatteryTest < ActiveSupport::TestCase
   test 'a proposal made during a test run is dismissed, so nothing changes' do
     script_model({ tool: 'create_task', arguments: { title: 'Recount' } }, { text: 'Proposed.' })
     item = TeamChat::Battery::Item.new(id: 'x', cadence: 'general', question: 'Make a task', checks: [])
+    battery = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: FakeGrader.new([]), items: [item], out: nil)
     assert_no_difference -> { Projects::Task.count } do
-      TeamChat::Battery.new(user: @user, agent: 'qwen', grader: FakeGrader.new([]), items: [item], out: nil).run
+      battery.run
     end
     reply = TeamChat::Message.where(author_kind: 'assistant').last
     assert_equal 'dismissed', reply.actions_list.first['status']
+    assert_equal ['create_task'], battery.record.reload.results_list.first['proposed_tools']
   end
 
   test 'every bot gets its own test room, created up front' do
@@ -129,7 +321,9 @@ class TeamChatBatteryTest < ActiveSupport::TestCase
     assert_equal 21, TeamChat::Battery.items.size
     finance = TeamChat::Battery.items(TeamChat::Battery.config_for('finance'))
     assert_equal 35, finance.size, 'f22-f24 ask about the store registers; f25-f35 call the metric tool'
-    assert_match(/no cost of goods/, finance.find { |item| item.id == 'f20' }.expect)
+    profit_expectation = finance.find { |item| item.id == 'f20' }.expect
+    assert_match(/cost.of.goods/, profit_expectation)
+    assert_match(/expense currency is unknown/, profit_expectation)
     assert_equal %w[sales comparison money_out tax books honesty daily], finance.map(&:cadence).uniq
     assert_raises(ArgumentError) { TeamChat::Battery.config_for('../etc/passwd') }
     assert_raises(ArgumentError) { TeamChat::Battery.config_for('nope') }

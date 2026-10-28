@@ -57,6 +57,49 @@ class BusinessReviewToolsTest < ActiveSupport::TestCase
     assert_raises(Mcp::ToolError) { call('period_review', { 'from' => '2026-10-10', 'to' => '2026-10-01' }) }
   end
 
+  test 'period review ranks product revenue within each currency' do
+    usd = order(at: 1.day.ago, cents: 1000, number: 'usd')
+    cad = order(at: 1.day.ago, cents: 2000, number: 'cad')
+    cad.update!(currency: 'CAD')
+
+    products = call('period_review', { 'period' => 'yesterday' }).data[:top_products]
+    assert_equal [['CAD', 'Tea 50g', 2000], ['USD', 'Tea 50g', 1000]],
+      products.map { |row| row.values_at(:currency, :name, :revenue_cents) }
+    assert_equal 'USD', usd.reload.currency
+  end
+
+  test 'period review limits rankings independently for each currency' do
+    %w[USD CAD].each do |currency|
+      6.times do |index|
+        row = order(at: 1.day.ago, cents: (index + 1) * 100, number: "#{currency}-#{index}")
+        row.update!(currency: currency)
+        row.order_lines.first.update!(name: "Product #{index}")
+      end
+    end
+
+    products = call('period_review', { 'period' => 'yesterday' }).data[:top_products].group_by { |row| row[:currency] }
+    assert_equal %w[CAD USD], products.keys.sort
+    products.each_value do |rows|
+      assert_equal [600, 500, 400, 300, 200], rows.map { |row| row[:revenue_cents] }
+    end
+  end
+
+  test 'sales summary keeps daily and product amounts separate by currency' do
+    date = 1.day.ago
+    usd = order(at: date, cents: 1000, number: 'sales-usd')
+    cad = order(at: date, cents: 2000, number: 'sales-cad')
+    cad.update!(currency: 'CAD')
+    outcome = call('sales_summary', { 'from' => date.to_date.iso8601, 'to' => date.to_date.iso8601, 'include_daily' => true })
+
+    assert_equal [['CAD', 2000], ['USD', 1000]], outcome.data[:daily].map { |row| row.values_at(:currency, :gross_cents) }
+    assert_equal [['CAD', 2000], ['USD', 1000]], outcome.data[:top_products].map { |row| row.values_at(:currency, :revenue_cents) }
+
+    usd.update_columns(gross_cents: nil)
+    outcome = call('sales_summary', { 'from' => date.to_date.iso8601, 'to' => date.to_date.iso8601, 'include_daily' => true })
+    assert_nil outcome.data[:daily].find { |row| row[:currency] == 'USD' }[:gross_cents]
+    assert_equal 2000, outcome.data[:daily].find { |row| row[:currency] == 'CAD' }[:gross_cents]
+  end
+
   test 'order_queues lists unshipped paid orders, the oldest first, and what is late' do
     late = order(at: 3.days.ago, cents: 2500, number: 'late')
     order(at: 2.hours.ago, cents: 1500, number: 'fresh')

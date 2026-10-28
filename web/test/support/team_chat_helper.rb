@@ -25,7 +25,7 @@ module TeamChatHelper
     chunks =
       if turn[:tool]
         [{ choices: [{ index: 0, delta: { role: 'assistant', content: nil, tool_calls: [
-          { index: 0, id: "call_#{turn[:tool]}", type: 'function', function: { name: turn[:tool], arguments: JSON.generate(turn[:arguments] || {}) } }
+          { index: 0, id: turn[:id] || "call_#{turn[:tool]}", type: 'function', function: { name: turn[:tool], arguments: JSON.generate(turn[:arguments] || {}) } }
         ] }, finish_reason: nil }] },
          { choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }], usage: { prompt_tokens: 50, completion_tokens: 5 } }]
       else

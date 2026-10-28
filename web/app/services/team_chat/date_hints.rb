@@ -9,9 +9,9 @@ module TeamChat
       'today' => /\btoday\b|\bso far today\b/i,
       'yesterday' => /\byesterday\b/i,
       'this_week' => /\bthis week\b/i,
-      'last_week' => /\blast week\b|\bprevious week\b/i,
+      'last_week' => /\b(?:last|lst|previous) week\b/i,
       'this_pay_week' => /\bthis pay ?week\b/i,
-      'last_pay_week' => /\blast pay ?week\b/i,
+      'last_pay_week' => /\b(?:last|lst) pay ?week\b/i,
       'this_month' => /\bthis month\b|\bmonth to date\b|\bmtd\b/i,
       'last_month' => /\blast month\b|\bprevious month\b/i,
       'this_quarter' => /\bthis quarter\b|\bquarter to date\b|\bqtd\b/i,
@@ -20,6 +20,7 @@ module TeamChat
       'last_year' => /\blast year\b|\bprevious year\b/i
     }.freeze
     LAST_DAYS = /\b(?:last|past|previous)\s+(\d{1,3})\s+days\b/i
+    SAME_PERIOD_LAST_YEAR = /\b(?:the\s+)?same\s+(?:day|date|period|time)\s+last year\b/i
 
     module_function
 
@@ -28,6 +29,7 @@ module TeamChat
       text = text.to_s
       hints = PHRASES.filter_map do |key, pattern|
         next unless text.match?(pattern)
+        next if key == 'last_year' && !text.gsub(SAME_PERIOD_LAST_YEAR, '').match?(pattern)
         next if key == 'this_week' && text.match?(PHRASES['this_pay_week'])
         next if key == 'last_week' && text.match?(PHRASES['last_pay_week'])
 
@@ -36,8 +38,19 @@ module TeamChat
         span = preset.from == to ? preset.from.iso8601 : "#{preset.from.iso8601} to #{to.iso8601}"
         "#{preset.label.downcase} = #{span} (period_review period: #{key})"
       end
+      excluded_comparison = text.match?(/\b(?:not|without|no|skip|exclude)\b[^.!?;]{0,60}\bsame\s+(?:day|date|period|time)\s+last year\b/i)
+      if text.match?(SAME_PERIOD_LAST_YEAR) && !excluded_comparison
+        hints << 'For the same period last year, use metric compare: last_year with the requested current period; do not substitute the full previous calendar year.'
+        if text.match?(/\bsame\s+(?:day|date)\s+last year\b/i) && text.match?(PHRASES['today']) && !text.match?(PHRASES['yesterday'])
+          hints << "the same day last year = #{today.prev_year.iso8601}"
+        end
+      end
       text.scan(LAST_DAYS).each do |(days)|
-        days = days.to_i.clamp(1, 400)
+        days = days.to_i
+        if days.zero?
+          hints << 'The requested last 0 days is not a valid date range; do not substitute a different range.'
+          next
+        end
         hints << "the last #{days} days = #{(today - days + 1).iso8601} to #{today.iso8601}"
       end
       hints

@@ -38,7 +38,17 @@ module DataGuide
   # Offered with any topic: how the data is stored, and today's date and time zone.
   ALWAYS_TOOLS = %w[data_guide get_workspace_info].freeze
 
-  def tools_for(topics) = Array(topics).flat_map(&:tools).uniq.then { |tools| tools.any? ? (tools + ALWAYS_TOOLS).uniq : tools }
+  def tools_for(topics, question: nil)
+    tools = Array(topics).flat_map(&:tools).uniq
+    if question.present? && question.match?(/\b(?:hours|hrs)\b/i) &&
+        !question.match?(/\b(?:schedul\w*|shifts?|roster|rota|planned|upcoming|future|tomorrow|next)\b|\b\d{4}-\d{2}-\d{2}\b/i) &&
+        tools.include?('time_keeping_report')
+      # Timekeeping includes both recorded and scheduled hours; a schedule
+      # alone cannot establish hours worked. Retain it for explicit schedules.
+      tools.delete('staff_schedule')
+    end
+    tools.any? ? (tools + ALWAYS_TOOLS).uniq : tools
+  end
 
   def markdown(list = topics)
     ["# How Rupert's data is stored, and which tool answers what", '',

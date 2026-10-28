@@ -205,7 +205,13 @@
                             <td class="py-1 pr-2 text-ink"><%= row['message_id'] && run.room ? link_to(row['question'], team_chat_room_path(run.room, message: row['message_id']), class: 'hover:underline') : row['question'] %></td>
                             <td class="py-1 pr-2 font-semibold <%= row['grade'].to_i <= 2 ? 'text-rose' : (row['grade'].to_i >= 5 ? 'text-fern' : '') %>"><%= row['grade'] || '—' %></td>
                             <td class="py-1 pr-2 whitespace-nowrap"><%= row['seconds'] ? "#{row['seconds']} s" : '—' %></td>
-                            <td class="py-1 pr-2 text-taupe"><%= Array(row['tools']).join(', ').presence || '—' %></td>
+                            <td class="py-1 pr-2 text-taupe"><%= Array(row['tools']).join(', ').presence || '—' %>
+                              <% if row['module'] == 'visualization' || Array(row['views']).any? %>
+                                <% views = Array(row['views']) %>
+                                <div><%= views.empty? ? 'No side-panel view' : views.map { |view| "#{view['kind']} · #{pluralize(view['rows'], 'row')} · #{view['adjustable'] ? 'adjustable' : 'not adjustable'} · #{pluralize(view['unmatched_figures'], 'unmatched figure')}" }.join('; ') %></div>
+                                <div>Source, labels and period require review.</div>
+                              <% end %>
+                            </td>
                             <td class="py-1 text-mocha"><%= row['verdict'] %><% if Array(row['unverified']).any? %> <span class="text-rose">⚠ <%= Array(row['unverified']).join(', ') %></span><% end %></td>
                           </tr>
                         <% end %>

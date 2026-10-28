@@ -29,6 +29,286 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal @user.id, reply.meta['asked_by']
   end
 
+  test 'an oversized response keeps complete lines and reports omissions' do
+    reply = ask('@rupert Explain this topic.')
+    agent = TeamChat::Agent.new(reply, config: team_chat_config)
+    body = agent.send(:bounded_reply, "Useful detail.\n" * 900)
+
+    assert_operator body.length, :<=, TeamChat::Message::BODY_MAX * 2
+    assert_includes body, "Useful detail.\n"
+    assert_includes body, 'Some answer details and caveats were omitted'
+    assert_equal 'Some answer details and caveats were omitted because the response was too long. Narrow the question for the rest.',
+      agent.send(:bounded_reply, 'x' * 9000)
+  end
+
+  test 'an operational status asserted without a lookup is not presented as checked' do
+    script_model({ text: 'There are no reconciliation follow-ups open.' })
+    reply = ask('@rupert are any reconciliation follow-ups open?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal TeamChat::Agent::UNCHECKED_RECORDS, reply.reload.body
+    assert_empty reply.meta['tools']
+  end
+
+  test 'an unrelated compliance lookup does not answer a reconciliation queue question' do
+    compliance = { items: [{ title: 'Books closed', area: 'Books', status: 'watch', detail: 'Review needed' }] }
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: compliance))
+    script_model({ tool: 'compliance_check', arguments: {} }, { text: 'Everything is clear.' })
+    reply = ask('@rupert Are reconciliation follow-ups open?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal 'I could not verify the requested queue count from the available records.', reply.reload.body
+    assert_includes reply.meta['tools'], 'compliance_check'
+  end
+
+  test 'context exhaustion preserves verified lookup results with a clear limitation' do
+    data = { items: [{ title: 'Books check', area: 'Books', status: 'watch', detail: 'Needs review' }] }
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: data))
+    stub_request(:post, "#{TeamChatHelper::LLM_BASE}/chat/completions").to_return(
+      { status: 200, headers: { 'Content-Type' => 'text/event-stream' }, body: sse_for(tool: 'compliance_check', arguments: {}) },
+      { status: 400, headers: { 'Content-Type' => 'application/json' }, body: { error: { message: 'maximum context length exceeded' } }.to_json }
+    )
+    stub_request(:get, "#{TeamChatHelper::LLM_BASE}/health").to_return(body: { loaded: nil }.to_json)
+    reply = ask('@rupert What is overdue for compliance?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal 'done', reply.reload.status
+    assert_includes reply.body, 'model reached its context limit'
+    assert_includes reply.body, 'Books check'
+    assert_includes reply.body, 'Needs review'
+    assert_equal true, reply.meta['context_limited']
+  end
+
+  test 'context exhaustion before any lookup remains a failure' do
+    stub_request(:post, "#{TeamChatHelper::LLM_BASE}/chat/completions").to_return(
+      status: 400, headers: { 'Content-Type' => 'application/json' }, body: { error: { message: 'maximum context length exceeded' } }.to_json
+    )
+    reply = ask('@rupert What is overdue for compliance?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_equal 'failed', reply.reload.status
+    assert_nil reply.meta['context_limited']
+  end
+
+  test 'pending processor deposits are not confused with unresolved card payments' do
+    data = { queues: [{ name: 'Card payments not resolved', count: 0 }], low_stock_available: false, oldest_unshipped: [] }
+    Mcp::Tools::OrderQueues.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'queues', data: data))
+    script_model({ tool: 'order_queues', arguments: {} }, { text: 'No deposits are in transit.' })
+    reply = ask('@rupert Which credit card settlement deposits are in transit from the processor to our bank right now?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'cannot verify which card processor deposits are still in transit'
+    assert_includes reply.body, 'unresolved card payment is not the same'
+    assert_not_includes reply.body, 'No deposits are in transit'
+  end
+
+  test 'received processor deposits are not inferred from order sales' do
+    script_model({ tool: 'sales_summary', arguments: { from: '2026-08-01', to: '2026-08-03' } },
+      { text: 'All the sales landed in the bank.' })
+    reply = ask('@rupert How much of the August 1 to August 3 sales landed as processor deposits in our bank?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'cannot verify how much the processor deposited'
+    assert_includes reply.body, 'sales and payment attempts do not establish received bank deposits'
+    assert_not_includes reply.body, 'All the sales landed'
+  end
+
+  test 'document retention requests include healthy results and select the named row' do
+    data = { items: [{ title: 'Other', area: 'Books', status: 'watch', detail: 'Unrelated' },
+                     { title: 'Google Drive document retention', area: 'Records', status: 'ok', detail: 'Connected' }] }
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: data))
+    script_model({ tool: 'compliance_check', arguments: { include_ok: false } }, { text: 'I checked.' })
+    reply = ask('@rupert Is our document retention to Google Drive working?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal 'Recorded document-retention status (ok): Connected', reply.reload.body
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal true, entry.dig('arguments', 'include_ok')
+    assert_equal false, entry.dig('original_arguments', 'include_ok')
+  end
+
+  test 'month close answers prioritize the lock and preserve changed-after-lock status' do
+    unrelated = 25.times.map { |i| { title: "Other #{i}", area: 'Books', status: 'watch', detail: 'Other' } }
+    rows = [{ title: 'September 2026: Every day approved', area: 'Month close', status: 'watch', detail: '0 of 30 days approved' },
+            { title: 'September 2026: Lock the month', area: 'Month close', status: 'watch', detail: 'You can lock now with a note about what is still open, or finish the steps above first.' }]
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: { items: unrelated + rows }))
+    script_model({ tool: 'compliance_check', arguments: {} }, { text: 'Everything blocks closing.' })
+    reply = ask("@rupert Are last month's books closed? What is still open?")
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'September 2026: Not locked.'
+    assert_includes reply.body, 'You can lock now with a note'
+    assert_includes reply.body, 'Every day approved'
+    assert_not_includes reply.body, 'Other 0'
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal true, entry.dig('arguments', 'include_ok')
+
+    rows.last.merge!(status: 'fix', detail: 'Locked, but records changed afterwards: sales.')
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: { items: rows }))
+    script_model({ tool: 'compliance_check', arguments: {} }, { text: 'Not locked.' })
+    reply = ask("@rupert Are last month's books closed? What is still open?")
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'Locked, but records changed after the lock.'
+
+    rows.pop
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: { items: rows }))
+    script_model({ tool: 'compliance_check', arguments: {} }, { text: 'It is locked.' })
+    reply = ask("@rupert Are last month's books closed? What is still open?")
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_equal 'I could not verify the month-close checklist.', reply.reload.body
+    assert_nil TeamChat::ComplianceEvidence.close_scope("Are last month's books closed and how did sales do?")
+    assert_equal 'Month close', TeamChat::ComplianceEvidence.close_scope('Are the books for last month locked?')
+    assert_equal 'Month close', TeamChat::ComplianceEvidence.close_scope('Is last month closed in the books? What is left to do?')
+  end
+
+  test 'a missing retention record cannot be treated as a healthy connection' do
+    data = { items: [{ title: 'Other', area: 'Books', status: 'watch', detail: 'Unrelated' }] }
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: data))
+    script_model({ tool: 'compliance_check', arguments: {} }, { text: 'The drive is connected.' })
+    reply = ask('@rupert Is our document retention to Google Drive working?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal 'I could not verify the recorded Google Drive document-retention status.', reply.reload.body
+  end
+
+  test 'timesheet status includes ok rows and never infers zero from a missing row' do
+    data = { items: [{ title: 'Timesheets awaiting approval', area: 'People', status: 'ok', count: 0 }] }
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: data))
+    script_model({ tool: 'compliance_check', arguments: {} }, { text: 'I checked.' })
+    reply = ask('@rupert Are there timesheets waiting for approval?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_equal 'Recorded non-demo submitted timesheets awaiting approval: 0.', reply.reload.body
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal true, entry.dig('arguments', 'include_ok')
+
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: { items: [] }))
+    script_model({ tool: 'compliance_check', arguments: {} }, { text: 'No timesheets are waiting.' })
+    reply = ask('@rupert Are there timesheets waiting for approval?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_equal 'I could not verify the requested compliance count.', reply.reload.body
+  end
+
+  test 'a mixed timesheet and backup request does not mistake daily book approvals for timesheets' do
+    data = { items: [{ title: 'Timesheets awaiting approval', area: 'People', status: 'ok', count: 0 },
+                     { title: 'Recent days have been approved by a person', area: 'Books', status: 'watch', count: 2 }] }
+    backup = { drive: { fresh: true, fresh_within_hours: 8, last_success_age_hours: 2 } }
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: data))
+    Mcp::Tools::BackupFreshness.stubs(:available_to?).returns(true)
+    Mcp::Tools::BackupFreshness.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'backup', data: backup))
+    script_model({ tool: 'compliance_check', arguments: {} }, { tool: 'backup_freshness', arguments: {} }, { text: 'Two timesheets are waiting.' })
+    reply = ask('@rupert Are there timesheets waiting for approval and are backups current?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Recorded non-demo submitted timesheets awaiting approval: 0.'
+    assert_includes reply.body, 'last verified Google Drive backup was within the last 8 hours'
+    assert_not_includes reply.body, 'Two timesheets'
+
+    script_model({ tool: 'compliance_check', arguments: {} }, { text: 'Backups are current.' })
+    reply = ask('@rupert Are there timesheets waiting for approval and are backups current?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'I could not verify Google Drive backup freshness.'
+  end
+
+  test 'a mixed retention and backup request keeps the two records distinct' do
+    data = { items: [{ title: 'Google Drive document retention', area: 'Records', status: 'watch', detail: 'Not connected' }] }
+    backup = { drive: { fresh: false, fresh_within_hours: 8, last_success_age_hours: 12 } }
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: data))
+    Mcp::Tools::BackupFreshness.stubs(:available_to?).returns(true)
+    Mcp::Tools::BackupFreshness.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'backup', data: backup))
+    script_model({ tool: 'compliance_check', arguments: {} }, { tool: 'backup_freshness', arguments: {} }, { text: 'Both are connected.' })
+    reply = ask('@rupert Is our document retention to Google Drive working and are backups current?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Recorded document-retention status (watch): Not connected'
+    assert_includes reply.body, 'last verified Google Drive backup was more than 8 hours ago'
+    assert_not_includes reply.body, 'Both are connected'
+  end
+
+  test 'receipt count and document retention use separate authorized evidence' do
+    queues = { queues: [{ name: 'Expense receipts waiting for review', count: 0 }], oldest_unshipped: [], low_stock_available: false }
+    compliance = { items: [{ title: 'Google Drive document retention', area: 'Records', status: 'watch', detail: 'Not connected: originals stay only in Rupert.' },
+                           { title: 'Recent days have been approved by a person', area: 'Books', status: 'watch', count: 2 }] }
+    Mcp::Tools::OrderQueues.stubs(:available_to?).returns(true)
+    Mcp::Tools::ComplianceCheck.stubs(:available_to?).returns(true)
+    Mcp::Tools::OrderQueues.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'queues', data: queues))
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: compliance))
+    script_model({ text: 'Two receipts are waiting and Drive is connected.' })
+    reply = ask('@rupert How many receipts need review, and is document retention connected to Google Drive?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Expense receipts waiting for review: 0.'
+    assert_includes reply.body, 'Not connected: originals stay only in Rupert.'
+    assert_not_includes reply.body, 'Two receipts'
+    assert_not_includes reply.body, 'Drive is connected'
+    entries = TeamChat::Run.find_by!(message_id: reply.id).tool_results
+    assert_equal %w[order_queues compliance_check], entries.map { |entry| entry['name'] }.first(2)
+    assert_equal true, entries.find { |entry| entry['name'] == 'compliance_check' }.dig('arguments', 'include_ok')
+
+    queues[:queues].first[:count] = 4
+    compliance[:items].first.merge!(status: 'ok', detail: 'Connected for retained originals.')
+    script_model({ text: 'No receipts are waiting and retention is disconnected.' })
+    reply = ask('@rupert How many expense receipts are waiting for review and is document retention to Google Drive enabled?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'Expense receipts waiting for review: 4.'
+    assert_includes reply.body, 'Connected for retained originals.'
+    assert_not_includes reply.body, 'No receipts are waiting'
+  end
+
+  test 'uploaded bank-line status uses the compliance row rather than the uploads inbox' do
+    compliance = { items: [{ title: 'Uploaded bank lines have a decision', area: 'Books', status: 'watch', count: 3,
+                            detail: 'Three lines need a decision.' }] }
+    Mcp::Tools::ComplianceCheck.stubs(:available_to?).returns(true)
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: compliance))
+    script_model({ tool: 'list_uploads', arguments: {} }, { text: 'No bank lines are waiting.' })
+    reply = ask('@rupert Are uploaded bank statement lines awaiting a decision?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Uploaded bank statement lines awaiting a decision: 3.'
+    assert_includes reply.body, 'does not establish that every line was matched'
+    assert_not_includes reply.body, 'No bank lines are waiting'
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'compliance_check', entry['name']
+    assert_equal true, entry.dig('arguments', 'include_ok')
+  end
+
+  test 'uploaded bank-line status stays unknown when compliance evidence is unavailable' do
+    Mcp::Tools::ComplianceCheck.stubs(:available_to?).returns(false)
+    script_model({ text: 'No bank lines are waiting.' })
+    reply = ask('@rupert Are uploaded bank statement lines awaiting a decision?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal 'I could not verify the requested compliance count.', reply.reload.body
+  end
+
+  test 'missing receipt or retention evidence is not inferred from the other lookup' do
+    queues = { queues: [], oldest_unshipped: [], low_stock_available: false }
+    Mcp::Tools::OrderQueues.stubs(:available_to?).returns(true)
+    Mcp::Tools::ComplianceCheck.stubs(:available_to?).returns(false)
+    Mcp::Tools::OrderQueues.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'queues', data: queues))
+    script_model({ text: 'All clear.' })
+    reply = ask('@rupert How many receipts need review, and is document retention connected to Google Drive?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'could not verify the number of receipts'
+    assert_includes reply.body, 'could not verify the recorded document-retention status'
+    assert_not_includes reply.body, 'All clear'
+  end
+
+  test 'retention status drafts are not streamed before verification' do
+    reply = ask('@rupert Is our document retention to Google Drive working?')
+    agent = TeamChat::Agent.new(reply, config: team_chat_config)
+    agent.stubs(:request_text).returns('Is our document retention to Google Drive working?')
+    execution = mock
+    execution.expects(:write_reply!).never
+    agent.instance_variable_set(:@execution, execution)
+
+    agent.send(:publish, 'The drive is connected.')
+  end
+
+  test 'a conceptual question remains answerable without a record lookup' do
+    script_model({ text: 'A task is an item of work.' })
+    reply = ask('@rupert what is a task?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal 'A task is an item of work.', reply.reload.body
+  end
+
   test 'the reply calls a Rupert tool natively and streams the answer into the room' do
     requests = script_model({ tool: 'where_is', arguments: { query: 'timesheets' } }, { text: 'Timesheets are under Team. Open [Timesheets](/people/timesheets).' })
     reply = ask('@rupert where are timesheets? Also explain the approval workflow.')
@@ -48,9 +328,856 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_includes first['tools'].map { |tool| tool.dig('function', 'name') }, 'sales_summary'
     assert_equal 'system', first['messages'].first['role']
     assert_includes first['messages'].first['content'], 'You are Rupert'
+    assert_includes first['messages'].first['content'], 'do not propose it or offer it as an alternative'
     assert_match(/: @rupert where are timesheets\? Also explain the approval workflow\.\z/, first['messages'].last['content'])
     tool_message = requests.last['messages'].find { |message| message['role'] == 'tool' }
     assert tool_message, 'the tool result goes back to the model'
+  end
+
+  test 'after the tool budget the final generation cannot request another tool' do
+    calls = Array.new(TeamChat::Toolbox::MAX_CALLS) do |i|
+      { tool: 'where_is', arguments: { query: 'timesheets' }, id: "call_#{i}" }
+    end
+    requests = script_model(*calls, { text: 'Timesheets are under Team.' })
+    reply = ask('@rupert where are timesheets? Also explain the approval workflow.')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal 'done', reply.reload.status
+    assert_equal TeamChat::Toolbox::MAX_CALLS + 1, requests.size
+    assert_equal 'none', requests.last['tool_choice']
+    assert_equal TeamChat::Toolbox::MAX_CALLS, TeamChat::Run.find_by!(message_id: reply.id).tool_results.size
+  end
+
+  test 'malformed tool markup falls back to scoped task and inventory evidence' do
+    Projects::Task.create!(title: 'Recount tea shelf', priority: 'high')
+    script_model({ tool: 'list_tasks', arguments: { query: 'tea' } },
+      { tool: 'inventory_search', arguments: { query: 'tea' } },
+      { text: "<tool_call>\n<function=inventory_search>\n<parameter=query>\n</parameter>" })
+    reply = ask('@rupert is there a tea shelf task and is tea low on stock?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal 'done', reply.reload.status
+    assert_includes reply.body, 'I could not complete my answer'
+    assert_includes reply.body, 'Task lookup (query: tea)'
+    assert_includes reply.body, 'Recount tea shelf'
+    assert_includes reply.body, 'availability is unknown'
+    assert_not_includes reply.body, '<tool_call>'
+    assert_not_includes reply.body, '<function='
+  end
+
+  test 'malformed tool markup without usable lookups asks for another try' do
+    script_model({ text: '<tool_call><function=unknown>' })
+    reply = ask('@rupert help me check this')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal 'I could not complete my answer. Please try again.', reply.reload.body
+  end
+
+  test 'an alert lookup tells the model that an empty list is not inventory coverage' do
+    requests = script_model({ tool: 'list_alerts', arguments: {} }, { text: 'No open alerts were returned.' })
+    reply = ask('@rupert are there low-stock alerts?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    tool_message = requests.last['messages'].find { |message| message['role'] == 'tool' }
+    assert_includes tool_message['content'], 'no matching alerts do not prove stock is sufficient'
+  end
+
+  test 'alert-only answer does not present alert quantities as current inventory' do
+    StockAlert.create!(sku: 'SYN-TEA', quantity: 0, threshold: 5, status: 'open')
+    script_model({ tool: 'list_alerts', arguments: {} }, { text: 'SYN-TEA is out of stock right now.' })
+    reply = ask('@rupert list the open low-stock alerts')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'SYN-TEA'
+    assert_includes reply.body, 'alert quantity 0, threshold 5'
+    assert_includes reply.body, 'may be stale'
+    assert_not_includes reply.body, 'out of stock right now'
+  end
+
+  test 'financial answers also preserve alert scope and values' do
+    StockAlert.create!(sku: 'SYN-TEA', quantity: 2, threshold: 5, status: 'open')
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'yesterday', compare: 'none' } },
+      { tool: 'list_alerts', arguments: {} }, { text: 'Everything is in stock.' })
+    reply = ask('@rupert what were sales yesterday and what alerts are open?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'SYN-TEA'
+    assert_includes reply.body, 'alert quantity 2, threshold 5'
+    assert_includes reply.body, 'not a current inventory check'
+    assert_not_includes reply.body, 'Everything is in stock'
+  end
+
+  test 'task and alert lookups do not claim an alert is current stock' do
+    StockAlert.create!(sku: 'SYN-TEA', quantity: 2, threshold: 5, status: 'open')
+    script_model({ tool: 'list_tasks', arguments: { overdue: true, topic: 'stock' } },
+      { tool: 'list_alerts', arguments: {} }, { text: 'SYN-TEA is still below its threshold with 2 on hand.' })
+    reply = ask('@rupert Are there overdue stock tasks and is that stock still low?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Task lookup'
+    assert_includes reply.body, 'alert quantity 2, threshold 5'
+    assert_includes reply.body, 'Current stock levels could not be verified from alert records alone'
+    assert_not_includes reply.body, '2 on hand'
+  end
+
+  test 'an alert table cannot make the answer claim its recorded quantity is current stock' do
+    StockAlert.create!(sku: 'SYN-TEA', quantity: 2, threshold: 5, status: 'open')
+    script_model({ tool: 'list_alerts', arguments: {} },
+      { tool: 'show_view', arguments: { title: 'Alerts', kind: 'table', columns: %w[SKU Quantity], rows: [['SYN-TEA', 2]] } },
+      { text: 'SYN-TEA currently has 2 on hand.' })
+    reply = ask('@rupert Put today\'s open stock alerts in a side-panel table.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'alert quantity 2, threshold 5'
+    assert_includes reply.body, 'may be stale'
+    assert_not_includes reply.body, '2 on hand'
+    assert_equal 'table', reply.meta.fetch('views').sole['kind']
+  end
+
+  test 'a source sales chart cannot swap valid numbers between sources' do
+    period = Metrics::Window.resolve(period: 'last_week')
+    dates = { from: period.from.iso8601, to: period.to.iso8601 }
+    data = { metric: 'sales_by_source', period: dates, source: nil, values: [
+      { currency: 'USD', gross_cents: 11_200, sources: [
+        { source: 'shopify', gross_cents: 7200, share_percent: 64.3 },
+        { source: 'rupert_pos', gross_cents: 4000, share_percent: 35.7 }
+      ] }
+    ] }
+    Mcp::Tools::Metric.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'sales by source', data: data))
+    title = "Gross sales #{dates[:from]} to #{dates[:to]}"
+    script_model({ tool: 'metric', arguments: { name: 'sales_by_source', period: 'last_week', compare: 'none' } },
+      { tool: 'show_view', id: 'wrong', arguments: { title: title, kind: 'bar_chart', columns: ['Source', 'Gross sales USD'], rows: [['Shopify', 40], ['Rupert POS', 72]] } },
+      { tool: 'show_view', id: 'correct', arguments: { title: title, kind: 'bar_chart', columns: ['Source', 'Gross sales USD'], rows: [['Shopify', 72], ['Rupert POS', 40]] } },
+      { text: 'Here is the chart.' })
+    reply = ask('@rupert Chart gross sales by source last week.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entries = TeamChat::Run.find_by!(message_id: reply.id).tool_results
+    assert_includes entries[1]['result'], 'could not be verified for its source'
+    assert_equal [['Shopify', 72], ['Rupert POS', 40]], reply.reload.meta.fetch('views').sole['rows']
+  end
+
+  test 'a month comparison chart is built from authorized metric evidence if the model omits a view' do
+    period = Metrics::Window.resolve(period: 'last_month')
+    previous = period.previous
+    data = { metric: 'gross_sales', source: nil, period: period.as_json,
+             values: [{ value: 8000, currency: 'USD' }],
+             compared_with: previous.as_json.merge(values: [{ value: 2000, currency: 'CAD' }]) }
+    Mcp::Tools::Metric.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'gross sales', data: data))
+    script_model({ text: 'Here is the comparison.' })
+    reply = ask("@rupert Chart last month's gross sales against the month before without guessing missing values.")
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    view = reply.reload.meta.fetch('views').sole
+    assert_equal 'bar_chart', view['kind']
+    assert_equal [["#{previous.from} to #{previous.to}", '20.0', nil], ["#{period.from} to #{period.to}", nil, '80.0']], view['rows']
+    entries = TeamChat::Run.find_by!(message_id: reply.id).tool_results
+    assert entries.any? { |entry| entry['name'] == 'metric' && entry.dig('arguments', 'compare') == 'previous' }
+  end
+
+  test 'cash flow cannot be inferred from sales but navigation remains available' do
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'this_month', compare: 'none' } },
+      { text: 'Cash flow is positive because sales were strong.' })
+    reply = ask('@rupert Is our cash flow positive this month?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'could not verify cash flow'
+    assert_includes reply.body, 'sales or expenses alone do not establish cash in and out'
+    assert_not_includes reply.body, 'cash flow is positive'
+
+    script_model({ tool: 'where_is', arguments: { query: 'cash flow' } }, { text: 'Open the cash flow page.' })
+    reply = ask('@rupert Where is the cash flow page?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_not_includes reply.reload.body, 'could not verify cash flow'
+  end
+
+  test 'cash forecasts cannot be inferred from unrelated financial results' do
+    ['Cash forecast next month', 'Will we run out of cash?', 'How much cash will we have in 30 days?'].each do |question|
+      script_model({ tool: 'sales_tax_report', arguments: {} }, { text: 'Your cash forecast is based on sales tax.' })
+      reply = ask("@rupert #{question}")
+      TeamChat::Agent.new(reply, config: team_chat_config).run
+      assert_includes reply.reload.body, 'cannot verify a cash forecast'
+      assert_not_includes reply.body, 'Reported tax collected'
+    end
+  end
+
+  test 'payroll affordability cannot be inferred from sales or worked hours' do
+    script_model({ tool: 'time_keeping_report', arguments: {} }, { text: 'Sales are enough to cover payroll.' })
+    reply = ask('@rupert Will we be able to cover payroll next week?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'cannot determine whether there will be enough cash'
+    assert_includes reply.body, 'do not establish the available bank balance'
+    assert_not_includes reply.body, 'Sales are enough'
+  end
+
+  test 'last import answers preserve the inbox evidence when other tools are called' do
+    script_model({ tool: 'list_uploads', arguments: {} }, { tool: 'order_queues', arguments: {} },
+      { tool: 'compliance_check', arguments: {} }, { text: 'I checked the inbox.' })
+    reply = ask('@rupert What happened to the last file I tried to import?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'No uploads were returned'
+    assert_includes reply.body, 'cannot determine what happened'
+    assert_not_includes reply.body, 'Processing queues'
+  end
+
+  test 'timekeeping tool delivers worked hours even when sales are unavailable' do
+    today = Date.current.iso8601
+    requests = script_model({ tool: 'time_keeping_report', arguments: { from: today, to: today } }, { text: 'I checked timekeeping.' })
+    reply = ask('@rupert how many hours did I work today? Explain the result.')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal 'done', reply.reload.status
+    assert_includes requests.last['messages'].find { |message| message['role'] == 'tool' }['content'], '"timekeeping"'
+    assert_includes reply.body, 'hours worked'
+  end
+
+  test 'daily sales requested through the tool remain in the final answer' do
+    yesterday = (Date.current - 1).iso8601
+    today = Date.current.iso8601
+    Core::Order.create!(source: 'shopify', source_order_id: 'chat-daily-series', occurred_at: 1.day.ago.change(hour: 12),
+      gross_cents: 21483, currency: 'USD').mark_paid!
+    script_model({ tool: 'sales_summary', arguments: { from: yesterday, to: today } },
+      { text: 'Here are the sales.' })
+    reply = ask('@rupert show daily sales for yesterday and today')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, "#{yesterday}: 214.83 USD gross"
+    assert_includes reply.body, "#{today} (USD): no paid or fulfilled orders stored"
+    assert_includes reply.body, 'Missing stored orders do not prove there were no sales'
+    run = TeamChat::Run.find_by!(message_id: reply.id)
+    assert_equal true, run.tool_results.find { |entry| entry['name'] == 'sales_summary' }['arguments']['include_daily']
+  end
+
+  test 'daily-series completion respects an explicit request to omit the breakdown' do
+    today = Date.current.iso8601
+    script_model({ tool: 'sales_summary', arguments: { from: today, to: today } }, { text: 'Here is the total.' })
+    reply = ask('@rupert give me daily sales without a daily breakdown')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    run = TeamChat::Run.find_by!(message_id: reply.id)
+    args = run.tool_results.find { |entry| entry['name'] == 'sales_summary' }['arguments']
+    assert_not args.key?('include_daily')
+  end
+
+  test 'source-specific tax completes a missing metric filter and retains the original request' do
+    script_model({ tool: 'metric', arguments: { name: 'tax_collected', period: 'last_month' } }, { text: 'Here is the recorded tax.' })
+    reply = ask('@rupert tax collected on Shopify orders last month')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    result = TeamChat::Run.find_by!(message_id: reply.id).tool_results.find { |entry| entry['name'] == 'metric' }
+    assert_equal 'shopify', result.dig('arguments', 'source')
+    assert_not result.fetch('original_arguments').key?('source')
+    assert_not_includes reply.reload.body, 'square canonical orders'
+  end
+
+  test 'tax source completion leaves comparisons, exclusions and explicit filters alone' do
+    cases = [
+      ['@rupert compare tax on Shopify orders with Square sales', { name: 'tax_collected' }],
+      ['@rupert tax on Shopify orders excluding Shopify', { name: 'tax_collected' }],
+      ['@rupert tax on Shopify orders', { name: 'tax_collected', source: 'square' }]
+    ]
+    cases.each do |question, arguments|
+      script_model({ tool: 'metric', arguments: arguments }, { text: 'Here is the recorded tax.' })
+      reply = ask(question)
+      TeamChat::Agent.new(reply, config: team_chat_config).run
+      result = TeamChat::Run.find_by!(message_id: reply.id).tool_results.find { |entry| entry['name'] == 'metric' }
+      assert_equal arguments.stringify_keys, result['arguments']
+    end
+  end
+
+  test 'single-day order comparison corrects metric and period while retaining original arguments' do
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'last_year' } }, { text: 'Here is the comparison.' })
+    reply = ask('@rupert orders today vs same day last year')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    result = TeamChat::Run.find_by!(message_id: reply.id).tool_results.find { |entry| entry['name'] == 'metric' }
+    assert_equal({ 'name' => 'orders', 'period' => 'today', 'compare' => 'last_year' }, result['arguments'])
+    assert_equal({ 'name' => 'gross_sales', 'period' => 'last_year' }, result['original_arguments'])
+    assert_includes reply.reload.body, 'No metric rows were returned for the requested period'
+    assert_includes reply.body, 'No metric rows were returned for the comparison period'
+  end
+
+  test 'order comparison correction leaves mixed or excluded questions alone' do
+    ['@rupert sales and orders today vs same day last year', '@rupert orders today without comparing the same day last year'].each do |question|
+      original = { name: 'gross_sales', period: 'today' }
+      script_model({ tool: 'metric', arguments: original }, { text: 'Here are the results.' })
+      reply = ask(question)
+      TeamChat::Agent.new(reply, config: team_chat_config).run
+      result = TeamChat::Run.find_by!(message_id: reply.id).tool_results.find { |entry| entry['name'] == 'metric' }
+      assert_equal original.stringify_keys, result['arguments']
+    end
+  end
+
+  test 'empty open purchase order lookup survives the financial guard' do
+    data = { view: 'orders', rows: [], meta: { has_more: false }, totals: [{ placed_total_cents: 0 }] }
+    Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'No purchase orders', data: data))
+    script_model({ tool: 'purchase_orders', arguments: { status: 'open' } }, { text: 'There are orders waiting.' })
+    reply = ask('@rupert which purchase orders are open?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Purchase orders (status: open)'
+    assert_includes reply.body, 'No purchase orders were returned on this page'
+    assert_not_includes reply.body, 'There are orders waiting'
+  end
+
+  test 'vendor lookup keeps purchase-order values separate from recorded payments' do
+    today = Date.current.iso8601
+    data = { view: 'vendors', from: today, to: today, currency: 'USD', meta: { has_more: false },
+             rows: [{ name: 'Tea supplier', spend_cents: 1200, paid_in_window_cents: 500 }] }
+    Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'one vendor', data: data))
+    script_model({ tool: 'purchase_orders', arguments: { view: 'vendors', from: today, to: today } }, { text: 'Payments were $12.00.' })
+    reply = ask('@rupert what did we order and pay this vendor today?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'placed PO value, not payments: 12.00 USD'
+    assert_includes reply.body, 'recorded vendor payments in the period: 5.00 USD'
+    assert_not_includes reply.body, 'Payments were $12.00'
+  end
+
+  test 'a named vendor payments question corrects a vendor name sent as an order query' do
+    vendor = Purchasing::Vendor.create!(name: 'Synthetic Tea Supply')
+    today = Date.current.iso8601
+    first = Date.current.beginning_of_month.iso8601
+    data = { view: 'vendors', from: first, to: today, currency: 'USD', meta: { has_more: false },
+             rows: [{ name: vendor.name, spend_cents: 1200, paid_in_window_cents: 500 }] }
+    Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'one vendor', data: data))
+    script_model({ tool: 'purchase_orders', arguments: { query: vendor.name } }, { text: 'I checked.' })
+    reply = ask('@rupert For Synthetic Tea Supply this month, what was the PO value and vendor payments?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'placed PO value, not payments: 12.00 USD'
+    assert_includes reply.body, 'recorded vendor payments in the period: 5.00 USD'
+    args = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first['arguments']
+    assert_equal({ 'view' => 'vendors', 'vendor' => vendor.name, 'vendor_exact' => true, 'from' => first, 'to' => today }, args)
+  end
+
+  test 'a named vendor value question corrects an empty order query' do
+    vendor = Purchasing::Vendor.create!(name: 'Synthetic Tea Supply')
+    first = Date.current.beginning_of_month.iso8601
+    today = Date.current.iso8601
+    data = { view: 'vendors', from: first, to: today, currency: 'USD', meta: { has_more: false },
+             rows: [{ name: vendor.name, spend_cents: 1200, paid_in_window_cents: 500 }] }
+    Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'one vendor', data: data))
+    script_model({ tool: 'purchase_orders', arguments: { view: 'orders', query: '', from: first, to: today } }, { text: 'I checked.' })
+    reply = ask('@rupert For Synthetic Tea Supply this month, what was the PO value and vendor payments?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'recorded vendor payments in the period: 5.00 USD'
+    args = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first['arguments']
+    assert_equal({ 'view' => 'vendors', 'vendor' => vendor.name, 'vendor_exact' => true, 'from' => first, 'to' => today }, args)
+  end
+
+  test 'a named vendor value question corrects an unfiltered all-status order lookup' do
+    vendor = Purchasing::Vendor.create!(name: 'Synthetic Tea Supply')
+    first = Date.current.beginning_of_month.iso8601
+    today = Date.current.iso8601
+    data = { view: 'vendors', from: first, to: today, currency: 'USD', meta: { has_more: false }, rows: [] }
+    Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'no vendors', data: data))
+    script_model({ tool: 'purchase_orders', arguments: { view: 'orders', status: 'all', from: first, to: today } }, { text: 'I checked.' })
+    reply = ask('@rupert For Synthetic Tea Supply this month, what was the PO value and vendor payments?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    args = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first['arguments']
+    assert_equal({ 'view' => 'vendors', 'vendor' => vendor.name, 'vendor_exact' => true, 'from' => first, 'to' => today }, args)
+  end
+
+  test 'a named vendor payment question makes an implicit vendor filter exact' do
+    vendor = Purchasing::Vendor.create!(name: 'Synthetic Tea Supply')
+    first = Date.current.beginning_of_month.iso8601
+    today = Date.current.iso8601
+    data = { view: 'vendors', from: first, to: today, currency: 'USD', meta: { has_more: false }, rows: [] }
+    Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'no vendors', data: data))
+    original = { view: 'vendors', vendor: vendor.name, from: first, to: today }
+    script_model({ tool: 'purchase_orders', arguments: original }, { text: 'I checked.' })
+    reply = ask('@rupert For Synthetic Tea Supply this month, what was the PO value and vendor payments?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    args = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first['arguments']
+    assert_equal original.stringify_keys.merge('vendor_exact' => true), args
+  end
+
+  test 'supplemental order lookup keeps its requested filters and exact vendor' do
+    vendor = Purchasing::Vendor.create!(name: 'Synthetic Tea Supply')
+    first = Date.current.beginning_of_month.iso8601
+    today = Date.current.iso8601
+    data = { view: 'orders', meta: { has_more: false }, rows: [] }
+    Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'no orders', data: data))
+    original = { vendor: vendor.name, status: 'all', include_lines: false, from: first, to: today }
+    script_model({ tool: 'purchase_orders', arguments: original }, { text: 'I checked.' })
+    reply = ask('@rupert For Synthetic Tea Supply this month, what was the PO value and vendor payments?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    args = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first['arguments']
+    assert_equal original.stringify_keys.merge('vendor_exact' => true), args
+  end
+
+  test 'a request for matching vendor names retains substring matching' do
+    vendor = Purchasing::Vendor.create!(name: 'Synthetic Tea Supply')
+    data = { view: 'orders', meta: { has_more: false }, rows: [] }
+    Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'no orders', data: data))
+    original = { vendor: vendor.name, status: 'all', include_lines: false }
+    script_model({ tool: 'purchase_orders', arguments: original }, { text: 'I checked.' })
+    reply = ask('@rupert For Synthetic Tea Supply this month, show total vendor payments for matching names.')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    args = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first['arguments']
+    assert_equal original.stringify_keys, args
+  end
+
+  test 'vendor payment correction does not override a request for order line items' do
+    Purchasing::Vendor.create!(name: 'Synthetic Tea Supply')
+    data = { view: 'orders', rows: [], meta: { has_more: false } }
+    Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'no orders', data: data))
+    original = { view: 'orders', query: '' }
+    script_model({ tool: 'purchase_orders', arguments: original }, { text: 'I checked.' })
+    reply = ask('@rupert For Synthetic Tea Supply this month, show line items and total vendor payments.')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    args = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first['arguments']
+    assert_equal original.stringify_keys, args
+  end
+
+  test 'a partial vendor-name query is not silently changed to a different vendor' do
+    Purchasing::Vendor.create!(name: 'Synthetic Tea')
+    data = { view: 'orders', rows: [], meta: { has_more: false } }
+    Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'no orders', data: data))
+    script_model({ tool: 'purchase_orders', arguments: { query: 'Synthetic Tea' } }, { text: 'I checked.' })
+    reply = ask('@rupert For Synthetic Tea Supply this month, what were the vendor payments?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    args = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first['arguments']
+    assert_equal({ 'query' => 'Synthetic Tea' }, args)
+  end
+
+  test 'a case-insensitive vendor-name collision is not automatically resolved' do
+    Purchasing::Vendor.create!(name: 'Synthetic Tea Supply')
+    Purchasing::Vendor.create!(name: 'SYNTHETIC TEA SUPPLY')
+    data = { view: 'orders', rows: [], meta: { has_more: false } }
+    Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'no orders', data: data))
+    script_model({ tool: 'purchase_orders', arguments: { query: 'Synthetic Tea Supply' } }, { text: 'I checked.' })
+    reply = ask('@rupert For Synthetic Tea Supply this month, what were the vendor payments?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    args = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first['arguments']
+    assert_equal({ 'query' => 'Synthetic Tea Supply' }, args)
+  end
+
+  test 'vendor-payment correction preserves an explicitly requested previous month' do
+    vendor = Purchasing::Vendor.create!(name: 'Synthetic Tea Supply')
+    preset = TimeRangePicker.preset('last_month', Date.current)
+    from = preset.from.iso8601
+    to = preset.to.iso8601
+    data = { view: 'vendors', from: from, to: to, currency: 'USD', meta: { has_more: false }, rows: [] }
+    Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'no vendors', data: data))
+    script_model({ tool: 'purchase_orders', arguments: { query: vendor.name } }, { text: 'I checked.' })
+    reply = ask('@rupert For Synthetic Tea Supply last month, what were the vendor payments?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    args = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first['arguments']
+    assert_equal [from, to, true], args.values_at('from', 'to', 'vendor_exact')
+  end
+
+  test 'order queues with financial fields retain their operational counts' do
+    data = { queues: [{ name: 'Paid online orders not shipped', count: 1, late: 0 }], low_stock_available: false,
+             oldest_unshipped: [{ order: 'A-1', source: 'shopify', gross_cents: 1234, lines: [] }] }
+    Mcp::Tools::OrderQueues.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'one waiting', data: data))
+    script_model({ tool: 'order_queues', arguments: {} }, { text: 'Nothing is waiting.' })
+    reply = ask('@rupert what orders are waiting to ship?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Paid online orders not shipped: 1'
+    assert_includes reply.body, 'Low-stock alert matching was unavailable'
+    assert_not_includes reply.body, 'Nothing is waiting'
+  end
+
+  test 'late or awaiting delivery purchase orders use the scoped queue counts' do
+    data = { queues: [{ name: 'Purchase orders awaiting delivery', count: 3, late: 1 }], low_stock_available: false, oldest_unshipped: [] }
+    Mcp::Tools::OrderQueues.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'waiting', data: data))
+    script_model({ tool: 'order_queues', arguments: {} }, { text: 'I checked.' })
+    reply = ask('@rupert Are any purchase orders late or still waiting for delivery?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'Purchase orders awaiting delivery: 3; 1 late'
+    assert_not_includes reply.body, 'Paid online orders not shipped'
+  end
+
+  test 'an explicit order count does not add the metric default comparison' do
+    script_model({ tool: 'metric', arguments: { name: 'orders', period: 'yesterday' } }, { text: 'I checked.' })
+    reply = ask('@rupert How many orders were recorded yesterday?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'none', entry.dig('arguments', 'compare')
+    assert_not entry.fetch('original_arguments').key?('compare')
+
+    script_model({ tool: 'metric', arguments: { name: 'orders', period: 'yesterday', compare: 'previous' } }, { text: 'I checked.' })
+    reply = ask('@rupert How many orders were recorded yesterday?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'previous', entry.dig('arguments', 'compare')
+
+    script_model({ tool: 'metric', arguments: { name: 'orders', period: 'yesterday' } }, { text: 'I checked.' })
+    reply = ask('@rupert How many orders were recorded yesterday compared with the previous day?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_not entry.fetch('arguments').key?('compare')
+  end
+
+  test 'sales day direction follows an unambiguous question without changing filters' do
+    script_model({ tool: 'metric', arguments: { name: 'best_day', period: 'last_month', source: 'square', compare: 'none' } }, { text: 'I checked.' })
+    reply = ask('@rupert What was the slowest sales day last month?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'best_day', entry.dig('original_arguments', 'name')
+    assert_equal ['worst_day', 'last_month', 'square', 'none'], entry.fetch('arguments').values_at('name', 'period', 'source', 'compare')
+
+    script_model({ tool: 'metric', arguments: { name: 'best_day', period: 'last_month', compare: 'none' } }, { text: 'I checked.' })
+    reply = ask('@rupert Compare the best and slowest sales day last month.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_equal 'best_day', TeamChat::Run.find_by!(message_id: reply.id).tool_results.first.dig('arguments', 'name')
+
+    script_model({ tool: 'metric', arguments: { name: 'worst_day', period: 'last_week', compare: 'none' } }, { text: 'I checked.' })
+    reply = ask('@rupert What was the busiest sales day last week?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_equal 'best_day', TeamChat::Run.find_by!(message_id: reply.id).tool_results.first.dig('arguments', 'name')
+
+    script_model({ tool: 'metric', arguments: { name: 'worst_day', period: 'last_week', compare: 'none' } }, { text: 'I checked.' })
+    reply = ask('@rupert Which day of the week has the best sales?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_equal 'worst_day', TeamChat::Run.find_by!(message_id: reply.id).tool_results.first.dig('arguments', 'name')
+  end
+
+  test 'a total by source request asks for both the total and source data' do
+    date = Date.current.prev_month.beginning_of_month
+    order = Core::Order.create!(source: 'square', source_order_id: 'source-breakdown', occurred_at: date.to_time.change(hour: 12),
+      gross_cents: 8_000, tax_cents: 0, currency: 'USD')
+    order.mark_paid!
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'last_month' } }, { text: 'I checked.' })
+    reply = ask('@rupert What were total gross sales last month, by source?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'gross_sales', entry.dig('original_arguments', 'name')
+    assert_equal 'sales_by_source', entry.dig('arguments', 'name')
+    assert_equal 'none', entry.dig('arguments', 'compare')
+    assert_includes reply.reload.body, 'Gross sales total (paid or fulfilled orders): 80.00 USD'
+    assert_includes reply.body, 'square canonical orders'
+
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'last_month', compare: 'previous' } }, { text: 'I checked.' })
+    reply = ask('@rupert What were total gross sales last month, by source, and compare with the previous month?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'gross_sales', entry.dig('arguments', 'name')
+    assert_equal 'previous', entry.dig('arguments', 'compare')
+
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'last_month', source: 'square' } }, { text: 'I checked.' })
+    reply = ask('@rupert What were total gross sales last month, by source?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'gross_sales', entry.dig('arguments', 'name')
+    assert_equal 'square', entry.dig('arguments', 'source')
+  end
+
+  test 'best sales day over the last thirty days uses the complete inclusive window' do
+    script_model({ tool: 'metric', arguments: { name: 'best_day', period: 'this_month' } }, { text: 'I checked.' })
+    reply = ask('@rupert What was our best sales day in the last 30 days, and how much did we take that day?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal (Date.current - 29).iso8601, entry.dig('arguments', 'from')
+    assert_equal Date.current.iso8601, entry.dig('arguments', 'to')
+    assert_equal 'none', entry.dig('arguments', 'compare')
+
+    script_model({ tool: 'metric', arguments: { name: 'best_day', period: 'this_month' } }, { text: 'I checked.' })
+    reply = ask('@rupert Compare the best sales day in the last 30 days with the previous 30 days.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'this_month', entry.dig('arguments', 'period')
+
+    script_model({ tool: 'metric', arguments: { name: 'best_day', period: 'this_month' } }, { text: 'I checked.' })
+    reply = ask('@rupert Best sales day in the last 30 days against last week?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'this_month', entry.dig('arguments', 'period')
+  end
+
+  test 'a stated week ending fixes wrong lookup dates without dropping source filters' do
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'this_month', source: 'shopify' } }, { text: 'I checked.' })
+    reply = ask('@rupert Show Shopify gross sales for the week ending 2026-08-16.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'this_month', entry.dig('original_arguments', 'period')
+    assert_equal '2026-08-10', entry.dig('arguments', 'from')
+    assert_equal '2026-08-16', entry.dig('arguments', 'to')
+    assert_equal 'shopify', entry.dig('arguments', 'source')
+    assert_equal 'none', entry.dig('arguments', 'compare')
+
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'last_week', compare: 'previous' } }, { text: 'I checked.' })
+    reply = ask('@rupert Compare gross sales for the week ending 2026-08-16 with the previous week.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'last_week', entry.dig('arguments', 'period')
+    assert_equal 'previous', entry.dig('arguments', 'compare')
+  end
+
+  test 'seven days ending uses the inclusive seven-day sales window' do
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'this_month' } }, { text: 'I checked.' })
+    reply = ask('@rupert Show sales by source for the seven days ending 2026-08-15.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal '2026-08-09', entry.dig('arguments', 'from')
+    assert_equal '2026-08-15', entry.dig('arguments', 'to')
+    assert_equal 'sales_by_source', entry.dig('arguments', 'name')
+    assert_equal 'none', entry.dig('arguments', 'compare')
+  end
+
+  test 'a comparison of consecutive explicit dates uses those days' do
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'this_month', compare: 'last_year' } }, { text: 'I checked.' })
+    reply = ask('@rupert Compare gross order sales for 2026-08-16 with 2026-08-15, keeping currencies separate.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'this_month', entry.dig('original_arguments', 'period')
+    assert_equal '2026-08-16', entry.dig('arguments', 'from')
+    assert_equal '2026-08-16', entry.dig('arguments', 'to')
+    assert_equal 'previous', entry.dig('arguments', 'compare')
+
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'this_month', compare: 'last_year' } }, { text: 'I checked.' })
+    reply = ask('@rupert Compare gross sales for 2026-08-16 with 2026-08-01.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'this_month', entry.dig('arguments', 'period')
+    assert_equal 'last_year', entry.dig('arguments', 'compare')
+  end
+
+  test 'a change compared with the previous explicit date preserves its direction' do
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'this_month' } }, { text: 'I checked.' })
+    reply = ask('@rupert How did recorded gross sales on 2026-08-13 change compared with 2026-08-12?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal '2026-08-13', entry.dig('arguments', 'from')
+    assert_equal '2026-08-13', entry.dig('arguments', 'to')
+    assert_equal 'previous', entry.dig('arguments', 'compare')
+
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'this_month' } }, { text: 'I checked.' })
+    reply = ask('@rupert How did recorded gross sales on 2026-08-12 change compared with 2026-08-13?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'this_month', entry.dig('arguments', 'period')
+  end
+
+  test 'a narrow queue answer omits unrelated results while a mixed question keeps them' do
+    data = { queues: [{ name: 'Expense receipts waiting for review', count: 0 },
+                      { name: 'Purchase orders awaiting delivery', count: 1, late: 0 },
+                      { name: 'Paid online orders not shipped', count: 9 }], low_stock_available: false, oldest_unshipped: [] }
+    Mcp::Tools::OrderQueues.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'queue counts', data: data))
+    compliance = { items: [{ title: 'Books closed', area: 'Books', status: 'watch', detail: 'Review needed' }] }
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: compliance))
+    script_model({ tool: 'order_queues', arguments: {} }, { tool: 'compliance_check', arguments: {} }, { text: 'I checked.' })
+    reply = ask('@rupert What receipts need review and are any purchase orders late?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'Expense receipts waiting for review: 0'
+    assert_includes reply.body, 'Purchase orders awaiting delivery: 1; 0 late'
+    assert_not_includes reply.body, 'Paid online orders not shipped'
+    assert_not_includes reply.body, 'Books closed'
+
+    script_model({ tool: 'order_queues', arguments: {} }, { tool: 'compliance_check', arguments: {} }, { text: 'I checked.' })
+    reply = ask('@rupert What receipts need review and are the books closed?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'Paid online orders not shipped: 9'
+    assert_includes reply.body, 'Books closed'
+  end
+
+  test 'refunded order questions use the scoped count rather than paid order totals' do
+    data = { from: (Date.current - 29).iso8601, to: Date.current.iso8601,
+             lines: [], totals_by_currency: [], refunded_orders_by_source: { 'shopify' => 2 } }
+    Mcp::Tools::SalesSummary.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'sales', data: data))
+    script_model({ tool: 'sales_summary', arguments: {} }, { text: 'No refunds occurred.' })
+    reply = ask('@rupert How many orders were refunded in the last 30 days, and from which sources?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'shopify: 2 orders'
+    assert_includes reply.body, 'order date and current order status'
+    assert_not_includes reply.body, 'No refunds occurred'
+
+    script_model({ text: 'No refunds occurred.' })
+    reply = ask('@rupert How many orders were refunded in the last 30 days?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_equal TeamChat::Agent::UNCHECKED_RECORDS, reply.reload.body
+  end
+
+  test 'explicit order-date refund status uses the requested period and not refund transactions' do
+    travel_to Time.zone.parse('2026-10-27 12:00') do
+      data = { from: '2026-08-01', to: '2026-08-03', lines: [], totals_by_currency: [], refunded_orders_by_source: { 'shopify' => 2 } }
+      Mcp::Tools::SalesSummary.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'sales', data: data))
+      script_model({ text: 'I could not check the records.' })
+      reply = ask('@rupert How many orders placed August 1 through August 3 are currently refunded by source?')
+      TeamChat::Agent.new(reply, config: team_chat_config).run
+      entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+      assert_equal({ 'from' => '2026-08-01', 'to' => '2026-08-03', 'top_products' => 0 }, entry['arguments'])
+      assert_includes reply.reload.body, 'shopify: 2 orders'
+      assert_includes reply.body, 'partial refund does not necessarily'
+      assert_includes reply.body, '2026-08-01 to 2026-08-03'
+    end
+  end
+
+  test 'a failed source chart can fall back to verified recorded source figures' do
+    travel_to Time.zone.parse('2026-10-27 12:00') do
+      args = { from: '2026-10-19', to: '2026-10-25' }
+      data = args.merge(lines: [{ source: 'shopify', currency: 'USD', orders: 1, gross_cents: 7200, tax_cents: 0 },
+                                { source: 'rupert_pos', currency: 'USD', orders: 1, gross_cents: 4000, tax_cents: 0 }],
+        totals_by_currency: [], refunded_orders_by_source: {})
+      Mcp::Tools::SalesSummary.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'sales', data: data))
+      script_model({ tool: 'sales_summary', arguments: args }, { text: 'I checked the sales.' })
+      reply = ask("@rupert Show a chart of last week's gross sales by source")
+      TeamChat::Agent.new(reply, config: team_chat_config).run
+      view = reply.reload.meta.fetch('views').first
+      assert_equal 'bar_chart', view['kind']
+      assert_equal [['rupert_pos', '40.0'], ['shopify', '72.0']], view['rows']
+      assert_includes view['note'], 'Missing records do not prove zero'
+    end
+  end
+
+  test 'a sales trend requests daily evidence and can show a verified adjustable chart' do
+    travel_to Time.zone.parse('2026-10-27 12:00') do
+      args = { from: '2026-10-19', to: '2026-10-25' }
+      data = args.merge(lines: [], totals_by_currency: [], refunded_orders_by_source: {}, daily: [
+        { date: '2026-10-19', currency: 'USD', orders: 1, gross_cents: 4000 },
+        { date: '2026-10-20', currency: 'USD', orders: 0, gross_cents: 0 }
+      ])
+      (21..25).each { |day| data[:daily] << { date: "2026-10-#{day}", currency: 'USD', orders: 0, gross_cents: 0 } }
+      Mcp::Tools::SalesSummary.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'sales', data: data))
+      script_model({ tool: 'sales_summary', arguments: args }, { text: 'I checked the sales.' })
+      reply = ask("@rupert Plot last week's recorded sales trend")
+      TeamChat::Agent.new(reply, config: team_chat_config).run
+      entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+      assert_equal true, entry.dig('arguments', 'include_daily')
+      view = reply.reload.meta.fetch('views').first
+      assert_equal 'line_chart', view['kind']
+      assert_equal [['2026-10-19', '40.0'], ['2026-10-20', nil]], view['rows'].first(2)
+
+      script_model({ text: 'I could not draw that chart.' })
+      reply = ask("@rupert Plot last week's recorded sales trend")
+      TeamChat::Agent.new(reply, config: team_chat_config).run
+      entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+      assert_equal 'sales_summary', entry['name']
+      assert_equal true, entry.dig('arguments', 'include_daily')
+      assert_equal [['2026-10-19', '40.0'], ['2026-10-20', nil]], reply.reload.meta.fetch('views').first['rows'].first(2)
+
+      invalid_views = 7.times.map do |index|
+        { tool: 'show_view', id: "bad-#{index}", arguments: { title: 'Incomplete', kind: 'table', columns: ['Date', 'Sales'], rows: [] } }
+      end
+      script_model(*invalid_views, { text: 'I could not draw that chart.' })
+      reply = ask("@rupert Plot last week's recorded sales trend")
+      TeamChat::Agent.new(reply, config: team_chat_config).run
+      entries = TeamChat::Run.find_by!(message_id: reply.id).tool_results
+      assert_equal 'sales_summary', entries.first['name']
+      assert_equal true, entries.first.dig('arguments', 'include_daily')
+      assert_equal [['2026-10-19', '40.0'], ['2026-10-20', nil]], reply.reload.meta.fetch('views').first['rows'].first(2)
+    end
+  end
+
+  test 'an explicit daily sales chart fetches the exact period and keeps missing days blank' do
+    args = { from: '2026-08-01', to: '2026-08-03' }
+    data = args.merge(lines: [], totals_by_currency: [], refunded_orders_by_source: {}, daily: [
+      { date: '2026-08-01', currency: 'USD', orders: 1, gross_cents: 2345 },
+      { date: '2026-08-02', currency: 'USD', orders: 0, gross_cents: 0 },
+      { date: '2026-08-03', currency: 'USD', orders: 1, gross_cents: 6789 }
+    ])
+    Mcp::Tools::SalesSummary.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'sales', data: data))
+    script_model({ text: 'I could not draw that chart.' })
+    reply = ask('@rupert Plot recorded daily gross sales for 2026-08-01 through 2026-08-03.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal args.stringify_keys.merge('include_daily' => true, 'top_products' => 0), entry['arguments']
+    view = reply.reload.meta.fetch('views').first
+    assert_equal 'line_chart', view['kind']
+    assert_equal [['2026-08-01', '23.45'], ['2026-08-02', nil], ['2026-08-03', '67.89']], view['rows']
+  end
+
+  test 'an explicitly dated top-product request fetches the missing metric' do
+    data = { metric: 'top_products', source: nil, period: { from: '2026-08-01', to: '2026-08-03' }, values: [
+      { currency: 'USD', products: [{ name: 'Tea', revenue_cents: 2345, share_percent: 100.0 }] }
+    ] }
+    Mcp::Tools::Metric.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'top products', data: data))
+    script_model({ text: 'I could not check product sales.' })
+    reply = ask('@rupert Which products had the highest recorded sales from 2026-08-01 to 2026-08-03?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal({ 'name' => 'top_products', 'from' => '2026-08-01', 'to' => '2026-08-03', 'compare' => 'none' }, entry['arguments'])
+    assert_includes reply.reload.body, 'Product revenue: Tea: 23.45 USD'
+    assert_not_includes reply.body, 'could not check product sales'
+
+    script_model({ text: 'I could not check product sales.' })
+    reply = ask('@rupert Which products led recorded revenue from 2026-08-01 to 2026-08-03, separated by currency?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'top_products', entry.dig('arguments', 'name')
+    assert_includes reply.reload.body, 'Product revenue: Tea: 23.45 USD'
+  end
+
+  test 'an explicitly dated refund transaction request fetches the matching metric' do
+    data = { metric: 'refund_rate', source: nil, period: { from: '2026-08-01', to: '2026-08-03' }, values: [
+      { currency: 'USD', value: 10.0, refunded_cents: 250, refunds: 1 }
+    ] }
+    Mcp::Tools::Metric.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'refunds', data: data))
+    script_model({ text: 'I could not check refunds.' })
+    reply = ask('@rupert What refund transactions were recorded from 2026-08-01 through 2026-08-03? Include amounts and counts.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'refund_rate', entry.dig('arguments', 'name')
+    assert_includes reply.reload.body, 'Recorded refund transaction amount: 2.50 USD'
+    assert_includes reply.body, 'Recorded refund transaction count: 1'
+  end
+
+  test 'a source-filtered product question does not prefetch an unfiltered metric' do
+    Mcp::Tools::Metric.any_instance.expects(:call).never
+    script_model({ text: 'I could not verify product sales.' })
+    reply = ask('@rupert Which Shopify products had the highest sales from 2026-08-01 to 2026-08-03?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_empty TeamChat::Run.find_by!(message_id: reply.id).tool_results
+  end
+
+  test 'product comparisons and source breakdowns do not prefetch aggregate metrics' do
+    Mcp::Tools::Metric.any_instance.expects(:call).never
+    ['Which products had the highest sales by source from 2026-08-01 to 2026-08-03?',
+      'Which products had the highest sales from 2026-08-01 to 2026-08-03 compared with the prior period?'].each do |question|
+      script_model({ text: 'I could not verify product sales.' })
+      reply = ask("@rupert #{question}")
+      TeamChat::Agent.new(reply, config: team_chat_config).run
+      assert_empty TeamChat::Run.find_by!(message_id: reply.id).tool_results
+    end
+  end
+
+  test 'a nonempty receipt count does not replace a request for receipt identities' do
+    data = { queues: [{ name: 'Expense receipts waiting for review', count: 2 }],
+             low_stock_available: false, oldest_unshipped: [] }
+    compliance = { items: [{ title: 'Books closed', area: 'Books', status: 'watch', detail: 'Review needed' }] }
+    Mcp::Tools::OrderQueues.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'queue counts', data: data))
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: compliance))
+    script_model({ tool: 'order_queues', arguments: {} }, { tool: 'compliance_check', arguments: {} }, { text: 'I checked.' })
+    reply = ask('@rupert Which expense receipts require review?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Expense receipts waiting for review: 2'
+    assert_includes reply.body, 'Books closed'
+    assert_not_includes reply.body, 'counts, not individual receipt'
   end
 
   test 'financial drafts are replaced with typed source period currency and meaning' do
@@ -71,6 +1198,151 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     tool_message = requests.last['messages'].find { |message| message['role'] == 'tool' }
     assert_includes tool_message['content'], '"value":"214.83"'
     assert_includes requests.first['messages'].first['content'], 'Never add, subtract, average, convert'
+  end
+
+  test 'malformed tool markup cannot pass financial prose verification' do
+    Core::Order.create!(source: 'shopify', source_order_id: 'chat-malformed', occurred_at: Time.current, gross_cents: 21483, currency: 'USD').mark_paid!
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'today', source: 'shopify', compare: 'none' } },
+      { text: 'Gross sales today were $214.83. <tool_call><function=metric>' })
+    reply = ask('@rupert show gross sales today')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, '214.83 USD'
+    assert_not_includes reply.body, '<tool_call>'
+    assert_equal false, reply.meta['prose_checked']
+  end
+
+  test 'financial verification retains separate inventory observations' do
+    product = ShopifyProduct.create!(id: 'chat-product', title: 'Tea')
+    variant = ShopifyVariant.create!(id: 'chat-variant', productId: product.id, sku: 'CHAT-TEA', title: '50g')
+    location = Location.create!(id: 'chat-location', source: 'shopify', externalId: 'chat-external', name: 'Tea shelf')
+    InventoryLevel.create!(id: 'chat-level', source: 'shopify', locationId: location.id, shopifyVariantId: variant.id, quantity: 12, available: 9)
+    Core::Order.create!(source: 'shopify', source_order_id: 'chat-order', occurred_at: Time.current, gross_cents: 21483, currency: 'USD').mark_paid!
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'today', source: 'shopify', compare: 'none' } },
+      { tool: 'inventory_search', arguments: { query: 'CHAT-TEA' } }, { text: 'Sales were $214.83 and tea has 999 available.' })
+    reply = ask('@rupert show sales today and tea stock')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, '214.83 USD'
+    assert_includes reply.body, 'Tea shelf (shopify): 9 available'
+    assert_not_includes reply.body, '999 available'
+    assert_equal false, reply.meta['prose_checked']
+  end
+
+  test 'empty inventory lookup cannot be turned into a stock all-clear' do
+    script_model({ tool: 'list_tasks', arguments: { query: 'tea' } },
+      { tool: 'inventory_search', arguments: { query: 'tea' } }, { text: 'Everything is in stock.' })
+    reply = ask('@rupert are there tea tasks and is tea stock low?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Task lookup (query: tea)'
+    assert_includes reply.body, 'availability is unknown'
+    assert_not_includes reply.body, 'Everything is in stock'
+  end
+
+  test 'financial verification retains task lookup results' do
+    Projects::Task.create!(title: 'Recount tea shelf', priority: 'high')
+    Core::Order.create!(source: 'shopify', source_order_id: 'chat-task-order', occurred_at: Time.current, gross_cents: 21483, currency: 'USD').mark_paid!
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'today', source: 'shopify', compare: 'none' } },
+      { tool: 'list_tasks', arguments: { query: 'tea' } }, { text: 'Sales were $214.83, and tea has no task.' })
+    reply = ask('@rupert show sales today and tea tasks')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, '214.83 USD'
+    assert_includes reply.body, 'Task lookup (query: tea)'
+    assert_includes reply.body, 'Recount tea shelf'
+    assert_not_includes reply.body, 'tea has no task'
+  end
+
+  test 'financial verification retains the compliance check' do
+    Core::Order.create!(source: 'shopify', source_order_id: 'chat-compliance-order', occurred_at: Time.current, gross_cents: 21483, currency: 'USD').mark_paid!
+    script_model({ tool: 'compliance_check', arguments: {} },
+      { tool: 'metric', arguments: { name: 'gross_sales', period: 'today', source: 'shopify', compare: 'none' } },
+      { text: 'Sales were $214.83 and nothing needs review.' })
+    reply = ask('@rupert show sales and books blockers')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, '214.83 USD'
+    assert_includes reply.body, 'Compliance check:'
+    assert_not_includes reply.body, 'nothing needs review'
+  end
+
+  test 'long compliance lookup remains usable beside financial evidence' do
+    items = 30.times.map { |i| { title: "Close item #{i}", area: 'Books', status: 'watch', detail: 'review required' } }
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'many items', data: { items: items }))
+    Core::Order.create!(source: 'shopify', source_order_id: 'chat-long-compliance', occurred_at: Time.current, gross_cents: 100, currency: 'USD').mark_paid!
+    script_model({ tool: 'compliance_check', arguments: {} },
+      { tool: 'metric', arguments: { name: 'gross_sales', period: 'today', source: 'shopify', compare: 'none' } },
+      { text: 'No blockers.' })
+    reply = ask('@rupert show sales and books blockers')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Close item 0'
+    assert_includes reply.body, 'Additional compliance items were omitted'
+    result = TeamChat::Run.find_by!(message_id: reply.id).tool_results.find { |entry| entry['name'] == 'compliance_check' }
+    assert_operator result['result'].length, :<, TeamChat::Toolbox::MAX_RESULT_CHARS
+    assert JSON.parse(result['result'].partition("\n").last)['omitted']
+  end
+
+  test 'compliance-only answers retain status and omissions instead of model claims' do
+    items = 25.times.map { |i| { title: "Close item #{i}", area: 'Books', status: 'watch', detail: 'review required' } }
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'many items', data: { items: items }))
+    script_model({ tool: 'compliance_check', arguments: {} }, { text: 'Everything is complete and nothing was omitted.' })
+    reply = ask('@rupert what books checks need attention?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Close item 0 (Books; watch)'
+    assert_includes reply.body, 'Additional compliance items were omitted'
+    assert_not_includes reply.body, 'Everything is complete'
+  end
+
+  test 'unchecked compliance and uncertain inventory prose are not streamed as answers' do
+    agent = TeamChat::Agent.allocate
+    execution = mock('execution')
+    execution.expects(:write_reply!).never
+    agent.instance_variable_set(:@execution, execution)
+
+    toolbox = stub('toolbox', financial?: false, tools_used: ['compliance_check'], inventory_results: [])
+    agent.instance_variable_set(:@toolbox, toolbox)
+    agent.send(:publish, 'Everything is complete.')
+
+    toolbox = stub('toolbox', financial?: false, tools_used: ['inventory_search'],
+      inventory_results: ["result\n#{JSON.generate(rows: [], meta: {})}"])
+    agent.instance_variable_set(:@toolbox, toolbox)
+    agent.send(:publish, 'Everything is in stock.')
+  end
+
+  test 'business pulse keeps operational sections in the final answer' do
+    script_model({ tool: 'business_pulse', arguments: {} }, { text: 'Nothing is waiting.' })
+    reply = ask('@rupert give me a business health check today')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Business pulse for'
+    assert_includes reply.body, 'Open alerts:'
+    assert_match(/waiting queues/i, reply.body)
+    assert_not_includes reply.body, 'Nothing is waiting.'
+  end
+
+  test 'financial verification retains source sync health' do
+    Core::Order.create!(source: 'shopify', source_order_id: 'chat-sync-order', occurred_at: Time.current, gross_cents: 21483, currency: 'USD').mark_paid!
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'today', source: 'shopify', compare: 'none' } },
+      { tool: 'sync_health', arguments: {} }, { text: 'Sales were $214.83 and sync is perfect.' })
+    reply = ask('@rupert show sales and whether the source is syncing')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, '214.83 USD'
+    assert_includes reply.body, 'Source sync health:'
+    assert_includes reply.body, 'does not establish complete sales coverage'
+    assert_not_includes reply.body, 'sync is perfect'
   end
 
   test 'a reply whose figures all come from its tools has nothing flagged' do
@@ -100,6 +1372,15 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_not reply.reload.as_payload(viewer: @user)[:figures_checked]
   end
 
+  test 'a figure from the question is not marked as verified by an unrelated tool' do
+    script_model({ tool: 'where_is', arguments: { query: 'timesheets' } }, { text: 'You mentioned 37 hours. Timesheets are under Team.' })
+    reply = ask('@rupert where are timesheets? I mentioned 37 hours.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, '37 hours'
+    assert_not reply.as_payload(viewer: @user)[:figures_checked]
+  end
+
   test 'a write tool only proposes; approving runs it as the approver and posts a notice' do
     script_model({ tool: 'create_task', arguments: { title: 'Recount the tea shelf', priority: 'high' } },
       { text: 'I proposed the task; approve it below.' })
@@ -121,6 +1402,59 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_no_difference -> { Projects::Task.count } do
       assert_equal 'done', TeamChat::Actions.decide!(reply, action['id'], user: @user, approve: true)['status']
     end
+  end
+
+  test 'explicitly excluded task and feedback proposals are denied' do
+    script_model({ tool: 'create_task', arguments: { title: 'Courier arrives at four' } },
+      { tool: 'submit_feedback', arguments: { kind: 'suggestion', summary: 'Courier note' } },
+      { text: 'I could not save a standalone note.' })
+    reply = ask('@rupert Make a note that the courier comes at 4, without creating a task or sending feedback.')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_empty reply.reload.actions_list
+    results = TeamChat::Run.find_by!(message_id: reply.id).tool_results
+    assert_equal %w[create_task submit_feedback], results.pluck('name')
+    assert results.all? { |entry| entry['result'].include?('explicitly excluded') }
+  end
+
+  test 'a how-to question cannot create an unsolicited task or falsely claim it did' do
+    script_model({ tool: 'create_task', arguments: { title: 'Make a journal entry' } },
+      { text: 'I created a task for the journal entry.' })
+    reply = ask('@rupert How do I make a journal entry?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_empty reply.reload.actions_list
+    assert_includes reply.body, 'No task or feedback was proposed'
+    result = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_includes result['result'], 'asked for instructions, not an action'
+  end
+
+  test 'a separate explicit action can accompany a how-to question' do
+    assert_not TeamChat::Toolbox.instruction_only?('How do I make an entry, and create a task to review it?')
+    assert TeamChat::Toolbox.instruction_only?('How do I create and manage tasks?')
+  end
+
+  test 'a separate allowed feedback request is not blocked by a task exclusion' do
+    script_model({ tool: 'create_task', arguments: { title: 'Courier arrives at four' } },
+      { tool: 'submit_feedback', arguments: { kind: 'suggestion', summary: 'Courier note' } },
+      { text: 'The feedback proposal is waiting for approval.' })
+    reply = ask('@rupert Do not create a task, but send feedback about the courier note.')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal ['submit_feedback'], reply.reload.actions_list.pluck('tool')
+    results = TeamChat::Run.find_by!(message_id: reply.id).tool_results
+    assert_includes results.first['result'], 'explicitly excluded'
+  end
+
+  test 'a quoted task title is not treated as an instruction to exclude the task' do
+    script_model({ tool: 'create_task', arguments: { title: 'Do not create a task' } },
+      { text: 'The task proposal is waiting for approval.' })
+    reply = ask('@rupert Create a task titled “Do not create a task”.')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal ['create_task'], reply.reload.actions_list.pluck('tool')
   end
 
   test 'assigning a task privately preserves the assignee without notifying them into the private room' do

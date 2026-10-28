@@ -20,7 +20,20 @@ module AskRupert
 
     # Tool results: the above plus emails and phone numbers of customers and staff.
     def personal(text)
-      clean(text).gsub(EMAIL, '[email]').gsub(PHONE, '[phone]')
+      clean(text).gsub(EMAIL, '[email]').gsub(PHONE) do |match|
+        # A period label may put two dates next to each other in parentheses.
+        # Preserve only matches made entirely of valid dates and separators;
+        # extra digits could be a phone number and must still be redacted.
+        dates = match.scan(/\d{4}-\d{2}-\d{2}/)
+        remainder = match.gsub(/\d{4}-\d{2}-\d{2}/, '').delete(' ()')
+        if dates.any? && remainder.empty? && dates.all? { |date| Date.iso8601(date).iso8601 == date }
+          match
+        else
+          '[phone]'
+        end
+      rescue Date::Error
+        '[phone]'
+      end
     end
   end
 end

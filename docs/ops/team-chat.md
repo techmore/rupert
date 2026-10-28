@@ -107,9 +107,9 @@ rupert-room-<id>`. MCP tool results other than typed financial evidence pass
 through `AskRupert::Redactor.personal` first. Only what the tools the model called
 returned, as the asking person, is sent from the database.
 
-## Local model @agents (@lfm, @bonsai, @gemma)
+## Local model @agents (historical lineup, before 2026-10-23)
 
-Next to @rupert, people can @mention three open models that run on SER8 itself, to compare them on real questions.
+This section records an earlier lineup, not the current one. As of 2026-10-27, production `@qwen` is Qwen3.5 4B and `@rupert` uses DeepSeek V4.1 Flash; the LFM3 models are being tested separately. See the later 2026-10-23 lineup and the current gateway configuration. Earlier, next to @rupert, people could @mention three open models running on SER8.
 Each answers with the same tools, permissions and approve-cards as @rupert (`TeamChat::LocalAgents`), and its reply
 shows under its own name. They exist only when `RUPERT_LOCAL_LLM_URL` is set in `/etc/rupert.env`.
 
@@ -131,9 +131,8 @@ fork (upstream llama.cpp and Ollama cannot load its PQ2_0 packing). So all three
   requested one; requests are served one at a time, so two models are never in memory together;
 - a model with no request for 10 minutes (`--idle-seconds 600`) is unloaded; the next mention loads it again (Bonsai
   loaded in 9 s);
-- `--keep-loaded qwen3.6-35b-a3b` (since 2026-10-22): @qwen's model is never unloaded for being idle, and once another
-  model has been idle for 10 minutes the gateway puts Qwen back, so @qwen does not wait ~17 s for a load. The 780M
-  shares system RAM, so this holds about 15 GB of SER8's memory while it is loaded;
+- The current service uses `--keep-loaded qwen3.5-4b`: once another model has been idle for 10 minutes the gateway
+  puts Qwen 3.5 4B back. The earlier 35B keep-loaded configuration applied only to the 2026-10-22 lineup;
 - `/health` reports the last load (model, seconds, when, and `reason`: `request` or `keep_loaded`). A local reply that
   waited for a load records `load_ms` and shows it with the answer time ("31s (17s load) · qwen3.6-35b-a3b · local");
   battery results carry `load_seconds`. Use these to judge how long models should stay loaded;
@@ -333,17 +332,17 @@ The gateway logs one line per request: `prompt_new` (tokens read), `prompt_cache
 (~9,000 cached tokens, under a second); a new question currently re-reads the whole prompt (~8 s for 9,000 tokens),
 because per-question parts come early in the prompt.
 
-Test models on the gateway (battery only, `AGENT=lfm-24b` / `qwen-35b`): LFM2.5-24B-A2B QAD-Q4_0 (13.6 GB) and
-Qwen3.6-35B-A3B Unsloth UD-Q3_K_S (15.4 GB).
+Historical test models on the gateway in the 2026-10-22 lineup (battery only, `AGENT=lfm-24b` / `qwen-35b`): LFM2.5-24B-A2B QAD-Q4_0 (13.6 GB) and
+Qwen3.6-35B-A3B Unsloth UD-Q3_K_S (15.4 GB). These were removed from the gateway menu on 2026-10-23.
 
-### @qwen is Qwen3.6-35B-A3B (2026-10-22)
+### Historical: @qwen used Qwen3.6-35B-A3B (2026-10-22)
 
 The test battery put Qwen3.6-35B-A3B first among local models (finance 4.62, general 4.33, about 15 s; see
 `docs/ops/history/local-ai-report-2026-10-22.md`), so it now answers as @qwen. It fills the 780M on its own (about 2 GB left), which
 the one-model-at-a-time gateway already handles. Qwen3.5-4B stays on the gateway as the `qwen-4b` test model. The bot key's
 grades and 💰 badge follow the model, so they carry over from the runs made under `qwen-35b`.
 
-### @qwen uses multi-token prediction (2026-10-22)
+### Historical: @qwen used multi-token prediction (2026-10-22)
 
 `unsloth/Qwen3.6-35B-A3B-MTP-GGUF` (UD-IQ3_S, 15.3 GB) keeps Qwen's own multi-token-prediction head, and llama.cpp
 b11819 uses it with `--spec-type draft-mtp --spec-draft-n-max 3`: the model drafts the next three tokens and checks them
@@ -735,8 +734,7 @@ question that @mentions no bot is sorted by its data guide keywords:
 Keyword hits are counted per side (finance topics vs the rest); a question is cross only when both sides have hits and
 it joins two parts ("and", "same days", "still", or one of the data guide's cross phrases), or both sides have two or
 more hits; a tie stays general. Naming a bot (@qwen, @liquid, @rupert ...) always asks just that bot. Without the local
-model server everything goes to @rupert. The gateway keeps `qwen3.5-4b` loaded (`--keep-loaded`); @qwen (35B) and
-Flint load on demand.
+model server everything goes to @rupert. The gateway keeps `qwen3.5-4b` loaded (`--keep-loaded`); Flint loads on demand.
 
 ### Bot lineup and rooms (2026-10-23)
 

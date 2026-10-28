@@ -13,11 +13,30 @@ class TeamChatDateHintsTest < ActiveSupport::TestCase
     assert_equal ['last quarter = 2026-07-01 to 2026-09-30 (period_review period: last_quarter)'], hints('How did last quarter compare?')
     assert_equal ['year to date = 2026-01-01 to 2026-10-22 (period_review period: year_to_date)'], hints('Gross sales YTD?')
     assert_equal ['the last 30 days = 2026-09-23 to 2026-10-22'], hints('best day in the last 30 days')
+    assert_equal ['the last 999 days = 2024-01-28 to 2026-10-22'], hints('last 999 days')
+    assert_includes hints('last 0 days').first, 'do not substitute a different range'
   end
 
   test 'pay weeks are not also calendar weeks, and plain questions get nothing' do
     assert_equal ['last pay week = 2026-10-15 to 2026-10-21 (period_review period: last_pay_week)'], hints('hours last pay week')
     assert_equal ['this month = 2026-10-01 to 2026-10-22 (period_review period: this_month)'], hints('expenses so far this month')
     assert_empty hints('Is sync healthy?')
+  end
+
+  test 'abbreviated last week retains the requested calendar or pay period' do
+    assert_equal ['last week = 2026-10-12 to 2026-10-18 (period_review period: last_week)'], hints('hours lst week')
+    assert_equal ['last pay week = 2026-10-15 to 2026-10-21 (period_review period: last_pay_week)'], hints('hours lst pay week')
+  end
+
+  test 'same day last year is a comparison, not the previous full calendar year' do
+    result = hints('orders today vs the same day last year')
+    assert_includes result, 'today = 2026-10-22 (period_review period: today)'
+    assert_includes result, 'the same day last year = 2025-10-22'
+    assert result.any? { |hint| hint.include?('metric compare: last_year') }
+    assert_not result.any? { |hint| hint.start_with?('last year =') }
+
+    assert hints('sales last year').any? { |hint| hint.start_with?('last year = 2025-01-01 to 2025-12-31') }
+    assert_not hints('compare this month to the same period last year').any? { |hint| hint.start_with?('last year =') }
+    assert_not hints('orders today, without comparing the same day last year').any? { |hint| hint.include?('compare: last_year') }
   end
 end
