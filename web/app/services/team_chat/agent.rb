@@ -299,6 +299,11 @@ module TeamChat
       raise Failure.new(:unavailable, e.message)
     rescue Faraday::TimeoutError, Net::ReadTimeout => e
       raise Failure.new(:timeout, e.message)
+    rescue RubyLLM::ContextLengthExceededError => e
+      raise Failure.new(:error, e.message) if @toolbox.tools_used.empty?
+
+      @context_limited = true
+      ''
     rescue RubyLLM::Error => e
       raise Failure.new(:error, e.message)
     end
@@ -437,7 +442,7 @@ module TeamChat
 
     def finish(text, started)
       body = AskRupert::ReplyFormat.tidy(without_echo(text))
-      malformed_tool_text = body.match?(/<(?:tool_call|function|parameter)(?:[=>\s]|\z)/i)
+      malformed_tool_text = @context_limited || body.match?(/<(?:tool_call|function|parameter)(?:[=>\s]|\z)/i)
       if unchecked_operational_request?
         body = UNCHECKED_RECORDS
         @verify_meta['kept'] = 'guarded' if @verify_meta
@@ -511,12 +516,16 @@ module TeamChat
       if current_stock_unverified?
         body = "#{body}\n\nCurrent stock levels could not be verified from alert records alone."
       end
+      if @context_limited
+        body = "The model reached its context limit before completing the answer. These are the lookup results available so far:\n\n#{body}"
+      end
       body = Links.for_user(body, user: @asker)
       body = FAILURES[:error] if body.blank? && @reply.reload.actions_list.empty?
       meta = meta_with(started, 'ok')
       meta['verify'] = @verify_meta if @verify_meta
       meta['financial_evidence'] = @toolbox.financial_evidence if @toolbox.financial?
       meta['prose_checked'] = @prose_checked if @toolbox.financial?
+      meta['context_limited'] = true if @context_limited
       @toolbox.add_verified_view_fallback!
       meta['views'] = @toolbox.views if @toolbox.views.any?
       follow_ups = Suggestions.follow_ups(topics: Array(@topics).map(&:key), tools: @toolbox.tools_used, asked: request_text)

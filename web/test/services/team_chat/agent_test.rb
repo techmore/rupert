@@ -49,6 +49,34 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_includes reply.meta['tools'], 'compliance_check'
   end
 
+  test 'context exhaustion preserves verified lookup results with a clear limitation' do
+    data = { items: [{ title: 'Books check', area: 'Books', status: 'watch', detail: 'Needs review' }] }
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: data))
+    stub_request(:post, "#{TeamChatHelper::LLM_BASE}/chat/completions").to_return(
+      { status: 200, headers: { 'Content-Type' => 'text/event-stream' }, body: sse_for(tool: 'compliance_check', arguments: {}) },
+      { status: 400, headers: { 'Content-Type' => 'application/json' }, body: { error: { message: 'maximum context length exceeded' } }.to_json }
+    )
+    stub_request(:get, "#{TeamChatHelper::LLM_BASE}/health").to_return(body: { loaded: nil }.to_json)
+    reply = ask('@rupert What is overdue for compliance?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal 'done', reply.reload.status
+    assert_includes reply.body, 'model reached its context limit'
+    assert_includes reply.body, 'Books check'
+    assert_includes reply.body, 'Needs review'
+    assert_equal true, reply.meta['context_limited']
+  end
+
+  test 'context exhaustion before any lookup remains a failure' do
+    stub_request(:post, "#{TeamChatHelper::LLM_BASE}/chat/completions").to_return(
+      status: 400, headers: { 'Content-Type' => 'application/json' }, body: { error: { message: 'maximum context length exceeded' } }.to_json
+    )
+    reply = ask('@rupert What is overdue for compliance?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_equal 'failed', reply.reload.status
+    assert_nil reply.meta['context_limited']
+  end
+
   test 'pending processor deposits are not confused with unresolved card payments' do
     data = { queues: [{ name: 'Card payments not resolved', count: 0 }], low_stock_available: false, oldest_unshipped: [] }
     Mcp::Tools::OrderQueues.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'queues', data: data))

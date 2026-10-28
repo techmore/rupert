@@ -138,6 +138,23 @@ class TeamChatBatteryTest < ActiveSupport::TestCase
     TeamChat::Battery.const_set(:QUESTION_TIMEOUT, original)
   end
 
+  test 'context-limited lookup results are recorded as partial, not complete' do
+    data = { items: [{ title: 'Books check', area: 'Books', status: 'watch', detail: 'Needs review' }] }
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: data))
+    stub_request(:post, "#{TeamChatHelper::LLM_BASE}/chat/completions").to_return(
+      { status: 200, headers: { 'Content-Type' => 'text/event-stream' }, body: sse_for(tool: 'compliance_check', arguments: {}) },
+      { status: 400, headers: { 'Content-Type' => 'application/json' }, body: { error: { message: 'maximum context length exceeded' } }.to_json }
+    )
+    stub_request(:get, "#{TeamChatHelper::LLM_BASE}/health").to_return(body: { loaded: nil }.to_json)
+    item = TeamChat::Battery::Item.new(id: 'partial', cadence: 'daily', question: 'What is overdue for compliance?', checks: [])
+    battery = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: TeamChat::Battery::OfflineGrader.new, items: [item], out: nil)
+    result = battery.run.sole
+    assert_equal 'partial', result.status
+    assert_includes result.answer, 'context limit'
+    assert_equal 'partial', battery.record.reload.results_list.sole['status']
+    assert_equal 0, battery.record.answered
+  end
+
   test 'a timed out question retains the proposed tool after cancellation' do
     item = TeamChat::Battery::Item.new(id: 'slow-action', cadence: 'general', question: 'Make a task', checks: [])
     TeamChat::Agent.any_instance.stubs(:run).with do

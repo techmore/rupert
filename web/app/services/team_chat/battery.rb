@@ -233,6 +233,7 @@ module TeamChat
       proposed_tools = reply.actions_list.filter_map { |action| action['tool'] }.uniq
       dismiss_proposals(reply)
       meta = reply.meta.to_h
+      result_status = meta['context_limited'] ? 'partial' : reply.status
       seconds = meta['duration_ms'].to_f / 1000
       load_seconds = (meta['load_ms'].to_f / 1000).round(1).nonzero?
       grade = grade_for(item, reply)
@@ -240,8 +241,8 @@ module TeamChat
       post_grade(reply, grade, seconds) if grade
       check = meta['verify']
       check_note = (" · check: #{Array(check['failed']).size} failed, kept #{check['kept']}" if check)
-      log "    #{reply.status} in #{format_seconds(seconds)}#{" (#{format_seconds(load_seconds)} model load)" if load_seconds}#{check_note} · tools #{Array(meta['tools']).join(', ').presence || 'none'} · grade #{grade&.dig(:score) || '—'}"
-      Result.new(item: item, seconds: seconds, tools: Array(meta['tools']), status: reply.status, answer: reply.body.to_s,
+      log "    #{result_status} in #{format_seconds(seconds)}#{" (#{format_seconds(load_seconds)} model load)" if load_seconds}#{check_note} · tools #{Array(meta['tools']).join(', ').presence || 'none'} · grade #{grade&.dig(:score) || '—'}"
+      Result.new(item: item, seconds: seconds, tools: Array(meta['tools']), status: result_status, answer: reply.body.to_s,
         grade: grade, grading_error: @last_grade_error, tokens_in: meta['tokens_in'], tokens_out: meta['tokens_out'], unverified: Array(meta['unverified']), message_id: reply.id,
         load_seconds: load_seconds, verify: check&.except('draft'), proposed_tools: proposed_tools, views: Array(meta['views']))
     end
