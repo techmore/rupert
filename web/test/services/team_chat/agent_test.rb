@@ -437,6 +437,28 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_not_includes reply.body, 'Nothing is waiting'
   end
 
+  test 'a narrow queue answer omits unrelated results while a mixed question keeps them' do
+    data = { queues: [{ name: 'Expense receipts waiting for review', count: 2 },
+                      { name: 'Purchase orders awaiting delivery', count: 1, late: 0 },
+                      { name: 'Paid online orders not shipped', count: 9 }], low_stock_available: false, oldest_unshipped: [] }
+    Mcp::Tools::OrderQueues.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'queue counts', data: data))
+    compliance = { items: [{ title: 'Books closed', area: 'Books', status: 'watch', detail: 'Review needed' }] }
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: compliance))
+    script_model({ tool: 'order_queues', arguments: {} }, { tool: 'compliance_check', arguments: {} }, { text: 'I checked.' })
+    reply = ask('@rupert What receipts need review and are any purchase orders late?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'Expense receipts waiting for review: 2'
+    assert_includes reply.body, 'Purchase orders awaiting delivery: 1; 0 late'
+    assert_not_includes reply.body, 'Paid online orders not shipped'
+    assert_not_includes reply.body, 'Books closed'
+
+    script_model({ tool: 'order_queues', arguments: {} }, { tool: 'compliance_check', arguments: {} }, { text: 'I checked.' })
+    reply = ask('@rupert What receipts need review and are the books closed?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'Paid online orders not shipped: 9'
+    assert_includes reply.body, 'Books closed'
+  end
+
   test 'financial drafts are replaced with typed source period currency and meaning' do
     order = Core::Order.create!(source: 'shopify', source_order_id: 'nc-1', occurred_at: 1.day.ago.change(hour: 12), gross_cents: 21_483, tax_cents: 0, currency: 'USD')
     order.mark_paid!

@@ -6,6 +6,50 @@ module TeamChat
   module QueueEvidence
     module_function
 
+    RECEIPT_QUESTION = /\A(?:how many (?:expense )?receipts (?:are )?(?:awaiting|waiting for|pending) review|(?:what|which) (?:expense )?receipts (?:need|require|await|are awaiting) review|(?:any )?(?:expense )?receipts (?:to|awaiting|waiting for|pending) review)\z/i
+    RECONCILIATION_QUESTION = /\A(?:(?:are there |are |any )?(?:any )?reconciliation follow[- ]?ups? (?:open|waiting|pending)|(?:any )?reconciliation follow[- ]?ups?)\z/i
+    PURCHASE_ORDER_QUESTION = /\A(?:(?:are there |are |any )?(?:any )?(?:purchase orders|pos) (?:late|overdue)|(?:any )?(?:late|overdue) purchase orders)\z/i
+
+    # Only scope a complete request made entirely of recognized queue questions.
+    # An extra clause, explanation request or qualifier keeps the general output.
+    def requested_queues(question)
+      text = question.to_s.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip.sub(/[?.!]+\z/, '').strip
+      parts = text.split(/\s+and\s+/i)
+      names = parts.map do |part|
+        case part.strip
+        when RECEIPT_QUESTION then 'Expense receipts waiting for review'
+        when RECONCILIATION_QUESTION then 'Reconciliation follow-ups'
+        when PURCHASE_ORDER_QUESTION then 'Purchase orders awaiting delivery'
+        end
+      end
+      names.any? && names.all? ? names.uniq : nil
+    end
+
+    def render_requested(evidence, question)
+      names = requested_queues(question)
+      return unless names
+
+      context = evidence.filter_map { |item| item['queue_summary'] }.find do |item|
+        names.all? { |name| item['queues'].any? { |queue| queue['name'] == name } }
+      end
+      return unless context
+
+      lines = ['Processing queues (counts from Rupert’s records):']
+      names.each do |name|
+        queue = context['queues'].find { |row| row['name'] == name }
+        late = if queue.key?('late')
+          "; #{queue['late']} late"
+        elsif name == 'Purchase orders awaiting delivery'
+          '; late count unavailable'
+        else
+          ''
+        end
+        lines << "- #{queue['name']}: #{queue['count']}#{late}."
+      end
+      lines << 'This lookup provides counts, not individual receipt or purchase-order details.'
+      lines.join("\n")
+    end
+
     def build(data)
       raise ArgumentError unless data['queues'].is_a?(Array) && data['oldest_unshipped'].is_a?(Array)
 

@@ -435,6 +435,11 @@ module TeamChat
       if unchecked_operational_request?
         body = UNCHECKED_RECORDS
         @verify_meta['kept'] = 'guarded' if @verify_meta
+      elsif @toolbox.financial? && (queue_answer = QueueEvidence.render_requested(@toolbox.financial_evidence, request_text))
+        # For an entirely queue-specific request, show only the requested
+        # verified counts, not unrelated tools the model also called.
+        @prose_checked = false
+        body = queue_answer
       elsif @toolbox.financial?
         # The bot's own words when every figure checks out against the facts; else Ruby lists the facts.
         checked = FinancialEvidence.checked_prose(body, @toolbox.financial_evidence) unless malformed_tool_text
