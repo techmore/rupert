@@ -27,4 +27,16 @@ class TeamChatDateHintsTest < ActiveSupport::TestCase
     assert_equal ['last week = 2026-10-12 to 2026-10-18 (period_review period: last_week)'], hints('hours lst week')
     assert_equal ['last pay week = 2026-10-15 to 2026-10-21 (period_review period: last_pay_week)'], hints('hours lst pay week')
   end
+
+  test 'same day last year is a comparison, not the previous full calendar year' do
+    result = hints('orders today vs the same day last year')
+    assert_includes result, 'today = 2026-10-22 (period_review period: today)'
+    assert_includes result, 'the same day last year = 2025-10-22'
+    assert result.any? { |hint| hint.include?('metric compare: last_year') }
+    assert_not result.any? { |hint| hint.start_with?('last year =') }
+
+    assert hints('sales last year').any? { |hint| hint.start_with?('last year = 2025-01-01 to 2025-12-31') }
+    assert_not hints('compare this month to the same period last year').any? { |hint| hint.start_with?('last year =') }
+    assert_not hints('orders today, without comparing the same day last year').any? { |hint| hint.include?('compare: last_year') }
+  end
 end
