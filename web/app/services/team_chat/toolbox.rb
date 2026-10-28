@@ -100,6 +100,7 @@ module TeamChat
       arguments = complete_tax_source_arguments(name, arguments)
       arguments = complete_order_day_comparison(name, arguments)
       arguments = complete_order_count_comparison(name, arguments)
+      arguments = complete_sales_by_source(name, arguments)
       arguments = complete_retention_arguments(name, arguments)
       arguments = complete_vendor_payment_arguments(name, arguments)
       arguments = complete_exact_vendor_filter(name, arguments)
@@ -180,6 +181,21 @@ module TeamChat
       return arguments unless question.match?(/\Ahow many (?:paid |fulfilled )?orders (?:were recorded|came in|were placed|did we get) (?:today|yesterday)\s*[?.!]*\z/i)
 
       arguments.merge('compare' => 'none')
+    end
+
+    # A request for the total and its source breakdown cannot be answered by
+    # an aggregate-only metric. Preserve explicit filters and comparisons.
+    def complete_sales_by_source(name, arguments)
+      return arguments unless name.to_s == 'metric' && arguments['name'] == 'gross_sales' && arguments['source'].blank?
+      return arguments if arguments['from'].present? || arguments['to'].present?
+
+      question = @question.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip
+      match = question.match(/\Awhat (?:were|was) (?:our )?total gross sales (today|yesterday|this month|last month),? by source\s*[?.!]*\z/i)
+      return arguments unless match && arguments['period'].to_s == match[1].downcase.tr(' ', '_')
+
+      corrected = arguments.merge('name' => 'sales_by_source')
+      corrected['compare'] = 'none' unless corrected.key?('compare')
+      corrected
     end
 
     def complete_retention_arguments(name, arguments)

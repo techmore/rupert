@@ -364,6 +364,8 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     payload = data.merge(source: nil, metric: 'sales_by_source', values: rows)
     args = { name: 'sales_by_source', period: 'today' }
     text = render(evidence(payload, args: args))
+    assert_includes text, 'Gross sales total (paid or fulfilled orders): 100.00 USD'
+    assert_includes text, 'Gross sales total (paid or fulfilled orders): 2.00 CAD'
     assert_includes text, 'Highest recorded source sales in USD'
     assert_includes text, 'shopify (sync: unknown)'
     assert_includes text, 'shopify (sync: unknown), square (sync: unknown)'

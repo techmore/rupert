@@ -504,6 +504,37 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_not entry.fetch('arguments').key?('compare')
   end
 
+  test 'a total by source request asks for both the total and source data' do
+    date = Date.current.prev_month.beginning_of_month
+    order = Core::Order.create!(source: 'square', source_order_id: 'source-breakdown', occurred_at: date.to_time.change(hour: 12),
+      gross_cents: 8_000, tax_cents: 0, currency: 'USD')
+    order.mark_paid!
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'last_month' } }, { text: 'I checked.' })
+    reply = ask('@rupert What were total gross sales last month, by source?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'gross_sales', entry.dig('original_arguments', 'name')
+    assert_equal 'sales_by_source', entry.dig('arguments', 'name')
+    assert_equal 'none', entry.dig('arguments', 'compare')
+    assert_includes reply.reload.body, 'Gross sales total (paid or fulfilled orders): 80.00 USD'
+    assert_includes reply.body, 'square canonical orders'
+
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'last_month', compare: 'previous' } }, { text: 'I checked.' })
+    reply = ask('@rupert What were total gross sales last month, by source, and compare with the previous month?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'gross_sales', entry.dig('arguments', 'name')
+    assert_equal 'previous', entry.dig('arguments', 'compare')
+
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'last_month', source: 'square' } }, { text: 'I checked.' })
+    reply = ask('@rupert What were total gross sales last month, by source?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'gross_sales', entry.dig('arguments', 'name')
+    assert_equal 'square', entry.dig('arguments', 'source')
+  end
+
   test 'a narrow queue answer omits unrelated results while a mixed question keeps them' do
     data = { queues: [{ name: 'Expense receipts waiting for review', count: 0 },
                       { name: 'Purchase orders awaiting delivery', count: 1, late: 0 },

@@ -317,6 +317,9 @@ module TeamChat
         end
         if name == 'sales_by_source'
           source_leader(out, row, period) if source == ORDER_SOURCE
+          if source == ORDER_SOURCE
+            add(out, row['gross_cents'], 'money', row['currency'], source, period, 'Gross sales total (paid or fulfilled orders)', "#{path}.#{index}.gross_cents")
+          end
           Array(row['sources']).each_with_index do |part, part_index|
             part_source = order_source(part.fetch('source'))
             add(out, part['gross_cents'], 'money', row['currency'], part_source, period, 'Gross sales (paid or fulfilled orders)', "#{path}.#{index}.sources.#{part_index}.gross_cents")
