@@ -124,29 +124,34 @@ module TeamChat
       end
     end
 
-    def tool!(id, name, arguments, write: false)
+    def tool!(id, name, arguments, write: false, original_arguments: nil)
       check!
       private_delivery!
       raise 'Tool call has no durable ID' if id.blank?
 
+      effective = arguments.deep_stringify_keys
+      original = (original_arguments || arguments).deep_stringify_keys
+
       cached = run.tool_results.find { |entry| entry['id'] == id }
       if cached
-        raise 'Tool call changed during replay' unless cached['name'] == name && cached['arguments'] == arguments.deep_stringify_keys
+        raise 'Tool call changed during replay' unless cached['name'] == name && cached.fetch('original_arguments', cached['arguments']) == original
 
         TelemetryRecorder.new(run, @token).record('tool_replay', outcome: 'succeeded', facts: { 'replayed' => true })
         return cached['result']
       end
       result = nil
+      entry = { 'id' => id, 'name' => name, 'arguments' => effective }
+      entry['original_arguments'] = original if original != effective
       save = lambda do
         result = yield
-        run.update!(tool_results: run.tool_results + [{ 'id' => id, 'name' => name, 'arguments' => arguments.deep_stringify_keys, 'result' => result }])
+        run.update!(tool_results: run.tool_results + [entry.merge('result' => result)])
       end
       if write
         locked { save.call }
       else
         result = yield
         locked do
-          run.update!(tool_results: run.tool_results + [{ 'id' => id, 'name' => name, 'arguments' => arguments.deep_stringify_keys, 'result' => result }])
+          run.update!(tool_results: run.tool_results + [entry.merge('result' => result)])
         end
       end
       result

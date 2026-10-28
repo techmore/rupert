@@ -107,6 +107,30 @@ class TeamChatRunTest < ActiveSupport::TestCase
     assert_equal 1, second_box.calls
   end
 
+  test 'replay keeps original model arguments when completed vendor arguments change' do
+    vendor = Purchasing::Vendor.create!(name: 'Synthetic Tea Supply')
+    first_day = Date.current.beginning_of_month.iso8601
+    today = Date.current.iso8601
+    data = { view: 'vendors', from: first_day, to: today, currency: 'USD', rows: [], meta: { has_more: false } }
+    Mcp::Tools::PurchaseOrders.any_instance.expects(:call).once.returns(Mcp::Result.new(text: 'no vendors', data: data))
+    question = 'For Synthetic Tea Supply this month, what was the PO value and vendor payments?'
+    original = { 'query' => vendor.name }
+    box = TeamChat::Toolbox.new(user: @user, room: @room, reply: @reply, execution: execution, question: question)
+    box.call_id = 'vendor-query'
+    first = box.call('purchase_orders', original)
+    entry = @run.reload.tool_results.sole
+    assert_equal original, entry['original_arguments']
+    assert_equal true, entry['arguments']['vendor_exact']
+
+    vendor.update!(name: 'Renamed vendor')
+    @run.update!(lease_until: 1.second.ago)
+    recovered = TeamChat::Toolbox.new(user: @user, room: @room, reply: @reply.reload, execution: execution, question: question)
+    recovered.call_id = 'vendor-query'
+    assert_equal first, recovered.call('purchase_orders', original)
+    assert_raises(RuntimeError) { recovered.call('purchase_orders', { 'query' => 'Different query' }) }
+    assert_equal 1, @run.reload.tool_results.size
+  end
+
   test 'an interrupted native run resumes its private transcript and does not repeat proposals' do
     tool = sse_for(tool: 'create_task', arguments: { title: 'Only one card' })
     calls = 0

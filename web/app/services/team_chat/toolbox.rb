@@ -81,12 +81,14 @@ module TeamChat
 
     # Runs one call and returns text for the model. Never raises.
     def call(name, arguments)
+      original_arguments = arguments.is_a?(Hash) ? arguments.deep_stringify_keys : {}
+      arguments = original_arguments
       arguments = complete_daily_arguments(name, arguments)
       arguments = complete_vendor_payment_arguments(name, arguments)
       arguments = complete_exact_vendor_filter(name, arguments)
       return call_once(name, arguments) unless @execution
 
-      @execution.tool!(call_id, name, arguments || {}, write: WRITE_TOOLS.include?(name)) do
+      @execution.tool!(call_id, name, arguments || {}, write: WRITE_TOOLS.include?(name), original_arguments: original_arguments) do
         TelemetryRecorder.new(@execution.run, @execution.token).measure('tool',
           facts: { 'name' => names.include?(name.to_s) ? name.to_s : 'unknown' }) do |span|
           @telemetry_span = span
