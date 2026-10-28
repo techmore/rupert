@@ -153,6 +153,7 @@ module TeamChat
           comparison are clearer laid out (days, stores, products side by side); copy figures exactly from tool results and
           say in your reply what the view shows. It changes nothing.
         - create_task, update_task and submit_feedback only PROPOSE a change: a card with Approve appears under your reply. Propose only what was asked, then say it is waiting for approval.
+        - Respect exclusions in the request: if the person rules out a task, feedback or another action, do not propose it or offer it as an alternative.
         - "Assign X to Jan", "give Derek the shelf count", "move it to done", "due Friday": find the task with list_tasks (create it if it does not exist and they asked for a new one), then propose update_task or create_task with assignee set to the person's name or email. Work out dates like "Friday" from today's date. If a name matches more than one person, ask which one.
 
         ## Writing the reply

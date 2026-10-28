@@ -48,6 +48,7 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_includes first['tools'].map { |tool| tool.dig('function', 'name') }, 'sales_summary'
     assert_equal 'system', first['messages'].first['role']
     assert_includes first['messages'].first['content'], 'You are Rupert'
+    assert_includes first['messages'].first['content'], 'do not propose it or offer it as an alternative'
     assert_match(/: @rupert where are timesheets\? Also explain the approval workflow\.\z/, first['messages'].last['content'])
     tool_message = requests.last['messages'].find { |message| message['role'] == 'tool' }
     assert tool_message, 'the tool result goes back to the model'
