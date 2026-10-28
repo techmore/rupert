@@ -15,7 +15,7 @@ class TeamChatAlertEvidenceTest < ActiveSupport::TestCase
     assert_includes text, 'status: open; query: SKU'
     assert_includes text, 'SKU-0'
     assert_includes text, 'alert quantity 0, threshold 5'
-    assert_includes text, 'alert created 2026-10-26'
+    assert_includes text, 'Alert IDs or dates were omitted'
     assert_includes text, 'More alert records are available or were omitted'
     assert_includes text, 'may be stale'
   end
@@ -28,6 +28,37 @@ class TeamChatAlertEvidenceTest < ActiveSupport::TestCase
     assert_includes text, 'status: resolved; query: tea; page: 2'
     assert_includes text, 'No alert records were returned on this page'
     assert_includes text, 'not a current inventory check'
+  end
+
+  test 'short alert rows are retained when the whole page fits' do
+    rows = 25.times.map { |i| { sku: "SKU-#{i}", quantity: i, threshold: 5, status: 'open', created_at: '2026-10-26T09:00:00-04:00' } }
+    packed = TeamChat::AlertEvidence.pack({ rows: rows, meta: { has_more: false } })
+
+    assert_equal 25, packed['rows'].size
+    assert_not packed['omitted']
+    assert_includes TeamChat::AlertEvidence.render(["Alerts:\n#{JSON.generate(packed)}"]), 'alert created 2026-10-26'
+  end
+
+  test 'notes are omitted before alert records when space is limited' do
+    rows = 50.times.map { |i| { sku: "SKU-#{i}", quantity: i, threshold: 5, status: 'open', note: 'N' * 100 } }
+    packed = TeamChat::AlertEvidence.pack({ rows: rows, meta: { has_more: false } })
+    text = TeamChat::AlertEvidence.render(["Alerts:\n#{JSON.generate(packed)}"])
+
+    assert_equal 50, packed['rows'].size
+    assert packed['notes_omitted']
+    assert_not packed['omitted']
+    assert_includes text, 'Alert notes were omitted'
+  end
+
+  test 'ids and dates are omitted before alert records when space is limited' do
+    rows = 50.times.map { |i| { sku: "SKU-#{i}", id: 'X' * 100, quantity: i, threshold: 5, status: 'open' } }
+    packed = TeamChat::AlertEvidence.pack({ rows: rows, meta: { has_more: false } })
+    text = TeamChat::AlertEvidence.render(["Alerts:\n#{JSON.generate(packed)}"])
+
+    assert_equal 50, packed['rows'].size
+    assert packed['details_omitted']
+    assert_not packed['omitted']
+    assert_includes text, 'Alert IDs or dates were omitted'
   end
 
   test 'malformed evidence fails closed' do

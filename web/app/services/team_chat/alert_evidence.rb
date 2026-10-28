@@ -11,13 +11,21 @@ module TeamChat
       meta = data.fetch('meta')
       raise ArgumentError unless rows.is_a?(Array) && meta.is_a?(Hash)
 
-      packed = { 'rows' => rows.first(20).filter_map { |row| pack_row(row) },
-                 'omitted' => rows.size > 20, 'has_more' => meta['has_more'],
+      packed = { 'rows' => rows.first(50).filter_map { |row| pack_row(row) },
+                 'omitted' => rows.size > 50, 'has_more' => meta['has_more'],
                  'status' => label(args['status'].presence || 'open'), 'query' => label(args['query']) }
       packed['page'] = meta['page'] if meta['page'].is_a?(Integer) && meta['page'] > 0
       counts = data['counts']
       if counts.is_a?(Hash)
         packed['counts'] = counts.select { |key, value| %w[open resolved ignored].include?(key) && value.is_a?(Integer) && value >= 0 }
+      end
+      if JSON.generate(packed).length > 5_000 && packed['rows'].any? { |row| row.key?('note') }
+        packed['rows'].each { |row| row.delete('note') }
+        packed['notes_omitted'] = true
+      end
+      if JSON.generate(packed).length > 5_000 && packed['rows'].any? { |row| %w[id created_at resolved_at].any? { |key| row.key?(key) } }
+        packed['rows'].each { |row| %w[id created_at resolved_at].each { |key| row.delete(key) } }
+        packed['details_omitted'] = true
       end
       while JSON.generate(packed).length > 5_000 && packed['rows'].any?
         packed['rows'].pop
@@ -29,7 +37,10 @@ module TeamChat
     def pack_row(row)
       return unless row.is_a?(Hash)
 
-      result = %w[id sku product variant platform status note created_at resolved_at].to_h { |key| [key, label(row[key])] }
+      result = %w[id sku product variant platform status note created_at resolved_at].filter_map do |key|
+        value = label(row[key])
+        [key, value] if value.present?
+      end.to_h
       %w[quantity threshold].each { |key| result[key] = row[key] if row[key].is_a?(Integer) }
       result
     end
@@ -78,6 +89,8 @@ module TeamChat
         lines << "- #{name}#{details}: alert quantity #{quantity}, threshold #{threshold}; status #{status}#{date}#{id}#{note}."
       end
       lines << 'More alert records are available or were omitted; narrow the lookup or check the next page.' if data['has_more'] == true || data['omitted'] == true
+      lines << 'Alert notes were omitted; open the alert details for notes.' if data['notes_omitted'] == true
+      lines << 'Alert IDs or dates were omitted; open the alert details for them.' if data['details_omitted'] == true
       lines << 'Pagination status is unknown; the lookup may be incomplete.' unless [true, false].include?(data['has_more'])
       lines << 'Alert quantities are recorded values and may be stale; check inventory for current availability.'
       lines.join("\n")
