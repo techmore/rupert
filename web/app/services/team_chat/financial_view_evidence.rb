@@ -13,6 +13,48 @@ module TeamChat
 
     FINANCIAL = /\b(?:sales|revenue|gross|income|profit|margin|expense|expenses|tax|refund|cash|money|financial|amount|cost|price)\b/i
 
+    def comparison_periods_for(question)
+      text = question.to_s.downcase
+      return unless text.match?(/\b(?:chart|graph|plot)\b/) && text.match?(/\b(?:gross sales|gross revenue)\b/)
+      return unless text.match?(/\blast month\b/) && text.match?(/\b(?:month before|previous month|prior month)\b/)
+      return if text.match?(/\b(?:no|without|omit|skip)\s+(?:(?:a|the|any)\s+)?(?:chart|graph|plot)\b/)
+      return if text.match?(/\b(?:net|refund|tax|profit|except|exclude|only|shopify|square|manual|ctrax|swipesimple|products?|locations?|stores?)\b/)
+      return if text.match?(/\b(?:usd|cad|eur|gbp|aud|nzd|chf|cny|hkd|sgd|mxn|brl|zar|inr|also|plus)\b|\bby\s+(?:source|channel)\b/)
+      return if text.match?(/\brupert[ _-]?pos\b|\b\d{4}-\d{2}-\d{2}\b/)
+
+      current = Metrics::Window.resolve(period: 'last_month')
+      [current.previous, current].map { |window| { 'from' => window.from.iso8601, 'to' => window.to.iso8601 } }
+    end
+
+    def comparison_fallback(evidence, question:)
+      periods = comparison_periods_for(question)
+      return unless periods
+
+      cells = {}
+      evidence.flat_map { |item| Array(item['facts']) }.each do |fact|
+        next unless periods.include?(fact['period']) && fact['meaning'] == 'Gross sales (paid or fulfilled orders)' &&
+          fact['unit'] == 'money' && fact['source'] == FinancialEvidence::ORDER_SOURCE && FinancialEvidence::CURRENCIES.include?(fact['currency'])
+
+        key = [fact['period'], fact['currency']]
+        value = number(fact['value'])
+        return unless value && (!cells.key?(key) || cells[key] == value)
+
+        cells[key] = value
+      end
+      currencies = cells.keys.map(&:last).uniq.sort
+      return if cells.empty? || currencies.size + 1 > Views::MAX_COLUMNS
+
+      rows = periods.map { |period| ["#{period['from']} to #{period['to']}"] + currencies.map { |currency| cells[[period, currency]]&.to_s('F') } }
+      args = { 'kind' => 'bar_chart', 'title' => 'Recorded gross sales by period',
+               'columns' => ['Period'] + currencies.map { |currency| "Gross sales #{currency}" }, 'rows' => rows }
+      view = Views.build(args, known_text: JSON.generate(evidence))
+      return if check(view, evidence, question: question)
+
+      with_safe_caption(view, evidence, question: question)
+    rescue ArgumentError, TypeError
+      nil
+    end
+
     def extra_sales_filter?(text)
       text.match?(/\b(?:products?|skus?|items?|stores?|locations?|categories|category|vendors?|customers?|registers?|brands?)\b/i) ||
         text.match?(/\b(?:usd|cad|eur|gbp|aud|nzd|chf|cny|hkd|sgd|mxn|brl|zar|inr)\b/i) ||
@@ -148,6 +190,7 @@ module TeamChat
       return 'Financial views need a label and at least one value column.' if columns.size < 2
 
       case columns.first
+      when /\bperiod\b/i then comparison_rows(columns, rows, evidence, question)
       when /\b(?:source|channel)\b/i then source_rows(columns, rows, evidence, text)
       when /\b(?:date|day)\b/i then daily_rows(columns, rows, evidence, text)
       when /\b(?:product|item|category)\b/i then named_rows(columns, rows, evidence, text)
@@ -172,6 +215,11 @@ module TeamChat
     def with_safe_caption(view, evidence, question:)
       return view unless financial?(view, question: question)
 
+      if Array(view['columns']).first.to_s.match?(/\bperiod\b/i) && comparison_periods_for(question)
+        return view.merge('title' => 'Recorded gross sales by period',
+          'note' => 'Only recorded data are shown. Missing records do not prove zero or complete coverage.')
+      end
+
       text = "#{question} #{description_for(view)}".tr('_', ' ')
       daily = Array(view['columns']).first.to_s.match?(/\b(?:date|day)\b/i)
       periods = evidence.flat_map do |item|
@@ -188,6 +236,31 @@ module TeamChat
       period = periods.first
       view.merge('title' => "#{label}: #{period['from']} to #{period['to']}",
         'note' => 'Only recorded data are shown. Missing records do not prove zero or complete coverage.')
+    end
+
+    def comparison_rows(columns, rows, evidence, question)
+      periods = comparison_periods_for(question)
+      return 'This comparison does not have a verified period contract.' unless periods
+      labels = periods.map { |period| "#{period['from']} to #{period['to']}" }
+      return 'A comparison must label each requested period exactly once.' unless rows.map { |row| row[0].to_s }.sort == labels.sort
+
+      facts = evidence.flat_map { |item| Array(item['facts']) }
+      rows.each do |row|
+        period = periods[labels.index(row[0].to_s)]
+        columns.drop(1).each_with_index do |column, offset|
+          cell = row[offset + 1]
+          next if cell.nil? || cell == ''
+
+          currency = currency_for(column, column)
+          value = number(cell)
+          matches = facts.select do |fact|
+            fact['period'] == period && fact['currency'] == currency && fact['source'] == FinancialEvidence::ORDER_SOURCE &&
+              fact['meaning'] == 'Gross sales (paid or fulfilled orders)' && fact_matches_column?(fact, column)
+          end
+          return 'A comparison value could not be verified for its period and currency.' unless value && matches.any? { |fact| same_value?(value, fact['value'], column) }
+        end
+      end
+      nil
     end
 
     def source_rows(columns, rows, evidence, text)

@@ -88,8 +88,17 @@ module TeamChat
       return if @views.any?
 
       view = FinancialViewEvidence.source_fallback(@financial_evidence, question: @question) ||
-        FinancialViewEvidence.daily_fallback(@financial_evidence, question: @question)
+        FinancialViewEvidence.daily_fallback(@financial_evidence, question: @question) ||
+        FinancialViewEvidence.comparison_fallback(@financial_evidence, question: @question)
       @views << view if view
+    end
+
+    def prefetch_comparison_chart!
+      return unless FinancialViewEvidence.comparison_periods_for(@question) && @execution && @calls < MAX_CALLS && names.include?('metric')
+      return if @views.any?
+
+      self.call_id = "comparison-chart-#{@execution.run.id}"
+      call('metric', { 'name' => 'gross_sales', 'period' => 'last_month', 'compare' => 'previous' })
     end
 
     # Small models may never ask for the daily series needed by an explicit

@@ -86,6 +86,7 @@ module TeamChat
         # Reserve the daily evidence before repeated invalid model-produced
         # views can consume the entire tool budget.
         @toolbox.prefetch_daily_chart!
+        @toolbox.prefetch_comparison_chart!
         text = verified(answer)
         @toolbox.prefetch_refunded_orders!
         @toolbox.prefetch_requested_metric!

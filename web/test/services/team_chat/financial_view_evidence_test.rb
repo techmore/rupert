@@ -77,6 +77,29 @@ class TeamChatFinancialViewEvidenceTest < ActiveSupport::TestCase
     assert_nil parser.daily_period_for('Plot daily sales from 2026-08-01 to 2026-08-03 versus 2026-07-01.')
   end
 
+  test 'month comparison chart keeps periods and currencies separate and missing values blank' do
+    travel_to Time.zone.parse('2026-10-27 12:00') do
+      question = "Chart last month's gross sales against the month before without guessing missing values."
+      source = TeamChat::FinancialEvidence::ORDER_SOURCE
+      periods = [{ 'from' => '2026-08-01', 'to' => '2026-08-31' }, { 'from' => '2026-09-01', 'to' => '2026-09-30' }]
+      facts = [
+        { 'meaning' => 'Gross sales (paid or fulfilled orders)', 'unit' => 'money', 'source' => source, 'currency' => 'CAD', 'value' => '20.0', 'period' => periods[0] },
+        { 'meaning' => 'Gross sales (paid or fulfilled orders)', 'unit' => 'money', 'source' => source, 'currency' => 'USD', 'value' => '80.0', 'period' => periods[1] }
+      ]
+      evidence = [{ 'facts' => facts }]
+      view = TeamChat::FinancialViewEvidence.comparison_fallback(evidence, question: question)
+      assert_equal [['2026-08-01 to 2026-08-31', '20.0', nil], ['2026-09-01 to 2026-09-30', nil, '80.0']], view['rows']
+      assert_nil check(view, evidence, question)
+      forged = view.deep_dup
+      forged['rows'][0][2] = 0
+      assert_match(/could not be verified/, check(forged, evidence, question))
+      forged['rows'][0][2] = 80
+      assert_match(/could not be verified/, check(forged, evidence, question))
+      assert_nil TeamChat::FinancialViewEvidence.comparison_periods_for("Chart last month's gross sales against the month before for Shopify.")
+      assert_nil TeamChat::FinancialViewEvidence.comparison_periods_for("Chart last month's gross sales against the month before in USD.")
+    end
+  end
+
   test 'source chart ties the value to the source, currency, period and unit' do
     view = { kind: 'bar_chart', title: 'Sales 2026-10-19 to 2026-10-25', columns: ['Source', 'Gross sales USD'],
              rows: [['Shopify', 72], ['Rupert POS', 40]] }
