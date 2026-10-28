@@ -45,6 +45,8 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     item = evidence(payload)
     assert_empty item['facts']
     assert_includes render(item), 'No metric rows were returned for the requested period'
+    assert_includes render(item), 'shopify canonical orders'
+    assert_includes render(item), Date.current.iso8601
     assert_not_includes render(item), '12.34 USD'
     explicit = evidence(payload, args: { name: 'gross_sales', period: 'today', source: 'shopify', compare: 'previous' })
     assert_includes render(explicit), '12.34 USD'
