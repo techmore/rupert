@@ -13,6 +13,12 @@ module TeamChat
 
     FINANCIAL = /\b(?:sales|revenue|gross|income|profit|margin|expense|expenses|tax|refund|cash|money|financial|amount|cost|price)\b/i
 
+    def extra_sales_filter?(text)
+      text.match?(/\b(?:products?|skus?|items?|stores?|locations?|categories|category|vendors?|customers?|registers?|brands?)\b/i) ||
+        text.match?(/\b(?:usd|cad|eur|gbp|aud|nzd|chf|cny|hkd|sgd|mxn|brl|zar|inr)\b/i) ||
+        text.match?(/\bfor\s+(?!(?:the\s+)?last\s+(?:week|month)\b)/i)
+    end
+
     # Build a useful fallback from typed source facts if a small model could
     # not produce a valid view. Never infer missing source/currency values.
     def source_fallback(evidence, question:)
@@ -21,6 +27,7 @@ module TeamChat
       return if text.match?(/\b(?:no|without|omit|skip)\s+(?:(?:a|the|any)\s+)?(?:chart|graph|plot)\b/)
       return if text.match?(/\b(?:net|refund|tax|profit|compare|versus|except|exclude|only)\b/)
       return if text.match?(/\b(?:shopify|square|rupert[ _-]?pos|manual|ctrax|swipesimple)\b/) || text.match?(/\b\d{4}-\d{2}-\d{2}\b/)
+      return if extra_sales_filter?(text)
 
       periods = { 'last week' => 'last_week', 'last month' => 'last_month', 'yesterday' => 'yesterday' }.select { |phrase, _| text.include?(phrase) }
       return unless periods.one?
@@ -65,6 +72,7 @@ module TeamChat
       return if text.match?(/\b(?:no|without|omit|skip)\s+(?:(?:a|the|any)\s+)?(?:chart|graph|plot)\b/)
       return if text.match?(/\b(?:net|refund|tax|profit|compare|versus|except|exclude|only|shopify|square|rupert[ _-]?pos|manual|ctrax|swipesimple)\b/)
       return if text.match?(/\b\d{4}-\d{2}-\d{2}\b/) || text.match?(/\b(?:no|without|omit|skip)\s+(?:daily|day[- ]by[- ]day|per[- ]day)\b/)
+      return if extra_sales_filter?(text)
 
       periods = { 'last week' => 'last_week', 'last month' => 'last_month' }.select { |phrase, _| text.include?(phrase) }
       return unless periods.one?

@@ -33,6 +33,8 @@ class TeamChatFinancialViewEvidenceTest < ActiveSupport::TestCase
       assert_nil TeamChat::FinancialViewEvidence.source_fallback(@evidence, question: 'Chart profit by source last week')
       assert_nil TeamChat::FinancialViewEvidence.source_fallback(@evidence, question: 'Chart Shopify sales by source last week')
       assert_nil TeamChat::FinancialViewEvidence.source_fallback(@evidence, question: 'Last week sales by source without a chart')
+      assert_nil TeamChat::FinancialViewEvidence.source_fallback(@evidence, question: 'Chart sales by source for tea last week')
+      assert_nil TeamChat::FinancialViewEvidence.source_fallback(@evidence, question: 'Chart USD sales by source last week')
       conflict = @evidence.deep_dup
       conflict.first['facts'] << conflict.first['facts'].first.merge('value' => '999')
       assert_nil TeamChat::FinancialViewEvidence.source_fallback(conflict, question: question)
@@ -57,6 +59,9 @@ class TeamChatFinancialViewEvidenceTest < ActiveSupport::TestCase
       assert_nil TeamChat::FinancialViewEvidence.daily_fallback(data, question: question)
       assert_nil TeamChat::FinancialViewEvidence.daily_fallback(@evidence, question: 'Plot Shopify sales trend last week')
       assert_nil TeamChat::FinancialViewEvidence.daily_fallback(@evidence, question: 'Last week sales trend without a chart')
+      assert_nil TeamChat::FinancialViewEvidence.daily_period_for('Plot the sales trend for tea last week')
+      assert_nil TeamChat::FinancialViewEvidence.daily_period_for('Plot USD sales trend last week')
+      assert TeamChat::FinancialViewEvidence.daily_period_for('Plot the sales trend for last week')
     end
   end
 
