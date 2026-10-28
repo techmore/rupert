@@ -125,6 +125,9 @@ module TeamChat
       when 'daily_close'
         first = args['from'] || Date.current.iso8601
         period = window(data, first, args['to'] || first)
+        if data['stores'].is_a?(Array) && data['stores'].empty?
+          out['gaps'] << 'No store register records were returned for this period and filter; this does not prove zero sales.'
+        end
         rows = Array(data['stores']).each_with_index.filter_map do |row, index|
           store = row['store'].to_s
           if store.blank? || store.length > 120 || AskRupert::Redactor.personal(store) != store

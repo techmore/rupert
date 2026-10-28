@@ -25,6 +25,13 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
 
   def render(item) = TeamChat::FinancialEvidence.render([item])
 
+  test 'empty daily close states that register records were not returned without claiming zero' do
+    item = evidence(@period.merge(stores: []), tool: 'daily_close', args: @period)
+    assert_includes render(item), 'No store register records were returned'
+    assert_includes render(item), 'does not prove zero sales'
+    assert_empty item['facts']
+  end
+
   test 'empty current metric does not answer using an implicit previous period' do
     previous = (Date.current - 1).iso8601
     payload = data.merge(values: [], compared_with: { from: previous, to: previous, values: [{ value: 1234, currency: 'USD' }] })
