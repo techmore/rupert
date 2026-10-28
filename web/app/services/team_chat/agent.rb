@@ -10,7 +10,10 @@ module TeamChat
   # change data becomes an action card a person must approve.
   class Agent
     UNCHECKED_FIGURES = 'I could not verify those figures in Rupert’s records, so I won’t guess. Ask me something like “How were sales today?” or “Sales tax last month?” and I’ll look them up.'
-    MAX_STEPS = 12
+    # Each tool round consumes a generation and an execution checkpoint. Allow
+    # every advertised tool call plus the final generation, while retaining a
+    # hard bound on repeated tool requests and the separate run deadline.
+    MAX_STEPS = (2 * Toolbox::MAX_CALLS) + 1
     CLI_TOOL_ROUNDS = 4
     HISTORY_MESSAGES = 30
     HISTORY_CHARS = 14_000

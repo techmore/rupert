@@ -189,4 +189,17 @@ class TeamChatRunTest < ActiveSupport::TestCase
     assert_equal 'failed', @run.reload.state
     assert_not_requested :post, "#{LLM_BASE}/chat/completions"
   end
+
+  test 'the advertised tool budget leaves room for a final answer' do
+    calls = Array.new(TeamChat::Toolbox::MAX_CALLS) do |index|
+      { tool: 'where_is', id: "call_#{index}", arguments: { query: 'timesheets' } }
+    end
+    requests = script_model(*calls, { text: 'Open the timesheets page.' })
+    TeamChat::Agent.new(@reply, config: team_chat_config).run
+
+    assert_equal 'succeeded', @run.reload.state, @reply.reload.body
+    assert_equal TeamChat::Toolbox::MAX_CALLS + 1, requests.size
+    assert_equal TeamChat::Agent::MAX_STEPS, @run.steps
+    assert_match(/timesheets/i, @reply.reload.body)
+  end
 end
