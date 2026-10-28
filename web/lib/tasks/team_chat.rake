@@ -12,7 +12,7 @@ namespace :team_chat do
     puts JSON.pretty_generate(TeamChat::Battery::Comparison.new(baseline: baseline, candidate: candidate).call)
   end
 
-  desc 'Capture encrypted comparison evidence for a question set. COHORT=path BATTERY=default|finance|cross|bank USER_EMAIL=... TENANT_ID=...'
+  desc 'Capture encrypted comparison evidence. COHORT=path BATTERY=depth|breadth|default|finance|cross|bank USER_EMAIL=... TENANT_ID=...'
   task battery_cohort: :environment do
     path = ENV['COHORT'].presence || abort('COHORT must name a new private file.')
     tenant = ENV['TENANT_ID'].present? ? Tenant.find(ENV['TENANT_ID']) : Tenant.where(status: 'active').first
@@ -24,8 +24,7 @@ namespace :team_chat do
     abort 'An active administrator is required.' unless user && %w[admin super_admin].include?(user.role)
     Current.user = user
     set = ENV['BATTERY'].presence || 'default'
-    items = set == 'bank' ? TeamChat::QuestionBank.battery_items(per: ENV.fetch('PER', 5).to_i) :
-      TeamChat::Battery.items(TeamChat::Battery.config_for(set))
+    items = TeamChat::Battery.items_for(set, per: ENV.fetch('PER', 5).to_i)
     battery = TeamChat::Battery.new(user: user, agent: 'rupert', items: items, set: set, out: nil)
     cohort = TeamChat::Battery::Cohort.capture(user: user, items: items) { |item| battery.send(:reference_for, item) }
     cohort.save_file(path)
@@ -103,7 +102,7 @@ end
 
 namespace :team_chat do
   desc 'Run the test battery (config/team_chat/battery.yml) on one bot in its test room (#test-<bot>): each answer timed and graded by DeepSeek. ' \
-       'AGENT=qwen (or gemma, gemma-e2b, gemma-e4b-ud, rupert) BATTERY=finance (or bank: PER questions per question-bank area) USER_EMAIL=... ONLY=d1,w1 REPORT=path.md ' \
+       'AGENT=qwen BATTERY=depth|breadth|finance|bank (bank samples PER per area) GRADER=offline|hosted USER_EMAIL=... ONLY=d1,w1 REPORT=path.md ' \
        'RUPERT_VERIFY=1 (check and fix each answer; saved as e.g. finance+verify)'
   task battery: :environment do
     tenant = ENV['TENANT_ID'].present? ? Tenant.find(ENV['TENANT_ID']) : Tenant.where(status: 'active').first
@@ -112,8 +111,14 @@ namespace :team_chat do
     Current.user = user
     set = ENV['BATTERY'].presence || 'default'
     cohort = TeamChat::Battery::Cohort.load_file(ENV['COHORT'], user: user) if ENV['COHORT'].present?
-    battery = TeamChat::Battery.new(user: user, agent: ENV.fetch('AGENT', 'qwen'), only: ENV['ONLY'].to_s.split(','),
-      items: set == 'bank' ? TeamChat::QuestionBank.battery_items(per: ENV.fetch('PER', 5).to_i) : TeamChat::Battery.items(TeamChat::Battery.config_for(set)), set: set, cohort: cohort)
+    grader = case ENV['GRADER'].presence
+             when nil then %w[depth breadth].include?(set) ? TeamChat::Battery::OfflineGrader.new : TeamChat::Battery::Grader.new
+             when 'offline' then TeamChat::Battery::OfflineGrader.new
+             when 'hosted' then TeamChat::Battery::Grader.new
+             else abort 'GRADER must be offline, hosted or omitted.'
+             end
+    battery = TeamChat::Battery.new(user: user, agent: ENV.fetch('AGENT', 'qwen'), only: ENV['ONLY'].to_s.split(','), grader: grader,
+      items: TeamChat::Battery.items_for(set, per: ENV.fetch('PER', 5).to_i), set: set, cohort: cohort)
     if (done = battery.already_done) && ENV['FORCE'].blank?
       puts "Already tested: #{done.label} on the #{done.set_name} questions with this Rupert build (#{done.revision}), " \
            "#{done.started_at&.strftime('%Y-%m-%d %H:%M')}: average #{done.avg_grade}/5. See Model scores. Run with FORCE=1 to test again."

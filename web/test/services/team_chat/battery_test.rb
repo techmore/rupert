@@ -34,6 +34,21 @@ class TeamChatBatteryTest < ActiveSupport::TestCase
      TeamChat::Battery::Item.new(id: 'm3', cadence: 'monthly', question: 'Sales tax last month?', checks: [{ 'tool' => 'sales_tax_report', 'args' => { 'from' => 'last_month.from', 'to' => 'last_month.to' } }])]
   end
 
+  test 'depth and breadth use distinct complete question sets' do
+    depth = TeamChat::Battery.items_for('depth')
+    expected = %w[default finance cross].flat_map { |name| TeamChat::Battery.items(TeamChat::Battery.config_for(name)) }
+    assert_equal expected.map(&:id), depth.map(&:id)
+    assert_equal depth.size, depth.map(&:id).uniq.size
+    breadth = TeamChat::Battery.items_for('breadth')
+    assert_equal TeamChat::QuestionBank.questions.map(&:id), breadth.map(&:id)
+    assert_equal breadth.size, breadth.map(&:id).uniq.size
+    assert_operator breadth.size, :>, depth.size
+    assert_nil TeamChat::Battery::OfflineGrader.new.grade(question: 'test', answer: 'test', reference: '', tools_used: [])
+    offline = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: TeamChat::Battery::OfflineGrader.new,
+      items: depth, set: 'depth', out: nil)
+    assert_equal 'depth-offline', offline.record_set_name
+  end
+
   test 'does not grade an answer without usable reference or an authored expectation' do
     grader = FakeGrader.new([])
     battery = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: grader, items: [], out: nil)

@@ -49,6 +49,24 @@ module TeamChat
       name == 'battery' ? 'default' : name.delete_prefix('battery_')
     end
 
+    # Keep the fully checked battery and the broad question bank distinct so
+    # their different evidence coverage never gets presented as one score.
+    def self.items_for(set, per: 5)
+      case set.to_s
+      when 'depth'
+        combined = %w[default finance cross].flat_map { |name| items(config_for(name)) }
+        raise ArgumentError, 'Depth question IDs must be unique across sets.' unless combined.map(&:id).uniq.size == combined.size
+
+        combined
+      when 'breadth'
+        QuestionBank.questions.map { |question| QuestionBank.battery_item(question) }
+      when 'bank'
+        QuestionBank.battery_items(per: per)
+      else
+        items(config_for(set))
+      end
+    end
+
     # The set as shipped in the YAML file.
     def self.builtin_items(path = CONFIG)
       YAML.safe_load_file(path).fetch('questions').map do |row|
@@ -83,6 +101,13 @@ module TeamChat
     # The name a run is saved under: an edited set gets its own name (finance-edited-1a2b3c), so its scores are never
     # compared with runs of the built-in questions or of an earlier version of the edits.
     def self.run_set_name(set)
+      if set.to_s == 'depth'
+        children = %w[default finance cross].map { |name| run_set_name(name) }
+        return 'depth' if children == %w[default finance cross]
+
+        return "depth-edited-#{Digest::SHA256.hexdigest(children.to_json).first(6)}"
+      end
+
       edits = edits_for(set)
       return set.to_s if edits.empty?
 
@@ -96,6 +121,7 @@ module TeamChat
     def initialize(user:, agent: 'qwen', only: nil, grader: Grader.new, items: self.class.items, out: $stdout, set: 'default', cohort: nil)
       @set = set.to_s.presence || 'default'
       @run_set = self.class.run_set_name(@set)
+      @run_set = "#{@run_set}-offline" if grader.is_a?(OfflineGrader)
       @user = user
       raise ArgumentError, 'cohort belongs to another requester or workspace' if cohort && !cohort.for_user?(user)
       @cohort = cohort
@@ -136,8 +162,12 @@ module TeamChat
     def run
       @room = self.class.room_for(@user, handle)
       started = Time.current
-      post_notice("🧪 Test run #{@run_id}#{" (#{@set} questions)" unless @set == 'default'}: #{@items.size} questions to @#{handle} (#{model_name}), asked as #{@user.display_name}. " \
-                  "Each answer is timed and graded 1–5 by #{@grader.label} against Rupert’s own data.")
+      grading = if @grader.is_a?(OfflineGrader)
+        'Answers are timed and retained for independent review; no automated grade is assigned.'
+      else
+        "Each answer is timed and graded 1–5 by #{@grader.label} against Rupert’s own data."
+      end
+      post_notice("🧪 Test run #{@run_id}#{" (#{@set} questions)" unless @set == 'default'}: #{@items.size} questions to @#{handle} (#{model_name}), asked as #{@user.display_name}. #{grading}")
       @record = BatteryRun.create!(run_key: @run_id, set_name: record_set_name, agent: @agent&.handle, model: model_name,
         engine: (@agent ? 'local_gateway' : ModelConfig.current.engine), revision: self.class.revision, status: 'running',
         questions: @items.size, results: [], room: @room, started_at: started)
@@ -205,6 +235,7 @@ module TeamChat
       seconds = meta['duration_ms'].to_f / 1000
       load_seconds = (meta['load_ms'].to_f / 1000).round(1).nonzero?
       grade = grade_for(item, reply)
+      grade = nil if @grader.is_a?(OfflineGrader)
       post_grade(reply, grade, seconds) if grade
       check = meta['verify']
       check_note = (" · check: #{Array(check['failed']).size} failed, kept #{check['kept']}" if check)
