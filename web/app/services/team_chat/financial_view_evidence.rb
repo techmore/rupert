@@ -1,0 +1,228 @@
+# frozen_string_literal: true
+
+require 'bigdecimal'
+require 'date'
+
+module TeamChat
+  # A numerical match alone cannot attach a figure to its source or date.
+  # Admit structured source, daily, product and expense-category views whose
+  # rows can be checked against authorized evidence. Other financial views
+  # remain unavailable until they have a similarly scoped contract.
+  module FinancialViewEvidence
+    module_function
+
+    FINANCIAL = /\b(?:sales|revenue|gross|income|profit|margin|expense|expenses|tax|refund|cash|money|financial|amount|cost|price)\b/i
+
+    def check(view, evidence, question:)
+      if view['kind'] == 'html' && [question, view['title'], view['note'], view['html']].compact.join(' ').match?(FINANCIAL)
+        return 'Financial views must use a structured, verifiable table or chart.'
+      end
+      return nil unless %w[table bar_chart line_chart].include?(view['kind'])
+
+      description = description_for(view)
+      return nil unless financial?(view, question: question)
+
+      text = "#{question} #{description}".tr('_', ' ')
+      if description.match?(/\b(?:profit|margin|net|cash|income|tax|refund|payment)\b/i)
+        return 'This financial meaning does not yet have a verified view contract.'
+      end
+
+      columns = Array(view['columns']).map { |column| column.to_s.tr('_', ' ') }
+      rows = Array(view['rows'])
+      return 'Financial views need recorded evidence and numeric rows.' if evidence.empty? || rows.none? { |row| Array(row).drop(1).any? { |cell| number(cell) } }
+      return 'Financial views need a label and at least one value column.' if columns.size < 2
+
+      case columns.first
+      when /\b(?:source|channel)\b/i then source_rows(columns, rows, evidence, text)
+      when /\b(?:date|day)\b/i then daily_rows(columns, rows, evidence, text)
+      when /\b(?:product|item|category)\b/i then named_rows(columns, rows, evidence, text)
+      else 'Use source, date, product or category labels with recorded financial values for an adjustable view.'
+      end
+    rescue ArgumentError, TypeError
+      'The view contains an invalid or inconsistent financial value.'
+    end
+
+    def financial?(view, question:)
+      description = description_for(view)
+      nonfinancial = description.match?(/\b(?:sku|stock|inventory|alerts?|tasks?|timesheets?)\b/i)
+      description.match?(FINANCIAL) || (question.to_s.match?(FINANCIAL) && !nonfinancial)
+    end
+
+    def description_for(view)
+      ([view['title'], view['note']] + Array(view['columns'])).compact.join(' ').tr('_', ' ')
+    end
+
+    # A model-written caption may misstate source coverage even when the rows
+    # are correct. Use a neutral caption tied to the checked period.
+    def with_safe_caption(view, evidence, question:)
+      return view unless financial?(view, question: question)
+
+      text = "#{question} #{description_for(view)}".tr('_', ' ')
+      daily = Array(view['columns']).first.to_s.match?(/\b(?:date|day)\b/i)
+      periods = evidence.flat_map do |item|
+        daily ? [item.dig('daily', 'period')].compact : Array(item['facts']).filter_map { |fact| fact['period'] }
+      end.select { |period| period_named?(period, text) }.uniq
+      raise ArgumentError, 'The view period could not be verified.' unless periods.one?
+
+      label = case Array(view['columns']).first.to_s
+              when /\b(?:source|channel)\b/i then 'Recorded sales by source'
+              when /\b(?:date|day)\b/i then 'Recorded sales by day'
+              when /\bcategory\b/i then 'Recorded expense categories'
+              else 'Recorded product revenue'
+              end
+      period = periods.first
+      view.merge('title' => "#{label}: #{period['from']} to #{period['to']}",
+        'note' => 'Only recorded data are shown. Missing records do not prove zero or complete coverage.')
+    end
+
+    def source_rows(columns, rows, evidence, text)
+      facts = evidence.flat_map { |item| Array(item['facts']) }
+      periods = facts.filter_map { |fact| fact['period'] if period_named?(fact['period'], text) }.uniq
+      return 'A source chart must identify one recorded period with its start and end dates.' unless periods.one?
+
+      seen = []
+      rows.each do |row|
+        label = row[0].to_s.downcase.tr('_-', ' ').squish
+        source = Metrics::SOURCES.find { |name| name.tr('_', ' ') == label }
+        return 'A source label could not be matched to a recorded sales source.' unless source
+        return 'A source is repeated in the view.' if seen.include?(source)
+
+        seen << source
+
+        columns.drop(1).each_with_index do |column, offset|
+          cell = row[offset + 1]
+          next if cell.nil? || cell == ''
+
+          currency = currency_for(column, text)
+          value = number(cell)
+          return 'A source value or its currency is unavailable.' unless currency && value
+
+          candidates = facts.select do |fact|
+            fact['currency'] == currency && fact['source'].to_s.start_with?("#{source} canonical orders") &&
+              fact['period'] == periods.first && fact_matches_column?(fact, column)
+          end
+          return 'A chart value could not be verified for its source, currency, period and unit.' unless candidates.any? { |fact| same_value?(value, fact['value'], column) }
+        end
+      end
+      nil
+    end
+
+    def daily_rows(columns, rows, evidence, text)
+      contexts = evidence.filter_map { |item| item['daily'] }
+      periods = contexts.filter_map { |context| context['period'] if period_named?(context['period'], text) }.uniq
+      return 'A daily chart must identify one recorded period with its start and end dates.' unless periods.one?
+
+      seen = []
+      rows.each do |row|
+        date = Date.iso8601(row[0].to_s).iso8601
+        return 'A date is repeated in the view.' if seen.include?(date)
+
+        seen << date
+        columns.drop(1).each_with_index do |column, offset|
+          cell = row[offset + 1]
+          next if cell.nil? || cell == ''
+
+          currency = currency_for(column, text)
+          value = number(cell)
+          return 'A daily value or its currency is unavailable.' unless currency && value
+
+          matching = contexts.any? do |context|
+            context['period'] == periods.first && Array(context['rows']).any? do |daily|
+              daily['date'] == date && daily['currency'] == currency && daily_value_matches?(daily, column, value)
+            end
+          end
+          return 'A chart value could not be verified for its date, currency, period and unit; missing days are not zero.' unless matching
+        end
+      end
+      nil
+    end
+
+    def daily_value_matches?(row, column, value)
+      if column.match?(/\borders?\b/i)
+        row['orders'].is_a?(Integer) && value == row['orders']
+      elsif column.match?(/\b(?:sales|gross|revenue)\b/i) && row['orders'].to_i.positive? && row['gross_cents'].is_a?(Integer)
+        expected = BigDecimal(row['gross_cents'].to_s)
+        expected /= 100 unless column.match?(/\bcents?\b/i)
+        value == expected
+      else
+        false
+      end
+    end
+
+    def named_rows(columns, rows, evidence, text)
+      facts = evidence.flat_map { |item| Array(item['facts']) }
+      periods = facts.filter_map { |fact| fact['period'] if period_named?(fact['period'], text) }.uniq
+      return 'A financial view must identify one recorded period with its start and end dates.' unless periods.one?
+
+      category = columns.first.match?(/\bcategory\b/i)
+      seen = []
+      rows.each do |row|
+        label = row[0].to_s.squish
+        return 'A product or category label is missing or repeated.' if label.blank? || seen.include?(label.downcase)
+
+        seen << label.downcase
+        columns.drop(1).each_with_index do |column, offset|
+          cell = row[offset + 1]
+          next if cell.nil? || cell == ''
+
+          currency = currency_for(column, text)
+          value = number(cell)
+          return 'A product or category value or its currency is unavailable.' unless currency && value
+
+          prefix = if category
+            return 'Expense-category columns must describe recorded expenses or amounts.' unless column.match?(/\b(?:expense|expenses|cost|amount|spent)\b/i)
+
+            'Expense category: '
+          elsif column.match?(/\b(?:share|percent|percentage)\b|%/i)
+            'Share of product revenue: '
+          else
+            return 'Product columns must describe recorded revenue or sales.' unless column.match?(/\b(?:sales|revenue|amount)\b/i)
+
+            'Product revenue: '
+          end
+          unit = prefix == 'Share of product revenue: ' ? 'percent' : 'money'
+          candidates = facts.select do |fact|
+            fact['currency'] == currency && fact['period'] == periods.first && fact['unit'] == unit && fact['meaning'].to_s.casecmp?("#{prefix}#{label}")
+          end
+          return 'A value could not be verified for its product or category, currency, period and unit.' unless candidates.any? { |fact| same_value?(value, fact['value'], column) }
+        end
+      end
+      nil
+    end
+
+    def fact_matches_column?(fact, column)
+      meaning = fact['meaning'].to_s
+      if column.match?(/\borders?\b/i)
+        fact['unit'] == 'count' && meaning == 'Paid or fulfilled order count'
+      elsif column.match?(/\b(?:share|percent|percentage)\b|%/i)
+        fact['unit'] == 'percent' && meaning == 'Share of gross sales in this currency'
+      else
+        column.match?(/\b(?:sales|gross|revenue)\b/i) && fact['unit'] == 'money' && meaning == 'Gross sales (paid or fulfilled orders)'
+      end
+    end
+
+    def same_value?(value, raw, column)
+      expected = BigDecimal(raw.to_s)
+      expected *= 100 if column.match?(/\bcents?\b/i)
+      value == expected
+    end
+
+    def currency_for(column, text)
+      currencies = FinancialEvidence::CURRENCIES
+      named = column.scan(/\b[a-z]{3}\b/i).map(&:upcase).select { |word| currencies.include?(word) }.uniq
+      named = text.scan(/\b[a-z]{3}\b/i).map(&:upcase).select { |word| currencies.include?(word) }.uniq if named.empty?
+      named.one? ? named.first : nil
+    end
+
+    def period_named?(period, text)
+      period.is_a?(Hash) && period['from'].present? && period['to'].present? && text.include?(period['from']) && text.include?(period['to'])
+    end
+
+    def number(cell)
+      text = cell.to_s.strip
+      return unless text.match?(/\A[-−]?\$?\d[\d,]*(?:\.\d+)?%?\z/)
+
+      BigDecimal(text.delete('$,%').tr('−', '-'))
+    end
+  end
+end

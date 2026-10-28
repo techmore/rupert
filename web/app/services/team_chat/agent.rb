@@ -573,12 +573,12 @@ module TeamChat
     # safely inferred from the presence of matching numbers in a draft.
     def compliance_only_tool_mix?
       names = @toolbox.tools_used
-      names.include?('compliance_check') && (names - %w[compliance_check list_tasks inventory_search sync_health]).empty?
+      names.include?('compliance_check') && (names - %w[compliance_check list_tasks inventory_search sync_health show_view]).empty?
     end
 
     def alert_only_tool_mix?
       names = @toolbox.tools_used
-      names.include?('list_alerts') && (names - %w[list_alerts list_tasks inventory_search sync_health]).empty?
+      names.include?('list_alerts') && (names - %w[list_alerts list_tasks inventory_search sync_health show_view]).empty?
     end
 
     def current_stock_unverified?

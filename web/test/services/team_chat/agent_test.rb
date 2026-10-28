@@ -263,6 +263,41 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_not_includes reply.body, '2 on hand'
   end
 
+  test 'an alert table cannot make the answer claim its recorded quantity is current stock' do
+    StockAlert.create!(sku: 'SYN-TEA', quantity: 2, threshold: 5, status: 'open')
+    script_model({ tool: 'list_alerts', arguments: {} },
+      { tool: 'show_view', arguments: { title: 'Alerts', kind: 'table', columns: %w[SKU Quantity], rows: [['SYN-TEA', 2]] } },
+      { text: 'SYN-TEA currently has 2 on hand.' })
+    reply = ask('@rupert Put today\'s open stock alerts in a side-panel table.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'alert quantity 2, threshold 5'
+    assert_includes reply.body, 'may be stale'
+    assert_not_includes reply.body, '2 on hand'
+    assert_equal 'table', reply.meta.fetch('views').sole['kind']
+  end
+
+  test 'a source sales chart cannot swap valid numbers between sources' do
+    period = Metrics::Window.resolve(period: 'last_week')
+    dates = { from: period.from.iso8601, to: period.to.iso8601 }
+    data = { metric: 'sales_by_source', period: dates, source: nil, values: [
+      { currency: 'USD', gross_cents: 11_200, sources: [
+        { source: 'shopify', gross_cents: 7200, share_percent: 64.3 },
+        { source: 'rupert_pos', gross_cents: 4000, share_percent: 35.7 }
+      ] }
+    ] }
+    Mcp::Tools::Metric.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'sales by source', data: data))
+    title = "Gross sales #{dates[:from]} to #{dates[:to]}"
+    script_model({ tool: 'metric', arguments: { name: 'sales_by_source', period: 'last_week', compare: 'none' } },
+      { tool: 'show_view', id: 'wrong', arguments: { title: title, kind: 'bar_chart', columns: ['Source', 'Gross sales USD'], rows: [['Shopify', 40], ['Rupert POS', 72]] } },
+      { tool: 'show_view', id: 'correct', arguments: { title: title, kind: 'bar_chart', columns: ['Source', 'Gross sales USD'], rows: [['Shopify', 72], ['Rupert POS', 40]] } },
+      { text: 'Here is the chart.' })
+    reply = ask('@rupert Chart gross sales by source last week.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entries = TeamChat::Run.find_by!(message_id: reply.id).tool_results
+    assert_includes entries[1]['result'], 'could not be verified for its source'
+    assert_equal [['Shopify', 72], ['Rupert POS', 40]], reply.reload.meta.fetch('views').sole['rows']
+  end
+
   test 'cash flow cannot be inferred from sales but navigation remains available' do
     script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'this_month', compare: 'none' } },
       { text: 'Cash flow is positive because sales were strong.' })

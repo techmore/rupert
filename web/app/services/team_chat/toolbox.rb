@@ -335,6 +335,10 @@ module TeamChat
       end
 
       view = Views.build(args, known_text: @results.join("\n"))
+      if (problem = FinancialViewEvidence.check(view, @financial_evidence, question: @question))
+        return "The view was not shown: #{problem} Use the recorded source or daily rows, explicit currency and dates, or explain that the chart could not be verified."
+      end
+      view = FinancialViewEvidence.with_safe_caption(view, @financial_evidence, question: @question) unless view['kind'] == 'html'
       @views << view
       flagged = view['unchecked'].to_i.positive? ? " #{view['unchecked']} of its figures are not in your tool results and will be flagged; fix them if you can." : ''
       "Shown beside the chat as “#{view['title']}” (a button under your reply opens it).#{flagged} Say in your reply what it shows."
