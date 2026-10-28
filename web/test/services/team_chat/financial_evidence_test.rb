@@ -223,6 +223,9 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_includes render(evidence(data(-1))), '-0.01 USD'
     assert_includes render(evidence(data(900719925474099301))), '9007199254740993.01 USD'
     assert_empty evidence(data(12.34))['facts']
+    assert_nil prose('Shopify took $0.01 today.', evidence(data(-1)))
+    assert_nil prose('Shopify took -$214.83 today.')
+    assert_nil prose('Shopify took -214.83 USD today.')
   end
 
   test 'refund rates remain percentages rather than money or percentage points' do

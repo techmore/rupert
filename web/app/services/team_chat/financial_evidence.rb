@@ -361,6 +361,9 @@ module TeamChat
 
       prose = text.to_s.strip
       return nil if facts.empty? || prose.blank? || prose.match?(RELABEL)
+      # NumberCheck currently extracts unsigned figures. Use deterministic
+      # rendering when either side has a sign so a loss cannot become a gain.
+      return nil if facts.any? { |fact| BigDecimal(fact['value']).negative? } || prose.match?(/(?:[-−]\s*\$?\s*\d|\$\s*[-−]\s*\d)/)
 
       # When a source is named, compare every asserted figure against that
       # source's own facts. Aggregate totals cannot prove a source attribution.
