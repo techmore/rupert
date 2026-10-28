@@ -294,12 +294,21 @@ module TeamChat
     def generate_native(chat)
       loop do
         streamed = false
+        visible_text = false
         begin
           @execution.generate(chat) do |chunk|
             streamed = true
+            visible_text ||= chunk.content.present?
             yield chunk
           end
           return chat
+        rescue RubyLLM::ToolCallParseError
+          # A malformed tool call was never executed. Retry once from the
+          # durable checkpoint only if no text has been shown to the user.
+          raise unless @config.local? && !visible_text && @execution.reserve_retry!(0, status: nil)
+
+          activity!('Retrying model')
+          chat = native_chat
         rescue RubyLLM::Error => error
           delay = @config.local? || streamed ? nil : GenerationRetry.delay(error)
           raise unless delay && @execution.reserve_retry!(delay, status: error.response.status)
