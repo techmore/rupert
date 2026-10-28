@@ -864,6 +864,21 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal TeamChat::Agent::UNCHECKED_RECORDS, reply.reload.body
   end
 
+  test 'explicit order-date refund status uses the requested period and not refund transactions' do
+    travel_to Time.zone.parse('2026-10-27 12:00') do
+      data = { from: '2026-08-01', to: '2026-08-03', lines: [], totals_by_currency: [], refunded_orders_by_source: { 'shopify' => 2 } }
+      Mcp::Tools::SalesSummary.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'sales', data: data))
+      script_model({ text: 'I could not check the records.' })
+      reply = ask('@rupert How many orders placed August 1 through August 3 are currently refunded by source?')
+      TeamChat::Agent.new(reply, config: team_chat_config).run
+      entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+      assert_equal({ 'from' => '2026-08-01', 'to' => '2026-08-03', 'top_products' => 0 }, entry['arguments'])
+      assert_includes reply.reload.body, 'shopify: 2 orders'
+      assert_includes reply.body, 'partial refund does not necessarily'
+      assert_includes reply.body, '2026-08-01 to 2026-08-03'
+    end
+  end
+
   test 'a failed source chart can fall back to verified recorded source figures' do
     travel_to Time.zone.parse('2026-10-27 12:00') do
       args = { from: '2026-10-19', to: '2026-10-25' }

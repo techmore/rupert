@@ -84,6 +84,7 @@ module TeamChat
         end
         @toolbox = Toolbox.new(user: @asker, room: @room, reply: @reply, only: only, execution: @execution, question: request_text)
         text = verified(answer)
+        @toolbox.prefetch_refunded_orders!
         @toolbox.prefetch_requested_metric!
         @toolbox.prefetch_daily_chart!
         finish(text, started)
@@ -482,7 +483,7 @@ module TeamChat
         entries = @execution.run.reload.tool_results
         body = ComplianceEvidence.render_focused_count(entries, title) || 'I could not verify the requested compliance count.'
       elsif RefundEvidence.count_question?(request_text)
-        body = RefundEvidence.render_requested(@toolbox.financial_evidence) || 'I could not verify refunded-order counts for the last 30 days.'
+        body = RefundEvidence.render_requested(@toolbox.financial_evidence, question: request_text) || 'I could not verify refunded-order counts for the requested period.'
       elsif @toolbox.financial? && (queue_answer = QueueEvidence.render_requested(@toolbox.financial_evidence, request_text))
         # For an entirely queue-specific request, show only the requested
         # verified counts, not unrelated tools the model also called.

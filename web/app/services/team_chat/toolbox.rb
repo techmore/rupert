@@ -103,6 +103,15 @@ module TeamChat
       call('sales_summary', period.merge('include_daily' => true, 'top_products' => 0))
     end
 
+    def prefetch_refunded_orders!
+      period = RefundEvidence.explicit_period_for(@question)
+      return unless period && @execution && @calls < MAX_CALLS && names.include?('sales_summary')
+      return if @financial_evidence.any? { |item| item.dig('refunded_orders', 'period') == period && item.dig('refunded_orders', 'source').blank? }
+
+      self.call_id = "refunded-orders-#{@execution.run.id}"
+      call('sales_summary', period.merge('top_products' => 0))
+    end
+
     # A narrow, explicitly dated question may require a metric the model did
     # not request. Reuse the authorized tool, call budget and durable receipt.
     def prefetch_requested_metric!

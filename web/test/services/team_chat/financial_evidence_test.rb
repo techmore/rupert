@@ -47,6 +47,19 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_not TeamChat::RefundEvidence.count_question?('How many orders were refunded in the last 30 days and how much did we sell?')
   end
 
+  test 'refund status ranges are explicit, bounded and exclude other requests' do
+    travel_to Time.zone.parse('2026-10-27 12:00') do
+      parser = TeamChat::RefundEvidence
+      expected = { 'from' => '2026-10-07', 'to' => '2026-10-10' }
+      assert_equal expected, parser.explicit_period_for('How many orders placed October 7 through October 10 are currently refunded by source?')
+      assert_equal expected, parser.explicit_period_for('How many refunded orders were placed from 2026-10-07 to 2026-10-10?')
+      assert_nil parser.explicit_period_for('How many refunded Shopify orders from 2026-10-07 to 2026-10-10?')
+      assert_nil parser.explicit_period_for('How many refunded orders from 2026-10-07 to 2026-10-10 and what were total sales?')
+      assert_nil parser.explicit_period_for('How many refund transactions from 2026-10-07 to 2026-10-10?')
+      assert_nil parser.explicit_period_for('How many refunded orders from November 1 through November 5?')
+    end
+  end
+
   test 'missing metric scope precedes other figures without hiding them' do
     missing = evidence(data.merge(source: 'rupert_pos', values: []), args: { name: 'gross_sales', period: 'today', source: 'rupert_pos' })
     aggregate = evidence(data.merge(source: nil), args: { name: 'gross_sales', period: 'today' })
