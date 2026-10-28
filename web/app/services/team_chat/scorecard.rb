@@ -6,7 +6,8 @@ module TeamChat
   # separate on purpose: fast-but-wrong and slow-but-right must look different.
   #
   #   quality      the grader's 1–5 mean mapped to 0–9 (1 = 0, 5 = 9)
-  #   speed        median answer time on a log scale: 9 at FAST_SECONDS or less, 0 at the SLA (SLOW_SECONDS)
+  #   speed        each answer scores 9 up to FREE_SECONDS, then loses points evenly to 0 at the limit (SLOW_SECONDS);
+  #                the score is the mean. Answers past the limit are ignored here and counted separately.
   #   reliability  answered questions out of attempted
   #   tool use     answers that called a Rupert tool
   #   grounding    answers with no figure the checker could not find in tool output
@@ -17,14 +18,16 @@ module TeamChat
   module Scorecard
     AXES = { 'quality' => 'Quality', 'speed' => 'Speed', 'first_token' => 'First token', 'reliability' => 'Reliability',
              'tool_use' => 'Tool use', 'grounding' => 'Grounding' }.freeze
-    FAST_SECONDS = 2.0
+    FREE_SECONDS = 20.0
     SLOW_SECONDS = ModelScores::SLOW_SECONDS.to_f
     # Hash the scale so a table is only compared with another produced by the same rules.
-    SCALE = "quality=(grade-1)/4*9;speed=log(#{FAST_SECONDS}s..#{SLOW_SECONDS}s);reliability=answered/attempted;tool_use;grounding".freeze
+    SCALE = "quality=(grade-1)/4*9;speed=mean(9 to #{FREE_SECONDS}s then linear to 0 at #{SLOW_SECONDS}s; ignore beyond);reliability=answered/attempted;tool_use;grounding".freeze
 
     Card = Struct.new(:model, :handle, :where, :overall, :modules, :graded, :change, :tested_at, :timing, keyword_init: true)
     # Real seconds behind the speed score: the median and slow tail of answers, how many ran past the limit, and model load time.
-    Timing = Struct.new(:median, :p95, :slowest, :over_limit, :answered, :load, keyword_init: true)
+    # Median, p95 and slowest are of answers within the limit; slow is how many took longer than FREE_SECONDS; ignored is how many
+    # passed the limit and are left out of the speed score and these figures.
+    Timing = Struct.new(:median, :p95, :slowest, :slow, :ignored, :answered, :load, keyword_init: true)
 
     module_function
 
@@ -49,10 +52,10 @@ module TeamChat
     def scores(results)
       done = results.select { |row| row['status'].blank? || row['status'] == 'done' }
       graded = results.filter_map { |row| row['grade'] if row['grade'].is_a?(Numeric) }
-      times = done.filter_map { |row| row['seconds'].to_f if row['seconds'].to_f.positive? }.sort
+      times = answer_times(done)
       {
         'quality' => (scale((graded.sum.to_f / graded.size - 1) / 4) if graded.any?),
-        'speed' => (speed(times[times.size / 2]) if times.any?),
+        'speed' => (scale(times.sum { |value| speed_fraction(value) } / times.size) if times.any?),
         'first_token' => nil,
         'reliability' => (scale(done.size.to_f / results.size) if results.any?),
         'tool_use' => (scale(done.count { |row| Array(row['tools']).any? }.to_f / done.size) if done.any?),
@@ -62,20 +65,23 @@ module TeamChat
 
     def timing(results)
       done = results.select { |row| row['status'].blank? || row['status'] == 'done' }
-      times = done.filter_map { |row| row['seconds'].to_f if row['seconds'].to_f.positive? }.sort
+      all = done.filter_map { |row| row['seconds'].to_f if row['seconds'].to_f.positive? }
+      times = answer_times(done).sort
       loads = done.filter_map { |row| row['load_seconds'].to_f if row['load_seconds'].to_f.positive? }.sort
-      return Timing.new(answered: 0, over_limit: 0) if times.empty?
+      ignored = all.size - times.size
+      return Timing.new(answered: 0, slow: 0, ignored: ignored) if times.empty?
 
       Timing.new(median: times[times.size / 2].round(1), p95: times[[(times.size * 0.95).ceil - 1, 0].max].round(1), slowest: times.last.round(1),
-        over_limit: times.count { |value| value > SLOW_SECONDS }, answered: times.size, load: (loads[loads.size / 2].round(1) if loads.any?))
+        slow: times.count { |value| value > FREE_SECONDS }, ignored: ignored, answered: times.size, load: (loads[loads.size / 2].round(1) if loads.any?))
     end
+
+    # Seconds of the answers that count: past the limit they are ignored.
+    def answer_times(done) = done.filter_map { |row| row['seconds'].to_f if row['seconds'].to_f.positive? && row['seconds'].to_f <= SLOW_SECONDS }
 
     def scale(fraction) = (fraction.clamp(0.0, 1.0) * 9).round
 
-    def speed(seconds)
-      clamped = seconds.clamp(FAST_SECONDS, SLOW_SECONDS)
-      scale(1 - (Math.log(clamped / FAST_SECONDS) / Math.log(SLOW_SECONDS / FAST_SECONDS)))
-    end
+    # 1.0 up to FREE_SECONDS, then falling evenly to 0.0 at SLOW_SECONDS.
+    def speed_fraction(seconds) = 1 - ((seconds - FREE_SECONDS) / (SLOW_SECONDS - FREE_SECONDS)).clamp(0.0, 1.0)
 
     # The second-newest run of every model and question set, to show movement.
     def previous_runs(latest)
