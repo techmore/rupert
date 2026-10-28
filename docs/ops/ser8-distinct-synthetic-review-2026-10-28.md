@@ -34,4 +34,10 @@ Qwen3.5 4B later completed the same eight questions against the same cohort and 
 | Net profit limitations | 2 | Avoided guessing but did not explain the profit-specific limitation. |
 | **Total / 40** | **23** | One run on an altered synthetic fixture; not a general ranking. |
 
-On this run LFM's 17/40 did not beat Qwen3.5's 23/40. Subsequent fixes for explicit-date charts, metric retrieval, refunded-order status and received-deposit limitations are not included in these results. A replay of the tuned cases is queued; a fresh independent comparison is still needed to measure improvement without using these questions as held-out evidence.
+On this run LFM's 17/40 did not beat Qwen3.5's 23/40. Subsequent fixes for explicit-date charts, metric retrieval, refunded-order status and received-deposit limitations are not included in these results. Targeted replays are underway; a fresh independent comparison is still needed to measure improvement without using these questions as held-out evidence.
+
+## Targeted LFM replays after fixes
+
+These reuse the reviewed questions and fixture and cannot be treated as a new comparative score. The refund-transaction replay returned the correct recorded amount, count and rate for each currency. The product replay returned the correct USD and CAD product leaders, although it also included extra sales figures. An initial explicit-date chart replay still produced no view: repeated invalid model-proposed views consumed the call budget before the daily lookup. A later change reserves the authorized lookup earlier; its live replay is pending.
+
+The received-deposit replay correctly stated that sales do not establish deposits. The refunded-order-status replay reported no stored refunded-status orders in the requested range and explained that a partial refund need not change an order's status. Both match the synthetic fixture. These narrow replays do not establish how well the fixes generalize to the real database or unseen questions.
