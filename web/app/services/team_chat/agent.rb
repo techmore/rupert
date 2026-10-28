@@ -450,6 +450,8 @@ module TeamChat
         body = 'I cannot verify which card processor deposits are still in transit from the available records. Check the processor’s settlement report and the corresponding bank transactions. An unresolved card payment is not the same as a deposit in transit.'
       elsif cash_flow_question?
         body = 'I could not verify cash flow from the available tool results. Recorded sales or expenses alone do not establish cash in and out; check recorded bank movements on the Cash flow page.'
+      elsif cash_forecast_question?
+        body = 'I cannot verify a cash forecast or predict when cash will run out from the available tool results. Recorded sales and tax alone do not establish bank balances or future cash movements. Check the Cash forecast page and its underlying assumptions.'
       elsif ComplianceEvidence.timesheets_and_backup_question?(request_text)
         entries = @execution.run.reload.tool_results
         timesheets = ComplianceEvidence.render_focused_count(entries, ComplianceEvidence::TIMESHEETS_TITLE) || 'I could not verify the timesheet approval count.'
@@ -618,6 +620,17 @@ module TeamChat
       return false unless question.match?(/\b(?:our|we|this|last|today|yesterday|week|month|quarter|year|positive|negative|dip|rise|fall)\b/i)
 
       !@toolbox&.tools_used&.include?('cash_flow')
+    end
+
+    # Recorded sales and tax are not a cash balance or a forecast. Preserve
+    # navigation, explanations and requests containing other subjects.
+    def cash_forecast_question?
+      question = request_text.to_s.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip
+      return false if question.match?(/\b(?:and|also|plus)\b/i)
+      return false if question.match?(/\b(?:where|page|screen|navigate|open|find|how does|how do|how can)\b/i)
+      return false if @toolbox&.tools_used&.include?('cash_forecast')
+
+      question.match?(/\b(?:cash[ -]?(?:forecast|projection)|(?:forecast|projected|project)\w* cash|run out\w* (?:of (?:our )?)?cash|how much cash (?:will|would) (?:we|i) have)\b/i)
     end
 
     # Payment attempts and bank lines do not establish which processor

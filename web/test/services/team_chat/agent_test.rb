@@ -385,6 +385,16 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_not_includes reply.reload.body, 'could not verify cash flow'
   end
 
+  test 'cash forecasts cannot be inferred from unrelated financial results' do
+    ['Cash forecast next month', 'Will we run out of cash?', 'How much cash will we have in 30 days?'].each do |question|
+      script_model({ tool: 'sales_tax_report', arguments: {} }, { text: 'Your cash forecast is based on sales tax.' })
+      reply = ask("@rupert #{question}")
+      TeamChat::Agent.new(reply, config: team_chat_config).run
+      assert_includes reply.reload.body, 'cannot verify a cash forecast'
+      assert_not_includes reply.body, 'Reported tax collected'
+    end
+  end
+
   test 'timekeeping tool delivers worked hours even when sales are unavailable' do
     today = Date.current.iso8601
     requests = script_model({ tool: 'time_keeping_report', arguments: { from: today, to: today } }, { text: 'I checked timekeeping.' })
