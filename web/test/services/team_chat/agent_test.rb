@@ -392,6 +392,24 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal [['Shopify', 72], ['Rupert POS', 40]], reply.reload.meta.fetch('views').sole['rows']
   end
 
+  test 'a month comparison chart is built from authorized metric evidence if the model omits a view' do
+    period = Metrics::Window.resolve(period: 'last_month')
+    previous = period.previous
+    data = { metric: 'gross_sales', source: nil, period: period.as_json,
+             values: [{ value: 8000, currency: 'USD' }],
+             compared_with: previous.as_json.merge(values: [{ value: 2000, currency: 'CAD' }]) }
+    Mcp::Tools::Metric.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'gross sales', data: data))
+    script_model({ text: 'Here is the comparison.' })
+    reply = ask("@rupert Chart last month's gross sales against the month before without guessing missing values.")
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    view = reply.reload.meta.fetch('views').sole
+    assert_equal 'bar_chart', view['kind']
+    assert_equal [["#{previous.from} to #{previous.to}", '20.0', nil], ["#{period.from} to #{period.to}", nil, '80.0']], view['rows']
+    entries = TeamChat::Run.find_by!(message_id: reply.id).tool_results
+    assert entries.any? { |entry| entry['name'] == 'metric' && entry.dig('arguments', 'compare') == 'previous' }
+  end
+
   test 'cash flow cannot be inferred from sales but navigation remains available' do
     script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'this_month', compare: 'none' } },
       { text: 'Cash flow is positive because sales were strong.' })
