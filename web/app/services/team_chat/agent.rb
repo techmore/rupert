@@ -428,10 +428,11 @@ module TeamChat
         tool_results = @execution.run.reload.tool_results
         task = TaskEvidence.render(tool_results)
         compliance = ComplianceEvidence.render(tool_results)
-        if inventory.present? || task.present? || compliance.present?
-          # Financial prose validation cannot certify task, stock or compliance claims.
+        sync = SyncEvidence.render(tool_results)
+        if inventory.present? || task.present? || compliance.present? || sync.present?
+          # Financial prose validation cannot certify other tool claims.
           @prose_checked = false
-          body = [FinancialEvidence.render(@toolbox.financial_evidence), compliance, task, inventory].compact.join("\n\n")
+          body = [FinancialEvidence.render(@toolbox.financial_evidence), compliance, sync, task, inventory].compact.join("\n\n")
         else
           body = checked || FinancialEvidence.render(@toolbox.financial_evidence)
         end
@@ -440,8 +441,9 @@ module TeamChat
         # is disabled. Never display it as an answer or execute it as a call.
         task = TaskEvidence.render(@execution.run.reload.tool_results)
         inventory = InventoryEvidence.render(@toolbox.inventory_results)
-        body = if task.present? || inventory.present?
-          ['I could not complete my answer. These are the available lookup results:', task, inventory].compact.join("\n\n")
+        sync = SyncEvidence.render(@execution.run.tool_results)
+        body = if task.present? || inventory.present? || sync.present?
+          ['I could not complete my answer. These are the available lookup results:', sync, task, inventory].compact.join("\n\n")
         else
           'I could not complete my answer. Please try again.'
         end

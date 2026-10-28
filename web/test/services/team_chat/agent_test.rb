@@ -199,6 +199,20 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_not_includes reply.body, 'Nothing is waiting.'
   end
 
+  test 'financial verification retains source sync health' do
+    Core::Order.create!(source: 'shopify', source_order_id: 'chat-sync-order', occurred_at: Time.current, gross_cents: 21483, currency: 'USD').mark_paid!
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'today', source: 'shopify', compare: 'none' } },
+      { tool: 'sync_health', arguments: {} }, { text: 'Sales were $214.83 and sync is perfect.' })
+    reply = ask('@rupert show sales and whether the source is syncing')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, '214.83 USD'
+    assert_includes reply.body, 'Source sync health:'
+    assert_includes reply.body, 'does not establish complete sales coverage'
+    assert_not_includes reply.body, 'sync is perfect'
+  end
+
   test 'a reply whose figures all come from its tools has nothing flagged' do
     script_model({ text: 'Nothing to report.' })
     reply = ask('@rupert anything new?')
