@@ -66,7 +66,8 @@ module TeamChat
         end
         metric_rows(out, data['values'], name, source, period, 'values')
         if name == 'expenses_by_category' && data['values'].is_a?(Array) && data['values'].empty?
-          out['gaps'] << 'No active expense-register records were found for this period; vendor payments are excluded.'
+          out['gaps'] << 'No active expense-register records were found for this period; vendor payments are excluded. ' \
+                         'Profit cannot be established from this evidence.'
         end
         if data['values'].is_a?(Array) && data['values'].empty? && args['compare'].blank?
           out['gaps'] << "No metric rows were returned for the requested period (#{period['from']} to #{period['to']}; #{source}); " \
@@ -106,7 +107,8 @@ module TeamChat
         Array(data['sales']).each_with_index do |row, index|
           add(out, row['gross_cents'], 'money', row['currency'], ORDER_SOURCE, period, 'Gross sales (paid or fulfilled orders)', "sales.#{index}.gross_cents")
         end
-        out['gaps'] << 'Expenses without explicit currency, comparisons and other review sections are not certified by this contract.'
+        out['gaps'] << 'Expenses without explicit currency, comparisons and other review sections are not certified by this contract; ' \
+                       'profit cannot be established from this evidence.'
       when 'sales_tax_report'
         period = window(data, args['from'] || Date.current.beginning_of_month.iso8601, args['to'] || Date.current.iso8601)
         allowed = (args['sources'].presence || SalesTaxReport::SOURCES.keys).map { |key| SalesTaxReport::SOURCES.fetch(key) }

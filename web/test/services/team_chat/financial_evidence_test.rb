@@ -86,6 +86,7 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     args = { name: 'expenses_by_category', period: 'today' }
     assert_includes render(evidence(payload, tool: 'metric', args: args)), 'Expense category: Supplies: 12.00 USD'
     assert_includes render(evidence(payload.merge(values: []), tool: 'metric', args: args)), 'No active expense-register records'
+    assert_includes render(evidence(payload.merge(values: []), tool: 'metric', args: args)), 'Profit cannot be established'
   end
 
   test 'repeated identical tool calls do not duplicate rendered facts' do
