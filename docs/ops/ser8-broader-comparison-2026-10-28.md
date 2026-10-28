@@ -33,3 +33,16 @@ These are single runs on one synthetic fixture, rated by one partially masked re
 ## Targeted best-day replay
 
 On the same synthetic question, an LFM live replay with commit `d2fbc47e` returned the correct September 28–October 27 window and identified October 26 as the highest recorded day for both currencies. It also included unrelated source totals and caveats. The run completed in 9.6 seconds. This is a known-case replay, not an updated score for the frozen comparison; local evidence is in `models-lfm3/benchmark-evidence/best-day-replay-20261028`.
+
+## Final three questions and complete result
+
+| Question | LFM | Qwen 3.5 4B | DeepSeek | Observation |
+|---|---:|---:|---:|---|
+| Receipt count and Drive retention | 1 | 3 | 3 | LFM correctly described retention but wrongly reported two receipts when the reference count was zero; the others gave the count but omitted retention. |
+| Adjustable source-sales chart | 4 | 4 | 4 | All returned correct adjustable charts with the source and currency values; each added extra detail. |
+| Adjustable month-comparison chart | 3 | 3 | 1 | Both local models gave the recorded values but no view; DeepSeek failed execution. |
+| **Total, all 13 questions** | **44/65** | **43/65** | **47/65** | **LFM leads Qwen by one point on this small synthetic set; DeepSeek leads both.** |
+
+Each model ran once on the same frozen runtime and synthetic reference data. This is a stratified, reused question set, not a fresh random sample or real-data semantic audit. The partially masked single-reviewer scoring is subjective; the three-point and one-point differences should not be interpreted as statistical evidence of a general ranking. The DeepSeek failure counts in its score. All three models have substantial answer relevance or completeness problems; LFM's incorrect receipt count is a material safety and quality issue.
+
+The frozen comparison predates the separate oversized-answer and period-chart fixes. A later replay showed the period chart can be produced, but it cannot replace the original model scores. The third-batch masked-input SHA-256 is `00b06de8cac2ba71e5ddded84b38564b7a5c4d80ac3d1f6b2aca3b5d4825bcb9`, and frozen decisions SHA-256 is `333e96422c566d6b8a22e66fef46247948dbd61e51965ff52482f245ba4eb3f0`. The reviewer already knew DeepSeek had failed the final chart, so that answer was not effectively blind.
