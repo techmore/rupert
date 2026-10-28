@@ -18,7 +18,8 @@ module TeamChat
       results.any? do |result|
         data = JSON.parse(result.to_s.partition("\n").last)
         rows = data.fetch('rows')
-        !rows.is_a?(Array) || rows.empty? || rows.any? do |row|
+        meta = data.fetch('meta')
+        !meta.is_a?(Hash) || !rows.is_a?(Array) || rows.empty? || rows.any? do |row|
           !row.is_a?(Hash) || !row['available'].is_a?(Numeric) || ![true, false].include?(row['low'])
         end
       rescue JSON::ParserError, KeyError, TypeError

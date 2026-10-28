@@ -22,6 +22,7 @@ class TeamChatInventoryEvidenceTest < ActiveSupport::TestCase
   test 'empty, malformed, and unknown stock results require a cautious answer' do
     assert TeamChat::InventoryEvidence.uncertain?(["result\n#{JSON.generate(rows: [], meta: {})}"])
     assert TeamChat::InventoryEvidence.uncertain?(['bad result'])
+    assert TeamChat::InventoryEvidence.uncertain?(["result\n#{JSON.generate(rows: [{ available: 3, low: false }])}"])
     assert TeamChat::InventoryEvidence.uncertain?(["result\n#{JSON.generate(rows: [{ available: nil, low: nil }], meta: {})}"])
     assert_not TeamChat::InventoryEvidence.uncertain?(["result\n#{JSON.generate(rows: [{ available: 3, low: false }], meta: {})}"])
   end
