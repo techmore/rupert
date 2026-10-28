@@ -47,14 +47,16 @@ class RateLimitingTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
-  test 'the bearer API is throttled per token, not per IP, when a token is presented' do
+  test 'the API IP limit also applies to rotating and malformed bearer headers' do
     limit = Rack::Attack.throttles['api/ip'].limit
-    limit.times { get '/api/v1/catalog' }
-    get '/api/v1/catalog'
+    limit.times { |i| get '/api/v1/catalog', headers: { 'Authorization' => "Bearer token#{i}" } }
+    get '/api/v1/catalog', headers: { 'Authorization' => 'Malformed header' }
     assert_response :too_many_requests, 'unauthenticated calls share the per-IP bucket'
 
+    Digest::SHA256.stubs(:hexdigest).returns('a' * 64)
+    Digest::SHA256.expects(:hexdigest).with('rupert_not-a-real-token-but-shaped-like-one-000000000').never
     get '/api/v1/catalog', headers: { 'Authorization' => 'Bearer rupert_not-a-real-token-but-shaped-like-one-000000000' }
-    assert_response :unauthorized, 'a presented token uses its own bucket and reaches authentication'
+    assert_response :too_many_requests, 'an exhausted IP bucket is checked before allocating another token bucket'
   end
 
   test 'the MCP endpoint has its own per-token bucket' do
@@ -68,5 +70,20 @@ class RateLimitingTest < ActionDispatch::IntegrationTest
     assert_response :too_many_requests
     get '/api/v1/catalog', headers: headers
     assert_response :unauthorized, 'the REST API bucket is separate'
+  end
+
+  test 'the MCP IP limit applies even when bearer values rotate' do
+    body = { jsonrpc: '2.0', id: 1, method: 'ping' }.to_json
+    limit = Rack::Attack.throttles['mcp/ip'].limit
+    limit.times do |i|
+      post '/mcp', params: body, headers: { 'Authorization' => "Bearer token#{i}", 'Content-Type' => 'application/json' }
+      assert_response :unauthorized
+    end
+    post '/mcp', params: body, headers: { 'Authorization' => 'Malformed', 'Content-Type' => 'application/json' }
+    assert_response :too_many_requests
+    Digest::SHA256.stubs(:hexdigest).returns('a' * 64)
+    Digest::SHA256.expects(:hexdigest).with('another-new-token').never
+    post '/mcp', params: body, headers: { 'Authorization' => 'Bearer another-new-token', 'Content-Type' => 'application/json' }
+    assert_response :too_many_requests
   end
 end

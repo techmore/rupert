@@ -2,7 +2,8 @@
 # frozen_string_literal: true
 
 # Enforce a line-coverage floor on the files a shop depends on most: the sync
-# engine, platform clients, order/money import and the webhook path. Reads the
+# engine, platform clients, order/money import, the webhook path, and the pay,
+# posting, bank reconciliation and timesheet services. Reads the
 # merged SimpleCov result produced by `COVERAGE=1 bin/rails test`.
 #
 #   bin/check-coverage            # exit 1 when any critical file is under its floor
@@ -22,6 +23,12 @@ FLOORS = {
   'app/services/canonical_order_importer.rb' => 80,
   'app/services/inventory_writer.rb' => 85,
   'app/services/money.rb' => 95,
+  # Pay, posting, bank and timesheet paths: a little under their CI values on
+  # 2026-10-25 (80.9, 90.3, 91.5, 92.9) so a regression fails, noise does not.
+  'app/services/employee_pay_week.rb' => 78,
+  'app/services/finance/posting.rb' => 88,
+  'app/services/finance/bank_reconciliation.rb' => 89,
+  'app/services/timesheet_workflow.rb' => 90,
   'app/jobs/sync_job.rb' => 85,
   'app/controllers/concerns/webhooks/shopify_ingestion.rb' => 85,
   'app/jobs/customers_redact_job.rb' => 85,

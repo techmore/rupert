@@ -19,10 +19,6 @@ class ProjectManagementTest < ActionDispatch::IntegrationTest
 
   teardown { Current.reset }
 
-  def sign_in(user)
-    post login_path, params: { email: user.email, password: 'password123' }
-  end
-
   def tenant!
     Current.tenant = @tenant
   end
@@ -300,6 +296,19 @@ class ProjectManagementTest < ActionDispatch::IntegrationTest
     post read_all_notifications_path
     assert_equal 0, Notification.unread_count_for(@worker)
     assert_equal 1, Notification.unread_count_for(@other_worker)
+  end
+
+  test 'notification redirects reject browser-normalized external URLs' do
+    tenant!
+    sign_in(@worker)
+    ["/\t/evil.example/path", "/\n/evil.example/path", "/\r/evil.example/path", '/\\evil.example/path'].each do |url|
+      note = Notification.create!(user: @worker, kind: 'x', title: 'Unsafe', url: url)
+      get notification_path(note)
+      assert_redirected_to notifications_path
+    end
+    note = Notification.create!(user: @worker, kind: 'x', title: 'Safe', url: '/projects/tasks?status=open#board')
+    get notification_path(note)
+    assert_redirected_to '/projects/tasks?status=open#board'
   end
 
   test 'daily reminders cover due and overdue tasks once each' do

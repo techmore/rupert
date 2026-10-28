@@ -26,9 +26,6 @@ gem "turbo-rails"
 # Hotwire's modest JavaScript framework [https://stimulus.hotwired.dev]
 gem "stimulus-rails"
 
-# Build JSON APIs with ease [https://github.com/rails/jbuilder]
-gem "jbuilder"
-
 # Use Redis adapter to run Action Cable in production
 gem "redis", "~> 6.0"
 
@@ -77,19 +74,13 @@ gem "aasm"
 gem "pundit"
 # Soft deletes (keep history on financial/CRM records)
 gem "discard"
-# Audit trail / versioning of critical records
-gem "paper_trail"
 # Used directly (per-request settings caches); ApplicationJob clears it around each job.
 gem "request_store"
-# In-app + email notifications
-gem "noticed"
 # Excel export for ledger/reports/sales
 gem "caxlsx_rails"
 # PDF export for the current-inventory snapshot (Inventory page → Download PDF)
 gem "prawn", "~> 2.5"
 gem "prawn-table", "~> 0.2"
-# Faster JSON serialization
-gem "oj"
 
 # Request throttling (login, webhooks, API, settings) — config/initializers/rack_attack.rb
 gem "rack-attack", "~> 6.7"
@@ -130,15 +121,10 @@ end
 group :test do
   # Coverage for the sync engine and money paths (bin/check-coverage)
   gem "simplecov", require: false
-  # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
-  gem "capybara"
-  gem "selenium-webdriver", ">= 4.14"
   gem "webmock"
   gem "mocha"
   gem "minitest", "~> 6.0"
   gem "minitest-mock"
-  gem "factory_bot_rails"
-  gem "faker"
 end
 
 gem "shopify_app", "~> 23.0"

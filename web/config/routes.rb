@@ -238,6 +238,9 @@ Rails.application.routes.draw do
   patch  '/chat/:room/visibility',                    to: 'team_chat#visibility',      as: :team_chat_visibility
   get    '/chat/:room/messages',                      to: 'team_chat#messages',        as: :team_chat_messages
   post   '/chat/:room/messages',                      to: 'team_chat#create_message'
+  post   '/chat/:room/voice/transcribe',              to: 'team_chat#transcribe_voice', as: :transcribe_team_chat_voice
+  get    '/chat/:room/messages/:id/voice_handoff',    to: 'team_chat#voice_handoff', as: :team_chat_voice_handoff
+  post   '/chat/:room/messages/:id/speech',           to: 'team_chat#speak_message', as: :speak_team_chat_message
   patch  '/chat/:room/messages/:id',                  to: 'team_chat#update_message'
   post   '/chat/:room/messages/:id/cancel', to: 'team_chat#cancel', as: :cancel_team_chat_message
   post   '/chat/:room/typing',                        to: 'team_chat#typing',          as: :team_chat_typing

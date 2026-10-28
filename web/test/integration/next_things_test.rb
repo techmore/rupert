@@ -15,10 +15,6 @@ class NextThingsIntegrationTest < ActionDispatch::IntegrationTest
     sign_in(@admin)
   end
 
-  def sign_in(user, password: 'password')
-    post login_path, params: { email: user.email, password: password }
-  end
-
   test 'every page loads the bar into its own frame after the page' do
     get root_path
     follow_redirect! while response.redirect?

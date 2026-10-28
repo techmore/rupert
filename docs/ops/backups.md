@@ -55,7 +55,7 @@ gap 5).
 | Encrypted copy outside the container (`offhost`) | SER8 host, user timer + the daily cron line | every 6 h and daily 07:17 | 35 sets | loss or corruption of the container | `deploy/ser8/rupert-host-backup-pull.sh` (installed as `~/.local/bin/rupert-backup`), `rupert-offhost-backup.timer` |
 | Mirror on another machine (`offsite`) | a second computer, user timer | every 6 h while that machine is on | 14 sets (and a cloud bucket when `RCLONE_REMOTE` is set) | loss of the SER8 disk, the host or the building | `deploy/offsite/rupert-backup-mirror.sh`, `.timer` |
 | Encrypted copy check (`verify`) | SER8 host, user timer | weekly (Sunday 04:30) | nothing; never decrypts (no key on the host) | damaged, altered or unencrypted copies; a pull that stopped; a rotation not yet picked up | `deploy/ser8/rupert-backup-verify.sh`, `.timer` |
-| Restore drill | a trusted computer, by hand, with the recovery kit | monthly, and after every key rotation | nothing | backups that cannot be restored | `bin/backup-decrypt` (see "Restore drill") |
+| Restore drill | a trusted computer, by hand, with the recovery kit | monthly, and after every key rotation | a non-secret receipt | backups that cannot be decrypted or fail SQLite integrity checks | `bin/backup-decrypt` (see "Restore drill") |
 | Auto-deploy pre-deploy copy | container, root | before each deploy | last 5 | a bad release | `deploy/ser8/rupert-autodeploy.sh` |
 | Google Drive (`BackupJob`) | app | every 6 h, when connected | 7 | off-site copy without a second machine | Settings → Backup. **Not connected**: the OAuth app is in Testing (see `google-backup-verification.md`). |
 
@@ -65,13 +65,17 @@ or Drive is running, a lost SER8 means a lost database.
 ### Growth and disk space
 
 Each snapshot is a full copy (SQLite `VACUUM INTO`), so backup space grows with the database times the number kept.
-The rolling snapshot therefore thins to hourly after two hours (about 46 copies a day instead of 288). Every script
-refuses to run, and reports **Failed** with the reason, when the target disk would drop under `MIN_FREE_MB` (5 GB on
-SER8, 2 GB on the mirror): a backup must never be what fills the disk, because a full disk stops the live database.
+The rolling snapshot therefore thins to hourly after two hours (about 46 copies a day instead of 288). The host pull
+checks the encrypted set size, and the mirror estimates the pending transfer, before reserving `MIN_FREE_MB` (5 GB on
+SER8, 2 GB on the mirror). These preflight checks cannot account for concurrent disk use or a source that grows after
+the estimate; keep monitoring free space independently. A full disk stops the live database.
 If System → Backups shows "skipped: … MB free", free disk space first; the next tick resumes by itself.
 
 Ad-hoc copies taken by hand during deployments live under `/var/backups/rupert/<name>/` in the container and are not
 pruned by anything. Review and delete them when the disk is tight (`du -sh /var/backups/rupert/* | sort -h`).
+The backup scripts remove their own specifically named on-disk temporary work directories after acquiring their locks,
+including leftovers from an interrupted run. Older generic `.work.*` directories are not automatically deleted because
+their provenance is not certain; review them privately. Memory-backed scratch is cleared on reboot.
 
 ## Install
 
@@ -113,9 +117,12 @@ systemctl --user daemon-reload && systemctl --user enable --now rupert-backup-mi
 ```
 
 Settings live in the unit's environment (`systemctl --user edit rupert-backup-mirror.service`): `SSH_HOST`, `OUT`,
-`KEEP`, `MIN_FREE_MB`, and `RCLONE_REMOTE` for a cloud copy (`rclone config` first, e.g. a Backblaze B2 or S3 bucket;
+`KEEP`, `MIN_FREE_MB`, `MAX_AGE_H` (default 30 hours), and `RCLONE_REMOTE` for a cloud copy (`rclone config` first, e.g. a Backblaze B2 or S3 bucket;
 the mirror then runs `rclone sync` of the encrypted files after each pull). The mirror only ever holds ciphertext and
 its sidecars (`*.age`, `*.age.sha256`, `*.age.key`, and the older `*.enc` sets until they age out).
+The mirror checks the newest set's age and verifies each database and matching settings file before reporting success.
+An age-encrypted database and settings file must have the same recorded recipient; legacy sets also need their encrypted
+environment file. The separate, manual restore drill below is still required to test decryption and recovery.
 
 ## Moving from the old, unencrypted host copies
 
@@ -161,12 +168,18 @@ decrypt them. A real drill needs the kit, so it is done by hand on a trusted com
 every key rotation:
 
 1. Copy the newest host set (`rupert-<stamp>.sqlite3.gz.age` plus `.sha256` and `.key`) to the trusted computer.
-2. Run `bin/backup-decrypt --identity-stdin --out drill.sqlite3 rupert-<stamp>.sqlite3.gz.age` and paste the key
+2. Run `bin/backup-decrypt --identity-stdin --out drill.sqlite3 --receipt restore.json rupert-<stamp>.sqlite3.gz.age` and paste the key
    from the kit. It must print `digest ok`, `sqlite integrity_check ok, foreign_key_check clean` and `restored …`.
+   Choose a new receipt path for each drill; the command will not overwrite one from an earlier run.
 3. Optionally boot a non-production copy with the kit's `RAILS_ENCRYPTION_*` values and open Settings → Connections
    to prove encrypted settings read back.
-4. Record the date, set stamp, key fingerprint, how long it took and the result in #420 (no hostnames, keys or data).
-5. `shred -u drill.sqlite3` and close the note.
+4. Copy only `restore.json` to the SER8 host over a private channel, then run
+   `incus file push --mode 0644 --uid 0 --gid 0 restore.json rupert/opt/rupert/web/storage/backups/restore.json`.
+   The receipt records the time, backup filename and public-key fingerprint; it contains no key or restored data.
+   System → Backups marks it overdue after 35 days or a key rotation. It proves decryption and SQLite checks, not
+   that the application was booted or its encrypted settings opened.
+5. Record the date, set stamp, key fingerprint, how long it took and the result in #420 (no hostnames, keys or data).
+6. `shred -u drill.sqlite3` and close the note.
 
 ## Known gaps
 

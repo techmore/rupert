@@ -174,7 +174,7 @@ and [SER8 updater runbook](deploy/ser8/README.md#auto-deploy-rupert-autodeploy).
 
 The SER8 web/worker/backup units and the host-side watcher and off-host backup scripts are under `deploy/`. The pre-Incus droplet units and the original Node/React implementation (`legacy/`) were removed on 2026-10-20; they remain in git history (`git show 03db8bb:legacy/README.md`).
 
-The cutover report records production SQLite as of **2026-10-13** (78,573 rows, 61 tables verified). Live hosting and the October 14 application deployment were verified; see the [deployment receipt](docs/ops/deployment-2026-10-14.md). Read [SQLite and Incus operations](docs/ops/sqlite-incus.md) and the [cutover report](docs/ops/sqlite-migration.md). The PostgreSQL copy is frozen at cutover; switching back after new SQLite writes requires reconciliation.
+The cutover report records production SQLite as of **2026-10-13** (78,573 rows, 61 tables verified). Live hosting and the October 14 application deployment were verified; see the [deployment receipt](docs/ops/history/deployment-2026-10-14.md). Read [SQLite and Incus operations](docs/ops/sqlite-incus.md) and the [cutover report](docs/ops/sqlite-migration.md). The PostgreSQL copy is frozen at cutover; switching back after new SQLite writes requires reconciliation.
 
 ### Optional Docker Compose deployment
 

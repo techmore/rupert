@@ -53,6 +53,14 @@ fail() { echo "$1" >&2; write_status failed "$1"; exit 1; }
 exec 9>"$OUT/.lock"
 flock -n 9 || { echo "previous frequent backup still running; skipping" >&2; exit 0; }
 
+# A killed process cannot run its EXIT trap. Clean only work directories
+# belonging to this script and user, after taking the lock.
+cleanup_work() {
+  [ -d "$1" ] || return 0
+  find "$1" -mindepth 1 -maxdepth 1 -type d -uid "$(id -u)" -name "$2" -exec rm -rf -- {} +
+}
+cleanup_work "$OUT" '.rupert-frequent-work.??????'
+
 # Refuse before doing anything else when backups cannot be encrypted. The recipient is validated before `age -r`.
 RECIPIENT="$(sqlite3 -readonly "$SQLITE_DB" "SELECT recipient FROM backup_encryption_keys WHERE activated_at IS NOT NULL AND retired_at IS NULL ORDER BY activated_at DESC, id DESC LIMIT 1" 2>/dev/null || true)"
 [[ "$RECIPIENT" =~ ^age1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{58}$ ]] \
@@ -78,24 +86,30 @@ need=$(( db_bytes + db_bytes / 4 + MIN_FREE_MB * 1024 * 1024 ))
 [ "$avail" -ge "$need" ] || fail "skipped: $(( avail / 1048576 )) MB free on $OUT, need $(( need / 1048576 )) MB (database $(( db_bytes / 1048576 )) MB + ${MIN_FREE_MB} MB headroom). Free disk space."
 
 TS="$(date +%Y%m%d-%H%M%S)"
+while [ -e "$OUT/rupert-$TS.sqlite3.gz.age" ]; do
+  sleep 1
+  TS="$(date +%Y%m%d-%H%M%S)"
+done
 if [ -d "$SCRATCH" ] && [ "$(free_bytes "$SCRATCH" || echo 0)" -ge $(( db_bytes * 2 )) ]; then
   WORK="$(mktemp -d -p "$SCRATCH" rupert-frequent.XXXXXX)"
 else
-  WORK="$(mktemp -d -p "$OUT" .work.XXXXXX)"
+  WORK="$(mktemp -d -p "$OUT" .rupert-frequent-work.XXXXXX)"
 fi
 SNAP="$WORK/snapshot.sqlite3"
 FINAL="$OUT/rupert-$TS.sqlite3.gz.age"
-trap 'rm -rf "$WORK"; rm -f "$FINAL.partial"' EXIT
+trap 'rm -rf "$WORK"; rm -f "$FINAL.partial" "$FINAL.sha256.partial" "$FINAL.key.partial"' EXIT
 
 sqlite3 "$SQLITE_DB" "VACUUM INTO '$SNAP'" || fail "VACUUM INTO failed"
 [ "$(sqlite3 "$SNAP" 'PRAGMA integrity_check')" = "ok" ] || fail "snapshot failed integrity_check"
 gzip -c "$SNAP" | age -r "$RECIPIENT" -o "$FINAL.partial" || fail "encrypting the snapshot failed"
 [ "$(head -c 21 "$FINAL.partial")" = "age-encryption.org/v1" ] || fail "encrypted snapshot has no age header"
 rm -rf "$WORK"
+( cd "$OUT" && sha256sum "$(basename "$FINAL").partial" | sed 's/\.partial$//' > "$(basename "$FINAL").sha256.partial" )
+printf 'fingerprint %s\nrecipient %s\n' "$KEY_FPR" "$RECIPIENT" > "$FINAL.key.partial"
+chmod 0600 "$FINAL.partial" "$FINAL.sha256.partial" "$FINAL.key.partial"
+mv "$FINAL.sha256.partial" "$FINAL.sha256"
+mv "$FINAL.key.partial" "$FINAL.key"
 mv "$FINAL.partial" "$FINAL"
-( cd "$OUT" && sha256sum "$(basename "$FINAL")" > "$(basename "$FINAL").sha256" )
-printf 'fingerprint %s\nrecipient %s\n' "$KEY_FPR" "$RECIPIENT" > "$FINAL.key"
-chmod 0600 "$FINAL" "$FINAL.sha256" "$FINAL.key"
 
 kept="$(snapshots | wc -l)"
 bytes="$(stat -c %s "$FINAL")"

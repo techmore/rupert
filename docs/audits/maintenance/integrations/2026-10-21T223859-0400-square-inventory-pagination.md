@@ -11,7 +11,7 @@ on `codex/integration-audit-20261021` from `origin/main`.
 
 The latest repository-recorded production read is the October 20 read-only
 inspection at runtime revision `bbf367de` in
-`docs/ops/time-records-audit-2026-10-20.md`; earlier October 17 receipts record
+`docs/ops/history/time-records-audit-2026-10-20.md`; earlier October 17 receipts record
 `96da4700` and `b5e2a40`. Those are dated observations, not a fresh check of
 SER8 today. Current `main` and this proposed patch are not established as built
 or deployed. Rust source was removed from current `main` in PR #176 on October

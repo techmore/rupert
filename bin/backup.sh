@@ -36,6 +36,16 @@ KEEP="${KEEP:-32}"
 SCRATCH="${SCRATCH:-/dev/shm}"
 install -d -m 0700 "$OUT"
 chmod 0700 "$OUT"
+exec 9>"$OUT/.backup.lock"
+flock -w 900 9 || { echo "another backup held the lock for 15 minutes" >&2; exit 1; }
+
+# EXIT traps cannot run after SIGKILL or power loss. Remove only our own
+# specifically named work directories after acquiring the backup lock.
+cleanup_work() {
+  [ -d "$1" ] || return 0
+  find "$1" -mindepth 1 -maxdepth 1 -type d -uid "$(id -u)" -name "$2" -exec rm -rf -- {} +
+}
+cleanup_work "$OUT" '.rupert-backup-work.??????'
 
 KEY_FPR=""
 json_escape() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | tr -d '\n'; }
@@ -59,7 +69,11 @@ RECIPIENT="$(sqlite3 -readonly "$SQLITE_DB" "SELECT recipient FROM backup_encryp
 command -v age >/dev/null 2>&1 || fail "refused: the age tool is not installed in the container (apt-get install age); no unencrypted backup was written."
 KEY_FPR="$(printf '%s' "$RECIPIENT" | sha256sum | cut -c1-16 | sed -E 's/(....)/\1 /g; s/ $//')"
 
-TS="$(date +%Y%m%d-%H%M)"
+TS="$(date +%Y%m%d-%H%M%S)"
+while [ -e "$OUT/rupert-$TS.sqlite3.gz.age" ]; do
+  sleep 1
+  TS="$(date +%Y%m%d-%H%M%S)"
+done
 DB_OUT="$OUT/rupert-$TS.sqlite3.gz.age"
 SET_OUT="$OUT/settings-$TS.sql.age"
 ENV_OUT="$OUT/env-$TS.age"
@@ -73,29 +87,31 @@ need=$(( db_bytes + db_bytes / 4 + MIN_FREE_MB * 1024 * 1024 ))
 if [ -d "$SCRATCH" ] && [ "$(free_bytes "$SCRATCH" || echo 0)" -ge $(( db_bytes * 2 )) ]; then
   WORK="$(mktemp -d -p "$SCRATCH" rupert-backup.XXXXXX)"
 else
-  WORK="$(mktemp -d -p "$OUT" .work.XXXXXX)"
+  WORK="$(mktemp -d -p "$OUT" .rupert-backup-work.XXXXXX)"
 fi
 SNAP="$WORK/snapshot.sqlite3"
-trap 'rm -rf "$WORK"; rm -f "$DB_OUT.partial" "$SET_OUT.partial" "$ENV_OUT.partial"' EXIT
+trap 'rm -rf "$WORK"; for dest in "$DB_OUT" "$SET_OUT" "$ENV_OUT"; do rm -f "$dest.partial" "$dest.sha256.partial" "$dest.key.partial"; done' EXIT
 
 # encrypt DEST: stdin → DEST (age), then DEST.sha256 and DEST.key. The ciphertext must start with the age header.
 encrypt() {
   local dest="$1"
   age -r "$RECIPIENT" -o "$dest.partial" || return 1
   [ "$(head -c 21 "$dest.partial")" = "age-encryption.org/v1" ] || return 1
-  mv -f "$dest.partial" "$dest"
-  ( cd "$(dirname "$dest")" && sha256sum "$(basename "$dest")" > "$(basename "$dest").sha256" )
-  printf 'fingerprint %s\nrecipient %s\n' "$KEY_FPR" "$RECIPIENT" > "$dest.key"
-  chmod 0600 "$dest" "$dest.sha256" "$dest.key"
+  ( cd "$(dirname "$dest")" && sha256sum "$(basename "$dest").partial" | sed 's/\.partial$//' > "$(basename "$dest").sha256.partial" ) || return 1
+  printf 'fingerprint %s\nrecipient %s\n' "$KEY_FPR" "$RECIPIENT" > "$dest.key.partial" || return 1
+  chmod 0600 "$dest.partial" "$dest.sha256.partial" "$dest.key.partial" || return 1
+  # The data filename appears only after both metadata files are in place.
+  mv -f "$dest.sha256.partial" "$dest.sha256" && mv -f "$dest.key.partial" "$dest.key" && mv -f "$dest.partial" "$dest"
 }
 
 # Consistent snapshot while the app is writing (VACUUM INTO never blocks readers/writers for long).
 sqlite3 "$SQLITE_DB" "VACUUM INTO '$SNAP'" || fail "VACUUM INTO failed"
 [ "$(sqlite3 "$SNAP" 'PRAGMA integrity_check')" = "ok" ] || fail "snapshot failed integrity_check"
-gzip -c "$SNAP" | encrypt "$DB_OUT" || fail "encrypting the database snapshot failed"
 sqlite3 "$SNAP" ".mode insert settings" "SELECT * FROM settings" | encrypt "$SET_OUT" || fail "encrypting the settings dump failed"
-rm -rf "$WORK"
 encrypt "$ENV_OUT" < "$ENV_SRC" || fail "encrypting the env copy failed"
+# Publish the database last: its presence marks a complete set for copy scripts.
+gzip -c "$SNAP" | encrypt "$DB_OUT" || fail "encrypting the database snapshot failed"
+rm -rf "$WORK"
 
 # Plaintext sets from before encryption are moved aside (not deleted: the owner decides when, docs/ops/backups.md),
 # so nothing that pulls "the newest set" can pick one up again.

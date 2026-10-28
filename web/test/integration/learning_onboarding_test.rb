@@ -96,6 +96,10 @@ class LearningOnboardingTest < ActionDispatch::IntegrationTest
     assert_select 'aside#getting-started'
   end
 
+  test 'workspace admins do not see the instance owner backup key task' do
+    assert_not GettingStartedChecklist.new(@user).items.any? { |item| item.key == 'backup_key' }
+  end
+
   test 'work pages offer a tour that is recorded per account over JSON' do
     get sales_path
     assert_response :success

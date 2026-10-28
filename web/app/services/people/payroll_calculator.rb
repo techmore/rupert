@@ -15,10 +15,11 @@ module People
   # hand-entered amount. It is not a tax or withholding calculation; real
   # deductions wait for qualified payroll review (#424, #425).
   class PayrollCalculator
-    TAX_ESTIMATE = 0.15
+    TAX_ESTIMATE = BigDecimal('0.15')
     WORKED_TYPES = %w[regular overtime].freeze
 
-    # Rebuilds the payslips for a draft pay run. Returns the payslips.
+    # Rebuilds the generated payslips for a draft pay run; manual payslips (bonus, commission, off-cycle) are kept
+    # as entered. Returns the payslips.
     def self.generate!(pay_run)
       raise ActiveRecord::RecordNotFound unless pay_run.tenant_id == Current.tenant_id
 
@@ -27,7 +28,7 @@ module People
         pay_run.reload
         raise ArgumentError, 'Only draft pay runs can be regenerated' unless pay_run.draft?
 
-        pay_run.payslips.destroy_all
+        pay_run.payslips.where(manual: false).destroy_all
 
         rules = PayRules.load(pay_run.tenant_id)
         pay_run.employees_without_rate = []
@@ -54,7 +55,7 @@ module People
 
     # Applies the placeholder 15% estimate to every payslip that has none.
     def self.apply_default_deductions(pay_run)
-      pay_run.payslips.each do |slip|
+      pay_run.payslips.where(manual: false).each do |slip|
         next if slip.deductions_cents.positive?
 
         deductions = (slip.gross_cents * TAX_ESTIMATE).round

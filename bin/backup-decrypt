@@ -2,13 +2,15 @@
 # Decrypt and verify one Rupert backup file (#421, restore drill #420). Run it on a TRUSTED computer with the owner's
 # recovery kit, never on the server.
 #
-#   bin/backup-decrypt --identity-file KEYFILE [--out PATH] BACKUP.age
-#   bin/backup-decrypt --identity-stdin        [--out PATH] BACKUP.age     (paste the AGE-SECRET-KEY-1… line, then Ctrl-D)
+#   bin/backup-decrypt --identity-file KEYFILE [--out PATH] [--receipt PATH] BACKUP.age
+#   bin/backup-decrypt --identity-stdin        [--out PATH] [--receipt PATH] BACKUP.age
 #
 # The private key is read from a file (mode 0600 or 0400) or from standard input, never from the command line, where
 # it would land in shell history and the process list. This script refuses an argument that looks like a key.
 #
-# Steps, any failure stops with a non-zero exit and leaves no output file:
+# Decryption and integrity failures stop with a non-zero exit and leave no output file.
+# If writing an optional receipt fails after restoration, the verified output remains for review.
+# Steps:
 #   1. BACKUP.age.sha256, when present, must match the file (it was written when the backup was made);
 #   2. BACKUP.age.key, when present, must name the same public key as the private key given (else: wrong kit, and the
 #      message names the fingerprint to look for);
@@ -22,21 +24,28 @@ umask 077
 usage() { sed -n '4,6p' "$0" | sed 's/^# //' >&2; exit 64; }
 die() { echo "backup-decrypt: $1" >&2; exit "${2:-1}"; }
 
-identity_file=""; from_stdin=0; out=""; input=""
+identity_file=""; from_stdin=0; out=""; input=""; receipt=""
 while [ $# -gt 0 ]; do
   case "$1" in
     AGE-SECRET-KEY-*|*AGE-SECRET-KEY-1*) die "refusing a private key on the command line; use --identity-file or --identity-stdin" 64 ;;
     --identity-file) identity_file="${2:-}"; shift 2 || usage ;;
     --identity-stdin) from_stdin=1; shift ;;
     --out) out="${2:-}"; shift 2 || usage ;;
+    --receipt) receipt="${2:-}"; shift 2 || usage ;;
     -h|--help) usage ;;
     -*) die "unknown option $1" 64 ;;
     *) [ -z "$input" ] || usage; input="$1"; shift ;;
   esac
 done
 [ -n "$input" ] || usage
-case "$identity_file$out" in *AGE-SECRET-KEY-1*) die "refusing a private key on the command line; use --identity-file or --identity-stdin" 64 ;; esac
+case "$identity_file$out$receipt" in *AGE-SECRET-KEY-1*) die "refusing a private key on the command line; use --identity-file or --identity-stdin" 64 ;; esac
 [ -f "$input" ] || die "no such backup file: $input"
+if [ -n "$receipt" ]; then
+  [[ "$input" == *.sqlite3.gz.age ]] || die "a restore receipt requires an encrypted SQLite database backup"
+  [ -f "$input.sha256" ] && [ -f "$input.key" ] || die "a restore receipt requires both checksum and key metadata"
+  [ ! -e "$receipt" ] || die "$receipt already exists; choose another receipt path"
+  command -v python3 >/dev/null 2>&1 || die "python3 is required to write a restore receipt"
+fi
 if [ "$from_stdin" = 1 ] && [ -n "$identity_file" ]; then die "use --identity-file or --identity-stdin, not both" 64; fi
 command -v age >/dev/null 2>&1 || die "age is not installed (apt install age)"
 command -v age-keygen >/dev/null 2>&1 || die "age-keygen is not installed (it comes with the age package)"
@@ -104,4 +113,20 @@ fi
 chmod 0600 "$tmp"
 mv "$tmp" "$out"
 trap - EXIT
+if [ -n "$receipt" ]; then
+  # The receipt records only recovery evidence, never keys or restored data.
+  # Exclusive creation prevents an old success from being silently replaced.
+  python3 - "$receipt" "$(basename "$input")" "$fpr" <<'PY'
+import datetime, json, os, sys
+path, filename, fingerprint = sys.argv[1:]
+report = {'layer': 'restore', 'state': 'ok', 'at': datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds'),
+          'message': 'Recovery kit decrypted this database; SQLite integrity and foreign-key checks passed.',
+          'file': filename, 'encrypted': True, 'key_fingerprint': fingerprint}
+fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+with os.fdopen(fd, 'w') as output:
+    json.dump(report, output)
+    output.write('\n')
+PY
+  echo "restore receipt written to $receipt" >&2
+fi
 echo "restored $out from $(basename "$input") with key $fpr"

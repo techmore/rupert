@@ -55,7 +55,7 @@ class AuthorizationSafetyNetTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test 'in production an ungated action is reported instead of breaking the page' do
+  test 'in production an ungated action is reported and fails closed' do
     with_routing do |set|
       set.draw do
         root to: 'home#index'
@@ -66,9 +66,8 @@ class AuthorizationSafetyNetTest < ActionDispatch::IntegrationTest
       reported = []
       Rails.stubs(:env).returns(ActiveSupport::EnvironmentInquirer.new('production'))
       Rails.error.stubs(:report).with { |error, **| reported << error.class }
-      get '/probe/ungated'
-      assert_response :ok
-      assert_equal [Pundit::AuthorizationNotPerformedError], reported
+      assert_raises(Pundit::AuthorizationNotPerformedError) { get '/probe/ungated' }
+      assert_includes reported, Pundit::AuthorizationNotPerformedError
     end
   end
 

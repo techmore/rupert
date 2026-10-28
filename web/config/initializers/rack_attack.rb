@@ -30,27 +30,29 @@ class Rack::Attack
     req.ip if req.post? && (req.path.start_with?('/api/webhooks/') || req.path.start_with?('/webhooks/'))
   end
 
-  # Bearer API: per token when present (hashed, never the secret), per IP otherwise.
+  # Bearer API: per token when present (hashed, never the secret), plus a per-IP ceiling.
+  # Check the IP first so blocked requests with rotating tokens cannot create an
+  # unbounded number of token cache entries in the file store.
+  throttle('api/ip', limit: 300, period: 1.minute) do |req|
+    req.ip if req.path.start_with?('/api/v1/')
+  end
   throttle('api/token', limit: 300, period: 1.minute) do |req|
     next unless req.path.start_with?('/api/v1/')
 
     token = req.get_header('HTTP_AUTHORIZATION').to_s[/\ABearer (\S+)\z/i, 1]
     token ? Digest::SHA256.hexdigest(token) : nil
   end
-  throttle('api/ip', limit: 60, period: 1.minute) do |req|
-    req.ip if req.path.start_with?('/api/v1/') && req.get_header('HTTP_AUTHORIZATION').blank?
-  end
   # MCP endpoint for AI assistants: its own per-token bucket (hashed secret),
   # separate from the REST API so a chatty assistant cannot starve an
-  # integration, plus a tight per-IP cap for calls without a token.
+  # integration, plus a per-IP cap for all calls.
+  throttle('mcp/ip', limit: 150, period: 1.minute) do |req|
+    req.ip if req.path == '/mcp'
+  end
   throttle('mcp/token', limit: 120, period: 1.minute) do |req|
     next unless req.path == '/mcp'
 
     token = req.get_header('HTTP_AUTHORIZATION').to_s[/\ABearer (\S+)\z/i, 1]
     token ? Digest::SHA256.hexdigest(token) : nil
-  end
-  throttle('mcp/ip', limit: 30, period: 1.minute) do |req|
-    req.ip if req.path == '/mcp' && req.get_header('HTTP_AUTHORIZATION').blank?
   end
   # Uploads: the inbox keeps encrypted originals, so sending files has its own,
   # tighter buckets on top of the general API and per-IP ceilings.

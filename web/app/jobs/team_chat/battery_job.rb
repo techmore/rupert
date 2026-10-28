@@ -4,7 +4,7 @@ module TeamChat
   # A test run started from Test questions: one question set asked to one bot, graded, saved to Model scores.
   # The same as `rake team_chat:battery`, in the background. One run at a time per workspace.
   class BatteryJob < ApplicationJob
-    queue_as :default
+    queue_as :battery
 
     def perform(user_id, set, agent)
       user = User.find_by(id: user_id)

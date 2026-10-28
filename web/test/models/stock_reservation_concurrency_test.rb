@@ -8,8 +8,7 @@ class StockReservationConcurrencyTest < ActiveSupport::TestCase
   self.use_transactional_tests = false
 
   setup do
-    @tenant = Tenant.create!(name: 'Concurrent holds', subdomain: "concurrent-holds-#{SecureRandom.hex(4)}")
-    Current.tenant = @tenant
+    @tenant = create_workspace('Concurrent holds')
     @product = ShopifyProduct.create!(id: SecureRandom.uuid, title: 'Concurrent product')
     @variant = ShopifyVariant.create!(productId: @product.id, sku: 'CONCURRENT', title: 'Concurrent widget')
     @location = Location.create!(source: 'shopify', externalId: 'concurrent', name: 'Warehouse')

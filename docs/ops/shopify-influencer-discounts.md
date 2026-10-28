@@ -2,7 +2,7 @@
 
 Open **Marketing → Influencers → a collaboration → Create Shopify code**. Marketing must be enabled and the collaboration Active with a contactable influencer.
 
-See the [October 16 SER8 deployment record](shopify-influencer-discounts-deployment-2026-10-16.md) for validation and remaining Shopify permission setup.
+See the [October 16 SER8 deployment record](history/shopify-influencer-discounts-deployment-2026-10-16.md) for validation and remaining Shopify permission setup.
 
 ## Connection and access
 

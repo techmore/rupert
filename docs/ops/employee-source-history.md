@@ -1,6 +1,6 @@
 # Employee source history
 
-Release status: **deployed and verified on October 17, 2026**. Live migration, retained-data checks, complete Square/C-Trax source reads, authenticated employee/reviewer access/render checks and private pre/post-deployment recovery verification succeeded. See the [deployment and recovery receipt](employee-source-history-deployment-2026-10-17.md) for evidence and limits.
+Release status: **deployed and verified on October 17, 2026**. Live migration, retained-data checks, complete Square/C-Trax source reads, authenticated employee/reviewer access/render checks and private pre/post-deployment recovery verification succeeded. See the [deployment and recovery receipt](history/employee-source-history-deployment-2026-10-17.md) for evidence and limits.
 
 ## Find every available source record
 

@@ -18,10 +18,10 @@ Demo weeks also carry fictional credited sales and employee 50%-off card redempt
 
 ## Commission and 50%-off card bonus demo
 
-Demo weeks now also carry fictional credited sales and employee 50%-off card redemptions so the compensation display can be demonstrated. `TimesheetCompensation` derives a 1% commission on credited sales and a $10 bonus per card redemption on read; neither is posted to payroll. To demonstrate for sdolbec1@gmail.com, run the demo task with that account as the linked employee (and provide a distinct active reviewer and an account admin actor in the same workspace):
+Demo weeks now also carry fictional credited sales and employee 50%-off card redemptions so the compensation display can be demonstrated. `TimesheetCompensation` derives a 1% commission on credited sales and a $10 bonus per card redemption on read; neither is posted to payroll. To demonstrate for <employee@example.com>, run the demo task with that account as the linked employee (and provide a distinct active reviewer and an account admin actor in the same workspace):
 
 ```sh
-bundle exec rails 'timesheets:demo[sdolbec1@gmail.com,<workspace-subdomain>,<reviewer@example.com>,<admin@example.com>]'
+bundle exec rails 'timesheets:demo[<employee@example.com>,<workspace-subdomain>,<reviewer@example.com>,<admin@example.com>]'
 ```
 
 The task output now prints `sales_cents`, `commission_cents`, `card_redemptions`, `card_bonus_cents` and `compensation_total_cents` per demo week, and the timesheet detail, list and CSV views show the same figures.

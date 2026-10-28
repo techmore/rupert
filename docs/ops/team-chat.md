@@ -338,7 +338,7 @@ Qwen3.6-35B-A3B Unsloth UD-Q3_K_S (15.4 GB). These were removed from the gateway
 ### Historical: @qwen used Qwen3.6-35B-A3B (2026-10-22)
 
 The test battery put Qwen3.6-35B-A3B first among local models (finance 4.62, general 4.33, about 15 s; see
-`docs/ops/local-ai-report-2026-10-22.md`), so it now answers as @qwen. It fills the 780M on its own (about 2 GB left), which
+`docs/ops/history/local-ai-report-2026-10-22.md`), so it now answers as @qwen. It fills the 780M on its own (about 2 GB left), which
 the one-model-at-a-time gateway already handles. Qwen3.5-4B stays on the gateway as the `qwen-4b` test model. The bot key's
 grades and 💰 badge follow the model, so they carry over from the runs made under `qwen-35b`.
 
