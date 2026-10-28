@@ -321,7 +321,9 @@ class TeamChatBatteryTest < ActiveSupport::TestCase
     assert_equal 21, TeamChat::Battery.items.size
     finance = TeamChat::Battery.items(TeamChat::Battery.config_for('finance'))
     assert_equal 35, finance.size, 'f22-f24 ask about the store registers; f25-f35 call the metric tool'
-    assert_match(/no cost of goods/, finance.find { |item| item.id == 'f20' }.expect)
+    profit_expectation = finance.find { |item| item.id == 'f20' }.expect
+    assert_match(/cost.of.goods/, profit_expectation)
+    assert_match(/expense currency is unknown/, profit_expectation)
     assert_equal %w[sales comparison money_out tax books honesty daily], finance.map(&:cadence).uniq
     assert_raises(ArgumentError) { TeamChat::Battery.config_for('../etc/passwd') }
     assert_raises(ArgumentError) { TeamChat::Battery.config_for('nope') }
