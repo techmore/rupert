@@ -95,6 +95,16 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal 'I could not complete my answer. Please try again.', reply.reload.body
   end
 
+  test 'an alert lookup tells the model that an empty list is not inventory coverage' do
+    requests = script_model({ tool: 'list_alerts', arguments: {} }, { text: 'No open alerts were returned.' })
+    reply = ask('@rupert are there low-stock alerts?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    tool_message = requests.last['messages'].find { |message| message['role'] == 'tool' }
+    assert_includes tool_message['content'], 'no matching alerts do not prove stock is sufficient'
+  end
+
   test 'timekeeping tool delivers worked hours even when sales are unavailable' do
     today = Date.current.iso8601
     requests = script_model({ tool: 'time_keeping_report', arguments: { from: today, to: today } }, { text: 'I checked timekeeping.' })

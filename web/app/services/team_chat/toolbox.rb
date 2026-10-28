@@ -178,6 +178,10 @@ module TeamChat
         @financial_evidence << evidence
         return JSON.generate(evidence)
       end
+      if name == 'list_alerts'
+        return AskRupert::Redactor.personal("#{outcome.text}\nLow-stock alerts are not a complete inventory check; " \
+          "no matching alerts do not prove stock is sufficient.\n#{JSON.generate(with_dollars(outcome.data))}")
+      end
       AskRupert::Redactor.personal("#{outcome.text}\n#{JSON.generate(with_dollars(outcome.data))}")
     end
 

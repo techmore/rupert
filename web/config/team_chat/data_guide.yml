@@ -65,7 +65,8 @@ topics:
     tools: [list_alerts, inventory_search, stock_comparison, stock_movements, swipesimple_items, metric, order_queues, purchase_orders]
     card: >-
       Stock levels per platform and location are separate observations: never add or "fix" them. list_alerts gives
-      open low-stock alerts (paginated: say how many there are in total), inventory_search finds an item,
+      open low-stock alerts (paginated: say how many there are in total); no matching alerts do not prove inventory
+      is sufficient or fully checked. inventory_search finds an item,
       stock_comparison compares platforms for one SKU. stock_movements lists stock changes (what moved, why, before
       and after) and bulk material lots in grams.
   - key: tasks
