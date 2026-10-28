@@ -126,6 +126,7 @@ module TeamChat
     def complete_daily_arguments(name, arguments)
       return arguments unless name.to_s == 'sales_summary' && arguments.is_a?(Hash)
       return arguments unless @question.match?(/\b(?:daily\s+(?:sales|orders|revenue|breakdown|series)|day[- ]by[- ]day|each day|per day)\b/i)
+      return arguments if @question.match?(/\b(?:no|without|omit|exclude|skip)\s+(?:(?:a|the|any)\s+)?(?:daily|day[- ]by[- ]day|per[- ]day)\b/i)
 
       args = arguments.deep_stringify_keys
       args['include_daily'] = true unless args.key?('include_daily')

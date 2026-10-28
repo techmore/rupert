@@ -135,6 +135,18 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal true, run.tool_results.find { |entry| entry['name'] == 'sales_summary' }['arguments']['include_daily']
   end
 
+  test 'daily-series completion respects an explicit request to omit the breakdown' do
+    today = Date.current.iso8601
+    script_model({ tool: 'sales_summary', arguments: { from: today, to: today } }, { text: 'Here is the total.' })
+    reply = ask('@rupert give me daily sales without a daily breakdown')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    run = TeamChat::Run.find_by!(message_id: reply.id)
+    args = run.tool_results.find { |entry| entry['name'] == 'sales_summary' }['arguments']
+    assert_not args.key?('include_daily')
+  end
+
   test 'empty open purchase order lookup survives the financial guard' do
     data = { view: 'orders', rows: [], meta: { has_more: false }, totals: [{ placed_total_cents: 0 }] }
     Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'No purchase orders', data: data))
