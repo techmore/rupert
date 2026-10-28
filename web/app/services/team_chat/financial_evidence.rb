@@ -648,7 +648,7 @@ module TeamChat
       return facts unless dates.size == 2 && text.match?(/\b(?:from|for)\s+#{Regexp.escape(dates[0])}\s+(?:through|to)\s+#{Regexp.escape(dates[1])}\b/)
       return facts if text.match?(/\b(?:compar\w*|versus|vs|also|plus)\b/)
 
-      prefix = if text.match?(/\bproducts?\b/) && text.match?(/\b(?:highest|top|best|leading)\b/)
+      prefix = if text.match?(/\bproducts?\b/) && text.match?(/\b(?:highest|top|best|leading|lead|led)\b/)
         'Product revenue:'
       elsif text.match?(/\brefund\s+transactions?\b/)
         'Recorded refund'

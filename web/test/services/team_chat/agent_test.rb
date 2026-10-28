@@ -1088,6 +1088,13 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal({ 'name' => 'top_products', 'from' => '2026-08-01', 'to' => '2026-08-03', 'compare' => 'none' }, entry['arguments'])
     assert_includes reply.reload.body, 'Product revenue: Tea: 23.45 USD'
     assert_not_includes reply.body, 'could not check product sales'
+
+    script_model({ text: 'I could not check product sales.' })
+    reply = ask('@rupert Which products led recorded revenue from 2026-08-01 to 2026-08-03, separated by currency?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'top_products', entry.dig('arguments', 'name')
+    assert_includes reply.reload.body, 'Product revenue: Tea: 23.45 USD'
   end
 
   test 'an explicitly dated refund transaction request fetches the matching metric' do

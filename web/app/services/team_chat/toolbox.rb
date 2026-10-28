@@ -149,7 +149,7 @@ module TeamChat
       from, to = dates.map { |date| Date.iso8601(date) }
       return unless from <= to && (to - from).to_i <= 366
 
-      name = if text.match?(/\bproducts?\b/) && text.match?(/\b(?:highest|top|best|leading)\b/) && text.match?(/\b(?:sales|revenue)\b/)
+      name = if text.match?(/\bproducts?\b/) && text.match?(/\b(?:highest|top|best|leading|lead|led)\b/) && text.match?(/\b(?:sales|revenue)\b/)
         'top_products'
       elsif text.match?(/\brefund\s+transactions?\b/) && text.match?(/\b(?:amounts?|counts?|rates?)\b/)
         'refund_rate'

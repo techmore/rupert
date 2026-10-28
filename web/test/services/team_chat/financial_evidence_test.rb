@@ -289,6 +289,9 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     text = 'Highest product sales from 2026-08-01 to 2026-08-03'
     ordered = TeamChat::FinancialEvidence.prioritize_requested_facts(rows, text)
     assert_equal ['Product revenue: Tea', 'Gross sales', 'Product revenue: Coffee'], ordered.pluck('meaning')
+    led = 'Which products led recorded revenue from 2026-08-01 to 2026-08-03, separated by currency?'
+    assert_equal ['Product revenue: Tea', 'Gross sales', 'Product revenue: Coffee'],
+      TeamChat::FinancialEvidence.prioritize_requested_facts(rows, led).pluck('meaning')
     assert_equal rows, TeamChat::FinancialEvidence.prioritize_requested_facts(rows, "#{text} versus 2026-07-01")
   end
 
