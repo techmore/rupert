@@ -22,6 +22,21 @@ class TeamChatFinancialViewEvidenceTest < ActiveSupport::TestCase
     TeamChat::FinancialViewEvidence.check(view.deep_stringify_keys, evidence, question: question)
   end
 
+  test 'source chart fallback uses recorded source and currency values and rejects conflicts' do
+    travel_to Time.zone.parse('2026-10-27 12:00') do
+      question = "Show a bar chart of last week's recorded sales by source"
+      view = TeamChat::FinancialViewEvidence.source_fallback(@evidence, question: question)
+      assert_equal 'bar_chart', view['kind']
+      assert_equal ['Source', 'Gross sales USD'], view['columns']
+      assert_equal [['rupert_pos', '40.0'], ['shopify', '72.0']], view['rows']
+      assert_nil check(view, @evidence, question)
+      assert_nil TeamChat::FinancialViewEvidence.source_fallback(@evidence, question: 'Chart profit by source last week')
+      conflict = @evidence.deep_dup
+      conflict.first['facts'] << conflict.first['facts'].first.merge('value' => '999')
+      assert_nil TeamChat::FinancialViewEvidence.source_fallback(conflict, question: question)
+    end
+  end
+
   test 'source chart ties the value to the source, currency, period and unit' do
     view = { kind: 'bar_chart', title: 'Sales 2026-10-19 to 2026-10-25', columns: ['Source', 'Gross sales USD'],
              rows: [['Shopify', 72], ['Rupert POS', 40]] }

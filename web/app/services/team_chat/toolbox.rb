@@ -73,6 +73,13 @@ module TeamChat
 
     def financial? = @financial
 
+    def add_verified_view_fallback!
+      return if @views.any?
+
+      view = FinancialViewEvidence.source_fallback(@financial_evidence, question: @question)
+      @views << view if view
+    end
+
     def names = definitions.map(&:name)
 
     def activity_for(name)

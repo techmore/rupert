@@ -725,6 +725,23 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal TeamChat::Agent::UNCHECKED_RECORDS, reply.reload.body
   end
 
+  test 'a failed source chart can fall back to verified recorded source figures' do
+    travel_to Time.zone.parse('2026-10-27 12:00') do
+      args = { from: '2026-10-19', to: '2026-10-25' }
+      data = args.merge(lines: [{ source: 'shopify', currency: 'USD', orders: 1, gross_cents: 7200, tax_cents: 0 },
+                                { source: 'rupert_pos', currency: 'USD', orders: 1, gross_cents: 4000, tax_cents: 0 }],
+        totals_by_currency: [], refunded_orders_by_source: {})
+      Mcp::Tools::SalesSummary.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'sales', data: data))
+      script_model({ tool: 'sales_summary', arguments: args }, { text: 'I checked the sales.' })
+      reply = ask("@rupert Show a chart of last week's gross sales by source")
+      TeamChat::Agent.new(reply, config: team_chat_config).run
+      view = reply.reload.meta.fetch('views').first
+      assert_equal 'bar_chart', view['kind']
+      assert_equal [['rupert_pos', '40.0'], ['shopify', '72.0']], view['rows']
+      assert_includes view['note'], 'Missing records do not prove zero'
+    end
+  end
+
   test 'a nonempty receipt count does not replace a request for receipt identities' do
     data = { queues: [{ name: 'Expense receipts waiting for review', count: 2 }],
              low_stock_available: false, oldest_unshipped: [] }

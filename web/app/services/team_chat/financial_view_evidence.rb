@@ -13,6 +13,50 @@ module TeamChat
 
     FINANCIAL = /\b(?:sales|revenue|gross|income|profit|margin|expense|expenses|tax|refund|cash|money|financial|amount|cost|price)\b/i
 
+    # Build a useful fallback from typed source facts if a small model could
+    # not produce a valid view. Never infer missing source/currency values.
+    def source_fallback(evidence, question:)
+      text = question.to_s.downcase
+      return unless text.match?(/\b(?:chart|graph|plot)\b/) && text.match?(/\b(?:sales|revenue)\b/) && text.match?(/\bby source\b/)
+      return if text.match?(/\b(?:net|refund|tax|profit|compare|versus|except|exclude|only)\b/)
+
+      periods = { 'last week' => 'last_week', 'last month' => 'last_month', 'yesterday' => 'yesterday' }.select { |phrase, _| text.include?(phrase) }
+      return unless periods.one?
+
+      window = Metrics::Window.resolve(period: periods.values.first)
+      period = { 'from' => window.from.iso8601, 'to' => window.to.iso8601 }
+      facts = evidence.flat_map { |item| Array(item['facts']) }.select do |fact|
+        fact['period'] == period && fact['meaning'] == 'Gross sales (paid or fulfilled orders)' && fact['unit'] == 'money'
+      end
+      cells = {}
+      facts.each do |fact|
+        source = Metrics::SOURCES.find { |name| fact['source'].to_s.start_with?("#{name} canonical orders") }
+        next unless source && FinancialEvidence::CURRENCIES.include?(fact['currency'])
+
+        key = [source, fact['currency']]
+        value = number(fact['value'])
+        return unless value && (!cells.key?(key) || cells[key] == value)
+
+        cells[key] = value
+      end
+      return if cells.empty?
+
+      currencies = cells.keys.map(&:last).uniq.sort
+      return if currencies.size + 1 > Views::MAX_COLUMNS
+
+      rows = cells.keys.map(&:first).uniq.sort.map do |source|
+        [source] + currencies.map { |currency| cells[[source, currency]]&.to_s('F') }
+      end
+      args = { 'kind' => 'bar_chart', 'title' => "Sales by source #{period['from']} to #{period['to']}",
+               'columns' => ['Source'] + currencies.map { |currency| "Gross sales #{currency}" }, 'rows' => rows }
+      view = Views.build(args, known_text: JSON.generate(evidence))
+      return if check(view, evidence, question: question)
+
+      with_safe_caption(view, evidence, question: question)
+    rescue ArgumentError, TypeError
+      nil
+    end
+
     def check(view, evidence, question:)
       if view['kind'] == 'html' && [question, view['title'], view['note'], view['html']].compact.join(' ').match?(FINANCIAL)
         return 'Financial views must use a structured, verifiable table or chart.'

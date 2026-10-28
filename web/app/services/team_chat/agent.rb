@@ -510,6 +510,7 @@ module TeamChat
       meta['verify'] = @verify_meta if @verify_meta
       meta['financial_evidence'] = @toolbox.financial_evidence if @toolbox.financial?
       meta['prose_checked'] = @prose_checked if @toolbox.financial?
+      @toolbox.add_verified_view_fallback!
       meta['views'] = @toolbox.views if @toolbox.views.any?
       follow_ups = Suggestions.follow_ups(topics: Array(@topics).map(&:key), tools: @toolbox.tools_used, asked: request_text)
       meta['follow_ups'] = follow_ups if follow_ups.any?
