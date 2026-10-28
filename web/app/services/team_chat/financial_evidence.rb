@@ -169,6 +169,9 @@ module TeamChat
       when 'business_pulse'
         period = window({ 'from' => data['date'], 'to' => data['date'] }, Date.current.iso8601, Date.current.iso8601)
         metric_rows(out, data.dig('sales', 'gross_sales_by_currency'), 'gross_sales', ORDER_SOURCE, period, 'sales.gross_sales_by_currency')
+        if data.dig('sales', 'gross_sales_by_currency').is_a?(Array) && data.dig('sales', 'gross_sales_by_currency').empty?
+          out['gaps'] << 'No paid or fulfilled order sales rows were returned for today; missing records do not prove zero sales.'
+        end
         pulse = { 'date' => period['from'], 'sections' => {} }
         { 'alerts' => 'Open alerts', 'sync' => 'Failing syncs', 'overdue_tasks' => 'Overdue tasks' }.each do |key, label|
           section = data[key]

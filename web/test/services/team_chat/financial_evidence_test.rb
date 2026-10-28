@@ -82,6 +82,8 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
                 overdue_tasks: { available: true, count: 3 } }
     item = evidence(payload, tool: 'business_pulse', args: {})
     text = render(item)
+    assert_includes text, 'No paid or fulfilled order sales rows were returned for today'
+    assert_includes text, 'missing records do not prove zero sales'
     assert_includes text, 'Open alerts: 0'
     assert_includes text, 'Failing syncs: unavailable'
     assert_includes text, 'Overdue tasks: 3'
