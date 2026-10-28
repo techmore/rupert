@@ -105,6 +105,7 @@ questions:
     cadence: quarterly
     module: bookkeeping
     question: How did last quarter go, and is it locked in the books?
+    expect: Summarize the stored order sales for last quarter by currency and report whether that quarter is locked using the close checklist's lock row; mention any recorded changes after locking and limitations in the evidence.
     checks: [{ tool: period_review, args: { period: last_quarter } }, { tool: compliance_check, args: { include_ok: true }, select_area: Quarter close, required_title_suffix: ': Lock the quarter' }]
     needs: ["period_review:sales[].gross_cents", "period_review:change[].gross_change_percent", "compliance_check:required_row.title", "compliance_check:required_row.status", "compliance_check:required_row.detail"]
   - id: c1

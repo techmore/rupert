@@ -13,6 +13,7 @@ questions:
     cadence: sales
     module: sell
     question: How much have we sold so far today?
+    expect: Report today's stored order sales by currency and identify their scope; acknowledge that the reference does not establish the separate store-register total or prove zero sales when orders are missing.
     checks: [{ tool: sales_summary, args: { from: today.from, to: today.to } }]
     needs: ["sales_summary:totals_by_currency[].gross_cents", "sales_summary:totals_by_currency[].orders"]
   - id: f03
@@ -26,20 +27,23 @@ questions:
     cadence: sales
     module: sell
     question: What was our average order value last week?
+    expect: Give the provided average order value separately for each currency and the relevant period; if it is unavailable, say so without inventing or combining amounts.
     checks: [{ tool: sales_summary, args: { from: last_week.from, to: last_week.to } }]
     needs: ["sales_summary:totals_by_currency[].average_order_cents", "sales_summary:totals_by_currency[].orders"]
   - id: f05
     cadence: sales
     module: sell
     question: What were our top 5 products by revenue last month?
+    expect: Report the top recorded products and their revenues separately by currency for last month; do not add currencies or claim missing product records prove no sales.
     checks: [{ tool: sales_summary, args: { from: last_month.from, to: last_month.to, top_products: 5 } }]
-    needs: ["sales_summary:top_products[].name", "sales_summary:top_products[].revenue_cents"]
+    needs: ["sales_summary:top_products[].currency", "sales_summary:top_products[].name", "sales_summary:top_products[].revenue_cents"]
   - id: f06
     cadence: sales
     module: sell
     question: What was our best sales day in the last 30 days, and how much did we take that day?
+    expect: Identify the highest recorded order-sales day and amount for each currency, within the reference window; acknowledge missing gross figures and distinguish recorded order sales from the separate store registers.
     checks: [{ tool: sales_summary, args: { include_daily: true } }]
-    needs: ["sales_summary:daily[].date", "sales_summary:daily[].gross_cents", "sales_summary:daily[].orders"]
+    needs: ["sales_summary:daily[].date", "sales_summary:daily[].currency", "sales_summary:daily[].gross_cents", "sales_summary:daily[].orders"]
   - id: f07
     cadence: sales
     module: sell
@@ -51,6 +55,7 @@ questions:
     cadence: sales
     module: sell
     question: What are our gross sales year to date?
+    expect: Give the recorded year-to-date order gross separately by currency and identify its scope; do not combine currencies or assert missing sources had zero sales.
     checks: [{ tool: period_review, args: { period: year_to_date } }]
     needs: ["period_review:sales[].gross_cents", "period_review:sales[].currency"]
   - id: f09
@@ -78,18 +83,21 @@ questions:
     cadence: money_out
     module: bookkeeping
     question: How much did we refund last month?
+    expect: Report the recorded refund amounts separately by currency for last month, and distinguish an empty or incomplete reference from proof that no refunds occurred.
     checks: [{ tool: period_review, args: { period: last_month } }]
     needs: ["period_review:refunds[].amount_cents", "period_review:refunds[].currency"]
   - id: f13
     cadence: money_out
     module: sell
     question: How many orders were refunded in the last 30 days, and from which sources?
+    expect: Report the reference's count of refunded orders by source for the stated window; do not invent sources or treat missing source data as proof of zero refunds.
     checks: [sales_summary]
     needs: ["sales_summary:refunded_orders_by_source"]
   - id: f14
     cadence: money_out
     module: bookkeeping
     question: How much did we spend on expenses last month?
+    expect: Give last month's recorded expense total when it is visible, noting that the ledger output does not identify its currency; otherwise explain that the amount is unavailable.
     checks: [{ tool: period_review, args: { period: last_month } }]
     needs: ["period_review:activity.expenses_cents"]
   - id: f15
@@ -124,6 +132,7 @@ questions:
     cadence: books
     module: bookkeeping
     question: Are any daily money reviews or approvals overdue?
+    expect: Identify relevant daily-review or approval items and their supported status; if the reference does not show a relevant item or its due state, say that it could not be established.
     checks: [compliance_check]
     needs: ["compliance_check:items[].title", "compliance_check:items[].status"]
   - id: f20
