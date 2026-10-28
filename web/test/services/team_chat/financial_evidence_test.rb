@@ -298,6 +298,7 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     agent.instance_variable_set(:@execution, context)
     agent.send(:publish, 'Profit $999.99')
     agent.send(:publish, '123')
+    agent.send(:publish, '<tool')
     toolbox = mock('financial toolbox')
     toolbox.stubs(:financial?).returns(true)
     agent.instance_variable_set(:@toolbox, toolbox)

@@ -68,6 +68,33 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal TeamChat::Toolbox::MAX_CALLS, TeamChat::Run.find_by!(message_id: reply.id).tool_results.size
   end
 
+  test 'malformed tool markup falls back to scoped task and inventory evidence' do
+    Projects::Task.create!(title: 'Recount tea shelf', priority: 'high')
+    script_model({ tool: 'list_tasks', arguments: { query: 'tea' } },
+      { tool: 'inventory_search', arguments: { query: 'tea' } },
+      { text: "<tool_call>\n<function=inventory_search>\n<parameter=query>\n</parameter>" })
+    reply = ask('@rupert is there a tea shelf task and is tea low on stock?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal 'done', reply.reload.status
+    assert_includes reply.body, 'I could not complete my answer'
+    assert_includes reply.body, 'Task lookup (query: tea)'
+    assert_includes reply.body, 'Recount tea shelf'
+    assert_includes reply.body, 'availability is unknown'
+    assert_not_includes reply.body, '<tool_call>'
+    assert_not_includes reply.body, '<function='
+  end
+
+  test 'malformed tool markup without usable lookups asks for another try' do
+    script_model({ text: '<tool_call><function=unknown>' })
+    reply = ask('@rupert help me check this')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal 'I could not complete my answer. Please try again.', reply.reload.body
+  end
+
   test 'timekeeping tool delivers worked hours even when sales are unavailable' do
     today = Date.current.iso8601
     requests = script_model({ tool: 'time_keeping_report', arguments: { from: today, to: today } }, { text: 'I checked timekeeping.' })
@@ -100,6 +127,19 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_includes requests.first['messages'].first['content'], 'Never add, subtract, average, convert'
   end
 
+  test 'malformed tool markup cannot pass financial prose verification' do
+    Core::Order.create!(source: 'shopify', source_order_id: 'chat-malformed', occurred_at: Time.current, gross_cents: 21483, currency: 'USD').mark_paid!
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'today', source: 'shopify', compare: 'none' } },
+      { text: 'Gross sales today were $214.83. <tool_call><function=metric>' })
+    reply = ask('@rupert show gross sales today')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, '214.83 USD'
+    assert_not_includes reply.body, '<tool_call>'
+    assert_equal false, reply.meta['prose_checked']
+  end
+
   test 'financial verification retains separate inventory observations' do
     product = ShopifyProduct.create!(id: 'chat-product', title: 'Tea')
     variant = ShopifyVariant.create!(id: 'chat-variant', productId: product.id, sku: 'CHAT-TEA', title: '50g')
@@ -116,6 +156,21 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_includes reply.body, 'Tea shelf (shopify): 9 available'
     assert_not_includes reply.body, '999 available'
     assert_equal false, reply.meta['prose_checked']
+  end
+
+  test 'financial verification retains task lookup results' do
+    Projects::Task.create!(title: 'Recount tea shelf', priority: 'high')
+    Core::Order.create!(source: 'shopify', source_order_id: 'chat-task-order', occurred_at: Time.current, gross_cents: 21483, currency: 'USD').mark_paid!
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'today', source: 'shopify', compare: 'none' } },
+      { tool: 'list_tasks', arguments: { query: 'tea' } }, { text: 'Sales were $214.83, and tea has no task.' })
+    reply = ask('@rupert show sales today and tea tasks')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, '214.83 USD'
+    assert_includes reply.body, 'Task lookup (query: tea)'
+    assert_includes reply.body, 'Recount tea shelf'
+    assert_not_includes reply.body, 'tea has no task'
   end
 
   test 'a reply whose figures all come from its tools has nothing flagged' do

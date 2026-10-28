@@ -404,7 +404,7 @@ module TeamChat
 
     def publish(text)
       # Never expose draft figures before their semantic evidence is checked.
-      return if @toolbox&.financial? || text.match?(/[\d$€£¥%]/)
+      return if @toolbox&.financial? || text.match?(/[<\d$€£¥%]/)
 
       now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       return if now - @last_publish < PUBLISH_EVERY
@@ -419,17 +419,29 @@ module TeamChat
 
     def finish(text, started)
       body = AskRupert::ReplyFormat.tidy(without_echo(text))
+      malformed_tool_text = body.match?(/<(?:tool_call|function|parameter)(?:[=>\s]|\z)/i)
       if @toolbox.financial?
         # The bot's own words when every figure checks out against the facts; else Ruby lists the facts.
-        checked = FinancialEvidence.checked_prose(body, @toolbox.financial_evidence)
+        checked = FinancialEvidence.checked_prose(body, @toolbox.financial_evidence) unless malformed_tool_text
         @prose_checked = checked.present?
         inventory = InventoryEvidence.render(@toolbox.inventory_results)
-        if inventory.present?
-          # Financial prose validation cannot certify product/stock bindings.
+        task = TaskEvidence.render(@execution.run.reload.tool_results)
+        if inventory.present? || task.present?
+          # Financial prose validation cannot certify task or stock claims.
           @prose_checked = false
-          body = [FinancialEvidence.render(@toolbox.financial_evidence), inventory].join("\n\n")
+          body = [FinancialEvidence.render(@toolbox.financial_evidence), task, inventory].compact.join("\n\n")
         else
           body = checked || FinancialEvidence.render(@toolbox.financial_evidence)
+        end
+      elsif malformed_tool_text
+        # A model may emit tool-call markup as ordinary text after tool choice
+        # is disabled. Never display it as an answer or execute it as a call.
+        task = TaskEvidence.render(@execution.run.reload.tool_results)
+        inventory = InventoryEvidence.render(@toolbox.inventory_results)
+        body = if task.present? || inventory.present?
+          ['I could not complete my answer. These are the available lookup results:', task, inventory].compact.join("\n\n")
+        else
+          'I could not complete my answer. Please try again.'
         end
       elsif FinancialEvidence.financial_text?(body) && (@toolbox.tools_used.empty? || NumberCheck.call(body, @toolbox.results).any?)
         # Money talk with figures no tool gave (the conversation itself is not evidence).
