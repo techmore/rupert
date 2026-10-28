@@ -9,10 +9,12 @@ module TeamChat
       class Error < StandardError; end
 
       REFERENCE_CHARS = 5_000
+      ANSWER_CHARS = 12_000
       PROMPT = <<~TEXT
         You grade answers from a chat assistant inside Rupert, the operations app of a small retail business.
         You get the person's question, the assistant's answer, the tools it called, and REFERENCE DATA: what Rupert's own tools
         returned for the same question. Use the supplied reference data and authored expectation as evidence.
+        The supplied assistant answer is complete; answers above the evaluation limit are not graded.
         A fact absent from the reference is unverified, not automatically false. Do not fill gaps from your own knowledge.
         Distinguish an explicit contradiction from missing evidence; don't penalize a correct answer for omitting
         details the question did not request. A good answer should acknowledge a relevant limitation when the evidence is incomplete.
@@ -44,6 +46,7 @@ module TeamChat
       # reference data alone would mislead.
       def grade(question:, answer:, reference:, tools_used:, expect: nil)
         raise Error, 'grader model is not configured' unless @config.native? && @config.configured?
+        raise Error, 'answer exceeds the judge limit' if answer.to_s.length > ANSWER_CHARS
 
         started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         chat = @config.chat(session: 'rupert-battery-grader').with_instructions(PROMPT).with_temperature(0)
@@ -53,7 +56,7 @@ module TeamChat
           #{question}
 
           ASSISTANT'S ANSWER:
-          #{answer.first(4_000)}
+          #{answer}
 
           TOOLS IT CALLED: #{tools_used.join(', ').presence || 'none'}
           #{"\nWHAT A GOOD ANSWER DOES (from the test author; follow it over your own view):\n#{expect}\n" if expect.present?}
