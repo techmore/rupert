@@ -42,6 +42,15 @@ class TeamChatScorecardTest < ActiveSupport::TestCase
     assert cards.last.overall['speed'] < qwen.overall['speed']
   end
 
+  test 'reports real timing behind the speed score and can sort by any axis' do
+    run!('qwen3.5-4b', 'finance', [row('d2', 3, seconds: 10.0), row('d3', 3, seconds: 20.0), row('f15', 3, seconds: 130.0)])
+    run!('lfm3-1.7b', 'finance', [row('d2', 5, seconds: 40.0), row('d3', 5, seconds: 50.0), row('f15', 5, seconds: 60.0)])
+    qwen = TeamChat::Scorecard.call.find { |card| card.model == 'qwen3.5-4b' }
+    assert_equal [20.0, 130.0, 130.0, 1, 3], [qwen.timing.median, qwen.timing.p95, qwen.timing.slowest, qwen.timing.over_limit, qwen.timing.answered]
+    assert_equal %w[lfm3-1.7b qwen3.5-4b], TeamChat::Scorecard.call(sort: 'quality').map(&:model)
+    assert_equal %w[qwen3.5-4b lfm3-1.7b], TeamChat::Scorecard.call(sort: 'speed').map(&:model), 'Qwen has the faster median here'
+  end
+
   test 'partial runs are left out, and a model that only failed shows with reliability 0 and no quality' do
     run!('gemma-4-e4b', 'default (part)', [row('d2', 5)])
     run!('gemma-4-e4b', 'default', [row('d2', nil, status: 'failed', seconds: 0)])

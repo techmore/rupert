@@ -47,6 +47,21 @@ class TeamChatLeaderboardTest < ActiveSupport::TestCase
     assert_equal %w[deepseek-v4.1-flash qwen3.6-35b-a3b], tied.map(&:model).sort, 'ties share the medal'
   end
 
+  test 'a column medal goes to the highest score, and to nobody when that score rests on too few questions' do
+    thin = [['d5', 5], ['d6', 5]] # Stock, two questions only
+    broad = [['d5', 3], ['d5', 3], ['d5', 3]] # Stock, three questions
+    run!('flint-40b', 'flint', 'default', thin)
+    run!('qwen3.5-4b', 'qwen', 'default', broad)
+    cells = TeamChat::Leaderboard.call.to_h { |row| [row.model, row.cells['stock']] }
+    assert_equal 100, cells['flint-40b'].score
+    assert_not cells['flint-40b'].best, 'the top score is on two questions, so no medal'
+    assert_equal 60, cells['qwen3.5-4b'].score
+    assert_not cells['qwen3.5-4b'].best, 'a lower score never wears the medal'
+    run!('gemma-26b', 'gemma', 'default', [['d5', 5]] * 3)
+    cells = TeamChat::Leaderboard.call.to_h { |row| [row.model, row.cells['stock']] }
+    assert cells['gemma-26b'].best, 'a top score on three questions earns it'
+  end
+
   test 'no trophy under the minimum number of graded questions' do
     run!('gemma-4-e4b', 'gemma', 'default', [['d2', 5]] * 5)
     rows = TeamChat::Leaderboard.call

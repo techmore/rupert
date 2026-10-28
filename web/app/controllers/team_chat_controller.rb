@@ -275,8 +275,8 @@ class TeamChatController < AuthenticatedController
     runs = runs.where(set_name: @run_set) if @run_set
     @runs = runs.limit(60).to_a
     @leaderboard = TeamChat::Leaderboard.call
-    @scorecard = TeamChat::Scorecard.call
     @score_axis = TeamChat::Scorecard::AXES.key?(params[:axis].to_s) ? params[:axis].to_s : 'quality'
+    @scorecard = TeamChat::Scorecard.call(sort: @score_axis)
     @bank_scores = TeamChat::QuestionBank.scores
   end
 

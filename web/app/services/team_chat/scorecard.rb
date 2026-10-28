@@ -22,23 +22,27 @@ module TeamChat
     # Hash the scale so a table is only compared with another produced by the same rules.
     SCALE = "quality=(grade-1)/4*9;speed=log(#{FAST_SECONDS}s..#{SLOW_SECONDS}s);reliability=answered/attempted;tool_use;grounding".freeze
 
-    Card = Struct.new(:model, :handle, :where, :overall, :modules, :graded, :change, :tested_at, keyword_init: true)
+    Card = Struct.new(:model, :handle, :where, :overall, :modules, :graded, :change, :tested_at, :timing, keyword_init: true)
+    # Real seconds behind the speed score: the median and slow tail of answers, how many ran past the limit, and model load time.
+    Timing = Struct.new(:median, :p95, :slowest, :over_limit, :answered, :load, keyword_init: true)
 
     module_function
 
-    def call
+    def call(sort: 'quality')
       runs = Leaderboard.latest_runs
       previous = previous_runs(runs)
       runs.group_by(&:model).filter_map do |model, list|
-        overall = scores(list.flat_map(&:results_list))
+        results = list.flat_map(&:results_list)
+        overall = scores(results)
         next if overall.values.compact.empty?
 
-        modules = list.flat_map(&:results_list).group_by { |result| Leaderboard.column_for(result) }.transform_values { |rows| scores(rows) }
+        modules = results.group_by { |result| Leaderboard.column_for(result) }.transform_values { |rows| scores(rows) }
         before = previous.select { |run| run.model == model }
         Card.new(model: model, handle: Leaderboard.handle_for(model, list), where: list.first.engine == 'local_gateway' ? 'local' : 'cloud',
           overall: overall, modules: modules, graded: list.sum { |run| run.results_list.count { |row| row['grade'] } },
-          change: before.empty? ? {} : change(overall, scores(before.flat_map(&:results_list))), tested_at: list.filter_map(&:started_at).max)
-      end.sort_by { |card| [-(card.overall['quality'] || -1), -(card.overall['speed'] || -1)] }
+          change: before.empty? ? {} : change(overall, scores(before.flat_map(&:results_list))), tested_at: list.filter_map(&:started_at).max,
+          timing: timing(results))
+      end.sort_by { |card| [-(card.overall[sort] || -1), -(card.overall['quality'] || -1)] }
     end
 
     # One 0–9 score per axis for a set of saved results; nil where nothing was measured.
@@ -54,6 +58,16 @@ module TeamChat
         'tool_use' => (scale(done.count { |row| Array(row['tools']).any? }.to_f / done.size) if done.any?),
         'grounding' => (scale(done.count { |row| Array(row['unverified']).empty? }.to_f / done.size) if done.any?)
       }
+    end
+
+    def timing(results)
+      done = results.select { |row| row['status'].blank? || row['status'] == 'done' }
+      times = done.filter_map { |row| row['seconds'].to_f if row['seconds'].to_f.positive? }.sort
+      loads = done.filter_map { |row| row['load_seconds'].to_f if row['load_seconds'].to_f.positive? }.sort
+      return Timing.new(answered: 0, over_limit: 0) if times.empty?
+
+      Timing.new(median: times[times.size / 2].round(1), p95: times[[(times.size * 0.95).ceil - 1, 0].max].round(1), slowest: times.last.round(1),
+        over_limit: times.count { |value| value > SLOW_SECONDS }, answered: times.size, load: (loads[loads.size / 2].round(1) if loads.any?))
     end
 
     def scale(fraction) = (fraction.clamp(0.0, 1.0) * 9).round

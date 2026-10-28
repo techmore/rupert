@@ -2233,3 +2233,12 @@ body.tour-active { overflow-x:hidden; }
 @media (max-width:639px) { .item-hero-facts { grid-template-columns:1fr; } }
 .item-cost-edit { width:min(40rem,100%); }
 .item-cost-form { display:grid;gap:.4rem;max-width:16rem;margin:.5rem auto 0;text-align:left; }
+
+/* Model scoreboard (0-9 cells). Level is set from the score so colour never carries the meaning alone: the number is always printed. */
+.score-cell { display:inline-flex;align-items:baseline;gap:.25rem;min-width:2.4rem;justify-content:flex-end;padding:.1rem .45rem;border-radius:.4rem;font-variant-numeric:tabular-nums;font-weight:600;color:var(--color-ink); }
+.score-cell[data-level="high"] { background:color-mix(in srgb,var(--color-fern) 16%,transparent);color:var(--color-fern); }
+.score-cell[data-level="low"] { background:color-mix(in srgb,var(--color-clay) 16%,transparent);color:var(--color-clay); }
+.score-cell[data-level="none"] { color:var(--color-taupe);font-weight:400; }
+.score-sticky { position:sticky;left:0;background:var(--color-surface,#fff);z-index:1; }
+.score-time { font-variant-numeric:tabular-nums; }
+.statusbar-scores { flex:none; }

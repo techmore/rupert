@@ -12,6 +12,9 @@
       <span class="statusbar-latest"><strong data-team-chat-badge-target="author" hidden></strong> <span data-team-chat-badge-target="latest" hidden></span></span>
     <% end %>
   <% end %>
+  <% if team_chat_badge_available? %>
+    <%= link_to team_chat_scores_path(anchor: 'scorecard'), class: 'statusbar-item statusbar-scores', title: 'Model scoreboard', aria: { label: 'Model scoreboard' } do %><span aria-hidden="true">🏆</span><span>Scores</span><% end %>
+  <% end %>
   <span class="statusbar-spacer"></span>
   <%= render 'shared/statusbar_vitals' if Current.user.super_admin? %>
   <%= link_to feedback_reports_path, class: 'statusbar-item', aria: { label: 'Report a bug or send a request', expanded: 'false', haspopup: 'dialog', controls: 'feedback-panel' }, title: 'Report a bug or request', data: { action: 'click->feedback#toggle', feedback_target: 'trigger', feedback_ignore: '' } do %><%= navigation_icon('bug', css_class: 'nav-symbol statusbar-icon') %><span class="statusbar-label">Report a problem</span><% end %>
