@@ -395,6 +395,16 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     end
   end
 
+  test 'last import answers preserve the inbox evidence when other tools are called' do
+    script_model({ tool: 'list_uploads', arguments: {} }, { tool: 'order_queues', arguments: {} },
+      { tool: 'compliance_check', arguments: {} }, { text: 'I checked the inbox.' })
+    reply = ask('@rupert What happened to the last file I tried to import?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'No uploads were returned'
+    assert_includes reply.body, 'cannot determine what happened'
+    assert_not_includes reply.body, 'Processing queues'
+  end
+
   test 'timekeeping tool delivers worked hours even when sales are unavailable' do
     today = Date.current.iso8601
     requests = script_model({ tool: 'time_keeping_report', arguments: { from: today, to: today } }, { text: 'I checked timekeeping.' })

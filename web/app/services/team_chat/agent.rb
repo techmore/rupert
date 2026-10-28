@@ -452,6 +452,8 @@ module TeamChat
         body = 'I could not verify cash flow from the available tool results. Recorded sales or expenses alone do not establish cash in and out; check recorded bank movements on the Cash flow page.'
       elsif cash_forecast_question?
         body = 'I cannot verify a cash forecast or predict when cash will run out from the available tool results. Recorded sales and tax alone do not establish bank balances or future cash movements. Check the Cash forecast page and its underlying assumptions.'
+      elsif UploadEvidence.last_upload_question?(request_text) && @toolbox.tools_used.include?('list_uploads')
+        body = UploadEvidence.render_last(@execution.run.reload.tool_results) || 'I could not verify the latest upload from the available inbox lookup.'
       elsif ComplianceEvidence.timesheets_and_backup_question?(request_text)
         entries = @execution.run.reload.tool_results
         timesheets = ComplianceEvidence.render_focused_count(entries, ComplianceEvidence::TIMESHEETS_TITLE) || 'I could not verify the timesheet approval count.'
