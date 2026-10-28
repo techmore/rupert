@@ -258,9 +258,11 @@ module TeamChat
         raise Grader::Error, "reference tool #{name} unavailable" unless tool&.read_only && tool.available_to?(token)
 
         outcome = tool.new(token: token).call(args)
-        raise Grader::Error, "reference tool #{name} could not be checked" unless coverage.checkable_data?(outcome.data)
-        evidence[name] = outcome.data
-        text = AskRupert::Redactor.personal("#{outcome.text}\n#{JSON.generate(outcome.data)}")
+        data = coverage.reference_data(outcome.data, check)
+        raise Grader::Error, "reference tool #{name} could not be checked" unless coverage.checkable_data?(data)
+        evidence[name] = data
+        summary = check.is_a?(Hash) && check['select_title'].present? ? '' : outcome.text
+        text = AskRupert::Redactor.personal("#{summary}\n#{JSON.generate(data)}")
         raise Grader::Error, "reference tool #{name} output exceeds the judge limit" if text.length > Grader::REFERENCE_CHARS
 
         "#{name}(#{JSON.generate(args)}):\n#{text}"

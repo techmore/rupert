@@ -74,6 +74,26 @@ class TeamChatBatteryCoverageTest < ActiveSupport::TestCase
     assert_equal ['fixture_read:rows[].missing?'], report.questions.first.missing_needs
   end
 
+  test 'filtered needs require the named row and accept an explicit zero' do
+    coverage = TeamChat::BatteryCoverage.new(user: @user, items: [])
+    path = 'items[title=Timesheets awaiting approval].count'
+    unrelated = { items: [{ title: 'Other check', count: 4 }] }
+    matching = { items: [{ title: 'Other check', count: 4 }, { title: 'Timesheets awaiting approval', count: 0 }] }
+    refute coverage.need_present?(unrelated, path)
+    refute coverage.need_present?({ items: [] }, path)
+    assert coverage.need_present?(matching, path)
+    refute coverage.need_present?({ items: [{ title: 'Timesheets awaiting approval' }] }, path)
+  end
+
+  test 'a selected compliance reference contains only its named row' do
+    coverage = TeamChat::BatteryCoverage.new(user: @user, items: [])
+    data = { items: [{ title: 'Other', status: 'ok' }, { title: 'Target', status: 'watch', count: 0 }] }
+    check = { 'tool' => 'compliance_check', 'select_title' => 'Target' }
+    assert_equal({ items: [{ title: 'Target', status: 'watch', count: 0 }] }, coverage.reference_data(data, check))
+    assert_equal({ items: [] }, coverage.reference_data(data, check.merge('select_title' => 'Missing')))
+    refute coverage.need_present?(coverage.reference_data(data, check.merge('select_title' => 'Missing')), 'items[title=Missing].status')
+  end
+
   test 'an unavailable check is an error' do
     FakeTool.tool_name = 'fixture_read'
     FakeTool.available = false

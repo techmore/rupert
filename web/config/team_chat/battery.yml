@@ -106,14 +106,14 @@ questions:
     cadence: compliance
     module: team
     question: Are there timesheets waiting for approval?
-    checks: [compliance_check]
-    needs: ["compliance_check:items[].title", "compliance_check:items[].status"]
+    checks: [{ tool: compliance_check, args: { include_ok: true }, select_title: Timesheets awaiting approval }]
+    needs: ["compliance_check:items[title=Timesheets awaiting approval].status", "compliance_check:items[title=Timesheets awaiting approval].count"]
   - id: c3
     cadence: compliance
     module: system
     question: Is our document retention to Google Drive working?
-    checks: [compliance_check]
-    needs: ["compliance_check:items[].title", "compliance_check:items[].status"]
+    checks: [{ tool: compliance_check, args: { include_ok: true }, select_title: Google Drive document retention }]
+    needs: ["compliance_check:items[title=Google Drive document retention].status", "compliance_check:items[title=Google Drive document retention].detail"]
   - id: o1
     cadence: orders
     module: stock
