@@ -18,7 +18,7 @@ module TeamChat
       return unless text.match?(/\b(?:chart|graph|plot)\b/) && text.match?(/\b(?:gross sales|gross revenue)\b/)
       return unless text.match?(/\blast month\b/) && text.match?(/\b(?:month before|previous month|prior month)\b/)
       return if text.match?(/\b(?:no|without|omit|skip)\s+(?:(?:a|the|any)\s+)?(?:chart|graph|plot)\b/)
-      return if text.match?(/\b(?:net|refund|tax|profit|except|exclude|only|shopify|square|manual|ctrax|swipesimple|products?|locations?|stores?)\b/)
+      return if text.match?(/\b(?:net|refunds?|tax(?:es)?|profits?|margins?|expenses?|costs?|cash|payments?|income|except|exclude|only|shopify|square|manual|ctrax|swipesimple|products?|locations?|stores?)\b/)
       return if text.match?(/\b(?:usd|cad|eur|gbp|aud|nzd|chf|cny|hkd|sgd|mxn|brl|zar|inr|also|plus)\b|\bby\s+(?:source|channel)\b/)
       return if text.match?(/\brupert[ _-]?pos\b|\b\d{4}-\d{2}-\d{2}\b/)
 
