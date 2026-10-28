@@ -47,6 +47,13 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_empty item['facts']
   end
 
+  test 'online daily close rows are not described as in-person registers' do
+    payload = @period.merge(stores: [{ store: 'Online (Shopify)', kind: 'shopify', currency: 'USD', gross_cents: 1000, notes: [] }])
+    text = render(evidence(payload, tool: 'daily_close', args: @period))
+    assert_includes text, 'Online (Shopify); daily-close row'
+    assert_not_includes text, 'in-person register'
+  end
+
   test 'empty current metric does not answer using an implicit previous period' do
     previous = (Date.current - 1).iso8601
     payload = data.merge(values: [], compared_with: { from: previous, to: previous, values: [{ value: 1234, currency: 'USD' }] })
@@ -128,7 +135,7 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
       values: [{ currency: 'USD', value: nil, sources: [{ source: 'square', effective_rate_percent: 0.0 },
                                                          { source: 'shopify', effective_rate_percent: nil }] }] } }
     item = evidence(payload, tool: 'metric', args: { name: 'effective_tax_rate', period: 'today' })
-    assert_includes render(item), '0% USD'
+    assert_includes render(item), '0% (USD group)'
     assert_includes render(item), 'square canonical orders'
     assert_includes render(item), 'unknown is not zero'
     assert_equal 1, item['facts'].size
@@ -198,7 +205,7 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
 
   test 'refund rates remain percentages rather than money or percentage points' do
     item = evidence(data(-12.5).merge(metric: 'refund_rate'), args: { name: 'refund_rate', period: 'today', source: 'shopify' })
-    assert_includes render(item), '-12.5% USD'
+    assert_includes render(item), '-12.5% (USD group)'
     assert_includes render(item), 'percentage of gross sales'
     assert_equal 'percent', item['facts'].sole['unit']
   end
@@ -218,6 +225,8 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_equal ['Gross sales (paid or fulfilled orders)', 'Order tax', 'Paid or fulfilled order count'], item['facts'].pluck('meaning')
     assert_equal 3, item['facts'].pluck('id').uniq.size
     assert_includes render(item), '1.00 CAD'
+    assert_includes render(item), 'Paid or fulfilled order count: 1 (CAD group)'
+    assert_not_includes render(item), 'order count: 1 CAD'
   end
 
   test 'review expenses with no currency cannot masquerade as USD or profit' do
@@ -249,7 +258,7 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     payload = data.merge(source: nil, metric: 'sales_by_source', values: [{ currency: 'USD', sources: [{ source: 'square', gross_cents: 100, share_percent: 25 }] }])
     item = evidence(payload, args: { name: 'sales_by_source', period: 'today' })
     assert_empty evidence(payload.merge(source: 'shopify'), args: { name: 'sales_by_source', period: 'today', source: 'shopify' })['facts']
-    assert_includes render(item), '25% USD'
+    assert_includes render(item), '25% (USD group)'
     assert_includes render(item), 'square canonical orders'
     assert_includes render(item), 'Share of gross sales in this currency'
   end

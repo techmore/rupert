@@ -2,7 +2,7 @@
 
 module Mcp
   module Tools
-    # "How much did the store make?" The in-person registers, the same figures as the Daily close page
+    # "How much did the store make?" The same source rows as the Daily close page
     # (DailyCloseSummary): each store on its own row (SwipeSimple register, C-Trax stores, Shopify and Square
     # registers), never added together. sales_summary and metric cover online orders, Square and Rupert POS
     # only and never include the SwipeSimple or C-Trax registers.
@@ -12,8 +12,8 @@ module Mcp
 
       tool 'daily_close',
         title: 'Store daily close',
-        description: 'In-person store sales from the registers, the same figures as the Daily close page: one row per store ' \
-                     '(the SwipeSimple register, C-Trax stores, and the Shopify and Square registers) with gross sales (after ' \
+        description: 'Daily close rows, the same figures as the Daily close page: one row per store or online source ' \
+                     '(the SwipeSimple register, C-Trax stores, and Shopify and Square source rows) with gross sales (after ' \
                      'discounts, before tax and tips), refunds, net sales, tax collected, tips, cash and card. Use it for "how ' \
                      'much did the store make", register, takings, cash, card or tips questions. Stores are never added ' \
                      'together. A null amount is unknown, not zero; a store with no day stored is missing, not a zero day. ' \

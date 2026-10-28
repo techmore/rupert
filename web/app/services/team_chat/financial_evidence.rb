@@ -136,7 +136,7 @@ module TeamChat
             next
           end
           Array(row['notes']).each { |note| out['gaps'] << "#{store}: #{AskRupert::Redactor.personal(note.to_s).first(240)}" }
-          [row, index, "#{store}; in-person register, separate from online orders and from every other store"]
+          [row, index, "#{store}; daily-close row, kept separate from other rows and not added to canonical orders"]
         end
         # Most useful first, so a long answer drops tips and refunds before net sales.
         DAILY_CLOSE.each do |field, meaning|
@@ -446,7 +446,8 @@ module TeamChat
         whole, fraction = number.to_s('F').split('.')
         value = fact['unit'] == 'money' ? "#{whole}.#{fraction.to_s.ljust(2, '0')}" : number.to_s('F').delete_suffix('.0')
         value += '%' if fact['unit'] == 'percent'
-        "- #{fact['meaning']}: #{value} #{fact['currency']} (#{fact['source']}; #{fact.dig('period', 'from')} to #{fact.dig('period', 'to')} #{fact['timezone']})."
+        suffix = fact['unit'] == 'money' ? fact['currency'] : "(#{fact['currency']} group)"
+        "- #{fact['meaning']}: #{value} #{suffix} (#{fact['source']}; #{fact.dig('period', 'from')} to #{fact.dig('period', 'to')} #{fact['timezone']})."
       end
       evidence.filter_map { |item| item['timekeeping'] }.uniq.each do |context|
         hours = context.fetch('hours')
