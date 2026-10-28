@@ -438,7 +438,8 @@ module TeamChat
       return if now - @last_publish < PUBLISH_EVERY
 
       @last_publish = now
-      @execution.write_reply!({ body: Links.for_user(AskRupert::ReplyFormat.tidy(text, closing: false), user: @asker), activity: 'Writing' })
+      draft = Links.for_user(AskRupert::ReplyFormat.tidy(text, closing: false), user: @asker)
+      @execution.write_reply!({ body: bounded_reply(draft), activity: 'Writing' })
     end
 
     def activity!(text)
@@ -540,6 +541,7 @@ module TeamChat
       end
       body = Links.for_user(body, user: @asker)
       body = FAILURES[:error] if body.blank? && @reply.reload.actions_list.empty?
+      body = bounded_reply(body)
       meta = meta_with(started, 'ok')
       meta['verify'] = @verify_meta if @verify_meta
       meta['financial_evidence'] = @toolbox.financial_evidence if @toolbox.financial?
@@ -558,6 +560,26 @@ module TeamChat
       @reply.reload
       note_ai_health('ok')
       note_slow(meta)
+    end
+
+    # Preserve complete lines and make omissions explicit rather than letting
+    # an oversized answer fail validation or cutting a financial fact in half.
+    def bounded_reply(text)
+      value = text.to_s
+      limit = TeamChat::Message::BODY_MAX * 2
+      return value if value.length <= limit
+
+      notice = 'Some answer details and caveats were omitted because the response was too long. Narrow the question for the rest.'
+      budget = limit - notice.length - 2
+      lines = []
+      length = 0
+      value.each_line do |line|
+        break if length + line.length > budget
+
+        lines << line
+        length += line.length
+      end
+      [lines.join.strip.presence, notice].compact.join("\n\n")
     end
 
     # The data guide topics a question is about: from its own words, else from the conversation just before it.

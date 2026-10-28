@@ -29,6 +29,18 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal @user.id, reply.meta['asked_by']
   end
 
+  test 'an oversized response keeps complete lines and reports omissions' do
+    reply = ask('@rupert Explain this topic.')
+    agent = TeamChat::Agent.new(reply, config: team_chat_config)
+    body = agent.send(:bounded_reply, "Useful detail.\n" * 900)
+
+    assert_operator body.length, :<=, TeamChat::Message::BODY_MAX * 2
+    assert_includes body, "Useful detail.\n"
+    assert_includes body, 'Some answer details and caveats were omitted'
+    assert_equal 'Some answer details and caveats were omitted because the response was too long. Narrow the question for the rest.',
+      agent.send(:bounded_reply, 'x' * 9000)
+  end
+
   test 'an operational status asserted without a lookup is not presented as checked' do
     script_model({ text: 'There are no reconciliation follow-ups open.' })
     reply = ask('@rupert are any reconciliation follow-ups open?')
