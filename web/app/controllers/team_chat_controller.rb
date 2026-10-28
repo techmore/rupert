@@ -137,7 +137,9 @@ class TeamChatController < AuthenticatedController
   def transcribe_voice
     return head :forbidden if @room.dm? || (!@room.direct? && @room.assistant_mode == 'off')
 
-    render json: { text: TeamChat::VoiceClient.new.transcribe(params[:audio]) }
+    text = TeamChat::VoiceClient.new.transcribe(params[:audio])
+    review = TeamChat::VoiceCheck.review_reason(text)
+    render json: { text: text, review: review }.compact
   rescue TeamChat::VoiceClient::Error => e
     render json: { error: e.message }, status: :unprocessable_entity
   end

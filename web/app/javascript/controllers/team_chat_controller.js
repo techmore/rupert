@@ -1975,6 +1975,12 @@ export default class extends Controller {
     if (!result?.text) return
     this.inputTarget.value = `${this.directValue ? '' : '@rupert '}${result.text}`
     this.input()
+    if (result.review) {
+      // A date that looks misheard would run a lookup for the wrong period: leave it in the box for the person to check.
+      this.showNotice(result.review)
+      this.inputTarget.focus()
+      return
+    }
     await this.post(this.inputTarget, this.sendTarget, null, true)
   }
 
