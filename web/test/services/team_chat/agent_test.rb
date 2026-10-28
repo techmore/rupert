@@ -63,6 +63,37 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal false, entry.dig('original_arguments', 'include_ok')
   end
 
+  test 'month close answers prioritize the lock and preserve changed-after-lock status' do
+    unrelated = 25.times.map { |i| { title: "Other #{i}", area: 'Books', status: 'watch', detail: 'Other' } }
+    rows = [{ title: 'September 2026: Every day approved', area: 'Month close', status: 'watch', detail: '0 of 30 days approved' },
+            { title: 'September 2026: Lock the month', area: 'Month close', status: 'watch', detail: 'You can lock now with a note about what is still open, or finish the steps above first.' }]
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: { items: unrelated + rows }))
+    script_model({ tool: 'compliance_check', arguments: {} }, { text: 'Everything blocks closing.' })
+    reply = ask("@rupert Are last month's books closed? What is still open?")
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'September 2026: Not locked.'
+    assert_includes reply.body, 'You can lock now with a note'
+    assert_includes reply.body, 'Every day approved'
+    assert_not_includes reply.body, 'Other 0'
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal true, entry.dig('arguments', 'include_ok')
+
+    rows.last.merge!(status: 'fix', detail: 'Locked, but records changed afterwards: sales.')
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: { items: rows }))
+    script_model({ tool: 'compliance_check', arguments: {} }, { text: 'Not locked.' })
+    reply = ask("@rupert Are last month's books closed? What is still open?")
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'Locked, but records changed after the lock.'
+
+    rows.pop
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: { items: rows }))
+    script_model({ tool: 'compliance_check', arguments: {} }, { text: 'It is locked.' })
+    reply = ask("@rupert Are last month's books closed? What is still open?")
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_equal 'I could not verify the month-close checklist.', reply.reload.body
+    assert_nil TeamChat::ComplianceEvidence.close_scope("Are last month's books closed and how did sales do?")
+  end
+
   test 'a missing retention record cannot be treated as a healthy connection' do
     data = { items: [{ title: 'Other', area: 'Books', status: 'watch', detail: 'Unrelated' }] }
     Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: data))

@@ -420,6 +420,7 @@ module TeamChat
       return if cash_flow_question?
       return if ComplianceEvidence.focused_title(request_text)
       return if RefundEvidence.count_question?(request_text)
+      return if ComplianceEvidence.close_scope(request_text)
 
       now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       return if now - @last_publish < PUBLISH_EVERY
@@ -453,6 +454,8 @@ module TeamChat
       elsif ComplianceEvidence.retention_question?(request_text)
         entries = @execution.run.reload.tool_results
         body = ComplianceEvidence.render_retention(entries) || 'I could not verify the recorded Google Drive document-retention status.'
+      elsif (area = ComplianceEvidence.close_scope(request_text))
+        body = ComplianceEvidence.render_close(@execution.run.reload.tool_results, area) || 'I could not verify the month-close checklist.'
       elsif (title = ComplianceEvidence.focused_title(request_text))
         entries = @execution.run.reload.tool_results
         body = ComplianceEvidence.render_focused_count(entries, title) || 'I could not verify the requested compliance count.'

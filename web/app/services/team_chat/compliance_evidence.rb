@@ -10,6 +10,13 @@ module TeamChat
     TIMESHEETS_TITLE = 'Timesheets awaiting approval'
     BANK_LINES_TITLE = 'Uploaded bank lines have a decision'
 
+    def close_scope(question)
+      text = question.to_s.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip.downcase
+      return unless text.match?(/\A(?:is last month closed in the books|are last month's books closed)[?.!]*(?:\s+what (?:is|is still|is left|remains) (?:open|to do)[?.!]*)?\z/)
+
+      'Month close'
+    end
+
     # Only a complete, single-subject status question uses the focused path.
     def retention_question?(question)
       text = question.to_s.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip.sub(/[?.!]+\z/, '').strip
@@ -47,7 +54,7 @@ module TeamChat
 
     # Keep structured evidence parseable within the toolbox's result limit.
     # Do not include unrelated fields or personal contact details.
-    def pack(data = nil, requested_title: nil, **data_keywords)
+    def pack(data = nil, requested_title: nil, requested_area: nil, **data_keywords)
       data = (data || data_keywords).deep_stringify_keys
       items = data.fetch('items')
       raise ArgumentError unless items.is_a?(Array)
@@ -69,6 +76,7 @@ module TeamChat
       if requested_title && (requested = rows.find { |row| row['title'] == requested_title })
         rows = [requested] + rows.reject { |row| row.equal?(requested) }
       end
+      rows = rows.partition { |row| row['area'] == requested_area }.flatten(1) if requested_area
       packed = { 'items' => rows.first(20), 'omitted' => rows.size > 20 }
       if data['counts'].is_a?(Hash)
         packed['counts'] = data['counts'].select { |key, value| %w[fix watch unknown ok].include?(key) && value.is_a?(Integer) && value >= 0 }
@@ -83,6 +91,38 @@ module TeamChat
     def render(entries)
       sections = entries.filter_map { |entry| section(entry) }.uniq
       sections.first(2).join("\n\n").presence
+    end
+
+    def render_close(entries, area)
+      entries.each do |entry|
+        next unless entry['name'] == 'compliance_check'
+
+        data = JSON.parse(entry['result'].to_s.partition("\n").last)
+        rows = Array(data['items']).select { |item| item.is_a?(Hash) && item['area'] == area }
+        locks = rows.select { |row| row['title'].to_s.end_with?(': Lock the month') }
+        next unless locks.one?
+
+        lock = locks.first
+        detail = label(lock['detail'])
+        state = if lock['status'] == 'ok' && detail.start_with?('Locked by ')
+          'Locked.'
+        elsif detail.start_with?('Locked, but records changed afterwards:')
+          'Locked, but records changed after the lock.'
+        elsif %w[watch fix].include?(lock['status']) && (detail.start_with?('You can lock now') || detail.start_with?('Everything above is done. Lock it'))
+          'Not locked.'
+        else
+          'Lock state could not be determined from the checklist.'
+        end
+        lines = ["#{label(lock['title'].split(':', 2).first)}: #{state}", "Lock check: #{detail.presence || 'No detail returned.'}"]
+        open = rows.select { |row| %w[fix watch unknown].include?(row['status']) && row != lock }
+        lines << 'Open or uncertain checklist items:' if open.any?
+        open.each { |row| lines << "- #{label(row['title'])} (#{row['status']}): #{label(row['detail'])}." }
+        lines << 'Additional checklist items may have been omitted.' if data['omitted'] == true
+        return lines.join("\n")
+      rescue JSON::ParserError, TypeError
+        next
+      end
+      nil
     end
 
     def render_retention(entries)

@@ -60,6 +60,8 @@ module TeamChat
           'order_queues'
         elsif RefundEvidence.count_question?(@question)
           'sales_summary'
+        elsif ComplianceEvidence.close_scope(@question)
+          'compliance_check'
         elsif ComplianceEvidence.narrow_title(@question)
           'compliance_check'
         end
@@ -225,7 +227,7 @@ module TeamChat
     end
 
     def complete_focused_compliance_arguments(name, arguments)
-      return arguments unless name.to_s == 'compliance_check' && ComplianceEvidence.focused_title(@question)
+      return arguments unless name.to_s == 'compliance_check' && (ComplianceEvidence.focused_title(@question) || ComplianceEvidence.close_scope(@question))
 
       arguments.merge('include_ok' => true)
     end
@@ -374,7 +376,7 @@ module TeamChat
       outcome = tool.new(token: @token).call(args)
       if name == 'compliance_check'
         title = ComplianceEvidence.focused_title(@question)
-        packed = ComplianceEvidence.pack(outcome.data, requested_title: title)
+        packed = ComplianceEvidence.pack(outcome.data, requested_title: title, requested_area: ComplianceEvidence.close_scope(@question))
         return "Compliance check (bounded; omitted items are indicated):\n#{JSON.generate(packed)}"
       end
       if FinancialEvidence::CONTRACTS.include?(name) || FinancialEvidence.financial_data?(outcome.data)
