@@ -15,8 +15,11 @@ class TeamChatQueueEvidenceTest < ActiveSupport::TestCase
     assert_nil scope.call('Are any POS late?')
     assert TeamChat::QueueEvidence.count_question?('How many expense receipts are awaiting review?')
     assert TeamChat::QueueEvidence.count_question?('Any reconciliation follow-ups waiting?')
+    assert TeamChat::QueueEvidence.count_question?('Are any purchase orders late or still waiting for delivery?')
+    assert TeamChat::QueueEvidence.count_question?('Are purchase orders overdue or awaiting delivery?')
     assert_not TeamChat::QueueEvidence.count_question?('Which expense receipts require review?')
     assert_not TeamChat::QueueEvidence.count_question?('What receipts need review and are any purchase orders late?')
+    assert_not TeamChat::QueueEvidence.count_question?('Are purchase orders late or waiting for delivery and which suppliers are affected?')
   end
 
   test 'requires every requested count and does not claim an unavailable late count is zero' do

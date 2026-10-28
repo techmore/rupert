@@ -565,6 +565,16 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_not_includes reply.body, 'Nothing is waiting'
   end
 
+  test 'late or awaiting delivery purchase orders use the scoped queue counts' do
+    data = { queues: [{ name: 'Purchase orders awaiting delivery', count: 3, late: 1 }], low_stock_available: false, oldest_unshipped: [] }
+    Mcp::Tools::OrderQueues.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'waiting', data: data))
+    script_model({ tool: 'order_queues', arguments: {} }, { text: 'I checked.' })
+    reply = ask('@rupert Are any purchase orders late or still waiting for delivery?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'Purchase orders awaiting delivery: 3; 1 late'
+    assert_not_includes reply.body, 'Paid online orders not shipped'
+  end
+
   test 'an explicit order count does not add the metric default comparison' do
     script_model({ tool: 'metric', arguments: { name: 'orders', period: 'yesterday' } }, { text: 'I checked.' })
     reply = ask('@rupert How many orders were recorded yesterday?')
