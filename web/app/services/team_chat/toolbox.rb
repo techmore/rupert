@@ -83,6 +83,17 @@ module TeamChat
       @views << view if view
     end
 
+    # Small models may never ask for the daily series needed by an explicit
+    # trend chart. Use the same authorized, durable read tool and budget.
+    def prefetch_daily_chart!
+      period = FinancialViewEvidence.daily_period_for(@question)
+      return unless period && @execution && @calls < MAX_CALLS && names.include?('sales_summary')
+      return if @views.any? || @financial_evidence.any? { |item| item.dig('daily', 'period') == period }
+
+      self.call_id = "daily-chart-#{@execution.run.id}"
+      call('sales_summary', period.merge('include_daily' => true, 'top_products' => 0))
+    end
+
     def names = definitions.map(&:name)
 
     def activity_for(name)

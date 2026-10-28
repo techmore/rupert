@@ -84,6 +84,7 @@ module TeamChat
         end
         @toolbox = Toolbox.new(user: @asker, room: @room, reply: @reply, only: only, execution: @execution, question: request_text)
         text = verified(answer)
+        @toolbox.prefetch_daily_chart!
         finish(text, started)
       end
     rescue Run::Stopped

@@ -59,7 +59,7 @@ module TeamChat
       nil
     end
 
-    def daily_fallback(evidence, question:)
+    def daily_period_for(question)
       text = question.to_s.downcase
       return unless text.match?(/\b(?:chart|graph|plot)\b/) && text.match?(/\b(?:sales|revenue)\b/) && text.match?(/\btrend\b/)
       return if text.match?(/\b(?:no|without|omit|skip)\s+(?:(?:a|the|any)\s+)?(?:chart|graph|plot)\b/)
@@ -70,7 +70,15 @@ module TeamChat
       return unless periods.one?
 
       window = Metrics::Window.resolve(period: periods.values.first)
-      period = { 'from' => window.from.iso8601, 'to' => window.to.iso8601 }
+      { 'from' => window.from.iso8601, 'to' => window.to.iso8601 }
+    rescue ArgumentError, TypeError
+      nil
+    end
+
+    def daily_fallback(evidence, question:)
+      period = daily_period_for(question)
+      return unless period
+
       contexts = evidence.filter_map { |item| item['daily'] }.select { |daily| daily['period'] == period && daily['source'] == FinancialEvidence::ORDER_SOURCE && !daily['omitted'] }
       return unless contexts.one?
 

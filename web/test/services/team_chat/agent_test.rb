@@ -803,6 +803,14 @@ class TeamChatAgentTest < ActiveSupport::TestCase
       view = reply.reload.meta.fetch('views').first
       assert_equal 'line_chart', view['kind']
       assert_equal [['2026-10-19', '40.0'], ['2026-10-20', nil]], view['rows'].first(2)
+
+      script_model({ text: 'I could not draw that chart.' })
+      reply = ask("@rupert Plot last week's recorded sales trend")
+      TeamChat::Agent.new(reply, config: team_chat_config).run
+      entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+      assert_equal 'sales_summary', entry['name']
+      assert_equal true, entry.dig('arguments', 'include_daily')
+      assert_equal [['2026-10-19', '40.0'], ['2026-10-20', nil]], reply.reload.meta.fetch('views').first['rows'].first(2)
     end
   end
 
