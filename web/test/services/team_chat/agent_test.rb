@@ -845,6 +845,22 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal 'last_year', entry.dig('arguments', 'compare')
   end
 
+  test 'a change compared with the previous explicit date preserves its direction' do
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'this_month' } }, { text: 'I checked.' })
+    reply = ask('@rupert How did recorded gross sales on 2026-08-13 change compared with 2026-08-12?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal '2026-08-13', entry.dig('arguments', 'from')
+    assert_equal '2026-08-13', entry.dig('arguments', 'to')
+    assert_equal 'previous', entry.dig('arguments', 'compare')
+
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'this_month' } }, { text: 'I checked.' })
+    reply = ask('@rupert How did recorded gross sales on 2026-08-12 change compared with 2026-08-13?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'this_month', entry.dig('arguments', 'period')
+  end
+
   test 'a narrow queue answer omits unrelated results while a mixed question keeps them' do
     data = { queues: [{ name: 'Expense receipts waiting for review', count: 0 },
                       { name: 'Purchase orders awaiting delivery', count: 1, late: 0 },

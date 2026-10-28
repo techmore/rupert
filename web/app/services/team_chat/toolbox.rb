@@ -287,11 +287,16 @@ module TeamChat
       return arguments unless name.to_s == 'metric' && arguments.is_a?(Hash) && arguments['name'] == 'gross_sales'
 
       question = @question.to_s.sub(/\A\s*(?:@[\w.-]+\s+)+/, '')
-      return arguments unless question.match?(/\bcompare\b/i) && question.match?(/\b(?:gross\s+sales|gross\s+order\s+sales)\b/i)
+      return arguments unless question.match?(/\b(?:compare|compared)\b/i) && question.match?(/\b(?:gross\s+sales|gross\s+order\s+sales)\b/i)
       return arguments if question.match?(/\b(?:by source|versus last year|last year|excluding|except|without comparing)\b/i)
 
       dates = question.scan(/\b\d{4}-\d{2}-\d{2}\b/)
       match = question.match(/\b(\d{4}-\d{2}-\d{2})\s+(?:with|versus|vs\.?|against)\s+(\d{4}-\d{2}-\d{2})\b/i)
+      described_change = question.match(/\b(\d{4}-\d{2}-\d{2})\s+change\s+compared\s+(?:with|to)\s+(\d{4}-\d{2}-\d{2})\b/i)
+      if !match && described_change
+        first, second = described_change.captures.map { |date| Date.iso8601(date) }
+        match = described_change if first > second
+      end
       return arguments unless match && dates.size == 2 && dates == match.captures
 
       earlier, later = match.captures.map { |date| Date.iso8601(date) }.sort
