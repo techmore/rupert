@@ -15,13 +15,16 @@ class TeamChatQueueEvidenceTest < ActiveSupport::TestCase
   end
 
   test 'requires every requested count and does not claim an unavailable late count is zero' do
-    context = { 'queues' => [{ 'name' => 'Expense receipts waiting for review', 'count' => 2 },
+    context = { 'queues' => [{ 'name' => 'Expense receipts waiting for review', 'count' => 0 },
                              { 'name' => 'Purchase orders awaiting delivery', 'count' => 1 }] }
     evidence = [{ 'queue_summary' => context }]
     text = TeamChat::QueueEvidence.render_requested(evidence, 'What receipts need review and are any purchase orders late?')
-    assert_includes text, 'Expense receipts waiting for review: 2'
+    assert_includes text, 'Expense receipts waiting for review: 0'
     assert_includes text, 'Purchase orders awaiting delivery: 1; late count unavailable'
     assert_includes text, 'counts, not individual'
+    context['queues'].first['count'] = 2
+    assert_nil TeamChat::QueueEvidence.render_requested(evidence, 'What receipts need review and are any purchase orders late?')
+    assert_includes TeamChat::QueueEvidence.render_requested(evidence, 'How many expense receipts are awaiting review?'), 'review: 2'
     context['queues'].pop
     assert_nil TeamChat::QueueEvidence.render_requested(evidence, 'What receipts need review and are any purchase orders late?')
   end

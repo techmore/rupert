@@ -34,6 +34,11 @@ module TeamChat
       end
       return unless context
 
+      # A nonzero count cannot identify the requested receipts. Keep the
+      # general answer path so other lookups can provide individual records.
+      receipt = context['queues'].find { |queue| queue['name'] == 'Expense receipts waiting for review' }
+      return if receipt && receipt['count'].positive? && question.to_s.match?(/\b(?:what|which)\s+(?:expense\s+)?receipts\b/i)
+
       lines = ['Processing queues (counts from Rupert’s records):']
       names.each do |name|
         queue = context['queues'].find { |row| row['name'] == name }

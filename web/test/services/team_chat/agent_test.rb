@@ -438,7 +438,7 @@ class TeamChatAgentTest < ActiveSupport::TestCase
   end
 
   test 'a narrow queue answer omits unrelated results while a mixed question keeps them' do
-    data = { queues: [{ name: 'Expense receipts waiting for review', count: 2 },
+    data = { queues: [{ name: 'Expense receipts waiting for review', count: 0 },
                       { name: 'Purchase orders awaiting delivery', count: 1, late: 0 },
                       { name: 'Paid online orders not shipped', count: 9 }], low_stock_available: false, oldest_unshipped: [] }
     Mcp::Tools::OrderQueues.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'queue counts', data: data))
@@ -447,7 +447,7 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     script_model({ tool: 'order_queues', arguments: {} }, { tool: 'compliance_check', arguments: {} }, { text: 'I checked.' })
     reply = ask('@rupert What receipts need review and are any purchase orders late?')
     TeamChat::Agent.new(reply, config: team_chat_config).run
-    assert_includes reply.reload.body, 'Expense receipts waiting for review: 2'
+    assert_includes reply.reload.body, 'Expense receipts waiting for review: 0'
     assert_includes reply.body, 'Purchase orders awaiting delivery: 1; 0 late'
     assert_not_includes reply.body, 'Paid online orders not shipped'
     assert_not_includes reply.body, 'Books closed'
