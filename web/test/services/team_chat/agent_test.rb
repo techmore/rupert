@@ -841,6 +841,12 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     TeamChat::Agent.new(reply, config: team_chat_config).run
     entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
     assert_equal 'this_month', entry.dig('arguments', 'period')
+
+    script_model({ tool: 'metric', arguments: { name: 'best_day', period: 'this_month' } }, { text: 'I checked.' })
+    reply = ask('@rupert Best sales day in the last 30 days against last week?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'this_month', entry.dig('arguments', 'period')
   end
 
   test 'a stated week ending fixes wrong lookup dates without dropping source filters' do

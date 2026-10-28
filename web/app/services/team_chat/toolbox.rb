@@ -213,7 +213,7 @@ module TeamChat
       question = @question.to_s.sub(/\A\s*(?:@[\w.-]+\s+)+/, '')
       return arguments unless question.match?(/\b(?:best|busiest|strongest|highest|slowest|worst|lowest)\s+(?:sales|selling)\s+day\b/i)
       return arguments unless question.match?(/\b(?:last|past)\s+30\s+days\b/i)
-      return arguments if question.match?(/["“”‘’]|\b(?:compare|compared|versus|vs|previous|prior|excluding|except|without|yesterday|last year)\b|\b\d{4}-\d{2}-\d{2}\b/i)
+      return arguments if question.match?(/["“”‘’]|\b(?:compare|compared|versus|vs|against|difference|previous|prior|before|after|excluding|except|without|yesterday|last year|last week)\b|\b\d{4}-\d{2}-\d{2}\b/i)
 
       arguments.except('period').merge('from' => (Date.current - 29).iso8601, 'to' => Date.current.iso8601, 'compare' => 'none')
     end
