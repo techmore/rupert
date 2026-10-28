@@ -23,25 +23,42 @@ SOURCE_DIR="${SOURCE_DIR:-backups/rupert}"          # relative to the SER8 user'
 OUT="${OUT:-$HOME/backups/rupert-mirror}"
 KEEP="${KEEP:-14}"
 MIN_FREE_MB="${MIN_FREE_MB:-2048}"
+MAX_AGE_H="${MAX_AGE_H:-30}"
 RCLONE_REMOTE="${RCLONE_REMOTE:-}"
 INSTANCE="${INSTANCE:-rupert}"
 STATUS_PATH="${STATUS_PATH:-/opt/rupert/web/storage/backups/offsite.json}"
 SSH=(ssh -o BatchMode=yes -o ConnectTimeout=20 "$SSH_HOST")
+ENCRYPTED=false
 
 json_escape() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | tr -d '\n'; }
 free_bytes() { df -B1 --output=avail "$1" 2>/dev/null | tail -1 | tr -d ' '; }
 write_status() { # STATE MESSAGE [FILE BYTES KEPT]
-  printf '{"layer":"offsite","state":"%s","at":"%s","message":"%s","file":"%s","bytes":%s,"kept":%s,"free_bytes":%s,"host":"%s"}\n' \
-    "$1" "$(date -u +%FT%TZ)" "$(json_escape "$2")" "$(json_escape "${3:-}")" "${4:-0}" "${5:-0}" "$(free_bytes "$OUT")" "$(json_escape "$(hostname)")" \
+  printf '{"layer":"offsite","state":"%s","at":"%s","message":"%s","file":"%s","bytes":%s,"kept":%s,"free_bytes":%s,"host":"%s","encrypted":%s}\n' \
+    "$1" "$(date -u +%FT%TZ)" "$(json_escape "$2")" "$(json_escape "${3:-}")" "${4:-0}" "${5:-0}" "$(free_bytes "$OUT")" "$(json_escape "$(hostname)")" "$ENCRYPTED" \
     | "${SSH[@]}" "incus file push --mode 0644 --uid 0 --gid 0 --create-dirs - '$INSTANCE$STATUS_PATH'" 2>/dev/null || true
 }
 fail() { echo "$1" >&2; write_status failed "$1"; exit 1; }
 
 install -d -m 0700 "$OUT"
-"${SSH[@]}" true 2>/dev/null || { echo "$SSH_HOST unreachable; will retry on the next tick" >&2; exit 0; }
+"${SSH[@]}" true 2>/dev/null || { echo "$SSH_HOST unreachable; will retry on the next tick" >&2; exit 1; }
 
 avail=$(free_bytes "$OUT")
 [ "$avail" -ge $(( MIN_FREE_MB * 1024 * 1024 )) ] || fail "skipped on $(hostname): $(( avail / 1048576 )) MB free on $OUT, need ${MIN_FREE_MB} MB. Free disk space on the mirror."
+
+# Estimate the full size of files rsync would transfer before it creates any
+# temporary files. Reserve the whole transfer, not just today's free-space floor.
+transfer_sizes=$(LC_ALL=C rsync -a --dry-run --out-format='%l' --timeout=120 -e "ssh -o BatchMode=yes" \
+  --include='*.age' --include='*.age.sha256' --include='*.age.key' --include='*.enc' --include='*.enc.sha256' --exclude='*' \
+  "$SSH_HOST:$SOURCE_DIR/" "$OUT/") || fail "could not estimate mirror transfer size"
+transfer_bytes=0
+while IFS= read -r size; do
+  [ -z "$size" ] && continue
+  [[ "$size" =~ ^[0-9]+$ ]] || fail "could not parse mirror transfer size"
+  transfer_bytes=$((transfer_bytes + size))
+done <<<"$transfer_sizes"
+avail=$(free_bytes "$OUT")
+need=$((transfer_bytes + MIN_FREE_MB * 1024 * 1024))
+[ "$avail" -ge "$need" ] || fail "skipped on $(hostname): $(( avail / 1048576 )) MB free, need $(( need / 1048576 )) MB for the transfer and reserved space"
 
 # Ciphertext and digests only. No --delete: pruning is by our own KEEP below, so a wiped source cannot wipe the mirror.
 rsync -a --timeout=120 -e "ssh -o BatchMode=yes" \
@@ -50,12 +67,39 @@ rsync -a --timeout=120 -e "ssh -o BatchMode=yes" \
 
 mapfile -t sets < <(ls -1t "$OUT"/rupert-*.sqlite3.gz.age "$OUT"/rupert-sqlite-*.sql.gz.enc 2>/dev/null || true)
 [ "${#sets[@]}" -gt 0 ] || fail "no encrypted sets found at $SSH_HOST:$SOURCE_DIR"
+newest="${sets[0]}"
+case "$newest" in *.sqlite3.gz.age) ENCRYPTED=true ;; esac
+now_s=$(date +%s)
+newest_s=$(stat -c %Y "$newest")
+[ "$newest_s" -le $((now_s + 60)) ] || fail "newest mirrored backup has a future timestamp"
+age_h=$(( ( now_s - newest_s ) / 3600 ))
+[ "$age_h" -le "$MAX_AGE_H" ] || fail "newest mirrored backup is ${age_h}h old (limit ${MAX_AGE_H}h)"
 # Verify what we hold against the digests written at backup time; a bad copy is removed and the run fails loudly.
 bad=0
 for f in "${sets[@]}"; do
   if ! ( cd "$OUT" && sha256sum -c --quiet "$(basename "$f").sha256" ) 2>/dev/null; then
     echo "digest mismatch: $f (removed; next run re-pulls it)" >&2; rm -f "$f"; bad=$((bad+1))
   fi
+  case "$f" in
+    *.sqlite3.gz.age)
+      stamp="${f##*/rupert-}"; stamp="${stamp%%.sqlite3.gz.age}"
+      side="$OUT/settings-$stamp.sql.age"
+      [ -s "$f.key" ] && [ -s "$side.key" ] || fail "missing encryption key metadata for set $stamp"
+      recipient=$(sed -n 's/^recipient //p' "$f.key")
+      [[ "$recipient" =~ ^age1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{58}$ ]] && \
+        [ "$recipient" = "$(sed -n 's/^recipient //p' "$side.key")" ] \
+        || fail "invalid or mismatched encryption key metadata for set $stamp"
+      [ "$(head -c 21 "$f")" = "age-encryption.org/v1" ] && [ "$(head -c 21 "$side")" = "age-encryption.org/v1" ] \
+        || fail "invalid encryption header for set $stamp" ;;
+    *)
+      stamp="${f##*/rupert-sqlite-}"; stamp="${stamp%%.sql.gz.enc}"
+      side="$OUT/settings-$stamp.sql.enc"
+      legacy_env="$OUT/env-sqlite-$stamp.enc"
+      [ -f "$legacy_env" ] && ( cd "$OUT" && sha256sum -c --quiet "$(basename "$legacy_env").sha256" ) 2>/dev/null \
+        || fail "missing or corrupt environment for legacy set $stamp" ;;
+  esac
+  [ -f "$side" ] && ( cd "$OUT" && sha256sum -c --quiet "$(basename "$side").sha256" ) 2>/dev/null \
+    || fail "missing or corrupt settings for set $stamp"
 done
 [ "$bad" -eq 0 ] || fail "$bad mirrored archive(s) failed their digest check"
 
@@ -77,7 +121,7 @@ if [ -n "$RCLONE_REMOTE" ]; then
   cloud="; cloud copy at $RCLONE_REMOTE"
 fi
 
-kept=$(ls -1 "$OUT"/rupert-*.sqlite3.gz.age "$OUT"/rupert-sqlite-*.sql.gz.enc 2>/dev/null | wc -l)
-newest="${sets[0]}"
+kept=${#sets[@]}
+[ "$kept" -le "$KEEP" ] || kept="$KEEP"
 write_status ok "mirror on $(hostname) verified; $kept sets kept$cloud" "$newest" "$(stat -c %s "$newest")" "$kept"
 echo "mirror ok: $kept sets in $OUT (newest $(basename "$newest"))$cloud"

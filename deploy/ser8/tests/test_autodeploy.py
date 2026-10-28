@@ -8,6 +8,7 @@ import sqlite3
 import subprocess
 import tempfile
 import hashlib
+import time
 import unittest
 
 SCRIPT = Path(__file__).parents[1] / 'rupert-autodeploy.sh'
@@ -216,6 +217,47 @@ class AutodeployTest(unittest.TestCase):
         self.assertNotIn('db:migrate', calls)
         self.assertEqual(self.status()['state'], 'failed')
 
+    def test_backup_retention_handles_filenames_with_spaces(self):
+        backups = self.tmp / 'backups'
+        backups.mkdir()
+        for i in range(6):
+            path = backups / f'old backup {i}.sqlite3'
+            path.write_text('backup')
+            os.utime(path, (1_600_000_000 + i, 1_600_000_000 + i))
+        self.commit('feature')
+        result, _ = self.run_deploy()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        remaining = {path.name for path in backups.glob('*.sqlite3')}
+        self.assertEqual(len(remaining), 5)
+        self.assertFalse((backups / 'old backup 0.sqlite3').exists())
+        self.assertFalse((backups / 'old backup 1.sqlite3').exists())
+        self.assertTrue((backups / 'old backup 2.sqlite3').exists())
+
+    def test_backup_directory_with_spaces_is_used_for_backup_and_receipt(self):
+        backups = self.tmp / 'backup directory with spaces'
+        new = self.commit('feature')
+        result, _ = self.run_deploy(RUPERT_AUTODEPLOY_BACKUPS=str(backups))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        backup = Path(self.receipt(f'{new}.json')['backup']['path'])
+        self.assertEqual(backup.parent, backups)
+        self.assertTrue(backup.is_file())
+
+    def test_backup_retention_preserves_current_backup_when_older_files_have_future_mtimes(self):
+        backups = self.tmp / 'backups'
+        backups.mkdir()
+        future = int(time.time()) + 86400
+        for i in range(5):
+            path = backups / f'old-{i}.sqlite3'
+            path.write_text('backup')
+            os.utime(path, (future + i, future + i))
+        new = self.commit('feature')
+        result, _ = self.run_deploy()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        current = Path(self.receipt(f'{new}.json')['backup']['path'])
+        self.assertTrue(current.is_file())
+        self.assertEqual(len(list(backups.glob('*.sqlite3'))), 5)
+        self.assertFalse((backups / 'old-0.sqlite3').exists())
+
     @unittest.skipUnless(shutil.which('sqlite3'), 'the SQLite CLI is required')
     def test_real_sqlite_backup_contains_configured_database(self):
         configured = self.tmp / 'custom data.sqlite3'
@@ -228,7 +270,7 @@ class AutodeployTest(unittest.TestCase):
         sqlite.write_text(f'#!/bin/sh\nexec "{shutil.which("sqlite3")}" "$@"\n')
         sqlite.chmod(0o755)
         new = self.commit('feature')
-        result, _ = self.run_deploy()
+        result, _ = self.run_deploy(RUPERT_AUTODEPLOY_BACKUPS=str(self.tmp / 'backup directory with spaces'))
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         receipt = self.receipt(f'{new}.json')
         with closing(sqlite3.connect(receipt['backup']['path'])) as db:

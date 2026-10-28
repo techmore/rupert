@@ -60,6 +60,18 @@ esac
 stamp="${newest_any##*/rupert-}"; stamp="${stamp%%.sqlite3.gz.age}"
 [[ "$stamp" =~ ^[0-9]{8}-[0-9]{4,6}$ ]] || fail "refusing to run: unexpected backup name $(basename "$newest_any")"
 
+# Account for the entire set before copying: merely being above the floor is
+# not enough if the copy itself would consume the reserved disk space.
+sizes=$(in_container stat -c %s "$newest_any" "$SOURCE_DIR/settings-$stamp.sql.age" 2>/dev/null) \
+  || fail "cannot determine the encrypted set size; nothing was copied"
+mapfile -t sizes_array <<<"$sizes"
+if [ "${#sizes_array[@]}" -ne 2 ] || ! [[ "${sizes_array[0]}" =~ ^[0-9]+$ && "${sizes_array[1]}" =~ ^[0-9]+$ ]]; then
+  fail "cannot determine the encrypted set size; nothing was copied"
+fi
+avail=$(free_bytes "$OUT")
+need=$(( sizes_array[0] + sizes_array[1] + MIN_FREE_MB * 1024 * 1024 ))
+[ "$avail" -ge "$need" ] || fail "skipped: $(( avail / 1048576 )) MB free on $OUT, need $(( need / 1048576 )) MB for the encrypted set and reserved space"
+
 # pull NAME: SOURCE_DIR/NAME → OUT/NAME, checked against the container's digest and the age header, with sidecars.
 pull() {
   local name="$1" src="$SOURCE_DIR/$1" dest="$OUT/$1" expected actual header key
@@ -71,15 +83,19 @@ pull() {
   [ "$header" = "$AGE_HEADER" ] || { rm -f "$dest.partial"; fail "refusing to keep $name: it is not age-encrypted"; }
   actual=$(sha256sum "$dest.partial" | cut -d' ' -f1)
   [ "$expected" = "$actual" ] || { rm -f "$dest.partial"; fail "digest mismatch for $name: the copy differs from the container's file"; }
+  printf '%s  %s\n' "$actual" "$name" > "$dest.sha256.partial"
+  printf '%s\n' "$key" > "$dest.key.partial"
+  chmod 0600 "$dest.partial" "$dest.sha256.partial" "$dest.key.partial"
+  # Publish the data filename after the matching metadata is in place.
+  mv -f "$dest.sha256.partial" "$dest.sha256"
+  mv -f "$dest.key.partial" "$dest.key"
   mv -f "$dest.partial" "$dest"
-  printf '%s  %s\n' "$actual" "$name" > "$dest.sha256"
-  printf '%s\n' "$key" > "$dest.key"
-  chmod 0600 "$dest" "$dest.sha256" "$dest.key"
   KEY_FPR=$(sed -n 's/^fingerprint //p' <<<"$key")
 }
 
-pull "rupert-$stamp.sqlite3.gz.age"
 pull "settings-$stamp.sql.age"
+# Publish the database last, after its matching settings have arrived.
+pull "rupert-$stamp.sqlite3.gz.age"
 
 # Same retention for every artifact type: the newest KEEP sets, each set removed whole. Files from before #421
 # (plaintext, or .enc from the old AES copy) are not touched here; the owner deletes them (docs/ops/backups.md).

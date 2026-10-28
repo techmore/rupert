@@ -22,7 +22,7 @@ do not invent layout, labels or colours.
 
 ## Hard rules (do not violate)
 
-- **The push guard is REMOVED (owner directive, 2026-08-18).** `PlatformPushGuard.authorize!` is a no-op: no outbound write is blocked by approval windows or the maintenance freeze. Freeze/approve/status remain only as read-only operator info. The replacement safeguard is the rule below.
+- **Approval windows and the maintenance freeze no longer block writes (owner directive, 2026-08-18).** Since `fbc50d9a`, `PlatformPushGuard.authorize!` is a confirmation gate instead: every Shopify/Square write raises `UnconfirmedError` unless `PUSH_CONFIRM=yes` is set (rake/console one-offs) or the controller set `Current.push_confirmed?` after the user clicked through a confirmation prompt. Freeze/approve/status remain only as read-only operator info. This gate is the mechanical half of the rule below.
 - **ALWAYS ASK before any data-mutating action on Shopify or Square** — creating/updating products, pushing inventory, or writing SKUs. Do not apply without explicit owner sign-off first. Syncs (read-only mirrors into the local DB) are fine to run without asking.
 - **Square can still be frozen any time for maintenance via `ops:push_guard:freeze[square,reason]`** — this now records state for awareness but no longer blocks writes; check `ops:push_guard:status`.
 - **SKU changes require explicit owner sign-off before writing** to Shopify or Square. You may plan and inspect freely, but never write SKUs without asking.

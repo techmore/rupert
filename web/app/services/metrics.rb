@@ -5,8 +5,9 @@
 #
 # Every metric is per currency (currencies are never added together), takes a period (named preset or from/to),
 # and is compared with the period before or the same dates last year, with the change already worked out.
-# Orders are Rupert's canonical order store (Shopify, Square, Rupert POS, manual); paid and fulfilled orders
-# count as sales. C-Trax and SwipeSimple snapshots are not orders and are never added in. Unknown is not zero.
+# Orders are Rupert's canonical order store (Shopify, Square, Rupert POS, manual); paid and fulfilled orders,
+# including later-refunded sales with refund evidence, count as sales. C-Trax and SwipeSimple snapshots are not
+# orders and are never added in. Unknown is not zero.
 module Metrics
   COUNTED = %w[paid fulfilled].freeze
   SOURCES = %w[shopify square rupert_pos manual pos].freeze
@@ -18,8 +19,8 @@ module Metrics
   Definition = Data.define(:key, :title, :unit, :description)
 
   CATALOG = [
-    Definition.new('gross_sales', 'Gross sales', 'money', 'Paid and fulfilled orders, gross, per currency, with each source.'),
-    Definition.new('orders', 'Orders', 'count', 'Number of paid and fulfilled orders, per currency, with each source.'),
+    Definition.new('gross_sales', 'Gross sales', 'money', 'Paid and fulfilled orders, including later refunds, gross, per currency, with each source.'),
+    Definition.new('orders', 'Orders', 'count', 'Number of paid and fulfilled orders, including later refunds, per currency, with each source.'),
     Definition.new('average_order_value', 'Average order value', 'money', 'Gross sales divided by orders, per currency.'),
     Definition.new('best_day', 'Best sales day', 'day', 'The day with the highest gross sales in the period (and its orders).'),
     Definition.new('worst_day', 'Slowest sales day', 'day', 'The day with the lowest gross sales among days with stored sales in the period (and its orders).'),
@@ -80,7 +81,13 @@ module Metrics
   end
 
   def counted(window, source)
-    Core::Order.where(occurred_at: window.times, status: COUNTED, source: source.presence || SOURCES)
+    scope = Core::Order.where(occurred_at: window.times, source: source.presence || SOURCES)
+    # A later refund does not erase the original gross sale. Canceled imports can
+    # also have status refunded, so require evidence of an actual refund.
+    refunded = scope.where(status: 'refunded').where(
+      'orders.source_financial_status IN (?) OR orders.id IN (?)',
+      %w[REFUNDED PARTIALLY_REFUNDED], Core::Refund.select(:order_id))
+    scope.where(status: COUNTED).or(refunded)
   end
 
   def per_currency(orders, key)
@@ -99,7 +106,8 @@ module Metrics
               when 'average_order_value' then (gross / count.to_f).round if gross && count.positive?
               else gross
               end
-      { currency: currency, value: value, formatted: (key == 'orders' ? count.to_s : money(value, currency)),
+      formatted = key == 'orders' ? count.to_s : (value.nil? ? 'unknown (gross not recorded on every order)' : money(value, currency))
+      { currency: currency, value: value, formatted: formatted,
         orders: count, gross_cents: gross, sources: sources }
     end
   end
@@ -107,10 +115,12 @@ module Metrics
   # { currency => { date => [gross_cents, orders] } }, days in the workspace time zone. Only days with stored orders.
   def daily_totals(orders)
     by_currency = Hash.new { |hash, key| hash[key] = Hash.new { |inner, day| inner[day] = [0, 0] } }
-    orders.pluck(:currency, :occurred_at, :gross_cents).each do |currency, at, cents|
-      day = by_currency[currency][at.in_time_zone.to_date]
-      day[0] = cents.nil? || day[0].nil? ? nil : day[0] + cents
-      day[1] += 1
+    orders.in_batches(of: 1000) do |batch|
+      batch.pluck(:currency, :occurred_at, :gross_cents).each do |currency, at, cents|
+        day = by_currency[currency][at.in_time_zone.to_date]
+        day[0] = cents.nil? || day[0].nil? ? nil : day[0] + cents
+        day[1] += 1
+      end
     end
     by_currency.sort_by { |currency, _| currency.to_s }
   end
@@ -167,7 +177,11 @@ module Metrics
 
   def top_products(orders)
     lines = Core::OrderLine.where(order_id: orders.select(:id)).joins(:order)
-    lines.group('orders.currency').pluck(Arel.sql('orders.currency'), Arel.sql('SUM(order_lines.line_cents)')).sort_by { |currency, _| currency.to_s }.map do |currency, total|
+    lines.group('orders.currency').pluck(Arel.sql('orders.currency'), Arel.sql('SUM(order_lines.line_cents)'),
+      Arel.sql('COUNT(*)'), Arel.sql('COUNT(order_lines.line_cents)')).sort_by { |currency, _, _, _| currency.to_s }.map do |currency, total, count, known|
+      if count != known
+        next { currency: currency, value: nil, formatted: 'unknown (revenue not recorded on every line)', products: [] }
+      end
       top = lines.where(orders: { currency: currency }).group(:name)
                  .pluck(:name, Arel.sql('SUM(order_lines.line_cents)'), Arel.sql('SUM(order_lines.quantity)'))
                  .sort_by { |row| -row[1].to_i }.first(10)

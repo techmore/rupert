@@ -15,7 +15,7 @@ module People
   # hand-entered amount. It is not a tax or withholding calculation; real
   # deductions wait for qualified payroll review (#424, #425).
   class PayrollCalculator
-    TAX_ESTIMATE = 0.15
+    TAX_ESTIMATE = BigDecimal('0.15')
     WORKED_TYPES = %w[regular overtime].freeze
 
     # Rebuilds the payslips for a draft pay run. Returns the payslips.

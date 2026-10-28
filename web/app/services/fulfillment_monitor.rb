@@ -71,7 +71,7 @@ class FulfillmentMonitor
   def format_message(orders)
     lines = orders.map do |order|
       age = ((Time.current - order.occurred_at) / 1.hour).floor
-      amount = format('$%.2f', order.gross_cents.to_f / 100.0)
+      amount = Money.format(order.gross_cents)
       "  • #{order.display_number} — #{amount} — #{age}h old"
     end
     "#{orders.length} online order(s) overdue for fulfillment:\n#{lines.join("\n")}"

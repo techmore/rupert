@@ -71,7 +71,7 @@ The version is pinned once in `web/config/shopify_api_version.rb` (the sync clie
 ## Monitoring and alerts
 
 - `/up/ready` is the external uptime signal (database, worker, sync freshness, disk). Point an uptime monitor at it.
-- Host watcher `rupert-sync-watch.timer` (outside the container) fails when the newest successful sync is older than 45 minutes, the worker unit is not active, free disk is under 1 GB, or `READY_URL` answers non-200; failures show in `systemctl --user --failed` and Cockpit.
+- Host watcher `rupert-sync-watch.timer` (outside the container) checks each configured Shopify and Square catalog and each enabled C-Trax, Square timecard, SwipeSimple, Authorize.net and bank channel in active workspaces. It also checks worker state, database-volume free space and `/up/ready`. It checks readiness inside the container by default; `READY_URL` can select an external URL. Failures show in `systemctl --user --failed` and Cockpit.
 - Notices in the #announcements team chat room on sync completion and failure, once team chat has been opened in the workspace ([team-chat.md](team-chat.md)).
 - Sentry when `SENTRY_DSN` is set: every unhandled exception from web and jobs, tagged with the build SHA.
 - Rate limiting (`rack-attack`) logs `[rack-attack] throttled ...` lines; a burst of them from one IP is an attack or a broken integration.

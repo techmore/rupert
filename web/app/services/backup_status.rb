@@ -11,19 +11,34 @@ class BackupStatus
   Report = Struct.new(:state, :at, :message, :file, :bytes, :kept, :free_bytes, :host, :encrypted, :key_fingerprint,
     keyword_init: true)
 
-  Layer = Struct.new(:key, :label, :protects, :every, :stale_after, :report, keyword_init: true) do
+  Layer = Struct.new(:key, :label, :protects, :every, :stale_after, :report, :active_fingerprint, keyword_init: true) do
     def reported? = report.present?
 
     # ok · failed · stale (last report older than stale_after) · missing (never reported)
     def state(now = Time.current)
       return 'missing' unless reported?
-      return 'failed' if report.state == 'failed'
+      return 'failed' unless report.state == 'ok'
+      return 'failed' unless report.encrypted == true
+      return 'failed' if report.at && report.at > now + 1.minute
+      return 'stale' if key == 'restore' && (active_fingerprint.blank? || report.key_fingerprint != active_fingerprint)
       return 'stale' if report.at.nil? || report.at < now - stale_after
 
       'ok'
     end
 
     def ok?(now = Time.current) = state(now) == 'ok'
+
+    # A script can report success while its evidence is no longer sufficient.
+    # Explain the derived state instead of showing only the older success text.
+    def evidence_issue(now = Time.current)
+      return unless reported? && report.state == 'ok'
+      return 'This report does not confirm an age-encrypted backup.' unless report.encrypted == true
+      return 'The report time is in the future; check the system clock.' if report.at && report.at > now + 1.minute
+      if key == 'restore' && (active_fingerprint.blank? || report.key_fingerprint != active_fingerprint)
+        return 'Run a recovery-kit drill for the active backup key.'
+      end
+      nil
+    end
   end
 
   LAYERS = [
@@ -35,15 +50,18 @@ class BackupStatus
       protects: 'Loss or corruption of the container. Copies only encrypted files; the key to open them is in the recovery kit.', stale_after: 7.hours },
     { key: 'offsite', label: 'Mirror on another machine', every: 'every 6 hours while the mirror is on',
       protects: 'Loss of the server disk, the server, or the building.', stale_after: 48.hours },
-    { key: 'verify', label: 'Restore drill', every: 'weekly',
-      protects: 'Damaged or unencrypted copies: every encrypted file is checked against its digest. Decrypting needs the recovery kit.', stale_after: 8.days }
+    { key: 'verify', label: 'Encrypted backup check', every: 'weekly',
+      protects: 'Damaged or unencrypted copies: every encrypted file is checked against its digest. Decrypting needs the recovery kit.', stale_after: 8.days },
+    { key: 'restore', label: 'Recovery-kit drill', every: 'monthly and after key rotation',
+      protects: 'Shows when a database was decrypted with the recovery kit and passed SQLite integrity checks on a trusted computer.', stale_after: 35.days }
   ].freeze
 
   class << self
     def dir = Pathname(ENV.fetch('RUPERT_BACKUP_STATUS_DIR', Rails.root.join('storage/backups').to_s))
 
     def layers
-      LAYERS.map { |attrs| Layer.new(**attrs, report: read(attrs[:key])) }
+      fingerprint = BackupEncryptionKey.current&.fingerprint
+      LAYERS.map { |attrs| Layer.new(**attrs, report: read(attrs[:key]), active_fingerprint: fingerprint) }
     end
 
     # One word for the card header: ok when every layer is fresh, otherwise the worst state present.

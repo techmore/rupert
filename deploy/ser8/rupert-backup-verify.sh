@@ -46,7 +46,10 @@ for db in "${sets[@]}"; do
   done
 done
 
-age_h=$(( ( $(date +%s) - $(stat -c %Y "$NEWEST") ) / 3600 ))
+now_s=$(date +%s)
+newest_s=$(stat -c %Y "$NEWEST")
+[ "$newest_s" -le $((now_s + 60)) ] || fail "newest encrypted set has a future timestamp"
+age_h=$(( ( now_s - newest_s ) / 3600 ))
 [ "$age_h" -le "$MAX_AGE_H" ] || fail "newest encrypted set is ${age_h}h old (limit ${MAX_AGE_H}h): the backup pull is not running"
 
 newest_fpr=$(sed -n 's/^fingerprint //p' "$NEWEST.key")
