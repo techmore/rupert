@@ -13,6 +13,8 @@ class TeamChatDateHintsTest < ActiveSupport::TestCase
     assert_equal ['last quarter = 2026-07-01 to 2026-09-30 (period_review period: last_quarter)'], hints('How did last quarter compare?')
     assert_equal ['year to date = 2026-01-01 to 2026-10-22 (period_review period: year_to_date)'], hints('Gross sales YTD?')
     assert_equal ['the last 30 days = 2026-09-23 to 2026-10-22'], hints('best day in the last 30 days')
+    assert_equal ['the last 999 days = 2024-01-28 to 2026-10-22'], hints('last 999 days')
+    assert_includes hints('last 0 days').first, 'do not substitute a different range'
   end
 
   test 'pay weeks are not also calendar weeks, and plain questions get nothing' do

@@ -37,7 +37,11 @@ module TeamChat
         "#{preset.label.downcase} = #{span} (period_review period: #{key})"
       end
       text.scan(LAST_DAYS).each do |(days)|
-        days = days.to_i.clamp(1, 400)
+        days = days.to_i
+        if days.zero?
+          hints << 'The requested last 0 days is not a valid date range; do not substitute a different range.'
+          next
+        end
         hints << "the last #{days} days = #{(today - days + 1).iso8601} to #{today.iso8601}"
       end
       hints
