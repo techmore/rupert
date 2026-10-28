@@ -11,7 +11,7 @@ class GettingStartedChecklist
     end
   end
 
-  ITEM_KEYS = %w[choose_path tour first_lesson finish_path connect_source first_read invite_team check_day customize_dashboard
+  ITEM_KEYS = %w[backup_key choose_path tour first_lesson finish_path connect_source first_read invite_team check_day customize_dashboard
                  clock_in open_pos review_queue training_module my_training].freeze
 
   attr_reader :user, :journey
@@ -53,6 +53,11 @@ class GettingStartedChecklist
 
   def build
     list = []
+    if user.super_admin? && user.can?('settings.write')
+      list << Item.new(key: 'backup_key', title: 'Activate the backup recovery key',
+        hint: 'Save the recovery kit and confirm its check code. Backups cannot run until the key is active.',
+        path: '/settings/backups', done: BackupEncryptionKey.current.present?, manual: false)
+    end
     list << Item.new(key: 'choose_path', title: 'Choose your learning path', hint: 'Tell Rupert what you do so the lessons fit.',
       path: '/learning#your-path', done: journey.focus_chosen? || manual?('choose_path'), manual: false)
     tour_key = user.employee? ? 'employee_home' : 'dashboard'

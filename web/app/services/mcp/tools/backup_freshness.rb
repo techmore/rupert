@@ -12,7 +12,7 @@ module Mcp
         title: 'Backup freshness',
         description: 'Are backups current? The latest verified Google Drive backup (status, age, whether it is within 8 hours) and, ' \
                      'when this process can read them, the newest local snapshot files (name, size, age), and the state of each backup layer ' \
-                     '(rolling snapshot, local set, encrypted off-host copy, off-machine mirror, restore drill) as shown on System → Backups. Names and ages only — ' \
+                     '(rolling snapshot, local set, encrypted off-host copy, off-machine mirror, encrypted backup check and recovery-kit drill) as shown on System → Backups. Names and ages only — ' \
                      'never contents or links. Server-wide, so it needs a platform administrator. Read-only; needs the system:read scope.',
         scope: 'system:read'
 
@@ -43,7 +43,9 @@ module Mcp
       private
 
       def local_snapshots(directory)
-        files = Dir.glob(File.join(directory, '*.{sqlite3,gz,tar,zip,enc}')).select { |path| File.file?(path) }.sort_by { |path| -File.mtime(path).to_i }
+        files = Dir.glob(File.join(directory, '*.{sqlite3,gz,tar,zip,enc,age}')).select do |path|
+          File.file?(path) && (!path.end_with?('.age') || File.basename(path).start_with?('rupert-'))
+        end.sort_by { |path| -File.mtime(path).to_i }
         newest = files.first
         { directory: directory, readable: File.directory?(directory) && File.readable?(directory), files: files.size,
           newest: newest && { name: File.basename(newest), bytes: File.size(newest), age_hours: ((Time.current - File.mtime(newest)) / 1.hour).round(1) } }

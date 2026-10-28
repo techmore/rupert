@@ -124,6 +124,21 @@ class PurchasingFlowTest < ActionDispatch::IntegrationTest
     assert_equal 8500, po.received_cents
   end
 
+  test 'the suggested order number skips numbers already taken' do
+    vendor = Purchasing::Vendor.create!(tenant_id: @tenant.id, name: 'Gap Co')
+    prefix = "PO-#{Time.current.strftime('%Y%m')}-"
+    Purchasing::PurchaseOrder.create!(tenant_id: @tenant.id, vendor_id: vendor.id, order_number: "#{prefix}1")
+    Purchasing::PurchaseOrder.create!(tenant_id: @tenant.id, vendor_id: vendor.id, order_number: "#{prefix}3")
+    Purchasing::PurchaseOrder.create!(tenant_id: @tenant.id, vendor_id: vendor.id, order_number: 'PO-OLD')
+
+    get_page new_purchasing_purchase_order_path
+    assert_response :success
+
+    suggested = css_select("input[name$='[order_number]']").first['value']
+    assert suggested.start_with?(prefix), suggested
+    assert_not_includes Purchasing::PurchaseOrder.pluck(:order_number), suggested
+  end
+
   test "purchase order without lines can't be placed" do
     vendor = Purchasing::Vendor.create!(tenant_id: @tenant.id, name: 'Empty Co')
     po = Purchasing::PurchaseOrder.create!(tenant_id: @tenant.id, vendor_id: vendor.id, order_number: 'PO-1')

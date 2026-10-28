@@ -18,6 +18,12 @@ default: &default
       processes: 1
       polling_interval: 1
 
+    # Battery runs execute model calls synchronously; keep them off operational workers.
+    - queues: battery
+      threads: 1
+      processes: 1
+      polling_interval: 1
+
 development:
   <<: *default
 

@@ -30,6 +30,8 @@ class NotificationsController < AuthenticatedController
 
   # Only same-site paths: a stored URL is never an open redirect.
   def internal_path(url)
-    url if url.to_s.match?(%r{\A/[^/\\]})
+    # Browsers strip tabs and newlines before parsing a Location header, so
+    # /<tab>/host can become a protocol-relative external URL.
+    url if url.to_s.match?(%r{\A/(?!/)[^\x00-\x20\x7f\\]*\z})
   end
 end
