@@ -83,6 +83,9 @@ module TeamChat
           only = DataGuide.tools_for(@topics, question: (request_text if timekeeping))
         end
         @toolbox = Toolbox.new(user: @asker, room: @room, reply: @reply, only: only, execution: @execution, question: request_text)
+        # Reserve the daily evidence before repeated invalid model-produced
+        # views can consume the entire tool budget.
+        @toolbox.prefetch_daily_chart!
         text = verified(answer)
         @toolbox.prefetch_refunded_orders!
         @toolbox.prefetch_requested_metric!

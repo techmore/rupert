@@ -20,4 +20,18 @@ LFM answered the source and daily comparison questions accurately but used an un
 
 The view review checked the actual rows and labels, not just whether a chart existed. DeepSeek's view correctly used separate currencies and blank missing values. LFM produced no view for the explicit-date daily request in this snapshot.
 
-Qwen3.5 4B is still queued for this cohort and therefore has no score here. Subsequent fixes for explicit-date charts, metric retrieval and received-deposit limitations are not included in these results. A replay of the tuned cases is queued; a fresh independent comparison is still needed to measure improvement without using these questions as held-out evidence.
+Qwen3.5 4B later completed the same eight questions against the same cohort and application snapshot. Its responses were reviewed after the three-model key had been opened, so this additional assessment was **not blind**. All eight reference checks matched; its median time was 27.2 seconds. Using the same 1–5 rubric:
+
+| Question | Qwen3.5 4B | Main finding |
+| --- | ---: | --- |
+| Sales by source | 1 | Used the wrong date range and omitted the requested source breakdown. |
+| Compare two days | 5 | Correct amounts and changes by currency. |
+| Refund transactions | 5 | Correct amount, count, rate and refund-date caveat. |
+| Adjustable daily chart | 3 | Correct daily rows and missing-data caveat, but no adjustable view was retained. |
+| Top products | 2 | Correct CAD product, but omitted the USD leader. |
+| Processor deposits | 4 | Correctly stated the amount could not be established and suggested checking bank statements. |
+| Refunded-order status | 1 | Returned paid-order sales instead of refunded-status counts. |
+| Net profit limitations | 2 | Avoided guessing but did not explain the profit-specific limitation. |
+| **Total / 40** | **23** | One run on an altered synthetic fixture; not a general ranking. |
+
+On this run LFM's 17/40 did not beat Qwen3.5's 23/40. Subsequent fixes for explicit-date charts, metric retrieval, refunded-order status and received-deposit limitations are not included in these results. A replay of the tuned cases is queued; a fresh independent comparison is still needed to measure improvement without using these questions as held-out evidence.

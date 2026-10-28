@@ -930,6 +930,17 @@ class TeamChatAgentTest < ActiveSupport::TestCase
       assert_equal 'sales_summary', entry['name']
       assert_equal true, entry.dig('arguments', 'include_daily')
       assert_equal [['2026-10-19', '40.0'], ['2026-10-20', nil]], reply.reload.meta.fetch('views').first['rows'].first(2)
+
+      invalid_views = 7.times.map do |index|
+        { tool: 'show_view', id: "bad-#{index}", arguments: { title: 'Incomplete', kind: 'table', columns: ['Date', 'Sales'], rows: [] } }
+      end
+      script_model(*invalid_views, { text: 'I could not draw that chart.' })
+      reply = ask("@rupert Plot last week's recorded sales trend")
+      TeamChat::Agent.new(reply, config: team_chat_config).run
+      entries = TeamChat::Run.find_by!(message_id: reply.id).tool_results
+      assert_equal 'sales_summary', entries.first['name']
+      assert_equal true, entries.first.dig('arguments', 'include_daily')
+      assert_equal [['2026-10-19', '40.0'], ['2026-10-20', nil]], reply.reload.meta.fetch('views').first['rows'].first(2)
     end
   end
 

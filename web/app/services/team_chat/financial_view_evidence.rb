@@ -101,7 +101,7 @@ module TeamChat
       period = daily_period_for(question)
       return unless period
 
-      contexts = evidence.filter_map { |item| item['daily'] }.select { |daily| daily['period'] == period && daily['source'] == FinancialEvidence::ORDER_SOURCE && !daily['omitted'] }
+      contexts = evidence.filter_map { |item| item['daily'] }.select { |daily| daily['period'] == period && daily['source'] == FinancialEvidence::ORDER_SOURCE && !daily['omitted'] }.uniq
       return unless contexts.one?
 
       cells = {}
