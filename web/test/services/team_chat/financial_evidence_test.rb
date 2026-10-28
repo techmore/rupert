@@ -162,6 +162,14 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_includes text, 'Tea (SKU TEA): alert match unknown'
   end
 
+  test 'card payment queue identifies its combined scope' do
+    payload = { queues: [{ name: 'Card payments not resolved', count: 0 }], low_stock_available: false, oldest_unshipped: [] }
+    text = render(evidence(payload, tool: 'order_queues', args: {}))
+    assert_includes text, 'Card payments not resolved: 0'
+    assert_includes text, 'combines register and warehouse payment attempts'
+    assert_includes text, 'does not provide a processor-specific breakdown'
+  end
+
   test 'oversized daily close notes terminate with a bounded honest gap' do
     stores = 40.times.map do |i|
       { store: "Store #{i}", currency: 'USD', gross_cents: 100, notes: ["#{i}: #{'x' * 220}"] }

@@ -49,6 +49,9 @@ module TeamChat
       context['queues'].each do |queue|
         late = queue.key?('late') ? "; #{queue['late']} late" : ''
         lines << "- #{queue['name']}: #{queue['count']}#{late}."
+        if queue['name'] == 'Card payments not resolved'
+          lines << '  This combines register and warehouse payment attempts; it does not provide a processor-specific breakdown.'
+        end
       end
       lines << 'Additional queue counts were omitted.' if context['queues_omitted']
       if context.key?('waiting_on_low_stock')
