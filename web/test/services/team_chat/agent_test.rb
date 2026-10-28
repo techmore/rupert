@@ -827,6 +827,22 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal 'square', entry.dig('arguments', 'source')
   end
 
+  test 'best sales day over the last thirty days uses the complete inclusive window' do
+    script_model({ tool: 'metric', arguments: { name: 'best_day', period: 'this_month' } }, { text: 'I checked.' })
+    reply = ask('@rupert What was our best sales day in the last 30 days, and how much did we take that day?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal (Date.current - 29).iso8601, entry.dig('arguments', 'from')
+    assert_equal Date.current.iso8601, entry.dig('arguments', 'to')
+    assert_equal 'none', entry.dig('arguments', 'compare')
+
+    script_model({ tool: 'metric', arguments: { name: 'best_day', period: 'this_month' } }, { text: 'I checked.' })
+    reply = ask('@rupert Compare the best sales day in the last 30 days with the previous 30 days.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'this_month', entry.dig('arguments', 'period')
+  end
+
   test 'a stated week ending fixes wrong lookup dates without dropping source filters' do
     script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'this_month', source: 'shopify' } }, { text: 'I checked.' })
     reply = ask('@rupert Show Shopify gross sales for the week ending 2026-08-16.')

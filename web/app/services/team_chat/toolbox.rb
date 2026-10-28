@@ -182,6 +182,7 @@ module TeamChat
       arguments = original_arguments
       arguments = complete_daily_arguments(name, arguments)
       arguments = complete_week_ending_dates(name, arguments)
+      arguments = complete_recent_sales_day_dates(name, arguments)
       arguments = complete_consecutive_sales_comparison(name, arguments)
       arguments = complete_tax_source_arguments(name, arguments)
       arguments = complete_order_day_comparison(name, arguments)
@@ -204,6 +205,17 @@ module TeamChat
           end
         end
       end
+    end
+
+    def complete_recent_sales_day_dates(name, arguments)
+      return arguments unless name.to_s == 'metric' && arguments.is_a?(Hash) && %w[best_day worst_day].include?(arguments['name'])
+
+      question = @question.to_s.sub(/\A\s*(?:@[\w.-]+\s+)+/, '')
+      return arguments unless question.match?(/\b(?:best|busiest|strongest|highest|slowest|worst|lowest)\s+(?:sales|selling)\s+day\b/i)
+      return arguments unless question.match?(/\b(?:last|past)\s+30\s+days\b/i)
+      return arguments if question.match?(/["“”‘’]|\b(?:compare|compared|versus|vs|previous|prior|excluding|except|without|yesterday|last year)\b|\b\d{4}-\d{2}-\d{2}\b/i)
+
+      arguments.except('period').merge('from' => (Date.current - 29).iso8601, 'to' => Date.current.iso8601, 'compare' => 'none')
     end
 
     def call_once(name, arguments)
