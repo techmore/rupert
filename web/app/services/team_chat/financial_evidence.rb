@@ -115,7 +115,29 @@ module TeamChat
         Array(data['sales']).each_with_index do |row, index|
           add(out, row['gross_cents'], 'money', row['currency'], ORDER_SOURCE, period, 'Gross sales (paid or fulfilled orders)', "sales.#{index}.gross_cents")
         end
-        out['gaps'] << 'Expenses without explicit currency, comparisons and other review sections are not certified by this contract; ' \
+        if data['compared_with'].is_a?(Hash) && data['previous_sales'].is_a?(Array) && data['change'].is_a?(Array)
+          key = args['from'].present? || args['to'].present? ? nil : (args['period'].presence || 'yesterday')
+          previous = Metrics::Window.new(from: Date.iso8601(period['from']), to: Date.iso8601(period['to']), label: '', key: key).previous
+          old = window(data['compared_with'], previous.from.iso8601, previous.to.iso8601)
+          data['previous_sales'].each_with_index do |row, index|
+            add(out, row['gross_cents'], 'money', row['currency'], ORDER_SOURCE, old, 'Gross sales (paid or fulfilled orders)', "previous_sales.#{index}.gross_cents")
+          end
+          data['change'].each_with_index do |row, index|
+            currency = row['currency']
+            raise ArgumentError unless Array(data['sales']).any? { |sale| sale['currency'] == currency && sale['gross_cents'].is_a?(Integer) } &&
+              data['previous_sales'].any? { |sale| sale['currency'] == currency && sale['gross_cents'].is_a?(Integer) && sale['gross_cents'].positive? }
+
+            add(out, row['gross_change_percent'], 'percent', currency, ORDER_SOURCE, period,
+              "Gross sales: change versus #{old['from']} to #{old['to']} (not percentage points)", "change.#{index}.gross_change_percent")
+          end
+          missing = Array(data['sales']).filter_map { |row| row['currency'] if CURRENCIES.include?(row['currency']) && data['previous_sales'].none? { |sale| sale['currency'] == row['currency'] } }.uniq
+          if missing.any?
+            out['gaps'] << "No comparison sales rows were returned for #{missing.join(', ')} in #{old['from']} to #{old['to']}; missing rows do not prove zero."
+          end
+        else
+          out['gaps'] << 'Comparison figures were not available in the period review.'
+        end
+        out['gaps'] << 'Expenses without explicit currency and other review sections are not certified by this contract; ' \
                        'profit cannot be established from this evidence.'
       when 'sales_tax_report'
         period = window(data, args['from'] || Date.current.beginning_of_month.iso8601, args['to'] || Date.current.iso8601)

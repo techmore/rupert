@@ -16,7 +16,7 @@ module TeamChat
   class Battery
     # Each bot has its own test room (#test-liquid, #test-qwen, ...). Runs from before that are in #liquid-testing.
     LEGACY_ROOM_SLUG = 'liquid-testing'
-    ROOM_TOPIC = 'Test runs for @%<handle>s: a fixed set of questions, each answer timed and graded 1–5 by DeepSeek against Rupert’s own data. Scorecard: Model scores → Test runs.'
+    ROOM_TOPIC = 'Test runs for @%<handle>s: answers are timed and may be graded or retained for independent review. Scorecard: Model scores → Test runs.'
     CONFIG = Rails.root.join('config/team_chat/battery.yml')
     QUESTION_TIMEOUT = 120
     class QuestionTimeout < Exception; end
@@ -199,7 +199,7 @@ module TeamChat
 
     # Markdown for docs: one row per question.
     def report_markdown
-      lines = ["### Run #{@run_id}#{" (#{@set})" unless @set == 'default'}: @#{handle} (#{model_name}), graded by #{@grader.label}", '',
+      lines = ["### Run #{@run_id}#{" (#{@set})" unless @set == 'default'}: @#{handle} (#{model_name}), review: #{@grader.label}", '',
                '| # | Cadence | Question | Time | Tools | Grade | Grader’s note |', '| --- | --- | --- | --- | --- | --- | --- |']
       @results.each_with_index do |result, index|
         lines << "| #{index + 1} | #{result.item.cadence} | #{result.item.question.tr('|', '/')} | #{format_seconds(result.seconds)} | " \

@@ -436,6 +436,33 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_includes render(item), 'Expenses without explicit currency'
   end
 
+  test 'period review preserves prior amounts and changes without inventing missing currency comparisons' do
+    current = Metrics::Window.resolve(period: 'this_quarter')
+    previous = current.previous
+    payload = { from: current.from.iso8601, to: current.to.iso8601,
+                compared_with: { from: previous.from.iso8601, to: previous.to.iso8601 },
+                sales: [{ currency: 'USD', gross_cents: 26_200 }, { currency: 'CAD', gross_cents: 9_999 }],
+                previous_sales: [{ currency: 'USD', gross_cents: 8_000 }], change: [{ currency: 'USD', gross_change_percent: 227.5 }] }
+    item = evidence(payload, tool: 'period_review', args: { period: 'this_quarter' })
+    text = render(item)
+    assert_includes text, '80.00 USD'
+    assert_includes text, '227.5% (USD group)'
+    assert_includes text, "change versus #{previous.from} to #{previous.to}"
+    assert_includes text, 'No comparison sales rows were returned for CAD'
+    assert_includes text, 'missing rows do not prove zero'
+    payload[:compared_with][:from] = '2000-01-01'
+    assert_empty evidence(payload, tool: 'period_review', args: { period: 'this_quarter' })['facts']
+  end
+
+  test 'period review cannot certify a percentage without a positive prior sales amount' do
+    prior = Date.current - 1
+    payload = @period.merge(compared_with: { from: prior.iso8601, to: prior.iso8601 }, sales: [{ currency: 'USD', gross_cents: 100 }],
+      previous_sales: [{ currency: 'USD', gross_cents: 0 }], change: [{ currency: 'USD', gross_change_percent: 5 }])
+    item = evidence(payload, tool: 'period_review', args: { period: 'today' })
+    assert_empty item['facts']
+    assert_includes render(item), 'incomplete or inconsistent'
+  end
+
   test 'unsupported financial tools and unknown metric meanings return no certified figures' do
     assert_empty evidence({ amount_cents: 99900 }, tool: 'unsupported_finance_tool')['facts']
     assert_empty evidence(data.merge(metric: 'profit'), args: { name: 'profit', period: 'today', source: 'shopify' })['facts']
