@@ -194,6 +194,37 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal({ 'view' => 'vendors', 'vendor' => vendor.name, 'vendor_exact' => true, 'from' => first, 'to' => today }, args)
   end
 
+  test 'a named vendor value question corrects an empty order query' do
+    vendor = Purchasing::Vendor.create!(name: 'Synthetic Tea Supply')
+    first = Date.current.beginning_of_month.iso8601
+    today = Date.current.iso8601
+    data = { view: 'vendors', from: first, to: today, currency: 'USD', meta: { has_more: false },
+             rows: [{ name: vendor.name, spend_cents: 1200, paid_in_window_cents: 500 }] }
+    Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'one vendor', data: data))
+    script_model({ tool: 'purchase_orders', arguments: { view: 'orders', query: '', from: first, to: today } }, { text: 'I checked.' })
+    reply = ask('@rupert For Synthetic Tea Supply this month, what was the PO value and vendor payments?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'recorded vendor payments in the period: 5.00 USD'
+    args = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first['arguments']
+    assert_equal({ 'view' => 'vendors', 'vendor' => vendor.name, 'vendor_exact' => true, 'from' => first, 'to' => today }, args)
+  end
+
+  test 'vendor payment correction does not override a request for order line items' do
+    Purchasing::Vendor.create!(name: 'Synthetic Tea Supply')
+    data = { view: 'orders', rows: [], meta: { has_more: false } }
+    Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'no orders', data: data))
+    original = { view: 'orders', query: '' }
+    script_model({ tool: 'purchase_orders', arguments: original }, { text: 'I checked.' })
+    reply = ask('@rupert For Synthetic Tea Supply this month, show line items and total vendor payments.')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    args = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first['arguments']
+    assert_equal original.stringify_keys, args
+  end
+
   test 'a partial vendor-name query is not silently changed to a different vendor' do
     Purchasing::Vendor.create!(name: 'Synthetic Tea')
     data = { view: 'orders', rows: [], meta: { has_more: false } }

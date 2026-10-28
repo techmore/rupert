@@ -134,22 +134,32 @@ module TeamChat
       args
     end
 
-    # A named vendor payment question needs the vendor view, not the order/sku
-    # query. Only correct an omitted view when the name is an exact tenant match.
+    # A named vendor value/payment question needs the vendor view, not an
+    # order/sku query. Only correct a unique exact tenant match and preserve
+    # requests that ask for individual order or line details.
     def complete_vendor_payment_arguments(name, arguments)
       return arguments unless name.to_s == 'purchase_orders' && arguments.is_a?(Hash)
       return arguments unless @question.match?(/\b(?:vendor|supplier)\s+payments?\b/i) && names.include?('purchase_orders')
+      return arguments unless @question.match?(/\b(?:value|total|spend|how much|what were)\b/i)
+      return arguments if @question.match?(/\b(?:line items?|line-item|sku|individual|which orders|order numbers?|status|open orders)\b/i)
 
       args = arguments.deep_stringify_keys
       query = args['query'].to_s.strip
-      return arguments if args.key?('view') || args.key?('vendor') || query.blank?
+      return arguments if args['vendor'].present? || ![nil, '', 'orders', 'vendors'].include?(args['view'])
+      return arguments if (args.keys - %w[view vendor query from to]).any?
+      if query.blank?
+        match = @question.match(/\bfor\s+(.{1,80}?)\s+(?:this month|last month|today|yesterday)\b/i)
+        query = match && match[1].strip
+      end
+      return arguments if query.blank?
       vendor_reference = /\bfor\s+#{Regexp.escape(query)}(?=\s+(?:this month|last month|today|yesterday)\b|[,;?.])/i
       return arguments unless @question.match?(vendor_reference)
       matches = Purchasing::Vendor.where(tenant_id: @user.tenant_id).where('LOWER(name) = ?', query.downcase).limit(2).count
       return arguments unless matches == 1
 
       args['view'] = 'vendors'
-      args['vendor'] = args.delete('query')
+      args.delete('query')
+      args['vendor'] = query
       args['vendor_exact'] = true
       periods = { 'this month' => 'this_month', 'last month' => 'last_month', 'today' => 'today', 'yesterday' => 'yesterday' }
         .filter_map { |words, key| key if @question.match?(/\b#{words}\b/i) }
