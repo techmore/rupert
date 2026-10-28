@@ -54,7 +54,8 @@ with open(os.environ['CALLS'], 'a') as f:
     f.write('incus ' + ' '.join(args) + '\n')
 root = os.environ['FAKE_ROOT']
 if args[0] == 'exec':
-    cmd = [a.replace('/var/backups/rupert', root + '/var/backups/rupert') for a in args[args.index('--') + 1:]]
+    cmd = [a if root + '/var/backups/rupert' in a else a.replace('/var/backups/rupert', root + '/var/backups/rupert')
+           for a in args[args.index('--') + 1:]]
     if cmd[:2] == ['systemctl', 'start']:
         if os.environ.get('BACKUP_EXIT', '0') != '0':
             sys.exit(int(os.environ['BACKUP_EXIT']))
@@ -163,7 +164,7 @@ class EncryptedBackupTest(unittest.TestCase):
         self.activate(self.recipient)
         r = self.run_backup()
         self.assertEqual(0, r.returncode, r.stderr)
-        files = sorted(p.name for p in self.local.iterdir() if p.is_file())
+        files = sorted(p.name for p in self.local.iterdir() if p.is_file() and p.name != '.backup.lock')
         self.assertTrue(files)
         for name in files:
             self.assertRegex(name, r'\.(age|age\.sha256|age\.key)$', 'no plaintext file is left behind')
@@ -198,7 +199,7 @@ class EncryptedBackupTest(unittest.TestCase):
             status = self.status_of('local')
             self.assertEqual('failed', status['state'])
             self.assertFalse(status['encrypted'])
-            self.assertEqual([], [p for p in self.local.iterdir() if p.is_file()])
+            self.assertEqual([], [p for p in self.local.iterdir() if p.is_file() and p.name != '.backup.lock'])
 
     def test_backup_rejects_a_malformed_recipient(self):
         self.activate("age1'; touch /tmp/pwned; '")
@@ -222,7 +223,7 @@ class EncryptedBackupTest(unittest.TestCase):
         self.assertEqual(0, r.returncode, r.stderr)
         self.assertEqual(sorted(['env-20261020-0617', 'rupert-20261020-0617.sql.gz', 'settings-20261020-0617.sql']),
                          sorted(p.name for p in (self.local / 'legacy-plaintext').iterdir()))
-        left = sorted(p.name for p in self.local.iterdir() if p.is_file())
+        left = sorted(p.name for p in self.local.iterdir() if p.is_file() and p.name != '.backup.lock')
         self.assertEqual(2 * 9, len(left), left)
         self.assertFalse(any('20261001-0000' in n or '20261001-0001' in n for n in left), left)
         self.assertTrue(any('20261001-0002' in n for n in left))
@@ -387,6 +388,26 @@ class EncryptedBackupTest(unittest.TestCase):
         r, out = self.decrypt(db, '--identity-file', str(self.key_file))
         self.assertEqual(1, r.returncode)
         self.assertIn('readable only by you', r.stderr)
+
+    def test_restore_receipt_is_written_only_after_verified_database_recovery(self):
+        db = self.make_set()
+        receipt = self.tmp / 'restore.json'
+        r, out = self.decrypt(db, '--identity-file', str(self.key_file), '--receipt', str(receipt))
+        self.assertEqual(0, r.returncode, r.stderr)
+        report = json.loads(receipt.read_text())
+        self.assertEqual(('restore', 'ok', True), (report['layer'], report['state'], report['encrypted']))
+        self.assertEqual(db.name, report['file'])
+        self.assertNotIn(self.identity, receipt.read_text())
+        self.assertEqual(0o600, stat.S_IMODE(receipt.stat().st_mode))
+        out.unlink()
+        receipt.unlink()
+        with db.open('r+b') as f:
+            f.seek(-20, os.SEEK_END)
+            f.write(b'corrupt')
+        r, out = self.decrypt(db, '--identity-file', str(self.key_file), '--receipt', str(receipt))
+        self.assertNotEqual(0, r.returncode)
+        self.assertFalse(receipt.exists())
+        self.assertFalse(out.exists())
 
     def test_decrypt_rejects_tampered_ciphertext_and_the_wrong_kit(self):
         db = self.make_set()

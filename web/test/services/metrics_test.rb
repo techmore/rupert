@@ -26,6 +26,34 @@ class MetricsTest < ActiveSupport::TestCase
 
   def metric(name, **options) = Metrics.call(name, today: TODAY, **options)
 
+  test 'unknown gross never becomes zero in daily and refund metrics' do
+    row = order(TODAY - 1, 1000)
+    order(TODAY - 1, 2000)
+    row.update_column(:gross_cents, nil)
+    %w[gross_sales average_order_value best_day worst_day sales_by_weekday refund_rate].each do |name|
+      result = metric(name, period: 'yesterday', compare: 'none')[:values].first
+      assert_nil result[:value], name
+      assert_match(/unknown/, result[:formatted], name)
+    end
+    row.order_lines.first.update_column(:line_cents, nil)
+    result = metric('top_products', period: 'yesterday', compare: 'none')[:values].first
+    assert_nil result[:value]
+    assert_match(/unknown/, result[:formatted])
+  end
+
+  test 'a later full refund does not erase gross sales in the original period' do
+    row = order(TODAY - 10, 10_000)
+    Core::Refund.create!(order: row, amount_cents: 10_000, refunded_at: TODAY.in_time_zone, method: 'card')
+    row.refund!
+    result = metric('gross_sales', from: (TODAY - 10).iso8601, to: (TODAY - 10).iso8601, compare: 'none')
+    assert_equal 10_000, result[:values].first[:value]
+    # Some imported cancellations use the same status but have no refund evidence.
+    cancelled = order(TODAY - 10, 20_000)
+    cancelled.update_columns(status: 'refunded', source_financial_status: 'CANCELED')
+    result = metric('gross_sales', from: (TODAY - 10).iso8601, to: (TODAY - 10).iso8601, compare: 'none')
+    assert_equal 10_000, result[:values].first[:value]
+  end
+
   test 'gross sales per currency, with each source, compared with the period before' do
     order(TODAY - 1, 10_000)
     order(TODAY - 1, 5_000, source: 'square')

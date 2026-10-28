@@ -5,7 +5,7 @@
 <% headline = { 'ok' => ['All backup layers are fresh', 'pill-fern'], 'failed' => ['A backup layer failed', 'pill-rose'],
                 'stale' => ['A backup layer is overdue', 'pill-clay'], 'missing' => ['A backup layer has never reported', 'pill-clay'] }.fetch(summary) %>
 <section class="section-card" id="backups" data-backups-summary="<%= summary %>">
-  <%= section_heading 'Backups', hint: 'Five layers, each for a different way of losing data.' do %>
+  <%= section_heading 'Backups', hint: 'Backup copies, checks and recovery evidence.' do %>
     <span class="<%= headline[1] %>"><%= headline[0] %></span>
   <% end %>
   <% unless BackupEncryptionKey.current %>
@@ -31,6 +31,9 @@
               <% if layer.report.key_fingerprint %>· key <span class="font-mono"><%= layer.report.key_fingerprint %></span><% end %>
             </p>
             <p class="text-xs <%= state == 'failed' ? 'text-rose font-semibold' : 'text-taupe' %>"><%= layer.report.message %></p>
+            <% if (issue = layer.evidence_issue(now)) %>
+              <p class="text-xs <%= state == 'failed' ? 'text-rose font-semibold' : 'text-taupe' %>"><%= issue %></p>
+            <% end %>
           <% else %>
             <p class="mt-1 text-sm text-taupe">Never reported on this server. Install it: see the backups guide.</p>
           <% end %>

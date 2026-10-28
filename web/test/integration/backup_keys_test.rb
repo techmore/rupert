@@ -37,6 +37,11 @@ class BackupKeysTest < ActionDispatch::IntegrationTest
 
   test 'the owner creates a key, gets the kit once, and the private key is stored nowhere' do
     sign_in
+    item = GettingStartedChecklist.new(@owner).items.find { |entry| entry.key == 'backup_key' }
+    assert item
+    assert_not item.done?
+    assert_not item.manual
+    assert_equal settings_backups_path, item.path
     get settings_backups_path
     assert_response :success
     assert_equal 'no-store', response.headers['Cache-Control']
@@ -80,6 +85,7 @@ class BackupKeysTest < ActionDispatch::IntegrationTest
     post activate_settings_backup_key_path, params: { check_code: code.downcase }
     assert_redirected_to settings_backups_path
     assert_equal key, BackupEncryptionKey.current
+    assert GettingStartedChecklist.new(@owner).items.find { |entry| entry.key == 'backup_key' }.done?
     assert ActivityLog.exists?(action: 'backup_key_activated')
     assert ActivityLog.exists?(action: 'backup_key_activation_failed')
 

@@ -302,6 +302,19 @@ class ProjectManagementTest < ActionDispatch::IntegrationTest
     assert_equal 1, Notification.unread_count_for(@other_worker)
   end
 
+  test 'notification redirects reject browser-normalized external URLs' do
+    tenant!
+    sign_in(@worker)
+    ["/\t/evil.example/path", "/\n/evil.example/path", "/\r/evil.example/path", '/\\evil.example/path'].each do |url|
+      note = Notification.create!(user: @worker, kind: 'x', title: 'Unsafe', url: url)
+      get notification_path(note)
+      assert_redirected_to notifications_path
+    end
+    note = Notification.create!(user: @worker, kind: 'x', title: 'Safe', url: '/projects/tasks?status=open#board')
+    get notification_path(note)
+    assert_redirected_to '/projects/tasks?status=open#board'
+  end
+
   test 'daily reminders cover due and overdue tasks once each' do
     due = task!('Due today', assignee_id: @worker.id.to_s, due_on: Date.current)
     late = task!('Late', assignee_id: @worker.id.to_s, due_on: Date.current - 3)

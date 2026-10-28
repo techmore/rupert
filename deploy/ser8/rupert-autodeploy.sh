@@ -263,12 +263,25 @@ backup="$BACKUPS/production-$(date +%Y%m%d-%H%M%S)-${CUR:0:8}-$attempt_id.sqlite
 db_path=$(cd "$APP/web" && set -a && . "$ENV_FILE" && printf '%s' "${RUPERT_SQLITE_DATABASE_PRODUCTION-storage/production.sqlite3}") || db_path=""
 case "$db_path" in /*) ;; '') ;; *) db_path="$APP/web/$db_path" ;; esac
 if [ -z "$db_path" ] || [ ! -f "$db_path" ] || [ ! -s "$db_path" ] ||
-   ! ( umask 077; sqlite3 -readonly "$db_path" ".backup $backup" ) ||
+   ! ( umask 077; cd "$BACKUPS" && sqlite3 -readonly "$db_path" ".backup ${backup##*/}" ) ||
    [ "$(sqlite3 -readonly "$backup" 'PRAGMA quick_check;' 2>/dev/null)" != ok ]; then
   rm -f "$backup"
   backup=""; write_receipt failed "backup failed, aborting"; report failed "backup failed, aborting"; exit 1
 fi
-ls -1t "$BACKUPS"/*.sqlite3 | tail -n +6 | xargs -r rm -f
+# Keep the current deployment's backup even if older files have future mtimes.
+# Keep filenames intact and never follow symlinks while pruning.
+python3 - "$BACKUPS" "$backup" <<'PY' || log "could not prune old deploy backups"
+import os, sys
+
+current = os.path.basename(sys.argv[2])
+with os.scandir(sys.argv[1]) as entries:
+    backups = [(entry.stat(follow_symlinks=False).st_mtime_ns, entry.name)
+               for entry in entries
+               if entry.name != current and entry.name.endswith('.sqlite3')
+               and entry.is_file(follow_symlinks=False)]
+for _, name in sorted(backups, reverse=True)[4:]:
+    os.unlink(os.path.join(sys.argv[1], name))
+PY
 
 # Persist the target before changing the checkout. A killed updater must not
 # automatically retry a partially migrated or partially installed revision.
