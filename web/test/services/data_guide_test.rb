@@ -34,4 +34,19 @@ class DataGuideTest < ActiveSupport::TestCase
     assert_includes DataGuide.tools_for(DataGuide.match('is the herbal oil in at the store')), 'inventory_search'
     assert_includes DataGuide.tools_for(DataGuide.match('is soap in at store')), 'inventory_search'
   end
+
+  test 'local staff hours routing prefers the report unless a schedule is requested' do
+    question = 'show everyone their hrs last week'
+    tools = DataGuide.tools_for(DataGuide.match(question), question: question)
+    assert_includes tools, 'time_keeping_report'
+    assert_not_includes tools, 'staff_schedule'
+
+    question = 'compare scheduled and worked hours for staff'
+    tools = DataGuide.tools_for(DataGuide.match(question), question: question)
+    assert_includes tools, 'time_keeping_report'
+    assert_includes tools, 'staff_schedule'
+
+    question = 'staff hours next week'
+    assert_includes DataGuide.tools_for(DataGuide.match(question), question: question), 'staff_schedule'
+  end
 end

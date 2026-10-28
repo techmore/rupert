@@ -50,6 +50,27 @@ class TeamChatLocalAgentsTest < ActiveSupport::TestCase
     assert_equal 'qwen', qwen_reply.as_payload(viewer: @user)[:author][:agent]
   end
 
+  test 'hours tool selection respects the availability of the timekeeping report' do
+    previous = ENV['RUPERT_LOCAL_TOOLS']
+    ENV['RUPERT_LOCAL_TOOLS'] = nil
+    requests = script_model({ text: 'I could not check that.' })
+    reply = post('@qwen show hours for everyone last week').replies.first
+    TeamChat::Agent.new(reply).run
+    names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    assert_includes names, 'time_keeping_report'
+    assert_not_includes names, 'staff_schedule'
+
+    Mcp::Tools::TimeKeepingReport.stubs(:available_to?).returns(false)
+    requests = script_model({ text: 'I could not check that.' })
+    reply = post('@qwen show hours for everyone last week').replies.first
+    TeamChat::Agent.new(reply).run
+    names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    assert_not_includes names, 'time_keeping_report'
+    assert_includes names, 'staff_schedule'
+  ensure
+    ENV['RUPERT_LOCAL_TOOLS'] = previous
+  end
+
   test 'a local agent answers through the gateway with its own model and persona, and sees @rupert as another voice' do
     @room.messages.create!(author_kind: 'assistant', status: 'done', body: 'Earlier answer from Rupert.', meta: { 'asked_by' => @user.id })
     requests = script_model({ text: 'Hi, I am Qwen.' })

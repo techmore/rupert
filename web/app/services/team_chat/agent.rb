@@ -77,7 +77,10 @@ module TeamChat
         # Local bots get only the tools for what the question is about (smaller prompt, fewer wrong picks), unless
         # RUPERT_LOCAL_TOOLS=all: then every tool, so the instructions and tool list stay the same from question to
         # question and the model server reuses them from its cache, and the question names the tools to use.
-        only = DataGuide.tools_for(@topics) if @local_agent && @topics.any? && !all_tools?
+        if @local_agent && @topics.any? && !all_tools?
+          timekeeping = Mcp::Registry.find('time_keeping_report')&.available_to?(Token.new(@asker))
+          only = DataGuide.tools_for(@topics, question: (request_text if timekeeping))
+        end
         @toolbox = Toolbox.new(user: @asker, room: @room, reply: @reply, only: only, execution: @execution, question: request_text)
         text = verified(answer)
         finish(text, started)
