@@ -77,11 +77,11 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
   end
 
   test 'long daily sales results disclose omitted rows' do
-    from = Date.current - 20
-    rows = (0..20).map { |i| { date: (from + i).iso8601, currency: 'USD', orders: 0, gross_cents: 0 } }
+    from = Date.current - 30
+    rows = (0..30).map { |i| { date: (from + i).iso8601, currency: 'USD', orders: 0, gross_cents: 0 } }
     args = { from: from.iso8601, to: Date.current.iso8601, include_daily: true }
     item = evidence(args.slice(:from, :to).merge(lines: [], totals_by_currency: [], daily: rows), tool: 'sales_summary', args: args)
-    assert_equal 20, item['daily']['rows'].size
+    assert_equal 30, item['daily']['rows'].size
     assert_includes render(item), 'Additional daily rows were omitted'
   end
 

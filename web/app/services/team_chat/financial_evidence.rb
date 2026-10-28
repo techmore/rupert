@@ -227,7 +227,7 @@ module TeamChat
 
         row.slice('date', 'currency', 'orders', 'gross_cents')
       end
-      daily = { 'period' => period, 'source' => source, 'rows' => checked.first(20), 'omitted' => checked.size > 20 }
+      daily = { 'period' => period, 'source' => source, 'rows' => checked.first(30), 'omitted' => checked.size > 30 }
       daily['id'] = Digest::SHA256.hexdigest(JSON.generate(daily)).first(16)
       daily
     end
