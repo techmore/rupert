@@ -88,9 +88,10 @@ module TeamChat
 
     def html_text(html) = Nokogiri::HTML.fragment(html).text
 
-    # How many figures (money, percentages and plain numbers of two or more digits) are not in the tool results.
+    # How many figures are not found in tool results. This does not verify a
+    # figure's label, source, period, currency, sign or relationship to a row.
     def unchecked(text, known_text)
-      figures = text.to_s.scan(/(?<![\w.])[-−]?\$?\d[\d,]*(?:\.\d+)?%?/).map { |raw| raw.delete('$,%−-') }.reject { |raw| raw.delete('.').length < 2 }
+      figures = text.to_s.scan(/(?<![\w.])[-−]?\$?\d[\d,]*(?:\.\d+)?%?/).map { |raw| raw.delete('$,%−-') }
       return 0 if figures.empty?
 
       known = NumberCheck.known_values(known_text.to_s)

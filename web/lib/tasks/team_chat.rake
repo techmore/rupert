@@ -101,7 +101,7 @@ namespace :team_chat do
 end
 
 namespace :team_chat do
-  desc 'Run the test battery (config/team_chat/battery.yml) on one bot in its test room (#test-<bot>): each answer timed and graded by DeepSeek. ' \
+  desc 'Run a test battery on one bot in its test room: answers are timed and graded or retained for independent review. ' \
        'AGENT=qwen BATTERY=depth|breadth|finance|bank (bank samples PER per area) GRADER=offline|hosted USER_EMAIL=... ONLY=d1,w1 REPORT=path.md ' \
        'RUPERT_VERIFY=1 (check and fix each answer; saved as e.g. finance+verify)'
   task battery: :environment do

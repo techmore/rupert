@@ -7,9 +7,9 @@ require 'timeout'
 module TeamChat
   # A fixed set of questions (config/team_chat/battery.yml) asked to one bot in
   # the bot's own test room (#test-liquid, #test-qwen, ...), one at a time, timed. Each answer is then graded by
-  # DeepSeek (Battery::Grader) against the data Rupert's own tools return for the
-  # same question, and the grade is posted under it. Everyone in the room can
-  # watch a run; the summary is posted and pinned at the end.
+  # the configured grader against the data Rupert's own tools return for the
+  # same question, or retained ungraded for independent review. Everyone in the
+  # room can watch a run; the summary is posted and pinned at the end.
   #
   # Questions only read data. A bot that proposes a change anyway gets its card
   # dismissed, so a test run never changes anything.
@@ -346,6 +346,7 @@ module TeamChat
     def summary_text(elapsed)
       graded = @results.filter_map { |result| result.grade&.dig(:score) }
       times = @results.map(&:seconds).select(&:positive?)
+      visual = @results.select { |result| result.item.module == 'visualization' }
       by_cadence = @results.group_by { |result| result.item.cadence }.map do |cadence, rows|
         scores = rows.filter_map { |row| row.grade&.dig(:score) }
         "#{cadence} #{scores.any? ? format('%.1f', scores.sum.to_f / scores.size) : '—'}"
@@ -354,6 +355,9 @@ module TeamChat
         "📋 Test run #{@run_id} done: @#{handle} (#{model_name}) answered #{@results.count { |result| result.status == 'done' }}/#{@results.size}.",
         ("Average grade #{format('%.1f', graded.sum.to_f / graded.size)}/5 (#{graded.tally.sort.reverse.map { |score, count| "#{count}× #{score}" }.join(', ')})." if graded.any?),
         "Graded #{graded.size}/#{@results.size}; #{@results.size - graded.size} ungraded.",
+        ("Side-panel views: #{visual.count { |row| view_summary(row).any? }}/#{visual.size} answers; " \
+         "#{visual.count { |row| view_summary(row).any? { |view| view['adjustable'] } }} include an adjustable structured view. " \
+         'Data, labels and scope require review.' if visual.any?),
         ("Time per answer: average #{format_seconds(times.sum / times.size)}, fastest #{format_seconds(times.min)}, slowest #{format_seconds(times.max)}." if times.any?),
         ("By cadence: #{by_cadence.join(' · ')}." if by_cadence.any?),
         "Number check flagged figures in #{@results.count { |result| result.unverified.to_a.any? }} of #{@results.size} replies; an unflagged reply is not necessarily verified.",

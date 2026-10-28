@@ -65,6 +65,12 @@ class TeamChatBatteryTest < ActiveSupport::TestCase
     assert_equal({ 'kind' => 'bar_chart', 'rows' => 1, 'unmatched_figures' => 1, 'adjustable' => true }, views.first)
     assert_equal false, views.last['adjustable']
     assert_not views.first.key?('verified')
+    visual = result.item.dup
+    visual.module = 'visualization'
+    result.item = visual
+    battery.instance_variable_set(:@results, [result])
+    assert_includes battery.send(:summary_text, nil), 'Side-panel views: 1/1 answers; 1 include an adjustable structured view'
+    assert_includes battery.send(:summary_text, nil), 'Data, labels and scope require review'
   end
 
   test 'combined benchmark job uses the offline grader and rejects a hosted verifier' do

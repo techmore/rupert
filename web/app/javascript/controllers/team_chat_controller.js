@@ -1498,6 +1498,10 @@ export default class extends Controller {
       frame.srcdoc = `<!doctype html><meta charset="utf-8"><style>${this.constructor.VIEW_CSS}</style>${view.html}`
       body.append(frame)
     } else {
+      const context = document.createElement("p")
+      context.className = "chat-panel-note"
+      context.textContent = "Check the source, dates, currency and labels: matching numbers alone do not verify a view."
+      body.append(context)
       body.append(this.adjustableViewNode(view))
     }
     if (view.note) {
