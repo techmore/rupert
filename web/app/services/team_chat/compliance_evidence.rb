@@ -36,7 +36,7 @@ module TeamChat
 
       text = question.to_s.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip.sub(/[?.!]+\z/, '').strip
       return TIMESHEETS_TITLE if text.match?(/\A(?:are there|are|any|how many) (?:any )?timesheets (?:are )?(?:waiting for|awaiting|pending) approval\z/i)
-      return BANK_LINES_TITLE if text.match?(/\A(?:are there|are|any|how many) (?:any )?bank statement lines (?:are )?(?:waiting to be matched|awaiting (?:a )?decision|pending (?:a )?decision)\z/i)
+      return BANK_LINES_TITLE if text.match?(/\A(?:are there|are|any|how many) (?:any )?(?:uploaded )?bank statement lines (?:are )?(?:waiting to be matched|awaiting (?:a )?decision|pending (?:a )?decision)\z/i)
 
       nil
     end

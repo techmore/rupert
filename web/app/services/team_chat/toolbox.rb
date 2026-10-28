@@ -51,6 +51,7 @@ module TeamChat
       @execution = execution
       @question = question.to_s
       @only |= %w[order_queues compliance_check] if @only && ComplianceEvidence.receipt_and_retention_question?(@question)
+      @only |= ['compliance_check'] if @only && ComplianceEvidence.focused_title(@question) == ComplianceEvidence::BANK_LINES_TITLE
       saved = execution&.run&.tool_results || []
       @views = []
       @calls = saved.size
@@ -84,6 +85,15 @@ module TeamChat
 
     def financial? = @financial
     def prefetched_requested_metric? = @prefetched_requested_metric == true
+
+    def prefetch_bank_line_status!
+      return unless @execution && @calls < MAX_CALLS && names.include?('compliance_check')
+      return unless ComplianceEvidence.focused_title(@question) == ComplianceEvidence::BANK_LINES_TITLE
+      return if @execution.run.reload.tool_results.any? { |entry| entry['name'] == 'compliance_check' }
+
+      self.call_id = "bank-line-status-#{@execution.run.id}"
+      call('compliance_check', { 'include_ok' => true })
+    end
 
     def prefetch_receipt_and_retention!
       return unless @execution && ComplianceEvidence.receipt_and_retention_question?(@question)

@@ -241,6 +241,32 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal true, entries.find { |entry| entry['name'] == 'compliance_check' }.dig('arguments', 'include_ok')
   end
 
+  test 'uploaded bank-line status uses the compliance row rather than the uploads inbox' do
+    compliance = { items: [{ title: 'Uploaded bank lines have a decision', area: 'Books', status: 'watch', count: 3,
+                            detail: 'Three lines need a decision.' }] }
+    Mcp::Tools::ComplianceCheck.stubs(:available_to?).returns(true)
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: compliance))
+    script_model({ tool: 'list_uploads', arguments: {} }, { text: 'No bank lines are waiting.' })
+    reply = ask('@rupert Are uploaded bank statement lines awaiting a decision?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Uploaded bank statement lines awaiting a decision: 3.'
+    assert_includes reply.body, 'does not establish that every line was matched'
+    assert_not_includes reply.body, 'No bank lines are waiting'
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'compliance_check', entry['name']
+    assert_equal true, entry.dig('arguments', 'include_ok')
+  end
+
+  test 'uploaded bank-line status stays unknown when compliance evidence is unavailable' do
+    Mcp::Tools::ComplianceCheck.stubs(:available_to?).returns(false)
+    script_model({ text: 'No bank lines are waiting.' })
+    reply = ask('@rupert Are uploaded bank statement lines awaiting a decision?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal 'I could not verify the requested compliance count.', reply.reload.body
+  end
+
   test 'missing receipt or retention evidence is not inferred from the other lookup' do
     queues = { queues: [], oldest_unshipped: [], low_stock_available: false }
     Mcp::Tools::OrderQueues.stubs(:available_to?).returns(true)

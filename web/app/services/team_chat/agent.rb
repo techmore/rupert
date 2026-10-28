@@ -88,6 +88,7 @@ module TeamChat
         @toolbox.prefetch_daily_chart!
         @toolbox.prefetch_comparison_chart!
         @toolbox.prefetch_receipt_and_retention!
+        @toolbox.prefetch_bank_line_status!
         text = verified(answer)
         @toolbox.prefetch_refunded_orders!
         @toolbox.prefetch_requested_metric!
