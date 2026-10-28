@@ -430,9 +430,12 @@ module TeamChat
         lines << "- Timekeeping (#{context['scope']}; #{context.dig('period', 'from')} to #{context.dig('period', 'to')}): #{hours['worked']} hours worked, #{hours['scheduled']} hours scheduled; #{hours['ctrax']} C-Trax hours observed separately, not added."
       end
       lines.unshift('From Rupert’s records:') if lines.any?
+      gaps = evidence.flat_map { |item| item['gaps'] }.uniq
+      missing_metrics, other_gaps = gaps.partition { |gap| gap.start_with?('No metric rows were returned for the requested period') }
+      lines = missing_metrics + lines
       lines << 'I could not verify financial figures for this request.' if facts.empty?
       lines << 'Additional verified facts were omitted. Narrow the question for the remaining figures.' if facts.size > 12
-      lines.concat(evidence.flat_map { |item| item['gaps'] }.uniq)
+      lines.concat(other_gaps)
       lines.join("\n")
     end
   end

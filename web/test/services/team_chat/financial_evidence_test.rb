@@ -25,6 +25,14 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
 
   def render(item) = TeamChat::FinancialEvidence.render([item])
 
+  test 'missing metric scope precedes other figures without hiding them' do
+    missing = evidence(data.merge(source: 'rupert_pos', values: []), args: { name: 'gross_sales', period: 'today', source: 'rupert_pos' })
+    aggregate = evidence(data.merge(source: nil), args: { name: 'gross_sales', period: 'today' })
+    text = TeamChat::FinancialEvidence.render([missing, aggregate])
+    assert_operator text.index('rupert_pos canonical orders'), :<, text.index('214.83 USD')
+    assert_includes text, 'canonical orders: Shopify, Square, Rupert POS and manual'
+  end
+
   test 'an aggregate amount does not prove a source specific claim' do
     aggregate = evidence(data.merge(source: nil), args: { name: 'gross_sales', period: 'today' })
     assert_nil TeamChat::FinancialEvidence.checked_prose('Rupert POS made 214.83 USD.', [aggregate])
