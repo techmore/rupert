@@ -68,6 +68,22 @@ class BusinessReviewToolsTest < ActiveSupport::TestCase
     assert_equal 'USD', usd.reload.currency
   end
 
+  test 'period review limits rankings independently for each currency' do
+    %w[USD CAD].each do |currency|
+      6.times do |index|
+        row = order(at: 1.day.ago, cents: (index + 1) * 100, number: "#{currency}-#{index}")
+        row.update!(currency: currency)
+        row.order_lines.first.update!(name: "Product #{index}")
+      end
+    end
+
+    products = call('period_review', { 'period' => 'yesterday' }).data[:top_products].group_by { |row| row[:currency] }
+    assert_equal %w[CAD USD], products.keys.sort
+    products.each_value do |rows|
+      assert_equal [600, 500, 400, 300, 200], rows.map { |row| row[:revenue_cents] }
+    end
+  end
+
   test 'order_queues lists unshipped paid orders, the oldest first, and what is late' do
     late = order(at: 3.days.ago, cents: 2500, number: 'late')
     order(at: 2.hours.ago, cents: 1500, number: 'fresh')

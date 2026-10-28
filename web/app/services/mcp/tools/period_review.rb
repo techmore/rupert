@@ -15,7 +15,7 @@ module Mcp
       tool 'period_review',
         title: 'Period review (day, week, month, quarter)',
         description: 'A business review of one period compared with the period before: orders and gross sales by source and ' \
-                     'currency with the change, refunds, top products, tasks created and done, stock alerts opened and ' \
+                     'currency with the change, refunds, top five products within each currency, tasks created and done, stock alerts opened and ' \
                      'resolved, inventory counts, purchase orders received, sync failures, and (when allowed) hours worked ' \
                      'and expenses. Pick a named period (yesterday, last_week, last_month, this_quarter, last_quarter...) ' \
                      'or from/to dates. A money summary places gross sales per currency beside expenses when finance access ' \
