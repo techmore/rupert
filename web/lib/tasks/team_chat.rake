@@ -1,6 +1,37 @@
 # frozen_string_literal: true
 
 namespace :team_chat do
+  desc 'Compare two completed runs on the same evidence cohort. BASELINE=run_key CANDIDATE=run_key TENANT_ID=...'
+  task battery_compare: :environment do
+    tenant = ENV['TENANT_ID'].present? ? Tenant.find(ENV['TENANT_ID']) : Tenant.where(status: 'active').first
+    abort 'No active tenant is available.' unless tenant
+
+    Current.tenant = tenant
+    baseline = TeamChat::BatteryRun.find_by!(run_key: ENV.fetch('BASELINE'))
+    candidate = TeamChat::BatteryRun.find_by!(run_key: ENV.fetch('CANDIDATE'))
+    puts JSON.pretty_generate(TeamChat::Battery::Comparison.new(baseline: baseline, candidate: candidate).call)
+  end
+
+  desc 'Capture encrypted comparison evidence for a question set. COHORT=path BATTERY=default|finance|cross|bank USER_EMAIL=... TENANT_ID=...'
+  task battery_cohort: :environment do
+    path = ENV['COHORT'].presence || abort('COHORT must name a new private file.')
+    tenant = ENV['TENANT_ID'].present? ? Tenant.find(ENV['TENANT_ID']) : Tenant.where(status: 'active').first
+    abort 'No active tenant is available.' unless tenant
+
+    Current.tenant = tenant
+    user = ENV['USER_EMAIL'].present? ? User.find_by!(email: ENV['USER_EMAIL'], tenant_id: tenant.id) :
+      User.where(tenant_id: tenant.id, role: %w[admin super_admin], active: true).first
+    abort 'An active administrator is required.' unless user && %w[admin super_admin].include?(user.role)
+    Current.user = user
+    set = ENV['BATTERY'].presence || 'default'
+    items = set == 'bank' ? TeamChat::QuestionBank.battery_items(per: ENV.fetch('PER', 5).to_i) :
+      TeamChat::Battery.items(TeamChat::Battery.config_for(set))
+    battery = TeamChat::Battery.new(user: user, agent: 'rupert', items: items, set: set, out: nil)
+    cohort = TeamChat::Battery::Cohort.capture(user: user, items: items) { |item| battery.send(:reference_for, item) }
+    cohort.save_file(path)
+    puts "Cohort #{cohort.id}: #{cohort.size} questions, #{cohort.ungradable} without usable evidence. Encrypted file saved."
+  end
+
   desc 'Check battery MCP calls and declared result fields without printing business values. BATTERY=cross|finance|default|all.'
   task battery_coverage: :environment do
     abort 'Battery coverage must run against a non-production fixture database.' if Rails.env.production?
@@ -80,8 +111,9 @@ namespace :team_chat do
     user = ENV['USER_EMAIL'].present? ? User.find_by!(email: ENV['USER_EMAIL'], tenant_id: tenant.id) : User.where(tenant_id: tenant.id, role: %w[admin super_admin], active: true).first
     Current.user = user
     set = ENV['BATTERY'].presence || 'default'
+    cohort = TeamChat::Battery::Cohort.load_file(ENV['COHORT'], user: user) if ENV['COHORT'].present?
     battery = TeamChat::Battery.new(user: user, agent: ENV.fetch('AGENT', 'qwen'), only: ENV['ONLY'].to_s.split(','),
-      items: set == 'bank' ? TeamChat::QuestionBank.battery_items(per: ENV.fetch('PER', 5).to_i) : TeamChat::Battery.items(TeamChat::Battery.config_for(set)), set: set)
+      items: set == 'bank' ? TeamChat::QuestionBank.battery_items(per: ENV.fetch('PER', 5).to_i) : TeamChat::Battery.items(TeamChat::Battery.config_for(set)), set: set, cohort: cohort)
     if (done = battery.already_done) && ENV['FORCE'].blank?
       puts "Already tested: #{done.label} on the #{done.set_name} questions with this Rupert build (#{done.revision}), " \
            "#{done.started_at&.strftime('%Y-%m-%d %H:%M')}: average #{done.avg_grade}/5. See Model scores. Run with FORCE=1 to test again."

@@ -48,6 +48,11 @@ module TeamChat
       Report.new(questions: questions)
     end
 
+    # Shared by the live grader so a successful tool call with missing or
+    # uncheckable evidence cannot become an apparently reliable score.
+    def checkable_data?(data) = !uncheckable_result?(data)
+    def need_present?(data, path) = field_present?(data, path)
+
     private
 
     def run_check(check)

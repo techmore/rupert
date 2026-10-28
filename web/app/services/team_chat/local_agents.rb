@@ -57,6 +57,14 @@ module TeamChat
 
     # Models on the gateway that only the test battery asks (rake team_chat:battery AGENT=gemma-e2b); never @mentionable.
     TRIALS = [
+      Agent.new(handle: 'lfm3-text', name: 'LFM3 Text', model: 'lfm3-text', color: '#0f766e',
+        about: 'Liquid AI LFM3 1.7B Q4_K_M, local trial'),
+      Agent.new(handle: 'lfm3-vl', name: 'LFM3 Vision', model: 'lfm3-vl', color: '#0d9488',
+        about: 'Liquid AI LFM3 VL 2B Q4_K_M, local trial'),
+      Agent.new(handle: 'lfm3-audio', name: 'LFM3 Audio', model: 'lfm3-audio', color: '#0891b2',
+        about: 'Liquid AI LFM3 Audio 2B Q4_K_M, local trial'),
+      Agent.new(handle: 'lfm3-omni', name: 'LFM3 Omni', model: 'lfm3-omni', color: '#0369a1',
+        about: 'Liquid AI LFM3 Omni 2B Q4_K_M, local trial'),
       Agent.new(handle: 'gemma-e2b', name: 'Gemma E2B', model: 'gemma-4-e2b', color: '#a855f7',
         about: 'Google Gemma 4 E2B (Unsloth UD-Q4_K_XL), local'),
       Agent.new(handle: 'gemma-e4b-ud', name: 'Gemma E4B UD', model: 'gemma-4-e4b-ud', color: '#7e22ce',

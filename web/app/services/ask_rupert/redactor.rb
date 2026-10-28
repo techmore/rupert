@@ -20,7 +20,16 @@ module AskRupert
 
     # Tool results: the above plus emails and phone numbers of customers and staff.
     def personal(text)
-      clean(text).gsub(EMAIL, '[email]').gsub(PHONE, '[phone]')
+      clean(text).gsub(EMAIL, '[email]').gsub(PHONE) do |match|
+        # Exact valid ISO dates identify reporting periods, not phone numbers.
+        if match.match?(/\A\d{4}-\d{2}-\d{2}\z/) && Date.iso8601(match).iso8601 == match
+          match
+        else
+          '[phone]'
+        end
+      rescue Date::Error
+        '[phone]'
+      end
     end
   end
 end

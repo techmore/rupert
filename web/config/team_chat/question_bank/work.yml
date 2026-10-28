@@ -458,6 +458,7 @@ questions:
   tools:
   - create_task
   answerable: 'yes'
+  expect: The answer should offer a reviewable task for Jan to count the tea shelf next Wednesday, or ask for clarification if the assignee or due date is ambiguous. It must not claim the task was created without an approved action.
 - id: work-075
   module: work
   question: 'add to my list: email the label printer vendor'

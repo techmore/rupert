@@ -130,4 +130,5 @@ questions:
     cadence: general
     module: team
     question: Where do I approve timesheets?
+    expect: Direct the reviewer to People → Timesheets, select submitted timesheets and open one for review and approval; do not invent a count.
     checks: []

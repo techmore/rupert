@@ -2,6 +2,7 @@
 
 require 'securerandom'
 require 'digest'
+require 'timeout'
 
 module TeamChat
   # A fixed set of questions (config/team_chat/battery.yml) asked to one bot in
@@ -17,9 +18,11 @@ module TeamChat
     LEGACY_ROOM_SLUG = 'liquid-testing'
     ROOM_TOPIC = 'Test runs for @%<handle>s: a fixed set of questions, each answer timed and graded 1–5 by DeepSeek against Rupert’s own data. Scorecard: Model scores → Test runs.'
     CONFIG = Rails.root.join('config/team_chat/battery.yml')
+    QUESTION_TIMEOUT = 120
+    class QuestionTimeout < Exception; end
 
     Item = Struct.new(:id, :cadence, :question, :checks, :expect, :module, :needs, keyword_init: true)
-    Result = Struct.new(:item, :seconds, :tools, :status, :answer, :grade, :tokens_in, :tokens_out, :unverified, :message_id, :load_seconds,
+    Result = Struct.new(:item, :seconds, :tools, :status, :answer, :grade, :grading_error, :tokens_in, :tokens_out, :unverified, :message_id, :load_seconds,
       :verify, keyword_init: true)
 
     attr_reader :run_id, :room, :results, :record
@@ -90,10 +93,12 @@ module TeamChat
     # user: who the questions are asked as (their permissions). agent: a local bot handle, or 'rupert'.
     attr_reader :set
 
-    def initialize(user:, agent: 'qwen', only: nil, grader: Grader.new, items: self.class.items, out: $stdout, set: 'default')
+    def initialize(user:, agent: 'qwen', only: nil, grader: Grader.new, items: self.class.items, out: $stdout, set: 'default', cohort: nil)
       @set = set.to_s.presence || 'default'
       @run_set = self.class.run_set_name(@set)
       @user = user
+      raise ArgumentError, 'cohort belongs to another requester or workspace' if cohort && !cohort.for_user?(user)
+      @cohort = cohort
       @agent = agent.to_s == 'rupert' ? nil : (LocalAgents.find(agent) || LocalAgents.trial(agent))
       raise ArgumentError, "No bot @#{agent} is available here." if agent.to_s != 'rupert' && !@agent
 
@@ -152,7 +157,8 @@ module TeamChat
     # The saved name of this run's question set; a run of only some questions is marked so it never counts as the full set.
     # Runs with the answer check (RUPERT_VERIFY) are kept apart: "finance+verify".
     def record_set_name
-      name = Verify.enabled_for?(@agent) ? "#{@run_set}+verify" : @run_set
+      name = @cohort ? "#{@run_set}-cohort-#{@cohort.id}" : @run_set
+      name = "#{name}+verify" if Verify.enabled_for?(@agent)
       @partial ? "#{name} (part)" : name
     end
 
@@ -181,7 +187,15 @@ module TeamChat
         meta: { 'battery' => @run_id, 'item' => item.id, 'cadence' => item.cadence })
       reply = @room.messages.create!(author_kind: 'assistant', status: 'pending', activity: @agent ? "Loading #{@agent.name}" : 'Thinking',
         meta: { 'asked_by' => @user.id, 'trigger_id' => question.id, 'agent' => @agent&.handle, 'battery' => @run_id, 'isolated' => true }.compact)
-      Agent.new(reply).run
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      begin
+        Timeout.timeout(QUESTION_TIMEOUT, QuestionTimeout) { Agent.new(reply).run }
+      rescue QuestionTimeout
+        Run.for_reply!(reply).cancel!(user: @user)
+        reply.reload.update!(status: 'failed', activity: nil, body: 'Benchmark failed: no answer within 120 seconds.',
+          meta: reply.meta.to_h.merge('duration_ms' => ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000).round,
+            'battery_timeout' => true))
+      end
       reply.reload
       dismiss_proposals(reply)
       meta = reply.meta.to_h
@@ -193,39 +207,69 @@ module TeamChat
       check_note = (" · check: #{Array(check['failed']).size} failed, kept #{check['kept']}" if check)
       log "    #{reply.status} in #{format_seconds(seconds)}#{" (#{format_seconds(load_seconds)} model load)" if load_seconds}#{check_note} · tools #{Array(meta['tools']).join(', ').presence || 'none'} · grade #{grade&.dig(:score) || '—'}"
       Result.new(item: item, seconds: seconds, tools: Array(meta['tools']), status: reply.status, answer: reply.body.to_s,
-        grade: grade, tokens_in: meta['tokens_in'], tokens_out: meta['tokens_out'], unverified: Array(meta['unverified']), message_id: reply.id,
+        grade: grade, grading_error: @last_grade_error, tokens_in: meta['tokens_in'], tokens_out: meta['tokens_out'], unverified: Array(meta['unverified']), message_id: reply.id,
         load_seconds: load_seconds, verify: check&.except('draft'))
     end
 
     def result_row(result)
       { 'id' => result.item.id, 'cadence' => result.item.cadence, 'module' => result.item.module, 'question' => result.item.question, 'status' => result.status,
         'seconds' => result.seconds.round(1), 'load_seconds' => result.load_seconds, 'verify' => result.verify, 'tools' => result.tools, 'grade' => result.grade&.dig(:score),
-        'verdict' => result.grade&.dig(:verdict).to_s.first(300), 'unverified' => result.unverified.to_a, 'message_id' => result.message_id }
+        'verdict' => result.grade&.dig(:verdict).to_s.first(300), 'grading_error' => result.grading_error, 'grader' => @grader.label,
+        'unverified' => result.unverified.to_a, 'message_id' => result.message_id }
     end
 
     def grade_for(item, reply)
+      @last_grade_error = nil
+      return { score: 1, verdict: 'Failed: no answer within 120 seconds.', issues: [] } if reply.meta.to_h['battery_timeout']
       return { score: 1, verdict: "No answer: the reply #{reply.status == 'failed' ? 'failed' : 'was empty'}.", issues: [] } if reply.status != 'done' || reply.body.blank?
 
-      @grader.grade(question: item.question, answer: reply.body.to_s, reference: reference_for(item), tools_used: Array(reply.meta.to_h['tools']),
+      reference = @cohort ? @cohort.reference(item) { reference_for(item) } : reference_for(item)
+      raise Grader::Error, 'no reference or authored expectation' if reference.blank? && item.expect.blank?
+
+      @grader.grade(question: item.question, answer: reply.body.to_s, reference: reference, tools_used: Array(reply.meta.to_h['tools']),
         expect: item.expect)
     rescue Grader::Error => e
       log "    grading failed: #{e.message.first(160)}"
+      @last_grade_error = 'reference_or_grader_unavailable'
       nil
     end
 
     # What Rupert's own tools say for this question, so the grader has the truth to compare with.
     def reference_for(item)
       token = Token.new(@user)
+      coverage = BatteryCoverage.new(user: @user, items: [])
+      evidence = {}
       item.checks.map do |check|
         name = check.is_a?(Hash) ? check['tool'] : check.to_s
         args = (check.is_a?(Hash) ? check['args'].to_h : {}).transform_values { |value| preset_date(value) }
+        if %w[where_is how_do_i].include?(name)
+          outcome = AskRupert::Tools.new(user: @user).call(name, args)
+          raise Grader::Error, "reference lookup #{name} failed or found nothing" if !outcome.ok || outcome.text.to_s.match?(/\ANo (matching page|lesson matches)/)
+
+          text = AskRupert::Redactor.personal(outcome.text)
+          raise Grader::Error, "reference lookup #{name} output exceeds the judge limit" if text.length > Grader::REFERENCE_CHARS
+          evidence[name] = { 'text' => text, 'links' => outcome.links }
+          next "#{name}(#{JSON.generate(args)}):\n#{text}"
+        end
         tool = Mcp::Registry.find(name)
-        next "#{name}: not available" unless tool&.available_to?(token)
+        raise Grader::Error, "reference tool #{name} unavailable" unless tool&.read_only && tool.available_to?(token)
 
         outcome = tool.new(token: token).call(args)
-        "#{name}(#{JSON.generate(args)}):\n#{AskRupert::Redactor.personal("#{outcome.text}\n#{JSON.generate(outcome.data)}").first(Grader::REFERENCE_CHARS)}"
-      rescue Mcp::ToolError => e
-        "#{name}: error #{e.message.first(200)}"
+        raise Grader::Error, "reference tool #{name} could not be checked" unless coverage.checkable_data?(outcome.data)
+        evidence[name] = outcome.data
+        text = AskRupert::Redactor.personal("#{outcome.text}\n#{JSON.generate(outcome.data)}")
+        raise Grader::Error, "reference tool #{name} output exceeds the judge limit" if text.length > Grader::REFERENCE_CHARS
+
+        "#{name}(#{JSON.generate(args)}):\n#{text}"
+      rescue Grader::Error
+        raise
+      rescue StandardError
+        raise Grader::Error, "reference tool #{name} failed"
+      end.tap do
+        Array(item.needs).each do |need|
+          name, path = need.to_s.split(':', 2)
+          raise Grader::Error, "reference field #{need} missing" unless evidence.key?(name) && coverage.need_present?(evidence[name], path)
+        end
       end.join("\n\n")
     end
 
@@ -262,6 +306,7 @@ module TeamChat
       [
         "📋 Test run #{@run_id} done: @#{handle} (#{model_name}) answered #{@results.count { |result| result.status == 'done' }}/#{@results.size}.",
         ("Average grade #{format('%.1f', graded.sum.to_f / graded.size)}/5 (#{graded.tally.sort.reverse.map { |score, count| "#{count}× #{score}" }.join(', ')})." if graded.any?),
+        "Graded #{graded.size}/#{@results.size}; #{@results.size - graded.size} ungraded.",
         ("Time per answer: average #{format_seconds(times.sum / times.size)}, fastest #{format_seconds(times.min)}, slowest #{format_seconds(times.max)}." if times.any?),
         ("By cadence: #{by_cadence.join(' · ')}." if by_cadence.any?),
         "Number check: figures not found in Rupert's data in #{@results.count { |result| result.unverified.to_a.any? }} of #{@results.size} answers.",

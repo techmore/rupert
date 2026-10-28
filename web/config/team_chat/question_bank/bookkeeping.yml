@@ -1169,6 +1169,9 @@ questions:
   tools:
   - metric
   answerable: 'yes'
+  expect: Quote the recorded refund rate, refund amount and count per currency for this month; do not calculate an unsupported rate.
+  checks: [{ tool: metric, args: { name: refund_rate, period: this_month } }]
+  needs: ['metric:values[].formatted', 'metric:values[].refunded', 'metric:values[].refunds', 'metric:values[].currency']
 - id: bookkeeping-188
   module: bookkeeping
   question: refund rate lq vs the quarter b4

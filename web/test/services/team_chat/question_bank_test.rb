@@ -51,6 +51,35 @@ class TeamChatQuestionBankTest < ActiveSupport::TestCase
     honesty = items.select { |item| item.cadence == 'honesty' }
     assert_equal areas.size, honesty.size
     assert(honesty.all? { |item| item.expect.include?('has no data') })
-    assert(items.flat_map(&:checks).all? { |name| Mcp::Registry.find(name) }, 'checks are MCP tools')
+    assert(items.flat_map(&:checks).all? do |check|
+      name = check.is_a?(Hash) ? check['tool'] : check
+      %w[where_is how_do_i].include?(name) || Mcp::Registry.find(name)&.read_only
+    end,
+      'checks are read-only MCP tools or navigation lookups')
+  end
+
+  test 'authored task expectations are retained in the graded bank' do
+    items = TeamChat::QuestionBank.questions.index_by(&:id)
+    %w[daily-161 team-192 work-074].each do |id|
+      item = TeamChat::QuestionBank.battery_item(items.fetch(id))
+      assert_includes item.expect, 'approved action'
+      assert_empty item.checks
+    end
+  end
+
+  test 'authored financial references use the named metric and store source' do
+    items = TeamChat::QuestionBank.questions.index_by(&:id)
+    month = TeamChat::QuestionBank.battery_item(items.fetch('bookkeeping-187'))
+    quarter = TeamChat::QuestionBank.battery_item(items.fetch('cross-160'))
+    store = TeamChat::QuestionBank.battery_item(items.fetch('daily-042'))
+    assert_equal({ 'name' => 'refund_rate', 'period' => 'this_month' }, month.checks.first.fetch('args'))
+    assert_equal 'this_quarter', quarter.checks.first.fetch('args').fetch('period')
+    assert_equal 'daily_close', store.checks.first.fetch('tool')
+    assert_includes store.needs, 'daily_close:note'
+  end
+
+  test 'navigation questions supply their text to a lookup instead of an empty reference' do
+    item = TeamChat::QuestionBank.battery_item(q('where do I approve timesheets', ['where_is']))
+    assert_equal [{ 'tool' => 'where_is', 'args' => { 'query' => item.question } }], item.checks
   end
 end

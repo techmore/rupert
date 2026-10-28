@@ -34,6 +34,84 @@ class TeamChatBatteryTest < ActiveSupport::TestCase
      TeamChat::Battery::Item.new(id: 'm3', cadence: 'monthly', question: 'Sales tax last month?', checks: [{ 'tool' => 'sales_tax_report', 'args' => { 'from' => 'last_month.from', 'to' => 'last_month.to' } }])]
   end
 
+  test 'does not grade an answer without usable reference or an authored expectation' do
+    grader = FakeGrader.new([])
+    battery = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: grader, items: [], out: nil)
+    reply = Struct.new(:status, :body, :meta).new('done', 'An answer', {})
+    missing = TeamChat::Battery::Item.new(id: 'missing', question: 'Where?', checks: [])
+    unavailable = TeamChat::Battery::Item.new(id: 'bad', question: 'What?', checks: ['not_a_real_tool'])
+    assert_nil battery.send(:grade_for, missing, reply)
+    assert_nil battery.send(:grade_for, unavailable, reply)
+    assert_empty grader.calls
+    missing.expect = 'A correct answer explains that the information is unavailable.'
+    assert_equal 4, battery.send(:grade_for, missing, reply)[:score]
+  end
+
+  test 'a question exceeding its deadline is cancelled and scored as a failure' do
+    item = TeamChat::Battery::Item.new(id: 'slow', cadence: 'daily', question: 'A slow question?', checks: [])
+    grader = FakeGrader.new([])
+    TeamChat::Agent.any_instance.stubs(:run).with { sleep 0.2; true }.returns(nil)
+    original = TeamChat::Battery::QUESTION_TIMEOUT
+    TeamChat::Battery.send(:remove_const, :QUESTION_TIMEOUT)
+    TeamChat::Battery.const_set(:QUESTION_TIMEOUT, 0.02)
+    battery = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: grader, items: [item], out: nil)
+    result = battery.run.first
+    assert_equal 'failed', result.status
+    assert_equal 1, result.grade[:score]
+    assert_match(/120 seconds/, result.grade[:verdict])
+    assert_empty grader.calls
+  ensure
+    TeamChat::Battery.send(:remove_const, :QUESTION_TIMEOUT)
+    TeamChat::Battery.const_set(:QUESTION_TIMEOUT, original)
+  end
+
+  test 'model scores exclude runs with ungraded questions while preserving the run' do
+    complete = TeamChat::BatteryRun.create!(tenant_id: @tenant.id, run_key: 'complete', set_name: 'finance', model: 'complete-model',
+      status: 'done', questions: 2, results: [{ 'grade' => 4 }, { 'grade' => 5 }], avg_grade: 4.5, started_at: Time.current)
+    partial = TeamChat::BatteryRun.create!(tenant_id: @tenant.id, run_key: 'ungraded', set_name: 'finance', model: 'partial-model',
+      status: 'done', questions: 2, results: [{ 'grade' => 5 }, { 'grade' => nil }], avg_grade: 5, started_at: Time.current)
+
+    assert complete.fully_graded?
+    refute partial.fully_graded?
+    assert_equal 4.5, TeamChat::BatteryRun.latest_scores.dig('complete-model', 'finance')
+    assert_nil TeamChat::BatteryRun.latest_scores['partial-model']
+    assert TeamChat::BatteryRun.exists?(partial.id)
+  end
+
+  test 'missing declared reference fields prevent grading' do
+    grader = FakeGrader.new([])
+    battery = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: grader, items: [], out: nil)
+    reply = Struct.new(:status, :body, :meta).new('done', 'An answer', {})
+    item = TeamChat::Battery::Item.new(id: 'missing', question: 'What?', checks: ['sync_health'], needs: ['sync_health:missing_field'])
+
+    assert_nil battery.send(:grade_for, item, reply)
+    assert_empty grader.calls
+  end
+
+  test 'navigation references use the asking user and contain a real page' do
+    battery = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: FakeGrader.new([]), items: [], out: nil)
+    item = TeamChat::Battery::Item.new(id: 'where', question: 'where are timesheets?',
+      checks: [{ 'tool' => 'where_is', 'args' => { 'query' => 'timesheets' } }])
+    assert_includes battery.send(:reference_for, item), '/people/timesheets'
+  end
+
+  test 'two models using one cohort save paired comparison results' do
+    item = TeamChat::Battery::Item.new(id: 'paired', cadence: 'general', question: 'Where?', checks: [],
+      expect: 'Direct the user to the appropriate page.', needs: [])
+    cohort = TeamChat::Battery::Cohort.capture(user: @user, items: [item]) { '' }
+    script_model({ text: 'Open the page.' }, { text: 'Open the page.' })
+    grader = FakeGrader.new([])
+    first = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: grader, items: [item], out: nil, cohort: cohort)
+    second = TeamChat::Battery.new(user: @user, agent: 'gemma', grader: grader, items: [item], out: nil, cohort: cohort)
+    first.run
+    second.run
+
+    assert_match(/-cohort-#{cohort.id}\z/, first.record.set_name)
+    comparison = TeamChat::Battery::Comparison.new(baseline: first.record, candidate: second.record).call
+    assert_equal [1, 0.0], comparison.values_at('paired_graded', 'mean_difference')
+    assert_equal 2, TeamChat::BatteryRun.where(id: [first.record.id, second.record.id]).count
+  end
+
   test 'asks each question to the bot on its own in its test room, times it, grades it and posts a pinned summary' do
     requests = script_model({ tool: 'period_review', arguments: { period: 'yesterday' } }, { text: 'Yesterday: 2 orders, $100.' }, { text: 'No tax data.' })
     grader = FakeGrader.new([])

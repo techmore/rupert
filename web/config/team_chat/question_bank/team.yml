@@ -1061,6 +1061,7 @@ questions:
     question: make a task for Jo to finish the safety lesson by friday
     tools: [create_task]
     answerable: "yes"
+    expect: The answer should offer a reviewable task for Jo to complete the safety lesson by Friday, or ask for clarification if the assignee or due date is ambiguous. It must not claim the task was created without an approved action.
   - id: team-193
     module: team
     question: move the training task to done
@@ -1137,7 +1138,8 @@ questions:
     module: team
     question: receipts to review
     tools: [order_queues]
-    answerable: "yes"
+    answerable: "partial"
+    gap: order_queues gives a count and page, not the receipt details
   - id: team-208
     module: team
     question: how many receipts are waiting for review
