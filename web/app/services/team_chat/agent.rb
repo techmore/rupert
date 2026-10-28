@@ -455,6 +455,8 @@ module TeamChat
         @verify_meta['kept'] = 'guarded' if @verify_meta
       elsif pending_processor_deposits_question?
         body = 'I cannot verify which card processor deposits are still in transit from the available records. Check the processor’s settlement report and the corresponding bank transactions. An unresolved card payment is not the same as a deposit in transit.'
+      elsif received_processor_deposits_question?
+        body = 'I cannot verify how much the processor deposited into the bank from the available tool results. Recorded sales and payment attempts do not establish received bank deposits. Check the processor’s settlement report against the corresponding bank transactions.'
       elsif cash_flow_question?
         body = 'I could not verify cash flow from the available tool results. Recorded sales or expenses alone do not establish cash in and out; check recorded bank movements on the Cash flow page.'
       elsif cash_forecast_question?
@@ -652,6 +654,15 @@ module TeamChat
       return false unless question.match?(/\b(?:deposits?|settlements?|payouts?)\b/i)
 
       question.match?(/\b(?:in transit|on the way|still waiting|waiting to (?:arrive|be received)|not yet (?:received|arrived)|pending)\b/i)
+    end
+
+    def received_processor_deposits_question?
+      question = request_text.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip
+      return false if question.match?(/\b(?:and|also|plus|compare)\b/i)
+      return false if question.match?(/\b(?:where|page|screen|navigate|open|how do|how can)\b/i)
+      return false unless question.match?(/\b(?:processor|settlements?|payouts?)\b/i) && question.match?(/\bdeposits?\b/i)
+
+      question.match?(/\b(?:bank|landed|received|arrived|deposited)\b/i)
     end
 
     # A status answer without any lookup is not evidence, even when it

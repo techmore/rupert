@@ -88,6 +88,16 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_not_includes reply.body, 'No deposits are in transit'
   end
 
+  test 'received processor deposits are not inferred from order sales' do
+    script_model({ tool: 'sales_summary', arguments: { from: '2026-08-01', to: '2026-08-03' } },
+      { text: 'All the sales landed in the bank.' })
+    reply = ask('@rupert How much of the August 1 to August 3 sales landed as processor deposits in our bank?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'cannot verify how much the processor deposited'
+    assert_includes reply.body, 'sales and payment attempts do not establish received bank deposits'
+    assert_not_includes reply.body, 'All the sales landed'
+  end
+
   test 'document retention requests include healthy results and select the named row' do
     data = { items: [{ title: 'Other', area: 'Books', status: 'watch', detail: 'Unrelated' },
                      { title: 'Google Drive document retention', area: 'Records', status: 'ok', detail: 'Connected' }] }
