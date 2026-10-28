@@ -18,6 +18,7 @@ module TeamChat
       raise ArgumentError if status.present? && status != 'all' && rows.any? { |row| row['status'] != status }
 
       filters = args.slice(*FILTERS).transform_values { |value| label(value) }
+      filters['vendor'] = "#{filters['vendor']} (exact name)" if args['vendor_exact'] == true && filters['vendor'].present?
       context = { 'filters' => filters, 'rows' => rows,
                   'more' => data['rows'].size > 8 || data['meta']['has_more'] != false }
       context['id'] = Digest::SHA256.hexdigest(JSON.generate(context)).first(16)
@@ -31,7 +32,9 @@ module TeamChat
       raise ArgumentError unless FinancialEvidence::CURRENCIES.include?(data['currency'])
 
       rows = data['rows'].first(8).map { |row| vendor(row) }
-      context = { 'kind' => 'vendors', 'filters' => args.slice('vendor', 'page', 'per_page').transform_values { |value| label(value) },
+      filters = args.slice('vendor', 'page', 'per_page').transform_values { |value| label(value) }
+      filters['vendor'] = "#{filters['vendor']} (exact name)" if args['vendor_exact'] == true && filters['vendor'].present?
+      context = { 'kind' => 'vendors', 'filters' => filters,
                   'period' => { 'from' => from.iso8601, 'to' => to.iso8601 }, 'currency' => data['currency'], 'rows' => rows,
                   'more' => data['rows'].size > 8 || data['meta']['has_more'] != false }
       context['id'] = Digest::SHA256.hexdigest(JSON.generate(context)).first(16)

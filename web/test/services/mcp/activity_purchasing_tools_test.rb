@@ -31,6 +31,20 @@ class ActivityPurchasingToolsTest < ActiveSupport::TestCase
       token: SecureRandom.uuid, actor: @user)
   end
 
+  test 'vendor exact matching excludes similarly named vendors without changing partial search' do
+    first = Purchasing::Vendor.create!(name: 'Tea Supply')
+    second = Purchasing::Vendor.create!(name: 'Tea Supply West')
+    Purchasing::PurchaseOrder.create!(vendor: first, order_number: 'PO-EXACT-1')
+    Purchasing::PurchaseOrder.create!(vendor: second, order_number: 'PO-EXACT-2')
+    partial = tool(Mcp::Tools::PurchaseOrders, { 'view' => 'vendors', 'vendor' => 'Tea Supply' }).data
+    exact = tool(Mcp::Tools::PurchaseOrders, { 'view' => 'vendors', 'vendor' => 'tea supply', 'vendor_exact' => true }).data
+    assert_equal 2, partial[:rows].size
+    assert_equal ['Tea Supply'], exact[:rows].pluck(:name)
+    orders = tool(Mcp::Tools::PurchaseOrders, { 'view' => 'orders', 'vendor' => 'Tea Supply', 'vendor_exact' => true }).data
+    assert_equal ['PO-EXACT-1'], orders[:rows].pluck(:order_number)
+    assert_raises(Mcp::ToolError) { tool(Mcp::Tools::PurchaseOrders, { 'view' => 'vendors', 'vendor_exact' => true }) }
+  end
+
   test 'activity_log filters by person, action and record and hides contact details' do
     sean = person('Sean Dolbec')
     sean.update_columns(last_active_at: 2.hours.ago)

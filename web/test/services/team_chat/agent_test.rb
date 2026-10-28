@@ -191,7 +191,7 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_includes reply.reload.body, 'placed PO value, not payments: 12.00 USD'
     assert_includes reply.body, 'recorded vendor payments in the period: 5.00 USD'
     args = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first['arguments']
-    assert_equal({ 'view' => 'vendors', 'vendor' => vendor.name, 'from' => first, 'to' => today }, args)
+    assert_equal({ 'view' => 'vendors', 'vendor' => vendor.name, 'vendor_exact' => true, 'from' => first, 'to' => today }, args)
   end
 
   test 'a partial vendor-name query is not silently changed to a different vendor' do
@@ -205,6 +205,36 @@ class TeamChatAgentTest < ActiveSupport::TestCase
 
     args = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first['arguments']
     assert_equal({ 'query' => 'Synthetic Tea' }, args)
+  end
+
+  test 'a case-insensitive vendor-name collision is not automatically resolved' do
+    Purchasing::Vendor.create!(name: 'Synthetic Tea Supply')
+    Purchasing::Vendor.create!(name: 'SYNTHETIC TEA SUPPLY')
+    data = { view: 'orders', rows: [], meta: { has_more: false } }
+    Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'no orders', data: data))
+    script_model({ tool: 'purchase_orders', arguments: { query: 'Synthetic Tea Supply' } }, { text: 'I checked.' })
+    reply = ask('@rupert For Synthetic Tea Supply this month, what were the vendor payments?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    args = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first['arguments']
+    assert_equal({ 'query' => 'Synthetic Tea Supply' }, args)
+  end
+
+  test 'vendor-payment correction preserves an explicitly requested previous month' do
+    vendor = Purchasing::Vendor.create!(name: 'Synthetic Tea Supply')
+    preset = TimeRangePicker.preset('last_month', Date.current)
+    from = preset.from.iso8601
+    to = preset.to.iso8601
+    data = { view: 'vendors', from: from, to: to, currency: 'USD', meta: { has_more: false }, rows: [] }
+    Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'no vendors', data: data))
+    script_model({ tool: 'purchase_orders', arguments: { query: vendor.name } }, { text: 'I checked.' })
+    reply = ask('@rupert For Synthetic Tea Supply last month, what were the vendor payments?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    args = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first['arguments']
+    assert_equal [from, to, true], args.values_at('from', 'to', 'vendor_exact')
   end
 
   test 'order queues with financial fields retain their operational counts' do

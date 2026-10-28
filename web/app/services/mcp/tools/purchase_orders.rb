@@ -35,6 +35,7 @@ module Mcp
           view: { type: 'string', enum: VIEWS, description: 'orders (default) or vendors.' },
           status: { type: 'string', enum: STATUSES, description: 'orders view. open = ordered and not yet fully received. Default all.' },
           vendor: { type: 'string', maxLength: 80, description: 'Part of the vendor name.' },
+          vendor_exact: { type: 'boolean', description: 'Match the vendor name exactly, ignoring case; requires vendor. Default false.' },
           query: { type: 'string', maxLength: 80, description: 'orders view: PO number, item name or SKU fragment, e.g. "1042" or "dropper".' },
           from: DATE_PROPERTY.merge(description: 'First ordered day (inclusive). orders: no date filter unless given. vendors: spend window, default 365 days ago.'),
           to: DATE_PROPERTY.merge(description: 'Last ordered day (inclusive). Default today.'),
@@ -46,6 +47,8 @@ module Mcp
       )
 
       def call(args)
+        raise ToolError.new('vendor_exact requires a vendor name.', kind: 'invalid_arguments') if args['vendor_exact'] && args['vendor'].blank?
+
         args['view'] == 'vendors' ? vendors(args) : orders(args)
       end
 
@@ -77,7 +80,14 @@ module Mcp
       def load_orders(args)
         scope = Purchasing::PurchaseOrder.where(tenant_id: tenant.id).includes(:vendor, :lines, :deliveries)
         scope = filter_status(scope, args['status'])
-        scope = scope.joins(:vendor).where("vendors.name LIKE ? ESCAPE '!'", like(args['vendor'])) if args['vendor'].present?
+        if args['vendor'].present?
+          scope = scope.joins(:vendor)
+          scope = if args['vendor_exact']
+            scope.where('LOWER(vendors.name) = ?', args['vendor'].strip.downcase)
+          else
+            scope.where("vendors.name LIKE ? ESCAPE '!'", like(args['vendor']))
+          end
+        end
         if args['query'].present?
           lines = Purchasing::PurchaseOrderLine.where("name LIKE :q ESCAPE '!' OR sku LIKE :q ESCAPE '!'", q: like(args['query'])).select(:purchase_order_id)
           scope = scope.where("purchase_orders.order_number LIKE ? ESCAPE '!' OR purchase_orders.id IN (?)", like(args['query']), lines)
@@ -177,7 +187,13 @@ module Mcp
       def vendors(args)
         from, to = date_range(args, default_from: Date.current - 365)
         scope = Purchasing::Vendor.where(tenant_id: tenant.id).ordered
-        scope = scope.where("name LIKE ? ESCAPE '!'", like(args['vendor'])) if args['vendor'].present?
+        if args['vendor'].present?
+          scope = if args['vendor_exact']
+            scope.where('LOWER(name) = ?', args['vendor'].strip.downcase)
+          else
+            scope.where("name LIKE ? ESCAPE '!'", like(args['vendor']))
+          end
+        end
         vendors = scope.to_a
         by_vendor = load_orders({ 'status' => 'all' }).group_by { |order| order[:record].vendor_id }
         paid = vendor_payments(vendors.map(&:id), from, to)

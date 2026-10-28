@@ -145,14 +145,18 @@ module TeamChat
       return arguments if args.key?('view') || args.key?('vendor') || query.blank?
       vendor_reference = /\bfor\s+#{Regexp.escape(query)}(?=\s+(?:this month|last month|today|yesterday)\b|[,;?.])/i
       return arguments unless @question.match?(vendor_reference)
-      return arguments unless Purchasing::Vendor.where(tenant_id: @user.tenant_id).where('LOWER(name) = ?', query.downcase).exists?
+      matches = Purchasing::Vendor.where(tenant_id: @user.tenant_id).where('LOWER(name) = ?', query.downcase).limit(2).count
+      return arguments unless matches == 1
 
       args['view'] = 'vendors'
       args['vendor'] = args.delete('query')
-      if @question.match?(/\bthis month\b/i) && !@question.match?(/\b(?:versus|vs|compare|compared|last month|previous)\b/i) &&
-         !args.key?('from') && !args.key?('to')
-        args['from'] = Date.current.beginning_of_month.iso8601
-        args['to'] = Date.current.iso8601
+      args['vendor_exact'] = true
+      periods = { 'this month' => 'this_month', 'last month' => 'last_month', 'today' => 'today', 'yesterday' => 'yesterday' }
+        .filter_map { |words, key| key if @question.match?(/\b#{words}\b/i) }
+      if periods.one? && !@question.match?(/\b(?:versus|vs|compare|compared|previous)\b/i) && !args.key?('from') && !args.key?('to')
+        preset = TimeRangePicker.preset(periods.first, Date.current)
+        args['from'] = preset.from.iso8601
+        args['to'] = [preset.to, Date.current].min.iso8601
       end
       args
     end
