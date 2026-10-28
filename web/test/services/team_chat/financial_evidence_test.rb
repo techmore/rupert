@@ -41,6 +41,13 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_equal 1, item['facts'].size
   end
 
+  test 'product results state the number returned for each currency' do
+    payload = { metric: 'top_products', period: @period, source: nil,
+               values: [{ currency: 'USD', products: [{ name: 'Tea', revenue_cents: 8000 }] }] }
+    item = evidence(payload, tool: 'metric', args: { name: 'top_products', period: 'today' })
+    assert_includes render(item), '1 product with recorded revenue in USD for this period.'
+  end
+
   test 'recorded sales days keep date currency and missing day qualification' do
     payload = { metric: 'worst_day', period: @period, source: nil,
                 values: [{ currency: 'CAD', value: Date.current.iso8601, gross_cents: 1234 }] }

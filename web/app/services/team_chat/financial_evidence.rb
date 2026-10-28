@@ -197,7 +197,11 @@ module TeamChat
       meaning, unit = MEANINGS.fetch(name)
       Array(rows).each_with_index do |row, index|
         if name == 'top_products'
-          Array(row['products']).each_with_index do |product, product_index|
+          products = Array(row['products'])
+          if products.size < 10 && CURRENCIES.include?(row['currency'])
+            out['gaps'] << "#{products.size} #{'product'.pluralize(products.size)} with recorded revenue in #{row['currency']} for this period."
+          end
+          products.each_with_index do |product, product_index|
             label = product['name'].to_s
             if label.blank? || label.length > 120 || label.match?(/[\r\n\x00-\x1f]/) || AskRupert::Redactor.personal(label) != label
               out['gaps'] << 'A product name could not be displayed safely; its revenue was omitted.'
