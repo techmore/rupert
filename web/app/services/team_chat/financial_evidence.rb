@@ -261,7 +261,11 @@ module TeamChat
         raise ArgumentError unless row['gross_cents'].nil? || row['gross_cents'].is_a?(Integer)
         raise ArgumentError if row['orders'].zero? && row['gross_cents'].present? && row['gross_cents'] != 0
 
-        row.slice('date', 'currency', 'orders', 'gross_cents')
+        result = row.slice('date', 'currency', 'orders', 'gross_cents')
+        # The tool emits a placeholder zero for days with no recorded orders.
+        # Do not expose that placeholder to a model as an observed sales value.
+        result['gross_cents'] = nil if row['orders'].zero?
+        result
       end
       daily = { 'period' => period, 'source' => source, 'rows' => checked.first(30), 'omitted' => checked.size > 30 }
       daily['id'] = Digest::SHA256.hexdigest(JSON.generate(daily)).first(16)

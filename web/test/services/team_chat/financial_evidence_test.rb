@@ -74,6 +74,7 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     payload = { from: yesterday, to: today, lines: [], totals_by_currency: [], daily: [
       { date: yesterday, currency: 'USD', orders: 1, gross_cents: 900719925474099301 },
       { date: yesterday, currency: 'CAD', orders: 1, gross_cents: nil },
+      { date: yesterday, currency: 'EUR', orders: 1, gross_cents: 0 },
       { date: today, currency: 'USD', orders: 0, gross_cents: 0 }
     ] }
     item = evidence(payload, tool: 'sales_summary', args: { from: yesterday, to: today, include_daily: true })
@@ -81,6 +82,8 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_includes text, "#{yesterday}: 9007199254740993.01 USD gross"
     assert_includes text, "#{yesterday}: CAD gross unavailable"
     assert_includes text, "#{today} (USD): no paid or fulfilled orders stored"
+    assert_nil item.fetch('daily').fetch('rows').last['gross_cents']
+    assert_equal 0, item.fetch('daily').fetch('rows')[2]['gross_cents']
     assert_includes text, 'Missing stored orders do not prove there were no sales'
     assert TeamChat::FinancialEvidence.decode(JSON.generate(item), @user.tenant_id, tool: 'sales_summary')
     assert_nil prose('Sales were $0.00 today.', item)
