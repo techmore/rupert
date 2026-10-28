@@ -13,6 +13,9 @@ questions:
   - where_is
   answerable: partial
   gap: only sales are available, not actual cash received after refunds, fees and deposits
+  checks: [{ tool: sales_summary, args: { from: last_week.from, to: last_week.to, top_products: 0 } }]
+  needs: ["sales_summary:totals_by_currency[].currency", "sales_summary:totals_by_currency[].gross_cents"]
+  expect: Explain that recorded order sales are not cash received. If giving sales, report the requested week and separate currencies; do not infer bank deposits, fees or net cash from gross orders.
 - id: bookkeeping-003
   module: bookkeeping
   question: net cash flow for last quarter
@@ -94,6 +97,9 @@ questions:
   - period_review
   answerable: partial
   gap: snapshot page figures like cash and payables are not exposed
+  checks: [{ tool: period_review, args: { period: last_month } }]
+  needs: ["period_review:from", "period_review:to", "period_review:sales[].currency", "period_review:sales[].gross_cents"]
+  expect: Summarize the available figures for last month with currencies separate and distinguish gross sales from profit or bank balances. State material missing evidence.
 - id: bookkeeping-015
   module: bookkeeping
   question: how are we doing vs last year
@@ -109,6 +115,9 @@ questions:
   - period_review
   answerable: partial
   gap: no snapshot tool; period_review covers sales and operations only
+  checks: [{ tool: period_review, args: { period: this_week } }]
+  needs: ["period_review:from", "period_review:to", "period_review:sales[].currency", "period_review:sales[].gross_cents"]
+  expect: Summarize the recorded sales and operational figures for the week, keeping currencies separate. Do not imply the figures establish cash balances or profit.
 - id: bookkeeping-017
   module: bookkeeping
   question: what are our biggest numbers on the snapshot page right now
@@ -121,24 +130,36 @@ questions:
   tools:
   - compliance_check
   answerable: 'yes'
+  checks: [compliance_check]
+  needs: ["compliance_check:items[].title", "compliance_check:items[].status"]
+  expect: Summarize returned fix and watch items and their statuses. Do not claim all books are clean if issues or uncheckable areas remain.
 - id: bookkeeping-019
   module: bookkeeping
   question: books check?
   tools:
   - compliance_check
   answerable: 'yes'
+  checks: [compliance_check]
+  needs: ["compliance_check:items[].title", "compliance_check:items[].status"]
+  expect: Summarize returned bookkeeping checks and distinguish fix, watch and unknown statuses; do not infer a clean bill of health.
 - id: bookkeeping-020
   module: bookkeeping
   question: anything red on books chk
   tools:
   - compliance_check
   answerable: 'yes'
+  checks: [compliance_check]
+  needs: ["compliance_check:items[].title", "compliance_check:items[].status"]
+  expect: Identify returned fix-status checks and distinguish them from watch or unavailable checks. If none are returned, avoid claiming untested areas are clean.
 - id: bookkeeping-021
   module: bookkeeping
   question: what do I need to fix in the books
   tools:
   - compliance_check
   answerable: 'yes'
+  checks: [compliance_check]
+  needs: ["compliance_check:items[].title", "compliance_check:items[].status"]
+  expect: Identify returned fix-status items and explain their recorded details. Distinguish watch items and unknown checks from confirmed fixes.
 - id: bookkeeping-022
   module: bookkeeping
   question: are all the sales records in the books
