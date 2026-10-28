@@ -73,9 +73,12 @@ questions:
 - id: bookkeeping-012
   module: bookkeeping
   question: biz snapshot pls
-  tools: []
-  answerable: 'no'
-  gap: no snapshot tool; page not exposed
+  tools: [business_pulse]
+  answerable: partial
+  gap: today's pulse covers recorded sales, waiting work and alerts, but not balances or profit
+  checks: [business_pulse]
+  needs: ["business_pulse:sales.gross_sales_by_currency[].gross_cents", "business_pulse:waiting.queues[]", "business_pulse:alerts.count"]
+  expect: Summarize the available current sales, waiting queues and alerts, with missing or unavailable sections identified. Do not infer profit or cash balances from sales.
 - id: bookkeeping-013
   module: bookkeeping
   question: give me a quick overview of how the business is doing

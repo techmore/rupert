@@ -67,6 +67,14 @@ class TeamChatQuestionBankTest < ActiveSupport::TestCase
     end
   end
 
+  test 'business snapshot uses the current pulse rather than a stale unavailable label' do
+    question = TeamChat::QuestionBank.questions.find { |row| row.id == 'bookkeeping-012' }
+    assert_equal 'partial', question.answerable
+    item = TeamChat::QuestionBank.battery_item(question)
+    assert_equal ['business_pulse'], item.checks
+    assert_includes item.expect, 'Do not infer profit or cash balances'
+  end
+
   test 'authored financial references use the named metric and store source' do
     items = TeamChat::QuestionBank.questions.index_by(&:id)
     month = TeamChat::QuestionBank.battery_item(items.fetch('bookkeeping-187'))
