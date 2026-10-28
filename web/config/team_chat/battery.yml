@@ -13,12 +13,14 @@ questions:
     cadence: daily
     module: sell
     question: What is waiting to be processed right now?
+    expect: Summarize the returned queue names and counts, identify anything waiting, and acknowledge unavailable queue evidence without inventing work or treating missing data as zero.
     checks: [order_queues]
     needs: ["order_queues:queues[].name", "order_queues:queues[].count"]
   - id: d3
     cadence: daily
     module: sell
     question: Are there paid online orders that have not shipped yet? Which one is the oldest?
+    expect: Report the paid-online unshipped queue and the oldest order if the reference identifies it; if the queue is empty say there is no oldest order, and if the oldest is unavailable say so.
     checks: [order_queues]
     needs: ["order_queues:queues[].count", "order_queues:oldest_unshipped", "order_queues:oldest_unshipped[].order"]
   - id: d4
@@ -43,6 +45,7 @@ questions:
     cadence: weekly
     module: work
     question: Which tasks are overdue?
+    expect: List the returned overdue tasks and their due dates when available, or say no overdue tasks were returned when the list is empty; do not invent tasks.
     checks: [{ tool: list_tasks, args: { overdue: true } }]
     needs: ["list_tasks:rows[].title", "list_tasks:rows[].due_on", "list_tasks:path"]
   - id: w3
@@ -82,6 +85,7 @@ questions:
     cadence: monthly
     module: bookkeeping
     question: How much have we spent on expenses so far this month?
+    expect: Report the expense figure for this month only when the reference makes expenses visible; otherwise explain that the total is unavailable rather than treating missing evidence as zero.
     checks: [{ tool: period_review, args: { period: this_month } }]
     needs: ["period_review:activity.expenses_cents", "period_review:money_summary.expenses_visible"]
   - id: q1
