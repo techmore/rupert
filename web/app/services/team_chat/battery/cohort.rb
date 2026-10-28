@@ -21,14 +21,12 @@ module TeamChat
         raise Error, 'duplicate question IDs' unless items.map(&:id).uniq.size == items.size
 
         entries = items.to_h do |item|
-          begin
-            reference = yield(item).to_s
-            raise Grader::Error, 'no reference or authored expectation' if reference.blank? && item.expect.blank?
+          reference = yield(item).to_s
+          raise Grader::Error, 'no reference or authored expectation' if reference.blank? && item.expect.blank?
 
-            [item.id.to_s, { 'item_digest' => item_digest(item), 'reference' => reference }]
-          rescue Grader::Error => e
-            [item.id.to_s, { 'item_digest' => item_digest(item), 'error' => e.message.first(160) }]
-          end
+          [item.id.to_s, { 'item_digest' => item_digest(item), 'reference' => reference }]
+        rescue Grader::Error => e
+          [item.id.to_s, { 'item_digest' => item_digest(item), 'error' => e.message.first(160) }]
         end
         new('version' => VERSION, 'tenant_id' => user.tenant_id.to_s, 'user_id' => user.id.to_s,
           'date' => Date.current.iso8601, 'created_at' => Time.current.iso8601,

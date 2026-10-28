@@ -50,7 +50,10 @@ class TeamChatBatteryTest < ActiveSupport::TestCase
   test 'a question exceeding its deadline is cancelled and scored as a failure' do
     item = TeamChat::Battery::Item.new(id: 'slow', cadence: 'daily', question: 'A slow question?', checks: [])
     grader = FakeGrader.new([])
-    TeamChat::Agent.any_instance.stubs(:run).with { sleep 0.2; true }.returns(nil)
+    TeamChat::Agent.any_instance.stubs(:run).with do
+      sleep 0.2
+      true
+    end.returns(nil)
     original = TeamChat::Battery::QUESTION_TIMEOUT
     TeamChat::Battery.send(:remove_const, :QUESTION_TIMEOUT)
     TeamChat::Battery.const_set(:QUESTION_TIMEOUT, 0.02)
