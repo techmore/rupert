@@ -42,7 +42,7 @@ questions:
     module: sell
     question: What was our best sales day in the last 30 days, and how much did we take that day?
     expect: Identify the highest recorded order-sales day and amount for each currency, within the reference window; acknowledge missing gross figures and distinguish recorded order sales from the separate store registers.
-    checks: [{ tool: sales_summary, args: { include_daily: true } }]
+    checks: [{ tool: sales_summary, args: { include_daily: true, top_products: 0 } }]
     needs: ["sales_summary:daily[].date", "sales_summary:daily[].currency", "sales_summary:daily[].gross_cents", "sales_summary:daily[].orders"]
   - id: f07
     cadence: sales

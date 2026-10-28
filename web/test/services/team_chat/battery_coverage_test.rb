@@ -200,6 +200,12 @@ class TeamChatBatteryCoverageTest < ActiveSupport::TestCase
     assert_empty missing, "Metrics without a battery question: #{missing.join(', ')}"
   end
 
+  test 'best-day reference requests daily sales without unrelated product payloads' do
+    item = TeamChat::Battery.items(TeamChat::Battery.config_for('finance')).find { |row| row.id == 'f06' }
+    assert_equal({ 'include_daily' => true, 'top_products' => 0 }, item.checks.sole.fetch('args'))
+    assert TeamChat::BatteryCoverage.new(user: @user, items: [item]).call.passed?
+  end
+
   test 'rake coverage task writes the fixture result report' do
     Rails.application.load_tasks unless Rake::Task.task_defined?('team_chat:battery_coverage')
     task = Rake::Task['team_chat:battery_coverage']
