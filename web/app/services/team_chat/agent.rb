@@ -146,7 +146,10 @@ module TeamChat
         - Which tool: a quick business health check today → business_pulse plus daily_close; one figure (gross sales, orders, average order,
           best day, share by source, top products, refund rate), alone or vs the period before or last year → metric;
           a whole period overview → period_review; sales for a date range, top products or average order → sales_summary;
-          sales tax → sales_tax_report; hours worked and same-day sales → time_keeping_report; timesheets awaiting
+          sales tax → sales_tax_report; hours or hrs worked for a period, with or without sales → time_keeping_report;
+          a schedule only shows planned shifts, not hours worked. Product availability at the store → inventory_search.
+          For a source-specific question, use that source's filter and do not substitute another source's figures.
+          Timesheets awaiting
           approval, books closed, overdue reviews or record keeping → compliance_check; what is waiting to be processed → order_queues.
         - Look it up instead of asking the person to clarify, unless the question names nothing you can look up.
         - show_view lays out a table, bar or line chart, or a small HTML page beside the chat. Use it when several rows or a

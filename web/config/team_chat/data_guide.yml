@@ -61,7 +61,7 @@ topics:
       review, warehouse holds, unresolved card payments, follow-ups.
   - key: stock
     title: Stock and inventory
-    keywords: [stock, inventory, low stock, out of stock, alert, alerts, sku, skus, count, counts, on hand, available, reorder, left, run out, running low, low, sold out, warehouse, bin, shelf, back room, bulk, materials, raw material, recipe, recipes, sizes, variant, variants, reserved, movements, movement, moved, adjusted, adjustment, adjustments, shrink, shrinkage, missing stock, lot, lots, do we have, in stock, restock, overstock, slow moving, dead stock, catalog, item list, items, oversold, mismatch, mismatched, out of sync, not matched, dont match, differ, different]
+    keywords: [stock, inventory, low stock, out of stock, alert, alerts, sku, skus, count, counts, on hand, available, reorder, left, run out, running low, low, sold out, warehouse, bin, shelf, back room, bulk, materials, raw material, recipe, recipes, sizes, variant, variants, reserved, movements, movement, moved, adjusted, adjustment, adjustments, shrink, shrinkage, missing stock, lot, lots, do we have, in stock, in at the store, in at store, restock, overstock, slow moving, dead stock, catalog, item list, items, oversold, mismatch, mismatched, out of sync, not matched, dont match, differ, different]
     tools: [list_alerts, inventory_search, stock_comparison, stock_movements, swipesimple_items, metric, order_queues, purchase_orders]
     card: >-
       Stock levels per platform and location are separate observations: never add or "fix" them. list_alerts gives

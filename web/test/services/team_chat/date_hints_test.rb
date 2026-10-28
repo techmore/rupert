@@ -22,4 +22,9 @@ class TeamChatDateHintsTest < ActiveSupport::TestCase
     assert_equal ['this month = 2026-10-01 to 2026-10-22 (period_review period: this_month)'], hints('expenses so far this month')
     assert_empty hints('Is sync healthy?')
   end
+
+  test 'abbreviated last week retains the requested calendar or pay period' do
+    assert_equal ['last week = 2026-10-12 to 2026-10-18 (period_review period: last_week)'], hints('hours lst week')
+    assert_equal ['last pay week = 2026-10-15 to 2026-10-21 (period_review period: last_pay_week)'], hints('hours lst pay week')
+  end
 end

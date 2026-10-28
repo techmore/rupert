@@ -29,4 +29,9 @@ class DataGuideTest < ActiveSupport::TestCase
     assert_equal 'sales', keys('how is the website doing').first
     assert_not_includes keys('how do I make a task'), 'store_sales'
   end
+
+  test 'asking whether an item is in at the store offers inventory search' do
+    assert_includes DataGuide.tools_for(DataGuide.match('is the herbal oil in at the store')), 'inventory_search'
+    assert_includes DataGuide.tools_for(DataGuide.match('is soap in at store')), 'inventory_search'
+  end
 end
