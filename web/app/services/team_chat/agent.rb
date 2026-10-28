@@ -418,6 +418,7 @@ module TeamChat
       return if unchecked_operational_request?
       return if @toolbox && (alert_only_tool_mix? || compliance_only_tool_mix? || InventoryEvidence.uncertain?(@toolbox.inventory_results))
       return if cash_flow_question?
+      return if pending_processor_deposits_question?
       return if ComplianceEvidence.focused_title(request_text)
       return if RefundEvidence.count_question?(request_text)
       return if ComplianceEvidence.close_scope(request_text)
@@ -439,6 +440,8 @@ module TeamChat
       if unchecked_operational_request?
         body = UNCHECKED_RECORDS
         @verify_meta['kept'] = 'guarded' if @verify_meta
+      elsif pending_processor_deposits_question?
+        body = 'I cannot verify which card processor deposits are still in transit from the available records. Check the processor’s settlement report and the corresponding bank transactions. An unresolved card payment is not the same as a deposit in transit.'
       elsif cash_flow_question?
         body = 'I could not verify cash flow from the available tool results. Recorded sales or expenses alone do not establish cash in and out; check recorded bank movements on the Cash flow page.'
       elsif ComplianceEvidence.timesheets_and_backup_question?(request_text)
@@ -605,6 +608,18 @@ module TeamChat
       return false unless question.match?(/\b(?:our|we|this|last|today|yesterday|week|month|quarter|year|positive|negative|dip|rise|fall)\b/i)
 
       !@toolbox&.tools_used&.include?('cash_flow')
+    end
+
+    # Payment attempts and bank lines do not establish which processor
+    # settlements are currently in transit. Leave multi-part questions on the
+    # general path so this limitation does not hide their other requests.
+    def pending_processor_deposits_question?
+      question = request_text.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip
+      return false if question.match?(/\b(?:and|also|plus|compare)\b/i)
+      return false unless question.match?(/\b(?:card|processor|settlement|payout)\b/i)
+      return false unless question.match?(/\b(?:deposits?|settlements?|payouts?)\b/i)
+
+      question.match?(/\b(?:in transit|on the way|still waiting|waiting to (?:arrive|be received)|not yet (?:received|arrived)|pending)\b/i)
     end
 
     # A status answer without any lookup is not evidence, even when it

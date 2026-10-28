@@ -49,6 +49,17 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_includes reply.meta['tools'], 'compliance_check'
   end
 
+  test 'pending processor deposits are not confused with unresolved card payments' do
+    data = { queues: [{ name: 'Card payments not resolved', count: 0 }], low_stock_available: false, oldest_unshipped: [] }
+    Mcp::Tools::OrderQueues.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'queues', data: data))
+    script_model({ tool: 'order_queues', arguments: {} }, { text: 'No deposits are in transit.' })
+    reply = ask('@rupert Which credit card settlement deposits are in transit from the processor to our bank right now?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'cannot verify which card processor deposits are still in transit'
+    assert_includes reply.body, 'unresolved card payment is not the same'
+    assert_not_includes reply.body, 'No deposits are in transit'
+  end
+
   test 'document retention requests include healthy results and select the named row' do
     data = { items: [{ title: 'Other', area: 'Books', status: 'watch', detail: 'Unrelated' },
                      { title: 'Google Drive document retention', area: 'Records', status: 'ok', detail: 'Connected' }] }
