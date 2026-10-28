@@ -320,6 +320,10 @@ module TeamChat
       return nil if evidence.any? { |item| item['timekeeping'] }
 
       facts = evidence.flat_map { |item| item['facts'] }
+      # Numeric matching cannot verify that a model kept the product,
+      # category, or date attached to the value. Render those facts directly.
+      return nil if facts.any? { |fact| fact['meaning'].to_s.match?(/\A(?:Product revenue:|Expense category:|Highest recorded sales day:|Lowest recorded sales day:)/) }
+
       prose = text.to_s.strip
       return nil if facts.empty? || prose.blank? || prose.match?(RELABEL)
 

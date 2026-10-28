@@ -58,6 +58,7 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_includes render(item), 'Product revenue: Tea: 80.00 USD'
     assert_includes render(item), 'could not be displayed safely'
     assert_equal 1, item['facts'].size
+    assert_nil TeamChat::FinancialEvidence.checked_prose('Coffee earned 80.00 USD.', [item])
   end
 
   test 'product results state the number returned for each currency' do
