@@ -23,7 +23,7 @@ module TeamChat
 
     Item = Struct.new(:id, :cadence, :question, :checks, :expect, :module, :needs, keyword_init: true)
     Result = Struct.new(:item, :seconds, :tools, :status, :answer, :grade, :grading_error, :tokens_in, :tokens_out, :unverified, :message_id, :load_seconds,
-      :verify, keyword_init: true)
+      :verify, :proposed_tools, keyword_init: true)
 
     attr_reader :run_id, :room, :results, :record
 
@@ -197,6 +197,7 @@ module TeamChat
             'battery_timeout' => true))
       end
       reply.reload
+      proposed_tools = reply.actions_list.select { |action| action['status'] == 'proposed' }.filter_map { |action| action['tool'] }.uniq
       dismiss_proposals(reply)
       meta = reply.meta.to_h
       seconds = meta['duration_ms'].to_f / 1000
@@ -208,14 +209,14 @@ module TeamChat
       log "    #{reply.status} in #{format_seconds(seconds)}#{" (#{format_seconds(load_seconds)} model load)" if load_seconds}#{check_note} · tools #{Array(meta['tools']).join(', ').presence || 'none'} · grade #{grade&.dig(:score) || '—'}"
       Result.new(item: item, seconds: seconds, tools: Array(meta['tools']), status: reply.status, answer: reply.body.to_s,
         grade: grade, grading_error: @last_grade_error, tokens_in: meta['tokens_in'], tokens_out: meta['tokens_out'], unverified: Array(meta['unverified']), message_id: reply.id,
-        load_seconds: load_seconds, verify: check&.except('draft'))
+        load_seconds: load_seconds, verify: check&.except('draft'), proposed_tools: proposed_tools)
     end
 
     def result_row(result)
       { 'id' => result.item.id, 'cadence' => result.item.cadence, 'module' => result.item.module, 'question' => result.item.question, 'status' => result.status,
         'seconds' => result.seconds.round(1), 'load_seconds' => result.load_seconds, 'verify' => result.verify, 'tools' => result.tools, 'grade' => result.grade&.dig(:score),
         'verdict' => result.grade&.dig(:verdict).to_s.first(300), 'grading_error' => result.grading_error, 'grader' => @grader.label,
-        'unverified' => result.unverified.to_a, 'message_id' => result.message_id }
+        'unverified' => result.unverified.to_a, 'proposed_tools' => result.proposed_tools.to_a, 'message_id' => result.message_id }
     end
 
     def grade_for(item, reply)

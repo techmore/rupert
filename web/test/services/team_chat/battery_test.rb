@@ -183,11 +183,13 @@ class TeamChatBatteryTest < ActiveSupport::TestCase
   test 'a proposal made during a test run is dismissed, so nothing changes' do
     script_model({ tool: 'create_task', arguments: { title: 'Recount' } }, { text: 'Proposed.' })
     item = TeamChat::Battery::Item.new(id: 'x', cadence: 'general', question: 'Make a task', checks: [])
+    battery = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: FakeGrader.new([]), items: [item], out: nil)
     assert_no_difference -> { Projects::Task.count } do
-      TeamChat::Battery.new(user: @user, agent: 'qwen', grader: FakeGrader.new([]), items: [item], out: nil).run
+      battery.run
     end
     reply = TeamChat::Message.where(author_kind: 'assistant').last
     assert_equal 'dismissed', reply.actions_list.first['status']
+    assert_equal ['create_task'], battery.record.reload.results_list.first['proposed_tools']
   end
 
   test 'every bot gets its own test room, created up front' do
