@@ -7,6 +7,7 @@ questions:
     cadence: daily
     module: sell
     question: How did we do yesterday compared with the day before?
+    expect: Summarize yesterday's stored order sales by currency and the provided comparison with the preceding day, identifying their scope; if the comparison or a source is unavailable, say so without inferring zero sales.
     checks: [{ tool: period_review, args: { period: yesterday } }]
     needs: ["period_review:sales[].gross_cents", "period_review:sales[].currency", "period_review:change[].gross_change_percent"]
   - id: d2
@@ -41,6 +42,7 @@ questions:
     cadence: weekly
     module: sell
     question: How was last week compared with the week before?
+    expect: Summarize last week's stored order sales by currency and the provided change from the prior week; acknowledge missing comparison or source coverage instead of inventing figures.
     checks: [{ tool: period_review, args: { period: last_week } }]
     needs: ["period_review:sales[].gross_cents", "period_review:change[].gross_change_percent"]
   - id: w2
@@ -68,6 +70,7 @@ questions:
     cadence: monthly
     module: sell
     question: How did last month go compared with the month before?
+    expect: Summarize last month's stored order sales by currency and the provided change from the prior month; acknowledge missing comparison or source coverage instead of inventing figures.
     checks: [{ tool: period_review, args: { period: last_month } }]
     needs: ["period_review:sales[].gross_cents", "period_review:change[].gross_change_percent"]
   - id: m2
@@ -95,6 +98,7 @@ questions:
     cadence: quarterly
     module: sell
     question: How is this quarter going compared with last quarter?
+    expect: Summarize this quarter's stored order sales by currency and the provided comparison with the prior quarter; acknowledge missing comparison or source coverage instead of inventing figures.
     checks: [{ tool: period_review, args: { period: this_quarter } }]
     needs: ["period_review:sales[].gross_cents", "period_review:change[].gross_change_percent"]
   - id: q2
@@ -107,6 +111,7 @@ questions:
     cadence: compliance
     module: bookkeeping
     question: What is overdue for compliance or record keeping?
+    expect: Identify relevant returned compliance items and distinguish fix, watch, and unknown statuses; do not describe an item as overdue unless the reference supports that claim.
     checks: [compliance_check]
     needs: ["compliance_check:items[].title", "compliance_check:items[].status"]
   - id: c2
