@@ -135,6 +135,19 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal true, run.tool_results.find { |entry| entry['name'] == 'sales_summary' }['arguments']['include_daily']
   end
 
+  test 'empty open purchase order lookup survives the financial guard' do
+    data = { view: 'orders', rows: [], meta: { has_more: false }, totals: [{ placed_total_cents: 0 }] }
+    Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'No purchase orders', data: data))
+    script_model({ tool: 'purchase_orders', arguments: { status: 'open' } }, { text: 'There are orders waiting.' })
+    reply = ask('@rupert which purchase orders are open?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Purchase orders (status: open)'
+    assert_includes reply.body, 'No purchase orders were returned on this page'
+    assert_not_includes reply.body, 'There are orders waiting'
+  end
+
   test 'financial drafts are replaced with typed source period currency and meaning' do
     order = Core::Order.create!(source: 'shopify', source_order_id: 'nc-1', occurred_at: 1.day.ago.change(hour: 12), gross_cents: 21_483, tax_cents: 0, currency: 'USD')
     order.mark_paid!

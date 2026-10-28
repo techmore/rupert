@@ -85,6 +85,32 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_includes render(item), 'Additional daily rows were omitted'
   end
 
+  test 'purchase-order evidence preserves filters and separate order amounts' do
+    payload = { view: 'orders', meta: { has_more: false }, rows: [
+      { order_number: 'PO-10', vendor: 'Tea supplier', status: 'ordered', expected_date: '2026-10-31',
+        currency: 'USD', total_cents: 1200, due_cents: 300, line_count: 2 }
+    ] }
+    item = evidence(payload, tool: 'purchase_orders', args: { status: 'open' })
+    text = render(item)
+    assert_includes text, 'Purchase orders (status: open)'
+    assert_includes text, 'PO-10 — Tea supplier (ordered)'
+    assert_includes text, 'order total 12.00 USD; still due 3.00 USD'
+    assert_includes text, 'line items omitted'
+    assert TeamChat::FinancialEvidence.decode(JSON.generate(item), @user.tenant_id, tool: 'purchase_orders')
+    assert_nil prose('Every order has arrived.', item)
+    payload[:rows].first[:status] = 'received'
+    assert_nil evidence(payload, tool: 'purchase_orders', args: { status: 'open' })['purchasing']
+  end
+
+  test 'empty and paginated purchase orders remain scoped to the lookup' do
+    item = evidence({ view: 'orders', rows: [], meta: { has_more: true } }, tool: 'purchase_orders', args: { status: 'open', query: 'tea' })
+    text = render(item)
+    assert_includes text, 'status: open, query: tea'
+    assert_includes text, 'No purchase orders were returned on this page'
+    assert_includes text, 'More orders may be available'
+    assert_not_includes text, 'I could not verify financial figures'
+  end
+
   test 'oversized daily close notes terminate with a bounded honest gap' do
     stores = 40.times.map do |i|
       { store: "Store #{i}", currency: 'USD', gross_cents: 100, notes: ["#{i}: #{'x' * 220}"] }
