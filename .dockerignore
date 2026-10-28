@@ -13,3 +13,5 @@ docker-compose.yml
 .DS_Store
 web/.cache
 web/coverage
+**/.env*
+!**/.env.example

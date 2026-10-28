@@ -52,7 +52,7 @@ class PeopleFlowTest < ActionDispatch::IntegrationTest
   test 'employees index shows the directory and stats' do
     dept = People::Department.create!(tenant_id: @tenant.id, name: 'Retail')
     People::Employee.create!(tenant_id: @tenant.id, first_name: 'Alex', last_name: 'Morgan', employee_number: 'E1',
-      hire_date: Date.today, department_id: dept.id)
+      hire_date: Date.current, department_id: dept.id)
 
     get_page people_employees_path
     assert_response :success
@@ -98,7 +98,7 @@ class PeopleFlowTest < ActionDispatch::IntegrationTest
     follow_redirect!
     employee.reload
     assert employee.terminated?
-    assert_equal Date.today, employee.termination_date
+    assert_equal Date.current, employee.termination_date
   end
 
   test 'departments and positions can be created' do
@@ -233,7 +233,7 @@ class PeopleFlowTest < ActionDispatch::IntegrationTest
     follow_redirect!
     pay_run.reload
     assert pay_run.paid?
-    assert_equal Date.today, pay_run.paid_on
+    assert_equal Date.current, pay_run.paid_on
   end
 
   test 'a cashier cannot reach HR or payroll pages' do

@@ -42,6 +42,14 @@ class AccessLogFlowTest < ActionDispatch::IntegrationTest
     assert_equal 'success', AccessLog.last.status
   end
 
+  test 'sign out leaves nothing of the old session behind' do
+    post login_path, params: { email: @admin.email, password: 'password123' }
+    delete logout_path
+    follow_redirect!
+    get dashboard_path
+    assert_redirected_to login_path
+  end
+
   test 'an admin can view the access log with filters' do
     post login_path, params: { email: @admin.email, password: 'password123' }
     post login_path, params: { email: 'nobody@example.com', password: 'wrong' }

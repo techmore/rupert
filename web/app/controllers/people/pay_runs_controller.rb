@@ -34,7 +34,7 @@ module People
     def new
       authorize(:module, :payroll_write?)
       last = People::PayRun.recent(1).first
-      start_date = last ? last.period_end + 1 : Date.today.beginning_of_week - 13
+      start_date = last ? last.period_end + 1 : Date.current.beginning_of_week - 13
       @pay_run = People::PayRun.new(period_start: start_date, period_end: start_date + 13)
     end
 
@@ -125,7 +125,7 @@ module People
           alert: 'Finalize the pay run before paying.')
       end
 
-      @pay_run.update!(paid_on: Date.today)
+      @pay_run.update!(paid_on: Date.current)
       @pay_run.pay! if @pay_run.may_pay?
       ActivityLogger.log('pay_run_paid', subject: @pay_run, details: @pay_run.paid_on.to_s)
       redirect_to(people_pay_run_path(@pay_run), notice: 'Pay run marked paid.')
