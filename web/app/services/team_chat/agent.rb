@@ -156,8 +156,7 @@ module TeamChat
           a schedule only shows planned shifts, not hours worked. Product availability at the store → inventory_search.
           For a source-specific question, use that source's filter and do not substitute another source's figures.
           Timesheets awaiting
-          approval, books closed, overdue reviews or record keeping → compliance_check; receipts waiting for review,
-          reconciliation follow-ups, and other processing queues → order_queues. Use the queue tool to get its counts.
+          approval, books closed, overdue reviews or record keeping → compliance_check; what is waiting to be processed → order_queues.
         - Look it up instead of asking the person to clarify, unless the question names nothing you can look up.
         - show_view lays out a table, bar or line chart, or a small HTML page beside the chat. Use it when several rows or a
           comparison are clearer laid out (days, stores, products side by side); copy figures exactly from tool results and

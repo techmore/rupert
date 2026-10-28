@@ -252,19 +252,10 @@ module TeamChat
     end
 
     def mcp_definitions
-      tools = Mcp::Registry.available_to(@token).select(&:read_only).select { |tool| offered?(tool.tool_name) }
-      # Scoped local prompts for review queues should put the count-bearing
-      # tool before the broad compliance and backup tools, without hiding any
-      # other authorized tool needed for a combined question.
-      tools = tools.sort_by { |tool| tool.tool_name == 'order_queues' ? 0 : 1 } if @only && queue_review_question?
-      tools.map do |tool|
+      Mcp::Registry.available_to(@token).select(&:read_only).select { |tool| offered?(tool.tool_name) }.map do |tool|
         Definition.new(name: tool.tool_name, description: tool.description, kind: :mcp, schema: tool.input_schema,
           activity: "Checking #{tool.title.to_s.downcase.presence || tool.tool_name.tr('_', ' ')}")
       end
-    end
-
-    def queue_review_question?
-      @question.match?(/\breceipts?\b[^.!?;]{0,50}\b(?:review|reviewed)\b|\b(?:review|reviewing)\b[^.!?;]{0,50}\breceipts?\b|\breconciliation\s+follow[- ]?ups?\b/i)
     end
 
     # show_view is offered to every bot: it only displays data the bot already has.
