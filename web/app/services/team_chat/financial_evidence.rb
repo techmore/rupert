@@ -447,6 +447,10 @@ module TeamChat
     ORDER_COUNT = /(?<![\w.$])(?<count>\d[\d,]*)\s+(?:(?:paid|fulfilled|online|shopify|square)\s+)*orders?\b/i
 
     def checked_prose(text, evidence, today: Date.current)
+      # Numeric checks cannot establish whether narrative claims that a
+      # comparison was present or absent agree with the period-review result.
+      return nil if evidence.any? { |item| item['tool'] == 'period_review' }
+
       # Hours need their own semantic validation; render them deterministically
       # instead of accepting unchecked prose next to certified financial facts.
       return nil if evidence.any? { |item| item['timekeeping'] || item['pulse'] || item['daily'] || item['purchasing'] || item['queue_summary'] }

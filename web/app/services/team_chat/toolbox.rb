@@ -101,6 +101,7 @@ module TeamChat
       arguments = complete_order_day_comparison(name, arguments)
       arguments = complete_order_count_comparison(name, arguments)
       arguments = complete_sales_by_source(name, arguments)
+      arguments = correct_sales_day_direction(name, arguments)
       arguments = complete_focused_compliance_arguments(name, arguments)
       arguments = complete_vendor_payment_arguments(name, arguments)
       arguments = complete_exact_vendor_filter(name, arguments)
@@ -196,6 +197,22 @@ module TeamChat
       corrected = arguments.merge('name' => 'sales_by_source')
       corrected['compare'] = 'none' unless corrected.key?('compare')
       corrected
+    end
+
+    # The best and slowest recorded sales days are different metrics. Correct
+    # only an unambiguous single-subject question and preserve every filter.
+    def correct_sales_day_direction(name, arguments)
+      return arguments unless name.to_s == 'metric' && %w[best_day worst_day].include?(arguments['name'])
+
+      question = @question.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip
+      return arguments if question.match?(/["“”‘’]/) || question.match?(/\b(?:and|also|plus|versus|vs|compare|weekday|weekdays)\b|\bday of (?:the )?week\b/i)
+      return arguments unless question.match?(/\b(?:sales|selling)\b/i) && question.match?(/\bday\b/i)
+
+      worst = question.match?(/\b(?:slowest|worst|lowest)\b/i)
+      best = question.match?(/\b(?:best|busiest|strongest|highest)\b/i)
+      return arguments if worst == best
+
+      arguments.merge('name' => worst ? 'worst_day' : 'best_day')
     end
 
     def complete_focused_compliance_arguments(name, arguments)

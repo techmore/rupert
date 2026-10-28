@@ -586,6 +586,30 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_not entry.fetch('arguments').key?('compare')
   end
 
+  test 'sales day direction follows an unambiguous question without changing filters' do
+    script_model({ tool: 'metric', arguments: { name: 'best_day', period: 'last_month', source: 'square', compare: 'none' } }, { text: 'I checked.' })
+    reply = ask('@rupert What was the slowest sales day last month?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    entry = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first
+    assert_equal 'best_day', entry.dig('original_arguments', 'name')
+    assert_equal ['worst_day', 'last_month', 'square', 'none'], entry.fetch('arguments').values_at('name', 'period', 'source', 'compare')
+
+    script_model({ tool: 'metric', arguments: { name: 'best_day', period: 'last_month', compare: 'none' } }, { text: 'I checked.' })
+    reply = ask('@rupert Compare the best and slowest sales day last month.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_equal 'best_day', TeamChat::Run.find_by!(message_id: reply.id).tool_results.first.dig('arguments', 'name')
+
+    script_model({ tool: 'metric', arguments: { name: 'worst_day', period: 'last_week', compare: 'none' } }, { text: 'I checked.' })
+    reply = ask('@rupert What was the busiest sales day last week?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_equal 'best_day', TeamChat::Run.find_by!(message_id: reply.id).tool_results.first.dig('arguments', 'name')
+
+    script_model({ tool: 'metric', arguments: { name: 'worst_day', period: 'last_week', compare: 'none' } }, { text: 'I checked.' })
+    reply = ask('@rupert Which day of the week has the best sales?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_equal 'worst_day', TeamChat::Run.find_by!(message_id: reply.id).tool_results.first.dig('arguments', 'name')
+  end
+
   test 'a total by source request asks for both the total and source data' do
     date = Date.current.prev_month.beginning_of_month
     order = Core::Order.create!(source: 'square', source_order_id: 'source-breakdown', occurred_at: date.to_time.change(hour: 12),

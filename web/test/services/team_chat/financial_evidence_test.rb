@@ -463,6 +463,15 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_includes render(item), 'incomplete or inconsistent'
   end
 
+  test 'period review comparison claims use deterministic evidence instead of unchecked prose' do
+    prior = Date.current - 1
+    payload = @period.merge(compared_with: { from: prior.iso8601, to: prior.iso8601 },
+      sales: [{ currency: 'USD', gross_cents: 8000 }], previous_sales: [], change: [])
+    item = evidence(payload, tool: 'period_review', args: { period: 'today' })
+    assert_nil TeamChat::FinancialEvidence.checked_prose('Sales were 80.00 USD and the tool reports a change.', [item])
+    assert_includes render(item), 'No comparison sales rows were returned for USD'
+  end
+
   test 'unsupported financial tools and unknown metric meanings return no certified figures' do
     assert_empty evidence({ amount_cents: 99900 }, tool: 'unsupported_finance_tool')['facts']
     assert_empty evidence(data.merge(metric: 'profit'), args: { name: 'profit', period: 'today', source: 'shopify' })['facts']
