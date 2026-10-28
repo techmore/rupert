@@ -462,6 +462,8 @@ module TeamChat
         body = 'I could not verify cash flow from the available tool results. Recorded sales or expenses alone do not establish cash in and out; check recorded bank movements on the Cash flow page.'
       elsif cash_forecast_question?
         body = 'I cannot verify a cash forecast or predict when cash will run out from the available tool results. Recorded sales and tax alone do not establish bank balances or future cash movements. Check the Cash forecast page and its underlying assumptions.'
+      elsif payroll_affordability_question?
+        body = 'I cannot determine whether there will be enough cash to cover payroll from the available tool results. Recorded sales and worked hours do not establish the available bank balance, payroll liabilities or future cash movements. Check the cash forecast, bank balance and payroll due.'
       elsif UploadEvidence.last_upload_question?(request_text) && @toolbox.tools_used.include?('list_uploads')
         body = UploadEvidence.render_last(@execution.run.reload.tool_results) || 'I could not verify the latest upload from the available inbox lookup.'
       elsif ComplianceEvidence.timesheets_and_backup_question?(request_text)
@@ -643,6 +645,14 @@ module TeamChat
       return false if @toolbox&.tools_used&.include?('cash_forecast')
 
       question.match?(/\b(?:cash[ -]?(?:forecast|projection)|(?:forecast|projected|project)\w* cash|run out\w* (?:of (?:our )?)?cash|how much cash (?:will|would) (?:we|i) have)\b/i)
+    end
+
+    def payroll_affordability_question?
+      question = request_text.to_s.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip
+      return false if question.match?(/\b(?:and|also|plus|compare|where|page|screen|how do|how can)\b/i)
+      return false unless question.match?(/\bpayroll\b/i)
+
+      question.match?(/\b(?:cover|afford|enough (?:cash|money|funds))\b/i)
     end
 
     # Payment attempts and bank lines do not establish which processor

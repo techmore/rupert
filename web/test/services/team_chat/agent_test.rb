@@ -405,6 +405,15 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     end
   end
 
+  test 'payroll affordability cannot be inferred from sales or worked hours' do
+    script_model({ tool: 'time_keeping_report', arguments: {} }, { text: 'Sales are enough to cover payroll.' })
+    reply = ask('@rupert Will we be able to cover payroll next week?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+    assert_includes reply.reload.body, 'cannot determine whether there will be enough cash'
+    assert_includes reply.body, 'do not establish the available bank balance'
+    assert_not_includes reply.body, 'Sales are enough'
+  end
+
   test 'last import answers preserve the inbox evidence when other tools are called' do
     script_model({ tool: 'list_uploads', arguments: {} }, { tool: 'order_queues', arguments: {} },
       { tool: 'compliance_check', arguments: {} }, { text: 'I checked the inbox.' })
