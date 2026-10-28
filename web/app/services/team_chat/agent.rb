@@ -412,7 +412,7 @@ module TeamChat
     def publish(text)
       # Never expose draft figures before their semantic evidence is checked.
       return if @toolbox&.financial? || text.match?(/[<\d$€£¥%]/)
-      return if @toolbox && (compliance_only_tool_mix? || InventoryEvidence.uncertain?(@toolbox.inventory_results))
+      return if @toolbox && (alert_only_tool_mix? || compliance_only_tool_mix? || InventoryEvidence.uncertain?(@toolbox.inventory_results))
 
       now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       return if now - @last_publish < PUBLISH_EVERY
@@ -433,27 +433,29 @@ module TeamChat
         checked = FinancialEvidence.checked_prose(body, @toolbox.financial_evidence) unless malformed_tool_text
         @prose_checked = checked.present?
         inventory = InventoryEvidence.render(@toolbox.inventory_results)
+        alerts = AlertEvidence.render(@toolbox.alert_results)
         tool_results = @execution.run.reload.tool_results
         task = TaskEvidence.render(tool_results)
         compliance = ComplianceEvidence.render(tool_results)
         sync = SyncEvidence.render(tool_results)
-        if inventory.present? || task.present? || compliance.present? || sync.present?
+        if inventory.present? || alerts.present? || task.present? || compliance.present? || sync.present?
           # Financial prose validation cannot certify other tool claims.
           @prose_checked = false
-          body = [FinancialEvidence.render(@toolbox.financial_evidence), compliance, sync, task, inventory].compact.join("\n\n")
+          body = [FinancialEvidence.render(@toolbox.financial_evidence), compliance, sync, task, inventory, alerts].compact.join("\n\n")
         else
           body = checked || FinancialEvidence.render(@toolbox.financial_evidence)
         end
-      elsif malformed_tool_text || InventoryEvidence.uncertain?(@toolbox.inventory_results) || compliance_only_tool_mix?
+      elsif malformed_tool_text || InventoryEvidence.uncertain?(@toolbox.inventory_results) || compliance_only_tool_mix? || alert_only_tool_mix?
         # A model may emit tool-call markup as ordinary text after tool choice
         # is disabled. Never display it as an answer or execute it as a call.
         task = TaskEvidence.render(@execution.run.reload.tool_results)
         inventory = InventoryEvidence.render(@toolbox.inventory_results)
+        alerts = AlertEvidence.render(@toolbox.alert_results)
         sync = SyncEvidence.render(@execution.run.tool_results)
         compliance = ComplianceEvidence.render(@execution.run.tool_results)
-        body = if task.present? || inventory.present? || sync.present? || compliance.present?
+        body = if task.present? || inventory.present? || alerts.present? || sync.present? || compliance.present?
           prefix = malformed_tool_text ? 'I could not complete my answer. These are the available lookup results:' : 'These are the available lookup results:'
-          [prefix, compliance, sync, task, inventory].compact.join("\n\n")
+          [prefix, compliance, sync, task, inventory, alerts].compact.join("\n\n")
         else
           'I could not complete my answer. Please try again.'
         end
@@ -534,6 +536,10 @@ module TeamChat
     def compliance_only_tool_mix?
       names = @toolbox.tools_used
       names.include?('compliance_check') && (names - %w[compliance_check list_tasks inventory_search sync_health]).empty?
+    end
+
+    def alert_only_tool_mix?
+      @toolbox.tools_used.any? && (@toolbox.tools_used - ['list_alerts']).empty?
     end
 
     # What the bot was given: its tool results and the conversation it saw.

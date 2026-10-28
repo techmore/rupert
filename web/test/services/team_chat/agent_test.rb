@@ -106,6 +106,33 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_includes tool_message['content'], 'no matching alerts do not prove stock is sufficient'
   end
 
+  test 'alert-only answer does not present alert quantities as current inventory' do
+    StockAlert.create!(sku: 'SYN-TEA', quantity: 0, threshold: 5, status: 'open')
+    script_model({ tool: 'list_alerts', arguments: {} }, { text: 'SYN-TEA is out of stock right now.' })
+    reply = ask('@rupert list the open low-stock alerts')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'SYN-TEA'
+    assert_includes reply.body, 'alert quantity 0, threshold 5'
+    assert_includes reply.body, 'may be stale'
+    assert_not_includes reply.body, 'out of stock right now'
+  end
+
+  test 'financial answers also preserve alert scope and values' do
+    StockAlert.create!(sku: 'SYN-TEA', quantity: 2, threshold: 5, status: 'open')
+    script_model({ tool: 'metric', arguments: { name: 'gross_sales', period: 'yesterday', compare: 'none' } },
+      { tool: 'list_alerts', arguments: {} }, { text: 'Everything is in stock.' })
+    reply = ask('@rupert what were sales yesterday and what alerts are open?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'SYN-TEA'
+    assert_includes reply.body, 'alert quantity 2, threshold 5'
+    assert_includes reply.body, 'not a current inventory check'
+    assert_not_includes reply.body, 'Everything is in stock'
+  end
+
   test 'timekeeping tool delivers worked hours even when sales are unavailable' do
     today = Date.current.iso8601
     requests = script_model({ tool: 'time_keeping_report', arguments: { from: today, to: today } }, { text: 'I checked timekeeping.' })

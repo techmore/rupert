@@ -29,7 +29,7 @@ module TeamChat
 
     Definition = Struct.new(:name, :description, :schema, :kind, :activity, keyword_init: true)
 
-    attr_reader :calls, :tools_used, :results, :financial_evidence, :inventory_results, :views
+    attr_reader :calls, :tools_used, :results, :financial_evidence, :inventory_results, :alert_results, :views
     attr_accessor :call_id, :execution_info
 
     # only: tool names to offer (the question's data guide topics, for local bots); nil offers every tool.
@@ -48,6 +48,7 @@ module TeamChat
       @tools_used = saved.pluck('name')
       @results = saved.pluck('result')
       @inventory_results = saved.filter_map { |entry| entry['result'] if entry['name'] == 'inventory_search' }
+      @alert_results = saved.filter_map { |entry| entry['result'] if entry['name'] == 'list_alerts' }
       @financial_evidence = saved.filter_map { |entry| FinancialEvidence.decode(entry['result'], @user.tenant_id, tool: entry['name'], invocation: entry['id']) if FinancialEvidence::CONTRACTS.include?(entry['name']) }
       @financial = saved.any? { |entry| FinancialEvidence::TOOLS.include?(entry['name']) || FinancialEvidence.decode(entry['result'], @user.tenant_id).present? }
     end
@@ -288,8 +289,8 @@ module TeamChat
         return JSON.generate(evidence)
       end
       if name == 'list_alerts'
-        return AskRupert::Redactor.personal("#{outcome.text}\nLow-stock alerts are not a complete inventory check; " \
-          "no matching alerts do not prove stock is sufficient.\n#{JSON.generate(with_dollars(outcome.data))}")
+        return "Low-stock alerts are not a complete inventory check; no matching alerts do not prove stock is sufficient.\n" \
+          "#{JSON.generate(AlertEvidence.pack(outcome.data, args: args))}"
       end
       AskRupert::Redactor.personal("#{outcome.text}\n#{JSON.generate(with_dollars(outcome.data))}")
     end
@@ -346,6 +347,7 @@ module TeamChat
       text = text.to_s.first(MAX_RESULT_CHARS)
       @results << text
       @inventory_results << text if name.to_s == 'inventory_search' && outcome == 'ok'
+      @alert_results << text if name.to_s == 'list_alerts'
       text
     end
   end
