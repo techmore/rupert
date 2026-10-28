@@ -87,6 +87,7 @@ module TeamChat
         # views can consume the entire tool budget.
         @toolbox.prefetch_daily_chart!
         @toolbox.prefetch_comparison_chart!
+        @toolbox.prefetch_receipt_and_retention!
         text = verified(answer)
         @toolbox.prefetch_refunded_orders!
         @toolbox.prefetch_requested_metric!
@@ -471,6 +472,12 @@ module TeamChat
         body = 'I cannot determine whether there will be enough cash to cover payroll from the available tool results. Recorded sales and worked hours do not establish the available bank balance, payroll liabilities or future cash movements. Check the cash forecast, bank balance and payroll due.'
       elsif UploadEvidence.last_upload_question?(request_text) && @toolbox.tools_used.include?('list_uploads')
         body = UploadEvidence.render_last(@execution.run.reload.tool_results) || 'I could not verify the latest upload from the available inbox lookup.'
+      elsif ComplianceEvidence.receipt_and_retention_question?(request_text)
+        entries = @execution.run.reload.tool_results
+        first = request_text.sub(/\s*,?\s+and\s+.*\z/i, '')
+        receipts = QueueEvidence.render_requested(@toolbox.financial_evidence, first) || 'I could not verify the number of receipts awaiting review.'
+        retention = ComplianceEvidence.render_retention(entries) || 'I could not verify the recorded document-retention status.'
+        body = [receipts, retention].join("\n\n")
       elsif ComplianceEvidence.timesheets_and_backup_question?(request_text)
         entries = @execution.run.reload.tool_results
         timesheets = ComplianceEvidence.render_focused_count(entries, ComplianceEvidence::TIMESHEETS_TITLE) || 'I could not verify the timesheet approval count.'

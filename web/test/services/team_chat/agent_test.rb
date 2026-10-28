@@ -220,6 +220,41 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_not_includes reply.body, 'Both are connected'
   end
 
+  test 'receipt count and document retention use separate authorized evidence' do
+    queues = { queues: [{ name: 'Expense receipts waiting for review', count: 0 }], oldest_unshipped: [], low_stock_available: false }
+    compliance = { items: [{ title: 'Google Drive document retention', area: 'Records', status: 'watch', detail: 'Not connected: originals stay only in Rupert.' },
+                           { title: 'Recent days have been approved by a person', area: 'Books', status: 'watch', count: 2 }] }
+    Mcp::Tools::OrderQueues.stubs(:available_to?).returns(true)
+    Mcp::Tools::ComplianceCheck.stubs(:available_to?).returns(true)
+    Mcp::Tools::OrderQueues.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'queues', data: queues))
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: compliance))
+    script_model({ text: 'Two receipts are waiting and Drive is connected.' })
+    reply = ask('@rupert How many receipts need review, and is document retention connected to Google Drive?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Expense receipts waiting for review: 0.'
+    assert_includes reply.body, 'Not connected: originals stay only in Rupert.'
+    assert_not_includes reply.body, 'Two receipts'
+    assert_not_includes reply.body, 'Drive is connected'
+    entries = TeamChat::Run.find_by!(message_id: reply.id).tool_results
+    assert_equal %w[order_queues compliance_check], entries.map { |entry| entry['name'] }.first(2)
+    assert_equal true, entries.find { |entry| entry['name'] == 'compliance_check' }.dig('arguments', 'include_ok')
+  end
+
+  test 'missing receipt or retention evidence is not inferred from the other lookup' do
+    queues = { queues: [], oldest_unshipped: [], low_stock_available: false }
+    Mcp::Tools::OrderQueues.stubs(:available_to?).returns(true)
+    Mcp::Tools::ComplianceCheck.stubs(:available_to?).returns(false)
+    Mcp::Tools::OrderQueues.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'queues', data: queues))
+    script_model({ text: 'All clear.' })
+    reply = ask('@rupert How many receipts need review, and is document retention connected to Google Drive?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'could not verify the number of receipts'
+    assert_includes reply.body, 'could not verify the recorded document-retention status'
+    assert_not_includes reply.body, 'All clear'
+  end
+
   test 'retention status drafts are not streamed before verification' do
     reply = ask('@rupert Is our document retention to Google Drive working?')
     agent = TeamChat::Agent.new(reply, config: team_chat_config)

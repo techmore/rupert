@@ -6,7 +6,7 @@ module TeamChat
   module QueueEvidence
     module_function
 
-    RECEIPT_QUESTION = /\A(?:how many (?:expense )?receipts (?:are )?(?:awaiting|waiting for|pending) review|(?:what|which) (?:expense )?receipts (?:need|require|await|are awaiting) review|(?:any )?(?:expense )?receipts (?:to|awaiting|waiting for|pending) review)\z/i
+    RECEIPT_QUESTION = /\A(?:how many (?:expense )?receipts (?:(?:are )?(?:awaiting|waiting for|pending)|need|require) review|(?:what|which) (?:expense )?receipts (?:need|require|await|are awaiting) review|(?:any )?(?:expense )?receipts (?:to|awaiting|waiting for|pending) review)\z/i
     RECONCILIATION_QUESTION = /\A(?:(?:are there |are |any )?(?:any )?reconciliation follow[- ]?ups? (?:open|waiting|pending)|(?:any )?reconciliation follow[- ]?ups?)\z/i
     PURCHASE_ORDER_QUESTION = /\A(?:(?:are there |are |any )?(?:any )?purchase orders (?:late|overdue)(?: or (?:still )?(?:waiting for|awaiting) delivery)?|(?:any )?(?:late|overdue) purchase orders)\z/i
 

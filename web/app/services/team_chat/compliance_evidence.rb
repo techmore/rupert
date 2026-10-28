@@ -31,6 +31,7 @@ module TeamChat
     def focused_title(question)
       return RETENTION_TITLE if retention_question?(question)
       return RETENTION_TITLE if retention_and_backup_question?(question)
+      return RETENTION_TITLE if receipt_and_retention_question?(question)
       return TIMESHEETS_TITLE if timesheets_and_backup_question?(question)
 
       text = question.to_s.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip.sub(/[?.!]+\z/, '').strip
@@ -38,6 +39,14 @@ module TeamChat
       return BANK_LINES_TITLE if text.match?(/\A(?:are there|are|any|how many) (?:any )?bank statement lines (?:are )?(?:waiting to be matched|awaiting (?:a )?decision|pending (?:a )?decision)\z/i)
 
       nil
+    end
+
+    def receipt_and_retention_question?(question)
+      text = question.to_s.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip.sub(/[?.!]+\z/, '').strip
+      parts = text.split(/\s*,?\s+and\s+/i)
+      return false unless parts.size == 2 && parts.first.match?(/\Ahow many\b/i)
+
+      QueueEvidence.count_question?(parts.first) && retention_question?(parts.last)
     end
 
     def retention_and_backup_question?(question)
@@ -52,7 +61,7 @@ module TeamChat
     end
 
     def narrow_title(question)
-      focused_title(question) unless timesheets_and_backup_question?(question) || retention_and_backup_question?(question)
+      focused_title(question) unless timesheets_and_backup_question?(question) || retention_and_backup_question?(question) || receipt_and_retention_question?(question)
     end
 
     # Keep structured evidence parseable within the toolbox's result limit.

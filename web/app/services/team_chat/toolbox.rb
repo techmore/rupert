@@ -50,6 +50,7 @@ module TeamChat
       @lookups = AskRupert::Tools.new(user: user)
       @execution = execution
       @question = question.to_s
+      @only |= %w[order_queues compliance_check] if @only && ComplianceEvidence.receipt_and_retention_question?(@question)
       saved = execution&.run&.tool_results || []
       @views = []
       @calls = saved.size
@@ -83,6 +84,18 @@ module TeamChat
 
     def financial? = @financial
     def prefetched_requested_metric? = @prefetched_requested_metric == true
+
+    def prefetch_receipt_and_retention!
+      return unless @execution && ComplianceEvidence.receipt_and_retention_question?(@question)
+
+      %w[order_queues compliance_check].each do |name|
+        next unless names.include?(name) && @calls < MAX_CALLS
+        next if @execution.run.reload.tool_results.any? { |entry| entry['name'] == name }
+
+        self.call_id = "receipt-retention-#{name}-#{@execution.run.id}"
+        call(name, name == 'compliance_check' ? { 'include_ok' => true } : {})
+      end
+    end
 
     def add_verified_view_fallback!
       return if @views.any?
