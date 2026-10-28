@@ -54,6 +54,17 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_not_includes text, 'in-person register'
   end
 
+  test 'oversized daily close notes terminate with a bounded honest gap' do
+    stores = 40.times.map do |i|
+      { store: "Store #{i}", currency: 'USD', gross_cents: 100, notes: ["#{i}: #{'x' * 220}"] }
+    end
+    item = evidence(@period.merge(stores: stores), tool: 'daily_close', args: @period)
+
+    assert_operator JSON.generate(item).length, :<=, 5_500
+    assert_empty item['facts']
+    assert_includes item['gaps'].join, 'exceeded the response budget'
+  end
+
   test 'empty current metric does not answer using an implicit previous period' do
     previous = (Date.current - 1).iso8601
     payload = data.merge(values: [], compared_with: { from: previous, to: previous, values: [{ value: 1234, currency: 'USD' }] })
