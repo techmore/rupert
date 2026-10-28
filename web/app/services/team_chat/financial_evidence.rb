@@ -130,7 +130,8 @@ module TeamChat
         first = args['from'] || Date.current.iso8601
         period = window(data, first, args['to'] || first)
         if data['stores'].is_a?(Array) && data['stores'].empty?
-          out['gaps'] << 'No store register records were returned for this period and filter; this does not prove zero sales.'
+          out['gaps'] << "No store register records were returned for #{period['from']} to #{period['to']} and the selected filter; " \
+                         'this does not prove zero sales.'
         end
         rows = Array(data['stores']).each_with_index.filter_map do |row, index|
           store = row['store'].to_s

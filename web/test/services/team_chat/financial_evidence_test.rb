@@ -43,8 +43,20 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
   test 'empty daily close states that register records were not returned without claiming zero' do
     item = evidence(@period.merge(stores: []), tool: 'daily_close', args: @period)
     assert_includes render(item), 'No store register records were returned'
+    assert_includes render(item), "#{@period[:from]} to #{@period[:to]}"
     assert_includes render(item), 'does not prove zero sales'
     assert_empty item['facts']
+  end
+
+  test 'missing register warning keeps its own date when another day has sales' do
+    yesterday = (Date.current - 1).iso8601
+    missing = evidence(@period.merge(stores: []), tool: 'daily_close', args: @period)
+    prior = { from: yesterday, to: yesterday }
+    recorded = evidence(prior.merge(stores: [{ store: 'Online (Shopify)', currency: 'USD', net_cents: 1000 }]),
+      tool: 'daily_close', args: prior)
+    text = TeamChat::FinancialEvidence.render([missing, recorded])
+    assert_includes text, "No store register records were returned for #{@period[:from]} to #{@period[:to]}"
+    assert_includes text, "#{yesterday} to #{yesterday}"
   end
 
   test 'online daily close rows are not described as in-person registers' do
