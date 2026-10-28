@@ -495,6 +495,9 @@ module TeamChat
         # Money talk with figures no tool gave (the conversation itself is not evidence).
         body = UNCHECKED_FIGURES
       end
+      if current_stock_unverified?
+        body = "#{body}\n\nCurrent stock levels could not be verified from alert records alone."
+      end
       body = Links.for_user(body, user: @asker)
       body = FAILURES[:error] if body.blank? && @reply.reload.actions_list.empty?
       meta = meta_with(started, 'ok')
@@ -571,7 +574,15 @@ module TeamChat
     end
 
     def alert_only_tool_mix?
-      @toolbox.tools_used.any? && (@toolbox.tools_used - ['list_alerts']).empty?
+      names = @toolbox.tools_used
+      names.include?('list_alerts') && (names - %w[list_alerts list_tasks inventory_search sync_health]).empty?
+    end
+
+    def current_stock_unverified?
+      return false unless @toolbox && @toolbox.tools_used.include?('list_alerts')
+      return false unless request_text.match?(/\b(?:stock|inventory)\b/i) && request_text.match?(/\b(?:still|current(?:ly)?|right now|today)\b/i)
+
+      InventoryEvidence.render(@toolbox.inventory_results).blank?
     end
 
     # A status answer without any lookup is not evidence, even when it

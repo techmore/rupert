@@ -249,6 +249,20 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_not_includes reply.body, 'Everything is in stock'
   end
 
+  test 'task and alert lookups do not claim an alert is current stock' do
+    StockAlert.create!(sku: 'SYN-TEA', quantity: 2, threshold: 5, status: 'open')
+    script_model({ tool: 'list_tasks', arguments: { overdue: true, topic: 'stock' } },
+      { tool: 'list_alerts', arguments: {} }, { text: 'SYN-TEA is still below its threshold with 2 on hand.' })
+    reply = ask('@rupert Are there overdue stock tasks and is that stock still low?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Task lookup'
+    assert_includes reply.body, 'alert quantity 2, threshold 5'
+    assert_includes reply.body, 'Current stock levels could not be verified from alert records alone'
+    assert_not_includes reply.body, '2 on hand'
+  end
+
   test 'timekeeping tool delivers worked hours even when sales are unavailable' do
     today = Date.current.iso8601
     requests = script_model({ tool: 'time_keeping_report', arguments: { from: today, to: today } }, { text: 'I checked timekeeping.' })
