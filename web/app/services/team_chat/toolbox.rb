@@ -20,6 +20,12 @@ module TeamChat
     MAX_CALLS = 8
     LOOKUPS = %w[where_is how_do_i search system_status].freeze
     WRITE_TOOLS = %w[create_task update_task submit_feedback].freeze
+    EXCLUSION_CLAUSE = /\b(?:without|do not|don't|never|no(?=\s+(?:new\s+)?(?:tasks?|feedback)\b))(?:(?![.!?;,]|\b(?:but|however|instead|while|then)\b).){0,160}/i
+    EXCLUDED_WRITES = {
+      'create_task' => /\b(?:creat(?:e|ing)|mak(?:e|ing)|add(?:ing)?|open(?:ing)?)\b.{0,35}\btasks?\b|\b(?:no|without)\s+(?:(?:a|any|new)\s+)*tasks?\b/i,
+      'update_task' => /\b(?:updat(?:e|ing)|chang(?:e|ing)|modif(?:y|ying))\b.{0,35}\btasks?\b|\b(?:no|without)\s+(?:(?:a|any|new)\s+)*tasks?\b/i,
+      'submit_feedback' => /\b(?:send(?:ing)?|submit(?:ting)?|fil(?:e|ing)|creat(?:e|ing))\b.{0,35}\bfeedback\b|\b(?:no|without)\s+(?:(?:a|any)\s+)*feedback\b/i
+    }.freeze
 
     Definition = Struct.new(:name, :description, :schema, :kind, :activity, keyword_init: true)
 
@@ -107,6 +113,9 @@ module TeamChat
 
       @financial = true if FinancialEvidence::TOOLS.include?(definition.name)
       @tools_used << definition.name
+      if definition.kind == :write && excluded_write?(definition.name)
+        return log(name, started, 'denied', 'The person explicitly excluded this action; do not propose it.')
+      end
       text = case definition.kind
              when :lookup then run_lookup(definition.name, coerced)
              when :mcp then run_mcp(definition.name, coerced)
@@ -122,6 +131,14 @@ module TeamChat
     end
 
     private
+
+    def excluded_write?(name)
+      pattern = EXCLUDED_WRITES[name]
+      # Quoted titles and descriptions are data, not exclusions of the action
+      # the person requested. Preserve apostrophes inside words such as don't.
+      question = @question.gsub(/"[^"]*"|“[^”]*”|‘[^’]*’|(?<!\w)'[^']*'(?!\w)/, ' ')
+      pattern && question.scan(EXCLUSION_CLAUSE).any? { |clause| clause.match?(pattern) }
+    end
 
     # A daily sales request needs the series flag; small models often omit it
     # even when they select the right tool and dates. Keep explicit arguments.

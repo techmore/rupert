@@ -567,6 +567,43 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     end
   end
 
+  test 'explicitly excluded task and feedback proposals are denied' do
+    script_model({ tool: 'create_task', arguments: { title: 'Courier arrives at four' } },
+      { tool: 'submit_feedback', arguments: { kind: 'suggestion', summary: 'Courier note' } },
+      { text: 'I could not save a standalone note.' })
+    reply = ask('@rupert Make a note that the courier comes at 4, without creating a task or sending feedback.')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_empty reply.reload.actions_list
+    results = TeamChat::Run.find_by!(message_id: reply.id).tool_results
+    assert_equal %w[create_task submit_feedback], results.pluck('name')
+    assert results.all? { |entry| entry['result'].include?('explicitly excluded') }
+  end
+
+  test 'a separate allowed feedback request is not blocked by a task exclusion' do
+    script_model({ tool: 'create_task', arguments: { title: 'Courier arrives at four' } },
+      { tool: 'submit_feedback', arguments: { kind: 'suggestion', summary: 'Courier note' } },
+      { text: 'The feedback proposal is waiting for approval.' })
+    reply = ask('@rupert Do not create a task, but send feedback about the courier note.')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal ['submit_feedback'], reply.reload.actions_list.pluck('tool')
+    results = TeamChat::Run.find_by!(message_id: reply.id).tool_results
+    assert_includes results.first['result'], 'explicitly excluded'
+  end
+
+  test 'a quoted task title is not treated as an instruction to exclude the task' do
+    script_model({ tool: 'create_task', arguments: { title: 'Do not create a task' } },
+      { text: 'The task proposal is waiting for approval.' })
+    reply = ask('@rupert Create a task titled “Do not create a task”.')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal ['create_task'], reply.reload.actions_list.pluck('tool')
+  end
+
   test 'assigning a task privately preserves the assignee without notifying them into the private room' do
     jan = User.create!(tenant: @tenant, email: 'jan.tester@example.com', name: 'Jan Tester', role: @user.role, password: 'password123')
     task = Projects::Task.create!(title: 'Count the tea shelf', priority: 'medium')
