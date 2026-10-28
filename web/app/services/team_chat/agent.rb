@@ -436,14 +436,16 @@ module TeamChat
         else
           body = checked || FinancialEvidence.render(@toolbox.financial_evidence)
         end
-      elsif malformed_tool_text
+      elsif malformed_tool_text || InventoryEvidence.uncertain?(@toolbox.inventory_results)
         # A model may emit tool-call markup as ordinary text after tool choice
         # is disabled. Never display it as an answer or execute it as a call.
         task = TaskEvidence.render(@execution.run.reload.tool_results)
         inventory = InventoryEvidence.render(@toolbox.inventory_results)
         sync = SyncEvidence.render(@execution.run.tool_results)
-        body = if task.present? || inventory.present? || sync.present?
-          ['I could not complete my answer. These are the available lookup results:', sync, task, inventory].compact.join("\n\n")
+        compliance = ComplianceEvidence.render(@execution.run.tool_results)
+        body = if task.present? || inventory.present? || sync.present? || compliance.present?
+          prefix = malformed_tool_text ? 'I could not complete my answer. These are the available lookup results:' : 'These are the available lookup results:'
+          [prefix, compliance, sync, task, inventory].compact.join("\n\n")
         else
           'I could not complete my answer. Please try again.'
         end

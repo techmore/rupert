@@ -14,6 +14,18 @@ module TeamChat
         (lines.size > 10 ? ['Additional stock observations were omitted; narrow the search.'] : [])).join("\n")
     end
 
+    def uncertain?(results)
+      results.any? do |result|
+        data = JSON.parse(result.to_s.partition("\n").last)
+        rows = data.fetch('rows')
+        !rows.is_a?(Array) || rows.empty? || rows.any? do |row|
+          !row.is_a?(Hash) || !row['available'].is_a?(Numeric) || ![true, false].include?(row['low'])
+        end
+      rescue JSON::ParserError, KeyError, TypeError
+        true
+      end
+    end
+
     def rows_for(result)
       data = JSON.parse(result.to_s.partition("\n").last)
       rows = data.fetch('rows')

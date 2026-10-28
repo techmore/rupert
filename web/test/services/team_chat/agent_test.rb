@@ -158,6 +158,18 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal false, reply.meta['prose_checked']
   end
 
+  test 'empty inventory lookup cannot be turned into a stock all-clear' do
+    script_model({ tool: 'list_tasks', arguments: { query: 'tea' } },
+      { tool: 'inventory_search', arguments: { query: 'tea' } }, { text: 'Everything is in stock.' })
+    reply = ask('@rupert are there tea tasks and is tea stock low?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Task lookup (query: tea)'
+    assert_includes reply.body, 'availability is unknown'
+    assert_not_includes reply.body, 'Everything is in stock'
+  end
+
   test 'financial verification retains task lookup results' do
     Projects::Task.create!(title: 'Recount tea shelf', priority: 'high')
     Core::Order.create!(source: 'shopify', source_order_id: 'chat-task-order', occurred_at: Time.current, gross_cents: 21483, currency: 'USD').mark_paid!
