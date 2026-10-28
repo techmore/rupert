@@ -214,7 +214,8 @@ class TeamChatBatteryCoverageTest < ActiveSupport::TestCase
       task.execute
     end.first
 
-    assert_includes output, 'cross: 10 questions, 0 errors, 0 missing needs, 0 cross questions over two calls'
+    count = TeamChat::Battery.items(TeamChat::Battery.config_for('cross')).size
+    assert_includes output, "cross: #{count} questions, 0 errors, 0 missing needs, 0 cross questions over two calls"
     paths.each { |path| assert File.exist?(path) }
     assert_includes File.read(paths.last), '| x01 | 1 |'
   ensure

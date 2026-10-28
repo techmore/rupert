@@ -71,3 +71,24 @@ questions:
     checks: [{ tool: list_tasks, args: { query: tea, topic: stock } }, { tool: inventory_search, args: { query: tea } }]
     needs: ["list_tasks:rows[].title", "list_tasks:rows[].status", "inventory_search:rows[].name", "inventory_search:rows[].low?", "inventory_search:rows[].alert_id?"]
     expect: Says whether a tea count task exists (and its status) and which tea products are low, from the tools.
+  - id: x11
+    cadence: cross
+    module: cross
+    question: What were yesterday's recorded sales by currency, and does the sync status prove the figures are complete?
+    checks: [{ tool: period_review, args: { period: yesterday } }, sync_health]
+    needs: ["period_review:sales[].gross_cents", "period_review:sales[].currency", "sync_health:yesterday_complete"]
+    expect: Reports stored sales separately by currency and explains whether the returned sync evidence establishes complete coverage. Missing source activity or acquisition time alone does not prove completeness.
+  - id: x12
+    cadence: cross
+    module: cross
+    question: How many receipts need review, and is document retention connected to Google Drive?
+    checks: [order_queues, { tool: compliance_check, args: { include_ok: true }, select_title: Google Drive document retention }]
+    needs: ["order_queues:queues[name=Expense receipts waiting for review].count", "compliance_check:items[title=Google Drive document retention].status", "compliance_check:items[title=Google Drive document retention].detail?"]
+    expect: Reports the receipt review count and the recorded retention status and detail independently. Says when either item is unavailable; does not claim a live connectivity check.
+  - id: x13
+    cadence: cross
+    module: cross
+    question: How did this quarter's sales compare with last quarter, and which product led sales this quarter?
+    checks: [{ tool: period_review, args: { period: this_quarter } }, { tool: metric, args: { name: top_products, period: this_quarter, compare: none } }]
+    needs: ["period_review:sales[].gross_cents", "period_review:change[].gross_change_percent", "metric:values[].products[].name", "metric:values[].products[].revenue"]
+    expect: Reports current sales and any recorded change by currency, identifies the leading product separately within each currency, and explains unavailable comparisons without combining currencies.
