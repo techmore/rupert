@@ -66,7 +66,7 @@ class DailyCloseToolTest < ActiveSupport::TestCase
     facts = evidence['facts']
     assert_equal ['Store net sales (gross minus refunds; before tax and tips)'] * 2, facts.first(2).pluck('meaning')
     assert_equal %w[837.5 110.65], facts.first(2).pluck('value')
-    assert_includes facts.first['source'], 'separate from online orders'
+    assert_includes facts.first['source'], 'not added to canonical orders'
     assert(evidence['gaps'].any? { |gap| gap.include?('does not report sales tax') })
     assert_operator facts.size, :<=, 12
     kept = TeamChat::FinancialEvidence.checked_prose('The SwipeSimple register took $837.50 today and Main Street $110.65.', [evidence])
