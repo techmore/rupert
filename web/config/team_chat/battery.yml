@@ -23,7 +23,7 @@ questions:
     question: Are there paid online orders that have not shipped yet? Which one is the oldest?
     expect: Report the paid-online unshipped queue and the oldest order if the reference identifies it; if the queue is empty say there is no oldest order, and if the oldest is unavailable say so.
     checks: [order_queues]
-    needs: ["order_queues:queues[].count", "order_queues:oldest_unshipped", "order_queues:oldest_unshipped[].order"]
+    needs: ["order_queues:queues[name=Paid online orders not shipped].count", "order_queues:oldest_unshipped", "order_queues:oldest_unshipped[].order"]
   - id: d4
     cadence: daily
     module: system
@@ -135,14 +135,14 @@ questions:
     question: Are any purchase orders late or still waiting for delivery?
     expect: Report the relevant purchase-order queues and their counts for late and awaiting-delivery orders; identify missing or unavailable queue evidence rather than inventing orders.
     checks: [order_queues]
-    needs: ["order_queues:queues[].name", "order_queues:queues[].count"]
+    needs: ["order_queues:queues[name=Purchase orders awaiting delivery].count", "order_queues:queues[name=Purchase orders awaiting delivery].late"]
   - id: o2
     cadence: orders
     module: sell
     question: Are there any card payments stuck or not resolved?
     expect: Report the relevant unresolved card-payment queue and count; if it is empty say no unresolved items are shown, and if unavailable say it could not be checked.
     checks: [order_queues]
-    needs: ["order_queues:queues[].name", "order_queues:queues[].count"]
+    needs: ["order_queues:queues[name=Card payments not resolved].count"]
   - id: g1
     cadence: general
     module: team

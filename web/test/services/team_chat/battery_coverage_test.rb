@@ -101,6 +101,13 @@ class TeamChatBatteryCoverageTest < ActiveSupport::TestCase
     refute coverage.need_present?({ items: [{ title: 'Timesheets awaiting approval' }] }, path)
   end
 
+  test 'queue questions require their named queue instead of an unrelated count' do
+    coverage = TeamChat::BatteryCoverage.new(user: @user, items: [])
+    path = 'queues[name=Purchase orders awaiting delivery].count'
+    refute coverage.need_present?({ queues: [{ name: 'Other queue', count: 0 }] }, path)
+    assert coverage.need_present?({ queues: [{ name: 'Purchase orders awaiting delivery', count: 0 }] }, path)
+  end
+
   test 'a selected compliance reference contains only its named row' do
     coverage = TeamChat::BatteryCoverage.new(user: @user, items: [])
     data = { items: [{ title: 'Other', status: 'ok' }, { title: 'Target', status: 'watch', count: 0 }] }
