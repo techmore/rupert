@@ -30,6 +30,7 @@ module TeamChat
         2 = mostly wrong, or misses the point of the question.
         1 = wrong, invented numbers, links or facts, unjustifiably refused, or empty.
         Invented numbers or pages are serious: never above 2 when the answer states a figure the reference contradicts.
+        A definite current-record status or count asserted without a data lookup is unverified, even if it happens to match the reference; score it at most 2. A cautious inability to check is different.
         Do not reward length. Ignore formatting.
 
         Reply with JSON only, no prose around it:
@@ -64,12 +65,30 @@ module TeamChat
           #{reference.presence || '(no reference data)'}
         TEXT
         text = response.content.to_s if text.blank? && response.respond_to?(:content)
-        parse(text).merge(seconds: Process.clock_gettime(Process::CLOCK_MONOTONIC) - started)
+        result = parse(text)
+        if ungrounded_status_claim?(question, answer, tools_used)
+          result[:score] = [result[:score], 2].min
+          result[:verdict] = 'Current record status was asserted without a data lookup.'
+          result[:issues] = (Array(result[:issues]) + ['No data lookup supports the status claim.']).uniq
+        end
+        result.merge(seconds: Process.clock_gettime(Process::CLOCK_MONOTONIC) - started)
       rescue RubyLLM::Error, Faraday::Error, Net::ReadTimeout => e
         raise Error, e.message
       end
 
       private
+
+      def ungrounded_status_claim?(question, answer, tools_used)
+        return false if Array(tools_used).any?
+        return false unless question.to_s.match?(/\b(?:any|which|list|show|how many|waiting|overdue|unresolved)\b/i)
+        return false unless question.to_s.match?(/\b(?:tasks?|alerts?|orders?|receipts?|follow[- ]?ups?|payments?|shifts?|timesheets?|queues?)\b/i)
+
+        claim = /\bthere\s+(?:are|is|were|was)\s+(?:no|\d+)\s+[^.!?\n]{0,50}\b(?:tasks?|alerts?|orders?|receipts?|follow[- ]?ups?|payments?|shifts?|timesheets?|queues?)\b|\bthere\s+(?:are|is|were|was)\s+none\b|\bno\s+(?:open\s+)?(?:tasks?|alerts?|orders?|receipts?|follow[- ]?ups?|payments?|shifts?|timesheets?|queues?)\b|\b\d+\s+(?:open\s+)?(?:tasks?|alerts?|orders?|receipts?|follow[- ]?ups?|payments?|shifts?|timesheets?|queues?)\b/i
+        answer.to_s.split(/(?<=[.!?])\s+|\n/).any? do |sentence|
+          uncertain = sentence.match?(/\b(?:cannot|can't|could not|unable to|not sure|don't know)\b/i) && !sentence.match?(/\b(?:but|however)\b/i)
+          !uncertain && sentence.match?(claim)
+        end
+      end
 
       def parse(text)
         json = text.to_s[/\{.*\}/m]
