@@ -38,6 +38,17 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_empty reply.meta['tools']
   end
 
+  test 'an unrelated compliance lookup does not answer a reconciliation queue question' do
+    compliance = { items: [{ title: 'Books closed', area: 'Books', status: 'watch', detail: 'Review needed' }] }
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: compliance))
+    script_model({ tool: 'compliance_check', arguments: {} }, { text: 'Everything is clear.' })
+    reply = ask('@rupert Are reconciliation follow-ups open?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal 'I could not verify the requested queue count from the available records.', reply.reload.body
+    assert_includes reply.meta['tools'], 'compliance_check'
+  end
+
   test 'a conceptual question remains answerable without a record lookup' do
     script_model({ text: 'A task is an item of work.' })
     reply = ask('@rupert what is a task?')
@@ -457,6 +468,21 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     TeamChat::Agent.new(reply, config: team_chat_config).run
     assert_includes reply.reload.body, 'Paid online orders not shipped: 9'
     assert_includes reply.body, 'Books closed'
+  end
+
+  test 'a nonempty receipt count does not replace a request for receipt identities' do
+    data = { queues: [{ name: 'Expense receipts waiting for review', count: 2 }],
+             low_stock_available: false, oldest_unshipped: [] }
+    compliance = { items: [{ title: 'Books closed', area: 'Books', status: 'watch', detail: 'Review needed' }] }
+    Mcp::Tools::OrderQueues.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'queue counts', data: data))
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'compliance', data: compliance))
+    script_model({ tool: 'order_queues', arguments: {} }, { tool: 'compliance_check', arguments: {} }, { text: 'I checked.' })
+    reply = ask('@rupert Which expense receipts require review?')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Expense receipts waiting for review: 2'
+    assert_includes reply.body, 'Books closed'
+    assert_not_includes reply.body, 'counts, not individual receipt'
   end
 
   test 'financial drafts are replaced with typed source period currency and meaning' do

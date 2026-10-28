@@ -440,6 +440,9 @@ module TeamChat
         # verified counts, not unrelated tools the model also called.
         @prose_checked = false
         body = queue_answer
+      elsif QueueEvidence.count_question?(request_text)
+        # An unrelated lookup cannot establish the requested queue count.
+        body = 'I could not verify the requested queue count from the available records.'
       elsif @toolbox.financial?
         # The bot's own words when every figure checks out against the facts; else Ruby lists the facts.
         checked = FinancialEvidence.checked_prose(body, @toolbox.financial_evidence) unless malformed_tool_text

@@ -25,6 +25,18 @@ module TeamChat
       names.any? && names.all? ? names.uniq : nil
     end
 
+    # Restrict tool choice only for an explicit count or yes/no queue question.
+    # Requests for which individual receipts need review may need other tools.
+    def count_question?(question)
+      text = question.to_s.sub(/\A\s*(?:@[\w.-]+\s+)+/, '').strip.sub(/[?.!]+\z/, '').strip
+      names = requested_queues(text)
+      return false unless names&.one?
+
+      (names.first == 'Expense receipts waiting for review' && text.match?(/\Ahow many\b/i)) ||
+        (names.first == 'Reconciliation follow-ups' && text.match?(/\A(?:any|are)\b/i)) ||
+        (names.first == 'Purchase orders awaiting delivery' && text.match?(/\A(?:any|are)\b/i))
+    end
+
     def render_requested(evidence, question)
       names = requested_queues(question)
       return unless names

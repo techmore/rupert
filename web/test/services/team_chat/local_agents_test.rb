@@ -71,6 +71,39 @@ class TeamChatLocalAgentsTest < ActiveSupport::TestCase
     ENV['RUPERT_LOCAL_TOOLS'] = previous
   end
 
+  test 'narrow local queue counts offer the authorized queue tool without unrelated tools' do
+    previous = ENV['RUPERT_LOCAL_TOOLS']
+    ENV['RUPERT_LOCAL_TOOLS'] = nil
+    requests = script_model({ text: 'I could not check that.' })
+    TeamChat::Agent.new(post('@qwen how many expense receipts are awaiting review?').replies.first).run
+    names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    assert_includes names, 'order_queues'
+    assert_not_includes names, 'compliance_check'
+    assert_not_includes names, 'search'
+
+    requests = script_model({ text: 'I could not check that.' })
+    TeamChat::Agent.new(post('@qwen which expense receipts require review?').replies.first).run
+    names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    assert_includes names, 'compliance_check'
+
+    Mcp::Tools::OrderQueues.stubs(:available_to?).returns(false)
+    requests = script_model({ text: 'I could not check that.' })
+    TeamChat::Agent.new(post('@qwen how many expense receipts are awaiting review?').replies.first).run
+    names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    assert_not_includes names, 'order_queues'
+    assert_includes names, 'compliance_check'
+    Mcp::Tools::OrderQueues.unstub(:available_to?)
+
+    ENV['RUPERT_LOCAL_TOOLS'] = 'all'
+    requests = script_model({ text: 'I could not check that.' })
+    TeamChat::Agent.new(post('@qwen how many expense receipts are awaiting review?').replies.first).run
+    names = requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    assert_includes names, 'order_queues'
+    assert_includes names, 'compliance_check'
+  ensure
+    ENV['RUPERT_LOCAL_TOOLS'] = previous
+  end
+
   test 'a local agent answers through the gateway with its own model and persona, and sees @rupert as another voice' do
     @room.messages.create!(author_kind: 'assistant', status: 'done', body: 'Earlier answer from Rupert.', meta: { 'asked_by' => @user.id })
     requests = script_model({ text: 'Hi, I am Qwen.' })

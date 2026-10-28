@@ -54,7 +54,14 @@ module TeamChat
     end
 
     def definitions
-      @definitions ||= lookup_definitions + mcp_definitions + write_definitions + view_definitions
+      @definitions ||= begin
+        available = lookup_definitions + mcp_definitions + write_definitions + view_definitions
+        if @only && QueueEvidence.count_question?(@question) && available.any? { |tool| tool.name == 'order_queues' }
+          available.select { |tool| %w[order_queues show_view].include?(tool.name) }
+        else
+          available
+        end
+      end
     end
 
     def financial? = @financial
