@@ -122,7 +122,7 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     today = Date.current.iso8601
     Core::Order.create!(source: 'shopify', source_order_id: 'chat-daily-series', occurred_at: 1.day.ago.change(hour: 12),
       gross_cents: 21483, currency: 'USD').mark_paid!
-    script_model({ tool: 'sales_summary', arguments: { from: yesterday, to: today, include_daily: true } },
+    script_model({ tool: 'sales_summary', arguments: { from: yesterday, to: today } },
       { text: 'Here are the sales.' })
     reply = ask('@rupert show daily sales for yesterday and today')
 
@@ -131,6 +131,8 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_includes reply.reload.body, "#{yesterday}: 214.83 USD gross"
     assert_includes reply.body, "#{today} (USD): no paid or fulfilled orders stored"
     assert_includes reply.body, 'Missing stored orders do not prove there were no sales'
+    run = TeamChat::Run.find_by!(message_id: reply.id)
+    assert_equal true, run.tool_results.find { |entry| entry['name'] == 'sales_summary' }['arguments']['include_daily']
   end
 
   test 'financial drafts are replaced with typed source period currency and meaning' do

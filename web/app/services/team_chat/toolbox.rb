@@ -27,7 +27,7 @@ module TeamChat
     attr_accessor :call_id, :execution_info
 
     # only: tool names to offer (the question's data guide topics, for local bots); nil offers every tool.
-    def initialize(user:, room:, reply:, only: nil, execution: nil)
+    def initialize(user:, room:, reply:, only: nil, execution: nil, question: nil)
       @only = only&.map(&:to_s)
       @user = user
       @room = room
@@ -35,6 +35,7 @@ module TeamChat
       @token = Token.new(user)
       @lookups = AskRupert::Tools.new(user: user)
       @execution = execution
+      @question = question.to_s
       saved = execution&.run&.tool_results || []
       @views = []
       @calls = saved.size
@@ -74,6 +75,7 @@ module TeamChat
 
     # Runs one call and returns text for the model. Never raises.
     def call(name, arguments)
+      arguments = complete_daily_arguments(name, arguments)
       return call_once(name, arguments) unless @execution
 
       @execution.tool!(call_id, name, arguments || {}, write: WRITE_TOOLS.include?(name)) do
@@ -118,6 +120,17 @@ module TeamChat
     end
 
     private
+
+    # A daily sales request needs the series flag; small models often omit it
+    # even when they select the right tool and dates. Keep explicit arguments.
+    def complete_daily_arguments(name, arguments)
+      return arguments unless name.to_s == 'sales_summary' && arguments.is_a?(Hash)
+      return arguments unless @question.match?(/\b(?:daily\s+(?:sales|orders|revenue|breakdown|series)|day[- ]by[- ]day|each day|per day)\b/i)
+
+      args = arguments.deep_stringify_keys
+      args['include_daily'] = true unless args.key?('include_daily')
+      args
+    end
 
     def lookup_definitions
       @lookups.definitions.select { |definition| LOOKUPS.include?(definition.name) }.map do |definition|
