@@ -270,6 +270,15 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_not reply.reload.as_payload(viewer: @user)[:figures_checked]
   end
 
+  test 'a figure from the question is not marked as verified by an unrelated tool' do
+    script_model({ tool: 'where_is', arguments: { query: 'timesheets' } }, { text: 'You mentioned 37 hours. Timesheets are under Team.' })
+    reply = ask('@rupert where are timesheets? I mentioned 37 hours.')
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, '37 hours'
+    assert_not reply.as_payload(viewer: @user)[:figures_checked]
+  end
+
   test 'a write tool only proposes; approving runs it as the approver and posts a notice' do
     script_model({ tool: 'create_task', arguments: { title: 'Recount the tea shelf', priority: 'high' } },
       { text: 'I proposed the task; approve it below.' })

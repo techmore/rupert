@@ -528,7 +528,7 @@ module TeamChat
       return false if @toolbox.nil? || @toolbox.tools_used.empty? || unverified.any? || body == UNCHECKED_FIGURES
       return @prose_checked || @toolbox.financial_evidence.any? { |item| Array(item['facts']).any? } if @toolbox.financial?
 
-      NumberCheck.figures_in(body).any?
+      NumberCheck.figures_in(body).any? && NumberCheck.call(body, @toolbox.results).empty?
     end
 
     def checked_sources
