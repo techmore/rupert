@@ -82,6 +82,17 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_equal 1, text.scan('214.83 USD').length
   end
 
+  test 'equivalent facts from different tools deduplicate without merging distinct scopes' do
+    first = evidence
+    duplicate = evidence(invocation: 'call-2')
+    duplicate['facts'][0]['tool'] = 'period_review'
+    duplicate['facts'][0]['field'] = 'sales.0.gross_cents'
+    distinct = evidence(data(21483, 'CAD'), invocation: 'call-3')
+    text = TeamChat::FinancialEvidence.render([first, duplicate, distinct])
+    assert_equal 1, text.scan('214.83 USD').length
+    assert_equal 1, text.scan('214.83 CAD').length
+  end
+
   test 'business pulse preserves operational counts and unavailable sections' do
     payload = { date: Date.current.iso8601, sales: { gross_sales_by_currency: [] },
                 waiting: { queues: [{ name: 'Orders waiting', count: 2 }] },
