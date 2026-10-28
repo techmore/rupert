@@ -76,6 +76,7 @@ module TeamChat
     # Runs one call and returns text for the model. Never raises.
     def call(name, arguments)
       arguments = complete_daily_arguments(name, arguments)
+      arguments = complete_vendor_payment_arguments(name, arguments)
       return call_once(name, arguments) unless @execution
 
       @execution.tool!(call_id, name, arguments || {}, write: WRITE_TOOLS.include?(name)) do
@@ -130,6 +131,29 @@ module TeamChat
 
       args = arguments.deep_stringify_keys
       args['include_daily'] = true unless args.key?('include_daily')
+      args
+    end
+
+    # A named vendor payment question needs the vendor view, not the order/sku
+    # query. Only correct an omitted view when the name is an exact tenant match.
+    def complete_vendor_payment_arguments(name, arguments)
+      return arguments unless name.to_s == 'purchase_orders' && arguments.is_a?(Hash)
+      return arguments unless @question.match?(/\b(?:vendor|supplier)\s+payments?\b/i) && names.include?('purchase_orders')
+
+      args = arguments.deep_stringify_keys
+      query = args['query'].to_s.strip
+      return arguments if args.key?('view') || args.key?('vendor') || query.blank?
+      vendor_reference = /\bfor\s+#{Regexp.escape(query)}(?=\s+(?:this month|last month|today|yesterday)\b|[,;?.])/i
+      return arguments unless @question.match?(vendor_reference)
+      return arguments unless Purchasing::Vendor.where(tenant_id: @user.tenant_id).where('LOWER(name) = ?', query.downcase).exists?
+
+      args['view'] = 'vendors'
+      args['vendor'] = args.delete('query')
+      if @question.match?(/\bthis month\b/i) && !@question.match?(/\b(?:versus|vs|compare|compared|last month|previous)\b/i) &&
+         !args.key?('from') && !args.key?('to')
+        args['from'] = Date.current.beginning_of_month.iso8601
+        args['to'] = Date.current.iso8601
+      end
       args
     end
 
