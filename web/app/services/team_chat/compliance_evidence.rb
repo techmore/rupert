@@ -119,7 +119,7 @@ module TeamChat
         lines = ["#{label(lock['title'].split(':', 2).first)}: #{state}", "Lock check: #{detail.presence || 'No detail returned.'}"]
         open = rows.select { |row| %w[fix watch unknown].include?(row['status']) && row != lock }
         lines << 'Open or uncertain checklist items:' if open.any?
-        open.each { |row| lines << "- #{label(row['title'])} (#{row['status']}): #{label(row['detail'])}." }
+        open.each { |row| lines << "- #{label(row['title'])} (#{row['status']}): #{label(row['detail']).presence || 'No detail returned.'}" }
         lines << 'Additional checklist items may have been omitted.' if data['omitted'] == true
         return lines.join("\n")
       rescue JSON::ParserError, TypeError
