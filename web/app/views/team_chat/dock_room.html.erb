@@ -6,6 +6,8 @@
        data-team-chat-room-url-value="<%= team_chat_room_path(@room) %>"
        data-team-chat-room-value="<%= @room.slug %>"
        data-team-chat-direct-value="<%= @room.direct? %>"
+       data-team-chat-voice-enabled-value="<%= TeamChat::VoiceClient.configured? && !@room.dm? && (@room.direct? || @room.assistant_mode != 'off') %>"
+       data-team-chat-voice-url-value="<%= transcribe_team_chat_voice_path(@room) %>"
        data-team-chat-post-max-value="<%= TeamChat::Message::BODY_MAX %>"
        data-team-chat-people-value="<%= @people.to_json %>"
        data-team-chat-agents-value="<%= @local_agents.to_json %>"
@@ -57,6 +59,9 @@
         <div class="chat-composer-bar">
           <span class="chat-composer-hint"><%= @room.direct? ? "#{@room.display_name} answers every message here." : '@ to mention · Enter sends' %></span>
           <span class="chat-composer-actions">
+            <% if TeamChat::VoiceClient.configured? && !@room.dm? && (@room.direct? || @room.assistant_mode != 'off') %>
+              <button type="button" class="btn-ghost btn-sm" data-team-chat-target="voice" data-action="team-chat#toggleVoice" aria-label="Start voice message">🎙 Voice</button>
+            <% end %>
             <label class="chat-attach" title="Add images or files">
               <span aria-hidden="true">📎</span><span class="sr-only">Add images or files</span>
               <input type="file" multiple accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,.csv,.txt" data-team-chat-target="fileInput" data-action="change->team-chat#pickFiles" hidden>

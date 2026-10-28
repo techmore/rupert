@@ -1,0 +1,20 @@
+[Unit]
+Description=Rupert local LFM3 speech service
+After=default.target
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/rupert/voice-worker.env
+ExecStart=/usr/bin/python3 %h/.local/bin/rupert-voice-worker --model ${VOICE_MODEL} --projector ${VOICE_PROJECTOR} --mtmd ${VOICE_MTMD} --tts ${VOICE_TTS} --token-file ${VOICE_TOKEN_FILE} --port 18082 --threads 2
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+MemoryMax=4G
+CPUQuota=200%
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

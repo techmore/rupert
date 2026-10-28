@@ -13,9 +13,10 @@ export default class extends Controller {
   static targets = ["log", "more", "notice", "form", "input", "send", "jump", "empty", "loading", "filter", "roomLink",
     "thread", "threadLog", "threadInput", "threadSend", "newRoom", "topic", "suggest", "files", "fileInput", "pins", "typing", "newDm", "threadSuggest",
     "media", "mediaSearch", "mediaStatus", "mediaGrid", "mediaMore", "presence", "presenceToggle", "presenceLabel", "suggestions",
-    "panel", "panelTitle", "panelOpen", "panelBody"]
+    "panel", "panelTitle", "panelOpen", "panelBody", "voice"]
   static values = { url: String, roomUrl: String, room: String, direct: Boolean, postMax: { type: Number, default: 4000 }, title: String,
-    compact: Boolean, people: Array, agents: Array, me: String, emoji: Array, fileMax: { type: Number, default: 8388608 }, fileCount: { type: Number, default: 4 } }
+    compact: Boolean, people: Array, agents: Array, me: String, emoji: Array, voiceEnabled: Boolean, voiceUrl: String,
+    fileMax: { type: Number, default: 8388608 }, fileCount: { type: Number, default: 4 } }
 
   static GROUP_SECONDS = 5 * 60
   static MIN_HEIGHT = 320
@@ -43,6 +44,8 @@ export default class extends Controller {
     this.editingId = null
     this.pinsOpen = false
     this.quoting = { main: null, thread: null }
+    this.voiceReplyIds = new Set()
+    this.voiceHandoffTimers = new Set()
     this.startFitting()
     this.load()
     this.schedule()
@@ -54,6 +57,11 @@ export default class extends Controller {
   }
 
   disconnect() {
+    clearTimeout(this.voiceTimer)
+    this.voiceHandoffTimers?.forEach((timer) => clearTimeout(timer))
+    if (this.recorder?.state === 'recording') this.recorder.stop()
+    this.voiceStream?.getTracks().forEach((track) => track.stop())
+    this.voiceStream = null
     clearTimeout(this.timer)
     this.element.removeEventListener("click", this.onPanelClick)
     document.removeEventListener("visibilitychange", this.onVisible)
@@ -301,6 +309,10 @@ export default class extends Controller {
         changed = true
       }
       this.byId.set(message.id, { ...old, ...message })
+      if (this.voiceReplyIds?.has(message.id) && message.status !== 'pending') {
+        this.voiceReplyIds.delete(message.id)
+        if (message.status === 'done' && !message.deleted) this.playVoice(message)
+      }
       if (message.parent_id) {
         const parent = this.byId.get(message.parent_id)
         if (parent && message.reply_count > (parent.reply_count || 0)) parent.reply_count = message.reply_count
@@ -533,6 +545,9 @@ export default class extends Controller {
       const tools = document.createElement("div")
       tools.className = "chat-msg-tools"
       if (message.kind !== "system") tools.append(this.toolButton("↩ Reply", (event) => this.startQuote(message, event.currentTarget)))
+      if (this.voiceEnabledValue && message.kind === 'assistant' && message.status === 'done' && message.body) {
+        tools.append(this.toolButton('Listen', () => this.playVoice(message)))
+      }
       if (!thread && !message.parent_id && message.kind !== "system" && !this.compactValue) tools.append(this.toolButton("💬 Thread", () => this.openThread(message.id)))
       tools.append(this.toolButton("React", (event) => this.openPalette(message, event.currentTarget)))
       if (message.kind !== "system") tools.append(this.toolButton(message.pinned ? "Unpin" : "Pin", () => this.togglePin(message.id)))
@@ -1907,13 +1922,111 @@ export default class extends Controller {
     await this.post(this.inputTarget, this.sendTarget, null)
   }
 
+  async toggleVoice() {
+    if (this.voiceStarting) return
+    if (this.recorder?.state === 'recording') {
+      this.recorder.stop()
+      return
+    }
+    if (this.sending || this.inputTarget.value.trim()) return this.showNotice('Send or clear your draft before recording.')
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return this.showNotice('Voice recording is not available in this browser.')
+    this.recorder = null
+    try {
+      this.voiceStarting = true
+      this.voiceTarget.disabled = true
+      this.voiceStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      if (!this.element.isConnected) {
+        this.voiceStream.getTracks().forEach((track) => track.stop())
+        this.voiceStream = null
+        return
+      }
+      this.voiceChunks = []
+      this.recorder = new MediaRecorder(this.voiceStream)
+      this.recorder.addEventListener('dataavailable', (event) => { if (event.data.size) this.voiceChunks.push(event.data) })
+      this.recorder.addEventListener('stop', () => this.finishVoice(), { once: true })
+      this.recorder.start()
+      this.voiceTarget.disabled = false
+      this.voiceTarget.textContent = '■ Stop'
+      this.voiceTarget.setAttribute('aria-label', 'Stop recording')
+      this.voiceTimer = setTimeout(() => { if (this.recorder?.state === 'recording') this.recorder.stop() }, 29000)
+    } catch (_error) {
+      this.voiceStream?.getTracks().forEach((track) => track.stop())
+      this.voiceStream = null
+      this.showNotice('Could not start the microphone. Check browser permissions.')
+    } finally {
+      this.voiceStarting = false
+      if (this.hasVoiceTarget && !this.recorder) this.voiceTarget.disabled = false
+    }
+  }
+
+  async finishVoice() {
+    clearTimeout(this.voiceTimer)
+    this.voiceStream?.getTracks().forEach((track) => track.stop())
+    this.voiceStream = null
+    if (!this.element.isConnected) return
+    this.voiceTarget.textContent = 'Transcribing…'
+    this.voiceTarget.disabled = true
+    const data = new FormData()
+    data.append('audio', new Blob(this.voiceChunks, { type: this.recorder.mimeType }), 'voice')
+    const result = await this.fetchJson(this.voiceUrlValue, { method: 'POST', body: data })
+    this.voiceTarget.textContent = '🎙 Voice'
+    this.voiceTarget.disabled = false
+    this.voiceTarget.setAttribute('aria-label', 'Start voice message')
+    if (!result?.text) return
+    this.inputTarget.value = `${this.directValue ? '' : '@rupert '}${result.text}`
+    this.input()
+    await this.post(this.inputTarget, this.sendTarget, null, true)
+  }
+
+  async playVoice(message, speechUrl = null) {
+    let url
+    try {
+      const response = await fetch(speechUrl || `${this.urlValue}/${message.id}/speech`, { method: 'POST', headers: this.csrf(), credentials: 'same-origin' })
+      if (!response.ok) throw new Error('speech unavailable')
+      const blob = await response.blob()
+      url = URL.createObjectURL(blob)
+      const audio = new Audio(url)
+      audio.addEventListener('ended', () => URL.revokeObjectURL(url), { once: true })
+      audio.addEventListener('error', () => URL.revokeObjectURL(url), { once: true })
+      await audio.play()
+    } catch (_error) {
+      if (url) URL.revokeObjectURL(url)
+      this.showNotice('Could not play the reply. Use Listen on the message to try again.')
+    }
+  }
+
+  async followVoiceHandoff(triggerId, started = Date.now()) {
+    if (!this.element.isConnected) return
+    try {
+      const response = await fetch(`${this.urlValue}/${triggerId}/voice_handoff`, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+      if (!response.ok) throw new Error('handoff unavailable')
+      const result = await response.json()
+      if (result.status === 'done' && result.speech_url) {
+        await this.playVoice(null, result.speech_url)
+        return
+      }
+      if (result.status === 'failed' || result.status === 'done') {
+        this.showNotice('The private answer could not be played. Open your Rupert room to check it.')
+        return
+      }
+    } catch (_error) {
+      // A temporary network failure should not lose an otherwise valid reply.
+    }
+    if (Date.now() - started >= 12 * 60 * 1000) return this.showNotice('Open your Rupert room to check the private answer.')
+    const timer = setTimeout(() => {
+      this.voiceHandoffTimers.delete(timer)
+      this.followVoiceHandoff(triggerId, started)
+    }, 3000)
+    this.voiceHandoffTimers.add(timer)
+  }
+
   async sendThread(event) {
     event.preventDefault()
     if (!this.threadId) return
     await this.post(this.threadInputTarget, this.threadSendTarget, this.threadId)
   }
 
-  async post(field, button, parentId) {
+  async post(field, button, parentId, voice = false) {
     const body = field.value.trim()
     const files = parentId ? [] : this.pendingFiles
     if ((!body && !files.length) || this.sending) return
@@ -1941,6 +2054,11 @@ export default class extends Controller {
       this.pendingFiles = []
       this.mentionIds = new Set()
       this.renderFiles()
+    }
+    if (voice && this.directValue) (data.messages || []).filter((message) => message.kind === 'assistant').forEach((message) => this.voiceReplyIds.add(message.id))
+    if (voice && !this.directValue) {
+      const trigger = (data.messages || []).find((message) => message.kind === 'person')
+      if (trigger) this.followVoiceHandoff(trigger.id)
     }
     this.merge(data.messages)
     if (parentId) {
