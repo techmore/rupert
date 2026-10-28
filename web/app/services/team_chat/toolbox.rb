@@ -94,11 +94,11 @@ module TeamChat
       return log(name, started, 'budget_exhausted', 'Tool budget used up for this message. Answer now from what you already have, and say what you could not check.') if @calls > MAX_CALLS
 
       definition = definitions.find { |candidate| candidate.name == name.to_s }
-      return log(name, started, 'unknown', "No tool named #{name.to_s.first(40)}. Use one of: #{names.join(', ')}.") unless definition
+      return log(name, started, 'unknown', unknown_tool_message(name)) unless definition
 
       args = arguments.is_a?(Hash) ? arguments.deep_stringify_keys.compact : {}
       coerced, problems = Mcp::SchemaValidator.call(definition.schema, args)
-      return log(name, started, 'invalid', "Invalid arguments: #{problems.first(3).join(' ')}") if problems.any?
+      return log(name, started, 'invalid', invalid_arguments_message(definition, problems)) if problems.any?
 
       @financial = true if FinancialEvidence::TOOLS.include?(definition.name)
       @tools_used << definition.name
@@ -225,9 +225,33 @@ module TeamChat
       @telemetry_span&.update!(facts: @telemetry_span.facts.merge('result_outcome' => outcome))
       ActivityLogger.log('team_chat_tool', actor: @user,
         details: "tool=#{name.to_s.gsub(/[^\w]/, '?').first(30)}; outcome=#{outcome}; duration_ms=#{ms}; room=#{@room.id}")
-      text = text.to_s.first(MAX_RESULT_CHARS)
+      text = cut_result(text.to_s)
       @results << text
       text
+    end
+
+    # What a small model needs to recover from a wrong call: the closest real tool name, or every problem with the valid arguments.
+    def unknown_tool_message(name)
+      guess = DidYouMean::SpellChecker.new(dictionary: names).correct(name.to_s.first(40)).first
+      "No tool named #{name.to_s.first(40)}.#{" Did you mean #{guess}?" if guess} Use one of: #{names.join(', ')}."
+    end
+
+    def invalid_arguments_message(definition, problems)
+      schema = definition.schema.to_h.deep_stringify_keys
+      allowed = schema.fetch('properties', {}).keys
+      required = Array(schema['required'])
+      "Invalid arguments for #{definition.name}: #{problems.first(6).join(' ')}" \
+        "#{" Valid arguments: #{allowed.join(', ')}." if allowed.any?}#{" Required: #{required.join(', ')}." if required.any?} Fix the call and try again."
+    end
+
+    # A result over the limit ends on a whole line and says how much was left out, so the model never mistakes a cut list for a complete one.
+    def cut_result(text)
+      return text if text.length <= MAX_RESULT_CHARS
+
+      kept = text.first(MAX_RESULT_CHARS - 200)
+      kept = kept[0...kept.rindex("\n")] if kept.include?("\n")
+      "#{kept}\n[Output cut: #{text.length - kept.length} of #{text.length} characters are not shown, so this list is incomplete. " \
+        'Ask for a narrower period or filter, and say the answer is partial.]'
     end
   end
 end
