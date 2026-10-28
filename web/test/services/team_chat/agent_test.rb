@@ -173,6 +173,20 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_not_includes reply.body, 'tea has no task'
   end
 
+  test 'financial verification retains the compliance check' do
+    Core::Order.create!(source: 'shopify', source_order_id: 'chat-compliance-order', occurred_at: Time.current, gross_cents: 21483, currency: 'USD').mark_paid!
+    script_model({ tool: 'compliance_check', arguments: {} },
+      { tool: 'metric', arguments: { name: 'gross_sales', period: 'today', source: 'shopify', compare: 'none' } },
+      { text: 'Sales were $214.83 and nothing needs review.' })
+    reply = ask('@rupert show sales and books blockers')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, '214.83 USD'
+    assert_includes reply.body, 'Compliance check:'
+    assert_not_includes reply.body, 'nothing needs review'
+  end
+
   test 'a reply whose figures all come from its tools has nothing flagged' do
     script_model({ text: 'Nothing to report.' })
     reply = ask('@rupert anything new?')

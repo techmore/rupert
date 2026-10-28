@@ -425,11 +425,13 @@ module TeamChat
         checked = FinancialEvidence.checked_prose(body, @toolbox.financial_evidence) unless malformed_tool_text
         @prose_checked = checked.present?
         inventory = InventoryEvidence.render(@toolbox.inventory_results)
-        task = TaskEvidence.render(@execution.run.reload.tool_results)
-        if inventory.present? || task.present?
-          # Financial prose validation cannot certify task or stock claims.
+        tool_results = @execution.run.reload.tool_results
+        task = TaskEvidence.render(tool_results)
+        compliance = ComplianceEvidence.render(tool_results)
+        if inventory.present? || task.present? || compliance.present?
+          # Financial prose validation cannot certify task, stock or compliance claims.
           @prose_checked = false
-          body = [FinancialEvidence.render(@toolbox.financial_evidence), task, inventory].compact.join("\n\n")
+          body = [FinancialEvidence.render(@toolbox.financial_evidence), compliance, task, inventory].compact.join("\n\n")
         else
           body = checked || FinancialEvidence.render(@toolbox.financial_evidence)
         end
