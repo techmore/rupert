@@ -25,3 +25,7 @@ Evidence retained locally under `models-lfm3/benchmark-evidence/fresh2-review-20
 ## Targeted seven-day replay
 
 After the review was frozen, commit `e77d1365` corrected explicit seven-day sales windows and the unfiltered source breakdown. On the same question and synthetic fixture, LFM's live replay returned the correct 2026-08-09 through 2026-08-15 dates and all three source/currency amounts. It also emitted unrelated monthly order counts, sync health and stock alerts; this is a known-case replay, not independent evidence of general improvement. The replay took 52.7 s and its local evidence is under `models-lfm3/benchmark-evidence/seven-day-replay-20261028`.
+
+## Targeted day-over-day replay
+
+After commit `292c80d6`, a live LFM replay of the previously failed day-over-day question used the requested August 13 and August 12 dates, kept CAD and USD separate, and reported the supported percentage changes. It made one metric lookup and took 16.9 s. This is a replay of the known case, not a held-out score. Evidence is under `models-lfm3/benchmark-evidence/day-change-replay-20261028`.

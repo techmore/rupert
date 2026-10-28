@@ -5,6 +5,7 @@ questions:
   tools: []
   answerable: 'no'
   gap: no cash flow tool; cash_flow page data (inflows/outflows by account) is not exposed to the bot
+  expect: Explain that current net cash flow cannot be verified from the available data. Do not equate gross sales or recorded expenses with bank inflows and outflows; point to the cash-flow page if useful.
 - id: bookkeeping-002
   module: bookkeeping
   question: how much money came in last week
@@ -22,12 +23,14 @@ questions:
   tools: []
   answerable: 'no'
   gap: no cash flow tool
+  expect: State that last quarter's net cash flow cannot be verified from available cash-in and cash-out records. Do not calculate it from sales or expense totals alone.
 - id: bookkeeping-004
   module: bookkeeping
   question: r we cash flow positive this month
   tools: []
   answerable: 'no'
   gap: no cash flow or cash balance tool
+  expect: State that the available records do not establish whether this month's cash flow is positive. Do not infer the answer from gross sales or expense totals.
 - id: bookkeeping-005
   module: bookkeeping
   question: where is the cash flow page
@@ -40,24 +43,28 @@ questions:
   tools: []
   answerable: 'no'
   gap: no cash in/out tool; only sales and expenses totals via period_review
+  expect: Explain that recorded sales and expenses do not establish this week's bank cash in and cash out. Do not present them as the requested cash-flow comparison.
 - id: bookkeeping-007
   module: bookkeeping
   question: whats our cash bal rn
   tools: []
   answerable: 'no'
   gap: no cash balance tool
+  expect: Say the current cash balance cannot be verified from the available tool evidence. Do not treat sales, payouts or a past statement as a current balance.
 - id: bookkeeping-008
   module: bookkeeping
   question: how much $ in the bank
   tools: []
   answerable: 'no'
   gap: no bank balance tool
+  expect: Say the current bank balance cannot be verified from the available tool evidence. Do not infer it from sales, deposits or historical statement totals.
 - id: bookkeeping-009
   module: bookkeeping
   question: did cash flow dip in august
   tools: []
   answerable: 'no'
   gap: no historical cash flow tool
+  expect: State that an August cash-flow change cannot be established from the available evidence. Do not infer a dip from sales or expense figures alone.
 - id: bookkeeping-010
   module: bookkeeping
   question: cash flow this month vs last month
