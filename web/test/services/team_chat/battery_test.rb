@@ -73,6 +73,20 @@ class TeamChatBatteryTest < ActiveSupport::TestCase
     assert_includes battery.send(:summary_text, nil), 'Data, labels and scope require review'
   end
 
+  test 'a visualization benchmark records the view produced during a real run' do
+    item = TeamChat::Battery::Item.new(id: 'v01', cadence: 'daily', module: 'visualization', question: 'Plot the test values',
+      checks: [], expect: 'Show a structured chart', needs: [])
+    script_model({ tool: 'show_view', arguments: { title: 'Values', kind: 'bar_chart', columns: %w[Day Count], rows: [['Mon', 3]] } },
+      { text: 'Here is the chart.' })
+    battery = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: TeamChat::Battery::OfflineGrader.new, items: [item], set: 'visualization', out: nil)
+    result = battery.run.sole
+    assert_equal 'bar_chart', result.views.sole['kind']
+    row = battery.record.reload.results_list.sole
+    assert_equal true, row.fetch('views').sole.fetch('adjustable')
+    assert_equal 1, row.fetch('views').sole.fetch('unmatched_figures')
+    assert_nil row['grade']
+  end
+
   test 'combined benchmark job uses the offline grader and rejects a hosted verifier' do
     local = TeamChat::LocalAgents::ALL.first
     TeamChat::LocalAgents.stubs(:find).with(local.handle).returns(local)

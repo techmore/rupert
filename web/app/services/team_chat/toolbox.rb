@@ -330,7 +330,7 @@ module TeamChat
     def show_view(args)
       return 'You already showed the most views allowed for one reply; answer now.' if @views.size >= Views::MAX_VIEWS
 
-      if args['kind'].to_s == 'html' && @question.match?(/\b(?:plot|graph|chart|visuali[sz]e)\b/i) && !@question.match?(/\bchart of accounts\b/i)
+      if args['kind'].to_s == 'html' && @question.match?(/\b(?:plots?|graphs?|charts?|visuali[sz](?:e|ation))\b/i) && !@question.match?(/\bchart of accounts\b/i)
         return 'The view was not shown: use a structured table, bar chart or line chart so the person can adjust it.'
       end
 
