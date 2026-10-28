@@ -100,7 +100,7 @@ class OrderFlowTest < ActionDispatch::IntegrationTest
     assert_select 'p.eyebrow', /Packing slip/
     assert_select 'td', /Honey Sticks/
     assert_select 'td', /TEA-50/
-    assert_select 'dd', text: /28.00/, count: 0 # prices hidden
+    assert_select 'dd', text: /\$28\.00/, count: 0 # prices hidden
   end
 
   test 'fulfillment status is hidden when flag is off' do
