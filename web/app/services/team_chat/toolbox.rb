@@ -168,6 +168,10 @@ module TeamChat
     def run_mcp(name, args)
       tool = Mcp::Registry.find(name)
       outcome = tool.new(token: @token).call(args)
+      if name == 'compliance_check'
+        packed = ComplianceEvidence.pack(outcome.data)
+        return "Compliance check (bounded; omitted items are indicated):\n#{JSON.generate(packed)}"
+      end
       if FinancialEvidence::CONTRACTS.include?(name) || FinancialEvidence.financial_data?(outcome.data)
         @financial = true
         evidence = FinancialEvidence.build(tool: name, data: outcome.data, arguments: args, tenant_id: @user.tenant_id, invocation: call_id || "call-#{@calls}")

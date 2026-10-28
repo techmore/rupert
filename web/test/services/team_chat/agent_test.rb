@@ -199,6 +199,24 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_not_includes reply.body, 'nothing needs review'
   end
 
+  test 'long compliance lookup remains usable beside financial evidence' do
+    items = 30.times.map { |i| { title: "Close item #{i}", area: 'Books', status: 'watch', detail: 'review required' } }
+    Mcp::Tools::ComplianceCheck.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'many items', data: { items: items }))
+    Core::Order.create!(source: 'shopify', source_order_id: 'chat-long-compliance', occurred_at: Time.current, gross_cents: 100, currency: 'USD').mark_paid!
+    script_model({ tool: 'compliance_check', arguments: {} },
+      { tool: 'metric', arguments: { name: 'gross_sales', period: 'today', source: 'shopify', compare: 'none' } },
+      { text: 'No blockers.' })
+    reply = ask('@rupert show sales and books blockers')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_includes reply.reload.body, 'Close item 0'
+    assert_includes reply.body, 'Additional compliance items were omitted'
+    result = TeamChat::Run.find_by!(message_id: reply.id).tool_results.find { |entry| entry['name'] == 'compliance_check' }
+    assert_operator result['result'].length, :<, TeamChat::Toolbox::MAX_RESULT_CHARS
+    assert JSON.parse(result['result'].partition("\n").last)['omitted']
+  end
+
   test 'business pulse keeps operational sections in the final answer' do
     script_model({ tool: 'business_pulse', arguments: {} }, { text: 'Nothing is waiting.' })
     reply = ask('@rupert give me a business health check today')

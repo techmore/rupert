@@ -17,4 +17,14 @@ class TeamChatComplianceEvidenceTest < ActiveSupport::TestCase
     assert_nil TeamChat::ComplianceEvidence.render([{ 'name' => 'compliance_check', 'result' => 'truncated' },
                                                     { 'name' => 'other', 'result' => "result\n{\"items\":[]}" }])
   end
+
+  test 'large results stay parseable and indicate omitted items' do
+    items = 30.times.map { |i| { title: "Review #{i}", area: 'Books', status: 'watch', detail: 'a' * 200 } }
+    packed = TeamChat::ComplianceEvidence.pack(items: items)
+    assert_operator JSON.generate(packed).length, :<=, 5_000
+    assert packed['omitted']
+    text = TeamChat::ComplianceEvidence.render([{ 'name' => 'compliance_check', 'result' => "result\n#{JSON.generate(packed)}" }])
+    assert_includes text, 'Review 0'
+    assert_includes text, 'Additional compliance items were omitted'
+  end
 end
