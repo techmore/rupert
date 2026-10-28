@@ -68,7 +68,9 @@ module TeamChat
         if name == 'expenses_by_category' && data['values'].is_a?(Array) && data['values'].empty?
           out['gaps'] << 'No active expense-register records were found for this period; vendor payments are excluded.'
         end
-        if data['compared_with']
+        if data['values'].is_a?(Array) && data['values'].empty? && args['compare'].blank?
+          out['gaps'] << 'No metric rows were returned for the requested period; an implicit prior-period comparison is omitted.'
+        elsif data['compared_with']
           prior = { 'previous' => expected.previous, 'last_year' => expected.last_year }.fetch(args['compare'].presence || 'previous')
           old = window(data['compared_with'], prior.from.iso8601, prior.to.iso8601)
           metric_rows(out, data['compared_with']['values'], name, source, old, 'compared_with.values')

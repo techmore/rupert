@@ -25,6 +25,17 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
 
   def render(item) = TeamChat::FinancialEvidence.render([item])
 
+  test 'empty current metric does not answer using an implicit previous period' do
+    previous = (Date.current - 1).iso8601
+    payload = data.merge(values: [], compared_with: { from: previous, to: previous, values: [{ value: 1234, currency: 'USD' }] })
+    item = evidence(payload)
+    assert_empty item['facts']
+    assert_includes render(item), 'No metric rows were returned for the requested period'
+    assert_not_includes render(item), '12.34 USD'
+    explicit = evidence(payload, args: { name: 'gross_sales', period: 'today', source: 'shopify', compare: 'previous' })
+    assert_includes render(explicit), '12.34 USD'
+  end
+
   test 'expense categories preserve amounts and empty results describe the register' do
     payload = { metric: 'expenses_by_category', period: @period, source: nil,
                values: [{ currency: 'USD', value: 1200, categories: [{ name: 'Supplies', amount_cents: 1200 }] }] }
