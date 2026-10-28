@@ -25,6 +25,25 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
 
   def render(item) = TeamChat::FinancialEvidence.render([item])
 
+  test 'mixed timekeeping and sales keep hours and currency separated' do
+    payload = @period.merge(scope: 'all staff', totals: { worked: 7.5, scheduled: 8, ctrax: 2 },
+                            sales_same_days: @period.merge(available: true, gross_sales_by_currency: [{ currency: 'CAD', value: 12345 }]))
+    item = evidence(payload, tool: 'time_keeping_report', args: @period)
+    assert_equal '7.5', item.dig('timekeeping', 'hours', 'worked')
+    assert_includes render(item), '7.5 hours worked'
+    assert_includes render(item), '2.0 C-Trax hours observed separately, not added'
+    assert_includes render(item), '123.45 CAD'
+    assert_nil TeamChat::FinancialEvidence.checked_prose('We worked 999 hours and made 123.45 CAD.', [item])
+    assert TeamChat::FinancialEvidence.decode(JSON.generate(item), @user.tenant_id, tool: 'time_keeping_report')
+
+    unavailable = evidence(payload.merge(sales_same_days: { available: false }), tool: 'time_keeping_report', args: @period)
+    assert_includes render(unavailable), '7.5 hours worked'
+    assert_empty unavailable['facts']
+    assert_includes render(unavailable), 'Sales for these days are unavailable'
+    filtered = evidence(payload, tool: 'time_keeping_report', args: @period.merge(employee_id: 12))
+    assert_includes render(filtered), 'selected employee'
+  end
+
   test 'a fact binds its signed decimal value to source period currency meaning tool field and tenant' do
     fact = evidence.fetch('facts').sole
     assert_equal '214.83', fact['value']

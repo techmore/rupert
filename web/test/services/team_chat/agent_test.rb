@@ -68,6 +68,18 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal TeamChat::Toolbox::MAX_CALLS, TeamChat::Run.find_by!(message_id: reply.id).tool_results.size
   end
 
+  test 'timekeeping tool delivers worked hours even when sales are unavailable' do
+    today = Date.current.iso8601
+    requests = script_model({ tool: 'time_keeping_report', arguments: { from: today, to: today } }, { text: 'I checked timekeeping.' })
+    reply = ask('@rupert how many hours did I work today? Explain the result.')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    assert_equal 'done', reply.reload.status
+    assert_includes requests.last['messages'].find { |message| message['role'] == 'tool' }['content'], '"timekeeping"'
+    assert_includes reply.body, 'hours worked'
+  end
+
   test 'financial drafts are replaced with typed source period currency and meaning' do
     order = Core::Order.create!(source: 'shopify', source_order_id: 'nc-1', occurred_at: 1.day.ago.change(hour: 12), gross_cents: 21_483, tax_cents: 0, currency: 'USD')
     order.mark_paid!

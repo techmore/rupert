@@ -131,11 +131,28 @@ module TeamChat
         end
       when 'time_keeping_report'
         period = window(data, args['from'] || Date.current.beginning_of_month.iso8601, args['to'] || Date.current.end_of_month.iso8601)
-        sales = data.fetch('sales_same_days')
-        raise ArgumentError unless sales['available'] == true && window(sales) == period
+        totals = data.fetch('totals')
+        scope = data.fetch('scope')
+        raise ArgumentError unless %w[all\ staff own\ hours\ only].include?(scope)
+        scope = 'selected employee' if scope == 'all staff' && args['employee_id'].present?
 
-        metric_rows(out, sales['gross_sales_by_currency'], 'gross_sales', ORDER_SOURCE, period, 'sales_same_days.gross_sales_by_currency')
-        out['gaps'] << 'Time-keeping figures are outside this financial evidence contract.'
+        hours = %w[scheduled worked ctrax].to_h do |key|
+          value = totals[key]
+          raise ArgumentError unless value.is_a?(Numeric) && BigDecimal(value.to_s).finite? && value >= 0
+
+          [key, BigDecimal(value.to_s).to_s('F')]
+        end
+        timekeeping = { 'scope' => scope, 'period' => period, 'hours' => hours }
+        timekeeping['id'] = Digest::SHA256.hexdigest(JSON.generate(timekeeping)).first(16)
+        out['timekeeping'] = timekeeping
+        sales = data['sales_same_days']
+        begin
+          raise ArgumentError unless sales.is_a?(Hash) && sales['available'] == true && window(sales) == period
+
+          metric_rows(out, sales['gross_sales_by_currency'], 'gross_sales', ORDER_SOURCE, period, 'sales_same_days.gross_sales_by_currency')
+        rescue ArgumentError, KeyError, TypeError, Date::Error
+          out['gaps'] << 'Sales for these days are unavailable or have a mismatched period.'
+        end
       when 'business_pulse'
         period = window({ 'from' => data['date'], 'to' => data['date'] }, Date.current.iso8601, Date.current.iso8601)
         metric_rows(out, data.dig('sales', 'gross_sales_by_currency'), 'gross_sales', ORDER_SOURCE, period, 'sales.gross_sales_by_currency')
@@ -212,6 +229,11 @@ module TeamChat
         fact.is_a?(Hash) && fact['tenant_id'] == tenant_id && fact['tool'] == data['tool'] && fact['invocation'] == data['invocation'] &&
           fact['id'] == Digest::SHA256.hexdigest(JSON.generate(fact.except('id'))).first(16)
       end
+      if data['timekeeping']
+        context = data['timekeeping']
+        return unless data['tool'] == 'time_keeping_report' && context.is_a?(Hash) &&
+          context['id'] == Digest::SHA256.hexdigest(JSON.generate(context.except('id'))).first(16)
+      end
 
       data
     rescue JSON::ParserError, TypeError
@@ -233,6 +255,10 @@ module TeamChat
     ORDER_COUNT = /(?<![\w.$])(?<count>\d[\d,]*)\s+(?:(?:paid|fulfilled|online|shopify|square)\s+)*orders?\b/i
 
     def checked_prose(text, evidence, today: Date.current)
+      # Hours need their own semantic validation; render them deterministically
+      # instead of accepting unchecked prose next to certified financial facts.
+      return nil if evidence.any? { |item| item['timekeeping'] }
+
       facts = evidence.flat_map { |item| item['facts'] }
       prose = text.to_s.strip
       return nil if facts.empty? || prose.blank? || prose.match?(RELABEL)
@@ -317,6 +343,10 @@ module TeamChat
         value = fact['unit'] == 'money' ? "#{whole}.#{fraction.to_s.ljust(2, '0')}" : number.to_s('F').delete_suffix('.0')
         value += '%' if fact['unit'] == 'percent'
         "- #{fact['meaning']}: #{value} #{fact['currency']} (#{fact['source']}; #{fact.dig('period', 'from')} to #{fact.dig('period', 'to')} #{fact['timezone']})."
+      end
+      evidence.filter_map { |item| item['timekeeping'] }.uniq.each do |context|
+        hours = context.fetch('hours')
+        lines << "- Timekeeping (#{context['scope']}; #{context.dig('period', 'from')} to #{context.dig('period', 'to')}): #{hours['worked']} hours worked, #{hours['scheduled']} hours scheduled; #{hours['ctrax']} C-Trax hours observed separately, not added."
       end
       lines.unshift('From Rupert’s records:') if lines.any?
       lines << 'I could not verify financial figures for this request.' if facts.empty?
