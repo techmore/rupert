@@ -242,6 +242,36 @@ class TeamChatAgentTest < ActiveSupport::TestCase
     assert_equal original.stringify_keys.merge('vendor_exact' => true), args
   end
 
+  test 'supplemental order lookup keeps its requested filters and exact vendor' do
+    vendor = Purchasing::Vendor.create!(name: 'Synthetic Tea Supply')
+    first = Date.current.beginning_of_month.iso8601
+    today = Date.current.iso8601
+    data = { view: 'orders', meta: { has_more: false }, rows: [] }
+    Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'no orders', data: data))
+    original = { vendor: vendor.name, status: 'all', include_lines: false, from: first, to: today }
+    script_model({ tool: 'purchase_orders', arguments: original }, { text: 'I checked.' })
+    reply = ask('@rupert For Synthetic Tea Supply this month, what was the PO value and vendor payments?')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    args = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first['arguments']
+    assert_equal original.stringify_keys.merge('vendor_exact' => true), args
+  end
+
+  test 'a request for matching vendor names retains substring matching' do
+    vendor = Purchasing::Vendor.create!(name: 'Synthetic Tea Supply')
+    data = { view: 'orders', meta: { has_more: false }, rows: [] }
+    Mcp::Tools::PurchaseOrders.any_instance.stubs(:call).returns(Mcp::Result.new(text: 'no orders', data: data))
+    original = { vendor: vendor.name, status: 'all', include_lines: false }
+    script_model({ tool: 'purchase_orders', arguments: original }, { text: 'I checked.' })
+    reply = ask('@rupert For Synthetic Tea Supply this month, show total vendor payments for matching names.')
+
+    TeamChat::Agent.new(reply, config: team_chat_config).run
+
+    args = TeamChat::Run.find_by!(message_id: reply.id).tool_results.first['arguments']
+    assert_equal original.stringify_keys, args
+  end
+
   test 'vendor payment correction does not override a request for order line items' do
     Purchasing::Vendor.create!(name: 'Synthetic Tea Supply')
     data = { view: 'orders', rows: [], meta: { has_more: false } }

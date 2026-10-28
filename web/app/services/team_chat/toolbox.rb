@@ -77,6 +77,7 @@ module TeamChat
     def call(name, arguments)
       arguments = complete_daily_arguments(name, arguments)
       arguments = complete_vendor_payment_arguments(name, arguments)
+      arguments = complete_exact_vendor_filter(name, arguments)
       return call_once(name, arguments) unless @execution
 
       @execution.tool!(call_id, name, arguments || {}, write: WRITE_TOOLS.include?(name)) do
@@ -142,6 +143,7 @@ module TeamChat
       return arguments unless @question.match?(/\b(?:vendor|supplier)\s+payments?\b/i) && names.include?('purchase_orders')
       return arguments unless @question.match?(/\b(?:value|total|spend|how much|what were)\b/i)
       return arguments if @question.match?(/\b(?:line items?|line-item|sku|individual|which orders|order numbers?|status|open orders)\b/i)
+      return arguments if @question.match?(/\b(?:starts? with|contains?|matching|similar|prefix)\b/i)
 
       args = arguments.deep_stringify_keys
       return arguments if args.key?('vendor_exact') || (args['vendor'].present? && args['query'].present?)
@@ -154,10 +156,7 @@ module TeamChat
         query = match && match[1].strip
       end
       return arguments if query.blank?
-      vendor_reference = /\bfor\s+#{Regexp.escape(query)}(?=\s+(?:this month|last month|today|yesterday)\b|[,;?.])/i
-      return arguments unless @question.match?(vendor_reference)
-      matches = Purchasing::Vendor.where(tenant_id: @user.tenant_id).where('LOWER(name) = ?', query.downcase).limit(2).count
-      return arguments unless matches == 1
+      return arguments unless unique_vendor_mentioned?(query)
 
       args['view'] = 'vendors'
       args.delete('query')
@@ -172,6 +171,28 @@ module TeamChat
         args['to'] = [preset.to, Date.current].min.iso8601
       end
       args
+    end
+
+    # Preserve the model's requested view and filters, while avoiding a
+    # substring vendor match when the person named one unambiguous vendor.
+    def complete_exact_vendor_filter(name, arguments)
+      return arguments unless name.to_s == 'purchase_orders' && arguments.is_a?(Hash)
+      return arguments unless @question.match?(/\b(?:vendor|supplier)\s+payments?\b/i) && names.include?('purchase_orders')
+      return arguments if @question.match?(/\b(?:starts? with|contains?|matching|similar|prefix)\b/i)
+
+      args = arguments.deep_stringify_keys
+      vendor = args['vendor'].to_s.strip
+      return arguments if args.key?('vendor_exact') || vendor.blank? || !unique_vendor_mentioned?(vendor)
+
+      args['vendor_exact'] = true
+      args
+    end
+
+    def unique_vendor_mentioned?(name)
+      vendor_reference = /\bfor\s+#{Regexp.escape(name)}(?=\s+(?:this month|last month|today|yesterday)\b|[,;?.])/i
+      return false unless @question.match?(vendor_reference)
+
+      Purchasing::Vendor.where(tenant_id: @user.tenant_id).where('LOWER(name) = ?', name.downcase).limit(2).count == 1
     end
 
     def lookup_definitions
