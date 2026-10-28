@@ -19,6 +19,7 @@ module TeamChat
       text = question.to_s.downcase
       return unless text.match?(/\b(?:chart|graph|plot)\b/) && text.match?(/\b(?:sales|revenue)\b/) && text.match?(/\bby source\b/)
       return if text.match?(/\b(?:net|refund|tax|profit|compare|versus|except|exclude|only)\b/)
+      return if text.match?(/\b(?:shopify|square|rupert[ _-]?pos|manual|ctrax|swipesimple)\b/) || text.match?(/\b\d{4}-\d{2}-\d{2}\b/)
 
       periods = { 'last week' => 'last_week', 'last month' => 'last_month', 'yesterday' => 'yesterday' }.select { |phrase, _| text.include?(phrase) }
       return unless periods.one?

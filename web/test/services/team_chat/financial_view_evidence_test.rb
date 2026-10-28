@@ -31,6 +31,7 @@ class TeamChatFinancialViewEvidenceTest < ActiveSupport::TestCase
       assert_equal [['rupert_pos', '40.0'], ['shopify', '72.0']], view['rows']
       assert_nil check(view, @evidence, question)
       assert_nil TeamChat::FinancialViewEvidence.source_fallback(@evidence, question: 'Chart profit by source last week')
+      assert_nil TeamChat::FinancialViewEvidence.source_fallback(@evidence, question: 'Chart Shopify sales by source last week')
       conflict = @evidence.deep_dup
       conflict.first['facts'] << conflict.first['facts'].first.merge('value' => '999')
       assert_nil TeamChat::FinancialViewEvidence.source_fallback(conflict, question: question)
