@@ -48,7 +48,10 @@ class PosCardPaymentTest < ActiveSupport::TestCase
         status: 'unknown', submitted_at: 1.hour.ago)
     end
     attempted = []
-    Pos::CardPayment.stubs(:reconcile!).with { |attempt| attempted << attempt.id; true }
+    Pos::CardPayment.stubs(:reconcile!).with do |attempt|
+      attempted << attempt.id
+      true
+    end
     PosPaymentReconciliationJob.perform_now
     assert_equal 50, attempted.uniq.size
     PosPaymentReconciliationJob.perform_now
