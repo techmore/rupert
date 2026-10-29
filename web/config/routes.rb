@@ -48,6 +48,8 @@ Rails.application.routes.draw do
     get :document, on: :member
   end
 
+  get 'people/square_timesheets/review', to: 'people/square_timecard_reviews#index', as: :people_square_timecard_reviews
+  post 'people/square_timesheets/:id/review', to: 'people/square_timecard_reviews#create', as: :people_square_timecard_review
   resources :square_timesheets, path: 'people/square_timesheets', controller: 'people/square_timesheets', only: %i[index show], as: :people_square_timesheets
   resources :ctrax_timesheets, path: 'people/ctrax_timesheets', controller: 'people/ctrax_timesheets', only: %i[index show], as: :people_ctrax_timesheets
   patch '/people/ctrax_timesheets/schedule', to: 'people/ctrax_timesheet_schedules#update', as: :people_ctrax_timesheet_schedule

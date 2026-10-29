@@ -124,6 +124,9 @@ module People
       @previous_sheet = mine.where('period_start < ?', @timesheet.period_start).order(period_start: :desc).first
       @next_sheet = mine.where('period_start > ?', @timesheet.period_start).order(:period_start).first
       @next_awaiting = visible.awaiting_review.where.not(id: @timesheet.id).order(:submitted_at, :id).first
+      # Square edits in this period that a manager has not settled (flagged, never applied silently).
+      @square_changes = SquareTimecard.awaiting_review.where(employee_id: @timesheet.employee_id)
+        .where(id: SquareTimecardDay.where(worked_on: @timesheet.period_start..@timesheet.period_end).select(:square_timecard_id)).count
       respond_to do |format|
         format.html
         format.csv do
