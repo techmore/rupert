@@ -804,7 +804,7 @@ html[data-full-window] .table-region { max-height:none; }
 .report-table-sort:hover,.report-table th[aria-sort] .report-table-sort { color:var(--color-ink); }
 /* Server-sorted list headings (sortable_th + ListSort). The whole label is the link; the
    arrow is quiet until the column is the one the list is sorted by. */
-.th-sort { display:inline-flex;align-items:center;gap:.3rem;color:inherit;border-radius:.3rem;text-decoration:none; }
+.th-sort { display:inline-flex;align-items:center;gap:.3rem;white-space:nowrap;color:inherit;border-radius:.3rem;text-decoration:none; }
 .th-sort:hover { color:var(--color-ink); }
 .th-sort:focus-visible { outline:2px solid var(--color-olive);outline-offset:2px; }
 .th-sort-icon { font-size:.7rem;line-height:1;opacity:.45; }
