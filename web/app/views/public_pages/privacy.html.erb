@@ -1,0 +1,66 @@
+<%# Privacy policy: public, linked from the App Store listing and the sign-in page. A Settings-style
+    page (docs/ui-standards.md §4), one section card per topic. Keep it true to what the code does. %>
+<% content_for :title, 'Privacy policy' %>
+<div class="page-medium space-y-6">
+  <%= page_header 'Privacy policy', subtitle: 'What Rupert keeps about you and your business, and what you can do about it. Updated Oct 29, 2026.' %>
+
+  <section class="section-card">
+    <%= section_heading 'Who we are' %>
+    <p class="text-sm">Rupert is business back-office software for shops: sales, inventory, people, finance and team chat. It is run by CSP Cyber Security Pilot (“we”) at rupertpos.com and in the Rupert apps for iPhone and iPad. Your business (the workspace owner) decides who has an account and what goes into its workspace; we run the service for it.</p>
+  </section>
+
+  <section class="section-card">
+    <%= section_heading 'What we collect' %>
+    <ul class="list-disc space-y-1 pl-5 text-sm">
+      <li><strong>Your account:</strong> name, email address, role, password (stored only as a one-way hash) and, if you sign in with Google, the Google account email that Google confirms.</li>
+      <li><strong>Your business’s records:</strong> what you and your team enter or connect: sales, products, inventory, customers, suppliers, staff schedules and timesheets, bookkeeping, files and photos you attach.</li>
+      <li><strong>Messages:</strong> Team chat messages, Ask Rupert questions and answers, and problem reports you send us.</li>
+      <li><strong>Security records:</strong> sign-in attempts with IP address and browser or app version, and a history of changes made in the workspace.</li>
+    </ul>
+    <p class="text-sm text-mocha">The iPhone and iPad app adds no advertising, analytics or tracking code. It uses the camera only when you scan a barcode or take a photo to attach, and it keeps your sign-in in the app’s own storage.</p>
+  </section>
+
+  <section class="section-card">
+    <%= section_heading 'How we use it' %>
+    <ul class="list-disc space-y-1 pl-5 text-sm">
+      <li>To run your workspace: sign you in, show and update your records, sync the providers your business connects (such as Shopify, Square or QuickBooks).</li>
+      <li>To answer Ask Rupert and AI teammates in Team chat: your question and the business records needed to answer it are processed by AI models that run on our servers or, when your workspace uses them, by the AI providers we route to. We never use it for advertising.</li>
+      <li>To keep the service secure and fix problems.</li>
+    </ul>
+    <p class="text-sm">We do not sell personal information, show ads or track you across other companies’ apps and websites.</p>
+  </section>
+
+  <section class="section-card">
+    <%= section_heading 'Who else sees it' %>
+    <ul class="list-disc space-y-1 pl-5 text-sm">
+      <li>People in your workspace, according to the roles your administrators give them.</li>
+      <li>Providers your business connects, only for that connection.</li>
+      <li>Google, when you choose to sign in with Google. Stripe, when a workspace owner pays for a subscription on the website.</li>
+      <li>Our support staff, only when your workspace grants temporary support access (Support permissions), or when the law requires it.</li>
+    </ul>
+  </section>
+
+  <section class="section-card">
+    <%= section_heading 'How long we keep it' %>
+    <p class="text-sm">Business records stay as long as the workspace exists, because businesses must keep sales, payroll and tax records. Backups are kept for a limited time so the service can be restored after a failure. Saved provider credentials are encrypted on the server.</p>
+  </section>
+
+  <section class="section-card">
+    <%= section_heading 'Your choices' %>
+    <ul class="list-disc space-y-1 pl-5 text-sm">
+      <li><strong>Delete your account</strong> at any time: account menu → Delete my account, in the app or on the website. Your name, email, password and sign-in links are erased right away; records you made for the business stay with the business as “Deleted user”.</li>
+      <li>Ask your workspace administrator to correct or erase business records about you.</li>
+      <li>Ask us for a copy of your personal information, or anything else about privacy, at <%= mail_to PublicPagesController.support_email, nil, class: 'text-olive underline' %>.</li>
+    </ul>
+  </section>
+
+  <section class="section-card">
+    <%= section_heading 'Children' %>
+    <p class="text-sm">Rupert is for businesses and is not meant for children under 16.</p>
+  </section>
+
+  <section class="section-card">
+    <%= section_heading 'Changes' %>
+    <p class="text-sm">When this policy changes, the date at the top changes too. Questions: <%= link_to 'Support', support_path, class: 'text-olive underline' %>.</p>
+  </section>
+</div>

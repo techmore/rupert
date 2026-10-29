@@ -92,6 +92,12 @@ Rails.application.routes.draw do
   patch '/employee/setup', to: 'employee_access#update'
   post '/people/employees/:employee_id/access', to: 'employee_access#create', as: :employee_access
 
+  # Public pages the App Store listing links to, and deleting your own account (guideline 5.1.1(v)).
+  get '/privacy', to: 'public_pages#privacy', as: :privacy_policy
+  get '/support', to: 'public_pages#support', as: :support
+  get '/account/delete', to: 'account_deletions#show', as: :delete_account
+  delete '/account', to: 'account_deletions#destroy', as: :own_account
+
   get '/login', to: 'sessions#new', as: :login
   post '/login', to: 'sessions#create'
   delete '/logout', to: 'sessions#destroy', as: :logout
