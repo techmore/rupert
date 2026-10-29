@@ -86,7 +86,7 @@
                 <% elsif event[:kind] == 'missing' %>
                   Not returned by a complete Square read.
                 <% else %>
-                  <%= event[:who] %> · “<%= event[:reason] %>” · counted <%= square_hours(event[:counted_seconds]) %> h, Square <%= event[:latest_seconds] ? square_hours(event[:latest_seconds]) : '—' %> h<%= " · #{event[:held_by]} locked" if event[:held_by].present? %>
+                  <%= event[:who] %> · “<%= event[:reason] %>” · counted <%= square_hours(event[:counted_seconds]) %> h, Square <%= event[:latest_seconds] ? square_hours(event[:latest_seconds]) : '—' %> h<%= " · held by #{event[:held_by]}" if event[:held_by].present? %>
                 <% end %>
               </p>
             </div>
