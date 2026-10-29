@@ -115,6 +115,26 @@ class TeamChatLocalAgentsTest < ActiveSupport::TestCase
     ENV['RUPERT_VERIFY'] = previous
   end
 
+  test 'RUPERT_LOCAL_TOOLS=core: gives a local bot the same fixed tool list for every question' do
+    previous = ENV['RUPERT_LOCAL_TOOLS']
+    ENV['RUPERT_LOCAL_TOOLS'] = 'core:metric, sales_summary,list_alerts'
+    lists = ['@qwen how much sales tax did we collect last month?', '@qwen hello there'].map do |question|
+      requests = script_model({ text: 'Fine.' })
+      reply = post(question).replies.first
+      TeamChat::Agent.new(reply).run
+      requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    end
+
+    assert_equal lists.first, lists.last, 'one list for every question, so the prompt prefix is stable and cacheable'
+    assert_includes lists.first, 'metric'
+    assert_includes lists.first, 'list_alerts'
+    assert_includes lists.first, 'data_guide', 'the always-on tools are kept'
+    assert_not_includes lists.first, 'sales_tax_report', 'the per-topic tools are not added in core mode'
+    assert_operator lists.first.size, :<, Mcp::Registry.tools.size / 2
+  ensure
+    ENV['RUPERT_LOCAL_TOOLS'] = previous
+  end
+
   test 'a local bot gets only the tools for what the question is about, and the matching data guide card' do
     requests = script_model({ text: 'Two orders.' })
     reply = post('@qwen how much sales tax did we collect last month?').replies.first
