@@ -210,6 +210,77 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
     assert_empty evidence(payload, tool: 'sales_tax_report', args: @period)['facts']
   end
 
+  def ranking_evidence(name, values)
+    window = Metrics::Window.resolve(period: 'last_quarter')
+    payload = { metric: name, source: nil, period: { from: window.from.iso8601, to: window.to.iso8601 }, values: values }
+    evidence(payload, args: { name: name, period: 'last_quarter' })
+  end
+
+  def weekdays(pairs, currency)
+    { currency: currency, weekdays: pairs.map { |day, cents| { weekday: day, gross_cents: cents } } }
+  end
+
+  def weekday_item
+    ranking_evidence('sales_by_weekday', [
+      weekdays({ 'Monday' => 100_00, 'Wednesday' => 90_00, 'Saturday' => 347_497, 'Sunday' => 254_277, 'Friday' => 120_00 }, 'USD'),
+      weekdays({ 'Monday' => 50_00, 'Wednesday' => 242_894, 'Thursday' => 10_00 }, 'CAD')
+    ])
+  end
+
+  test 'weekday ranking evidence is certified per currency and rendered as a short ranked answer' do
+    item = weekday_item
+    assert_equal 'sales_by_weekday', item['facts'].first['ranking']
+    text = TeamChat::FinancialEvidence.render([item], question: 'Which day of the week sells best for us? Look at last quarter.')
+    assert_includes text, 'For USD, Saturday is your best day ($3,474.97), then Sunday ($2,542.77) and Friday ($120.00); the slowest weekday is Wednesday ($90.00).'
+    assert_includes text, 'For CAD, Wednesday is your best day ($2,428.94), then Monday ($50.00) and Thursday ($10.00).'
+    assert_operator text.length, :<, 600
+    assert_not_includes text, 'Tuesday'
+    assert_equal 1, text.scan('Scope:').size
+    assert_equal 1, text.scan(Time.zone.name).size
+  end
+
+  test 'a ranking question drops the generic dump but a totals question keeps it after the answer' do
+    summary = evidence({ from: @period[:from], to: @period[:to], lines: [{ source: 'manual', currency: 'USD', gross_cents: 100, tax_cents: 5, orders: 2 }] },
+      args: { from: @period[:from], to: @period[:to] }, tool: 'sales_summary', invocation: 'call-2')
+    item = weekday_item
+    ranked_only = TeamChat::FinancialEvidence.render([item, summary], question: 'which day sells best')
+    assert_not_includes ranked_only, 'Order tax'
+    assert_not_includes ranked_only, 'not certified'
+    both = TeamChat::FinancialEvidence.render([item, summary], question: 'what were total sales by weekday')
+    assert both.start_with?('For USD, Saturday')
+    assert_includes both, 'Order tax: 0.05 USD'
+  end
+
+  test 'best day worst day and top products render from typed rows only' do
+    best = ranking_evidence('best_day', [{ currency: 'USD', value: '2026-07-04', gross_cents: 123_456, orders: 3 }])
+    assert_includes render(best), 'For USD, your best day was Saturday Jul 4, 2026 ($1,234.56).'
+    worst = ranking_evidence('worst_day', [{ currency: 'CAD', value: '2026-07-07', gross_cents: 500 }])
+    assert_includes render(worst), 'For CAD, your slowest day with stored sales was Tuesday Jul 7, 2026 ($5.00).'
+    unknown = ranking_evidence('best_day', [{ currency: 'USD', value: nil, gross_cents: nil }])
+    assert_empty unknown['facts']
+    products = ranking_evidence('top_products', [{ currency: 'USD', products: [
+      { name: 'Tea', revenue_cents: 900 }, { name: 'Mug', revenue_cents: 500 }, { name: 'Cup', revenue_cents: 400 }, { name: 'Pot', revenue_cents: 300 }
+    ] }])
+    text = render(products)
+    assert_includes text, 'your top products by revenue are Tea ($9.00), Mug ($5.00), and Cup ($4.00).'
+    assert_not_includes text, 'Pot'
+  end
+
+  test 'a ranking with an invented weekday or mismatched metric fails closed and prose cannot name an uncertified weekday' do
+    assert_empty ranking_evidence('sales_by_weekday', [weekdays({ 'Funday' => 100 }, 'USD')])['facts'].presence.to_a
+    item = weekday_item
+    assert prose('Saturday is best at $3,474.97 for USD, over last quarter.', item)
+    assert_nil prose('Tuesday is best at $3,474.97 for USD, over last quarter.', item)
+  end
+
+  test 'scope text appears once when several facts share it' do
+    item = evidence(data(100).merge(source: nil, metric: 'sales_by_source', values: [{ currency: 'USD', sources: [
+      { source: 'square', gross_cents: 100, share_percent: 25 }, { source: 'square', gross_cents: 50, share_percent: 75 }
+    ] }]), args: { name: 'sales_by_source', period: 'today' })
+    text = render(item)
+    assert_equal 1, text.scan('square canonical orders').size
+  end
+
   def prose(text, item = evidence) = TeamChat::FinancialEvidence.checked_prose(text, [item])
 
   test 'the bot keeps its own words when every figure, period and meaning checks out, and Ruby says what they are' do
