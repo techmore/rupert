@@ -40,7 +40,8 @@ bin/rails server -p "$port" -b 127.0.0.1 -P "$tmp/server.pid" >"$tmp/server.log"
 server=$!
 for _ in $(seq 1 90); do
   curl -fsS -o /dev/null "http://127.0.0.1:$port/up" 2>/dev/null && break
-  kill -0 "$server" 2>/dev/null || { cat "$tmp/server.log"; exit 1; }
+  # /proc, not kill -0: some containers (Incus with AppArmor) refuse even that signal.
+  [ -d "/proc/$server" ] || { cat "$tmp/server.log"; exit 1; }
   sleep 1
 done
 
