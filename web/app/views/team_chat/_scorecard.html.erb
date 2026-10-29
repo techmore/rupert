@@ -27,6 +27,7 @@
               <% axes.each do |key, label| %>
                 <th scope="col" class="th text-right" aria-sort="<%= @score_axis == key ? 'descending' : 'none' %>"><%= link_to "#{label}#{' ↓' if @score_axis == key}", team_chat_scores_path(days: @days, set: @run_set, axis: key, anchor: 'scorecard'), class: (@score_axis == key ? 'font-semibold text-fern' : '') %></th>
               <% end %>
+              <th scope="col" class="th text-right" title="Median time until the first word of the answer appeared (local models only), and the slow end: 95 in 100 were faster">First token (med / p95)</th>
               <th scope="col" class="th text-right" title="Median answer time">Median</th>
               <th scope="col" class="th text-right" title="95 in 100 answers were faster than this">Slow end (p95)</th>
               <th scope="col" class="th text-right" title="Answers slower than <%= free %> seconds lose speed points">Over <%= free %> s</th>
@@ -47,6 +48,7 @@
                 <% axes.each_key do |key| %>
                   <td class="td text-right"><%= cell.call(card.overall[key], card.change[key]) %><% if card.overall[key] && card.overall[key] == best[key] && @scorecard.size > 1 %> <span title="Best <%= axes[key].downcase %> score">🥇</span><% end %></td>
                 <% end %>
+                <td class="td text-right score-time" title="Time to first token: median / 95 in 100 were faster"><%= t.ttft_median ? "#{t.ttft_median} / #{t.ttft_p95} s" : '—' %></td>
                 <td class="td text-right score-time"><%= seconds.call(t.median) %><% if t.median && t.median == fastest && @scorecard.size > 1 %> <span title="Fastest median">⚡</span><% end %></td>
                 <td class="td text-right score-time <%= 'text-clay' if t.p95 && t.p95 > sla %>"><%= seconds.call(t.p95) %></td>
                 <td class="td text-right score-time <%= 'text-clay font-semibold' if t.answered.positive? && t.slow * 4 > t.answered %>" title="<%= t.answered.zero? ? '' : "#{(t.slow * 100.0 / t.answered).round}% of answers" %>"><%= t.answered.zero? ? '—' : "#{t.slow}/#{t.answered}" %></td>
@@ -87,6 +89,6 @@
       <span>Key:</span>
       <span class="score-cell" data-level="high">7–9</span><span class="score-cell" data-level="mid">4–6</span><span class="score-cell" data-level="low">0–3</span><span class="score-cell" data-level="none">—</span> not measured yet (never zero)
     </p>
-    <p class="mt-1 text-xs text-taupe">Quality is the grader’s 1–5 mean mapped to 0–9. Speed: each answer scores 9 up to <%= free %> s, then loses points evenly to 0 at <%= sla %> s, and the score is the average. Answers past <%= sla %> s are ignored in the speed score and counted in the Ignored column. Reliability is answered out of attempted. First-token time is not recorded per question yet. Small samples move a lot: a module with two or three questions is a hint, not a ranking. Scale <code><%= TeamChat::Scorecard.scale_hash %></code>.</p>
+    <p class="mt-1 text-xs text-taupe">Quality is the grader’s 1–5 mean mapped to 0–9. Speed: each answer scores 9 up to <%= free %> s, then loses points evenly to 0 at <%= sla %> s, and the score is the average. Answers past <%= sla %> s are ignored in the speed score and counted in the Ignored column. Reliability is answered out of attempted. First token: the median time until the first word appeared, on a log scale (9 at 1 s or less, 0 at 20 s or more); only local models record it, so remote models show a dash. Small samples move a lot: a module with two or three questions is a hint, not a ranking. Scale <code><%= TeamChat::Scorecard.scale_hash %></code>.</p>
   <% end %>
 </section>

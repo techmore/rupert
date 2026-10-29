@@ -7,7 +7,11 @@ flight, stops the running llama-server and starts the requested one. Requests ar
 A model with no request for IDLE_SECONDS (default 300) is unloaded, so nothing sits in memory between chats.
 With --keep-loaded MODEL that model is never unloaded for being idle, and is loaded again in the background once
 another model has been idle for IDLE_SECONDS, so the main bot never waits for a load. /health reports the last load
-(model, seconds, when, and whether a request or the keep-loaded warm-up caused it), so Rupert can show load time.
+(model, seconds, when, and whether a request or the keep-loaded warm-up caused it), so Rupert can show load time, and
+/health `last_timing` reports the last request's time to first token (ttft_ms: from sending the request to llama-server,
+so after queueing and model loading, to the first upstream chunk carrying content, reasoning or a tool-call delta;
+for a non-streaming request that is when the reply arrives), queue_ms and token counts. Requests are serialized, so
+'last' is unambiguous.
 
 Models come from models.json: {"id": {"file": "/path/model.gguf", "ctx": 16384, "args": [...]}}.
 Only the clients in --allow may call it. Python standard library only.
@@ -57,14 +61,16 @@ class Engine:
         self.last_used = time.monotonic()
         self.keep_loaded = keep_loaded if keep_loaded in models else None
         self.last_load = None
+        self.last_timing = None
         self.warm_failed_at = 0.0
 
     def status(self):
         proc = self.proc
         with self.metrics_lock:
             queue = {'waiting': self.waiting, 'rejected': self.rejected, 'last_request': self.last_request}
+            last_timing = self.last_timing
         return {'loaded': self.current, 'idle_seconds': round(time.monotonic() - self.last_used), 'busy': self.lock.locked(),
-                'keep_loaded': self.keep_loaded, 'last_load': self.last_load, 'queue': queue,
+                'keep_loaded': self.keep_loaded, 'last_load': self.last_load, 'last_timing': last_timing, 'queue': queue,
                 'memory': memory_status(proc.pid if proc else None)}
 
     @contextmanager
@@ -254,6 +260,29 @@ def log_timings(model_id, tail, seconds):
     return {key: t[key] for key in ('prompt_n', 'cache_n', 'prompt_ms', 'prompt_per_second', 'predicted_n', 'predicted_ms', 'predicted_per_second') if key in t}
 
 
+FIRST_TOKEN = re.compile(rb'"(?:content|reasoning_content)"\s*:\s*"[^"]|"tool_calls"\s*:\s*\[\s*\{')
+
+
+def has_first_token(chunk):
+    """True when an upstream chunk carries generated output (content, reasoning or a tool-call delta), not just a role/empty delta."""
+    return bool(FIRST_TOKEN.search(chunk))
+
+
+def token_counts(tail, timings=None):
+    """(prompt_tokens, completion_tokens) from the upstream usage object, else llama.cpp timings; None where unknown."""
+    usage = None
+    for match in re.finditer(rb'"usage"\s*:\s*(\{[^{}]*\})', tail):
+        try:
+            usage = json.loads(match.group(1))
+        except ValueError:
+            pass
+    if isinstance(usage, dict) and usage.get('prompt_tokens') is not None:
+        return usage.get('prompt_tokens'), usage.get('completion_tokens')
+    if timings and timings.get('prompt_n') is not None:
+        return timings['prompt_n'] + (timings.get('cache_n') or 0), timings.get('predicted_n')
+    return None, None
+
+
 def make_handler(engine, allow):
     class Handler(BaseHTTPRequestHandler):
         protocol_version = 'HTTP/1.0'  # streamed bodies end when the connection closes
@@ -317,6 +346,8 @@ def make_handler(engine, allow):
                     load_started = time.monotonic()
                     load_ms = 0
                     self.timings = None
+                    self.ttft_ms = None
+                    self.tokens = (None, None)
                     try:
                         if self.disconnected():
                             outcome = 'cancelled'
@@ -344,6 +375,10 @@ def make_handler(engine, allow):
                             engine.last_request = {'model': model_id, 'queue_ms': queue_ms,
                                 'load_ms': load_ms, 'inference': self.timings,
                                 'duration_ms': round((time.monotonic() - started) * 1000, 1), 'outcome': outcome}
+                        with engine.metrics_lock:
+                            engine.last_timing = {'model': model_id, 'finished_at': round(time.time(), 1), 'outcome': outcome,
+                                'ttft_ms': self.ttft_ms, 'queue_ms': queue_ms,
+                                'prompt_tokens': self.tokens[0], 'completion_tokens': self.tokens[1]}
                         log.info('resources %s', json.dumps(memory_status(engine.proc.pid if engine.proc else None)))
             except Busy as error:
                 self.reply(429, {'error': {'message': str(error)}})
@@ -359,6 +394,7 @@ def make_handler(engine, allow):
             conn = http.client.HTTPConnection('127.0.0.1', engine.port, timeout=engine.inference_timeout)
             started = time.monotonic()
             tail = b''
+            first = None
             try:
                 data = json.dumps(body).encode()
                 conn.request('POST', '/v1/chat/completions', body=data, headers={'Content-Type': 'application/json'})
@@ -379,12 +415,16 @@ def make_handler(engine, allow):
                     if not chunk:
                         break
                     tail = (tail + chunk)[-32768:]
+                    if first is None and upstream.status == 200 and has_first_token(chunk):
+                        first = time.monotonic()
+                        self.ttft_ms = round((first - started) * 1000, 1)
                     self.wfile.write(chunk)
                     self.wfile.flush()
                 return 'ok' if upstream.status == 200 else 'upstream_error'
             finally:
                 conn.close()
                 self.timings = log_timings(body.get('model'), tail, time.monotonic() - started)
+                self.tokens = token_counts(tail, self.timings)
 
     return Handler
 
