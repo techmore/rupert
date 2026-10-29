@@ -3,9 +3,11 @@
 <% sla = TeamChat::Scorecard::SLOW_SECONDS.to_i %>
 <% free = TeamChat::Scorecard::FREE_SECONDS.to_i %>
 <% level = ->(value) { value.nil? ? 'none' : (value >= 7 ? 'high' : (value <= 3 ? 'low' : 'mid')) } %>
-<% cell = lambda do |value, change = nil| %>
-  <span class="score-cell" data-level="<%= level.call(value) %>" title="<%= value.nil? ? 'Not measured yet' : "#{value} out of 9" %>"><%= value.nil? ? '—' : value %><% if change && change != 0 %><small class="<%= change.positive? ? 'text-fern' : 'text-clay' %>" title="Change since this model's previous run"><%= change.positive? ? '▲' : '▼' %><%= change.abs %></small><% end %></span>
-<% end %>
+<%# Plain Ruby, not an ERB block: a lambda that writes template output prints its markup and then returns it again, which showed up as stray "</span>" text. %>
+<% cell = lambda do |value, change = nil|
+     arrow = change && change != 0 ? content_tag(:small, "#{change.positive? ? '▲' : '▼'}#{change.abs}", class: (change.positive? ? 'text-fern' : 'text-clay'), title: "Change since this model's previous run") : ''.html_safe
+     content_tag(:span, safe_join([value.nil? ? '—' : value, arrow]), class: 'score-cell', data: { level: level.call(value) }, title: (value.nil? ? 'Not measured yet' : "#{value} out of 9"))
+   end %>
 <% seconds = ->(value) { value.nil? ? '—' : (value >= 100 ? "#{value.round} s" : "#{value} s") } %>
 <% best = axes.keys.index_with { |key| @scorecard.filter_map { |card| card.overall[key] }.max } %>
 <% fastest = @scorecard.filter_map { |card| card.timing.median }.min %>
@@ -20,7 +22,7 @@
   <% else %>
     <div class="card mt-2 overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+        <table class="w-full score-table text-sm">
           <thead class="border-b border-fog bg-haze/60">
             <tr>
               <th scope="col" class="th score-sticky">Model</th>
@@ -65,7 +67,7 @@
     <h3 class="mt-4 text-sm font-semibold text-ink"><%= axes[@score_axis] %> by module</h3>
     <div class="card mt-2 overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+        <table class="w-full score-table text-sm">
           <thead class="border-b border-fog bg-haze/60">
             <tr>
               <th scope="col" class="th score-sticky">Model</th>
