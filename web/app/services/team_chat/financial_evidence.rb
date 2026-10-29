@@ -20,6 +20,16 @@ module TeamChat
       'expenses_by_category' => ['Active expense-register total (not profit)', 'money'],
       'sales_by_source' => ['Gross sales by source', 'money']
     }.freeze
+    # Ranking metrics: the typed rows are certified as ranked facts (label + rank), so Ruby can state the answer.
+    RANKINGS = {
+      'sales_by_weekday' => 'Gross sales by weekday (workspace time zone)',
+      'best_day' => 'Gross sales on the best sales day',
+      'worst_day' => 'Gross sales on the slowest day with stored sales',
+      'top_products' => 'Product revenue (top products)'
+    }.freeze
+    RANKING_LIMIT = 3
+    ASKED_FOR_TOTALS = /\b(?:totals?|how much|tax(?:es)?|expenses?|refunds?|average|how many|breakdown|by source|per source)\b/i
+    SYMBOLS = { 'USD' => '$', 'CAD' => '$', 'AUD' => '$', 'NZD' => '$', 'EUR' => '€', 'GBP' => '£' }.freeze
     DAILY_CLOSE = [['net_cents', 'Store net sales (gross minus refunds; before tax and tips)'],
                    ['gross_cents', 'Store gross sales (after discounts, before tax and tips)'],
                    ['cash_cents', 'Cash taken at the store'], ['card_cents', 'Card taken at the store'],
@@ -49,7 +59,7 @@ module TeamChat
       case tool
       when 'metric'
         name = data['metric']
-        raise ArgumentError unless name == args['name'] && MEANINGS.key?(name)
+        raise ArgumentError unless name == args['name'] && (MEANINGS.key?(name) || RANKINGS.key?(name))
 
         expected = Metrics::Window.resolve(period: args['period'], from: args['from'], to: args['to'])
         period = window(data.fetch('period'), expected.from.iso8601, expected.to.iso8601)
@@ -59,7 +69,12 @@ module TeamChat
         if args['source'].present? && Array(data['values']).any? { |row| Array(row['sources']).any? { |part| part['source'] != args['source'] } }
           raise ArgumentError
         end
-        metric_rows(out, data['values'], name, source, period, 'values')
+        if RANKINGS.key?(name)
+          ranking_rows(out, data['values'], name, source, period)
+          data = data.except('compared_with')
+        else
+          metric_rows(out, data['values'], name, source, period, 'values')
+        end
         out['gaps'] << 'Category breakdowns are not certified by this contract; the expense total is shown separately.' if name == 'expenses_by_category'
         if data['compared_with']
           prior = { 'previous' => expected.previous, 'last_year' => expected.last_year }.fetch(args['compare'].presence || 'previous')
@@ -186,7 +201,35 @@ module TeamChat
       end
     end
 
-    def add(out, value, unit, currency, source, period, meaning, path)
+    def ranking_rows(out, rows, name, source, period)
+      meaning = RANKINGS.fetch(name)
+      Array(rows).each_with_index do |row, index|
+        entries = case name
+                  when 'sales_by_weekday'
+                    list = Array(row['weekdays']).map { |part| [part.fetch('weekday'), part['gross_cents']] }
+                    raise ArgumentError unless list.all? { |label, _| Date::DAYNAMES.include?(label) } && list.map(&:first).uniq.size == list.size
+
+                    ranked = list.sort_by { |label, cents| [-cents.to_i, Date::DAYNAMES.index(label)] }
+                    ranked.each_with_index.map { |(label, cents), rank| [label, cents, rank + 1, ranked.size, "weekdays.#{list.index { |l, _| l == label }}.gross_cents"] }
+                  when 'top_products'
+                    Array(row['products']).first(RANKING_LIMIT).each_with_index.filter_map do |part, rank|
+                      label = part['name'].to_s
+                      next if label.blank? || label.length > 120 || AskRupert::Redactor.personal(label) != label
+
+                      [label, part['revenue_cents'], rank + 1, nil, "products.#{rank}.revenue_cents"]
+                    end
+                  else
+                    row['value'].present? ? [[Date.iso8601(row['value']).iso8601, row['gross_cents'], 1, 1, 'gross_cents']] : []
+                  end
+        entries = entries.first(RANKING_LIMIT) + entries.drop(RANKING_LIMIT).last(1) if name == 'sales_by_weekday'
+        entries.each do |label, cents, rank, of, field|
+          add(out, cents, 'money', row['currency'], source, period, meaning, "values.#{index}.#{field}",
+            'ranking' => name, 'label' => label, 'rank' => rank, 'of' => of)
+        end
+      end
+    end
+
+    def add(out, value, unit, currency, source, period, meaning, path, extra = {})
       unless value.is_a?(Numeric) && CURRENCIES.include?(currency)
         out['gaps'] << 'A figure with a missing value or currency was omitted; unknown is not zero.'
         return
@@ -199,7 +242,7 @@ module TeamChat
 
       decimal /= 100 if unit == 'money'
       fact = { 'meaning' => meaning, 'unit' => unit, 'value' => decimal.to_s('F'), 'currency' => currency,
-               'source' => source, 'period' => period, 'timezone' => Time.zone.name, 'field' => path, 'tool' => out['tool'], 'tenant_id' => out['tenant_id'], 'invocation' => out['invocation'] }
+               'source' => source, 'period' => period, 'timezone' => Time.zone.name, 'field' => path, 'tool' => out['tool'], 'tenant_id' => out['tenant_id'], 'invocation' => out['invocation'] }.merge(extra)
       fact['id'] = Digest::SHA256.hexdigest(JSON.generate(fact)).first(16)
       out['facts'] << fact
     end
@@ -240,6 +283,9 @@ module TeamChat
       meanings = facts.map { |fact| fact['meaning'].to_s }
       return nil if CONCEPTS.any? { |word, meaning| prose.match?(word) && meanings.none? { |known| known.match?(meaning) } }
       return nil unless periods_match?(prose, facts, today)
+
+      ranked = facts.select { |fact| fact['ranking'] == 'sales_by_weekday' }.map { |fact| fact['label'] }
+      return nil if facts.any? { |fact| fact['ranking'] } && prose.scan(/\b(#{Date::DAYNAMES.join('|')})s?\b/i).flatten.any? { |day| ranked.exclude?(day.capitalize) }
 
       currencies = facts.map { |fact| fact['currency'] }.uniq
       return nil if prose.scan(CODED_AMOUNT).flatten.any? { |code| !currencies.include?(code) }
@@ -309,20 +355,68 @@ module TeamChat
       "#{period['from']} to #{period['to']}"
     end
 
-    def render(evidence)
+    # Ranked answers first (one sentence per currency, scope stated once), then, unless the question was a
+    # plain ranking question, the remaining facts grouped under each distinct scope so no scope repeats.
+    def render(evidence, question: nil, today: Date.current)
       facts = evidence.flat_map { |item| item['facts'] }
-      lines = facts.first(12).map do |fact|
-        number = BigDecimal(fact.fetch('value'))
-        whole, fraction = number.to_s('F').split('.')
-        value = fact['unit'] == 'money' ? "#{whole}.#{fraction.to_s.ljust(2, '0')}" : number.to_s('F').delete_suffix('.0')
-        value += '%' if fact['unit'] == 'percent'
-        "- #{fact['meaning']}: #{value} #{fact['currency']} (#{fact['source']}; #{fact.dig('period', 'from')} to #{fact.dig('period', 'to')} #{fact['timezone']})."
+      ranked, plain = facts.partition { |fact| fact['ranking'] }
+      dropped = ranked.any? && question.present? && !question.match?(ASKED_FOR_TOTALS)
+      plain = [] if dropped
+      lines = ranking_lines(ranked, today)
+      if plain.any?
+        lines << 'Other verified figures:' if lines.any?
+        lines.unshift('From Rupert’s records:') if lines.empty?
+        lines.concat(plain.first(12).group_by { |fact| scope_label(fact) }.flat_map do |scope, group|
+          ["#{scope}:", *group.map { |fact| "- #{fact['meaning']}: #{plain_value(fact)} #{fact['currency']}" }]
+        end)
       end
-      lines.unshift('From Rupert’s records:') if lines.any?
       lines << 'I could not verify financial figures for this request.' if facts.empty?
-      lines << 'Additional verified facts were omitted. Narrow the question for the remaining figures.' if facts.size > 12
-      lines.concat(evidence.flat_map { |item| item['gaps'] }.uniq)
+      lines << 'Additional verified facts were omitted. Narrow the question for the remaining figures.' if plain.size > 12
+      lines.concat(evidence.reject { |item| dropped && item['facts'].any? && item['facts'].none? { |fact| fact['ranking'] } }.flat_map { |item| item['gaps'] }.uniq)
       lines.join("\n")
+    end
+
+    def scope_label(fact) = "#{fact['source']}; #{fact.dig('period', 'from')} to #{fact.dig('period', 'to')} #{fact['timezone']}"
+
+    def plain_value(fact)
+      number = BigDecimal(fact.fetch('value'))
+      whole, fraction = number.to_s('F').split('.')
+      value = fact['unit'] == 'money' ? "#{whole}.#{fraction.to_s.ljust(2, '0')}" : number.to_s('F').delete_suffix('.0')
+      fact['unit'] == 'percent' ? "#{value}%" : value
+    end
+
+    def amount_label(fact)
+      whole, fraction = plain_value(fact).split('.')
+      symbol = SYMBOLS[fact['currency']]
+      "#{symbol || "#{fact['currency']} "}#{whole.gsub(/(\d)(?=(\d{3})+\z)/, '\\1,')}.#{fraction}"
+    end
+
+    def ranking_lines(ranked, today)
+      return [] if ranked.empty?
+
+      lines = ranked.group_by { |fact| [fact['ranking'], fact['currency']] }.map do |(kind, currency), group|
+        group = group.sort_by { |fact| fact['rank'] }
+        shown = group.select { |fact| fact['rank'] <= RANKING_LIMIT }
+        entries = shown.map { |fact| "#{ranking_name(fact)} (#{amount_label(fact)})" }
+        case kind
+        when 'sales_by_weekday'
+          slow = group.find { |fact| fact['rank'] > RANKING_LIMIT && fact['rank'] == fact['of'] }
+          text = "For #{currency}, #{ranking_name(shown.first)} is your best day (#{amount_label(shown.first)})"
+          text += ", then #{entries.drop(1).join(' and ')}" if entries.size > 1
+          text + (slow ? "; the slowest weekday is #{ranking_name(slow)} (#{amount_label(slow)})." : '.')
+        when 'best_day' then "For #{currency}, your best day was #{entries.first}."
+        when 'worst_day' then "For #{currency}, your slowest day with stored sales was #{entries.first}."
+        else "For #{currency}, your top products by revenue are #{entries.to_sentence}."
+        end
+      end
+      scopes = ranked.map { |fact| "#{source_label(fact['source'])}; #{period_label(fact['period'], today)}, #{fact['timezone']}" }.uniq
+      lines << (scopes.size == 1 ? "Scope: #{scopes.first}." : "Scopes: #{scopes.join(' | ')}.")
+    end
+
+    def ranking_name(fact)
+      return fact['label'] unless fact['ranking'].in?(%w[best_day worst_day])
+
+      Date.iso8601(fact['label']).strftime('%A %b %-d, %Y')
     end
   end
 end
