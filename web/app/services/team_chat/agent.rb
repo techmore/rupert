@@ -77,7 +77,13 @@ module TeamChat
         # Local bots get only the tools for what the question is about (smaller prompt, fewer wrong picks), unless
         # RUPERT_LOCAL_TOOLS=all: then every tool, so the instructions and tool list stay the same from question to
         # question and the model server reuses them from its cache, and the question names the tools to use.
-        only = DataGuide.tools_for(@topics) if @local_agent && @topics.any? && !all_tools?
+        # RUPERT_LOCAL_TOOLS=core:a,b,c: a fixed short list for every question (plus the always-on tools). Same stable prompt prefix as `all`
+        # without the context cost: with all 42 tools Qwen's 16k window overflowed. Off unless set; see the depth experiment notes in #567.
+        if @local_agent && core_tools.any?
+          only = core_tools | DataGuide::ALWAYS_TOOLS
+        elsif @local_agent && @topics.any? && !all_tools?
+          only = DataGuide.tools_for(@topics)
+        end
         @toolbox = Toolbox.new(user: @asker, room: @room, reply: @reply, only: only, execution: @execution)
         text = verified(answer)
         finish(text, started)
@@ -461,6 +467,13 @@ module TeamChat
     end
 
     def all_tools? = ENV['RUPERT_LOCAL_TOOLS'].to_s.strip == 'all'
+
+    def core_tools
+      setting = ENV['RUPERT_LOCAL_TOOLS'].to_s.strip
+      return [] unless setting.start_with?('core:')
+
+      setting.delete_prefix('core:').split(',').map(&:strip).reject(&:blank?)
+    end
 
     # Where this reply is, who asked, today's date, the exact dates in the question and the data guide cards.
     # It changes with every question, so it goes at the end of the prompt (see system_prompt).
