@@ -73,7 +73,7 @@ class AppReviewDemoTaskTest < ActiveSupport::TestCase
       room = TeamChat::Room.find_by!(slug: 'shop-floor')
       assert_equal AppReviewDemo::CHAT.size, room.messages.count
       assert_equal 'mentions', room.assistant_mode
-      assert TeamChat::Membership.where(user_id: reviewer.id).order(updated_at: :desc).first.room == room
+      assert_equal room, TeamChat::Membership.where(user_id: reviewer.id).order(updated_at: :desc).first.room
     end
 
     # Every row the task wrote carries the demo workspace's id.
