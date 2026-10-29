@@ -7,7 +7,8 @@
 <% content_for :title, "Sign in" %>
 <% google = GoogleOauthService.configured? %>
 <% password_open = !google || request.post? || params[:password].present? %>
-<% signup = !WorkspaceNode.isolated? && Current.tenant.blank? %>
+<%# The iPhone app signs in existing business accounts only: no sign-up there (App Store 3.1.1, 4.8). %>
+<% signup = !WorkspaceNode.isolated? && Current.tenant.blank? && !hotwire_native_app? %>
 <div class="page-narrow mx-auto pt-6">
   <div class="card card-pad space-y-5">
     <header class="text-center">
@@ -56,6 +57,9 @@
 
     <% if signup %>
       <p class="border-t border-fog pt-4 text-center text-sm text-mocha">New to Rupert? <%= link_to "Create a free account", start_path, class: "font-semibold text-olive hover:underline" %></p>
+    <% elsif hotwire_native_app? %>
+      <p class="border-t border-fog pt-4 text-center text-sm text-mocha">Rupert accounts are set up by your business.</p>
     <% end %>
   </div>
+  <p class="mt-4 text-center text-xs text-taupe"><%= link_to 'Privacy policy', privacy_policy_path, class: 'hover:underline' %> · <%= link_to 'Support', support_path, class: 'hover:underline' %></p>
 </div>

@@ -90,6 +90,10 @@ final class BannerWebViewController: HotwireWebViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         apply(colors)
+        // A tab's first page carries the App settings button (AppSettings.swift).
+        if navigationController?.viewControllers.first === self, presentingViewController == nil {
+            AppSettings.addButton(to: self)
+        }
     }
 
     override func visitableDidActivateWebView(_ webView: WKWebView) {

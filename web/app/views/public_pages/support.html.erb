@@ -1,0 +1,40 @@
+<%# Support: public, the App Store listing's support URL. Settings-style page (docs/ui-standards.md §4). %>
+<% content_for :title, 'Support' %>
+<div class="page-medium space-y-6">
+  <%= page_header 'Support', subtitle: 'Help with Rupert on the web, iPhone and iPad.' %>
+
+  <section class="section-card">
+    <%= section_heading 'Contact us' %>
+    <p class="text-sm">Email <%= mail_to @support_email, nil, class: 'font-semibold text-olive underline' %>.</p>
+    <p class="text-sm text-mocha">Signed in? Use <strong>Report a problem</strong> in the account menu: it sends us the page you were on, so we can see what went wrong.</p>
+  </section>
+
+  <section class="section-card">
+    <%= section_heading 'Common questions' %>
+    <details class="explainer">
+      <summary class="explainer-summary">How do I sign in?</summary>
+      <p class="mt-1 text-sm text-ink">Use the account your business gave you: Continue with Google for a company Google account, or Sign in with email and password. In the app, every tab shows the sign-in page until you sign in.</p>
+    </details>
+    <details class="explainer">
+      <summary class="explainer-summary">I can't see a page or a button.</summary>
+      <p class="mt-1 text-sm text-ink">What you see depends on the role your workspace administrator gave you. Ask them for access.</p>
+    </details>
+    <details class="explainer">
+      <summary class="explainer-summary">How do I scan barcodes?</summary>
+      <p class="mt-1 text-sm text-ink">Open an inventory count and choose Scan. In the iPhone app, Scan with camera reads barcodes with the camera; on the web, a USB or Bluetooth scanner works.</p>
+    </details>
+    <details class="explainer">
+      <summary class="explainer-summary">How do I lock the app with Face ID?</summary>
+      <p class="mt-1 text-sm text-ink">In the iPhone app, tap the person icon on the Home tab, then turn on Require Face ID.</p>
+    </details>
+    <details class="explainer">
+      <summary class="explainer-summary">How do I delete my account?</summary>
+      <p class="mt-1 text-sm text-ink">Account menu → Delete my account (in the app: person icon on the Home tab → Delete account). See the <%= link_to 'privacy policy', privacy_policy_path, class: 'text-olive underline' %> for what is erased.</p>
+    </details>
+  </section>
+
+  <section class="section-card">
+    <%= section_heading 'More' %>
+    <p class="text-sm"><%= link_to 'Privacy policy', privacy_policy_path, class: 'text-olive underline' %> · <%= link_to 'Product guides', 'https://techmore.github.io/rupert/overview.html', class: 'text-olive underline' %></p>
+  </section>
+</div>
