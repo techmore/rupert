@@ -6,10 +6,10 @@
 # Every metric is per currency (currencies are never added together), takes a period (named preset or from/to),
 # and is compared with the period before or the same dates last year, with the change already worked out.
 # Orders are Rupert's canonical order store (Shopify, Square, Rupert POS, manual); paid and fulfilled orders,
-# including later-refunded sales with refund evidence, count as sales. C-Trax and SwipeSimple snapshots are not
+# including later-refunded sales with refund evidence (Core::Order.sales_counted, shared with sales_summary and
+# period_review), count as sales. C-Trax and SwipeSimple snapshots are not
 # orders and are never added in. Unknown is not zero.
 module Metrics
-  COUNTED = %w[paid fulfilled].freeze
   SOURCES = %w[shopify square rupert_pos manual pos].freeze
   COMPARES = %w[previous last_year none].freeze
   PRESETS = %w[today yesterday this_week last_week this_pay_week last_pay_week this_month last_month
@@ -81,13 +81,7 @@ module Metrics
   end
 
   def counted(window, source)
-    scope = Core::Order.where(occurred_at: window.times, source: source.presence || SOURCES)
-    # A later refund does not erase the original gross sale. Canceled imports can
-    # also have status refunded, so require evidence of an actual refund.
-    refunded = scope.where(status: 'refunded').where(
-      'orders.source_financial_status IN (?) OR orders.id IN (?)',
-      %w[REFUNDED PARTIALLY_REFUNDED], Core::Refund.select(:order_id))
-    scope.where(status: COUNTED).or(refunded)
+    Core::Order.where(occurred_at: window.times, source: source.presence || SOURCES).sales_counted
   end
 
   def per_currency(orders, key)

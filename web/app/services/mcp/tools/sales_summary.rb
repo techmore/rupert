@@ -4,14 +4,20 @@ module Mcp
   module Tools
     class SalesSummary < Tool
       SOURCES = %w[shopify square rupert_pos manual pos].freeze
-      COUNTED = %w[paid fulfilled].freeze
+      # Same rule as Metrics: see Core::Order.sales_counted (refunded orders count when a refund is on record).
+      COUNTED = %w[paid fulfilled refunded].freeze
+
+      COUNTED_NOTE = 'A refunded order counts in orders and gross sales when a refund is on record; the refund amounts are ' \
+                     'in refunds_by_currency (by refund date). Net of refunds is gross minus those refunds.'
 
       tool 'sales_summary',
         title: 'Sales summary',
         description: 'Orders and gross sales from Rupert\'s canonical order store (Shopify, Square, Rupert POS and manual ' \
                      'sales) for a date range, one line per source and currency, plus a per-currency total, refunded ' \
-                     'order counts, optional daily series and top products joined to separate stock observations per ' \
+                     'order counts, refunds recorded in the range, optional daily series and top products joined to separate stock observations per ' \
                      'platform/location when inventory access is allowed, with open alert IDs when alert access is allowed. ' \
+                     'Paid, fulfilled and fully or partly refunded orders count as sales (a refund does not erase the ' \
+                     'original gross sale; refunds are shown beside it), the same rule as the metric tool. ' \
                      'C-Trax and SwipeSimple snapshots are NOT ' \
                      'included (use sales_tax_report for those). Amounts are integer cents. Defaults to the last 30 days. Read-only.',
         scope: 'reports:read'
@@ -34,7 +40,7 @@ module Mcp
         from, to = date_range(args, default_from: to - 29, default_to: to)
         window = from.in_time_zone.beginning_of_day...(to + 1).in_time_zone.beginning_of_day
         scope = Core::Order.where(occurred_at: window, source: args['source'] || SOURCES)
-        counted = scope.where(status: COUNTED)
+        counted = scope.sales_counted
 
         lines = counted.group(:source, :currency)
           .pluck(:source, :currency, Arel.sql('COUNT(*)'), Arel.sql('SUM(gross_cents)'), Arel.sql('COUNT(gross_cents)'), Arel.sql('SUM(tax_cents)'), Arel.sql('COUNT(tax_cents)'))
@@ -49,8 +55,8 @@ module Mcp
             average_order_cents: gross.any?(&:nil?) || group.sum { |l| l[:orders] }.zero? ? nil : (gross.sum / group.sum { |l| l[:orders] }.to_f).round }
         end
 
-        data = { from: from.iso8601, to: to.iso8601, counted_statuses: COUNTED, lines: lines, totals_by_currency: totals,
-                 refunded_orders_by_source: refunded,
+        data = { from: from.iso8601, to: to.iso8601, counted_statuses: COUNTED, counted_note: COUNTED_NOTE, lines: lines, totals_by_currency: totals,
+                 refunded_orders_by_source: refunded, refunds_by_currency: refunds_by_currency(window, args['source']),
                  note: 'Totals add Shopify, Square and Rupert POS orders, which are separate sales. C-Trax/SwipeSimple are excluded.' }
         data = with_as_of(data, args)
         data[:daily] = daily(counted, from, to) if args['include_daily']
@@ -58,7 +64,7 @@ module Mcp
         data[:top_products] = top_products(window, args['source'], limit) if limit.positive?
 
         text = if lines.empty?
-          "No paid or fulfilled orders are stored from #{from} to #{to}. That does not prove there were no sales (a sync may be missing)."
+          "No paid, fulfilled or refunded orders are stored from #{from} to #{to}. That does not prove there were no sales (a sync may be missing)."
         else
           "#{from} to #{to}: " + totals.map { |t| "#{t[:orders]} orders, #{money(t[:gross_cents])} #{t[:currency]} gross" }.join('; ') +
             '. By source: ' + lines.map { |l| "#{l[:source]} #{l[:orders]} orders #{money(l[:gross_cents])} #{l[:currency]}" }.join(', ') + '.'
@@ -67,6 +73,14 @@ module Mcp
       end
 
       private
+
+      # Refunds recorded in the range (by refund date, as in period_review), shown beside gross, never subtracted from it.
+      def refunds_by_currency(window, source)
+        refunds = Core::Refund.joins(:order).where(refunded_at: window)
+        refunds = refunds.where(orders: { source: source }) if source
+        refunds.group('orders.currency').pluck(Arel.sql('orders.currency'), Arel.sql('COUNT(*)'), Arel.sql('SUM(refunds.amount_cents)'))
+          .map { |currency, count, cents| { currency: currency, refunds: count, amount_cents: cents.to_i } }.sort_by { |row| row[:currency].to_s }
+      end
 
       def daily(scope, from, to)
         raise ToolError.new('include_daily works for ranges of 92 days or fewer.', kind: 'invalid_arguments') if (to - from).to_i >= 92
@@ -81,7 +95,7 @@ module Mcp
       end
 
       def top_products(window, source, limit)
-        orders = Core::Order.where(occurred_at: window, status: COUNTED, source: source || SOURCES).select(:id)
+        orders = Core::Order.where(occurred_at: window, source: source || SOURCES).sales_counted.select(:id)
         rows = Core::OrderLine.where(order_id: orders).group(:name, :sku)
           .pluck(:name, :sku, Arel.sql('SUM(line_cents)'), Arel.sql('SUM(quantity)'), Arel.sql('COUNT(DISTINCT order_id)'))
           .sort_by { |row| -row[2].to_i }.first(limit)

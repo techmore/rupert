@@ -87,7 +87,7 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
   test 'sales tax and gross with the same amount keep distinct meanings and fields' do
     payload = @period.merge(lines: [{ source: 'shopify', currency: 'CAD', gross_cents: 100, tax_cents: 100, orders: 1 }])
     item = evidence(payload, tool: 'sales_summary', args: @period.merge(source: 'shopify'))
-    assert_equal ['Gross sales (paid or fulfilled orders)', 'Order tax', 'Paid or fulfilled order count'], item['facts'].pluck('meaning')
+    assert_equal ['Gross sales (paid, fulfilled or refunded orders)', 'Order tax', 'Paid, fulfilled or refunded order count'], item['facts'].pluck('meaning')
     assert_equal 3, item['facts'].pluck('id').uniq.size
     assert_includes render(item), '1.00 CAD'
   end
@@ -215,7 +215,7 @@ class TeamChatFinancialEvidenceTest < ActiveSupport::TestCase
   test 'the bot keeps its own words when every figure, period and meaning checks out, and Ruby says what they are' do
     kept = prose('Shopify took $214.83 today, a quiet start.')
     assert kept.start_with?('Shopify took $214.83 today, a quiet start.')
-    assert_includes kept, '✓ Gross sales (paid or fulfilled orders) · shopify canonical orders (paid or fulfilled) · today'
+    assert_includes kept, '✓ Gross sales (paid, fulfilled or refunded orders) · shopify canonical orders (paid, fulfilled or refunded) · today'
     assert prose('Gross sales so far: 214.83 USD.')
   end
 
