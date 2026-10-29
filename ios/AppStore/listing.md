@@ -10,7 +10,7 @@ Paste these into App Store Connect → TM-Rupert (Apple ID 6826466832). Characte
 | Subtitle [30] | `Sales, stock and team, together` |
 | Primary category | Business |
 | Secondary category | Productivity |
-| Privacy policy URL | https://rupertpos.com/privacy |
+| Privacy policy URL | https://pos.rupertpos.com/privacy |
 | Content rights | Does not contain, show or access third-party content |
 | Age rating | 4+ (answer "None" / "No" to every question; see checklist.md) |
 
@@ -62,7 +62,7 @@ Rupert is for businesses that use Rupert. Sign in with the account your business
 retail,inventory,pos,shop,store,sales,stock count,barcode,small business,timesheet,team chat
 ```
 
-**Support URL:** https://rupertpos.com/support
+**Support URL:** https://pos.rupertpos.com/support
 **Marketing URL:** https://rupertpos.com
 **Copyright:** `2026 CSP Cyber Security Pilot`
 **Version release:** Manually release this version (so nothing goes public until you press Release).

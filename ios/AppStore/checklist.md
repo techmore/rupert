@@ -7,9 +7,9 @@ the build; **Owner** = a click in App Store Connect or a secret only the owner h
 |---|---|---|---|
 | 1 | Name, subtitle, description, keywords, promotional text | Done (text) · Owner pastes | `listing.md` |
 | 2 | Category Business / Productivity | Owner picks | `listing.md` |
-| 3 | Support URL https://rupertpos.com/support | Done (page) | `web/app/views/public_pages/support.html.erb` |
+| 3 | Support URL https://pos.rupertpos.com/support | Done (page) | `web/app/views/public_pages/support.html.erb` |
 | 4 | Marketing URL https://rupertpos.com | Already live | landing page |
-| 5 | Privacy policy URL https://rupertpos.com/privacy | Done (page) | `web/app/views/public_pages/privacy.html.erb` |
+| 5 | Privacy policy URL https://pos.rupertpos.com/privacy | Done (page) | `web/app/views/public_pages/privacy.html.erb` |
 | 6 | App Privacy answers ("nutrition label") | Owner clicks, answers below | App Store Connect → App Privacy |
 | 7 | Screenshots: iPhone 6.9" 1320×2868, iPad 13" 2064×2752 | Done | `screenshots/` |
 | 8 | Age rating questionnaire → 4+ | Owner clicks, answers below | App Information → Age Rating |
