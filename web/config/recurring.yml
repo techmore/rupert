@@ -29,6 +29,10 @@ production:
     class: TaskReminderJob
     queue: default
     schedule: "30 7 * * * America/New_York"
+  open_clock_out_alerts:
+    class: OpenClockOutAlertJob
+    queue: default
+    schedule: every 30 minutes
   source_directories:
     class: DirectorySyncJob
     queue: default

@@ -64,6 +64,10 @@ module People
     def show
       authorize(@employee)
       @timesheets = @employee.timesheets.recent(12) if Current.user.can?('timesheets.read')
+      if Current.user.can?('timesheets.read')
+        @open_clock_outs = OpenClockOuts.new
+        @open_items = @open_clock_outs.items(employee_ids: [@employee.id])
+      end
       @leave_balances = @employee.leave_balances.for_year(Date.current.year).ordered if Current.user.can?('leave.read')
       @leave_requests = @employee.leave_requests.recent(12) if Current.user.can?('leave.read')
       @pay_rates = @employee.pay_rates.recent if Current.user.can?('payroll.read')

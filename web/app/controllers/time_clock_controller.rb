@@ -6,7 +6,7 @@ class TimeClockController < AuthenticatedController
   before_action :authorize_reviewer, only: %i[approve_correction reject_correction]
   # Self-service punches: gated by active_context and scoped to Current.user's own shifts (TimeClockService
   # checks the shift owner). Review and commissions actions still authorize against the module policy.
-  skip_after_action :verify_authorized, only: %i[index clock_in clock_out request_correction]
+  skip_after_action :verify_authorized, only: %i[index clock_in clock_out request_correction fix_clock_out]
   rescue_from TimeClockService::Error, ActiveRecord::RecordInvalid, with: :clock_error
   rescue_from ActiveRecord::StatementInvalid, with: :database_error
 
@@ -14,9 +14,22 @@ class TimeClockController < AuthenticatedController
     @worker = TimeClockService.worker_for(Current.user)
     @open_shift = ClockShift.open.find_by(user_id: Current.user.id)
     @pagy, @shifts = pagy(:offset, ClockShift.where(user_id: Current.user.id).recent.includes(:corrections), limit: 30)
+    @open_clock_outs = OpenClockOuts.new
+    @open_items = @open_clock_outs.items(employee_ids: OpenClockOuts.manager?(Current.user) ? nil : [@worker&.id].compact)
     if Current.user.can?('payroll.write')
       @pending_corrections = ClockCorrection.where(status: 'pending').includes(:clock_shift).order(:created_at).limit(100)
     end
+  end
+
+  # Fix clock-out: the correction form for a forgotten clock-out, pre-filled. The worker's own shift, or
+  # anyone's for a manager (gate: TimeClockService.correctable_shift). Nothing changes until review.
+  def fix_clock_out
+    @shift = TimeClockService.correctable_shift(Current.user, params[:id])
+    return redirect_to(time_clock_path, notice: 'That shift is already clocked out.') if @shift.ended_at
+
+    @pending = @shift.corrections.where(status: 'pending').order(:created_at).last
+    planned = People::ScheduledShift.where(employee_id: @shift.employee_id).where(starts_at: @shift.started_at.all_day).order(:starts_at).first if @shift.employee_id
+    @suggested_end = planned&.ends_at if planned&.ends_at && planned.ends_at > @shift.started_at && planned.ends_at <= Time.current
   end
 
   def clock_in
@@ -30,9 +43,13 @@ class TimeClockController < AuthenticatedController
   end
 
   def request_correction
-    TimeClockService.request_correction(user: Current.user, shift_id: params[:id],
+    correction = TimeClockService.request_correction(user: Current.user, shift_id: params[:id],
       attributes: params.require(:clock_correction).permit(:proposed_started_at, :proposed_ended_at, :reason).to_h.symbolize_keys)
-    redirect_to time_clock_path, notice: 'Correction requested. Your shift stays unchanged until review.'
+    if correction.clock_shift.user_id == Current.user.id
+      redirect_to time_clock_path, notice: 'Correction requested. Your shift stays unchanged until review.'
+    else
+      redirect_to time_clock_path, notice: "Correction requested for #{correction.clock_shift.employee_name}. Another reviewer approves it; the shift stays unchanged until then."
+    end
   end
 
   def approve_correction

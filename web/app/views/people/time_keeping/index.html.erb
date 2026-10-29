@@ -9,6 +9,7 @@
                ['Download daily CSV', people_time_keeping_path(base.merge(format: :csv, kind: 'daily')), { data: { turbo: false } }],
                ['Download staff CSV', people_time_keeping_path(base.merge(format: :csv, kind: 'staff')), { data: { turbo: false } }],
                ['Download schedule CSV', people_time_keeping_path(base.merge(format: :csv, kind: 'shifts')), { data: { turbo: false } }]] %>
+  <%= render 'shared/open_clock_outs', items: @open_items, limit: @open_clock_outs.limit_hours if request.format.html? %>
 
   <%= page_tabs([['calendar', 'Calendar'], ['roster', 'Roster'], ['daily', 'Daily report'], ['staff', 'Staff summary']].map { |key, label| [label, people_time_keeping_path(base.merge(view: key)), @view == key] }, label: 'Time keeping views') %>
 

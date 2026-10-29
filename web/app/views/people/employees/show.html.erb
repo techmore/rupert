@@ -14,6 +14,8 @@
     <% if can_write %><%= link_to "Edit", edit_people_employee_path(@employee), class: "btn-primary" %><% end %>
   <% end %>
 
+  <% if @open_items %><%= render 'shared/open_clock_outs', items: @open_items, limit: @open_clock_outs.limit_hours %><% end %>
+
   <dl class="facts">
     <div><dt>Status</dt><dd><span class="<%= status_pill %>"><%= @employee.status.tr("_", " ").capitalize %></span></dd></div>
     <div><dt>Hired</dt><dd><%= @employee.hire_date ? l(@employee.hire_date, format: :long) : "—" %></dd></div>

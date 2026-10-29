@@ -43,8 +43,10 @@ class TimeClockService
     shift
   end
 
+  # The worker for their own shift, or a manager for someone else's (Fix clock-out). Either way it is a
+  # pending ClockCorrection: the shift changes only when another reviewer approves it.
   def self.request_correction(user:, shift_id:, attributes:)
-    shift = ClockShift.find_by!(id: shift_id, user_id: user.id)
+    shift = correctable_shift(user, shift_id)
     correction = nil
     shift.serialize_change do
       correction = shift.corrections.create!(attributes.slice(:proposed_started_at, :proposed_ended_at, :reason).merge(
@@ -52,6 +54,14 @@ class TimeClockService
       ))
     end
     correction
+  end
+
+  def self.correctable_shift(user, shift_id)
+    shift = ClockShift.find(shift_id)
+    return shift if shift.user_id == user.id
+    raise ActiveRecord::RecordNotFound unless OpenClockOuts.manager?(user) && (user.super_admin? || user.tenant_id == Current.tenant_id)
+
+    shift
   end
 
   def self.review(correction:, reviewer:, approve:)

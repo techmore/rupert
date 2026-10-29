@@ -16,6 +16,9 @@ module People
       @query = params[:q].to_s.strip.first(80).presence
       @view = %w[calendar unified list].include?(params[:view]) ? params[:view] : 'list'
       @all_employees_for_punches = Current.user.can_review_timesheets? || (Current.user.can_manage_accounts? && Current.user.can?('timesheets.read'))
+      @open_clock_outs = OpenClockOuts.new
+      own = TimeClockService.worker_for(Current.user, include_on_leave: true)
+      @open_items = @open_clock_outs.items(employee_ids: @all_employees_for_punches ? nil : [own&.id].compact)
       visible = People::TimesheetPolicy.visible_to(Current.user)
       @has_demo_timesheets = visible.demo_records.exists?
       @awaiting = visible.awaiting_review.count
@@ -124,6 +127,8 @@ module People
       @previous_sheet = mine.where('period_start < ?', @timesheet.period_start).order(period_start: :desc).first
       @next_sheet = mine.where('period_start > ?', @timesheet.period_start).order(:period_start).first
       @next_awaiting = visible.awaiting_review.where.not(id: @timesheet.id).order(:submitted_at, :id).first
+      @open_clock_outs = OpenClockOuts.new
+      @open_items = @open_clock_outs.items(employee_ids: [@timesheet.employee_id])
       # Square edits in this period that a manager has not settled (flagged, never applied silently).
       @square_changes = SquareTimecard.awaiting_review.where(employee_id: @timesheet.employee_id)
         .where(id: SquareTimecardDay.where(worked_on: @timesheet.period_start..@timesheet.period_end).select(:square_timecard_id)).count
