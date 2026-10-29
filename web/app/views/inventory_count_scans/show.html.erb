@@ -29,6 +29,8 @@
       </fieldset>
       <div class="form-actions">
         <%= submit_tag 'Save scan', class: 'btn-primary btn-lg', name: nil, data: { inventory_count_scanner_target: 'submit' } %>
+        <%# Shown only in the iPhone app, which reads barcodes with the camera. %>
+        <button type="button" hidden class="btn-ghost btn-lg" data-inventory-count-scanner-target="camera" data-action="inventory-count-scanner#scanWithCamera">Scan with camera</button>
       </div>
       <p class="text-xs text-taupe">A USB or Bluetooth scanner that types a code and Enter works here. Wait for “Saved” before scanning the next item. Unknown or conflicting codes stay unsaved.</p>
     <% end %>

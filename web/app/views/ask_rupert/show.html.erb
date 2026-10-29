@@ -1,0 +1,13 @@
+<%# Ask Rupert as a page: the iPhone app's Ask Rupert tab. The chat itself is the Ask Rupert panel
+    (shared/_ask_rupert), which this page opens on arrival (data-ask-rupert-open-on-load). %>
+<% content_for :title, 'Ask Rupert' %>
+<div class="page-medium space-y-6" data-ask-rupert-open-on-load>
+  <%= page_header 'Ask Rupert', subtitle: 'Ask how to do something in Rupert, or about your business.' %>
+  <section class="section-card">
+    <p class="text-sm">Ask in plain words: “Where do I find today’s sales?” or “How do I count inventory?”. Answers use only what your role lets you see.</p>
+    <div class="form-actions">
+      <button type="button" class="btn-primary" onclick="window.dispatchEvent(new CustomEvent('rupert:open-ask'))">Ask a question</button>
+      <button type="button" class="btn-ghost" onclick="window.dispatchEvent(new CustomEvent('rupert:open-ask', { detail: 'history' }))">Earlier chats</button>
+    </div>
+  </section>
+</div>

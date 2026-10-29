@@ -81,11 +81,19 @@ offline and uploads it. It never submits for review.
 Open `ios/Package.swift` in Xcode 26 or later, or use any Hotwire Native app template and add
 these sources. Nothing here is Linux-specific.
 
-## Before App Store review
+## App Store
 
-- Screenshots, description, support URL and privacy answers in App Store Connect. The app adds no
-  tracking or analytics (`PrivacyInfo.xcprivacy`); Rupert itself collects what the web app does.
-- A review account: App Review needs a working sign-in. Give them an email/password account on
-  a demo workspace, not a staff account.
-- Rupert is a business back-office app for invited accounts. App Review may ask for the
-  "unlisted" or business distribution route; TestFlight needs none of that.
+`AppStore/` holds what the App Store listing needs: `checklist.md` (what review needs beyond
+TestFlight, the App Privacy and age rating answers, the 4.2 case), `listing.md` (name, subtitle,
+description, keywords, URLs), `review-notes.md` (notes and demo login for App Review) and
+`screenshots/` (iPhone 6.9" and iPad 13"). The review login lives in a fictional demo shop made by
+`REVIEW_PASSWORD=… bin/rails rupert:app_review_demo`.
+
+Native parts beyond the web pages: camera barcode scanning on inventory counts
+(`BarcodeScanner.swift`, VisionKit), an optional Face ID lock (`AppLock.swift`), the App settings
+sheet behind the person button on each tab's first page (`AppSettings.swift`, SwiftUI) and Home
+Screen quick actions (`Info.plist`, `SceneController.swift`).
+
+Inside the app Rupert offers no sign-up and no subscription purchase (App Store guideline 3.1.1):
+`hotwire_native_app?` hides them in `sessions/new` and the account menu, and `BillingController`
+refuses them. Account deletion is in the account menu (`/account/delete`).

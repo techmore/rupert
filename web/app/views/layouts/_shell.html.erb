@@ -65,7 +65,10 @@
                 <%= link_to roadmap_path, class: 'nav-menu-item', role: 'menuitem' do %><%= navigation_icon('document') %><span>Features &amp; roadmap</span><% end %>
               <% end %>
               <% if Current.user.admin? && Current.user.tenant_id == Current.tenant_id %>
-                <%= link_to billing_path, class: 'nav-menu-item', role: 'menuitem' do %><%= navigation_icon('document') %><span>Subscription &amp; billing</span><% end %>
+                <%# Subscriptions are bought on the website only, never in the iPhone app (App Store guideline 3.1.1). %>
+                <% unless hotwire_native_app? %>
+                  <%= link_to billing_path, class: 'nav-menu-item', role: 'menuitem' do %><%= navigation_icon('document') %><span>Subscription &amp; billing</span><% end %>
+                <% end %>
                 <%= link_to support_access_path, class: 'nav-menu-item', role: 'menuitem' do %><%= navigation_icon('platform') %><span>Support permissions</span><% end %>
               <% end %>
             </div>
@@ -79,6 +82,7 @@
             </div>
             <div class="account-menu-group">
               <%= button_to logout_path, method: :delete, class: 'nav-menu-item w-full text-rose', role: 'menuitem' do %><%= navigation_icon('logout') %><span>Sign out</span><% end %>
+              <%= link_to delete_account_path, class: 'nav-menu-item', role: 'menuitem' do %><%= navigation_icon('shield') %><span>Delete my account</span><% end %>
             </div>
             <%= render "layouts/build_version" %>
           </div>
