@@ -95,4 +95,28 @@ class AppStoreReadinessTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
     assert root.reload.active?
   end
+
+  test "the app's Search tab is a page; the palette still gets JSON" do
+    sign_in(headers: APP)
+    get search_path, headers: APP
+    assert_response :success
+    assert_select 'h1', 'Search'
+    assert_includes response.body, 'Search your workspace.'
+    get search_path, params: { q: 'zzzz-nothing' }, headers: APP
+    assert_includes response.body, 'No matches'
+    get search_path, params: { q: 'zzzz-nothing' }, headers: APP.merge('Accept' => 'application/json', 'X-Requested-With' => 'XMLHttpRequest')
+    assert_equal [], response.parsed_body
+    get search_path, params: { q: 'zzzz-nothing' }
+    assert_equal [], response.parsed_body
+  end
+
+  test "the app's Ask Rupert tab is a page that opens the chat; the website keeps its redirect" do
+    sign_in(headers: APP)
+    get ask_rupert_path, headers: APP
+    assert_response :success
+    assert_select '[data-ask-rupert-open-on-load]'
+    get ask_rupert_path
+    assert_redirected_to learning_index_path
+  end
+
 end
