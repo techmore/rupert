@@ -168,8 +168,8 @@ own way:
 | --- | --- |
 | `POST /api/v1/uploads` | A file whose SHA-256 matches a retained upload is stored as `duplicate` of the earlier one and answers `200` (not `201`); nothing is imported twice |
 | MCP `submit_feedback` | With `source_ref`, the same message is filed only once |
-| MCP `create_task` | **Not idempotent**: a repeated call adds another task |
-| MCP `update_task` | Field changes set values, so a repeat gives the same result; a `note` is appended again on every call |
+| MCP `create_task` | Without `idempotency_key`, a repeated call adds another task. With it, a repeat by the same token within 24 hours returns the original result and adds nothing; `dry_run: true` previews without writing |
+| MCP `update_task` | Field changes set values, so a repeat gives the same result; a `note` is appended again on every call; `dry_run: true` previews the before/after without writing |
 | `POST /api/v1/employee/clock` | Send a `request_token`; a retry with the same token, or while a shift is already open, returns the existing shift |
 | Staff timesheet changes | Go through `TimesheetWorkflow`; stale or invalid transitions answer `422` |
 
@@ -252,6 +252,6 @@ being documented here or in [mcp.md](mcp.md).
 - No OpenAPI description, webhooks, per-client rate-limit settings or general
   idempotency key.
 - The staff app error shape differs from the integration API shape.
-- `create_task` is not idempotent, and `update_task` appends its `note` on every call.
+- `create_task` is idempotent only when an `idempotency_key` is sent, and `update_task` appends its `note` on every call.
 - Contract tests per in-scope module beyond the files above are still to be
   written ([#430](https://github.com/techmore/rupert/issues/430)).

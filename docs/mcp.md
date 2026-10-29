@@ -118,8 +118,8 @@ unless marked.
 | `customer_insights` | `customers:read` | `customers.read` | Customer lists: top spenders, new, repeat, lapsed, follow-ups due, segments (CRM status, tag, source) and interactions, with counts. |
 | `marketing_summary` | `marketing:read` | `marketing.read` | How marketing is doing for a period: replies drafted and approved, offers live and ending, Shopify codes, gifts shipped with cost, influencer stages, collaborations. |
 | `marketing_records` | `marketing:read` | `marketing.read` | One kind of marketing record at a time: campaigns, communities, offers, discounts, reviews (approvals of our replies), influencers, engagements, gifts, events (change history). No usage counts, ratings or analytics are stored. |
-| `create_task` | `tasks:write` | `projects.write` | **Writes:** adds a task to Rupert's own Tasks board, marked as added by an AI assistant. |
-| `update_task` | `tasks:write` | `projects.write` | **Writes:** changes one task on Rupert's own Tasks board: assignee, status, priority, due date, title, or an appended note. |
+| `create_task` | `tasks:write` | `projects.write` | **Writes:** adds a task to Rupert's own Tasks board, marked as added by an AI assistant. Optional `dry_run: true` previews the task without saving; optional `idempotency_key` makes a retry within 24 hours return the first result. Annotations: `destructiveHint` false, `idempotentHint` false. |
+| `update_task` | `tasks:write` | `projects.write` | **Writes:** changes one task on Rupert's own Tasks board: assignee, status, priority, due date, title, or an appended note. Optional `dry_run: true` returns a before/after of the changed fields without saving. Annotations: `destructiveHint` true, `idempotentHint` false (a note is appended each call). |
 | `list_alerts` | `alerts:read` | `alerts.read` | Low-stock alerts with counts per status. |
 | `list_uploads` | `uploads:read` | `uploads.read` | "Did my file arrive and what happened to it?": each upload's status (received, recognized, needs_review, imported, rejected, duplicate), who sent it and when, size, SHA-256, detected type and confidence, and the reason for any hold or refusal. Find by id, file-name fragment or SHA-256 prefix. Never returns file contents; cannot upload or approve. See [Uploads inbox](ops/uploads-inbox.md). |
 | `ai_health` | `system:read` | `system.read` + instance operator | Health of the opencode integration behind Ask Rupert and team chat: key state, live free models, agent model status, tokens in/out today and over 7 days, rate-limit hits, warnings. Counts only — never the key or message content. Hidden from tokens whose owner is not a platform administrator. See [AI health monitor](ops/ai-health-monitor.md). |
@@ -151,7 +151,8 @@ resource):
   while `meta.has_more` is true. Results over 200 KB are refused with a hint to
   narrow the request.
 - Each result has a short text summary plus the same data as JSON
-  (`structuredContent`). Tools carry `readOnlyHint` annotations.
+  (`structuredContent`). Tools carry `readOnlyHint`, `destructiveHint` and `idempotentHint` annotations: read tools are read-only and idempotent, `create_task` is a non-destructive write, `update_task` is a destructive write.
+- Task writes are capped at 20 per token per minute (dry runs excluded); beyond that the tool answers with an error telling the assistant to wait. Every call is audited with tool, token, outcome, duration, a SHA-256 fingerprint of the arguments (never the arguments) and the client's user-agent.
 
 Errors: protocol problems return JSON-RPC errors (`-32700` bad JSON, `-32600`
 invalid request, `-32601` unknown method, `-32602` bad params or unknown tool).

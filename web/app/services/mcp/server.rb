@@ -23,14 +23,15 @@ module Mcp
 
     INSTRUCTIONS = 'Rupert is a retail ERP for one store. Call get_workspace_info first. Sales sources are reported ' \
                    'separately and must not be added together; null means unknown, not zero; money is integer cents. ' \
-                   'Only create_task and submit_feedback write anything, and nothing writes to Shopify, Square or ' \
+                   'Only create_task, update_task and submit_feedback write anything (create_task and update_task accept dry_run: true to preview), and nothing writes to Shopify, Square or ' \
                    'C-Trax. Please call submit_feedback whenever a tool confuses you, fails, or you finish a task — ' \
                    'the owner reads it to improve Rupert. See resource rupert://guide/getting-started.'
 
-    attr_reader :token
+    attr_reader :token, :client
 
-    def initialize(token:)
+    def initialize(token:, client: nil)
       @token = token
+      @client = client.to_s.gsub(/[^[:print:]]|[;=]/, ' ').squish.first(100).presence
     end
 
     def self.error_response(id, code, message)
@@ -107,6 +108,7 @@ module Mcp
       return error(id, INVALID_PARAMS, 'Invalid params: "arguments" must be an object.') unless arguments.is_a?(Hash)
 
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      @args_fingerprint = fingerprint(arguments)
       tool = Registry.find(name)
       unless tool
         AgentToolIssue.record!(tool_name: UNKNOWN_TOOL, error_kind: 'unknown_tool', message: "Requested #{name.first(80)}", token: token)
@@ -156,13 +158,30 @@ module Mcp
       success(id, { content: [{ type: 'text', text: message }], isError: true })
     end
 
-    # Audit trail: tool, token id, outcome and duration — never arguments or results.
+    # SHA-256 of the canonical (key-sorted) JSON of the arguments, so repeated or
+    # replayed calls can be matched in the audit trail without storing the arguments.
+    def fingerprint(value)
+      Digest::SHA256.hexdigest(JSON.generate(canonical(value)))
+    rescue StandardError
+      nil
+    end
+
+    def canonical(value)
+      case value
+      when Hash then value.sort_by { |key, _| key.to_s }.map { |key, inner| [key.to_s, canonical(inner)] }
+      when Array then value.map { |inner| canonical(inner) }
+      else value
+      end
+    end
+
+    # Audit trail: tool, token id, outcome, duration, a SHA-256 fingerprint of
+    # the arguments and the client's user-agent — never the arguments or results.
     def record(tool_name, outcome, started)
       ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000).round
       name = tool_name.to_s.gsub(/[^\w.:()-]/, '?').first(80)
-      ActivityLogger.log('mcp_tool_call', subject: token, details: "tool=#{name}; token_id=#{token.id}; outcome=#{outcome}; duration_ms=#{ms}")
+      ActivityLogger.log('mcp_tool_call', subject: token, details: "tool=#{name}; token_id=#{token.id}; outcome=#{outcome}; duration_ms=#{ms}#{"; args_sha256=#{@args_fingerprint}" if @args_fingerprint}#{"; client=#{client}" if client}")
       OpsLog.event('mcp_tool_call', level: outcome == 'ok' ? :info : :warn, tool: name, token_id: token.id, tenant_id: token.try(:tenant_id),
-        outcome: outcome, duration_ms: ms, persist: outcome == 'internal_error')
+        outcome: outcome, duration_ms: ms, args_sha256: @args_fingerprint, client: client, persist: outcome == 'internal_error')
     end
 
     def success(id, result)
