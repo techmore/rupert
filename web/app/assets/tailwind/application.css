@@ -802,6 +802,14 @@ html[data-full-window] .table-region { max-height:none; }
 .report-table th[hidden],.report-table td[hidden],.report-table tr[hidden] { display:none !important; }
 .report-table-sort { margin-left:.3rem;padding:0 .2rem;border-radius:.3rem;font-size:.75rem;line-height:1;color:var(--color-taupe);vertical-align:middle; }
 .report-table-sort:hover,.report-table th[aria-sort] .report-table-sort { color:var(--color-ink); }
+/* Server-sorted list headings (sortable_th + ListSort). The whole label is the link; the
+   arrow is quiet until the column is the one the list is sorted by. */
+.th-sort { display:inline-flex;align-items:center;gap:.3rem;white-space:nowrap;color:inherit;border-radius:.3rem;text-decoration:none; }
+.th-sort:hover { color:var(--color-ink); }
+.th-sort:focus-visible { outline:2px solid var(--color-olive);outline-offset:2px; }
+.th-sort-icon { font-size:.7rem;line-height:1;opacity:.45; }
+.th-sortable[aria-sort] .th-sort { color:var(--color-ink); }
+.th-sortable[aria-sort] .th-sort-icon { opacity:1;color:var(--color-olive); }
 .report-table-empty { padding:1rem;font-size:.85rem;color:var(--color-mocha); }
 @media(max-width:640px) { .report-table-filter { max-width:none;flex:1 1 100%; } .report-table-count { margin-left:0;flex-basis:100%; } .report-table-columns { left:auto;right:0; } }
 

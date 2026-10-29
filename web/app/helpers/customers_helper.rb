@@ -1,6 +1,14 @@
 # frozen_string_literal: true
 
 module CustomersHelper
+  # Short list dates: "Aug 29" this year, "Aug 29, 2025" before; full date on hover.
+  def customer_list_date(value)
+    return '—' unless value
+
+    date = value.to_date
+    tag.time(date.strftime(date.year == Date.current.year ? '%b %-d' : '%b %-d, %Y'), datetime: date.iso8601, title: date.strftime('%B %-d, %Y'))
+  end
+
   def customer_money(totals)
     return '—' if totals.empty?
 

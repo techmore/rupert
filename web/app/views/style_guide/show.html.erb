@@ -41,7 +41,7 @@
     </article>
 
     <article class="section-card">
-      <%= section_heading 'Toolbar and table', hint: 'A List page: search and filters above, rows below, one empty state.', level: :h3 %>
+      <%= section_heading 'Toolbar and table', hint: 'A List page: search and filters above, rows below, one empty state. Paged lists sort on the server from their headings (sortable_th).', level: :h3 %>
       <form class="toolbar" onsubmit="return false">
         <div class="toolbar-field"><label class="field-label" for="sg-q">Search</label><input id="sg-q" type="search" class="input" placeholder="Name, email or phone"></div>
         <div class="toolbar-field"><label class="field-label" for="sg-status">Status</label><select id="sg-status" class="input"><option>All statuses</option><option>Lead</option><option>VIP</option></select></div>
@@ -49,7 +49,9 @@
       </form>
       <div class="table-region" role="region" tabindex="0" aria-label="Sample customers">
         <table class="table">
-          <thead><tr><th scope="col" class="th">Customer</th><th scope="col" class="th">Status</th><th scope="col" class="th num">Lifetime</th><th scope="col" class="th">Last order</th><th scope="col" class="th"><span class="sr-only">Actions</span></th></tr></thead>
+          <%# sortable_th + ListSort: the headings link to ?sort=…&dir=…; here the rows stay put, only the headings show the state. %>
+          <% sample_sort = ListSort.new({ 'customer' => ListSort.column('Customer') { {} }, 'status' => ListSort.column('Status') { {} }, 'lifetime' => ListSort.column('Lifetime', :number) { {} }, 'last_order' => ListSort.column('Last order', :date) { {} } }, sort: params[:sort], dir: params[:dir], default: %w[lifetime desc]) %>
+          <thead><tr><%= sortable_th sample_sort, 'customer' %><%= sortable_th sample_sort, 'status' %><%= sortable_th sample_sort, 'lifetime', class: 'num' %><%= sortable_th sample_sort, 'last_order' %><th scope="col" class="th"><span class="sr-only">Actions</span></th></tr></thead>
           <tbody>
             <tr><td class="td"><a href="#" class="font-semibold text-olive-deep hover:underline">Avery Chen</a><p class="text-xs text-taupe">avery@example.test</p></td><td class="td"><span class="pill-fern">VIP</span></td><td class="td num">$4,210.00</td><td class="td">Oct 18, 2026</td><td class="td text-right"><a href="#" class="btn-ghost btn-sm">Open</a></td></tr>
             <tr><td class="td"><a href="#" class="font-semibold text-olive-deep hover:underline">Jordan Reyes</a><p class="text-xs text-taupe">jordan@example.test</p></td><td class="td"><span class="pill-clay">Needs attention</span></td><td class="td num">$320.75</td><td class="td">Sep 2, 2026</td><td class="td text-right"><a href="#" class="btn-ghost btn-sm">Open</a></td></tr>
