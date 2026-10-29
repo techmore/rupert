@@ -176,19 +176,23 @@ for x in MATRIX['capabilities']:
     writer.writerow([x['name'],x['rupert'],x['scope'],x['phase']]+[x['competitors'][v['id']] for v in vs])
 outputs['data/competitor-matrix.csv']=stream.getvalue()
 # Commercial landing source is hand-authored; keep Rails and Pages in sync.
-landing = (DOCS / 'index.html').read_text().replace('assets/landing.css', '/marketing/landing.css').replace('href="index.html"', 'href="/"')
+landing = (DOCS / 'index.html').read_text().replace('assets/landing.css', '/marketing/landing.css').replace('assets/marketing/', '/marketing/').replace('href="index.html"', 'href="/"')
 for filename in ['overview.html', 'roadmap.html']:
     landing = landing.replace('href="'+filename+'"', 'href="https://techmore.github.io/rupert/'+filename+'"')
 outputs['../web/app/views/landing/index.html.erb'] = landing
 outputs['../web/public/marketing/landing.css'] = (DOCS / 'assets/landing.css').read_text()
+# Landing images (logo, product screenshots) live in docs/assets/marketing and are served
+# from /marketing on rupertpos.com, the only static path Caddy proxies there besides /.
+binaries = {'../web/public/marketing/'+str(f.relative_to(DOCS / 'assets/marketing')): f.read_bytes()
+            for f in sorted((DOCS / 'assets/marketing').rglob('*')) if f.is_file()}
 parser=argparse.ArgumentParser();parser.add_argument('--check',action='store_true');args=parser.parse_args()
 stale=[]
-for name, content in outputs.items():
+for name, content in [(n, c.encode()) for n, c in outputs.items()]+list(binaries.items()):
     target=DOCS/name
     if args.check:
-        if not target.exists() or target.read_bytes()!=content.encode():stale.append(name)
+        if not target.exists() or target.read_bytes()!=content:stale.append(name)
     else:
-        target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(content.encode())
+        target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(content)
 for f in CATALOG['features']:
     if not (ROOT/f['evidence']).is_file():raise SystemExit('Missing feature evidence: '+f['evidence'])
 if stale:raise SystemExit('Regenerate product site: '+', '.join(stale))
