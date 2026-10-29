@@ -2239,6 +2239,9 @@ body.tour-active { overflow-x:hidden; }
 .score-cell[data-level="high"] { background:color-mix(in srgb,var(--color-fern) 16%,transparent);color:var(--color-fern); }
 .score-cell[data-level="low"] { background:color-mix(in srgb,var(--color-clay) 16%,transparent);color:var(--color-clay); }
 .score-cell[data-level="none"] { color:var(--color-taupe);font-weight:400; }
+.score-table { min-width:44rem; }
+.score-table .th,.score-table .td { padding-inline:.5rem; }
+.score-table .th { white-space:normal;line-height:1.2;vertical-align:bottom; }
 .score-sticky { position:sticky;left:0;background:var(--color-surface,#fff);z-index:1; }
 .score-time { font-variant-numeric:tabular-nums; }
 .statusbar-scores { flex:none; }
