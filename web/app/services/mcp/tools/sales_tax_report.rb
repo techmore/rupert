@@ -5,8 +5,10 @@ module Mcp
     class SalesTaxReport < Tool
       tool 'sales_tax_report',
         title: 'Sales tax report',
-        description: 'Sales tax collected over a date range, one line per source (Shopify, Square, Rupert POS, C-Trax, ' \
-                     'SwipeSimple) and store. Lines are never summed across sources because one card sale can appear in a ' \
+        description: 'Sales tax collected over a date range, one line per source (Shopify, Square, Rupert POS, ' \
+                     'Manual, POS, C-Trax, SwipeSimple) and store. Manual orders (sales typed in by a person) and POS orders ' \
+                     'are their own labelled lines, the same orders sales_summary counts, so the order-source tax agrees with ' \
+                     'sales_summary tax_cents. Lines are never summed across sources because one card sale can appear in a ' \
                      'store and its processor. A null amount means the source does not report it (unknown, not zero). ' \
                      'With rate, sources lacking a tax figure get a clearly labelled estimate. Amounts are integer cents. ' \
                      'Defaults to this month. Same data as the in-app Sales tax report. Read-only.',
@@ -17,7 +19,7 @@ module Mcp
         properties: {
           from: DATE_PROPERTY.merge(description: 'First day (inclusive). Default: first of this month.'),
           to: DATE_PROPERTY.merge(description: 'Last day (inclusive). Default: today.'),
-          sources: { type: 'array', maxItems: 5, items: { type: 'string', enum: ::SalesTaxReport::SOURCES.keys },
+          sources: { type: 'array', maxItems: ::SalesTaxReport::SOURCES.size, items: { type: 'string', enum: ::SalesTaxReport::SOURCES.keys },
                      description: 'Limit to these sources. Default: all.' },
           rate: { type: 'number', minimum: 0, maximum: ::SalesTaxReport::MAX_RATE,
                   description: 'Optional tax rate percent (e.g. 6.35) for the estimate column only. Default: the workspace setting.' },
