@@ -18,15 +18,17 @@ class TeamChatScorecardTest < ActiveSupport::TestCase
   test 'maps each axis to 0-9 and leaves unmeasured axes blank' do
     scores = TeamChat::Scorecard.scores([row('d2', 5, seconds: 2.0), row('d3', 1, seconds: 2.0, tools: [], unverified: ['$5']), row('d5', nil, seconds: 0, status: 'failed')])
     assert_equal 5, scores['quality'], 'grades 5 and 1 average 3 of 5, which is 4.5 of 9'
-    assert_equal 9, scores['speed'], 'answers within 20 seconds are not penalised'
+    assert_equal 9, scores['speed'], 'answers of 2 seconds or less score the full 9'
     assert_equal 6, scores['reliability'], '2 of 3 answered'
     assert_equal 5, scores['tool_use'], 'one of the two answers used a tool'
     assert_equal 5, scores['grounding']
     assert_nil scores['first_token'], 'no first-token time recorded, so it is blank rather than zero'
     assert_equal 0.0, TeamChat::Scorecard.speed_fraction(120), 'at the two-minute limit an answer scores 0'
-    assert_equal 0.5, TeamChat::Scorecard.speed_fraction(70), 'halfway between 20 and 120 seconds is half marks'
-    assert_equal 1.0, TeamChat::Scorecard.speed_fraction(20)
-    assert_equal 7, TeamChat::Scorecard.scores([row('a', 3, seconds: 20.0), row('b', 3, seconds: 70.0), row('c', 3, seconds: 900.0)])['speed'], 'a 900 second answer is ignored, the other two average 0.75, which is 6.75 of 9'
+    assert_in_delta 0.5, TeamChat::Scorecard.speed_fraction(2 * Math.sqrt(60)), 1e-9, 'halfway in log time between 2 and 120 seconds is half marks'
+    assert_equal 1.0, TeamChat::Scorecard.speed_fraction(2)
+    assert_equal 1.0, TeamChat::Scorecard.speed_fraction(0.5)
+    assert_equal 4, (TeamChat::Scorecard.speed_fraction(20) * 9).round, 'a 20 second answer is no longer a full score'
+    assert_equal 3, TeamChat::Scorecard.scores([row('a', 3, seconds: 20.0), row('b', 3, seconds: 70.0), row('c', 3, seconds: 900.0)])['speed'], 'a 900 second answer is ignored; 20 s and 70 s score 0.44 and 0.13 on the log scale, mean 0.28, which is 2.6 of 9'
     assert_equal 0, TeamChat::Scorecard.scores([row('d2', 1)])['quality']
   end
 
