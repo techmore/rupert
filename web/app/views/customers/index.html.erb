@@ -56,7 +56,9 @@
       <div class="toolbar-field"><%= label_tag :directory, 'Profiles', class: 'field-label' %><%= select_tag :directory, options_for_select([['All profiles', ''], ['Verified in latest read', 'verified'], ['Unverified / historical', 'historical']], params[:directory]), class: 'select w-full' %></div>
       <div class="toolbar-field"><%= label_tag :owner, 'Assignment', class: 'field-label' %><%= select_tag :owner, options_for_select([['All assignments', ''], ['Assigned to me', 'mine'], ['Unassigned', 'unassigned']], params[:owner]), class: 'select w-full' %></div>
       <div class="toolbar-field"><%= label_tag :name, 'Name', class: 'field-label' %><%= select_tag :name, options_for_select([['Everyone', '']] + CustomersController::NAME_FILTERS.invert.to_a, params[:name]), class: 'select w-full' %></div>
-      <div class="toolbar-field"><%= label_tag :sort, 'Sort', class: 'field-label' %><%= select_tag :sort, options_for_select(CustomersController::SORTS.map { |key, (_, label)| [label, key] }, @sort), class: 'select w-full' %></div>
+      <%# Phones get the sort as two fields; wider screens sort by clicking a column heading, and these hidden fields keep that sort when filters are applied. %>
+      <div class="toolbar-field md:hidden"><%= label_tag :sort, 'Sort by', class: 'field-label' %><%= select_tag :sort, options_for_select(CustomersController::SORT_COLUMNS.map { |key, column| [column.label, key] }, @sort.key), class: 'select w-full' %></div>
+      <div class="toolbar-field md:hidden"><%= label_tag :dir, 'Order', class: 'field-label' %><%= select_tag :dir, options_for_select([['Ascending', 'asc'], ['Descending', 'desc']], @sort.dir), class: 'select w-full' %></div>
       <%= hidden_field_tag :due, '1' if params[:due] == '1' %>
       <%= hidden_field_tag :status, params[:status] if params[:status].present? %>
       <div class="toolbar-actions"><%= f.submit 'Apply', class: 'btn-primary' %></div>
@@ -67,7 +69,7 @@
                   label: 'Relationship filter') %>
 
     <p class="text-sm text-mocha" role="status" aria-live="polite">
-      <strong class="text-ink"><%= number_with_delimiter(@pagy.count) %></strong> <%= 'customer'.pluralize(@pagy.count) %><%= ' match your filters' if @filtered %> · <%= CustomersController::SORTS.fetch(@sort).last.downcase %>
+      <strong class="text-ink"><%= number_with_delimiter(@pagy.count) %></strong> <%= 'customer'.pluralize(@pagy.count) %><%= ' match your filters' if @filtered %> · <%= @sort.summary %>
     </p>
 
     <% chips = customer_filter_chips %>
@@ -76,7 +78,7 @@
         <% chips.each do |label, chip_params| %>
           <li><%= link_to customers_path(chip_params), class: 'pill-olive hover:bg-olive/20', title: 'Remove this filter', aria: { label: "Remove filter #{label}" } do %><%= label %> <span aria-hidden="true">×</span><% end %></li>
         <% end %>
-        <li><%= link_to 'Clear filters', customers_path, class: 'btn-ghost btn-sm' %></li>
+        <li><%= link_to 'Clear filters', customers_path(@sort.to_params), class: 'btn-ghost btn-sm' %></li>
       </ul>
     <% end %>
   </section>
@@ -114,15 +116,18 @@
     <div class="card hidden overflow-hidden md:block" <%= tour_anchor('table') %>>
       <div class="table-region" role="region" tabindex="0" aria-label="Customers">
         <table class="table">
-          <caption class="sr-only">Customers, <%= CustomersController::SORTS.fetch(@sort).last.downcase %></caption>
+          <caption class="sr-only">Customers, <%= @sort.summary %>. Select a column heading to sort by it.</caption>
           <thead>
             <tr>
-              <th scope="col" class="th">Name</th>
-              <th scope="col" class="th">Contact</th>
-              <th scope="col" class="th">Relationship</th>
-              <th scope="col" class="th">Source</th>
-              <th scope="col" class="th num">Orders</th>
-              <th scope="col" class="th num">Lifetime</th>
+              <%= sortable_th @sort, 'name' %>
+              <%= sortable_th @sort, 'email' %>
+              <%= sortable_th @sort, 'status' %>
+              <%= sortable_th @sort, 'owner' %>
+              <%= sortable_th @sort, 'source' %>
+              <%= sortable_th @sort, 'orders', class: 'num' %>
+              <%= sortable_th @sort, 'last_order' %>
+              <%= sortable_th @sort, 'lifetime', class: 'num' %>
+              <%= sortable_th @sort, 'created' %>
               <th scope="col" class="th"><span class="sr-only">Actions</span></th>
             </tr>
           </thead>
@@ -132,9 +137,12 @@
                 <td class="td font-medium text-ink"><%= link_to customer.name, customer_path(customer), class: 'text-olive-deep hover:underline' %><% if customer.unknown? %> <%= link_to 'Unknown', customers_path(name: 'unknown'), class: 'pill-taupe', title: 'No name on file. Shown by email or phone when there is one.' %><% end %></td>
                 <td class="td text-mocha"><%= customer.email.presence || '—' %><p class="text-xs text-taupe"><%= customer.phone.presence || '—' %></p></td>
                 <td class="td"><%= customer_status_pill(customer) %><% if customer.tag_list.any? %><p class="mt-1 text-xs text-taupe"><%= customer.tag_list.join(', ') %></p><% end %></td>
+                <td class="td text-mocha"><%= customer.owner&.display_name || '—' %></td>
                 <td class="td"><span class="pill-taupe"><%= directory_label(customer.source) %></span><p class="mt-1 text-xs text-taupe"><%= customer_directory_status(customer) %></p></td>
                 <td class="td num text-mocha"><%= @order_counts[customer.id] || 0 %></td>
+                <td class="td whitespace-nowrap text-mocha"><%= @last_orders[customer.id] ? @last_orders[customer.id].to_date.strftime('%b %-d, %Y') : '—' %></td>
                 <td class="td num font-medium text-ink"><%= customer_money(@lifetime_totals.select { |(id, _), _| id == customer.id }.to_h { |(_, currency), total| [currency, total] }) %></td>
+                <td class="td whitespace-nowrap text-mocha"><%= customer.created_at.to_date.strftime('%b %-d, %Y') %></td>
                 <td class="td text-right"><%= link_to 'Open', customer_path(customer), class: 'btn-ghost btn-sm' %></td>
               </tr>
             <% end %>

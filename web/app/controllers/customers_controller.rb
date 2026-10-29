@@ -5,14 +5,29 @@ require 'csv'
 class CustomersController < AuthenticatedController
   LAST_ORDER_SQL = '(SELECT MAX(orders.occurred_at) FROM orders WHERE orders.customer_id = customers.id)'
   SPEND_SQL = '(SELECT COALESCE(SUM(orders.gross_cents), 0) FROM orders WHERE orders.customer_id = customers.id)'
+  ORDER_COUNT_SQL = '(SELECT COUNT(*) FROM orders WHERE orders.customer_id = customers.id)'
+  OWNER_NAME_SQL = "(SELECT LOWER(COALESCE(NULLIF(TRIM(users.name), ''), users.email)) FROM users WHERE users.id = customers.owner_id)"
   UNKNOWN_LAST_SQL = "CASE WHEN #{Core::Customer::UNKNOWN_SQL} THEN 1 ELSE 0 END".freeze
-  SORTS = {
-    'recent' => [{ created_at: :desc, id: :desc }, 'Newest first'],
-    'oldest' => [{ created_at: :asc, id: :asc }, 'Oldest first'],
-    'name' => [[Arel.sql(UNKNOWN_LAST_SQL), :last_name, :first_name, :id], 'Name A–Z (unknown last)'],
-    'email' => [%i[email id], 'Email A–Z'],
-    'last_order' => [[Arel.sql("#{LAST_ORDER_SQL} IS NULL"), Arel.sql("#{LAST_ORDER_SQL} DESC"), { id: :desc }], 'Most recent order'],
-    'spend' => [[Arel.sql("#{SPEND_SQL} DESC"), { id: :desc }], 'Biggest spenders']
+  NO_EMAIL_LAST_SQL = "CASE WHEN COALESCE(TRIM(customers.email), '') = '' THEN 1 ELSE 0 END"
+  STAGE_SQL = "CASE customers.crm_status #{Core::Customer::CRM_STATUSES.each_with_index.map { |status, i| "WHEN '#{status}' THEN #{i}" }.join(' ')} ELSE #{Core::Customer::CRM_STATUSES.size} END".freeze
+  # The CRM list's sortable headings (ListSort). Blank names, emails, owners
+  # and never-ordered customers sort last in both directions. `dir` is only
+  # ever :asc or :desc, so the SQL fragments below are fixed text.
+  SORT_COLUMNS = {
+    'name' => ListSort.column('Name') { |dir| [Arel.sql(UNKNOWN_LAST_SQL), { last_name: dir, first_name: dir, id: dir }] },
+    'email' => ListSort.column('Contact') { |dir| [Arel.sql(NO_EMAIL_LAST_SQL), Arel.sql("LOWER(customers.email) #{dir.upcase}"), { id: dir }] },
+    'status' => ListSort.column('Relationship', phrases: { 'asc' => 'lead first', 'desc' => 'inactive first' }) { |dir| [Arel.sql("#{STAGE_SQL} #{dir.upcase}"), { id: dir }] },
+    'owner' => ListSort.column('Owner') { |dir| [Arel.sql('customers.owner_id IS NULL'), Arel.sql("#{OWNER_NAME_SQL} #{dir.upcase}"), { id: dir }] },
+    'source' => ListSort.column('Source') { |dir| { source: dir, id: dir } },
+    'orders' => ListSort.column('Orders', :number) { |dir| [Arel.sql("#{ORDER_COUNT_SQL} #{dir.upcase}"), { id: dir }] },
+    'last_order' => ListSort.column('Last order', :date) { |dir| [Arel.sql("#{LAST_ORDER_SQL} IS NULL"), Arel.sql("#{LAST_ORDER_SQL} #{dir.upcase}"), { id: dir }] },
+    'lifetime' => ListSort.column('Lifetime', :number) { |dir| [Arel.sql("#{SPEND_SQL} #{dir.upcase}"), { id: dir }] },
+    'created' => ListSort.column('Added', :date) { |dir| { created_at: dir, id: dir } }
+  }.freeze
+  SORT_DEFAULT = %w[created desc].freeze
+  # Older one-word sort links and bookmarks.
+  SORT_ALIASES = {
+    'recent' => %w[created desc], 'oldest' => %w[created asc], 'spend' => %w[lifetime desc], 'last_order' => %w[last_order desc]
   }.freeze
   NAME_FILTERS = { 'unknown' => 'Unknown (no name)', 'named' => 'Named' }.freeze
 
@@ -26,10 +41,10 @@ class CustomersController < AuthenticatedController
     @due_follow_ups = CustomerFollowUp.due.includes(:customer, :owner).order(:due_on, :id).limit(20)
     @due_count = CustomerFollowUp.due.count
     @owners = crm_owners
-    @sort = SORTS.key?(params[:sort]) ? params[:sort] : 'recent'
+    @sort = ListSort.new(SORT_COLUMNS, sort: params[:sort], dir: params[:dir], default: SORT_DEFAULT, aliases: SORT_ALIASES)
     # Ordered outside the DISTINCT search, so the order and spend sorts work on every database.
-    matching = Core::Customer.where(id: @q.result.select(:id))
-    @pagy, @customers = pagy(:offset, matching.order(*Array.wrap(SORTS.fetch(@sort).first)), limit: 25)
+    matching = Core::Customer.where(id: @q.result.select(:id)).includes(:owner)
+    @pagy, @customers = pagy(:offset, @sort.apply(matching), limit: 25)
     @unknown_count = Core::Customer.unknown.count
     @status_counts = Core::Customer.group(:crm_status).count
     @total_customers = @status_counts.values.sum
@@ -39,6 +54,7 @@ class CustomersController < AuthenticatedController
     ids = @customers.map(&:id)
     @lifetime_totals = Core::Order.where(customer_id: ids).group(:customer_id, :currency).sum(:gross_cents)
     @order_counts = Core::Order.where(customer_id: ids).group(:customer_id).count
+    @last_orders = Core::Order.where(customer_id: ids).group(:customer_id).maximum(:occurred_at)
   end
 
   def sync_directory
