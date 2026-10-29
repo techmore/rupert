@@ -101,6 +101,9 @@ class OpenClockOutsTest < ActionDispatch::IntegrationTest
       theirs = ClockShift.create!(user: other_user, employee: other, employee_key: other.id.to_s, employee_name: other.name,
         employment_type: other.employment_type, started_at: Time.zone.parse('2026-10-27 08:00'), request_token: SecureRandom.uuid)
       sign_in(@staff, 'password123')
+      get employee_app_path
+      assert_select "[data-open-clock-out='rupert-#{mine.id}']", /Clocked in 2 days ago and never clocked out/
+      assert_select 'a[href=?]', fix_clock_out_time_clock_path(mine), 'Fix clock-out'
       get time_clock_path
       assert_select "[data-open-clock-out='rupert-#{mine.id}'] a", 'Fix clock-out'
       assert_select "[data-open-clock-out='rupert-#{theirs.id}']", 0
