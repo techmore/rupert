@@ -134,9 +134,9 @@ class OpenClockOutsTest < ActionDispatch::IntegrationTest
       assert_equal fix_clock_out_time_clock_path(shift), note.url
 
       # A manager whose own clock-in is forgotten is not told about it.
-      @worker.update!(user: @second_admin)
-      later = ClockShift.create!(user: @second_admin, employee: @worker, employee_key: @worker.id.to_s, employee_name: @worker.name,
-        employment_type: @worker.employment_type, started_at: Time.zone.parse('2026-10-25 09:00'), request_token: SecureRandom.uuid)
+      manager_worker = People::Employee.create!(user: @second_admin, first_name: 'Second', last_name: 'Manager')
+      later = ClockShift.create!(user: @second_admin, employee: manager_worker, employee_key: manager_worker.id.to_s, employee_name: manager_worker.name,
+        employment_type: manager_worker.employment_type, started_at: Time.zone.parse('2026-10-25 09:00'), request_token: SecureRandom.uuid)
       OpenClockOutAlertJob.perform_now
       assert Notification.exists?(user: @admin, dedupe_key: "open_clock_out:rupert:#{later.id}")
       assert_not Notification.exists?(user: @second_admin, dedupe_key: "open_clock_out:rupert:#{later.id}")
