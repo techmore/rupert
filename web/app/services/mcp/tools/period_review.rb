@@ -9,7 +9,6 @@ module Mcp
     class PeriodReview < Tool
       PERIODS = %w[today yesterday this_week last_week this_pay_week last_pay_week this_month last_month
                    this_quarter last_quarter year_to_date last_year].freeze
-      COUNTED = SalesSummary::COUNTED
       SOURCES = SalesSummary::SOURCES
 
       tool 'period_review',
@@ -42,7 +41,7 @@ module Mcp
                  sales: current[:sales], previous_sales: before[:sales], change: change(current[:sales], before[:sales]),
                  refunds: current[:refunds], top_products: current[:top_products], activity: current[:activity],
                  previous_activity: before[:activity], separately_recorded: current[:separate],
-                 note: 'Sales are Shopify, Square, Rupert POS and manual orders (paid or fulfilled). Amounts per currency, never added across currencies.' }
+                 note: 'Sales are Shopify, Square, Rupert POS and manual orders (paid, fulfilled, or refunded with a refund on record: a refund does not erase the original sale and is shown under refunds). Amounts per currency, never added across currencies.' }
         data[:money_summary] = {
           gross_sales_by_currency: current[:sales], expenses_cents: current[:activity][:expenses_cents],
           expenses_visible: user.can?('finance.read'),
@@ -83,7 +82,7 @@ module Mcp
 
       def figures(from, to, light: false)
         window = range(from, to)
-        orders = Core::Order.where(occurred_at: window, source: SOURCES, status: COUNTED)
+        orders = Core::Order.where(occurred_at: window, source: SOURCES).sales_counted
         sales = orders.group(:currency).pluck(:currency, Arel.sql('COUNT(*)'), Arel.sql('SUM(gross_cents)'), Arel.sql('COUNT(gross_cents)'))
                       .map { |currency, count, gross, known| { currency: currency, orders: count, gross_cents: known == count ? gross.to_i : nil } }
         sales.each { |line| line[:by_source] = orders.where(currency: line[:currency]).group(:source).sum(:gross_cents).transform_values(&:to_i) }

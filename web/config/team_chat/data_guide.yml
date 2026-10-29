@@ -33,7 +33,7 @@ topics:
       metric expenses_by_category returns active Rupert expense-register totals by category in USD, with the
       comparison already computed; vendor payments are separate and are not added as expenses.
       Refunds are recorded per order (period_review has refund totals per currency; sales_summary counts refunded
-      orders per source). Expenses come from the finance ledger (period_review expenses_cents, for people allowed to
+      orders per source and lists refunds_by_currency; the refunded order's sale stays in gross sales). Expenses come from the finance ledger (period_review expenses_cents, for people allowed to
       see finance). Profit or margin needs cost of goods, which Rupert does not have: say so instead of estimating.
   - key: books
     title: Books, close and compliance
@@ -185,7 +185,8 @@ topics:
       sales_by_source, top_products,
       refund_rate, tax_collected, effective_tax_rate): Rupert computes it per currency with the comparison already worked out; quote it.
       Orders live in Rupert's order store (Shopify, Square, Rupert POS, manual). Paid and fulfilled orders count as
-      sales. Money is in cents with a ready *_dollars value beside it. Totals are per currency, never added across
+      sales, and so does a refunded order that has a refund on record: its sale stays in gross sales and orders (metric,
+      sales_summary and period_review agree) with the refund shown separately; net is gross minus refunds. Money is in cents with a ready *_dollars value beside it. Totals are per currency, never added across
       currencies. These are NOT the store's register sales: the SwipeSimple and C-Trax registers are separate (use
       daily_close) and never added to order totals. When you answer from these tools say "online and Square" (or the
       source), never "the store", and if the question was about the whole business add the store registers from
