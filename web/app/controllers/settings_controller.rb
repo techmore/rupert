@@ -234,7 +234,7 @@ class SettingsController < AuthenticatedController
   # POST /settings/pay_rules — the pay period (weekly or every two weeks, start day) and overtime
   # (off unless turned on). Saving marks the pay period chosen, which ticks it off the release gate.
   def pay_rules
-    attrs = params.permit(:pay_period, :week_start_day, :anchor_date, :overtime_enabled, :overtime_threshold_hours, :overtime_multiplier).to_h
+    attrs = params.permit(:pay_period, :week_start_day, :anchor_date, :overtime_enabled, :overtime_threshold_hours, :overtime_multiplier, :open_shift_limit_hours).to_h
     attrs['overtime_enabled'] = attrs['overtime_enabled'] == '1'
     attrs['anchor_date'] = nil unless attrs['pay_period'] == 'biweekly'
     rules = PayRules.save!(attrs, actor: Current.user)

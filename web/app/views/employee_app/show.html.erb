@@ -18,7 +18,10 @@
   <section class="card card-pad flex flex-wrap items-center justify-between gap-4" <%= tour_anchor('clock') %>>
     <div>
       <h2 class="card-title"><%= @open_shift ? 'You’re clocked in' : @worker.on_leave? ? 'You’re on leave' : 'Ready for your day?' %></h2>
-      <% if @open_shift %>
+      <% if @open_shift&.stale_open? %>
+        <p class="mt-1 text-sm" data-open-clock-out="rupert-<%= @open_shift.id %>"><span class="pill-rose">Never clocked out</span> <%= open_clock_out_label(@open_shift.started_at) %>. These hours don’t count until it’s fixed.</p>
+        <%= link_to 'Fix clock-out', fix_clock_out_time_clock_path(@open_shift), class: 'btn-ghost btn-sm mt-2' unless @preview %>
+      <% elsif @open_shift %>
         <p class="mt-1 text-2xl font-semibold tabular-nums" data-controller="elapsed-time" data-elapsed-time-start-value="<%= @open_shift.started_at.iso8601 %>"><span data-elapsed-time-target="duration"><%= number_with_precision(@open_shift.hours, precision: 2) %>h</span></p>
         <p class="text-sm text-mocha">Since <%= l(@open_shift.started_at, format: '%-I:%M %p %Z') %></p>
       <% else %><p class="mt-1 text-sm text-mocha"><%= @worker.on_leave? ? 'Your time records and time-off requests are still here.' : 'Clock in when you start working.' %></p><% end %>

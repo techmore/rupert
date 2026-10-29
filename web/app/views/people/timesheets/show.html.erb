@@ -27,6 +27,8 @@
     <% if @timesheet.assigned_reviewer %><div><dt>Assigned to</dt><dd><%= @timesheet.assigned_reviewer.display_name %></dd></div><% end %>
   </dl>
 
+  <%= render 'shared/open_clock_outs', items: @open_items, limit: @open_clock_outs.limit_hours %>
+
   <% if @square_changes.to_i.positive? %>
     <p class="flash flash-alert" role="status" data-square-changes>
       Square edited <%= pluralize(@square_changes, 'timecard') %> in this period after import; the original hours still count.

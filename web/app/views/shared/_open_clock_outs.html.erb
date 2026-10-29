@@ -1,0 +1,28 @@
+<%# Forgotten clock-outs. Locals: items (OpenClockOuts::Item list), limit (hours). %>
+<% if items.any? %>
+  <section class="card" aria-labelledby="open-clock-outs-heading" data-open-clock-outs>
+    <div class="row-item">
+      <h2 id="open-clock-outs-heading" class="card-title"><span class="pill-rose">Never clocked out</span> <%= pluralize(items.size, 'open shift') %></h2>
+      <p class="row-item-end text-sm text-mocha">Open more than <%= limit %> hours, so not counted until fixed.</p>
+    </div>
+    <ul class="row-list border-t border-fog">
+      <% items.each do |item| %>
+        <li class="row-item" data-open-clock-out="<%= item.kind %>-<%= item.record.id %>">
+          <div class="min-w-0">
+            <p class="font-medium"><%= item.employee_name %></p>
+            <p class="text-sm text-mocha"><%= open_clock_out_label(item.started_at) %> · <%= l(item.started_at, format: '%a %b %-d, %-I:%M %p') %> · <%= item.rupert? ? 'Rupert time clock' : 'Square' %></p>
+          </div>
+          <div class="row-item-end">
+            <% if item.rupert? && (item.record.user_id == Current.user.id || OpenClockOuts.manager?(Current.user)) %>
+              <% pending = item.record.corrections.any? { |correction| correction.status == 'pending' } %>
+              <% if pending %><span class="pill-clay">Correction waiting for review</span><% end %>
+              <%= link_to 'Fix clock-out', fix_clock_out_time_clock_path(item.record), class: 'btn-ghost btn-sm' unless pending %>
+            <% elsif !item.rupert? %>
+              <span class="text-sm text-mocha">Close it in Square</span>
+            <% end %>
+          </div>
+        </li>
+      <% end %>
+    </ul>
+  </section>
+<% end %>

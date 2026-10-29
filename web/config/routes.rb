@@ -523,6 +523,7 @@ Rails.application.routes.draw do
   post '/time_clock/clock_in', to: 'time_clock#clock_in', as: :clock_in_time_clock
   post '/time_clock/clock_out', to: 'time_clock#clock_out', as: :clock_out_time_clock
   post '/time_clock/shifts/:id/correction', to: 'time_clock#request_correction', as: :request_correction_time_clock
+  get '/time_clock/shifts/:id/fix', to: 'time_clock#fix_clock_out', as: :fix_clock_out_time_clock
   post '/time_clock/corrections/:id/approve', to: 'time_clock#approve_correction', as: :approve_correction_time_clock
   post '/time_clock/corrections/:id/reject', to: 'time_clock#reject_correction', as: :reject_correction_time_clock
   get '/time_clock/commissions', to: 'time_clock#commissions', as: :commission_preview_time_clock

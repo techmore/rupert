@@ -48,7 +48,7 @@ class EmployeePayWeek
     add_order_sources
     add_ctrax_days
     if own_shifts.any? { |shift| shift.stale_open?(@now) }
-      @notes << "A punch has been open more than #{ClockShift::STALE_OPEN_HOURS} hours; it counts only #{ClockShift::STALE_OPEN_HOURS} hours until it is corrected."
+      @notes << "A punch has been open more than #{ClockShift.stale_open_hours} hours (a forgotten clock-out); it counts no hours until it is corrected."
     end
     @notes << 'No pay rate is on file, so base pay is unavailable.' unless pay_rate
     @notes << 'An administrator account earns no commission and no share of tips.' if admin?

@@ -3,13 +3,14 @@
 <div class="space-y-6">
   <%= page_header 'Time clock', subtitle: "Clock your own work from this device, including remote work (#{Time.zone.name} time).",
         menu: (Current.user.can?('payroll.read') ? [['Commission preview', commission_preview_time_clock_path]] : nil) %>
+  <%= render 'shared/open_clock_outs', items: @open_items, limit: @open_clock_outs.limit_hours %>
   <section class="section-card">
     <% if @worker %>
       <%= section_heading "#{@worker.name} · #{@worker.employment_type.humanize}", hint: 'Corrections require review; these records do not automatically change payroll.' do %>
         <% if @open_shift %><span class="pill-fern">Clocked in</span><% else %><span class="pill-taupe">Clocked out</span><% end %>
       <% end %>
       <% if @open_shift %>
-        <p class="text-sm">Since <%= l(@open_shift.started_at, format: '%b %-d, %Y %-I:%M:%S %p %Z') %> · <%= number_with_precision(@open_shift.hours, precision: 2) %> hours so far</p>
+        <p class="text-sm">Since <%= l(@open_shift.started_at, format: '%b %-d, %Y %-I:%M:%S %p %Z') %> · <%= @open_shift.stale_open? ? "#{open_clock_out_label(@open_shift.started_at)}; not counted until fixed" : "#{number_with_precision(@open_shift.hours, precision: 2)} hours so far" %></p>
         <%= button_to 'Clock out', clock_out_time_clock_path, params: { shift_id: @open_shift.id }, method: :post, class: 'btn-primary btn-lg', data: { turbo: false } %>
       <% else %>
         <%= button_to 'Clock in', clock_in_time_clock_path, params: { request_token: SecureRandom.uuid }, method: :post, class: 'btn-primary btn-lg', data: { turbo: false } %>
@@ -17,7 +18,7 @@
     <% else %>
       <%= section_heading 'Link your worker record', hint: 'Ask an administrator to connect exactly one active Staff record to your sign-in account. Contractors can use the same time clock. Your existing shift history stays below.' %>
       <% if @open_shift %>
-        <p class="text-sm"><span class="pill-fern">Clocked in</span> <%= l(@open_shift.started_at, format: '%b %-d, %Y %-I:%M:%S %p %Z') %> · <%= number_with_precision(@open_shift.hours, precision: 2) %> hours so far</p>
+        <p class="text-sm"><span class="pill-fern">Clocked in</span> <%= l(@open_shift.started_at, format: '%b %-d, %Y %-I:%M:%S %p %Z') %> · <%= @open_shift.stale_open? ? "#{open_clock_out_label(@open_shift.started_at)}; not counted until fixed" : "#{number_with_precision(@open_shift.hours, precision: 2)} hours so far" %></p>
         <%= button_to 'Clock out', clock_out_time_clock_path, params: { shift_id: @open_shift.id }, method: :post, class: 'btn-primary btn-lg', data: { turbo: false } %>
       <% end %>
     <% end %>
@@ -28,7 +29,7 @@
     <% @shifts.each do |shift| %>
       <article class="card card-pad space-y-3">
         <p class="font-medium"><%= l(shift.started_at, format: '%b %-d, %Y %-I:%M:%S %p %Z') %> → <%= shift.ended_at ? l(shift.ended_at, format: '%b %-d, %Y %-I:%M:%S %p %Z') : 'Open shift' %></p>
-        <p class="text-sm text-mocha"><%= number_with_precision(shift.hours, precision: 2) %> hours</p>
+        <p class="text-sm text-mocha"><%= shift.stale_open? ? "#{open_clock_out_label(shift.started_at)} · not counted until fixed" : "#{number_with_precision(shift.hours, precision: 2)} hours" %></p>
         <details class="explainer"><summary class="explainer-summary">Request a time correction</summary>
           <%= form_with url: request_correction_time_clock_path(shift), scope: :clock_correction, data: { turbo: false }, class: 'mt-3 space-y-3' do |form| %>
             <div class="grid gap-3 sm:grid-cols-2"><div><%= form.label :proposed_started_at, 'Correct clock-in', class: 'field-label' %><%= form.datetime_local_field :proposed_started_at, value: shift.started_at.in_time_zone.strftime('%Y-%m-%dT%H:%M:%S'), step: 1, required: true, class: 'input' %></div><div><%= form.label :proposed_ended_at, 'Correct clock-out', class: 'field-label' %><%= form.datetime_local_field :proposed_ended_at, value: shift.ended_at&.in_time_zone&.strftime('%Y-%m-%dT%H:%M:%S'), step: 1, required: true, class: 'input' %></div></div>
