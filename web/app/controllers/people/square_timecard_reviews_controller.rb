@@ -15,7 +15,7 @@ module People
       @employees = People::Employee.where(id: SquareTimecardReviewer.queue.select(:employee_id)).order(:last_name, :first_name)
       @pagy, cards = pagy(:offset, scope.order(:employee_id, :started_at, :id), limit: PER_PAGE)
       @reviews = cards.map { |card| SquareTimecardReviewer.new(card) }
-      @groups = @reviews.group_by { |review| review.card.employee }.transform_values do |rows|
+      @groups = @reviews.group_by { |review| review.card.employee }.sort_by { |employee, _| employee&.name.to_s }.to_h.transform_values do |rows|
         rows.group_by { |review| PayRules.current.period_range(local_day(review.card)) }
       end
       @waiting = scope.count

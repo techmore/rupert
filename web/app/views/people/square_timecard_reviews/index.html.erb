@@ -25,46 +25,46 @@
   <% end %>
 
   <% @groups.each do |employee, periods| %>
-    <section class="section-card" aria-labelledby="square-changes-<%= employee&.id || 'unmatched' %>">
-      <%= section_heading employee&.name || 'Staff member not matched', id: "square-changes-#{employee&.id || 'unmatched'}" %>
+    <% heading_id = "square-changes-#{employee&.id || 'unmatched'}" %>
+    <section class="space-y-3" aria-labelledby="<%= heading_id %>">
+      <%= section_heading employee&.name || 'Staff member not matched', id: heading_id %>
       <% periods.each do |(first, last), rows| %>
         <% counted = rows.sum { |review| review.comparison[:counted][:seconds] } %>
         <% latest = rows.sum { |review| review.comparison[:latest][:seconds] } %>
-        <h3 class="card-title">Pay period <%= "#{l(first, format: '%b %-d')} – #{l(last, format: '%b %-d, %Y')}" %></h3>
-        <p class="text-sm text-mocha">Counted <%= square_hours(counted) %> h · Square now <%= square_hours(latest) %> h · Difference <%= square_hours_delta(latest - counted) %> h</p>
-        <div class="table-region" role="region" tabindex="0" aria-label="Square changes for <%= employee&.name %>, <%= l(first, format: '%b %-d') %> pay period">
-          <table class="table">
-            <thead>
-              <tr>
-                <th scope="col" class="th">Counted now</th>
-                <th scope="col" class="th num">Hours</th>
-                <th scope="col" class="th">Square’s latest</th>
-                <th scope="col" class="th num">Hours</th>
-                <th scope="col" class="th num">Difference</th>
-                <th scope="col" class="th">Review</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% rows.each do |review| %>
-                <% view = review.comparison %>
-                <tr>
-                  <td class="td whitespace-nowrap"><%= link_to square_shift_label(view[:counted][:started_at], view[:counted][:ended_at], view[:counted][:timezone]), people_square_timesheet_path(review.card), class: 'font-medium text-olive hover:underline' %></td>
-                  <td class="td num"><%= square_hours(view[:counted][:seconds]) %></td>
-                  <td class="td whitespace-nowrap">
+        <div class="card">
+          <div class="row-item">
+            <h3 class="card-title">Pay period <%= "#{l(first, format: '%b %-d')} – #{l(last, format: '%b %-d, %Y')}" %></h3>
+            <p class="row-item-end text-sm text-mocha">Counted <%= square_hours(counted) %> h · Square now <%= square_hours(latest) %> h · <%= square_hours_delta(latest - counted) %> h</p>
+          </div>
+          <ul class="row-list border-t border-fog" aria-label="Square changes for <%= employee&.name %>, pay period <%= l(first, format: '%b %-d') %>">
+            <% rows.each do |review| %>
+              <% view = review.comparison %>
+              <li class="row-item items-start" data-square-change="<%= review.card.id %>">
+                <dl class="grid min-w-0 flex-1 grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
+                  <div>
+                    <dt class="text-xs text-mocha">Counted now</dt>
+                    <dd><%= link_to square_shift_label(view[:counted][:started_at], view[:counted][:ended_at], view[:counted][:timezone]), people_square_timesheet_path(review.card), class: 'font-medium text-olive hover:underline' %></dd>
+                    <dd class="num text-left"><%= square_hours(view[:counted][:seconds]) %> h</dd>
+                  </div>
+                  <div>
+                    <dt class="text-xs text-mocha">Square’s latest</dt>
                     <% if view[:latest][:removed] %>
-                      <span class="pill-rose">Removed in Square</span>
+                      <dd><span class="pill-rose">Removed in Square</span></dd>
                     <% else %>
-                      <%= square_shift_label(view[:latest][:started_at], view[:latest][:ended_at], view[:latest][:timezone]) %>
-                      <% if view[:latest][:employee] && view[:latest][:employee] != employee %><p class="text-xs text-mocha">Now matched to <%= view[:latest][:employee].name %></p><% end %>
+                      <dd><%= square_shift_label(view[:latest][:started_at], view[:latest][:ended_at], view[:latest][:timezone]) %></dd>
+                      <dd class="num text-left"><%= square_hours(view[:latest][:seconds]) %> h</dd>
+                      <% if view[:latest][:employee] && view[:latest][:employee] != employee %><dd class="text-xs text-mocha">Now matched to <%= view[:latest][:employee].name %></dd><% end %>
                     <% end %>
-                  </td>
-                  <td class="td num"><%= view[:latest][:removed] ? '—' : square_hours(view[:latest][:seconds]) %></td>
-                  <td class="td num"><%= square_hours_delta(review.delta_seconds) %></td>
-                  <td class="td min-w-64"><%= render 'people/square_timecard_reviews/decision', review: review %></td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
+                  </div>
+                  <div>
+                    <dt class="text-xs text-mocha">Difference</dt>
+                    <dd class="num text-left font-medium"><%= square_hours_delta(review.delta_seconds) %> h</dd>
+                  </div>
+                </dl>
+                <div class="w-full sm:w-80"><%= render 'people/square_timecard_reviews/decision', review: review %></div>
+              </li>
+            <% end %>
+          </ul>
         </div>
       <% end %>
     </section>

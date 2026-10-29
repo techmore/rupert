@@ -34,9 +34,9 @@ class SquareTimecardReviewTest < ActionDispatch::IntegrationTest
     assert_select 'h1', 'Square changes'
     assert_select 'h2', 'Justin Changed'
     assert_select 'h3', /Pay period/
-    assert_select 'td', /9:00 AM – 5:00 PM/
-    assert_select 'td', /9:00 AM – 7:30 PM/
-    assert_select 'td.num', '+2.50'
+    assert_select "[data-square-change='#{@card.id}'] dd", /9:00 AM – 5:00 PM/
+    assert_select "[data-square-change='#{@card.id}'] dd", /9:00 AM – 7:30 PM/
+    assert_select "[data-square-change='#{@card.id}'] dd.num", '+2.50 h'
     assert_select "form[data-square-review='#{@card.id}'] button[value=accept]"
 
     seen_key = SquareTimecardReviewer.new(@card).comparison[:seen_key]
