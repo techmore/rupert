@@ -447,6 +447,7 @@ module TeamChat
       meta['follow_ups'] = follow_ups if follow_ups.any?
       load_ms = model_load_ms
       meta['load_ms'] = load_ms if load_ms
+      meta.merge!(model_first_token(meta))
       unverified = @toolbox.financial? ? [] : NumberCheck.call(body, checked_sources)
       meta['unverified'] = unverified if unverified.any?
       meta['figures_checked'] = true if figures_checked?(body, unverified)
@@ -562,6 +563,20 @@ module TeamChat
       return nil unless load && load['reason'] == 'request' && load['model'] == @config.model && load['finished_at'].to_f >= @asked_at - 1
 
       (load['seconds'].to_f * 1000).round
+    end
+
+    # Time to first token of this reply's last model call, plus the gateway's token counts when the run counted none
+    # (local bots only; remote models have no gateway and stay absent). {} when the gateway has nothing for this reply.
+    def model_first_token(meta)
+      return {} unless @engine == 'local_gateway' && @asked_at
+
+      timing = LocalAgents.last_timing
+      return {} unless timing && timing['model'] == @config.model && timing['finished_at'].to_f >= @asked_at - 1 && timing['ttft_ms'].to_f.positive?
+
+      found = { 'ttft_ms' => timing['ttft_ms'].to_f.round }
+      found['tokens_in'] = timing['prompt_tokens'] if timing['prompt_tokens'] && meta['tokens_in'].to_i.zero?
+      found['tokens_out'] = timing['completion_tokens'] if timing['completion_tokens'] && meta['tokens_out'].to_i.zero?
+      found
     end
 
     # The goal is every answer within ModelScores::SLOW_SECONDS; slower ones are logged and listed on Model scores.

@@ -99,6 +99,20 @@ module TeamChat
       nil
     end
 
+    # The gateway's timing of its most recent request: {'model', 'finished_at' (epoch), 'outcome', 'ttft_ms' (request sent to
+    # llama-server -> first content, reasoning or tool-call chunk; after queueing and loading), 'queue_ms', 'prompt_tokens',
+    # 'completion_tokens'}, or nil. Requests are serialized, so right after a reply it is that reply's last model call.
+    def self.last_timing
+      return nil unless enabled?
+
+      uri = URI("#{base_url}/health")
+      response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https', open_timeout: 1, read_timeout: 2) { |http| http.get(uri.request_uri) }
+      timing = JSON.parse(response.body)['last_timing'] if response.is_a?(Net::HTTPSuccess)
+      timing if timing.is_a?(Hash)
+    rescue StandardError
+      nil
+    end
+
     def self.cloud_enabled?
       ModelConfig.new(ENV.to_h.merge('RUPERT_CHAT_PROVIDER' => 'opencode_go', 'RUPERT_CHAT_MODEL' => nil)).configured?
     rescue StandardError
