@@ -95,7 +95,7 @@ const escape = (text) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 // 9:41, full signal, wi-fi and battery, as in Apple's own marketing screenshots.
 function statusBar(dev, fg) {
   const left = dev.floating
-    ? `<span style="position:absolute;left:20px;top:4px;font:600 15px/16px ${FONT}">9:41&nbsp;&nbsp;Tue Sep 9</span>`
+    ? `<span style="position:absolute;left:20px;top:4px;font:600 15px/16px ${FONT}">9:41&nbsp;&nbsp;Thu Oct 29</span>`
     : `<span style="position:absolute;left:0;width:150px;text-align:center;top:20px;font:600 17px/22px ${FONT};letter-spacing:-.2px">9:41</span>`;
   const [right, top, scale] = dev.floating ? [20, 5, 0.85] : [30, 24, 1];
   const signal = [4, 6.5, 9, 12].map((h, i) => `<rect x="${i * 5.5}" y="${12 - h}" width="3.8" height="${h}" rx="1.1" fill="${fg}"/>`).join("");
@@ -127,22 +127,35 @@ function tabBar(selected, floating) {
   return `<div style="display:flex;height:49px">${cells}</div>`;
 }
 
-function frameHtml(dev, png, info, selected) {
+// The App settings button (person.crop.circle) on a tab's first page, a back chevron on pushed pages.
+function navButtons(dev, ink, accent, root) {
+  const y = dev.status + dev.nav / 2;
+  if (root) {
+    return `<svg style="position:absolute;right:16px;top:${y - 13}px" width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="${accent}" stroke-width="1.8">` +
+      `<circle cx="13" cy="13" r="11.5"/><circle cx="13" cy="10.2" r="3.8"/><path d="M5.6 20.6c1.7-2.7 4.3-4 7.4-4s5.7 1.3 7.4 4"/></svg>`;
+  }
+  return `<svg style="position:absolute;left:10px;top:${y - 12}px" width="14" height="24" viewBox="0 0 14 24" fill="none" stroke="${accent}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2 2 12l9 10"/></svg>`;
+}
+
+function frameHtml(dev, png, info, selected, root) {
   const banner = hex(info.banner);
   const ink = hex(info.ink);
   const fg = isDark(info.banner) ? "#fff" : "#000";
   const top = dev.status + dev.nav;
   const contentHeight = dev.height - top - dev.tabs;
-  const title = escape(info.title);
+  // The app drops the browser-tab suffix (Banner.swift visitableDidRender).
+  const title = escape(info.title.replace(/ · Rupert$/, ""));
   let nav, bottom;
   if (dev.floating) {
     nav = `<div style="position:absolute;left:0;right:0;top:${dev.status}px;height:${dev.nav}px;background:${banner}">` +
       `<span style="position:absolute;left:20px;top:0;font:600 17px/${dev.nav}px ${FONT};color:${ink}">${title}</span>` +
       `<div style="position:absolute;left:0;right:0;top:4px;text-align:center">${tabBar(selected, true)}</div></div>`;
+    nav += navButtons(dev, ink, ACCENT, root);
     bottom = `<div style="position:absolute;left:50%;bottom:8px;width:320px;margin-left:-160px;height:5px;border-radius:3px;background:rgba(0,0,0,.85)"></div>`;
   } else {
     nav = `<div style="position:absolute;left:0;right:0;top:${dev.status}px;height:${dev.nav}px;background:${banner};text-align:center;` +
       `font:600 17px/${dev.nav}px ${FONT};color:${ink};padding:0 60px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${title}</div>`;
+    nav += navButtons(dev, ink, ACCENT, root);
     bottom = `<div style="position:absolute;left:0;right:0;bottom:0;height:${dev.tabs}px;background:rgba(249,249,249,.97);` +
       `box-shadow:inset 0 .5px 0 rgba(0,0,0,.25)">${tabBar(selected, false)}` +
       `<div style="position:absolute;left:50%;bottom:8px;width:144px;margin-left:-72px;height:5px;border-radius:3px;background:#000"></div></div>`;
@@ -189,7 +202,8 @@ async function capture(browser, name, dev, { baseUrl, password, countId, out }) 
     if (!info.nativeApp) problems.push("body is not .native-app");
     if (problems.length) console.error(`warning: ${name}-${stem} (${page.url()}): ${problems.join(", ")}`);
     const png = await page.screenshot({ animations: "disabled", caret: "hide" });
-    await framePage.setContent(frameHtml(dev, png, info, tab), { waitUntil: "load" });
+    const root = path === "/" || tab !== "home";
+    await framePage.setContent(frameHtml(dev, png, info, tab, root), { waitUntil: "load" });
     const target = join(out, `${name}-${stem}.png`);
     await framePage.screenshot({ path: target, animations: "disabled" });
     console.log(`${name}-${stem}.png: ${info.title}`);

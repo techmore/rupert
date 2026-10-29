@@ -118,5 +118,4 @@ class AppStoreReadinessTest < ActionDispatch::IntegrationTest
     get ask_rupert_path
     assert_redirected_to learning_index_path
   end
-
 end
