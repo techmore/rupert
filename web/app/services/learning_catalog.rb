@@ -97,7 +97,7 @@ class LearningCatalog
     'open_po' => ['Open purchase order', 'An order still in draft or placed with the vendor but not yet received or cancelled. Received and cancelled orders are closed.'],
     'payment_terms' => ['Payment terms', 'The vendor’s agreed window for paying an invoice, such as Net 30. Recording terms does not schedule or send a payment.'],
     # Money: sales and register reports
-    'net_revenue' => ['Net revenue', 'Gross revenue from paid and fulfilled orders minus refunds recorded against orders in the window. Tax is not subtracted, and refunded orders with no recorded refund amount leave this figure overstated.'],
+    'net_revenue' => ['Net revenue', 'Gross revenue from paid, fulfilled and refunded orders minus refunds recorded against orders in the window. Tax is not subtracted, and refunded orders with no recorded refund amount leave this figure overstated.'],
     'tax_collected' => ['Tax collected', 'Sales tax recorded on the included orders by their source. Rupert shows the stored amount; it does not calculate or file tax.'],
     'revenue_per_day' => ['Revenue per day', 'Daily revenue totals in the window added together and divided by the number of days shown. Days with no orders count as zero.'],
     'eligible_orders' => ['Eligible orders', 'Paid, fulfilled or refunded orders whose stored order date falls on the selected business day. Placed, cancelled and unsettled orders are excluded.'],

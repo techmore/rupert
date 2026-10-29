@@ -54,7 +54,7 @@
     <details class="explainer row-list-foot" data-sales-total-explanation <%= tour_anchor('explanation') %>>
       <summary class="explainer-summary">What makes up these totals?</summary>
       <div class="mt-2 space-y-3 text-sm text-mocha">
-        <p>For <%= @date.strftime('%B %-d, %Y') %>, recorded sales add paid and fulfilled USD orders and completed C-Trax sales once, before refunds. Tips, payment reports and bank deposits stay separate.</p>
+        <p>For <%= @date.strftime('%B %-d, %Y') %>, recorded sales add paid, fulfilled and refunded USD orders (a refunded sale stays in gross) and completed C-Trax sales once, before refunds. Tips, payment reports and bank deposits stay separate.</p>
         <dl class="divide-y divide-fog"><% @source_groups.each do |source, cents, count| %><div class="flex flex-wrap justify-between gap-2 py-2"><dt><%= operations_source_name(source) %> · <%= pluralize(count, 'sale') %></dt><dd class="num font-semibold"><%= operations_money(cents) %></dd></div><% end %><div class="flex justify-between gap-3 py-3 font-semibold"><dt>Recorded sales</dt><dd class="num"><%= operations_money(@day_total_cents) %></dd></div></dl>
         <p><% if @day_count.positive? %>Average sale = <%= operations_money(@day_total_cents) %> ÷ <%= pluralize(@day_count, 'included sale') %> = <%= operations_money(BigDecimal(@day_total_cents.to_s) / @day_count) %>.<% else %>No included sales are stored for this day. The average is shown as a dash; check source coverage before treating zero as no activity.<% end %></p>
         <p>The <%= @window_days %>-day figure covers <%= @sales.from.to_date %> through <%= @date %>. The journal status filter only changes the order journal.</p>

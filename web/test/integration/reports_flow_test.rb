@@ -54,6 +54,26 @@ class ReportsFlowTest < ActionDispatch::IntegrationTest
     EnvStore.set('SHOPIFY_CLIENT_SECRET', nil)
   end
 
+  test 'sales and financial reports count a fully refunded order in gross, with the refund beside it' do
+    refunded = Core::Order.new(source: 'square', source_order_id: 'sq-refunded', channel: 'pos', gross_cents: 1000, tax_cents: 0,
+      occurred_at: Time.current, tenant_id: @tenant.id, location_id: @loc.externalId)
+    refunded.mark_paid!
+    refunded.save!
+    Core::Refund.create!(order: refunded, amount_cents: 1000, refunded_at: Time.current, method: 'card')
+    refunded.refund!
+    get sales_reports_path
+    assert_response :success
+    assert_select '.stat-label', text: /Orders/ do |labels|
+      assert_equal '2', labels.first.parent.at_css('.stat-value').text.strip
+    end
+    assert_includes response.body, '$35.00'
+    get financial_reports_path
+    assert_response :success
+    assert_includes response.body, '$35.00'
+    assert_includes response.body, '$10.00'
+    assert_includes response.body, '$25.00'
+  end
+
   test 'sales report renders charts and top products' do
     get sales_reports_path
     assert_response :success

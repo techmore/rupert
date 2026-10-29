@@ -171,7 +171,7 @@
     <article class="section-card">
       <%= section_heading 'Tabs and explainers', hint: 'Tabs switch views of the same report; explainers keep the caveat one click away.', level: :h3 %>
       <%= page_tabs([['Sales', '#', true], ['Sales tax', '#', false], ['Financial', '#', false], ['Inventory', '#', false]], label: 'Sample report tabs') %>
-      <%= fold_explainer('Totals include paid and fulfilled orders once, before refunds. Tips, payment reports and bank deposits stay separate so a day never counts money twice. The order journal status filter changes only the journal below.', class: 'text-sm text-mocha') %>
+      <%= fold_explainer('Totals include paid, fulfilled and refunded orders once, before refunds. Tips, payment reports and bank deposits stay separate so a day never counts money twice. The order journal status filter changes only the journal below.', class: 'text-sm text-mocha') %>
     </article>
   </section>
 
