@@ -78,13 +78,7 @@
           <li class="row-item">
             <div class="min-w-0">
               <p class="font-medium">
-                <% case event[:kind] %>
-                <% when 'seen' %>Square version<%= " #{event[:source_version]}" if event[:source_version] %> read
-                <% when 'missing' %>Missing from Square
-                <% when 'accepted' %>Square’s version accepted
-                <% when 'kept' %>Original hours kept
-                <% when 'held' %>Accept held: period locked
-                <% end %>
+                <%= square_history_title(event) %>
               </p>
               <p class="text-sm text-mocha">
                 <% if event[:kind] == 'seen' %>

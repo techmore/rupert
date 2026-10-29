@@ -51,7 +51,7 @@ class SquareTimecardReviewerTest < ActiveSupport::TestCase
     assert_equal [1, 2, 1, nil], versions.map(&:source_version)
     assert_equal versions.first.digest, versions.third.digest
     refute_includes versions.first.payload_before_type_cast, 'native-team-1'
-    assert_raises(ActiveRecord::ReadOnlyRecord) { versions.first.update!(seen_at: Time.current) }
+    assert_raises(ActiveRecord::ReadOnlyRecord, ActiveRecord::ReadonlyAttributeError) { versions.first.update!(seen_at: Time.current) }
     assert_raises(ActiveRecord::ReadOnlyRecord) { versions.first.destroy! }
   end
 
@@ -80,7 +80,8 @@ class SquareTimecardReviewerTest < ActiveSupport::TestCase
     assert_equal 9, summary_hours
     assert_equal 2, JSON.parse(record.source_payload)['version']
     assert ActivityLog.exists?(action: 'square_timecard_accepted')
-    assert_raises(ActiveRecord::ReadOnlyRecord) { review.update!(reason: 'rewritten') }
+    assert_raises(ActiveRecord::ReadOnlyRecord, ActiveRecord::ReadonlyAttributeError) { review.update!(reason: 'rewritten') }
+    assert_raises(ActiveRecord::ReadOnlyRecord) { review.touch }
     assert_raises(ActiveRecord::ReadOnlyRecord) { review.destroy! }
 
     result = import([edited])

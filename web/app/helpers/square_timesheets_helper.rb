@@ -55,4 +55,14 @@ module SquareTimesheetsHelper
              end
     "#{l(from, format: '%a %b %-d')} · #{l(from, format: '%-I:%M %p')} – #{finish}"
   end
+
+  def square_history_title(event)
+    case event[:kind]
+    when 'seen' then ['Square version', event[:source_version], 'read'].compact.join(' ')
+    when 'missing' then 'Missing from Square'
+    when 'accepted' then 'Square’s version accepted'
+    when 'kept' then 'Original hours kept'
+    when 'held' then 'Accept held: period locked'
+    end
+  end
 end

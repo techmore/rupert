@@ -14,8 +14,6 @@ class SquareTimecardVersion < ApplicationRecord
   validates :seen_at, presence: true
   validates :digest, :payload, presence: true, if: -> { kind == 'seen' }
   validate :same_workspace
-  before_update { raise ActiveRecord::ReadOnlyRecord, 'Square timecard versions are append-only' }
-  before_destroy { raise ActiveRecord::ReadOnlyRecord, 'Square timecard versions are append-only' }
 
   scope :chronological, -> { order(:seen_at, :id) }
 
@@ -23,8 +21,9 @@ class SquareTimecardVersion < ApplicationRecord
   def self.baseline!(card)
     return if card.new_record? || card.source_payload.blank? || where(square_timecard_id: card.id).exists?
 
-    create!(square_timecard: card, kind: 'seen', digest: card.original_digest || SquareTimecardImport.digest(JSON.parse(card.source_payload)),
-      payload: card.source_payload, employee_id: card.employee_id, seen_at: card.imported_at || card.created_at)
+    row = JSON.parse(card.source_payload)
+    create!(square_timecard: card, kind: 'seen', digest: card.original_digest || SquareTimecardImport.digest(row), payload: card.source_payload,
+      employee_id: card.employee_id, seen_at: card.imported_at || card.created_at, **source_fields(row))
   end
 
   # Appends a version when the source content or staff mapping differs from the last one seen.
@@ -34,14 +33,23 @@ class SquareTimecardVersion < ApplicationRecord
     return last if last && last.kind == kind && last.digest == digest && last.employee_id == employee_id
 
     create!(square_timecard: card, kind: kind, digest: digest, payload: row && JSON.generate(row), employee_id: employee_id, seen_at: seen_at,
-      source_version: row && row['version'].is_a?(Integer) ? row['version'] : nil,
-      source_updated_at: row && (Time.iso8601(row['updated_at']) rescue nil))
+      **(row ? source_fields(row) : {}))
+  end
+
+  def self.source_fields(row)
+    { source_version: row['version'].is_a?(Integer) ? row['version'] : nil,
+      source_updated_at: (row['updated_at'].is_a?(String) ? Time.iso8601(row['updated_at']) : nil rescue nil) }
   end
 
   def row
     JSON.parse(payload.to_s)
   rescue JSON::ParserError
     {}
+  end
+
+  # Append-only: once written, a row can be neither saved again nor destroyed.
+  def readonly?
+    persisted? || super
   end
 
   private

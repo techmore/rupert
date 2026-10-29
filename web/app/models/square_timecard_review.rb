@@ -18,8 +18,6 @@ class SquareTimecardReview < ApplicationRecord
   validates :decision, inclusion: { in: DECISIONS }
   validates :status_before, presence: true
   validate :same_workspace
-  before_update { raise ActiveRecord::ReadOnlyRecord, 'Square timecard reviews are append-only' }
-  before_destroy { raise ActiveRecord::ReadOnlyRecord, 'Square timecard reviews are append-only' }
 
   def counted_hours
     BigDecimal(counted_payable_seconds.to_s) / 3600
@@ -27,6 +25,11 @@ class SquareTimecardReview < ApplicationRecord
 
   def latest_hours
     latest_payable_seconds && BigDecimal(latest_payable_seconds.to_s) / 3600
+  end
+
+  # Append-only: once written, a row can be neither saved again nor destroyed.
+  def readonly?
+    persisted? || super
   end
 
   private
