@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Public pages anyone can open, signed in or not: the privacy policy and support page that the
-# App Store listing links to (rupertpos.com/privacy, rupertpos.com/support). They use the normal
+# App Store listing links to (pos.rupertpos.com/privacy, pos.rupertpos.com/support). They use the normal
 # layout, so they load Turbo and also open inside the iPhone app.
 class PublicPagesController < ApplicationController
   skip_before_action :require_login
