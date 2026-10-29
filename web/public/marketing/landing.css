@@ -179,7 +179,7 @@ details p { max-width: 72ch; padding-bottom: 20px; color: var(--ink-2); }
 .closing p { margin: 12px 0 24px; color: var(--ink-2); font-size: 17px; }
 
 .foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; padding-top: 28px; padding-bottom: 40px; border-top: 1px solid var(--line); font-size: 14px; color: var(--ink-3); }
-.foot div { display: flex; gap: 20px; }
+.foot div { display: flex; flex-wrap: wrap; gap: 8px 20px; }
 .foot a { color: var(--ink-2); text-decoration: none; }
 .foot a:hover { color: var(--ink); text-decoration: underline; }
 
