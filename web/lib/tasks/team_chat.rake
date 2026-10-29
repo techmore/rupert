@@ -114,3 +114,22 @@ namespace :team_chat do
     puts TeamChat::QuestionBank.report(limit: ENV.fetch('LIMIT', 15).to_i)
   end
 end
+
+namespace :team_chat do
+  desc 'Load the synthetic benchmark business into a TEST tenant: rake team_chat:benchmark_fixture[tenant_id]. TRUTH_PATH=file.json writes the gold answers.'
+  task :benchmark_fixture, [:tenant_id] => :environment do |_task, args|
+    tenant = Tenant.find(args[:tenant_id].presence || abort('Usage: rake team_chat:benchmark_fixture[tenant_id]'))
+    fixture = TeamChat::BenchmarkFixture.call(tenant: tenant)
+    counts = fixture.truth['counts']
+    puts "Benchmark fixture loaded into #{tenant.id} (#{tenant.name}) as of #{fixture.today}: " \
+         "#{counts['sales_orders']} sales orders in #{counts['currencies'].join('/')} over #{counts['sources'].join(', ')}, " \
+         "#{counts['refunds']} refunds, #{counts['expenses']} expenses, #{counts['employees']} employees, " \
+         "#{counts['timesheets']} timesheets, #{counts['tasks']} tasks, #{counts['products']} products, #{counts['customers']} customers."
+    if ENV['TRUTH_PATH'].present?
+      fixture.truth_json(ENV['TRUTH_PATH'])
+      puts "Ground truth written to #{ENV['TRUTH_PATH']}"
+    end
+  rescue TeamChat::BenchmarkFixture::Refused, TeamChat::BenchmarkFixture::AlreadyLoaded => e
+    abort e.message
+  end
+end
