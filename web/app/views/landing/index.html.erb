@@ -14,7 +14,7 @@
   <meta property="og:title" content="Rupert — Point of sale, stock and books in one place">
   <meta property="og:url" content="https://rupertpos.com/">
   <meta property="og:type" content="website">
-  <link rel="stylesheet" href="/marketing/landing.css?v=2">
+  <link rel="stylesheet" href="/marketing/landing.css?v=3">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -37,38 +37,20 @@
     <div class="hero-copy">
       <p class="eyebrow">Point of sale and back office</p>
       <h1>The register, the stock room and the books. One place.</h1>
-      <p class="lead">Rupert runs the counter and everything behind it: ring up sales, keep stock right across your stores, close the day and hand your bookkeeper numbers that already match.</p>
-      <div class="actions">
-        <a class="button" href="https://rupertpos.com/start">Create free account</a>
-        <a class="button quiet" href="#pricing">See pricing</a>
-      </div>
-      <p class="note">Google sign-in · No card needed to create an account</p>
-    </div>
-
-    <div class="preview" role="img" aria-label="Illustrative preview of Rupert: today's sales and stock across two stores, the day close status, and a sale on the register">
-      <div class="panel today">
-        <div class="panel-head"><strong>Today</strong><span>2 stores</span></div>
-        <div class="tiles">
-          <div class="tile"><small>Sales</small><b>$2,418</b></div>
-          <div class="tile"><small>Low stock</small><b>6 items</b></div>
+      <div class="hero-side">
+        <p class="lead">Rupert runs the counter and everything behind it: ring up sales, keep stock right across your stores, close the day and hand your bookkeeper numbers that already match.</p>
+        <div class="actions">
+          <a class="button" href="https://rupertpos.com/start">Create free account</a>
+          <a class="button quiet" href="#product">See the product</a>
         </div>
-        <ul class="rows">
-          <li><span>Main St close</span><span class="ok">Balanced</span></li>
-          <li><span>Warehouse close</span><span class="warn">1 to review</span></li>
-          <li><span>On the clock</span><span>5 staff</span></li>
-        </ul>
+        <p class="note">Google sign-in · No card needed to create an account</p>
       </div>
-      <div class="panel ticket">
-        <div class="panel-head"><strong>Register 1</strong><span>Main St</span></div>
-        <ul class="rows">
-          <li><span>Lavender tincture</span><span>$34.00</span></li>
-          <li><span>Calm tea × 2</span><span>$18.00</span></li>
-          <li class="total"><span>Total</span><span>$52.00</span></li>
-        </ul>
-        <div class="tenders"><span class="tender primary">Card</span><span class="tender">Cash</span></div>
-      </div>
-      <p class="note caption">Illustrative preview. Available features and provider readiness vary.</p>
     </div>
+    <figure class="hero-shot">
+      <picture class="shot"><source srcset="/marketing/shots/dashboard-dark.webp" media="(prefers-color-scheme: dark)"><img src="/marketing/shots/dashboard-light.webp" width="1600" height="1000" alt="Rupert dashboard for a demo shop: today's sales, yesterday, last 7 days, stock alerts and a 30-day revenue chart by channel" fetchpriority="high"></picture>
+      <picture class="shot phone"><source srcset="/marketing/shots/dashboard-dark-phone.webp" media="(prefers-color-scheme: dark)"><img src="/marketing/shots/dashboard-light-phone.webp" width="585" height="1266" alt="Rupert on a phone: the same dashboard" loading="lazy" decoding="async"></picture>
+      <figcaption class="note">Screens from a demo workspace with made-up data. Available features and provider readiness vary.</figcaption>
+    </figure>
   </section>
 
   <section class="band" id="product">
@@ -76,56 +58,58 @@
       <p class="eyebrow">What Rupert does</p>
       <h2>Four jobs, one workspace.</h2>
       <p class="section-lead">Most shops juggle a register app, a stock spreadsheet, a timesheet tool and a bookkeeper's inbox. Rupert puts them in one place, so each sale moves the stock, the drawer and the books together.</p>
-      <div class="pillars">
-        <article class="pillar">
-          <span class="icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M4 7h16v10H4z"/><path d="M8 11h3M8 14h8"/><path d="M7 7V4h10v3"/></svg>
-          </span>
-          <h3>Sell</h3>
-          <p>A full-screen register for the counter.</p>
+      <article class="feature" id="sell">
+        <div class="feature-copy">
+          <p class="feature-name"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16v10H4z"/><path d="M8 11h3M8 14h8"/><path d="M7 7V4h10v3"/></svg></span>Sell</p>
+          <h3>A register built for the counter.</h3>
+          <p>Ring up sales full screen on a tablet or laptop. Search or scan, take cash or card, add a tip, and the sale lands in the same list as your online orders.</p>
           <ul>
             <li>Cash and card tenders, tips and receipts</li>
             <li>Registers, customers and every channel's sales</li>
             <li>Online and in-store orders side by side</li>
           </ul>
-        </article>
-        <article class="pillar">
-          <span class="icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/></svg>
-          </span>
-          <h3>Stock</h3>
-          <p>One count of what you have, in every store.</p>
+        </div>
+        <picture class="shot"><source srcset="/marketing/shots/pos-dark.webp" media="(prefers-color-scheme: dark)"><img src="/marketing/shots/pos-light.webp" width="1600" height="1000" alt="Rupert POS: product tiles for candles, teas and bath goods, with a cart of three items totalling $84.80" loading="lazy" decoding="async"></picture>
+      </article>
+      <article class="feature flip" id="stock">
+        <div class="feature-copy">
+          <p class="feature-name"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/></svg></span>Stock</p>
+          <h3>One count of what you have, in every store.</h3>
+          <p>See every item by location in a sortable grid. Count, transfer and reorder from the same place, and catch low stock before the shelf is empty.</p>
           <ul>
-            <li>Inventory by location and store comparison</li>
+            <li>Inventory by location, with how fresh each count is</li>
             <li>Physical counts, transfers and stock alerts</li>
             <li>Purchase orders, vendors and bulk recipes</li>
           </ul>
-        </article>
-        <article class="pillar">
-          <span class="icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
-          </span>
-          <h3>Books</h3>
-          <p>Closing the day keeps the books.</p>
+        </div>
+        <picture class="shot"><source srcset="/marketing/shots/inventory-grid-dark.webp" media="(prefers-color-scheme: dark)"><img src="/marketing/shots/inventory-grid-light.webp" width="1600" height="1000" alt="Rupert inventory grid: items by location with available quantity and stock state" loading="lazy" decoding="async"></picture>
+      </article>
+      <article class="feature" id="books">
+        <div class="feature-copy">
+          <p class="feature-name"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span>Books</p>
+          <h3>Know where the money went.</h3>
+          <p>Cash flow shows what came into the bank, what went out and what was sold, side by side. Day close and the ledger keep the books in step with the register.</p>
           <ul>
+            <li>Cash flow, statements, sales tax and forecasts</li>
             <li>Day close and daily reconciliation</li>
             <li>General ledger, expenses and bank reconciliation</li>
-            <li>Statements, sales tax, cash flow and forecasts</li>
           </ul>
-        </article>
-        <article class="pillar">
-          <span class="icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.4"/><path d="M3.5 19c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5M15 15.2c2.3-.3 4.6.9 5.5 3.8"/></svg>
-          </span>
-          <h3>Team</h3>
-          <p>Who is working, and what they are owed.</p>
+        </div>
+        <picture class="shot"><source srcset="/marketing/shots/cashflow-dark.webp" media="(prefers-color-scheme: dark)"><img src="/marketing/shots/cashflow-light.webp" width="1600" height="1000" alt="Rupert cash flow: cash position, net cash flow, money into and out of the bank, and sales taken over 30 days" loading="lazy" decoding="async"></picture>
+      </article>
+      <article class="feature flip" id="team">
+        <div class="feature-copy">
+          <p class="feature-name"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.4"/><path d="M3.5 19c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5M15 15.2c2.3-.3 4.6.9 5.5 3.8"/></svg></span>Team</p>
+          <h3>Who is working, and what they are owed.</h3>
+          <p>Staff clock in at the register or on their phone. Schedules, timesheets and hours by store come together, ready to review and pay.</p>
           <ul>
             <li>Time clock, timesheets and shifts</li>
             <li>Leave, PTO and pay runs</li>
             <li>Team chat and training progress</li>
           </ul>
-        </article>
-      </div>
+        </div>
+        <picture class="shot"><source srcset="/marketing/shots/team-schedule-dark.webp" media="(prefers-color-scheme: dark)"><img src="/marketing/shots/team-schedule-light.webp" width="1600" height="1000" alt="Rupert team schedule: hours worked per staff member per day for one week" loading="lazy" decoding="async"></picture>
+      </article>
     </div>
   </section>
 
