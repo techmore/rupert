@@ -382,7 +382,7 @@ class McpServerTest < ActionDispatch::IntegrationTest
   end
 
   test 'update_task dry_run returns a before/after and writes nothing' do
-    _, secret = issue
+    token, secret = issue
     task = Projects::Task.find_by!(title: 'Restock tea shelf')
     result = call_tool(secret, 'update_task', { task_id: task.id, priority: 'low', status: 'in_progress', note: 'hello', dry_run: true })
     assert_equal false, result['isError'], result.dig('content', 0, 'text')
@@ -394,7 +394,8 @@ class McpServerTest < ActionDispatch::IntegrationTest
     assert_equal 'high', task.priority
     assert task.todo?
     assert_no_match(/hello/, task.description.to_s)
-    assert_equal 0, ActivityLog.where(action: 'mcp_task_write').count
+    # Scoped to this token: an unscoped table-wide count can see another test's real write (SQLite CI lane).
+    assert_equal 0, ActivityLog.where(action: 'mcp_task_write', subject_label: "token:#{token.id}").count
   end
 
   test 'create_task idempotency_key replays the original result per token for 24 hours' do
