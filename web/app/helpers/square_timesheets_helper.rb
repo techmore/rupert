@@ -30,4 +30,40 @@ module SquareTimesheetsHelper
 
     l(timezone ? time.in_time_zone(timezone) : time, format: '%b %-d, %Y · %-I:%M:%S %p %Z')
   end
+
+  def square_hours(seconds)
+    number_with_precision(BigDecimal(seconds.to_i.to_s) / 3600, precision: 2)
+  end
+
+  # Signed hours with a real minus sign: "+0.50", "−1.25", "0.00".
+  def square_hours_delta(seconds)
+    return '0.00' if seconds.to_i.zero?
+
+    "#{seconds.negative? ? '−' : '+'}#{square_hours(seconds.abs)}"
+  end
+
+  # "Mon Oct 5 · 9:00 AM – 5:00 PM" in the card's own timezone.
+  def square_shift_label(started_at, ended_at, timezone)
+    return 'Not available' unless started_at
+
+    zone = (timezone.is_a?(String) && Time.find_zone(timezone)) || Time.zone
+    from = started_at.in_time_zone(zone)
+    to = ended_at&.in_time_zone(zone)
+    finish =
+      if to.nil? then 'open'
+      elsif to.to_date == from.to_date then l(to, format: '%-I:%M %p')
+      else l(to, format: '%a %b %-d %-I:%M %p')
+      end
+    "#{l(from, format: '%a %b %-d')} · #{l(from, format: '%-I:%M %p')} – #{finish}"
+  end
+
+  def square_history_title(event)
+    case event[:kind]
+    when 'seen' then ['Square version', event[:source_version], 'read'].compact.join(' ')
+    when 'missing' then 'Missing from Square'
+    when 'accepted' then 'Square’s version accepted'
+    when 'kept' then 'Original hours kept'
+    when 'held' then 'Accept held: period locked'
+    end
+  end
 end

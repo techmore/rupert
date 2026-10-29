@@ -8,6 +8,20 @@
     <div><dt>Counted</dt><dd><%= @card.imported_at ? 'Counted once in personal hours history' : 'Not counted in personal hours or payroll' %></dd></div>
   </dl>
 
+  <% if @review %>
+    <% view = @review.comparison %>
+    <section class="section-card" aria-labelledby="square-review-heading">
+      <%= section_heading 'Review this change', id: 'square-review-heading', hint: 'Square changed this timecard after import. The counted hours stay until you decide.' %>
+      <dl class="facts">
+        <div><dt>Counted now</dt><dd><%= square_shift_label(view[:counted][:started_at], view[:counted][:ended_at], view[:counted][:timezone]) %> · <%= square_hours(view[:counted][:seconds]) %> h</dd></div>
+        <div><dt>Square’s latest</dt><dd><%= view[:latest][:removed] ? 'Removed in Square' : "#{square_shift_label(view[:latest][:started_at], view[:latest][:ended_at], view[:latest][:timezone])} · #{square_hours(view[:latest][:seconds])} h" %></dd></div>
+        <div><dt>Difference</dt><dd><%= square_hours_delta(@review.delta_seconds) %> h</dd></div>
+        <% if view[:latest][:employee] && view[:latest][:employee] != @card.employee %><div><dt>Staff member in Square</dt><dd><%= view[:latest][:employee].name %></dd></div><% end %>
+      </dl>
+      <%= render 'people/square_timecard_reviews/decision', review: @review %>
+    </section>
+  <% end %>
+
   <section class="section-card" aria-label="Latest Square punches">
     <%= section_heading 'Latest source punches', hint: 'Latest observed Square punches, including open or changed records. These do not replace original counted hours or establish Rupert approval, overtime or payment.' %>
     <dl class="facts">
@@ -28,7 +42,7 @@
   </section>
 
   <section class="section-card">
-    <%= section_heading 'Original counted history' %>
+    <%= section_heading 'Counted hours' %>
     <dl class="facts">
       <div><dt>Timezone</dt><dd><%= @card.timezone || 'Not available' %></dd></div>
       <div><dt>Clock-in</dt><dd><%= @card.started_at ? l(@card.started_at.in_time_zone(@card.timezone), format: :long) : 'Not available' %></dd></div>
@@ -53,5 +67,33 @@
         </tbody>
       </table>
     </div>
+  </section>
+  <section class="section-card" aria-labelledby="square-history-heading">
+    <%= section_heading 'History', id: 'square-history-heading', hint: 'Every Square version Rupert has read and every review decision. Nothing here is ever edited or removed.' %>
+    <% if @history.empty? %>
+      <p class="text-sm text-mocha">No versions recorded yet. The next Square sync records the current version.</p>
+    <% else %>
+      <ul class="row-list" data-square-history>
+        <% @history.each do |event| %>
+          <li class="row-item">
+            <div class="min-w-0">
+              <p class="font-medium">
+                <%= square_history_title(event) %>
+              </p>
+              <p class="text-sm text-mocha">
+                <% if event[:kind] == 'seen' %>
+                  <%= event[:state] == 'imported' ? "#{square_shift_label(event[:started_at], event[:ended_at], event[:timezone])} · #{square_hours(event[:seconds])} h" : event[:state].to_s.humanize %><%= " · #{event[:employee].name}" if event[:employee] %>
+                <% elsif event[:kind] == 'missing' %>
+                  Not returned by a complete Square read.
+                <% else %>
+                  <%= event[:who] %> · “<%= event[:reason] %>” · counted <%= square_hours(event[:counted_seconds]) %> h, Square <%= event[:latest_seconds] ? square_hours(event[:latest_seconds]) : '—' %> h<%= " · held by #{event[:held_by]}" if event[:held_by].present? %>
+                <% end %>
+              </p>
+            </div>
+            <p class="row-item-end text-sm text-mocha whitespace-nowrap"><%= l(event[:at], format: '%b %-d, %Y · %-I:%M %p') %></p>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
   </section>
 </div>

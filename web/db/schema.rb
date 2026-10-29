@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_27_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_29_200000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -2988,6 +2988,47 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_200000) do
     t.index ["tenant_id"], name: "index_square_timecard_days_on_tenant_id"
   end
 
+  create_table "square_timecard_reviews", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "square_timecard_id", null: false
+    t.integer "reviewed_by_id"
+    t.string "decision", null: false
+    t.text "reason", null: false
+    t.string "status_before", null: false
+    t.string "counted_digest"
+    t.string "latest_digest"
+    t.integer "employee_id_before"
+    t.integer "employee_id_after"
+    t.datetime "counted_started_at"
+    t.datetime "counted_ended_at"
+    t.bigint "counted_payable_seconds", default: 0, null: false
+    t.datetime "latest_started_at"
+    t.datetime "latest_ended_at"
+    t.bigint "latest_payable_seconds"
+    t.text "held_by"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["reviewed_by_id"], name: "index_square_timecard_reviews_on_reviewed_by_id"
+    t.index ["tenant_id", "square_timecard_id", "created_at"], name: "idx_square_timecard_review_card"
+    t.check_constraint "decision IN ('accepted', 'kept', 'held')", name: "square_timecard_review_decision"
+  end
+
+  create_table "square_timecard_versions", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "square_timecard_id", null: false
+    t.string "kind", null: false
+    t.string "digest"
+    t.text "payload"
+    t.integer "employee_id"
+    t.integer "source_version"
+    t.datetime "source_updated_at"
+    t.datetime "seen_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "square_timecard_id", "seen_at"], name: "idx_square_timecard_version_card"
+    t.check_constraint "kind IN ('seen', 'missing')", name: "square_timecard_version_kind"
+  end
+
   create_table "square_timecards", force: :cascade do |t|
     t.string "tenant_id", null: false
     t.integer "employee_id"
@@ -3012,6 +3053,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_200000) do
     t.datetime "last_seen_at", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "kept_source_key"
     t.index ["employee_id"], name: "index_square_timecards_on_employee_id"
     t.index ["tenant_id", "employee_id", "started_at"], name: "idx_square_timecard_worker"
     t.index ["tenant_id", "external_id"], name: "idx_square_timecard_native", unique: true

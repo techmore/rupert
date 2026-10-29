@@ -27,6 +27,13 @@
     <% if @timesheet.assigned_reviewer %><div><dt>Assigned to</dt><dd><%= @timesheet.assigned_reviewer.display_name %></dd></div><% end %>
   </dl>
 
+  <% if @square_changes.to_i.positive? %>
+    <p class="flash flash-alert" role="status" data-square-changes>
+      Square edited <%= pluralize(@square_changes, 'timecard') %> in this period after import; the original hours still count.
+      <% if SquareTimecardReviewer.allowed?(Current.user) %><%= link_to 'Review', people_square_timecard_reviews_path(employee_id: @timesheet.employee_id), class: 'underline' %><% end %>
+    </p>
+  <% end %>
+
   <% if reviewing %>
     <section class="section-card" aria-label="Review checklist">
       <%= section_heading 'Before approving', hint: "Check the dates, daily hours, overtime and notes below against the staff member's shifts." %>

@@ -1,0 +1,74 @@
+<% content_for :title, 'Square changes' %>
+<div class="space-y-6">
+  <%= page_header 'Square changes', subtitle: 'Timecards edited or removed in Square after import. Original hours count until you review them.',
+        menu: [['Open Square history', people_square_timesheets_path]] %>
+
+  <section class="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Square changes totals">
+    <div class="stat"><p class="stat-label">Waiting for review</p><p class="stat-value mt-1"><%= @waiting %></p></div>
+    <div class="stat"><p class="stat-label">Counted hours</p><p class="stat-value mt-1"><%= square_hours(@counted_seconds) %></p></div>
+    <div class="stat"><p class="stat-label">Square’s latest hours</p><p class="stat-value mt-1"><%= square_hours(@latest_seconds) %></p></div>
+    <div class="stat"><p class="stat-label">Difference</p><p class="stat-value mt-1"><%= square_hours_delta(@latest_seconds - @counted_seconds) %></p></div>
+  </section>
+
+  <% if @employees.size > 1 || params[:employee_id].present? %>
+    <%= form_with url: people_square_timecard_reviews_path, method: :get, class: 'toolbar' do |f| %>
+      <div class="toolbar-field"><%= f.label :employee_id, 'Staff member', class: 'field-label' %><%= f.select :employee_id, [['All staff', ''], *@employees.map { |employee| [employee.name, employee.id] }], { selected: params[:employee_id] }, class: 'select' %></div>
+      <div class="toolbar-actions">
+        <%= f.submit 'Apply', class: 'btn-primary', name: nil %>
+        <%= link_to 'Clear', people_square_timecard_reviews_path, class: 'btn-ghost' %>
+      </div>
+    <% end %>
+  <% end %>
+
+  <% if @reviews.empty? %>
+    <div class="card"><%= empty_state 'No Square changes to review.', hint: 'When a timecard is edited or removed in Square after import, it waits here with both versions side by side.' %></div>
+  <% end %>
+
+  <% @groups.each do |employee, periods| %>
+    <% heading_id = "square-changes-#{employee&.id || 'unmatched'}" %>
+    <section class="space-y-3" aria-labelledby="<%= heading_id %>">
+      <%= section_heading employee&.name || 'Staff member not matched', id: heading_id %>
+      <% periods.each do |(first, last), rows| %>
+        <% counted = rows.sum { |review| review.comparison[:counted][:seconds] } %>
+        <% latest = rows.sum { |review| review.comparison[:latest][:seconds] } %>
+        <div class="card">
+          <div class="row-item">
+            <h3 class="card-title">Pay period <%= "#{l(first, format: '%b %-d')} – #{l(last, format: '%b %-d, %Y')}" %></h3>
+            <p class="row-item-end text-sm text-mocha">Counted <%= square_hours(counted) %> h · Square now <%= square_hours(latest) %> h · <%= square_hours_delta(latest - counted) %> h</p>
+          </div>
+          <ul class="row-list border-t border-fog" aria-label="Square changes for <%= employee&.name %>, pay period <%= l(first, format: '%b %-d') %>">
+            <% rows.each do |review| %>
+              <% view = review.comparison %>
+              <li class="row-item items-start" data-square-change="<%= review.card.id %>">
+                <dl class="grid min-w-0 flex-1 grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
+                  <div>
+                    <dt class="text-xs text-mocha">Counted now</dt>
+                    <dd><%= link_to square_shift_label(view[:counted][:started_at], view[:counted][:ended_at], view[:counted][:timezone]), people_square_timesheet_path(review.card), class: 'font-medium text-olive hover:underline' %></dd>
+                    <dd class="num text-left"><%= square_hours(view[:counted][:seconds]) %> h</dd>
+                  </div>
+                  <div>
+                    <dt class="text-xs text-mocha">Square’s latest</dt>
+                    <% if view[:latest][:removed] %>
+                      <dd><span class="pill-rose">Removed in Square</span></dd>
+                    <% else %>
+                      <dd><%= square_shift_label(view[:latest][:started_at], view[:latest][:ended_at], view[:latest][:timezone]) %></dd>
+                      <dd class="num text-left"><%= square_hours(view[:latest][:seconds]) %> h</dd>
+                      <% if view[:latest][:employee] && view[:latest][:employee] != employee %><dd class="text-xs text-mocha">Now matched to <%= view[:latest][:employee].name %></dd><% end %>
+                    <% end %>
+                  </div>
+                  <div>
+                    <dt class="text-xs text-mocha">Difference</dt>
+                    <dd class="num text-left font-medium"><%= square_hours_delta(review.delta_seconds) %> h</dd>
+                  </div>
+                </dl>
+                <div class="w-full sm:w-80"><%= render 'people/square_timecard_reviews/decision', review: review %></div>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+    </section>
+  <% end %>
+  <%== @pagy.series_nav if @pagy.pages > 1 %>
+  <%= fold_explainer('Accept rebuilds the timecard’s counted days from Square’s latest version, or counts no hours when Square removed it. Keep original leaves the counted hours and stops the same Square edit from being flagged again. A submitted, approved or paid timesheet is never changed: accepting there flags it, and the original hours keep counting until it is reopened. Every Square version seen and every decision, with who, when and why, stays in the timecard’s history.', class: 'text-sm text-mocha') %>
+</div>
