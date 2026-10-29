@@ -140,9 +140,9 @@
                 <td class="td text-mocha"><%= customer.owner&.display_name || '—' %></td>
                 <td class="td"><span class="pill-taupe"><%= directory_label(customer.source) %></span><p class="mt-1 text-xs text-taupe"><%= customer_directory_status(customer) %></p></td>
                 <td class="td num text-mocha"><%= @order_counts[customer.id] || 0 %></td>
-                <td class="td whitespace-nowrap text-mocha"><%= @last_orders[customer.id] ? @last_orders[customer.id].to_date.strftime('%b %-d, %Y') : '—' %></td>
+                <td class="td whitespace-nowrap text-mocha"><%= customer_list_date(@last_orders[customer.id]) %></td>
                 <td class="td num font-medium text-ink"><%= customer_money(@lifetime_totals.select { |(id, _), _| id == customer.id }.to_h { |(_, currency), total| [currency, total] }) %></td>
-                <td class="td whitespace-nowrap text-mocha"><%= customer.created_at.to_date.strftime('%b %-d, %Y') %></td>
+                <td class="td whitespace-nowrap text-mocha"><%= customer_list_date(customer.created_at) %></td>
                 <td class="td text-right"><%= link_to 'Open', customer_path(customer), class: 'btn-ghost btn-sm' %></td>
               </tr>
             <% end %>
