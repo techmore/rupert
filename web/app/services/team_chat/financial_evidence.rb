@@ -13,8 +13,8 @@ module TeamChat
     TOOLS = %w[metric sales_summary period_review business_pulse sales_tax_report daily_close].freeze
     CONTRACTS = (TOOLS + %w[time_keeping_report]).freeze
     MEANINGS = {
-      'gross_sales' => ['Gross sales (paid or fulfilled orders)', 'money'],
-      'orders' => ['Paid or fulfilled order count', 'count'],
+      'gross_sales' => ['Gross sales (paid, fulfilled or refunded orders)', 'money'],
+      'orders' => ['Paid, fulfilled or refunded order count', 'count'],
       'average_order_value' => ['Average gross order value', 'money'],
       'refund_rate' => ['Recorded refunds as a percentage of gross sales', 'percent'],
       'expenses_by_category' => ['Active expense-register total (not profit)', 'money'],
@@ -78,13 +78,13 @@ module TeamChat
           raise ArgumentError if args['source'].present? && row['source'] != args['source']
 
           source = order_source(row.fetch('source'))
-          { 'gross_cents' => ['Gross sales (paid or fulfilled orders)', 'money'], 'tax_cents' => ['Order tax', 'money'], 'orders' => ['Paid or fulfilled order count', 'count'] }.each do |field, (meaning, unit)|
+          { 'gross_cents' => ['Gross sales (paid, fulfilled or refunded orders)', 'money'], 'tax_cents' => ['Order tax', 'money'], 'orders' => ['Paid, fulfilled or refunded order count', 'count'] }.each do |field, (meaning, unit)|
             add(out, row[field], unit, row['currency'], source, period, meaning, "lines.#{index}.#{field}")
           end
         end
         Array(data['totals_by_currency']).each_with_index do |row, index|
           add(out, row['gross_cents'], 'money', row['currency'], order_source(args['source']), period,
-            'Gross sales total (paid or fulfilled orders)', "totals_by_currency.#{index}.gross_cents")
+            'Gross sales total (paid, fulfilled or refunded orders)', "totals_by_currency.#{index}.gross_cents")
         end
         out['gaps'] << 'Daily and product breakdowns are not certified by this contract.' if data['daily'].present? || data['top_products'].present?
       when 'period_review'
@@ -94,7 +94,7 @@ module TeamChat
           raise ArgumentError unless preset && period == window({ 'from' => preset.from.iso8601, 'to' => [preset.to, Date.current].min.iso8601 })
         end
         Array(data['sales']).each_with_index do |row, index|
-          add(out, row['gross_cents'], 'money', row['currency'], ORDER_SOURCE, period, 'Gross sales (paid or fulfilled orders)', "sales.#{index}.gross_cents")
+          add(out, row['gross_cents'], 'money', row['currency'], ORDER_SOURCE, period, 'Gross sales (paid, fulfilled or refunded orders)', "sales.#{index}.gross_cents")
         end
         out['gaps'] << 'Expenses without explicit currency, comparisons and other review sections are not certified by this contract.'
       when 'sales_tax_report'
@@ -168,7 +168,7 @@ module TeamChat
       return ORDER_SOURCE if source.blank?
       raise ArgumentError unless Metrics::SOURCES.include?(source)
 
-      "#{source} canonical orders (paid or fulfilled)"
+      "#{source} canonical orders (paid, fulfilled or refunded)"
     end
 
     def metric_rows(out, rows, name, source, period, path)
@@ -177,7 +177,7 @@ module TeamChat
         if name == 'sales_by_source'
           Array(row['sources']).each_with_index do |part, part_index|
             part_source = order_source(part.fetch('source'))
-            add(out, part['gross_cents'], 'money', row['currency'], part_source, period, 'Gross sales (paid or fulfilled orders)', "#{path}.#{index}.sources.#{part_index}.gross_cents")
+            add(out, part['gross_cents'], 'money', row['currency'], part_source, period, 'Gross sales (paid, fulfilled or refunded orders)', "#{path}.#{index}.sources.#{part_index}.gross_cents")
             add(out, part['share_percent'], 'percent', row['currency'], part_source, period, 'Share of gross sales in this currency', "#{path}.#{index}.sources.#{part_index}.share_percent")
           end
           next

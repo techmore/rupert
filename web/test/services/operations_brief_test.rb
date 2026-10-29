@@ -39,6 +39,22 @@ class OperationsBriefTest < ActiveSupport::TestCase
     refute OperationsBrief.publish!('daily_close')
   end
 
+  test 'daily close counts a fully refunded order in gross like the sales tools' do
+    create_paid_order(gross_cents: 4200)
+    refunded = create_paid_order(gross_cents: 1000)
+    Core::Refund.create!(order: refunded, amount_cents: 1000, refunded_at: Time.current, method: 'card')
+    refunded.refund!
+    content = nil
+    TeamChat::Notices.stubs(:notify).with do |message, *_|
+      content = message
+      true
+    end.returns([true, 'OK'])
+
+    assert OperationsBrief.publish!('daily_close')
+    assert_includes content, '2 order(s)'
+    assert_includes content, '$52.00 gross'
+  end
+
   test 'failed publication is retried rather than marked complete' do
     create_paid_order(gross_cents: 4200)
     TeamChat::Notices.stubs(:notify).returns([false, 'relay unavailable'])
