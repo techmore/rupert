@@ -19,7 +19,8 @@ topics:
     keywords: [tax, sales tax, vat, taxes, tx, taxable, filed, owe]
     tools: [sales_tax_report, metric]
     card: >-
-      sales_tax_report gives tax collected per source for a date range. Sources overlap (one card sale can appear in
+      sales_tax_report gives tax collected per source for a date range, including Manual orders (typed in by a
+      person) as their own labelled line, so its order-source tax agrees with sales_summary. Sources overlap (one card sale can appear in
       a store and in its card processor), so never add sources together: report each. Rupert does not record when a
       sales tax return was filed. For online and Square orders, metric tax_collected gives the tax recorded on orders
       per currency with each source, and metric effective_tax_rate gives that tax as a percent of sales before tax,
