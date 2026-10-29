@@ -49,10 +49,11 @@ module SquareTimesheetsHelper
     zone = (timezone.is_a?(String) && Time.find_zone(timezone)) || Time.zone
     from = started_at.in_time_zone(zone)
     to = ended_at&.in_time_zone(zone)
-    finish = if to.nil? then 'open'
-             elsif to.to_date == from.to_date then l(to, format: '%-I:%M %p')
-             else l(to, format: '%a %b %-d %-I:%M %p')
-             end
+    finish =
+      if to.nil? then 'open'
+      elsif to.to_date == from.to_date then l(to, format: '%-I:%M %p')
+      else l(to, format: '%a %b %-d %-I:%M %p')
+      end
     "#{l(from, format: '%a %b %-d')} · #{l(from, format: '%-I:%M %p')} – #{finish}"
   end
 
