@@ -22,6 +22,7 @@ module Mcp
           from: DATE_PROPERTY.merge(description: 'First day (inclusive), YYYY-MM-DD. Default: 29 days before to.'),
           to: DATE_PROPERTY.merge(description: 'Last day (inclusive), YYYY-MM-DD. Default: today.'),
           source: { type: 'string', enum: SOURCES, description: 'Only this order source.' },
+          as_of: AS_OF_PROPERTY,
           include_daily: { type: 'boolean', description: 'Add a per-day series (ranges up to 92 days). Default false.' },
           top_products: { type: 'integer', minimum: 0, maximum: 25, description: 'How many top products by revenue to include. Default 10.' }
         },
@@ -29,7 +30,7 @@ module Mcp
       )
 
       def call(args)
-        to = date_arg(args, 'to', Date.current)
+        to = date_arg(args, 'to', today(args))
         from, to = date_range(args, default_from: to - 29, default_to: to)
         window = from.in_time_zone.beginning_of_day...(to + 1).in_time_zone.beginning_of_day
         scope = Core::Order.where(occurred_at: window, source: args['source'] || SOURCES)
@@ -51,6 +52,7 @@ module Mcp
         data = { from: from.iso8601, to: to.iso8601, counted_statuses: COUNTED, lines: lines, totals_by_currency: totals,
                  refunded_orders_by_source: refunded,
                  note: 'Totals add Shopify, Square and Rupert POS orders, which are separate sales. C-Trax/SwipeSimple are excluded.' }
+        data = with_as_of(data, args)
         data[:daily] = daily(counted, from, to) if args['include_daily']
         limit = args.fetch('top_products', 10)
         data[:top_products] = top_products(window, args['source'], limit) if limit.positive?
@@ -61,7 +63,7 @@ module Mcp
           "#{from} to #{to}: " + totals.map { |t| "#{t[:orders]} orders, #{money(t[:gross_cents])} #{t[:currency]} gross" }.join('; ') +
             '. By source: ' + lines.map { |l| "#{l[:source]} #{l[:orders]} orders #{money(l[:gross_cents])} #{l[:currency]}" }.join(', ') + '.'
         end
-        result(text, data)
+        result("#{text}#{as_of_note(args)}", data)
       end
 
       private

@@ -144,6 +144,14 @@ Conventions every tool follows (also in the `rupert://guide/getting-started`
 resource):
 
 - Dates are ISO `YYYY-MM-DD` in the store's time zone; ranges are inclusive.
+- Replaying a question: `metric`, `period_review`, `sales_summary`, `sales_tax_report`,
+  `daily_close`, `time_keeping_report` and `business_pulse` accept an optional `as_of`
+  (`YYYY-MM-DD`) that is treated as "today" for named periods (`yesterday`, `last_month`...)
+  and default dates, so the same question gives the same answer on any day. Explicit
+  `from`/`to` are unchanged, a malformed `as_of` or one after tomorrow is refused
+  (`invalid_arguments`), and the value is echoed back as `as_of` in the result. In
+  `business_pulse` only the date and sales figure follow `as_of`; queues, alerts, syncs and
+  tasks are always live. Without `as_of` nothing changes.
 - Money is integer cents. `null` means unknown/not reported, never zero.
 - Sources (Shopify, Square, Rupert POS, C-Trax, SwipeSimple) are never added
   together unless the tool says the total is safe.

@@ -20,24 +20,26 @@ module Mcp
           sources: { type: 'array', maxItems: 5, items: { type: 'string', enum: ::SalesTaxReport::SOURCES.keys },
                      description: 'Limit to these sources. Default: all.' },
           rate: { type: 'number', minimum: 0, maximum: ::SalesTaxReport::MAX_RATE,
-                  description: 'Optional tax rate percent (e.g. 6.35) for the estimate column only. Default: the workspace setting.' }
+                  description: 'Optional tax rate percent (e.g. 6.35) for the estimate column only. Default: the workspace setting.' },
+          as_of: AS_OF_PROPERTY
         },
         additionalProperties: false
       )
 
       def call(args)
-        from, to = date_range(args, default_from: Date.current.beginning_of_month, max_days: ::SalesTaxReport::MAX_DAYS)
+        from, to = date_range(args, default_from: today(args).beginning_of_month, max_days: ::SalesTaxReport::MAX_DAYS)
         rate = args.key?('rate') ? args['rate'].to_s : TenantSettings.sales_tax_rate
         report = ::SalesTaxReport.new(from: from, to: to, sources: args['sources'], rate: rate)
         lines = report.lines.map(&:to_h)
         data = { from: from.iso8601, to: to.iso8601, sources: report.sources, estimate_rate_percent: report.rate&.to_s('F'),
                  lines: lines, note: 'Never add lines together across sources. null = not reported by the source.' }
+        data = with_as_of(data, args)
         text = if lines.empty?
           "No sales are stored for #{from} to #{to} and these sources. This does not establish a zero-sales period."
         else
           "Sales tax #{from} to #{to}: " + lines.map { |l| "#{l[:source]} / #{l[:store]}: tax #{money(l[:tax_collected])} #{l[:currency]} on #{l[:orders]} orders#{" (estimated #{money(l[:estimated_tax])})" if l[:estimated_tax]}" }.join('; ') + '.'
         end
-        result(text, data)
+        result("#{text}#{as_of_note(args)}", data)
       rescue ::SalesTaxReport::Error => e
         raise ToolError.new(e.message, kind: 'invalid_arguments')
       end
