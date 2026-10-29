@@ -24,7 +24,8 @@ module Mcp
           from: DATE_PROPERTY.merge(description: 'Custom first day (instead of period).'),
           to: DATE_PROPERTY.merge(description: 'Custom last day, inclusive.'),
           compare: { type: 'string', enum: ::Metrics::COMPARES, description: 'previous (default), last_year or none.' },
-          source: { type: 'string', enum: ::Metrics::SOURCES, description: 'Only this order source.' }
+          source: { type: 'string', enum: ::Metrics::SOURCES, description: 'Only this order source.' },
+          as_of: AS_OF_PROPERTY
         },
         required: %w[name],
         additionalProperties: false
@@ -32,7 +33,9 @@ module Mcp
 
       def call(args)
         data = ::Metrics.call(args['name'], period: args['period'], from: args['from'], to: args['to'],
-          compare: args['compare'], source: args['source'])
+          compare: args['compare'], source: args['source'], today: today(args))
+        data = with_as_of(data, args)
+        data[:text] = "#{data[:text]}#{as_of_note(args)}" if data[:as_of]
         data[:values] = with_sync_status(data[:values]) if args['name'] == 'sales_by_source'
         result(data[:text], data)
       rescue ArgumentError => e

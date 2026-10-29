@@ -57,6 +57,10 @@ module Mcp
 
     DATE_PROPERTY = { type: 'string', format: 'date', description: 'ISO date, YYYY-MM-DD (a full ISO timestamp is also accepted; its date part is used).' }.freeze
 
+    AS_OF_PROPERTY = { type: 'string', format: 'date', description: 'Optional replay date, YYYY-MM-DD: treat this date as today when resolving ' \
+                                                                    'named periods and default dates (so a question gives the same answer on any day). ' \
+                                                                    'Not after tomorrow. Explicit from/to dates are unaffected. Echoed back as as_of.' }.freeze
+
     attr_reader :token, :user, :tenant
 
     def initialize(token:)
@@ -88,9 +92,31 @@ module Mcp
       raise ToolError.new("#{key} is not a real calendar date: #{value.to_s.first(40)}.", kind: 'invalid_arguments')
     end
 
-    def date_range(args, default_from:, default_to: Date.current, max_days: 400)
+    # The optional as_of date, or nil. A date after tomorrow is refused (one day of slack covers time zones).
+    def as_of_date(args)
+      value = date_arg(args, 'as_of', nil)
+      raise ToolError.new("as_of cannot be after tomorrow (#{(Date.current + 1).iso8601}).", kind: 'invalid_arguments') if value && value > Date.current + 1
+
+      value
+    end
+
+    # What "today" means for this call: as_of when given, else the real current date.
+    def today(args) = as_of_date(args) || Date.current
+
+    # Adds as_of to structured data when the caller supplied one, so a reader can see the basis.
+    def with_as_of(data, args)
+      as_of = as_of_date(args)
+      as_of ? data.merge(as_of: as_of.iso8601) : data
+    end
+
+    def as_of_note(args)
+      as_of = as_of_date(args)
+      as_of ? " (as of #{as_of.iso8601})" : ''
+    end
+
+    def date_range(args, default_from:, default_to: nil, max_days: 400)
       from = date_arg(args, 'from', default_from)
-      to = date_arg(args, 'to', default_to)
+      to = date_arg(args, 'to', default_to || today(args))
       raise ToolError.new('to must be on or after from.', kind: 'invalid_arguments') if to < from
       raise ToolError.new("Choose a range of #{max_days} days or fewer.", kind: 'invalid_arguments') if (to - from).to_i >= max_days
 
