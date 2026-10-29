@@ -81,7 +81,7 @@ class AppStoreReadinessTest < ActionDispatch::IntegrationTest
     assert_not @admin.authenticate('password123')
     assert other.reload.active?
 
-    get root_path
+    get delete_account_path
     assert_redirected_to login_path
     post login_path, params: { email: 'owner@reviewco.test', password: 'password123' }
     assert_response :unprocessable_entity
