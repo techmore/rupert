@@ -78,6 +78,7 @@ Full detail in [team-chat.md](team-chat.md).
 | `RUPERT_VERIFY` | `1` (every local bot) or a comma list of bot handles: check and fix each local answer against its tool data |
 | `RUPERT_VOICE_URL` | Local speech worker for Team chat voice (`http://127.0.0.1:<port>` only); voice controls appear only when this and the token are set |
 | `RUPERT_VOICE_TOKEN` | Bearer token for the speech worker (at least 32 bytes) |
+| `RUPERT_ALLOW_BENCHMARK_FIXTURE` | Required (`1`) to run `TeamChat::BenchmarkFixture` in production; it invents data and refuses otherwise |
 
 ### Subscriptions, owner identities and private workspaces
 
