@@ -197,6 +197,10 @@ a:focus-visible, summary:focus-visible, .button:focus-visible { outline: 3px sol
   .plan > h3:first-child { margin-top: 38px; }
 }
 
+/* The footer rule spans the content column, not the side gutters. */
+.foot { position: relative; border-top: 0; }
+.foot::before { content: ""; position: absolute; top: 0; left: 32px; right: 32px; border-top: 1px solid var(--line); }
+
 @media (max-width: 1040px) {
   .feature, .feature.flip { grid-template-columns: 1fr; gap: 28px; margin-top: 64px; }
   .feature.flip .feature-copy { order: 0; }
@@ -231,4 +235,20 @@ a:focus-visible, summary:focus-visible, .button:focus-visible { outline: 3px sol
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .button { transition: none; }
+}
+
+/* Phones: keep the header on one line down to 320px. Sign in and Start free never wrap;
+   Pricing steps aside only on the narrowest screens. */
+@media (max-width: 860px) {
+  .foot::before { left: 20px; right: 20px; }
+}
+@media (max-width: 560px) {
+  .nav { gap: 12px; }
+  .brand { gap: 8px; }
+  .links { gap: 12px; }
+  .links a { white-space: nowrap; }
+  .links .button.small { padding: 6px 12px; }
+}
+@media (max-width: 350px) {
+  .links a[href="#pricing"] { display: none; }
 }
