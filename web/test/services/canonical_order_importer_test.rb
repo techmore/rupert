@@ -342,4 +342,18 @@ class CanonicalOrderImporterTest < ActiveSupport::TestCase
     assert_equal ['pos', 'gid://shopify/Location/77', store], [pos.channel, pos.location_id, pos.location]
     assert_equal ['online', nil], [web.channel, web.location_id]
   end
+
+  test 'order imports never clear a wholesale flag on the order customer' do
+    CanonicalOrderImporter.from_shopify!([shopify_order])
+    customer = Core::Customer.find_by!(source: 'shopify', external_id: 'gid://shopify/Customer/9')
+    refute customer.source_synced_at
+    customer.update!(wholesale: true, wholesale_business_name: 'Analytical Engines Ltd')
+
+    CanonicalOrderImporter.from_shopify!([shopify_order(id: 'gid://shopify/Order/124', name: '#1002')])
+    CanonicalOrderImporter.from_square!([square_order(customer_id: 'cust-9')])
+    customer.reload
+    assert customer.wholesale?
+    assert_equal 'Analytical Engines Ltd', customer.wholesale_business_name
+    assert_equal customer.id, Core::Order.find_by!(source_order_id: 'gid://shopify/Order/124').customer_id
+  end
 end

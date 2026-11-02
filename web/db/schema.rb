@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_29_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_02_120000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -1313,12 +1313,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_200000) do
     t.string "tags"
     t.string "preferred_name"
     t.bigint "owner_id"
+    t.boolean "wholesale", default: false, null: false
+    t.string "wholesale_business_name"
+    t.string "resale_certificate_number"
+    t.date "resale_certificate_expires_on"
+    t.text "wholesale_notes"
     t.index ["tenant_id", "created_at", "id"], name: "idx_customers_tenant_created_id"
     t.index ["tenant_id", "crm_status"], name: "index_customers_on_tenant_id_and_crm_status"
     t.index ["tenant_id", "email"], name: "index_customers_on_tenant_id_and_email"
     t.index ["tenant_id", "external_id", "source"], name: "index_customers_on_tenant_id_and_external_id_and_source", unique: true
     t.index ["tenant_id", "owner_id"], name: "index_customers_on_tenant_id_and_owner_id"
     t.index ["tenant_id", "phone"], name: "index_customers_on_tenant_id_and_phone"
+    t.index ["tenant_id", "wholesale"], name: "index_customers_on_tenant_id_and_wholesale"
   end
 
   create_table "daily_reconciliation_reviews", force: :cascade do |t|
