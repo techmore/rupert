@@ -42,11 +42,12 @@ class ProcessorCatalog < ApplicationRecord
   def name = label
 
   # The same answer Payments::ItemEligibility's approved-list rule gives. Reads
-  # sku and category (or product_category) from the item when it has them.
+  # F70's ComplianceCatalogItem fields (category_name, compliant_name,
+  # source_variant_id) or the plain sku/category/name/variant_id shape.
   def permits?(catalog_item)
-    item = Payments::ItemEligibility::Item.new(sku: catalog_item.try(:sku)&.to_s,
-      category: (catalog_item.try(:category) || catalog_item.try(:product_category))&.to_s,
-      name: catalog_item.try(:name)&.to_s, variant_id: catalog_item.try(:variant_id)&.to_s)
+    field = ->(*keys) { keys.lazy.map { |key| catalog_item.try(key) }.find(&:present?)&.to_s }
+    item = Payments::ItemEligibility::Item.new(sku: field.call(:sku), category: field.call(:category_name, :category, :product_category),
+      name: field.call(:compliant_name, :name), variant_id: field.call(:source_variant_id, :variant_id))
     Payments::ItemEligibility::ApprovedListRule.new.reason_for(self, item).nil?
   end
 

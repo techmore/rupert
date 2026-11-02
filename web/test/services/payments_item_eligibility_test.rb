@@ -94,8 +94,19 @@ class PaymentsItemEligibilityTest < ActiveSupport::TestCase
     assert_not list.permits?(item.new('HH-PET-FULL', 'Pet CBD', 'Full spectrum', '3'))
     assert_not list.permits?(item.new('HH-THCA-1', 'THCA Flower', 'Flower', '4'))
     assert_nil ProcessorCatalog.allow_list('nmi')
+    f70_item = Struct.new(:sku, :category_name, :compliant_name, :source_variant_id)
+    assert Payments::ItemEligibility.allow_list('authorize_net').permits?(f70_item.new(nil, 'Pet CBD', 'Dog chews', '9'))
+    assert_not Payments::ItemEligibility.allow_list('authorize_net').permits?(f70_item.new('HH-THCA-1', 'THCA Flower', 'Flower', '10'))
+    unrestricted = Payments::ItemEligibility.allow_list('nmi')
+    assert_equal 'NMI', unrestricted.name
+    assert unrestricted.permits?(f70_item.new('HH-THCA-1', 'THCA Flower', 'Flower', '10'))
     @catalog.update!(enforced: false)
     assert_nil ProcessorCatalog.allow_list('authorize_net')
+    assert Payments::ItemEligibility.allow_list('authorize_net').permits?(f70_item.new('HH-THCA-1', nil, nil, nil))
+  end
+
+  test 'Blocked is a Pos::Error so POS controllers render it' do
+    assert_operator Payments::ItemEligibility::Blocked, :<, Pos::Error
   end
 
   test 'unknown processor is a programming error' do
