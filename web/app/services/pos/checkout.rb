@@ -31,6 +31,8 @@ module Pos
         raise Error, 'Prices or taxes changed. Review the updated cart and confirm the tip again.'
       end
       raise Error, 'Source tax information is incomplete. Refresh the catalog.' unless quote['tax_verified']
+      # F69: only items the processor approved may be charged on it (cash is never restricted here).
+      assert_eligible!(Payments::ItemEligibility.processor_for_tender(tender, setting&.gateway_provider), quote['lines'])
       PosCheckout.transaction do
         # First statement is a write: serialize SQLite without a deferred read upgrade.
         Location.where(id: location.id).update_all(active: location.active)
@@ -78,7 +80,7 @@ module Pos
         quantity = line['quantity']
         raise Error, 'Invalid cart quantity.' unless quantity.is_a?(Integer) && quantity.between?(1, 999)
         price = BigDecimal(record['price_cents'].to_s) / 100
-        { variant_id: record['id'], sku: record['sku'], title: record['name'], product_title: record['product_name'], thumbnail_url: line['thumbnail_url'], quantity: quantity, unit_price: price.to_s('F'), line_total: (price * quantity).to_s('F') }
+        { variant_id: record['id'], sku: record['sku'], category: record['category'], title: record['name'], product_title: record['product_name'], thumbnail_url: line['thumbnail_url'], quantity: quantity, unit_price: price.to_s('F'), line_total: (price * quantity).to_s('F') }
       end
       quote = { source: 'ctrax', currency_code: 'USD', preview: display.demo?, lines: lines,
         subtotal: lines.sum { |line| BigDecimal(line[:line_total]) }.to_s('F'), tip_type: 'none', tip_amount: '0.0' }
@@ -102,6 +104,7 @@ module Pos
     # gateway call: the amount is the frozen checkout total, tip included, which
     # is what the cashier keyed on the terminal.
     def self.terminal_card!(checkout)
+      assert_eligible!('card_terminal', checkout.lines) unless checkout.paid?
       checkout.with_lock do
         return checkout if checkout.paid?
         raise Error, 'This checkout cannot be recorded as an A920 card sale.' unless checkout.terminal_card? && checkout.status == 'ready'
@@ -136,6 +139,16 @@ module Pos
       event = checkout.sandbox_payment? ? 'pos_sandbox_checkout_completed' : 'pos_checkout_paid'
       ActivityLogger.log(event, subject: checkout, details: "#{checkout.tender}#{' demo' if checkout.demo?}")
       checkout
+    end
+
+    # Raises a cashier-ready Pos::Error when a processor's approved list (or another
+    # registered guardrail) refuses any line.
+    def self.assert_eligible!(processor, lines)
+      result = Payments::ItemEligibility.check(processor: processor, items: lines)
+      return result if result.allowed?
+
+      ActivityLogger.log('payment_item_blocked', details: "#{processor}: #{result.blocked.map { |row| row[:item].sku.presence || row[:item].variant_id }.join(', ')}".truncate(500))
+      raise Error, result.message
     end
 
     def self.money(value)

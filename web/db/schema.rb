@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_29_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_02_120000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -2335,6 +2335,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_200000) do
     t.index ["tenant_id"], name: "index_period_locks_on_tenant_id"
   end
 
+  create_table "pos_card_reversals", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "pos_checkout_id", null: false
+    t.integer "pos_payment_attempt_id", null: false
+    t.string "kind", null: false
+    t.string "status", default: "submitting", null: false
+    t.string "reference", null: false
+    t.integer "amount_cents", null: false
+    t.string "transaction_id"
+    t.text "reason"
+    t.string "failure_message"
+    t.integer "requested_by_id", null: false
+    t.integer "core_refund_id"
+    t.datetime "submitted_at", null: false
+    t.datetime "resolved_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["pos_checkout_id"], name: "index_pos_card_reversals_on_pos_checkout_id"
+    t.index ["reference"], name: "index_pos_card_reversals_on_reference", unique: true
+    t.check_constraint "amount_cents > 0", name: "pos_card_reversal_amount"
+    t.check_constraint "kind IN ('void', 'refund')", name: "pos_card_reversal_kind"
+    t.check_constraint "status IN ('submitting', 'unknown', 'succeeded', 'failed')", name: "pos_card_reversal_status"
+  end
+
   create_table "pos_checkouts", force: :cascade do |t|
     t.string "tenant_id", null: false
     t.string "location_id", null: false
@@ -2432,6 +2456,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_200000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.datetime "reconciliation_checked_at"
+    t.string "card_brand"
+    t.string "card_last_four"
+    t.string "auth_code"
+    t.string "decline_reason"
     t.index ["invoice"], name: "index_pos_payment_attempts_on_invoice", unique: true
     t.index ["pos_checkout_id"], name: "index_pos_payment_attempts_on_pos_checkout_id"
     t.index ["tenant_id", "nonce_digest"], name: "index_pos_payment_attempts_on_tenant_id_and_nonce_digest", unique: true
@@ -2474,6 +2502,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_200000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "gateway_provider", default: "authorize_net", null: false
+    t.datetime "production_approved_at"
+    t.integer "production_approved_by_id"
+    t.text "production_approval_note"
     t.index ["tenant_id", "location_id"], name: "index_pos_settings_on_tenant_id_and_location_id", unique: true
   end
 
@@ -2505,6 +2536,34 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_200000) do
     t.datetime "updated_at", null: false
     t.index ["tenant_id", "department_id"], name: "index_positions_on_tenant_id_and_department_id"
     t.index ["tenant_id", "name"], name: "index_positions_on_tenant_id_and_name"
+  end
+
+  create_table "processor_catalog_entries", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "processor_catalog_id", null: false
+    t.string "kind", null: false
+    t.string "value", null: false
+    t.string "normalized_value", null: false
+    t.integer "added_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["processor_catalog_id", "kind", "normalized_value"], name: "idx_processor_catalog_entry_value", unique: true
+    t.check_constraint "kind IN ('sku', 'category', 'excluded_sku')", name: "processor_catalog_entry_kind"
+  end
+
+  create_table "processor_catalogs", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "processor", null: false
+    t.boolean "enforced", default: false, null: false
+    t.string "approval_reference"
+    t.text "approval_note"
+    t.integer "approved_by_id"
+    t.datetime "approved_at"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "processor"], name: "index_processor_catalogs_on_tenant_id_and_processor", unique: true
+    t.check_constraint "processor IN ('authorize_net', 'nmi', 'card_terminal')", name: "processor_catalog_processor"
   end
 
   create_table "product_pairs", force: :cascade do |t|
