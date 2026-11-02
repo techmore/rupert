@@ -433,6 +433,11 @@
 /* Inside the iPhone app the header is one solid banner with the native bar above it, which reads
    --color-banner after each page (ios/Sources/Rupert/BannerWebViewController.swift). */
 .native-app .app-topbar { background:var(--color-banner);-webkit-backdrop-filter:none;backdrop-filter:none;border-bottom-color:var(--color-edge); }
+/* Forms open as native sheets with their own Cancel button and title; the app marks those pages
+   data-native-modal (ios/Sources/Rupert/Banner.swift), so the menu, account and "Next" card stay
+   with the page underneath. */
+html[data-native-modal] .native-app .app-topbar,
+html[data-native-modal] .native-app #next_thing { display:none !important; }
 .app-statusbar { position:fixed;left:var(--rail-w,0px);right:0;bottom:0;z-index:25;display:flex;align-items:center;gap:.25rem;height:2.1rem;padding:0 .75rem;border-top:1px solid var(--color-fog);background:color-mix(in srgb,var(--color-paper) 82%,var(--color-oat));font-size:.75rem;color:var(--color-taupe);transition:left .15s ease; }
 @supports (backdrop-filter: blur(1px)) { .app-statusbar { background:color-mix(in srgb,var(--color-paper) 70%,transparent);backdrop-filter:saturate(160%) blur(12px); } }
 .statusbar-item { display:inline-flex;align-items:center;gap:.4rem;min-height:1.7rem;padding:0 .5rem;border-radius:.45rem;color:var(--color-taupe);white-space:nowrap; }
