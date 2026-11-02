@@ -25,6 +25,7 @@ Release-gate standards: [Human Interface Guideline for the release scope](human-
 | `audits/production-readiness.md` | 2026-10-20 production readiness audit: findings, fix status, what the owner must do |
 | `audits/maintenance/security/` | Dated maintenance security reviews, source findings, checks, and follow-up limits |
 | `ops/security-scanning.md` | Security CI (bundler-audit, Brakeman baseline) and the triage of accepted warnings |
+| `security/partner-security-overview.md` | Shareable security and card-data overview for payment partners (PCI scope, controls, sub-processors) |
 | `modules.md` | How to add an ERP module under `web/app/modules/` |
 | `plans/` | Design and migration plans (drift migration, phase plan, staffing model) |
 | `audits/` | Dated inventory/SKU audits with their findings. Raw CSV/JSON output sits in `audits/data/` |
