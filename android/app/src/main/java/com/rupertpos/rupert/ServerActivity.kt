@@ -11,6 +11,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
+import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
@@ -54,6 +55,8 @@ class ServerActivity : AppCompatActivity() {
             getString(R.string.server_current, InstanceAddress.hostOf(Instance.controlPlane))
         if (savedInstanceState == null && Instance.usesCustomServer) input.setText(Instance.controlPlane)
 
+        // An old complaint goes away as soon as the address changes.
+        input.doAfterTextChanged { field.error = null }
         input.setOnEditorActionListener { _, action, _ ->
             if (action == EditorInfo.IME_ACTION_GO) {
                 check()

@@ -135,10 +135,15 @@ Or install the normal build and choose `http://10.0.2.2:3000` in App settings â†
 
 ### Setup used for the first build (macOS, Apple silicon)
 
-`brew install --cask android-commandlinetools`, then with `sdkmanager --sdk_root=~/Library/Android/sdk`:
-`platform-tools`, `platforms;android-36`, `build-tools;36.1.0`, `emulator` and
-`system-images;android-36;google_apis;arm64-v8a`; `avdmanager create avd -n rupert -k
-"system-images;android-36;google_apis;arm64-v8a" -d pixel_8`.
+- JDK 21 (`brew install openjdk@21`); the Android SDK in `~/Library/Android/sdk` with platform 36,
+  build-tools 36.1.0, platform-tools and the emulator.
+- `brew install --cask android-commandlinetools`, then
+  `sdkmanager --sdk_root=$HOME/Library/Android/sdk "system-images;android-36;google_apis;arm64-v8a"`.
+- The Homebrew `avdmanager` looks for system images next to itself, not in `--sdk_root`; either
+  install `cmdline-tools;latest` into the SDK and use that `avdmanager`, or create the AVD by hand
+  (`~/.android/avd/rupert.ini` and `rupert.avd/config.ini` pointing `image.sysdir.1` at the image).
+- Robolectric needs `--add-opens java.base/jdk.internal.access` on JDK 21 for Android 16; the
+  build passes it to unit tests.
 
 ## Configuration
 
