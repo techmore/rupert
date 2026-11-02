@@ -45,6 +45,33 @@ class PosCheckoutsController < AuthenticatedController
     redirect_to pos_checkout_path(checkout), notice: 'Gateway status checked; no charge was sent.'
   end
 
+  # Void or refund a gateway card payment. Money leaves the merchant account, so
+  # this needs sales.write, a reason and an amount; the gateway decides void vs refund.
+  def reverse
+    checkout = checkout_scope.find(params[:id])
+    raise Pundit::NotAuthorizedError unless Current.user.can?('sales.write')
+
+    reversal = Pos::CardReversal.call(checkout: checkout, amount_cents: Pos::Checkout.money(params[:amount]), reason: params[:reason], user: Current.user)
+    message = case reversal.status
+    when 'succeeded' then "#{reversal.kind == 'void' ? 'Voided' : 'Refunded'} #{format('%.2f', reversal.amount_cents / 100.0)} USD on the original card."
+    when 'failed' then "Not reversed: #{reversal.failure_message}"
+    else 'The gateway outcome is uncertain. Recheck before trying again; nothing new was sent.'
+    end
+    redirect_to pos_checkout_path(checkout), (reversal.status == 'succeeded' ? :notice : :alert) => message
+  rescue Pos::Error => e
+    redirect_to pos_checkout_path(checkout), alert: e.message
+  end
+
+  def recheck_reversal
+    checkout = checkout_scope.find(params[:id])
+    raise Pundit::NotAuthorizedError unless Current.user.can?('sales.write')
+
+    PosCardReversal.unresolved.where(pos_checkout: checkout).find_each { |reversal| Pos::CardReversal.reconcile!(reversal) }
+    redirect_to pos_checkout_path(checkout), notice: 'Refund status checked with the gateway; nothing new was sent.'
+  rescue Pos::Error => e
+    redirect_to pos_checkout_path(checkout), alert: e.message
+  end
+
   private
 
   def checkout_scope

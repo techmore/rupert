@@ -634,7 +634,10 @@ Rails.application.routes.draw do
   resources :pos_checkouts, only: %i[create show] do
     post :cancel, on: :member
     post :reconcile, on: :member
+    post :reverse, on: :member
+    post :recheck_reversal, on: :member
   end
+  post '/webhooks/pos/:setting_id', to: 'pos_webhooks#create', as: :pos_webhook
   get '/customer_display/payment_config', to: 'customer_displays#payment_config', as: :customer_payment_config
   post '/customer_display/pay', to: 'customer_displays#pay', as: :customer_pay
   resources :ctrax_days, only: %i[index show create] do

@@ -14,8 +14,8 @@ module Pos
       digest = display.draft_digest
       location = display.location
       setting = PosSetting.find_by(location: location)
-      if tender == 'card' && setting&.gateway_provider == 'nmi' && !setting.nmi_sandbox?
-        raise Error, 'NMI production payments are disabled pending Next Stage confirmation.'
+      if tender == 'card' && setting&.gateway_provider == 'nmi' && !setting.nmi_ready_environment?
+        raise Error, 'NMI production needs owner sign-off in checkout setup first.'
       end
       unless display.demo?
         raise Error, 'Enable this store’s checkout in POS setup first.' unless setting && (tender == 'card' ? setting.card_enabled && setting.verified_at : setting.cash_enabled)

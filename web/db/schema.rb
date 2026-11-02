@@ -2505,6 +2505,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_120000) do
     t.datetime "production_approved_at"
     t.integer "production_approved_by_id"
     t.text "production_approval_note"
+    t.text "webhook_signing_key"
     t.index ["tenant_id", "location_id"], name: "index_pos_settings_on_tenant_id_and_location_id", unique: true
   end
 
