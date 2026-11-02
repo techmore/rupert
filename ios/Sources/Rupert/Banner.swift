@@ -141,6 +141,12 @@ final class BannerWebViewController: HotwireWebViewController {
     func apply(_ colors: BannerColors) {
         self.colors = colors
         BannerColors.current = colors
+        // Rupert's appearance is chosen in the account menu, not by the phone's dark mode, so the
+        // tab bar, sheets, alerts, keyboard and loading screens follow the page. Without this a dark
+        // phone showed a black tab bar and black loading screens around light pages.
+        if let window = view.window {
+            PageStyle.apply(colors.isDark(for: traitCollection) ? .dark : .light, to: window)
+        }
         let appearance = colors.appearance
         navigationItem.standardAppearance = appearance
         navigationItem.scrollEdgeAppearance = appearance
@@ -149,6 +155,26 @@ final class BannerWebViewController: HotwireWebViewController {
             navigationController?.navigationBar.tintColor = colors.accent
             navigationController?.setNeedsStatusBarAppearanceUpdate()
         }
+    }
+}
+
+/// Light or dark native chrome, following the appearance the person picked in Rupert. The last one
+/// is remembered so the next launch starts in it instead of flashing the phone's setting.
+enum PageStyle {
+    private static let key = "rupert.pageStyle"
+
+    static var last: UIUserInterfaceStyle {
+        switch UserDefaults.standard.string(forKey: key) {
+        case "dark": return .dark
+        // Before any page: Herbal, Rupert's default appearance, is light.
+        default: return .light
+        }
+    }
+
+    static func apply(_ style: UIUserInterfaceStyle, to window: UIWindow) {
+        guard window.overrideUserInterfaceStyle != style else { return }
+        window.overrideUserInterfaceStyle = style
+        UserDefaults.standard.set(style == .dark ? "dark" : "light", forKey: key)
     }
 }
 

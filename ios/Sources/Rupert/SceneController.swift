@@ -13,6 +13,7 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
 
         let window = UIWindow(windowScene: windowScene)
         window.tintColor = UIColor(named: "AccentColor", in: .module, compatibleWith: nil)
+        window.overrideUserInterfaceStyle = PageStyle.last
         window.rootViewController = tabBarController
         window.makeKeyAndVisible()
         self.window = window
