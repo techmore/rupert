@@ -97,6 +97,11 @@ Rails.application.routes.draw do
   # Public pages the App Store listing links to, and deleting your own account (guideline 5.1.1(v)).
   get '/privacy', to: 'public_pages#privacy', as: :privacy_policy
   get '/support', to: 'public_pages#support', as: :support
+  # Pages payment partners and card-brand website rules look for. Drafts until the owner signs off.
+  get '/terms', to: 'public_pages#terms', as: :terms_of_service
+  get '/refunds', to: 'public_pages#refunds', as: :refund_policy
+  get '/security', to: 'public_pages#security', as: :security_statement
+  get '/integrations', to: 'public_pages#integrations', as: :public_integrations
   get '/account/delete', to: 'account_deletions#show', as: :delete_account
   delete '/account', to: 'account_deletions#destroy', as: :own_account
 

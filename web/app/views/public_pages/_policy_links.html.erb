@@ -1,0 +1,11 @@
+<%# One list of the public policy pages, at the foot of each. %>
+<nav class="section-card" aria-label="Rupert policies">
+  <%= section_heading 'More from Rupert', level: :h2 %>
+  <ul class="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+    <% [['Support and contact', support_path], ['Privacy policy', privacy_policy_path], ['Terms of service', terms_of_service_path],
+        ['Cancellation and refunds', refund_policy_path], ['Security and data handling', security_statement_path],
+        ['Integrations', public_integrations_path]].each do |label, path| %>
+      <li><%= link_to label, path, class: 'text-olive underline', aria: { current: (current_page?(path) ? 'page' : nil) } %></li>
+    <% end %>
+  </ul>
+</nav>
