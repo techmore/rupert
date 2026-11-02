@@ -82,6 +82,7 @@ CLAIMS = {
 NEGATION = re.compile(r"\b(?:not|no|never|without|none|n't|isn't|hasn't|have not|has not|is not|does not|nor|planned|pending|"
                       r"if|unless|placeholder|CONFIRM)\b", re.I)
 EVIDENCE_DIR = 'docs/security/evidence'
+CLAIM_EXEMPT = ('docs/ops/release-audit.md',)  # the runbook quotes the wording it bans
 CLAIM_GLOBS = PUBLIC_GLOBS + DOCS_GLOBS + ('web/app/views/**/*.erb',)
 
 LEGAL_PAGES = ('web/app/views/public_pages/terms.html.erb', 'web/app/views/public_pages/refunds.html.erb')
@@ -259,7 +260,7 @@ def check_privacy(audit, strict_docs, require_denylist):
 
 def check_claims(audit):
     evidence = ROOT / EVIDENCE_DIR
-    for rel in glob_files(CLAIM_GLOBS, DOCS_EXCLUDE):
+    for rel in glob_files(CLAIM_GLOBS, DOCS_EXCLUDE + CLAIM_EXEMPT):
         text = read_text(rel)
         if not text:
             continue
