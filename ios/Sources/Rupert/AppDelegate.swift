@@ -49,6 +49,8 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         // Pages paint the top bar in their banner colour and pick the status bar text to match.
         Hotwire.config.defaultViewController = { url in BannerWebViewController(url: url) }
         Hotwire.config.defaultNavigationController = { BannerNavigationController() }
+        // Plain-words error pages that reload when the phone is back online (ErrorView.swift).
+        Hotwire.config.makeCustomErrorView = { error, handler in RupertErrorView(error: error, handler: handler) }
         // Page diagnostics and a late-Turbo connection (WebViewSupport), then Hotwire's defaults.
         Hotwire.config.makeCustomWebView = { configuration in
             WebViewSupport.install(in: configuration)

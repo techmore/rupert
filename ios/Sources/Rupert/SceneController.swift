@@ -118,20 +118,14 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
 
 extension SceneController: NavigatorDelegate {
     func visitableDidFailRequest(_ visitable: any Visitable, error: HotwireNativeError, retryHandler: RetryBlock?) {
-        // Rupert's JavaScript did not start: say why, with the page's own diagnostics.
-        if case .load = error {
+        // Rupert's JavaScript did not start: the error page (RupertErrorView) offers the page's own
+        // diagnostics as "Copy Details for Support". They used to arrive in an alert on top of the
+        // error page, user agent and import map included.
+        if case .load = error, let presenter = visitable as? ErrorPresenter {
             let webView = tabBarController.activeNavigator.activeWebView
             Task { @MainActor in
                 let details = await WebViewSupport.report(from: webView)
-                let alert = UIAlertController(title: "Rupert's page did not start",
-                                              message: "\(error.localizedDescription)\n\n\(details)", preferredStyle: .alert)
-                alert.addAction(UIAlertAction(title: "Copy Details", style: .default) { _ in
-                    UIPasteboard.general.string = details
-                })
-                alert.addAction(UIAlertAction(title: "Try Again", style: .cancel) { _ in retryHandler?() })
-                self.tabBarController.activeNavigator.present(alert, animated: true)
-            }
-            if let presenter = visitable as? ErrorPresenter {
+                ErrorDetails.latest = "\(error.localizedDescription)\n\n\(details)"
                 presenter.presentError(error) { retryHandler?() }
             }
             return
