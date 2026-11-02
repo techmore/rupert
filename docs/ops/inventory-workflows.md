@@ -4,6 +4,10 @@ Reviewed 2026-10-17. Shopify and C-Trax mostly share physical stock, with Square
 
 For an everyday explanation of the separate payment setup, see [Payments in plain English](https://techmore.github.io/rupert/payment-basics.html), including Valmar and Authorize.net contacts.
 
+## Rupert stock (Rupert as the primary inventory)
+
+**Stock → Rupert stock** (`/master_stock`) keeps Rupert's own on-hand per item and Rupert site, entered by staff (count, receive, adjust with a reason, site-to-site transfer) in an append-only ledger. **Push preview** shows the exact write Rupert would make to Shopify, C-Trax or Square to match, without contacting them. Live pushing is not implemented and needs owner approval; see the [plan](https://github.com/techmore/rupert/blob/main/docs/plans/rupert-master-inventory.md).
+
 ## Inventory workspace
 
 Open **Stock → Inventory** (`/inventory`) for work queues, source freshness and exact mirrored source/item/location pools. Filter by item, source or location; sort by lowest mirrored available or oldest read. CSV exports every matching pool, including beyond the visible page. Text cells are spreadsheet-safe. Missing stock stays unknown, and signed source observations stay signed. The pool grid labels its legacy value **Mirror quantity**: Shopify mirrors normally store available units, with an aggregate fallback for missing level data. This is not native physical on-hand stock; use the native comparison for on-hand, available and committed values.
