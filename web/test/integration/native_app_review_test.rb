@@ -19,8 +19,10 @@ class NativeAppReviewTest < ActionDispatch::IntegrationTest
     BuildInfo.stubs(:current).returns(BuildInfo.new(revision: 'd' * 40, release_totals: TOTALS))
     @tenant = Tenant.create!(name: 'Review Co', subdomain: "reviewco#{SecureRandom.hex(4)}")
     host! "#{@tenant.subdomain}.example.com"
-    @admin = User.create!(email: "owner-#{SecureRandom.hex(3)}@reviewco.example", name: 'Owner', role: 'admin',
-                          password: 'password123', tenant_id: @tenant.id)
+    @admin = User.create!(
+      email: "owner-#{SecureRandom.hex(3)}@reviewco.example", name: 'Owner', role: 'admin',
+      password: 'password123', tenant_id: @tenant.id
+    )
   end
 
   teardown { Current.reset }
