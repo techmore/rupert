@@ -80,7 +80,15 @@
         </thead>
         <tbody>
           <% if @employees.empty? %>
-            <tr><td colspan="6" class="empty-row"><%= @q.present? ? "No staff match that search. Clear the filters to see everyone." : "No staff yet. Add your first staff member." %></td></tr>
+            <% filtered = @q.present? || @status != 'all' || params[:source].present? || params[:login].present? %>
+            <tr><td colspan="6" class="empty-row">
+              <% if filtered %>
+                No staff match these filters. <%= link_to 'Clear the filters', people_employees_path, class: 'font-semibold text-olive-deep underline' %> to see everyone.
+              <% else %>
+                No staff records yet. A staff record holds department, position and pay<% if Current.user.can?("hr.write") %>; <%= link_to 'add your first staff member', new_people_employee_path, class: 'font-semibold text-olive-deep underline' %><% end %>.
+                <% if Current.user.can?("users.read") %>People who only sign in are listed under <%= link_to 'Users', users_path, class: 'font-semibold text-olive-deep underline' %>.<% end %>
+              <% end %>
+            </td></tr>
           <% end %>
           <% @employees.each do |employee| %>
             <tr>

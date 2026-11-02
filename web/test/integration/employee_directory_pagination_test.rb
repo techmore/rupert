@@ -24,7 +24,7 @@ class EmployeeDirectoryPaginationTest < ActionDispatch::IntegrationTest
     refute_includes response.body, 'Foreign Employee'
     get people_employees_path, params: { source: 'square', login: 'linked' }
     assert_response :success
-    assert_select 'tbody a', count: 0
+    assert_select 'tbody a[href^="/people/employees/"]', count: 0 # no staff rows; the empty row may link to clear filters
   ensure
     Current.reset
   end
