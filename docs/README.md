@@ -9,7 +9,7 @@ In-app onboarding, lessons and definitions: [how learning works and how to maint
 NAB / IRIS deposits, transactions and Health Center summaries: [integration, access and ongoing operation](ops/iris-reporting.md).
 Expanded NAB / IRIS evidence, endpoint inventory, native exports and remaining access questions: [integration investigation](ops/iris-integration-investigation.md).
 
-Start here to resume operator rollout: [Derrick's day-to-day readiness and pickup plan](ops/day-to-day-readiness.md). It separates usable daily review workflows from the payment and inventory gates that still block replacing the current systems.
+Start here to resume operator rollout: [the day-to-day readiness and pickup plan](ops/day-to-day-readiness.md). It separates usable daily review workflows from the payment and inventory gates that still block replacing the current systems.
 
 Marketing operators: [Community thread and reply review](ops/community-marketing.md) explains topic search, manual intake, group-code evidence, reply approval and manual publication.
 
