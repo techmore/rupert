@@ -23,7 +23,8 @@ module Payments
   class ItemEligibility
     PROCESSORS = (ProcessorCatalog::PROCESSORS.keys + ['cash']).freeze
 
-    class Blocked < StandardError
+    # A Pos::Error, so POS controllers already render it as a 422 with its message.
+    class Blocked < Pos::Error
       attr_reader :result
 
       def initialize(result)
@@ -90,7 +91,19 @@ module Payments
       end
     end
 
+    # Processor allow-list for an unrestricted processor (no enforced list).
+    UNRESTRICTED = Struct.new(:name) do
+      def permits?(_catalog_item) = true
+    end
+
     class << self
+      # F70 hook: the processor allow-list Compliance::ItemEligibility takes as
+      # `processor:` (#name, #permits?(catalog_item)). The enforced approved list,
+      # or an allow-everything object when the processor has none.
+      def allow_list(processor)
+        ProcessorCatalog.allow_list(processor) || UNRESTRICTED.new(ProcessorCatalog.label_for(processor))
+      end
+
       def rules
         @rules ||= [ApprovedListRule]
       end
