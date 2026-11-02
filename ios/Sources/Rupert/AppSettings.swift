@@ -7,6 +7,10 @@ struct AppSettingsView: View {
     /// Opens a Rupert page in the current tab (the sheet closes first).
     var open: (URL) -> Void
     var close: () -> Void
+    /// Moves the app back to the control plane's workspace list (SceneController).
+    var switchWorkspace: () -> Void = {}
+    var signedIn = SessionWatcher.shared.state == .signedIn
+    var onWorkspace = Instance.current.host != Instance.controlPlane.host
 
     @State private var lockEnabled = AppLock.shared.isEnabled
     @State private var lockAvailable = AppLock.isAvailable
@@ -35,8 +39,17 @@ struct AppSettingsView: View {
                         : "Set a passcode on this iPhone to lock Rupert.")
                 }
 
-                Section("Workspace") {
+                Section {
                     LabeledContent("Connected to", value: Instance.current.host ?? "")
+                    if onWorkspace {
+                        Button("Switch Workspace", action: switchWorkspace)
+                    }
+                } header: {
+                    Text("Workspace")
+                } footer: {
+                    if onWorkspace {
+                        Text("Go back to \(Instance.controlPlane.host ?? "Rupert") to open another business.")
+                    }
                 }
 
                 Section("Help") {
@@ -45,10 +58,12 @@ struct AppSettingsView: View {
                     Button("Privacy policy") { open(Instance.url("/privacy", on: Instance.controlPlane)) }
                 }
 
-                Section {
-                    Button("Delete account", role: .destructive) { open(Instance.url("/account/delete")) }
-                } footer: {
-                    Text("Erases your name, email and sign-in from Rupert. You confirm on the next page.")
+                if signedIn {
+                    Section {
+                        Button("Delete account", role: .destructive) { open(Instance.url("/account/delete")) }
+                    } footer: {
+                        Text("Erases your name, email and sign-in from Rupert. You confirm on the next page.")
+                    }
                 }
 
                 Section {
@@ -84,6 +99,8 @@ struct AppSettingsView: View {
 enum AppSettings {
     /// Set by SceneController: open a URL in the selected tab.
     @MainActor static var openInApp: ((URL) -> Void)?
+    /// Set by SceneController: point the app back at the control plane.
+    @MainActor static var leaveWorkspace: (() -> Void)?
 
     @MainActor
     static func addButton(to controller: UIViewController) {
@@ -104,7 +121,10 @@ enum AppSettings {
             open: { url in
                 host?.dismiss(animated: true) { openInApp?(url) }
             },
-            close: { host?.dismiss(animated: true) }
+            close: { host?.dismiss(animated: true) },
+            switchWorkspace: {
+                host?.dismiss(animated: true) { leaveWorkspace?() }
+            }
         )
         let sheet = UIHostingController(rootView: view)
         host = sheet

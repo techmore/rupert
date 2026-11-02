@@ -24,6 +24,9 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         AppSettings.openInApp = { [weak self] url in
             self?.tabBarController.activeNavigator.route(url)
         }
+        AppSettings.leaveWorkspace = { [weak self] in
+            self?.leaveWorkspace()
+        }
         if let shortcut = connectionOptions.shortcutItem {
             _ = open(shortcut)
         }
@@ -99,6 +102,18 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         let index = tabBarController.selectedIndex
         tabBarController.load(HotwireTab.all(on: Instance.current))
         select(index)
+    }
+
+    /// Back to the control plane's workspace list, to open another business. A workspace used to be
+    /// the app's home for good once opened; deleting the app was the only way back.
+    private func leaveWorkspace() {
+        Instance.setCurrent(Instance.controlPlane)
+        let tabs = HotwireTab.all(on: Instance.controlPlane)
+        tabBarController.load(tabs)
+        select(0)
+        if let home = tabs.first, let navigator = tabBarController.navigator(for: home) {
+            navigator.route(Instance.url("/workspace", on: Instance.controlPlane), options: VisitOptions(action: .replace))
+        }
     }
 
     /// Point every tab at `instance` (after a sign-in or a workspace handoff) and open `landing`
