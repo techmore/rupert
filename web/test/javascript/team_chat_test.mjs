@@ -213,3 +213,16 @@ test('a channel voice handoff plays the private answer, not the channel redirect
   assert.deepEqual(played, [null, '/chat/private/messages/34/speech']);
   assert.equal(chat.voiceHandoffTimers.size, 0);
 });
+
+test('leaving chat keeps the title of the page Turbo just opened', () => {
+  // disconnect runs after Turbo has swapped in the next page's <head>.
+  context.cancelAnimationFrame = () => {};
+  context.document.removeEventListener = () => {};
+  context.document.title = 'Inventory · Rupert';
+  const chat = new Chat();
+  chat.element = { removeEventListener() {} };
+  chat.titleValue = '#shop-floor · Team chat';
+  chat.compactValue = false;
+  chat.disconnect();
+  assert.equal(context.document.title, 'Inventory · Rupert');
+});

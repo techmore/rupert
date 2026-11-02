@@ -66,7 +66,7 @@ export default class extends Controller {
     this.element.removeEventListener("click", this.onPanelClick)
     document.removeEventListener("visibilitychange", this.onVisible)
     this.stopFitting()
-    if (!this.compactValue) document.title = this.titleValue
+    // The next page has its own title by now (Turbo swapped the head first); do not overwrite it.
   }
 
   // --- layout: the full page fills the window, so the message box stays at the bottom ---
