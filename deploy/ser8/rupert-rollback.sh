@@ -109,11 +109,14 @@ if [ -n "$restore" ]; then
   fi
   mkdir -p "$BACKUPS" && chmod 700 "$BACKUPS"
   keep="$BACKUPS/pre-rollback-$(date +%Y%m%d-%H%M%S)-${CUR:0:8}.sqlite3"
-  ( umask 077; sqlite3 "$db_path" ".backup '$keep'" ) && [ "$(sqlite3 -readonly "$keep" 'PRAGMA quick_check;')" = ok ] \
-    || { systemctl start rupert-web rupert-jobs; die "could not save the current database; nothing was restored"; }
+  if ! ( umask 077; sqlite3 "$db_path" ".backup '$keep'" ) || [ "$(sqlite3 -readonly "$keep" 'PRAGMA quick_check;')" != ok ]; then
+    systemctl start rupert-web rupert-jobs
+    die "could not save the current database; nothing was restored"
+  fi
   log "current database saved to $keep"
-  sqlite3 "$db_path" ".restore '$restore'" && [ "$(sqlite3 "$db_path" 'PRAGMA quick_check;')" = ok ] \
-    || die "database restore failed; the database before this attempt is $keep (services are stopped)"
+  if ! sqlite3 "$db_path" ".restore '$restore'" || [ "$(sqlite3 "$db_path" 'PRAGMA quick_check;')" != ok ]; then
+    die "database restore failed; the database before this attempt is $keep (services are stopped)"
+  fi
   chown rupert:rupert "$db_path" "$db_path-wal" "$db_path-shm" 2>/dev/null
   log "database restored from $restore"
 fi
