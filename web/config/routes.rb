@@ -283,6 +283,8 @@ Rails.application.routes.draw do
       post :release_warehouse_stock
     end
   end
+  get '/loyalty', to: 'loyalty#index', as: :loyalty
+  post '/loyalty/sync', to: 'loyalty#sync', as: :sync_loyalty
   resources :customers, only: %i[index show new create edit update] do
     post :sync_directory, on: :collection
     get :export, on: :collection
