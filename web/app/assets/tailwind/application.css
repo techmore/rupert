@@ -408,7 +408,15 @@
 @media(max-width:640px) {
   .app-topbar { gap:.35rem;padding:0 .5rem; }
   .app-main { padding-left:1rem;padding-right:1rem; }
+  /* Release blockers and the release gate stay on wider screens; on a phone they are in the
+     rail (System → Release blockers), so the bar keeps 44px targets without running off-screen. */
+  .topbar-wide-only { display:none !important; }
+  .header-utilities { gap:0; }
 }
+/* Narrow phones: the face alone is the home link (it keeps its accessible name). */
+@media(max-width:439px) { .app-brand-name { display:none; } }
+/* 320px reflow (WCAG 1.4.10): the menu button and the rail's Overview lead home. */
+@media(max-width:359px) { .app-brand { display:none; } }
 
 /* Status bar: one thin strip under every page (sync, Team chat badge, report a problem, help, build). */
 /* Next thing to do (shared shell, docs/ui-standards.md §2): one quiet line at the top of the page,
