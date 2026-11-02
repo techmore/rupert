@@ -69,3 +69,6 @@ Rails.application.config.filter_parameters += %i[check_code]
 Rails.application.config.filter_parameters += [
   /\Atin\z/i, /\Adate_of_birth\z/i, /\Aaddress(_line[12])?\z/i, /\Alegal_name\z/i, /\Apostal_code\z/i
 ]
+
+# Register override PINs (F70) never reach request logs.
+Rails.application.config.filter_parameters += [/\A(override_)?pin(_confirmation)?\z/i]

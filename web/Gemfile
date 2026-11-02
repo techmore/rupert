@@ -131,3 +131,6 @@ gem "shopify_app", "~> 23.0"
 
 # In-app team chat: model client with native tool calling (Ollama, OpenAI-compatible endpoints).
 gem "ruby_llm", "~> 2.1"
+
+# QR codes linking receipts to lab certificates (COAs), drawn as inline SVG.
+gem "rqrcode", "~> 3.1"
