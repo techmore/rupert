@@ -10,6 +10,7 @@ struct AppSettingsView: View {
 
     @State private var lockEnabled = AppLock.shared.isEnabled
     @State private var lockAvailable = AppLock.isAvailable
+    @State private var grace = AppLock.shared.gracePeriod
     private let method = AppLock.methodName
 
     var body: some View {
@@ -18,11 +19,19 @@ struct AppSettingsView: View {
                 Section {
                     Toggle("Require \(method)", isOn: Binding(get: { lockEnabled }, set: setLock(_:)))
                         .disabled(!lockAvailable)
+                    if lockEnabled {
+                        Picker("Ask Again", selection: $grace) {
+                            ForEach(AppLock.gracePeriods, id: \.seconds) { period in
+                                Text(period.label).tag(period.seconds)
+                            }
+                        }
+                        .onChange(of: grace) { _, seconds in AppLock.shared.gracePeriod = seconds }
+                    }
                 } header: {
                     Text("Security")
                 } footer: {
                     Text(lockAvailable
-                        ? "Ask for \(method) each time Rupert comes back to the screen. The app switcher shows a cover instead of your pages."
+                        ? "Ask for \(method) when Rupert comes back to the screen. The app switcher always shows a cover instead of your pages."
                         : "Set a passcode on this iPhone to lock Rupert.")
                 }
 
