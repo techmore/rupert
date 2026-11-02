@@ -1,0 +1,13 @@
+<div class="page-narrow space-y-6">
+  <%= page_header 'Override PIN', subtitle: 'Your PIN approves a blocked sale at the register or an event. Every use is logged with your name and the reason.' %>
+  <%= form_tag compliance_override_pin_path, method: :patch, class: 'card card-pad space-y-4' do %>
+    <p class="text-sm text-mocha"><%= Current.user.pos_override_pin_set? ? "Your PIN was set #{l(Current.user.pos_override_pin_set_at.in_time_zone, format: :short)}. Saving replaces it." : 'You have no PIN yet.' %></p>
+    <div><%= label_tag :current_password, 'Your password', class: 'field-label' %><%= password_field_tag :current_password, nil, required: true, autocomplete: 'current-password', class: 'input' %></div>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div><%= label_tag :pin, 'New PIN (4 to 8 digits)', class: 'field-label' %><%= password_field_tag :pin, nil, required: true, inputmode: 'numeric', pattern: '[0-9]{4,8}', maxlength: 8, autocomplete: 'new-password', class: 'input' %></div>
+      <div><%= label_tag :pin_confirmation, 'PIN again', class: 'field-label' %><%= password_field_tag :pin_confirmation, nil, required: true, inputmode: 'numeric', pattern: '[0-9]{4,8}', maxlength: 8, autocomplete: 'new-password', class: 'input' %></div>
+    </div>
+    <p class="text-xs text-mocha">Never share it. Five wrong tries lock it for 15 minutes.</p>
+    <div class="form-actions"><%= submit_tag 'Save', class: 'btn-primary' %><%= link_to 'Cancel', compliance_path, class: 'btn-ghost' %></div>
+  <% end %>
+</div>

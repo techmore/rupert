@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_02_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_02_170000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -894,6 +894,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_130000) do
     t.index ["tenant_id", "target_id"], name: "idx_buzz_reactions_target"
   end
 
+  create_table "certificates_of_analysis", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "compliance_catalog_item_id", null: false
+    t.string "batch"
+    t.string "lab_name", null: false
+    t.string "report_identifier"
+    t.date "tested_on", null: false
+    t.date "expires_on"
+    t.string "document_url", null: false
+    t.string "status", default: "current", null: false
+    t.integer "added_by_id"
+    t.integer "withdrawn_by_id"
+    t.datetime "withdrawn_at"
+    t.text "withdrawal_reason"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["compliance_catalog_item_id"], name: "index_certificates_of_analysis_on_compliance_catalog_item_id"
+    t.check_constraint "status IN ('current', 'withdrawn')", name: "coa_status"
+  end
+
   create_table "chat_approval_events", force: :cascade do |t|
     t.string "tenant_id", null: false
     t.integer "approval_id", null: false
@@ -1149,6 +1169,78 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_130000) do
     t.index ["tenant_id", "user_id"], name: "idx_clock_one_open_shift", unique: true, where: "ended_at IS NULL AND user_id IS NOT NULL"
     t.index ["user_id"], name: "index_clock_shifts_on_user_id"
     t.check_constraint "ended_at IS NULL OR ended_at > started_at", name: "clock_positive_interval"
+  end
+
+  create_table "compliance_catalog_items", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "location_id", null: false
+    t.integer "compliance_category_id", null: false
+    t.string "source", default: "ctrax", null: false
+    t.string "source_variant_id", null: false
+    t.string "source_name"
+    t.string "sku"
+    t.string "compliant_name", null: false
+    t.string "receipt_name"
+    t.string "status", default: "approved", null: false
+    t.boolean "card_eligible", default: false, null: false
+    t.boolean "cash_eligible", default: true, null: false
+    t.boolean "age_restricted", default: true, null: false
+    t.boolean "coa_required", default: true, null: false
+    t.decimal "thc_mg_per_container", precision: 10, scale: 3
+    t.integer "approved_price_cents"
+    t.integer "approved_by_id"
+    t.datetime "approved_at"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["compliance_category_id"], name: "index_compliance_catalog_items_on_compliance_category_id"
+    t.index ["tenant_id", "location_id", "source", "source_variant_id"], name: "idx_compliance_items_source", unique: true
+    t.check_constraint "status IN ('approved', 'suspended')", name: "compliance_item_status"
+  end
+
+  create_table "compliance_categories", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "name", null: false
+    t.boolean "card_eligible", default: false, null: false
+    t.boolean "prohibited", default: false, null: false
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "name"], name: "idx_compliance_categories_name", unique: true
+  end
+
+  create_table "compliance_events", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "location_id"
+    t.integer "user_id"
+    t.string "actor_name"
+    t.integer "approver_id"
+    t.string "approver_name"
+    t.string "action", null: false
+    t.string "subject_type"
+    t.string "subject_id"
+    t.string "subject_label"
+    t.text "reason"
+    t.text "details_json"
+    t.integer "pos_checkout_id"
+    t.integer "pos_event_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "action", "created_at"], name: "idx_compliance_events_action"
+    t.index ["tenant_id", "created_at"], name: "idx_compliance_events_time"
+    t.index ["tenant_id", "pos_event_id"], name: "idx_compliance_events_event"
+  end
+
+  create_table "compliance_policies", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "location_id", null: false
+    t.boolean "locked_catalog", default: false, null: false
+    t.integer "coa_max_age_days", default: 365, null: false
+    t.integer "updated_by_id"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "location_id"], name: "idx_compliance_policies_location", unique: true
   end
 
   create_table "ctrax_days", force: :cascade do |t|
@@ -2368,6 +2460,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_130000) do
     t.datetime "updated_at", null: false
     t.string "gateway_provider", default: "authorize_net", null: false
     t.string "gateway_fingerprint"
+    t.boolean "id_checked"
+    t.integer "compliance_override_by_id"
+    t.text "compliance_override_reason"
+    t.text "compliance_issues_json"
     t.index ["order_id"], name: "index_pos_checkouts_on_order_id"
     t.index ["pos_display_session_id"], name: "index_pos_checkouts_on_pos_display_session_id"
     t.index ["pos_session_id"], name: "index_pos_checkouts_on_pos_session_id"
@@ -2424,6 +2520,81 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_130000) do
     t.index ["tenant_id"], name: "index_pos_display_sessions_on_tenant_id"
     t.index ["token_digest"], name: "index_pos_display_sessions_on_token_digest", unique: true
     t.index ["user_id"], name: "index_pos_display_sessions_on_user_id"
+  end
+
+  create_table "pos_event_items", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "pos_event_id", null: false
+    t.integer "compliance_catalog_item_id", null: false
+    t.string "name", null: false
+    t.string "category_name"
+    t.integer "price_cents", null: false
+    t.boolean "card_eligible", default: false, null: false
+    t.boolean "age_restricted", default: true, null: false
+    t.string "coa_url"
+    t.date "coa_expires_on"
+    t.integer "loaded_quantity"
+    t.integer "counted_remaining"
+    t.integer "position", default: 0, null: false
+    t.datetime "pulled_at"
+    t.integer "pulled_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["compliance_catalog_item_id"], name: "index_pos_event_items_on_compliance_catalog_item_id"
+    t.index ["pos_event_id", "compliance_catalog_item_id"], name: "idx_pos_event_items_unique", unique: true
+    t.index ["pos_event_id"], name: "index_pos_event_items_on_pos_event_id"
+  end
+
+  create_table "pos_event_sales", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "pos_event_id", null: false
+    t.integer "user_id", null: false
+    t.string "client_sale_id", null: false
+    t.string "tender", null: false
+    t.text "lines_json", null: false
+    t.integer "subtotal_cents", null: false
+    t.integer "tax_cents", null: false
+    t.integer "total_cents", null: false
+    t.integer "cash_received_cents"
+    t.integer "change_cents"
+    t.boolean "id_checked", default: false, null: false
+    t.integer "override_by_id"
+    t.text "override_reason"
+    t.text "flags_json"
+    t.datetime "occurred_at", null: false
+    t.integer "order_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["pos_event_id", "client_sale_id"], name: "idx_pos_event_sales_client", unique: true
+    t.index ["user_id"], name: "index_pos_event_sales_on_user_id"
+    t.check_constraint "tender IN ('cash', 'card_terminal')", name: "pos_event_sale_tender"
+  end
+
+  create_table "pos_events", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "location_id", null: false
+    t.string "name", null: false
+    t.string "venue"
+    t.date "starts_on", null: false
+    t.date "ends_on", null: false
+    t.string "status", default: "draft", null: false
+    t.integer "tax_rate_bps", default: 0, null: false
+    t.integer "opening_float_cents", default: 0, null: false
+    t.integer "counted_cash_cents"
+    t.integer "terminal_card_total_cents"
+    t.text "staff_user_ids_json"
+    t.text "checklist_json"
+    t.text "close_notes"
+    t.integer "created_by_id"
+    t.integer "opened_by_id"
+    t.datetime "opened_at"
+    t.integer "closed_by_id"
+    t.datetime "closed_at"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["location_id"], name: "index_pos_events_on_location_id"
+    t.check_constraint "status IN ('draft', 'open', 'closed')", name: "pos_event_status"
   end
 
   create_table "pos_payment_attempts", force: :cascade do |t|
@@ -3739,6 +3910,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_130000) do
     t.string "referral_domain"
     t.datetime "last_active_at"
     t.boolean "presence_hidden"
+    t.string "pos_override_pin_digest"
+    t.datetime "pos_override_pin_set_at"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["referral_domain"], name: "index_users_on_referral_domain"
     t.index ["shopify_user_id"], name: "index_users_on_shopify_user_id", unique: true
@@ -4018,6 +4191,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_130000) do
   add_foreign_key "bulk_movements", "bulk_lots"
   add_foreign_key "bulk_recipes", "bulk_materials"
   add_foreign_key "buzz_person_keys", "users", on_delete: :cascade
+  add_foreign_key "certificates_of_analysis", "compliance_catalog_items"
   add_foreign_key "chat_approval_events", "chat_approvals", column: "approval_id"
   add_foreign_key "chat_approvals", "chat_messages", column: "message_id", on_delete: :nullify
   add_foreign_key "chat_attachments", "chat_messages", column: "message_id"
@@ -4035,6 +4209,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_130000) do
   add_foreign_key "clock_shifts", "employees", on_delete: :nullify
   add_foreign_key "clock_shifts", "tenants"
   add_foreign_key "clock_shifts", "users", on_delete: :nullify
+  add_foreign_key "compliance_catalog_items", "Location", column: "location_id"
+  add_foreign_key "compliance_catalog_items", "compliance_categories"
+  add_foreign_key "compliance_policies", "Location", column: "location_id"
   add_foreign_key "ctrax_days", "Location", column: "location_id", on_delete: :cascade
   add_foreign_key "ctrax_days", "tenants"
   add_foreign_key "ctrax_days", "users", column: "reviewed_by_id"
@@ -4125,6 +4302,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_130000) do
   add_foreign_key "pos_display_sessions", "Location", column: "location_id", on_delete: :cascade
   add_foreign_key "pos_display_sessions", "tenants"
   add_foreign_key "pos_display_sessions", "users"
+  add_foreign_key "pos_event_items", "compliance_catalog_items"
+  add_foreign_key "pos_event_items", "pos_events"
+  add_foreign_key "pos_event_sales", "pos_events"
+  add_foreign_key "pos_events", "Location", column: "location_id"
   add_foreign_key "pos_payment_attempts", "pos_checkouts"
   add_foreign_key "pos_payment_attempts", "tenants"
   add_foreign_key "pos_settings", "Location", column: "location_id"
