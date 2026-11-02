@@ -30,6 +30,7 @@ class CustomersController < AuthenticatedController
     'recent' => %w[created desc], 'oldest' => %w[created asc], 'spend' => %w[lifetime desc], 'last_order' => %w[last_order desc]
   }.freeze
   NAME_FILTERS = { 'unknown' => 'Unknown (no name)', 'named' => 'Named' }.freeze
+  EXPORT_COLUMNS = %w[source external_id first_name last_name preferred_name email phone crm_status tags wholesale wholesale_business_name].freeze
 
   before_action :set_customer, only: %i[show edit update]
 
@@ -47,6 +48,7 @@ class CustomersController < AuthenticatedController
     @pagy, @customers = pagy(:offset, @sort.apply(matching), limit: 25)
     @unknown_count = Core::Customer.unknown.count
     @status_counts = Core::Customer.group(:crm_status).count
+    @wholesale_count = Core::Customer.wholesale.count
     @total_customers = @status_counts.values.sum
     @filtered = filters_active?
     # One grouped SUM + one grouped COUNT for the page instead of a lifetime-
@@ -94,7 +96,7 @@ class CustomersController < AuthenticatedController
     @customer.external_id = "manual:#{SecureRandom.hex(8)}"
 
     if @customer.save
-      log_customer('customer_created', 'manual profile')
+      log_customer('customer_created', @customer.wholesale? ? 'manual profile, wholesale' : 'manual profile')
       redirect_to(customer_path(@customer), notice: 'Customer added.')
     else
       render(:new, status: :unprocessable_entity)
@@ -111,7 +113,7 @@ class CustomersController < AuthenticatedController
     @owners = crm_owners
     if @customer.update(customer_params)
       changed = @customer.previous_changes.keys.excluding('updated_at')
-      log_customer('customer_updated', "fields: #{changed.join(', ')}") if changed.any?
+      log_customer(update_action, "fields: #{changed.join(', ')}") if changed.any?
       redirect_to(customer_path(@customer), notice: 'Customer updated.')
     else
       render(:edit, status: :unprocessable_entity)
@@ -126,9 +128,9 @@ class CustomersController < AuthenticatedController
       return redirect_to(customers_path, alert: 'Narrow your filters to 25,000 profiles or fewer before exporting.')
     end
     csv = CSV.generate do |rows|
-      rows << %w[source external_id first_name last_name preferred_name email phone crm_status tags]
+      rows << EXPORT_COLUMNS
       records.find_each do |customer|
-        rows << %i[source external_id first_name last_name preferred_name email phone crm_status tags].map do |key|
+        rows << EXPORT_COLUMNS.map do |key|
           value = customer.public_send(key).to_s
           value.match?(/\A[\s]*[=+@-]/) ? "'#{value}" : value
         end
@@ -147,10 +149,18 @@ class CustomersController < AuthenticatedController
     ActivityLogger.log(action, subject: @customer, label: "Customer ##{@customer.id}", details: details)
   end
 
+  # Marking or unmarking wholesale gets its own Activity log entry so it can
+  # be found without reading field lists.
+  def update_action
+    return 'customer_updated' unless @customer.saved_change_to_wholesale?
+
+    @customer.wholesale? ? 'customer_marked_wholesale' : 'customer_unmarked_wholesale'
+  end
+
   # Which filters shaped the export and how many profiles it held; no values
   # from the profiles themselves.
   def export_summary(total)
-    filters = %i[status source owner due directory name].filter_map { |key| "#{key}=#{params[key]}" if params[key].present? }
+    filters = %i[status source owner due directory name account].filter_map { |key| "#{key}=#{params[key]}" if params[key].present? }
     filters << 'search' if params[:q].respond_to?(:values) && params[:q].values.any?(&:present?)
     [helpers.pluralize(total, 'profile'), filters.join(' ').presence].compact.join(', ')
   end
@@ -165,12 +175,13 @@ class CustomersController < AuthenticatedController
 
   def filters_active?
     q = params[:q].respond_to?(:values) ? params[:q].values.any?(&:present?) : false
-    q || %i[status source owner due directory name].any? { |key| params[key].present? }
+    q || %i[status source owner due directory name account].any? { |key| params[key].present? }
   end
 
   def filtered_customers
     records = Core::Customer.all
     records = records.where(crm_status: params[:status]) if Core::Customer::CRM_STATUSES.include?(params[:status])
+    records = records.where(wholesale: params[:account] == 'wholesale') if Core::Customer::ACCOUNT_TYPES.key?(params[:account])
     records = records.where(source: params[:source]) if Core::Customer::SOURCES.include?(params[:source])
     records = records.where(owner_id: Current.user.id) if params[:owner] == 'mine'
     records = records.where(owner_id: nil) if params[:owner] == 'unassigned'
@@ -197,7 +208,7 @@ class CustomersController < AuthenticatedController
   end
 
   def customer_params
-    attributes = params.require(:customer).permit(:preferred_name, :crm_status, :tags, :owner_id, :notes)
+    attributes = params.require(:customer).permit(:preferred_name, :crm_status, :tags, :owner_id, :notes, *Core::Customer::WHOLESALE_FIELDS)
     if !@customer || @customer.source == 'manual'
       attributes.merge!(params.require(:customer).permit(:first_name, :last_name, :email, :phone))
     end

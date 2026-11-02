@@ -157,4 +157,24 @@ class DirectorySyncTest < ActiveSupport::TestCase
     assert_equal 1, Directories::Sync.call(provider: 'ctrax', kind: 'employees')
     assert_equal ['fixture.api.cannatrax.net/1'], People::Employee.where(source: 'ctrax').pluck(:external_id)
   end
+
+  test 'a directory refresh updates contact details but never clears the wholesale flag or its details' do
+    stub_customers([customer(1, 'Original')])
+    Directories::Sync.call(provider: 'ctrax', kind: 'customers')
+    record = Core::Customer.find_by!(source: 'ctrax')
+    record.update!(wholesale: true, wholesale_business_name: 'Green Leaf Co-op', resale_certificate_number: 'RC-1',
+      resale_certificate_expires_on: Date.new(2027, 1, 31), wholesale_notes: 'Net 30')
+
+    WebMock.reset!
+    stub_request(:post, "#{@origin}/api/auth/login").to_return(json(token: 'fixture-token',
+      permissions: { accessible_stores: { '7' => 'Fixture' } }))
+    stub_customers([customer(1, 'Renamed')])
+    Directories::Sync.call(provider: 'ctrax', kind: 'customers')
+
+    record.reload
+    assert_equal 'Renamed', record.first_name
+    assert record.wholesale?
+    assert_equal ['Green Leaf Co-op', 'RC-1', Date.new(2027, 1, 31), 'Net 30'],
+      [record.wholesale_business_name, record.resale_certificate_number, record.resale_certificate_expires_on, record.wholesale_notes]
+  end
 end
