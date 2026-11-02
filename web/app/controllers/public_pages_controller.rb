@@ -32,7 +32,7 @@ class PublicPagesController < ApplicationController
   end
 
   def self.support_email
-    ENV['RUPERT_SUPPORT_EMAIL'].presence || 'support@rupertpos.com'
+    ENV['RUPERT_SUPPORT_EMAIL'].presence || 'sdolbec@rupertpos.com'
   end
 
   def self.company
