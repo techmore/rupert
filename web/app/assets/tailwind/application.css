@@ -521,6 +521,29 @@ html[data-full-window] .table-region { max-height:none; }
 .row-item-end .num { min-width:6.5rem; }
 .row-list-foot { margin:0;padding:.7rem 1.25rem .85rem;border-top:1px solid var(--color-fog); }
 
+/* Callout: one thing on a page that needs a decision or blocks the next step (a returned timesheet's
+   comment, clock shifts not imported yet, corrections waiting). Quieter than a flash, louder than text. */
+.callout { padding:.85rem 1.1rem;border:1px solid var(--color-fog);border-radius:var(--radius-card);background:var(--color-paper); }
+.callout-attention { border-color:color-mix(in srgb,var(--color-clay) 45%,var(--color-fog));border-left-width:4px; }
+.callout-title { font-weight:600;color:var(--color-ink);font-size:.9rem; }
+
+/* Timesheets (staff and reviewer share these; docs/ui-standards.md §5). */
+.timesheet-state { display:flex;flex-wrap:wrap;align-items:center;gap:.4rem .75rem; }
+.timesheet-days .row-item { padding-left:0;padding-right:0; }
+.timesheet-days .row-item-end, .shift-week .row-item-end { margin-left:auto; }
+.timesheet-day-name { font-weight:600;color:var(--color-ink);font-size:.9rem; }
+.timesheet-day-empty .timesheet-day-name { font-weight:500;color:var(--color-mocha); }
+.timesheet-total { border-top:2px solid var(--color-edge) !important; }
+.entry-edit > summary { list-style:none;cursor:pointer; }
+.entry-edit > summary::-webkit-details-marker { display:none; }
+.entry-edit[open] { flex-basis:100%;order:3; }
+.entry-edit-form { display:grid;gap:.75rem;margin-top:.6rem;padding:.85rem;border-radius:var(--radius-card);background:color-mix(in srgb,var(--color-haze) 55%,transparent); }
+@media (min-width:640px) { .entry-edit-form { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+.timesheet-history { margin:0;padding:0;list-style:none;font-size:.875rem; }
+.timesheet-history li + li { margin-top:.35rem; }
+.shift-week + .shift-week { margin-top:1.25rem; }
+.month-grid { min-width:42rem; } /* a month of seven columns scrolls sideways on phones instead of crushing names */
+
 /* --- Data grid (spreadsheet view) and Stock --- */
 /* Data grid: the report-table controls on a dense, read-only sheet. Header row and first column
    stay put while the body scrolls both ways; numbers are tabular and right-aligned; rows are
@@ -587,7 +610,7 @@ html[data-full-window] .table-region { max-height:none; }
 .table { width:100%;font-size:.875rem; }
 .table tbody tr + tr { border-top:1px solid var(--color-fog); }
 .table tbody tr:hover { background:color-mix(in srgb,var(--color-haze) 60%,transparent); }
-.table-region { max-width:100%;overflow-x:auto;border-radius:var(--radius-card); }
+.table-region { position:relative;max-width:100%;overflow-x:auto;border-radius:var(--radius-card); } /* relative: keeps absolutely positioned .sr-only header labels inside the scroller, so wide tables never widen a phone page */
 .table-region:focus-visible { outline:2px solid var(--color-olive);outline-offset:3px; }
 
 /* Apple Pay requires its native appearance; the size and radius follow the control scale. */

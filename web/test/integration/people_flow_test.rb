@@ -153,7 +153,7 @@ class PeopleFlowTest < ActionDispatch::IntegrationTest
       period_end: '2026-08-09')
     other.entries.create!(tenant_id: @tenant.id, worked_on: '2026-08-03', hours: 8, work_type: 'regular')
     other.submit!
-    post_page reject_people_timesheet_path(other)
+    post_page reject_people_timesheet_path(other), params: { review_note: 'Check Monday.' }
     follow_redirect!
     assert other.reload.rejected?
     post_page reopen_people_timesheet_path(other)

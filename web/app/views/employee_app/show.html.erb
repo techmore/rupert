@@ -1,5 +1,5 @@
 <% content_for :title, 'My time' %>
-<%= render 'shared/learning_welcome' if Current.user && !@preview %>
+<%= render 'shared/learning_welcome' if Current.user && !@preview && !@worker %>
 <% if !Current.user %>
   <%= page_header 'My time', subtitle: 'Your hours, pay and time off, together.' do %>
     <%= link_to 'Sign in', login_path, class: 'btn-primary' %>
@@ -13,7 +13,7 @@
 <% else %>
   <%= page_header "Hi, #{@worker.first_name}", eyebrow: Date.current.strftime('%A, %B %-d') do %>
     <%= link_to 'My time clock', personal_time_clock_path, class: 'btn-ghost' %>
-    <% if !@preview && Current.user.can_use_pos? %><%= link_to 'Open POS', ctrax_pos_path, class: 'btn-primary' %><% end %>
+    <% if !@preview && Current.user.can_use_pos? %><%= link_to 'Open POS', ctrax_pos_path, class: 'btn-ghost' %><% end %>
   <% end %>
   <section class="card card-pad flex flex-wrap items-center justify-between gap-4" <%= tour_anchor('clock') %>>
     <div>
@@ -26,28 +26,42 @@
         <p class="text-sm text-mocha">Since <%= l(@open_shift.started_at, format: '%-I:%M %p %Z') %></p>
       <% else %><p class="mt-1 text-sm text-mocha"><%= @worker.on_leave? ? 'Your time records and time-off requests are still here.' : 'Clock in when you start working.' %></p><% end %>
     </div>
-    <% if @preview %><button type="button" disabled class="btn-primary opacity-60">Clock in</button>
-    <% elsif @open_shift %><%= button_to 'Clock out', clock_out_time_clock_path, params: { shift_id: @open_shift.id }, class: 'btn-primary', data: { turbo: false } %>
-    <% elsif @worker.active? %><%= button_to 'Clock in', clock_in_time_clock_path, params: { request_token: SecureRandom.uuid }, class: 'btn-primary', data: { turbo: false } %><% end %>
+    <% if @preview %><button type="button" disabled class="btn-primary btn-lg opacity-60">Clock in</button>
+    <% elsif @open_shift && @open_shift.started_at >= ClockShift::MAX_SHIFT_HOURS.hours.ago %><%= button_to 'Clock out', clock_out_time_clock_path, params: { shift_id: @open_shift.id }, class: 'btn-primary btn-lg', form: { class: 'w-full sm:w-auto' }, data: { turbo: false } %>
+    <% elsif @worker.active? && !@open_shift %><%= button_to 'Clock in', clock_in_time_clock_path, params: { request_token: SecureRandom.uuid }, class: 'btn-primary btn-lg', form: { class: 'w-full sm:w-auto' }, data: { turbo: false } %><% end %>
   </section>
-  <section class="card card-pad space-y-5" <%= tour_anchor('week') %>>
-    <div class="flex flex-wrap justify-between gap-2"><h2 class="section-title">This week</h2><span class="text-sm text-mocha"><%= @summary.from.strftime('%b %-d') %> – <%= @summary.to.strftime('%b %-d') %></span></div>
+  <%= render 'shared/learning_welcome' unless @preview %>
+  <section class="card card-pad space-y-5" <%= tour_anchor('week') %> aria-labelledby="week-heading">
+    <div class="flex flex-wrap items-baseline justify-between gap-2">
+      <h2 id="week-heading" class="section-title">This pay week</h2>
+      <span class="text-sm text-mocha"><%= period_range(@summary.from, @summary.to) %></span>
+    </div>
     <%= render 'shared/square_timecard_sync' unless @preview %>
-    <div class="grid grid-cols-2 gap-4">
-      <div class="stat"><div class="stat-label">Timesheet hours<%= define('timesheet') %></div><p class="stat-value mt-2 tabular-nums"><%= number_with_precision(@summary.hours, precision: 2, strip_insignificant_zeros: true) %><span class="text-lg"> h</span></p></div>
-      <div class="stat"><div class="stat-label">Estimated gross pay<%= define('estimated_pay') %></div><p class="stat-value mt-2 tabular-nums"><%= @summary.gross_cents.nil? ? '—' : number_to_currency(@summary.gross_cents / 100.0) %></p><% if @summary.gross_cents && (rate = @summary.rate_for(Date.current)) && rate.pay_type == 'hourly' && rate.hourly_rate_cents.to_i.positive? %><%= explain_calculation(title: 'Estimated gross pay this week', id: 'pay-calculation', rows: [['Recorded hours', "#{number_with_precision(@summary.hours, precision: 2, strip_insignificant_zeros: true)} h"], ['× Hourly rate on record', number_to_currency(rate.hourly_rate_cents / 100.0)], ['= Estimated gross', number_to_currency(@summary.gross_cents / 100.0)]], formula: 'hours × hourly rate for each day, overtime at its multiplier', note: 'Before deductions, using the pay rate on record for each day. Overtime and PTO lines use their own multipliers, so the total can differ from plain hours × rate. This is not a payslip.', lesson: 'staff') %><% end %></div>
+    <% clocked = @preview ? 0 : @summary.clock_hours %>
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div class="stat"><div class="stat-label">Clocked</div><p class="stat-value mt-2 tabular-nums" data-clocked-hours><%= format_hours(clocked) %><span class="text-lg"> h</span></p><% if @open_shift && !@open_shift.stale_open? %><p class="text-xs text-mocha">Including your open shift</p><% end %></div>
+      <div class="stat"><div class="stat-label">On your timesheet<%= define('timesheet') %></div><p class="stat-value mt-2 tabular-nums"><%= format_hours(@summary.hours) %><span class="text-lg"> h</span></p><% if @timesheet %><p class="mt-1"><%= timesheet_status_pill(@timesheet) %></p><% end %></div>
+      <div class="stat col-span-2 sm:col-span-1"><div class="stat-label">Estimated gross pay<%= define('estimated_pay') %></div><% waiting_for_sheet = @summary.hours.zero? && clocked.positive? %><p class="stat-value mt-2 tabular-nums"><%= @summary.gross_cents.nil? || waiting_for_sheet ? '–' : number_to_currency(@summary.gross_cents / 100.0) %></p><% if waiting_for_sheet %><p class="text-xs text-mocha">Appears when your clocked hours are on your timesheet.</p><% end %><% if @summary.gross_cents && !waiting_for_sheet && (rate = @summary.rate_for(Date.current)) && rate.pay_type == 'hourly' && rate.hourly_rate_cents.to_i.positive? %><%= explain_calculation(title: 'Estimated gross pay this week', id: 'pay-calculation', rows: [['Hours on your timesheet', format_hours(@summary.hours, unit: true)], ['× Hourly rate on record', number_to_currency(rate.hourly_rate_cents / 100.0)], ['= Estimated gross', number_to_currency(@summary.gross_cents / 100.0)]], formula: 'hours × hourly rate for each day, overtime at its multiplier', note: 'Before deductions, using the pay rate on record for each day. Overtime and PTO lines use their own multipliers, so the total can differ from plain hours × rate. This is not a payslip.', lesson: 'staff') %><% end %></div>
     </div>
-    <div class="grid grid-cols-7 gap-1 text-center">
+    <ol class="grid grid-cols-7 gap-1 text-center" aria-label="Hours by day">
       <% (@summary.from..@summary.to).each do |day| %>
-        <div class="rounded-control px-1 py-3 <%= day == Date.current ? 'bg-olive/10' : 'bg-haze/50' %>"><p class="text-xs text-mocha"><%= day.strftime('%a') %></p><p class="mt-1 font-semibold"><%= day.day %></p><p class="mt-1 text-xs"><%= @summary.daily_hours(day).positive? ? "#{number_with_precision(@summary.daily_hours(day), precision: 2, strip_insignificant_zeros: true)}h" : '—' %></p></div>
+        <% day_hours = @preview ? @summary.daily_hours(day) : [@summary.clock_hours(day), @summary.daily_hours(day)].max %>
+        <li class="rounded-control px-1 py-3 <%= day == Date.current ? 'bg-olive/10 ring-1 ring-olive/40' : 'bg-haze/50' %>" <%= 'aria-current="date"'.html_safe if day == Date.current %>>
+          <p class="text-xs text-mocha"><span aria-hidden="true"><%= day.strftime('%a') %></span><span class="sr-only"><%= day.strftime('%A, %B') %></span></p>
+          <p class="mt-1 font-semibold"><%= day.day %></p>
+          <p class="mt-1 text-xs tabular-nums"><%= day_hours.positive? ? format_hours(day_hours) : (day > Date.current ? '' : '–') %></p>
+        </li>
       <% end %>
-    </div>
+    </ol>
     <% if (rate = @summary.rate_for(Date.current)) %><p class="text-sm text-mocha">Pay cycle: <%= rate.pay_frequency.humanize %> · Your manager confirms payment dates.</p><% end %>
-    <p class="text-xs text-mocha"><%= @summary.gross_cents.nil? ? 'An hourly pay estimate needs a pay rate for every recorded day. Salary pay appears in your finalized payslips.' : 'Before deductions, based on recorded hours. Rupert timesheets still need review; Square history does not confirm payment.' %></p>
     <% unless @preview %>
-      <div class="flex flex-wrap items-center gap-3"><%= button_to @timesheet ? 'Open this week’s timesheet' : 'Start this week’s timesheet', employee_week_path, class: 'btn-primary', data: { turbo: false } %><%= link_to 'All my timesheets', people_timesheets_path, class: 'text-sm text-olive underline' %></div>
-      <% if @summary.clock_hours.positive? %><p class="text-sm text-mocha"><%= number_with_precision(@summary.clock_hours, precision: 2) %>h clocked this week. Import finished shifts into your draft timesheet to include them.</p><% end %>
-      <% if @timesheet&.review_note.present? %><p class="rounded-card bg-haze p-3 text-sm"><strong>Review comment:</strong> <%= @timesheet.review_note %></p><% end %>
+      <% if @timesheet&.review_note.present? && @timesheet.rejected? %><p class="callout callout-attention text-sm"><strong>Returned:</strong> <%= @timesheet.review_note %></p><% end %>
+      <div class="flex flex-wrap items-center gap-3">
+        <% week_label = if @timesheet.nil? then 'Start this week’s timesheet' elsif @timesheet.rejected? then 'Fix this week’s timesheet' else 'Open this week’s timesheet' end %>
+        <%= button_to week_label, employee_week_path, class: 'btn-primary', data: { turbo: false } %>
+        <%= link_to 'All my timesheets', people_timesheets_path, class: 'text-sm text-olive underline' %>
+      </div>
+      <p class="text-xs text-mocha"><%= @timesheet.nil? ? 'Starting the timesheet brings in your finished clock shifts. ' : '' %><%= @summary.gross_cents.nil? ? 'An hourly pay estimate needs a pay rate for every recorded day. Salary pay appears in your finalized payslips.' : 'Pay is an estimate before deductions until your timesheet is approved and paid.' %></p>
     <% else %><div class="flex flex-wrap items-center gap-3"><%= link_to 'Open this week’s timesheet', employee_preview_timesheet_path('current'), class: 'btn-primary' %><%= link_to 'All my timesheets', employee_preview_timesheets_path, class: 'text-sm text-olive underline' %></div><% end %>
   </section>
   <section class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

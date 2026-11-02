@@ -77,7 +77,33 @@ module People
     end
 
     def period_label
-      "#{period_start.strftime('%b %d')} – #{period_end.strftime('%b %d, %Y')}"
+      self.class.range_label(period_start, period_end)
+    end
+
+    # "Oct 22 – 28, 2026", "Oct 29 – Nov 4, 2026", "Dec 31, 2026 – Jan 6, 2027" (docs/ui-standards.md §7).
+    def self.range_label(from, to)
+      return from.strftime('%b %-d, %Y') if from == to
+      return "#{from.strftime('%b %-d, %Y')} – #{to.strftime('%b %-d, %Y')}" if from.year != to.year
+      return "#{from.strftime('%b %-d')} – #{to.strftime('%b %-d, %Y')}" if from.month != to.month
+
+      "#{from.strftime('%b %-d')} – #{to.strftime('%-d, %Y')}"
+    end
+
+    # Finished clock shifts in this period that are not on the sheet yet (or changed since import).
+    # Read-only: importing is still the workflow's job.
+    def unimported_shift_count
+      from = period_start.in_time_zone
+      to = (period_end + 1).in_time_zone
+      imported = entries.where.not(clock_shift_id: nil).pluck(:clock_shift_id).uniq
+      ClockShift.where(employee_id: employee_id).where.not(ended_at: nil)
+        .where('started_at < ? AND ended_at > ?', to, from).where.not(id: imported).count
+    end
+
+    # Clock corrections still waiting for review on shifts inside this period. They block approval.
+    def pending_corrections
+      ClockCorrection.joins(:clock_shift).where(status: 'pending', clock_shifts: { employee_id: employee_id })
+        .where('clock_shifts.started_at < ? AND (clock_shifts.ended_at IS NULL OR clock_shifts.ended_at > ?)',
+          (period_end + 1).in_time_zone, period_start.in_time_zone)
     end
 
     # Display figures: 1% commission on credited sales plus the fixed card
