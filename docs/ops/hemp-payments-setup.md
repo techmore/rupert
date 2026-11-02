@@ -31,7 +31,7 @@ Open **Processor-approved products** from any store's Checkout setup page (`/pro
 
 Once enforced, an unlisted item is refused when the cashier prepares a card checkout, again just before the charge, and at online checkout. The cashier is told which item and to take cash or remove it. Rupert only suggests another card processor if that processor's own enforced list approves the item. It never routes a refused item to an unrestricted processor.
 
-Matching ignores letter case and extra spaces. Products with neither a SKU nor a category are refused on an enforced processor. Every change is in the activity log.
+Matching ignores letter case and extra spaces. Categories are matched against the C-Trax category on the register and the Shopify product type online. **Prefer SKU entries** where you can: they match the same way everywhere, including the F70 locked catalog (whose category is the owner-approved compliance category, not the C-Trax one). Until a follow-up makes the payment check read the locked catalog's approved category, category entries on a locked store should use names that match both. Products with neither a SKU nor a category are refused on an enforced processor. Every change is in the activity log.
 
 For other guardrails (COA, custom items, event mode), F70 adds rules to the same check (`Payments::ItemEligibility.register_rule`), so every tender path gives the same answer.
 
