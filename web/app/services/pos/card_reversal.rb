@@ -31,6 +31,8 @@ module Pos
       amount = amount_cents.to_i
       raise Error, 'Only paid card checkouts charged through Rupert can be refunded here.' unless @checkout.tender == 'card' && @checkout.paid? && !@checkout.demo?
       raise Error, 'Enter a reason of at least 3 characters.' unless reason.to_s.squish.length.between?(3, 500)
+      # Dejavoo reversals (SPIn Void before settlement, Return after) are not wired yet.
+      raise Error, 'Refund Dejavoo terminal sales on the terminal for now, then record the refund on the order.' if @checkout.gateway_provider == 'dejavoo_spin'
       attempt = @checkout.pos_payment_attempts.find_by(status: 'paid')
       raise Error, 'No verified gateway payment is recorded for this checkout.' unless attempt&.transaction_id.to_s.match?(ANET_ID)
 

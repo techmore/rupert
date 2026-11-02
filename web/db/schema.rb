@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_02_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_02_180000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -2564,7 +2564,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["tenant_id", "processor"], name: "index_processor_catalogs_on_tenant_id_and_processor", unique: true
-    t.check_constraint "processor IN ('authorize_net', 'nmi', 'card_terminal')", name: "processor_catalog_processor"
+    t.check_constraint "processor IN ('authorize_net', 'nmi', 'card_terminal', 'dejavoo_spin')", name: "processor_catalog_processor"
   end
 
   create_table "product_pairs", force: :cascade do |t|

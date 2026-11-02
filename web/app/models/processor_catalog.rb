@@ -13,7 +13,8 @@ class ProcessorCatalog < ApplicationRecord
   PROCESSORS = {
     'authorize_net' => 'Authorize.net',
     'nmi' => 'NMI',
-    'card_terminal' => 'Card terminal (standalone)'
+    'card_terminal' => 'Card terminal (standalone)',
+    'dejavoo_spin' => 'Dejavoo terminal'
   }.freeze
 
   belongs_to :approved_by, class_name: 'User', optional: true
