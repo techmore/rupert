@@ -71,6 +71,8 @@
     </div>
 
     <div class="space-y-4 lg:col-span-2">
+      <%= render 'customers/loyalty', customer: @customer %>
+
       <section id="timeline" class="section-card" aria-label="Activity timeline">
         <%= section_heading 'Activity timeline', hint: 'Newest first.' %>
         <% if can_write %>
