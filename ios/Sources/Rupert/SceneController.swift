@@ -19,6 +19,7 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         self.window = window
 
         tabBarController.load(HotwireTab.all(on: Instance.current))
+        showTabs(UserDefaults.standard.bool(forKey: Self.signedInKey), animated: false)
         AppLock.shared.attach(to: window)
         AppSettings.openInApp = { [weak self] url in
             self?.tabBarController.activeNavigator.route(url)
@@ -32,6 +33,9 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         }
         WorkspaceHandoff.shared.onOpened = { [weak self] origin, landing in
             self?.show(instance: origin, landing: landing)
+        }
+        SessionWatcher.shared.onState = { [weak self] state in
+            self?.showTabs(state == .signedIn, animated: true)
         }
         SessionWatcher.shared.onChange = { [weak self] _ in
             // The change is noticed while the old page is still finishing its visit; replacing the
@@ -55,10 +59,31 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
     }
 
     private func open(_ shortcut: UIApplicationShortcutItem) -> Bool {
+        // Signed out there is only the sign-in page; the app opens on it.
+        guard signedIn else { return true }
         let tab = shortcut.type.components(separatedBy: ".").last ?? ""
         guard let index = HotwireTab.all(on: Instance.current).firstIndex(where: { $0.id == tab }) else { return false }
         select(index)
         return true
+    }
+
+    private static let signedInKey = "rupert.signedIn"
+    private var signedIn = false
+
+    /// Signed out, every tab showed the same sign-in page, most of them under a "Please sign in"
+    /// error. Now only Home's shows, without the tab bar; the tabs come back with the sign-in.
+    /// Remembered across launches, so a signed-out start does not flash five tabs.
+    private func showTabs(_ visible: Bool, animated: Bool) {
+        signedIn = visible
+        UserDefaults.standard.set(visible, forKey: Self.signedInKey)
+        if !visible, tabBarController.selectedIndex != 0 { select(0) }
+        if #available(iOS 18.0, *) {
+            if tabBarController.isTabBarHidden == visible {
+                tabBarController.setTabBarHidden(!visible, animated: animated)
+            }
+        } else {
+            tabBarController.tabBar.isHidden = !visible
+        }
     }
 
     /// Selecting a tab in code skips the tab bar's delegate, which is where lazily loaded tabs
