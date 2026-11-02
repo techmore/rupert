@@ -55,6 +55,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         Hotwire.config.makeCustomWebView = { configuration in
             WebViewSupport.install(in: configuration)
             let webView = WKWebView(frame: .zero, configuration: configuration)
+            TextSize.follow(webView)
 #if DEBUG
             // Safari's Web Inspector can read pages and session cookies; debug builds only.
             if #available(iOS 16.4, *) { webView.isInspectable = true }

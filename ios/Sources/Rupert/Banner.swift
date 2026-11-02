@@ -127,6 +127,7 @@ final class BannerWebViewController: HotwireWebViewController {
         if presentingViewController != nil {
             webView.evaluateJavaScript("document.documentElement.dataset.nativeModal = ''")
         }
+        TextSize.apply(to: webView)
         webView.evaluateJavaScript(BannerColors.readScript) { [weak self] value, _ in
             self?.apply(BannerColors(json: value) ?? .fallback)
         }
