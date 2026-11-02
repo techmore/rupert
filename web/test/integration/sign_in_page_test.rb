@@ -20,12 +20,14 @@ class SignInPageTest < ActionDispatch::IntegrationTest
     assert_select 'details.login-password:not([open]) form[action=?] input[name=email]:not([autofocus])', login_path
     assert_select 'details.login-password summary', 'Sign in with email and password'
     assert_select "a[href='#{start_path}']", 0
+    assert_select 'a', text: 'Rupert home', count: 0
   end
 
   test 'the main Rupert site still offers creating an account' do
     host! 'example.com'
     get login_path
     assert_select "a[href='#{start_path}']", 'Create a free account'
+    assert_select "a[href='#{root_path}']", 'Rupert home'
   end
 
   test 'a failed password sign-in shows the form again, open and filled in' do
