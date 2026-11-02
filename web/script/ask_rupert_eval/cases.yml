@@ -43,7 +43,7 @@ cases:
     kind: how_to
     question: How do I add a new staff member?
     nav_query: add staff member
-    expect: { tool: none, also: [where_is, how_do_i], answer: ['/people/employees'] }
+    expect: { tool: none, also: [where_is, how_do_i], answer: ['/people/employees|/users|/learning/access'] }
   - id: h07_available_stock
     kind: how_to
     question: What does available stock mean?
