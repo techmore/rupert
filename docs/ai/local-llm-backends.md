@@ -94,8 +94,8 @@ How to read it:
   Latencies are comparable within this table, not absolute.
 - One pass per configuration at temperature 0 is a small sample: differences of one or two cases are noise.
 - Raw scores, per-case reasons, model repository revisions and weight SHA-256 hashes are in
-  [`local-llm-eval-2026-11-02.json`](local-llm-eval-2026-11-02.json). The Qwen3.5-4B model files used for the two 4B
-  Qwen runs were deleted after those runs to free disk space; the revisions and hashes there reproduce them.
+  [`local-llm-eval-2026-11-02.json`](local-llm-eval-2026-11-02.json). All model files used here were deleted from the
+  test Mac after the runs to free disk space; the repository revisions and weight hashes there reproduce them.
 
 ## What MLX means for ser8 (production)
 
