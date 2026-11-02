@@ -512,6 +512,9 @@ html[data-full-window] .table-region { max-height:none; }
 .toolbar { display:flex;flex-wrap:wrap;align-items:flex-end;gap:.75rem; }
 .toolbar > * { min-width:0; }
 .toolbar-field { flex:1 1 11rem;max-width:20rem; }
+.toolbar-field > .input,.toolbar-field > .select,.toolbar-field > .search { width:100%; }
+/* Phones: one filter per row, full width, so the band reads as a form instead of a ragged row. */
+@media(max-width:640px) { .toolbar > .toolbar-field { flex-basis:100%;max-width:none; } }
 .toolbar-field .field-label { margin-bottom:.3rem;font-size:.75rem;color:var(--color-taupe); }
 .toolbar-actions { display:flex;flex-wrap:wrap;align-items:center;gap:.5rem; }
 /* A toolbar that sits on the page itself, not in a card: filters are controls, not content. */
