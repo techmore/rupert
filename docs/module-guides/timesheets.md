@@ -66,7 +66,10 @@ covers the period. A sheet with submission history cannot be deleted. All of
 this runs inside `TimesheetWorkflow`, used by both the web and the staff app.
 
 Clock corrections go `pending` → `approved` or `rejected`; approval changes the
-shift, the request is kept.
+shift, the request is kept. Anyone who reviews timesheets (admins, managers, shift
+leaders) or holds `payroll.write` can review them (`ClockCorrection.reviewer?`, owner
+decision 2026-11-02), never for their own shift; the queue is on Time clock and on the
+affected timesheet.
 
 A new timesheet (staff "this week" link, Add timesheet) covers the pay period from
 `PayRules` (weekly Thursday–Wednesday until chosen), shortened so it never overlaps

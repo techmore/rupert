@@ -23,7 +23,7 @@ Screenshots: `docs/audits/timesheets-2026-11/` (before and after of the key scre
 | Reviewer | Timesheets | `/people/timesheets` | Review queue, filters, bulk approve, week calendar, weeks at a glance, time off, sources |
 | Reviewer | Review timesheet | `/people/timesheets/:id` | Check days against shifts, approve / approve & next / return |
 | Reviewer | All sources, calendar | `?view=unified`, `?view=calendar` | Rupert, Square and C-Trax time in one place |
-| Payroll admin | Clock corrections | `/time_clock` (bottom) | Approve or reject correction requests |
+| Reviewer, payroll admin | Clock corrections | `/time_clock` (bottom), timesheet page | Approve or reject correction requests |
 | Reviewer | Punch report, Square / C-Trax history, pay runs | `/people/punch_history`, … | Source evidence and payroll |
 | Native/API | `/api/v1/employee/*` | — | Same workflow for the mobile app (unchanged by this work) |
 
@@ -191,8 +191,8 @@ approved / rejected.
 
 ### Owner decisions (not changed here)
 
-- Should timesheet reviewers (managers, shift leaders) also approve clock corrections? Today only payroll admins
-  can, so a manager sees the blocker but cannot clear it.
+- Decided 2026-11-02: timesheet reviewers (admins, managers, shift leaders) also approve clock corrections
+  (`ClockCorrection.reviewer?`); before, only payroll writers could. Nobody reviews a correction to their own shift.
 - Breaks: punches are in/out only; tracking paid/unpaid breaks would need a model change.
 
 ## Before and after

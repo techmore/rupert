@@ -11,9 +11,9 @@
     <section class="callout callout-attention flex flex-wrap items-center justify-between gap-3" aria-label="Clock corrections waiting" data-corrections-waiting>
       <div>
         <p class="callout-title"><%= pluralize(@pending_corrections_count, 'clock correction') %> waiting for review</p>
-        <p class="text-sm text-mocha">Timesheets with these shifts cannot be approved until the corrections are reviewed<%= ' by a payroll admin' unless Current.user.can?('payroll.write') %>.</p>
+        <p class="text-sm text-mocha">Timesheets with these shifts cannot be approved until the corrections are reviewed.</p>
       </div>
-      <% if Current.user.can?('payroll.write') %><%= link_to 'Review corrections', time_clock_path(anchor: 'corrections'), class: 'btn-ghost btn-sm' %><% end %>
+      <% if ClockCorrection.reviewer?(Current.user) %><%= link_to 'Review corrections', time_clock_path(anchor: 'corrections'), class: 'btn-ghost btn-sm' %><% end %>
     </section>
   <% end %>
 

@@ -58,7 +58,7 @@
                 <%= button_to 'Approve', approve_correction_time_clock_path(correction, return_to: people_timesheet_path(@timesheet)), class: 'btn-primary btn-sm', form: { data: { turbo_confirm: 'Apply the corrected clock times? The shift changes; payroll does not.' } } %>
                 <%= button_to 'Reject', reject_correction_time_clock_path(correction, return_to: people_timesheet_path(@timesheet)), class: 'btn-ghost btn-sm' %>
               <% else %>
-                <span class="text-sm text-mocha"><%= own ? 'Waiting for a reviewer' : 'Waiting for a payroll admin' %></span>
+                <span class="text-sm text-mocha"><%= own || correction.clock_shift.user_id == Current.user.id || correction.requested_by_id == Current.user.id ? 'Waiting for another reviewer' : 'Waiting for a reviewer' %></span>
               <% end %>
             </div>
           </li>
