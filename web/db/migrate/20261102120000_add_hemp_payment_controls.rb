@@ -7,7 +7,8 @@
 # - pos_payment_attempts: receipt details (brand, last four, auth code) and a
 #   cashier-safe decline reason. Never a card number.
 # - pos_card_reversals: durable void/refund attempts, stored before the gateway call.
-# - pos_settings: owner sign-off for a production NMI account.
+# - pos_settings: owner sign-off for a production NMI account, and a webhook
+#   signing key (Authorize.net Signature Key or NMI signing key).
 class AddHempPaymentControls < ActiveRecord::Migration[8.1]
   def change
     create_table :processor_catalogs do |t|
@@ -66,5 +67,7 @@ class AddHempPaymentControls < ActiveRecord::Migration[8.1]
     add_column :pos_settings, :production_approved_at, :datetime
     add_column :pos_settings, :production_approved_by_id, :integer
     add_column :pos_settings, :production_approval_note, :text
+    # Encrypted by the model. Verifies gateway webhooks; never sent anywhere.
+    add_column :pos_settings, :webhook_signing_key, :text
   end
 end

@@ -1,10 +1,12 @@
 // Hosted fields only. Never read card inputs or submit card details to Rupert.
-// Collect.js tokens are accepted by NMI's REST sale API.
+// Collect.js tokens are accepted by NMI's Payment API (payment_token).
+// Only NMI's two fixed Collect.js hosts are loaded, matched to the environment.
+const NMI_SCRIPTS = { sandbox: "https://sandbox.nmi.com/token/Collect.js", production: "https://secure.nmi.com/token/Collect.js" }
 export async function mountNmiFields(config, { onReady, onToken, onError, signal }) {
-  const src = "https://sandbox.nmi.com/token/Collect.js"
-  if (!config.sandbox || config.script_url !== src || !config.tokenization_key) throw new Error("NMI production payments are disabled.")
+  const src = NMI_SCRIPTS[config.sandbox === true ? "sandbox" : config.sandbox === false ? "production" : ""]
+  if (!src || config.script_url !== src || !config.tokenization_key) throw new Error("NMI card fields are not set up for this checkout.")
   const identity = `${src}:${config.tokenization_key}`
-  if (window.rupertNmiIdentity && window.rupertNmiIdentity !== identity) throw new Error("NMI sandbox account changed. Reload this screen.")
+  if (window.rupertNmiIdentity && window.rupertNmiIdentity !== identity) throw new Error("NMI account changed. Reload this screen.")
   if (!window.rupertNmiScript) {
     window.rupertNmiIdentity = identity
     window.rupertNmiScript = new Promise((resolve, reject) => {
