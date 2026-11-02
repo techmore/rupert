@@ -1,0 +1,48 @@
+<% content_for :title, 'Card settlement check' %>
+<% labels = { 'matched' => 'Matched', 'amount_mismatch' => 'Amount differs', 'not_from_rupert' => 'Not from a Rupert checkout', 'awaiting_settlement' => 'Not settled yet', 'reversed_at_gateway' => 'Voided or refunded at the gateway only', 'missing_at_gateway' => 'Missing at the gateway' } %>
+<div class="page-medium space-y-6">
+  <%= page_header 'Card settlement check', subtitle: "Compares #{@location.name}’s settled card batches with Rupert’s card sales and refunds. Read-only." %>
+  <% if !@setting&.verified_at %>
+    <p class="flash flash-alert">Set up and check this store’s card gateway first. <%= link_to 'Checkout setup', pos_setting_path(@location.id), class: 'underline' %></p>
+  <% else %>
+    <%= form_with url: pos_settlement_path(@location.id), method: :get, class: 'card card-pad flex flex-wrap items-end gap-3', data: { turbo: false } do %>
+      <%= hidden_field_tag :run, '1' %>
+      <div><label for="from" class="field-label">From</label><%= date_field_tag :from, @from_date, class: 'input' %></div>
+      <div><label for="to" class="field-label">To</label><%= date_field_tag :to, @to_date, class: 'input' %></div>
+      <%= submit_tag 'Check settlements', class: 'btn-primary' %>
+    <% end %>
+  <% end %>
+
+  <% if @report %>
+    <section class="section-card" aria-label="Summary">
+      <%= section_heading @report.balanced? ? 'No differences that need action' : 'Differences to review' %>
+      <dl class="grid gap-2 text-sm sm:grid-cols-2">
+        <% %w[matched amount_mismatch reversed_at_gateway missing_at_gateway awaiting_settlement not_from_rupert].each do |status| %>
+          <div class="flex justify-between gap-3"><dt><%= labels[status] %></dt><dd class="num font-semibold"><%= @report.count(status) %></dd></div>
+        <% end %>
+        <div class="flex justify-between gap-3"><dt>Settled at the gateway, not from a Rupert checkout</dt><dd class="num"><%= ctrax_money(@report.sum('not_from_rupert')) %></dd></div>
+        <div class="flex justify-between gap-3"><dt>Standalone terminal sales recorded in Rupert</dt><dd class="num"><%= ctrax_money(@report.terminal_cents) %></dd></div>
+      </dl>
+      <p class="mt-2 text-xs text-taupe">If the store’s standalone card terminal runs on this same gateway account, its sales appear as “not from a Rupert checkout”. Those two totals should then agree for the same days.</p>
+    </section>
+
+    <section class="section-card" aria-label="Batches">
+      <%= section_heading 'Settled batches' %>
+      <% if @report.batches.empty? %><p class="text-sm text-mocha">No settled batches in this window.</p><% end %>
+      <% @report.batches.each do |batch| %>
+        <div class="flex flex-wrap justify-between gap-2 border-t border-fog pt-2 text-sm"><span>Batch <span class="num"><%= batch.id %></span> · <%= batch.settled_at %></span><span class="num">Charges <%= ctrax_money(batch.charge_cents) %> · Refunds <%= ctrax_money(batch.refund_cents) %> · <%= batch.count %> items</span></div>
+      <% end %>
+    </section>
+
+    <section class="section-card" aria-label="Transactions to review">
+      <%= section_heading 'Transactions to review' %>
+      <% if @report.exceptions.empty? %><p class="text-sm text-mocha">Every settled transaction matches a Rupert card sale or refund.</p><% end %>
+      <% @report.exceptions.first(500).each do |row| %>
+        <div class="flex flex-wrap justify-between gap-2 border-t border-fog pt-2 text-sm">
+          <span><span class="<%= %w[amount_mismatch reversed_at_gateway missing_at_gateway].include?(row.status) ? 'pill-clay' : 'pill-taupe' %>"><%= labels[row.status] %></span> <%= row.kind %> · <span class="num"><%= row.transaction_id %></span><%= " · #{row.reference}" if row.reference.present? %></span>
+          <span class="num">Gateway <%= row.gateway_cents ? ctrax_money(row.gateway_cents) : '—' %> · Rupert <%= row.rupert_cents ? ctrax_money(row.rupert_cents) : '—' %><% if row.checkout_id %> · <%= link_to 'Receipt', pos_checkout_path(row.checkout_id), class: 'underline' %><% end %></span>
+        </div>
+      <% end %>
+    </section>
+  <% end %>
+</div>

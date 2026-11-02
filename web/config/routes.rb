@@ -629,6 +629,7 @@ Rails.application.routes.draw do
   get '/pos_settings/:location_id', to: 'pos_settings#show', as: :pos_setting
   patch '/pos_settings/:location_id', to: 'pos_settings#update'
   post '/pos_settings/:location_id/verify', to: 'pos_settings#verify', as: :verify_pos_setting
+  get '/pos_settlements/:location_id', to: 'pos_settlements#show', as: :pos_settlement
   get '/processor_catalogs', to: 'processor_catalogs#index', as: :processor_catalogs
   patch '/processor_catalogs/:processor', to: 'processor_catalogs#update', as: :processor_catalog
   post '/processor_catalogs/:processor/entries', to: 'processor_catalogs#add_entries', as: :processor_catalog_entries

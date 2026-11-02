@@ -69,7 +69,7 @@ module Payments
       def call(processor:, item:)
         return nil if processor == 'cash'
 
-        catalog = @catalogs.fetch(processor) { @catalogs[processor] = ProcessorCatalog.includes(:entries).find_by(processor: processor) }
+        catalog = @catalogs.fetch(processor) { @catalogs[processor] = ProcessorCatalog.find_by(processor: processor) }
         return nil unless catalog&.enforced
 
         sets = catalog.lookup
