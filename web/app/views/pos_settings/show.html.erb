@@ -43,7 +43,7 @@
       <label class="flex gap-2 text-sm"><%= form.check_box :card_enabled %><span>Enable card charges for this verified gateway and store<%= ' (sandbox test payments only)' if @setting.environment == 'sandbox' %></span></label>
       <div><label for="webhook_signing_key" class="field-label"><%= nmi ? 'NMI webhook signing key' : 'Authorize.net Signature Key (webhooks)' %></label><%= password_field_tag 'webhook_signing_key', nil, id: 'webhook_signing_key', autocomplete: 'new-password', class: 'input', placeholder: @setting.webhook_signing_key.present? ? 'Saved. Leave blank to keep it, or type clear to remove it' : 'Optional' %></div>
       <% if @setting.persisted? %><p class="text-xs text-taupe">Webhook URL for the gateway: <code><%= pos_webhook_url(@setting.id) %></code>. Webhooks only prompt Rupert to recheck payments and refunds with the gateway; amounts and status always come from the gateway’s own records.</p><% end %>
-      <p class="text-sm"><%= link_to 'Processor-approved products', processor_catalogs_path, class: 'underline' %>: only products the processor approved can be charged.</p>
+      <p class="text-sm"><%= link_to 'Processor-approved products', processor_catalogs_path, class: 'underline' %>: only products the processor approved can be charged.<% if @setting.persisted? %> <%= link_to 'Card settlement check', pos_settlement_path(@location.id), class: 'underline' %>: compare settled batches with Rupert sales.<% end %></p>
       <p class="text-xs text-taupe">Credentials are encrypted and never redisplayed. Changing the account, environment or credentials disables card charges until checked again. Reporting-only OAuth credentials cannot charge payments.</p>
     </fieldset>
     <div class="form-actions">
