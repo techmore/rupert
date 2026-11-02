@@ -85,6 +85,19 @@ class PaymentsItemEligibilityTest < ActiveSupport::TestCase
     Payments::ItemEligibility.rules.delete(rule)
   end
 
+  test 'approved list doubles as the F70 processor allow-list (#name, #permits?)' do
+    list = ProcessorCatalog.allow_list('authorize_net')
+    assert_equal 'Authorize.net', list.name
+    item = Struct.new(:sku, :category, :name, :variant_id)
+    assert list.permits?(item.new('HH-CBD-TINC-3500', nil, 'Tincture', '1'))
+    assert list.permits?(item.new(nil, 'pet cbd', 'Dog chews', '2'))
+    assert_not list.permits?(item.new('HH-PET-FULL', 'Pet CBD', 'Full spectrum', '3'))
+    assert_not list.permits?(item.new('HH-THCA-1', 'THCA Flower', 'Flower', '4'))
+    assert_nil ProcessorCatalog.allow_list('nmi')
+    @catalog.update!(enforced: false)
+    assert_nil ProcessorCatalog.allow_list('authorize_net')
+  end
+
   test 'unknown processor is a programming error' do
     assert_raises(ArgumentError) { check('square', []) }
   end
