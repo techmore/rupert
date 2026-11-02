@@ -21,7 +21,9 @@ Square ───┼── sync engine ──▶ SQLite DB     ──▶ GUI
 | Path | Purpose |
 | --- | --- |
 | `web/` | The Rails 8.1 app: sync engine services, the dashboard GUI (`app/assets/tailwind/application.css` holds the palette; `bin/check-palette-contrast` verifies it), JSON APIs |
-| `mobile/` | Staff iPhone/Android app (see `mobile/README.md`) |
+| `ios/` | Rupert for iPhone and iPad: Hotwire Native shell around a Rupert instance (see `ios/README.md`) |
+| `android/` | Rupert for Android: the same app for Android phones and tablets (see `android/README.md`) |
+| `mobile/` | Staff timesheet app for iPhone/Android, Expo (see `mobile/README.md`) |
 | `docs/` | Docs site, plans, audits and research (see `docs/README.md`) |
 | `deploy/` | SER8 (Incus) systemd units (web, jobs, backup) and host-side watcher/backup scripts (see Production and deployment) |
 | `bin/` | Host scripts (`backup.sh`) |

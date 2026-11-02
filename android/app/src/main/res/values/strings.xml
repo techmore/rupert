@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Rupert</string>
+
+    <string name="tab_home">Home</string>
+    <string name="tab_chat">Team Chat</string>
+    <string name="tab_ask">Ask Rupert</string>
+    <string name="tab_inbox">Notifications</string>
+    <string name="tab_search">Search</string>
+
+    <string name="app_settings">App settings</string>
+    <string name="close">Close</string>
+
+    <string name="settings_security">Security</string>
+    <string name="settings_lock">Require screen lock</string>
+    <string name="settings_lock_footer">Ask for your fingerprint, face or screen lock each time Rupert comes back to the screen. Recent apps shows no picture of your pages.</string>
+    <string name="settings_lock_unavailable">Set a screen lock on this phone to lock Rupert.</string>
+    <string name="settings_workspace">Workspace</string>
+    <string name="settings_connected_to">Connected to</string>
+    <string name="settings_server">Rupert server</string>
+    <string name="settings_server_detail">Use pos.rupertpos.com or your own Rupert</string>
+    <string name="settings_help">Help</string>
+    <string name="settings_support">Support</string>
+    <string name="settings_report">Report a problem</string>
+    <string name="settings_privacy">Privacy policy</string>
+    <string name="settings_delete">Delete account</string>
+    <string name="settings_delete_footer">Erases your name, email and sign-in from Rupert. You confirm on the next page.</string>
+    <string name="settings_version">Version</string>
+
+    <string name="server_title">Rupert server</string>
+    <string name="server_intro">Most shops use pos.rupertpos.com. If your business runs its own Rupert, enter its address.</string>
+    <string name="server_current">Now using %1$s</string>
+    <string name="server_address">Server address</string>
+    <string name="server_helper">For example pos.rupertpos.com or https://rupert.example.com</string>
+    <string name="server_checking">Checking the server…</string>
+    <string name="server_connect">Connect</string>
+    <string name="server_use_default">Use %1$s</string>
+    <string name="server_security_note">The app connects only over https, except to this phone and local network names (.local, .lan, .internal, .home.arpa).</string>
+
+    <string name="lock_title">Rupert is locked</string>
+    <string name="lock_unlock">Unlock</string>
+    <string name="lock_prompt_title">Unlock Rupert</string>
+    <string name="lock_turn_on_prompt">Turn on the lock for Rupert</string>
+
+    <string name="error_page_did_not_start">Rupert\'s page did not start</string>
+    <string name="error_could_not_load">Rupert could not load this page</string>
+    <string name="error_try_again">Try again</string>
+    <string name="error_copy_details">Copy details</string>
+    <string name="error_details_label">Rupert page details</string>
+
+    <string name="google_sign_in">Sign in with Google</string>
+    <string name="google_sign_in_failed">Google sign-in did not finish. Try again.</string>
+    <string name="workspace_request">Workspace request</string>
+    <string name="open_workspace">Open workspace</string>
+    <string name="workspace_link_incomplete">Rupert sent an incomplete workspace link. Try Open my workspace again.</string>
+    <string name="workspace_failed">The workspace did not accept the sign-in. Go back and try again.</string>
+
+    <string name="scanner_unavailable_title">Camera scanning is unavailable</string>
+</resources>

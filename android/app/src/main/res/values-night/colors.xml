@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dark appearance. -->
+<resources>
+    <color name="banner">#23312F</color>
+    <color name="banner_title">#EAF0EF</color>
+    <color name="accent">#66C2C1</color>
+    <color name="launch_background">#1B2120</color>
+    <color name="surface">#1B2120</color>
+    <color name="on_surface">#EAF0EF</color>
+    <color name="on_surface_muted">#A9BAB8</color>
+    <color name="danger">#F2B8B5</color>
+    <color name="on_accent">#0B2B2C</color>
+    <color name="selection">#2E4A48</color>
+    <color name="bar">#202826</color>
+</resources>

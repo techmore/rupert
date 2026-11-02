@@ -3,8 +3,9 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static targets = ["form", "code", "token", "submit", "status", "items", "itemCount", "total", "camera"]
 
-  // The iPhone app reads barcodes with the camera (ios/Sources/Rupert/BarcodeScanner.swift): it
-  // offers a rupertScanner message handler and answers with a rupert:scanned event.
+  // The iPhone and Android apps read barcodes with the camera (ios/Sources/Rupert/BarcodeScanner.swift,
+  // android/…/BarcodeScanner.kt): each offers a rupertScanner channel and answers with a rupert:scanned
+  // event. iOS has a WebKit message handler; Android injects window.rupertScanner on Rupert's own origins.
   connect() {
     this.scanned = (event) => this.useScannedCode(event.detail)
     window.addEventListener("rupert:scanned", this.scanned)
@@ -16,12 +17,14 @@ export default class extends Controller {
   }
 
   get nativeScanner() {
-    return window.webkit?.messageHandlers?.rupertScanner
+    return window.webkit?.messageHandlers?.rupertScanner || window.rupertScanner
   }
 
   scanWithCamera(event) {
     event.preventDefault()
-    this.nativeScanner?.postMessage({ action: "scan" })
+    const ios = window.webkit?.messageHandlers?.rupertScanner
+    if (ios) ios.postMessage({ action: "scan" })
+    else window.rupertScanner?.postMessage(JSON.stringify({ action: "scan" }))
   }
 
   useScannedCode(code) {
