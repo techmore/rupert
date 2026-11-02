@@ -17,6 +17,12 @@ class ClockCorrection < ApplicationRecord
   validate :ordered_proposal
   validate :same_store
 
+  # Who may approve or reject a correction (owner decision, 2026-11-02): anyone who reviews timesheets
+  # (admins, managers, shift leaders) or holds payroll write. Never for their own shift (TimeClockService.review).
+  def self.reviewer?(user)
+    !!(user&.active? && (user.can_review_timesheets? || user.can?('payroll.write')))
+  end
+
   private
 
   def ordered_proposal

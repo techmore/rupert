@@ -133,7 +133,7 @@ module People
       @summary = TimesheetInsights.summaries([@timesheet]).fetch(@timesheet.id)
       @unimported_shifts = @timesheet.draft? ? @timesheet.unimported_shift_count : 0
       @pending_corrections = @timesheet.pending_corrections.includes(:clock_shift).order(:created_at).to_a
-      @correction_reviewer = Current.user.can?('payroll.write')
+      @correction_reviewer = ClockCorrection.reviewer?(Current.user)
       visible = People::TimesheetPolicy.visible_to(Current.user)
       mine = visible.where(employee_id: @timesheet.employee_id)
       @previous_sheet = mine.where('period_start < ?', @timesheet.period_start).order(period_start: :desc).first

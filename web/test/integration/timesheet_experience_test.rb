@@ -80,11 +80,8 @@ class TimesheetExperienceTest < ActionDispatch::IntegrationTest
       get people_timesheets_path
       assert_select '[data-pay-period="2026-10-22"]', text: /This pay week.*Oct 22 – 28, 2026.*1 draft/m
       assert_select '[data-pay-period="2026-10-15"]', text: /Last pay week/
-      assert_select '[data-corrections-waiting]', text: /1 clock correction waiting for review.*payroll admin/m
-      get people_timesheet_path(sheet)
-      assert_select '[data-pending-corrections]', text: /Waiting for a payroll admin/
-      assert_select '[data-pending-corrections] form', count: 0
-      sign_in(@owner)
+      assert_select '[data-corrections-waiting]', text: /1 clock correction waiting for review/
+      assert_select '[data-corrections-waiting] a[href=?]', time_clock_path(anchor: 'corrections'), text: 'Review corrections'
       get people_timesheet_path(sheet)
       correction = ClockCorrection.find_by!(status: 'pending')
       assert_select '[data-pending-corrections] form[action=?]', approve_correction_time_clock_path(correction, return_to: people_timesheet_path(sheet))
@@ -115,6 +112,42 @@ class TimesheetExperienceTest < ActionDispatch::IntegrationTest
       assert_select 'section[aria-label="Review comment"]', text: /What to fix.*Add your Saturday cover\./m
       assert_select 'form[action=?] button, form[action=?] input[type=submit]', reopen_people_timesheet_path(sheet), reopen_people_timesheet_path(sheet)
       assert_includes response.body, 'Returned for correction: “Add your Saturday cover.”'
+    end
+  end
+
+  test 'timesheet reviewers approve clock corrections, never for their own shift; other staff cannot' do
+    shift = shift!('2026-10-22 09:00', '2026-10-22 17:00')
+    leader = User.create!(tenant: @tenant, email: 'exp-leader@example.test', name: 'Lee Leader', role: 'shift_leader', password: PASSWORD)
+    cashier = User.create!(tenant: @tenant, email: 'exp-cashier@example.test', name: 'Cass Cashier', role: 'cashier', password: PASSWORD)
+    at('2026-10-26 12:00') do
+      sign_in(@staff)
+      post "/time_clock/shifts/#{shift.id}/correction", params: { clock_correction: { proposed_started_at: '2026-10-22T08:30:00', proposed_ended_at: '2026-10-22T17:00:00', reason: 'Opened early' } }
+      correction = ClockCorrection.find_by!(status: 'pending')
+
+      sign_in(cashier)
+      get time_clock_path
+      assert_select '#corrections', count: 0
+      post approve_correction_time_clock_path(correction)
+      assert_equal 'pending', correction.reload.status
+
+      sign_in(leader)
+      get time_clock_path
+      assert_select "#corrections [data-correction-id='#{correction.id}'] form[action=?]", approve_correction_time_clock_path(correction)
+      post approve_correction_time_clock_path(correction)
+      assert_equal ['approved', leader.id], [correction.reload.status, correction.reviewed_by_id]
+      assert_equal Time.zone.parse('2026-10-22 08:30'), shift.reload.started_at
+
+      # The manager's own shift: they see it waiting but cannot approve it themselves.
+      manager_worker = People::Employee.find_by!(user: @manager)
+      own = ClockShift.create!(user: @manager, employee: manager_worker, employee_key: manager_worker.id.to_s, employee_name: manager_worker.name,
+        employment_type: manager_worker.employment_type, request_token: SecureRandom.hex(12),
+        started_at: Time.zone.parse('2026-10-23 09:00'), ended_at: Time.zone.parse('2026-10-23 17:00'))
+      sign_in(@manager)
+      post "/time_clock/shifts/#{own.id}/correction", params: { clock_correction: { proposed_started_at: '2026-10-23T08:00:00', proposed_ended_at: '2026-10-23T17:00:00', reason: 'Delivery' } }
+      mine = ClockCorrection.find_by!(clock_shift: own)
+      post approve_correction_time_clock_path(mine)
+      assert_equal 'pending', mine.reload.status
+      assert_match(/Another reviewer/, flash[:alert])
     end
   end
 
