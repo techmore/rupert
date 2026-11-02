@@ -12,7 +12,7 @@ Paste these into App Store Connect → TM-Rupert (Apple ID 6826466832). Characte
 | Secondary category | Productivity |
 | Privacy policy URL | https://pos.rupertpos.com/privacy |
 | Content rights | Does not contain, show or access third-party content |
-| Age rating | 4+ (answer "None" / "No" to every question; see checklist.md) |
+| Age rating | 13+ (drug references: Infrequent, everything else None; see checklist.md) |
 
 The App Store name must be unique. The record is called "TM-Rupert" today; change it to the name
 above, or keep "TM-Rupert" if Apple says the name is taken.

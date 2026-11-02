@@ -12,6 +12,8 @@
     <%= render "layouts/theme" %>
     <% if panel_view? %><base target="_top"><% end %>
     <%= csrf_meta_tags %>
+    <%# The iPhone app restarts its tabs when this changes, so a sign-in or sign-out in one tab reaches them all (ios/Sources/Rupert/SessionWatcher.swift). %>
+    <% if hotwire_native_app? %><meta name="rupert-session" content="<%= Current.user ? 'signed-in' : 'signed-out' %>"><% end %>
     <%= csp_meta_tag %>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
