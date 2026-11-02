@@ -15,6 +15,10 @@
   <meta property="og:url" content="https://rupertpos.com/">
   <meta property="og:type" content="website">
   <link rel="stylesheet" href="/marketing/landing.css?v=3">
+  <link rel="alternate" type="text/markdown" href="/llms.txt" title="Rupert for AI assistants">
+  <%# WebMCP: read-only facts for an AI assistant in the browser (docs/webmcp.md); does nothing without one. %>
+  <script type="application/json" id="rupert-webmcp"><%= json_escape(WebMcp::PublicSite.manifest.to_json).html_safe %></script>
+  <script type="module" src="<%= asset_path('lib/webmcp.js') %>"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>

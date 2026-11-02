@@ -1,0 +1,5 @@
+<%# WebMCP (docs/webmcp.md): lib/webmcp.js reads this and, only when the browser has an AI model
+    context, fetches this person's tools. The key changes with the person and their permissions. %>
+<% if Current.user && WebMcpPolicy.new(Current.user, :web_mcp).use? %>
+  <script type="application/json" id="rupert-webmcp"><%= json_escape({ mode: 'app', key: WebMcp::Registry.key_for(Current.user), endpoint: webmcp_tools_path }.to_json).html_safe %></script>
+<% end %>

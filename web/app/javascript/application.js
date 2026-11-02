@@ -6,6 +6,8 @@ import "controllers";
 import "chartkick";
 import "Chart.bundle";
 import "lib/form_busy";
+// WebMCP tools for an in-browser AI assistant; does nothing without document.modelContext.
+import "lib/webmcp";
 
 // Charts follow the app theme: axis text and grid come from the palette tokens,
 // so they stay legible in both light and dark appearances.
