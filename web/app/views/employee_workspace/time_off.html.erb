@@ -8,7 +8,7 @@
     <% %w[Mon Tue Wed Thu Fri Sat Sun].each do |day| %><div role="columnheader" class="py-1 text-center text-xs text-mocha"><%= day %></div><% end %>
     <% (@month.beginning_of_week..@month.end_of_month.end_of_week).each do |day| %>
       <div role="cell" aria-label="<%= day.iso8601 %>" class="min-h-20 min-w-0 rounded-control p-1 text-xs <%= day.month == @month.month ? 'bg-haze/60' : 'text-taupe' %>">
-        <span class="inline-flex h-6 w-6 items-center justify-center rounded-pill font-semibold <%= day == Date.current ? 'bg-olive text-white' : '' %>"><%= day.day %></span>
+        <span class="inline-flex h-6 w-6 items-center justify-center rounded-pill font-semibold <%= day == Date.current ? 'bg-olive text-cream' : '' %>"><%= day.day %></span>
         <% if @summary.daily_hours(day).positive? %><p class="mt-1 break-words"><%= number_with_precision(@summary.daily_hours(day), precision: 2, strip_insignificant_zeros: true) %>h</p><% elsif @summary.clock_hours(day).positive? %><p class="mt-1 break-words"><%= number_with_precision(@summary.clock_hours(day), precision: 2, strip_insignificant_zeros: true) %>h<span class="block">clock</span></p><% end %>
         <% @summary.daily_requests(day).each do |leave| %><p class="mt-1 break-words text-olive"><span class="hidden sm:inline"><%= leave.leave_type.humanize %></span><span class="sm:hidden"><%= { 'vacation' => 'Vac', 'sick' => 'Sick', 'personal' => 'Off', 'unpaid' => 'Off' }.fetch(leave.leave_type) %></span><span class="block text-xs"><%= leave.requested? ? 'Pending' : 'Approved' %></span></p><% end %>
       </div>
