@@ -1,0 +1,363 @@
+#!/usr/bin/env python3
+"""Rupert's static release audit (docs/ops/release-audit.md).
+
+Fails the build when the repository would publish:
+  card-data  a card number or magnetic-stripe track data outside the allowed public
+             test cards in test paths;
+  privacy    a deny-listed merchant/customer name (hashed list from a CI secret or a
+             private file, never in this repo), or an email address that is not a
+             known placeholder or Rupert's own, on public pages and the product site;
+  claims     "PCI certified", "SOC 2", "ISO 27001 certified" or "pen-tested" wording
+             without an evidence file in docs/security/evidence/;
+  legal      draft notices or owner placeholders on /terms or /refunds (a warning;
+             it fails only with --final).
+
+It never prints a matched name or card number: findings name the file, line and rule.
+Standard library only, so it runs in any CI job.
+
+  bin/release-audit [--final] [--strict-docs] [--report out.md] [--json out.json]
+  bin/release-audit privacy-hash < terms.txt   # build the deny-list (see the runbook)
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import hmac
+import json
+import os
+import re
+import secrets
+import subprocess
+import sys
+import unicodedata
+from dataclasses import dataclass, field
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+# Public test cards published by the card networks and gateways. Allowed only in test paths.
+TEST_CARDS = {
+    '4111111111111111', '4242424242424242', '4012888888881881', '4222222222222', '4007000000027',
+    '4012888818888', '4000056655665556', '4005550000000001', '4000000000000002', '4000000000000077',
+    '5555555555554444', '5105105105105100', '5200828282828210', '5424000000000015', '2223000048400011',
+    '2223003122003222', '378282246310005', '371449635398431', '370000000000002', '6011111111111117',
+    '6011000990139424', '6011000000000012', '3530111333300000', '3566002020360505', '36227206271667',
+    '38520000023237', '30569309025904', '6200000000000005',
+}
+TEST_PATHS = ('web/test/', 'deploy/ser8/tests/', 'bin/tests/', 'mobile/__tests__/', 'mobile/test/', 'ios/RupertTests/',
+              'bin/release-audit')  # this file lists the test cards
+SKIP_SUFFIXES = ('.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.pdf', '.woff', '.woff2', '.ttf', '.otf',
+                 '.zip', '.gz', '.age', '.sqlite3', '.mp4', '.mov', '.lock', '.svg')
+SKIP_FILES = ('package-lock.json', 'Gemfile.lock', 'web/config/brakeman-baseline.json')
+MAX_BYTES = 2 * 1024 * 1024
+
+# Stricter than the runtime redactor (web/app/services/card_data.rb), so the repo scan has no
+# false positives: real brand prefixes and lengths, ungrouped or in the standard 4-4-4-4 / 4-6-5
+# groupings, and never part of a longer token (URL ids, UUIDs, dates, migration versions).
+PLAIN = re.compile(r'(?<![0-9A-Za-z_./:-])\d{15,19}(?![0-9A-Za-z_-])')
+GROUPED = re.compile(r'(?<![\d-])(?:\d{4}([ -])\d{4}\1\d{4}\1\d{4}(?:\1\d{3})?|\d{4}([ -])\d{6}\2\d{5})(?![\d-])')
+BRANDS = re.compile(r'^(?:3[47]\d{13}|4(?:\d{15}|\d{18})|(?:5[1-5]|2(?:2[2-9]|[3-6]\d|7[01])|2720)\d{14}|'
+                    r'(?:6011|65\d{2}|64[4-9]\d|622\d)\d{12,15}|35\d{14,17}|62\d{14,17})$')
+TRACK1 = re.compile(r'%?[Bb]\d{12,19}\^[^\^\n]{0,26}\^\d{4}')
+TRACK2 = re.compile(r';(?<!\d)\d{12,19}=\d{4}')
+
+# Public content: the GitHub Pages product site, the public Rails pages and the repo front door.
+PUBLIC_GLOBS = ('docs/*.html', 'docs/data/*.json', 'web/app/views/public_pages/**/*.erb', 'web/app/views/landing/**/*.erb',
+                'web/public/**/*.html', 'README.md', 'SECURITY.md', 'docs/security/**/*.md')
+# Operator guides: published through GitHub Pages too, but checked strictly only with --strict-docs.
+DOCS_GLOBS = ('docs/**/*.md',)
+DOCS_EXCLUDE = ('docs/audits/', 'docs/plans/', 'docs/research/')
+
+EMAIL = re.compile(r'[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)')
+ALLOWED_EMAIL_DOMAINS = re.compile(r'(?:^|\.)(?:example\.(?:com|org|net)|example|invalid|test|localhost|rupertpos\.com|'
+                                   r'users\.noreply\.github\.com|anthropic\.com)$', re.I)
+FORWARDED = re.compile(r'(?<![\w])(?:Fwd?|FW|Re|RE):\s+\S')
+
+CLAIMS = {
+    'pci': (re.compile(r'\bPCI(?:[ -]DSS)?[ -](?:certified|certification|compliant|compliance certified|validated|level\s*[1-4]\s+service provider)\b', re.I), 'pci-dss-aoc'),
+    'soc2': (re.compile(r'\bSOC\s?2\b(?![^.\n]{0,60}\breport\b[^.\n]{0,20}\b(?:no|none)\b)', re.I), 'soc2-report'),
+    'iso27001': (re.compile(r'\bISO[ /-]?(?:IEC\s*)?27001\b', re.I), 'iso27001-certificate'),
+    'pentest': (re.compile(r'\b(?:pen(?:etration)?[- ]tested|independently (?:audited|tested))\b', re.I), 'penetration-test'),
+}
+NEGATION = re.compile(r"\b(?:not|no|never|without|none|n't|isn't|hasn't|have not|has not|is not|does not|nor|planned|pending|"
+                      r"if|unless|placeholder|CONFIRM)\b", re.I)
+EVIDENCE_DIR = 'docs/security/evidence'
+CLAIM_GLOBS = PUBLIC_GLOBS + DOCS_GLOBS + ('web/app/views/**/*.erb',)
+
+LEGAL_PAGES = ('web/app/views/public_pages/terms.html.erb', 'web/app/views/public_pages/refunds.html.erb')
+DRAFT = re.compile(r"render\s+'public_pages/draft_notice'|owner_placeholder\(|\[Owner to add|\bDRAFT\b", re.I)
+
+MAX_NGRAM = 6
+
+
+@dataclass
+class Finding:
+    rule: str
+    path: str
+    line: int
+    detail: str
+    blocking: bool = True
+    fingerprint: str = ''
+    known: bool = False
+
+
+@dataclass
+class Audit:
+    findings: list = field(default_factory=list)
+    notes: list = field(default_factory=list)
+
+    def add(self, rule, path, line, detail, blocking=True):
+        # The fingerprint survives line moves but changes when the offending text changes.
+        text = (read_text(path) or '').splitlines()[line - 1] if line else ''
+        fingerprint = hashlib.sha256(f'{rule}|{path}|{detail}|{normalize(text)}'.encode()).hexdigest()[:24]
+        self.findings.append(Finding(rule, path, line, detail, blocking, fingerprint))
+
+    def apply_baseline(self, path):
+        """Known findings (hashed, so the baseline names nothing) are reported but do not block."""
+        try:
+            known = set(json.loads(Path(path).read_text())['fingerprints'])
+        except (OSError, ValueError, KeyError):
+            return
+        for finding in self.findings:
+            if finding.fingerprint in known and finding.blocking:
+                finding.blocking, finding.known = False, True
+
+
+def tracked_files():
+    out = subprocess.run(['git', '-C', str(ROOT), 'ls-files', '-z'], capture_output=True, check=True).stdout
+    return [p for p in out.decode('utf-8', 'replace').split('\0') if p]
+
+
+def glob_files(patterns, exclude=()):
+    files = set()
+    tracked = set(tracked_files())
+    for pattern in patterns:
+        for path in ROOT.glob(pattern):
+            rel = path.relative_to(ROOT).as_posix()
+            if path.is_file() and rel in tracked and not rel.startswith(exclude):
+                files.add(rel)
+    return sorted(files)
+
+
+def read_text(rel):
+    path = ROOT / rel
+    try:
+        if path.stat().st_size > MAX_BYTES:
+            return None
+        return path.read_text('utf-8', errors='replace')
+    except (OSError, ValueError):
+        return None
+
+
+def luhn(digits):
+    total = 0
+    for index, char in enumerate(reversed(digits)):
+        value = ord(char) - 48
+        if index % 2:
+            value = value * 2 - 9 if value > 4 else value * 2
+        total += value
+    return total % 10 == 0
+
+
+def is_pan(digits):
+    return bool(BRANDS.match(digits)) and luhn(digits)
+
+
+def pans_in_line(line):
+    found = [m.group(0) for m in PLAIN.finditer(line)] + [re.sub(r'[ -]', '', m.group(0)) for m in GROUPED.finditer(line)]
+    return [digits for digits in found if is_pan(digits)]
+
+
+def check_card_data(audit):
+    for rel in tracked_files():
+        if rel.endswith(SKIP_SUFFIXES) or rel in SKIP_FILES or rel.endswith(SKIP_FILES):
+            continue
+        text = read_text(rel)
+        if not text or sum(c.isdigit() for c in text) < 13:
+            continue
+        in_tests = rel.startswith(TEST_PATHS)
+        for number, line in enumerate(text.splitlines(), 1):
+            if sum(c.isdigit() for c in line) < 13:
+                continue
+            if (TRACK1.search(line) or TRACK2.search(line)) and not in_tests:
+                audit.add('card-data', rel, number, 'magnetic-stripe track data outside test paths')
+            for pan in pans_in_line(line):
+                if pan in TEST_CARDS and in_tests:
+                    continue
+                where = 'a public test card outside test paths' if pan in TEST_CARDS else 'a card number that is not a public test card'
+                audit.add('card-data', rel, number, where)
+
+
+def normalize(text):
+    text = unicodedata.normalize('NFKD', text)
+    text = ''.join(c for c in text if not unicodedata.combining(c)).lower()
+    return re.sub(r'[^a-z0-9]+', ' ', text).strip()
+
+
+def term_key(term):
+    """A deny-list entry ignores case, accents, punctuation and spacing: "Acme Hemp" = "acmehemp" = "ACME-HEMP"."""
+    return normalize(term).replace(' ', '')
+
+
+def digest(key, value):
+    return hmac.new(key, value.encode(), hashlib.sha256).hexdigest()
+
+
+def load_denylist(audit):
+    """{"key": hex, "max_tokens": n, "hashes": [hex, ...]} from $RUPERT_PRIVACY_DENYLIST or a file path."""
+    raw = os.environ.get('RUPERT_PRIVACY_DENYLIST', '').strip()
+    path = os.environ.get('RUPERT_PRIVACY_DENYLIST_FILE', '').strip()
+    if not raw and path:
+        try:
+            raw = Path(path).expanduser().read_text()
+        except OSError:
+            audit.notes.append('privacy deny-list file could not be read')
+    if not raw:
+        return None
+    try:
+        data = json.loads(raw)
+        return bytes.fromhex(data['key']), min(int(data.get('max_tokens', MAX_NGRAM)), 12), set(data['hashes'])
+    except (ValueError, KeyError, TypeError):
+        audit.add('privacy', '(deny-list)', 0, 'the privacy deny-list is not valid JSON {key, max_tokens, hashes}')
+        return None
+
+
+def line_hits(line, key, max_tokens, hashes):
+    tokens = normalize(line).split()
+    for start in range(len(tokens)):
+        joined = ''
+        for end in range(start, min(start + max_tokens, len(tokens))):
+            joined += tokens[end]
+            if digest(key, joined) in hashes:
+                return True
+    return False
+
+
+def check_privacy(audit, strict_docs, require_denylist):
+    denylist = load_denylist(audit)
+    if denylist is None:
+        message = 'no privacy deny-list configured (secret RUPERT_PRIVACY_DENYLIST); names were not checked'
+        if require_denylist:
+            audit.add('privacy', '(deny-list)', 0, message)
+        else:
+            audit.notes.append(message)
+    public = glob_files(PUBLIC_GLOBS)
+    docs = [p for p in glob_files(DOCS_GLOBS, DOCS_EXCLUDE) if p not in public]
+    for rel, blocking in [(p, True) for p in public] + [(p, strict_docs) for p in docs]:
+        text = read_text(rel)
+        if not text:
+            continue
+        for number, line in enumerate(text.splitlines(), 1):
+            if denylist and line_hits(line, *denylist):
+                audit.add('privacy', rel, number, 'deny-listed merchant or customer name', blocking)
+            for match in EMAIL.finditer(line):
+                if not ALLOWED_EMAIL_DOMAINS.search(match.group(1)) and not match.group(0).startswith('noreply@'):
+                    audit.add('privacy', rel, number, 'email address that is not a placeholder or Rupert\'s own', blocking)
+            if rel in public and FORWARDED.search(line) and not rel.endswith('.erb'):
+                audit.add('privacy', rel, number, 'forwarded or replied email subject (email evidence)', blocking)
+
+
+def check_claims(audit):
+    evidence = ROOT / EVIDENCE_DIR
+    for rel in glob_files(CLAIM_GLOBS, DOCS_EXCLUDE):
+        text = read_text(rel)
+        if not text:
+            continue
+        for number, line in enumerate(text.splitlines(), 1):
+            for name, (pattern, proof) in CLAIMS.items():
+                for match in pattern.finditer(line):
+                    sentence = re.split(r'(?<=[.!?|])\s', line[max(0, match.start() - 160):match.end() + 80])
+                    context = next((s for s in sentence if match.group(0) in s), line)
+                    if NEGATION.search(context):
+                        continue
+                    if not any(evidence.glob(f'{proof}*')):
+                        audit.add('claims', rel, number, f'{name} claim without {EVIDENCE_DIR}/{proof}.* evidence')
+
+
+def check_legal(audit, final):
+    for rel in LEGAL_PAGES:
+        text = read_text(rel)
+        if text is None:
+            audit.notes.append(f'{rel} does not exist yet')
+            continue
+        if DRAFT.search(text):
+            audit.add('legal', rel, 0, 'draft notice or owner placeholder still present', blocking=final)
+
+
+def render(audit, args):
+    blocking = [f for f in audit.findings if f.blocking]
+    warnings = [f for f in audit.findings if not f.blocking]
+    known = sum(f.known for f in audit.findings)
+    lines = ['# Rupert release audit (static)', '',
+             f'- Result: **{"FAIL" if blocking else "PASS"}**',
+             f'- Commit: `{os.environ.get("GITHUB_SHA") or subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()}`',
+             f'- Ref: `{os.environ.get("GITHUB_REF_NAME", "local")}` · final release: {"yes" if args.final else "no"} · strict docs: {"yes" if args.strict_docs else "no"}',
+             f'- Checks: card-data, privacy, claims, legal · blocking findings: {len(blocking)} · warnings: {len(warnings)} '
+             f'({known} known, from the baseline)', '']
+    for title, items in (('Blocking', blocking), ('Warnings', warnings)):
+        if items:
+            lines += [f'## {title}', '', '| Rule | File | Line | Finding |', '| --- | --- | --- | --- |']
+            lines += [f'| {f.rule} | `{f.path}` | {f.line or ""} | {f.detail}{" (known)" if f.known else ""} |' for f in items[:300]]
+            if len(items) > 300:
+                lines.append(f'| … | {len(items) - 300} more | | |')
+            lines.append('')
+    if audit.notes:
+        lines += ['## Notes', ''] + [f'- {note}' for note in audit.notes] + ['']
+    return '\n'.join(lines)
+
+
+def privacy_hash(args):
+    """Reads one name per line on stdin and prints the deny-list JSON. Names never touch argv or disk."""
+    key = bytes.fromhex(os.environ['RUPERT_PRIVACY_KEY']) if os.environ.get('RUPERT_PRIVACY_KEY') else secrets.token_bytes(32)
+    terms = [term_key(line) for line in sys.stdin if term_key(line)]
+    print(json.dumps({'key': key.hex(), 'max_tokens': MAX_NGRAM, 'hashes': sorted({digest(key, t) for t in terms})}))
+    print(f'{len(terms)} name(s) hashed. Store the JSON above as the RUPERT_PRIVACY_DENYLIST secret.', file=sys.stderr)
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('command', nargs='?', default='audit', choices=['audit', 'privacy-hash'])
+    parser.add_argument('--final', action='store_true', help='a final release: legal drafts and the missing deny-list block')
+    parser.add_argument('--strict-docs', action='store_true', help='operator guides in docs/ block on privacy findings')
+    parser.add_argument('--require-denylist', action='store_true', help='fail when no deny-list is configured')
+    parser.add_argument('--only', help='comma-separated subset: card-data,privacy,claims,legal')
+    parser.add_argument('--baseline', help='hashed known findings that warn instead of block (ignored with --final)')
+    parser.add_argument('--write-baseline', help='write every current finding to this baseline file and exit 0')
+    parser.add_argument('--report', help='write the Markdown report here')
+    parser.add_argument('--json', help='write the findings as JSON here')
+    args = parser.parse_args(argv)
+    if args.command == 'privacy-hash':
+        privacy_hash(args)
+        return 0
+    only = set((args.only or 'card-data,privacy,claims,legal').split(','))
+    audit = Audit()
+    if 'card-data' in only:
+        check_card_data(audit)
+    if 'privacy' in only:
+        check_privacy(audit, args.strict_docs, args.require_denylist or args.final)
+    if 'claims' in only:
+        check_claims(audit)
+    if 'legal' in only:
+        check_legal(audit, args.final)
+    if args.write_baseline:
+        prints = sorted({f.fingerprint for f in audit.findings})
+        Path(args.write_baseline).write_text(json.dumps({'comment': 'Known release-audit findings, hashed. Regenerate with '
+                                                         'bin/release-audit --write-baseline; final releases ignore this file.',
+                                                         'fingerprints': prints}, indent=2) + '\n')
+        print(f'{len(prints)} finding(s) written to {args.write_baseline}')
+        return 0
+    if args.baseline and not args.final:
+        audit.apply_baseline(args.baseline)
+    report = render(audit, args)
+    if args.report:
+        Path(args.report).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.report).write_text(report + '\n')
+    if args.json:
+        Path(args.json).write_text(json.dumps({'pass': not any(f.blocking for f in audit.findings),
+                                               'findings': [f.__dict__ for f in audit.findings], 'notes': audit.notes}, indent=2))
+    print(report)
+    return 1 if any(f.blocking for f in audit.findings) else 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
