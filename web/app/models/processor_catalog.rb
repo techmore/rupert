@@ -31,6 +31,25 @@ class ProcessorCatalog < ApplicationRecord
 
   def label = PROCESSORS.fetch(processor, processor)
 
+  # F70 adapter: Compliance::ItemEligibility takes a processor allow-list as any
+  # object with #name and #permits?(catalog_item). Returns the enforced list for
+  # a processor key (as Payments::ItemEligibility.processor_for_tender gives),
+  # or nil when that processor has no enforced list (nothing to restrict).
+  def self.allow_list(processor)
+    find_by(processor: processor.to_s, enforced: true)
+  end
+
+  def name = label
+
+  # The same answer Payments::ItemEligibility's approved-list rule gives. Reads
+  # sku and category (or product_category) from the item when it has them.
+  def permits?(catalog_item)
+    item = Payments::ItemEligibility::Item.new(sku: catalog_item.try(:sku)&.to_s,
+      category: (catalog_item.try(:category) || catalog_item.try(:product_category))&.to_s,
+      name: catalog_item.try(:name)&.to_s, variant_id: catalog_item.try(:variant_id)&.to_s)
+    Payments::ItemEligibility::ApprovedListRule.new.reason_for(self, item).nil?
+  end
+
   def self.label_for(processor) = PROCESSORS.fetch(processor.to_s, processor.to_s.humanize)
 
   # Normalized lookup sets, loaded once per check.

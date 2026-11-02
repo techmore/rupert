@@ -72,6 +72,12 @@ module Payments
         catalog = @catalogs.fetch(processor) { @catalogs[processor] = ProcessorCatalog.find_by(processor: processor) }
         return nil unless catalog&.enforced
 
+        reason_for(catalog, item)
+      end
+
+      def reason_for(catalog, item)
+        return nil unless catalog.enforced
+
         sets = catalog.lookup
         sku = item.sku.present? ? ProcessorCatalogEntry.normalize('sku', item.sku) : nil
         category = item.category.present? ? ProcessorCatalogEntry.normalize('category', item.category) : nil
