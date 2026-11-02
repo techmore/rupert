@@ -69,7 +69,7 @@ class TimesheetLifecycleWalkthroughTest < ActionDispatch::IntegrationTest
     at('2026-10-03 11:00') do
       sign_in(@owner)
       post approve_correction_time_clock_path(@approve_id)
-      assert_equal 'Correction approved and audited.', flash[:notice]
+      assert_match(/\ACorrection approved\./, flash[:notice])
       post reject_correction_time_clock_path(@reject_id)
       assert_equal 'Correction rejected; shift times are unchanged.', flash[:notice]
     end

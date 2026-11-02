@@ -35,8 +35,12 @@ class EmployeeTimesheetsTest < ActionDispatch::IntegrationTest
     sign_in
     get people_timesheets_path(view: 'list')
     assert_response :success
-    assert_select 'td', /Alex Worker/
+    assert_select 'a[href=?]', people_timesheet_path(@sheet), minimum: 1
+    assert_select 'a[href=?]', people_timesheet_path(@other_sheet), count: 0
     assert_select 'td', text: /Other Worker/, count: 0
+    # Staff see their own weeks, not the reviewer's staff column and search.
+    assert_select 'th', text: 'Staff member', count: 0
+    assert_select 'input[name=q]', count: 0
     get people_timesheet_path(@other_sheet)
     assert_response :not_found
     post people_timesheets_path, params: { timesheet: { employee_id: @other.id, period_start: '2026-08-03', period_end: '2026-08-09' } }
@@ -326,7 +330,7 @@ class EmployeeTimesheetsTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select 'input[name="timesheet_entry[worked_on]"]'
     assert_select 'input[name="timesheet_entry[hours]"]'
-    assert_select 'td.empty-row', text: 'No entries yet.'
+    assert_select '[data-empty-days]', text: /No hours yet/
     sign_in(@admin)
     get new_people_employee_path
     assert_response :success

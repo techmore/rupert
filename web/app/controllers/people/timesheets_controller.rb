@@ -7,6 +7,15 @@ module People
     before_action :set_timesheet, except: %i[index new create bulk_approve]
     rescue_from TimesheetWorkflow::Error, ActiveRecord::RecordInvalid, AASM::InvalidTransition, with: :workflow_error
 
+    EVENT_NOTICES = {
+      submit: 'Submitted for review. It is locked until a reviewer approves or returns it.',
+      approve: 'Timesheet approved.',
+      reject: 'Returned to the staff member for correction.',
+      reopen: 'Reopened. Make your changes, then submit it again.',
+      import_shifts: 'Clock shifts imported.'
+    }.freeze
+    ENTRY_NOTICES = { add_entry: 'Hours added.', update_entry: 'Hours saved.', remove_entry: 'Hours removed.' }.freeze
+
     def index
       authorize(People::Timesheet, :index?)
       @reviewer = Current.user.can_review_timesheets? || People::TimesheetPolicy.assigned_demos(Current.user).exists?
@@ -50,7 +59,6 @@ module People
         @week_start ||= week_start_for(Date.current)
         @calendar = TimesheetCalendar.new(@week_start, user: Current.user)
       end
-      @missing = TimesheetInsights.missing_for_week(@week_start || Date.current) if @reviewer && Current.user.can?('timesheets.write') && !@query
       @view_hours = People::TimesheetEntry.where(timesheet_id: scope.reorder(nil).select(:id)).sum(:hours)
       load_admin_overview(visible) if @reviewer
       # Calendar view: bucket timesheets (and punches) by every day they cover.
@@ -75,7 +83,7 @@ module People
           punches = punches_by_day.fetch(day, [])
           square = square_by_day.fetch(day, [])
           days[day.iso8601] = { timesheets: ts, punches: punches.size + square.size,
-                                hours: (punches.sum { |p| ((p.ended_at || p.started_at) - p.started_at) / 3600.0 } + square.sum(&:hours).to_f).round(2) }
+                                hours: (punches.sum { |p| (p.counted_end - p.started_at) / 3600.0 } + square.sum(&:hours).to_f).round(2) }
         end
         @prev_month = (@month - 1.month).beginning_of_month
         @next_month = (@month + 1.month).beginning_of_month
@@ -120,8 +128,12 @@ module People
 
     def show
       authorize(@timesheet)
-      @entry = People::TimesheetEntry.new(timesheet: @timesheet, worked_on: [Date.current, @timesheet.period_end].min)
+      @entries = @timesheet.entries.ordered.includes(:clock_shift).to_a
+      @entry = People::TimesheetEntry.new(timesheet: @timesheet, worked_on: default_entry_day(@entries))
       @summary = TimesheetInsights.summaries([@timesheet]).fetch(@timesheet.id)
+      @unimported_shifts = @timesheet.draft? ? @timesheet.unimported_shift_count : 0
+      @pending_corrections = @timesheet.pending_corrections.includes(:clock_shift).order(:created_at).to_a
+      @correction_reviewer = Current.user.can?('payroll.write')
       visible = People::TimesheetPolicy.visible_to(Current.user)
       mine = visible.where(employee_id: @timesheet.employee_id)
       @previous_sheet = mine.where('period_start < ?', @timesheet.period_start).order(period_start: :desc).first
@@ -181,11 +193,15 @@ module People
     %i[submit approve reject reopen import_shifts].each do |event|
       define_method(event) do
         authorize(@timesheet, :"#{event}?")
+        # A returned week must say what to fix; otherwise staff cannot act on it.
+        if event == :reject && params[:review_note].to_s.strip.empty? && @timesheet.submitted?
+          return redirect_to(people_timesheet_path(@timesheet, anchor: 'review'), alert: 'Write what needs fixing in the comment, then return the timesheet.')
+        end
         workflow.change(@timesheet, event, review_note: params[:review_note])
         following = if params[:continue].present? && event == :approve
           People::TimesheetPolicy.visible_to(Current.user).awaiting_review.where.not(id: @timesheet.id).order(:submitted_at, :id).first
         end
-        notice = "Timesheet #{event.to_s.tr('_', ' ')} completed."
+        notice = EVENT_NOTICES.fetch(event)
         if following
           redirect_to people_timesheet_path(following), notice: "#{notice} Here is the next one awaiting review."
         else
@@ -199,11 +215,21 @@ module People
         authorize(@timesheet, :"#{event}?")
         attrs = event == :remove_entry ? {} : params.require(:timesheet_entry).permit(:worked_on, :hours, :work_type, :notes).to_h
         workflow.change(@timesheet, event, attrs.merge(entry_id: params[:entry_id]))
-        redirect_to people_timesheet_path(@timesheet), notice: 'Timesheet entry saved.'
+        redirect_to people_timesheet_path(@timesheet), notice: ENTRY_NOTICES.fetch(event)
       end
     end
 
     private
+
+    # Hand-entered hours default to the first worked-so-far day with nothing on it, never a day the
+    # clock already covers (that invites double counting), and never a future day.
+    def default_entry_day(entries)
+      last = [@timesheet.period_end, Date.current].min
+      return @timesheet.period_start if last < @timesheet.period_start
+
+      covered = entries.map(&:worked_on).to_set
+      (@timesheet.period_start..last).find { |day| !covered.include?(day) } || last
+    end
 
     # `wk=thu` snaps to the pay rules' work-week start day (Thursday by default),
     # `wk=custom` starts the seven days exactly on the chosen date, anything else is Monday-Sunday.
@@ -268,17 +294,31 @@ module People
     end
 
     def load_admin_overview(visible)
-      @upcoming_weeks = (0..3).map do |offset|
-        monday = Date.current.beginning_of_week + offset.weeks
-        counts = visible.where('period_start <= ? AND period_end >= ?', monday + 6, monday).group(:status).count
-        { monday: monday, label: offset.zero? ? 'This week' : monday.strftime('%b %-d'),
-          total: counts.values.sum, submitted: counts.fetch('submitted', 0),
-          approved: counts.fetch('approved', 0), draft: counts.fetch('draft', 0),
-          rejected: counts.fetch('rejected', 0) }
-      end
+      @pay_periods = pay_periods(visible)
+      @pending_corrections_count = ClockCorrection.where(status: 'pending').count
       @upcoming_leave = People::LeaveRequest.where(status: %w[requested approved])
         .where('ends_on >= ?', Date.current).order(:starts_on).limit(8)
       @pending_leave_count = People::LeaveRequest.pending.count
+    end
+
+    # The current pay period and the three before it (PayRules: weekly Thursday-Wednesday until chosen),
+    # with sheet counts by status and active staff who clocked time but have no sheet for it.
+    def pay_periods(visible)
+      rules = PayRules.current
+      first, last = rules.period_range(Date.current)
+      (0..3).map do |offset|
+        range = offset.zero? ? [first, last] : rules.period_range(first - 1 - ((offset - 1) * rules.period_days))
+        from, to = range
+        counts = visible.where('period_start <= ? AND period_end >= ?', to, from).group(:status).count
+        covered = People::Timesheet.where('period_start <= ? AND period_end >= ?', to, from).select(:employee_id)
+        worked = ClockShift.where('started_at < ? AND started_at >= ?', (to + 1).in_time_zone, from.in_time_zone).select(:employee_id)
+        missing = People::Employee.active.where(id: worked).where.not(id: covered).count
+        label = ['This pay week', 'Last pay week'][offset] || "#{offset} pay weeks ago"
+        label = label.sub('week', 'period') if rules.biweekly?
+        { from: from, to: to, label: label, current: offset.zero?,
+          submitted: counts.fetch('submitted', 0), approved: counts.fetch('approved', 0), draft: counts.fetch('draft', 0),
+          rejected: counts.fetch('rejected', 0), missing: missing }
+      end
     end
 
     def timesheet_params

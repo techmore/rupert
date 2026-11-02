@@ -54,12 +54,12 @@ class TimeClockController < AuthenticatedController
 
   def approve_correction
     TimeClockService.review(correction: ClockCorrection.find(params[:id]), reviewer: Current.user, approve: true)
-    redirect_to time_clock_path, notice: 'Correction approved and audited.'
+    redirect_to review_return_path, notice: 'Correction approved. Re-import the clock shifts on the draft timesheet to use the new times.'
   end
 
   def reject_correction
     TimeClockService.review(correction: ClockCorrection.find(params[:id]), reviewer: Current.user, approve: false)
-    redirect_to time_clock_path, notice: 'Correction rejected; shift times are unchanged.'
+    redirect_to review_return_path, notice: 'Correction rejected; shift times are unchanged.'
   end
 
   def commissions
@@ -80,6 +80,12 @@ class TimeClockController < AuthenticatedController
     return if Current.user.active? && Current.tenant&.status == 'active'
 
     redirect_to root_path, alert: 'An active sign-in account and store are required.'
+  end
+
+  # Correction reviews started from a timesheet go back to it; anything else returns to the time clock.
+  def review_return_path
+    path = params[:return_to].to_s
+    path.match?(%r{\A/people/timesheets/\d+\z}) ? path : time_clock_path
   end
 
   def authorize_reviewer
