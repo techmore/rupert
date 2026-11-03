@@ -1,0 +1,10 @@
+        <div class="rounded border border-fog p-3 space-y-2">
+          <p class="field-label"><%= label %> production sign-off</p>
+          <% if @setting.production_approved_at %>
+            <p class="text-sm">Signed off by <%= @setting.production_approved_by&.display_name || 'a former user' %> on <%= l(@setting.production_approved_at, format: :short) %>: <%= @setting.production_approval_note %></p>
+          <% else %>
+            <p class="text-sm text-mocha">Required before choosing Production. An owner confirms the processor approved this <%= label %> merchant account for this store’s product list. Changing the <%= account %> or environment clears it.</p>
+            <label class="flex gap-2 text-sm"><%= check_box_tag 'nmi_production_signoff', '1', false %><span>I confirm the processor approved this merchant account for our listed products</span></label>
+            <div><label for="production_approval_note" class="field-label">Who approved it and when</label><%= text_field_tag 'production_approval_note', nil, class: 'input', maxlength: 1000, placeholder: 'For example: Approval email from the ISO, 2026-11-20' %></div>
+          <% end %>
+        </div>

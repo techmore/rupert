@@ -40,13 +40,14 @@ class PosCheckout < ApplicationRecord
   def tender_label = TENDER_LABELS.fetch(tender, tender.to_s.humanize)
   def paid? = status == 'paid'
   def unresolved? = %w[processing unknown].include?(status)
+  def dejavoo_terminal? = tender == 'card' && gateway_provider == 'dejavoo_spin' && !demo?
 
   def receipt
     { id: id, reference: reference, status: status, demo: demo?, sandbox: sandbox_payment?, tender: tender, tender_label: tender_label, subtotal_cents: subtotal_cents,
       tax_cents: tax_cents, tip_cents: tip_cents, total_cents: total_cents, cash_received_cents: cash_received_cents,
       change_cents: change_cents, paid_at: paid_at&.iso8601,
       inventory_pending: pos_stock_allocations.where.not(status: %w[applied released]).exists?,
-      card: card_receipt, decline_reason: status == 'declined' ? latest_attempt&.decline_reason : nil }
+      terminal: dejavoo_terminal?, card: card_receipt, decline_reason: status == 'declined' ? latest_attempt&.decline_reason : nil }
   end
 
   def gateway_label = { 'nmi' => 'NMI', 'authorize_net' => 'Authorize.net', 'dejavoo_spin' => 'Dejavoo terminal' }.fetch(gateway_provider, gateway_provider.to_s)

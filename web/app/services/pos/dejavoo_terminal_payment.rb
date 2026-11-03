@@ -4,7 +4,7 @@ require 'digest'
 
 module Pos
   # Runs a register checkout on the store's Dejavoo terminal through SPIn
-  # (sandbox only for now). Same safety rules as the NMI flow:
+  # (production only after owner sign-off). Same safety rules as the NMI flow:
   #
   # - The approved-product check runs again before the terminal is asked.
   # - A durable attempt (its invoice is the SPIn ReferenceId) is saved before
@@ -29,14 +29,23 @@ module Pos
     VOIDED = 'The payment was voided on the terminal. Nothing was charged.'
     PARTIAL_REVERSED = 'The card was only partly approved, so Rupert reversed it. Nothing was charged. Try another card or another way to pay.'
 
+    # Runs the whole sale in this request (tests, console). The register uses
+    # start! here and run! in PosTerminalSaleJob so no web request waits on the
+    # customer at the terminal.
     def self.call(checkout)
+      attempt = start!(checkout)
+      attempt ? run!(attempt) : checkout.reload
+    end
+
+    # Checks eligibility and setup, then saves the durable attempt and marks the
+    # checkout "processing". Returns nil when it is already paid or in flight.
+    def self.start!(checkout)
       raise Error, 'Demo checkout cannot use a payment terminal.' if checkout.demo?
 
       Checkout.assert_eligible!(PROCESSOR, checkout.lines) unless checkout.paid? || checkout.unresolved?
       gateway = gateway_for(checkout)
-      attempt = nil
       checkout.with_lock do
-        return checkout if checkout.paid? || checkout.unresolved?
+        return nil if checkout.paid? || checkout.unresolved?
         unless checkout.tender == 'card' && %w[ready declined].include?(checkout.status) && checkout.pos_display_session.active?
           raise Error, 'Checkout is not ready for the card terminal.'
         end
@@ -50,14 +59,33 @@ module Pos
         attempt = checkout.pos_payment_attempts.create!(invoice: reference, nonce_digest: Digest::SHA256.hexdigest("dejavoo_spin:#{reference}"),
           submitted_at: Time.current)
         checkout.update!(status: 'processing')
+        attempt
       end
+    end
+
+    # Sends the saved attempt to the terminal once and settles the answer.
+    def self.run!(attempt)
+      checkout = attempt.pos_checkout
+      return checkout.reload unless attempt.status == 'submitting' && checkout.status == 'processing'
+
+      gateway = gateway_for(checkout)
       response = gateway.sale(reference: attempt.invoice, amount_cents: checkout.total_cents - checkout.tip_cents, tip_cents: checkout.tip_cents,
         invoice: checkout.reference.to_s[0, 50])
       settle!(checkout, attempt, response, gateway)
       checkout.reload
     rescue Error
-      mark_unknown(checkout, attempt) if attempt
+      mark_unknown(checkout, attempt) if checkout
       raise
+    end
+
+    # Asks the terminal to stop waiting for the card. The pending sale then
+    # answers "cancelled" (or, if the card was already read, its real result).
+    def self.abort!(checkout)
+      attempt = checkout.pos_payment_attempts.where(status: 'submitting').order(:id).last
+      raise Error, 'No payment is waiting on the terminal.' unless attempt && checkout.status == 'processing'
+
+      gateway_for(checkout).abort(attempt.invoice)
+      attempt
     end
 
     # Resolves an unknown attempt from SPIn's Status for its ReferenceId.

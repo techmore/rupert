@@ -184,4 +184,36 @@ class DejavooTerminalPaymentTest < ActiveSupport::TestCase
     assert_equal 'dejavoo_spin', Payments::ItemEligibility.processor_for_tender('card', 'dejavoo_spin')
     assert ProcessorCatalog.create!(processor: 'dejavoo_spin').persisted?
   end
+
+  test 'the register starts a terminal sale at once and the job sends it once' do
+    attempt = Pos::DejavooTerminalPayment.start!(@checkout)
+    assert_equal 'processing', @checkout.reload.status
+    assert_equal 0, spin_sales, 'starting never waits on the terminal'
+    assert_nil Pos::DejavooTerminalPayment.start!(@checkout), 'a second press while waiting sends nothing'
+    Current.reset
+    PosTerminalSaleJob.perform_now(attempt.id)
+    Current.tenant = tenants(:default_tenant)
+    assert @checkout.reload.paid?
+    assert_equal 1, spin_sales
+    PosTerminalSaleJob.perform_now(attempt.id)
+    assert_equal 1, spin_sales, 'a replayed job never charges again'
+  end
+
+  test 'a lost terminal answer in the job leaves the checkout unknown, never retried' do
+    attempt = Pos::DejavooTerminalPayment.start!(@checkout)
+    @spin_sale_mode = :timeout
+    PosTerminalSaleJob.perform_now(attempt.id)
+    assert_equal 'unknown', @checkout.reload.status
+    assert_equal 1, spin_sales
+  end
+
+  test 'cancel asks the terminal to stop waiting only while a sale is waiting' do
+    assert_raises(Pos::Error) { Pos::DejavooTerminalPayment.abort!(@checkout) }
+    attempt = Pos::DejavooTerminalPayment.start!(@checkout)
+    Pos::DejavooTerminalPayment.abort!(@checkout)
+    path, body = @spin_requests.last
+    assert_equal 'v2/Payment/AbortTransaction', path
+    assert_equal attempt.invoice, body['ReferenceId']
+    assert @checkout.reload.receipt[:terminal]
+  end
 end

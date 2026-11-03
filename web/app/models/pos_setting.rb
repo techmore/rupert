@@ -6,20 +6,21 @@ class PosSetting < ApplicationRecord
   belongs_to :production_approved_by, class_name: 'User', optional: true
   encrypts :credentials_json, :webhook_signing_key
   validates :location_id, uniqueness: { scope: :tenant_id }
-  # dejavoo_spin: a Dejavoo terminal driven through SPIn cloud. Sandbox only
-  # until Dejavoo signs off the integration and the processor issues a
-  # production TPN (see docs/integrations/dejavoo-valmar-meeting-brief.md).
+  # dejavoo_spin: a Dejavoo terminal driven through SPIn cloud. Production
+  # (real charges) needs the owner's recorded sign-off that the processor
+  # boarded this TPN for the store's products, the same as NMI.
   CREDENTIAL_KEYS = {
     'authorize_net' => %w[api_login_id transaction_key],
     'nmi' => %w[security_key tokenization_key merchant_company],
     'dejavoo_spin' => %w[tpn auth_key]
   }.freeze
+  SIGNOFF_PROVIDERS = %w[nmi dejavoo_spin].freeze
   validates :gateway_provider, inclusion: { in: CREDENTIAL_KEYS.keys }
   validates :environment, inclusion: { in: %w[sandbox production] }
   validate do
     errors.add(:location, 'must be a C-Trax store in this workspace') unless location&.tenant_id == tenant_id && location.source == 'ctrax'
-    if gateway_provider == 'nmi' && environment == 'production' && !production_approved_at
-      errors.add(:base, 'NMI production needs owner sign-off: confirm the processor approved this merchant account and record the approval.')
+    if SIGNOFF_PROVIDERS.include?(gateway_provider) && environment == 'production' && !production_approved_at
+      errors.add(:base, "#{gateway_provider == 'nmi' ? 'NMI' : 'Dejavoo'} production needs owner sign-off: confirm the processor approved this merchant account and record the approval.")
     end
     if production_approved_at && (production_approval_note.to_s.squish.length < 10 || production_approval_note.to_s.length > 1000)
       errors.add(:production_approval_note, 'must say who approved the account and when (10 to 1000 characters)')
@@ -28,9 +29,8 @@ class PosSetting < ApplicationRecord
     if webhook_signing_key.present? && !webhook_signing_key.match?(/\A[[:graph:]]{16,256}\z/)
       errors.add(:webhook_signing_key, 'must be the signing key exactly as the gateway shows it')
     end
-    errors.add(:environment, 'must be sandbox for Dejavoo terminals until production is enabled') if gateway_provider == 'dejavoo_spin' && environment != 'sandbox'
-    if gateway_provider == 'dejavoo_spin' && ((credentials['tpn'] && !credentials['tpn'].to_s.match?(/\A[A-Za-z0-9]{10,12}\z/)) || (credentials['auth_key'] && !credentials['auth_key'].to_s.match?(/\A[A-Za-z0-9]{10}\z/)))
-      errors.add(:base, 'Enter the Dejavoo TPN (10 to 12 letters or digits) and auth key (10 letters or digits) exactly as iPOSpays shows them.')
+    if gateway_provider == 'dejavoo_spin' && ((credentials['tpn'] && !credentials['tpn'].to_s.match?(Pos::DejavooSpinGateway::TPN)) || (credentials['auth_key'] && !credentials['auth_key'].to_s.match?(Pos::DejavooSpinGateway::AUTH_KEY)))
+      errors.add(:base, 'Enter the Dejavoo TPN (10 to 12 letters or digits) and SPIn auth key (8 to 64 letters or digits) exactly as iPOSpays shows them.')
     end
     allowed = CREDENTIAL_KEYS.fetch(gateway_provider, [])
     if credentials.any? { |key, v| !v.is_a?(String) || !(key == 'merchant_company' ? v.match?(/\A[[:print:]]{1,128}\z/) : v.match?(/\A[[:graph:]]{1,128}\z/)) } || (credentials.keys - allowed).any?
@@ -52,7 +52,9 @@ class PosSetting < ApplicationRecord
       self.card_enabled = false
     end
     # Sign-off covers one account: a new provider, environment or account ID needs it again.
-    if persisted? && (will_save_change_to_gateway_id? || will_save_change_to_environment? || will_save_change_to_gateway_provider?) && !will_save_change_to_production_approved_at?
+    # For Dejavoo the account is the TPN, which lives in the credentials.
+    account_changed = will_save_change_to_gateway_id? || (gateway_provider == 'dejavoo_spin' && will_save_change_to_credentials_json?)
+    if persisted? && (account_changed || will_save_change_to_environment? || will_save_change_to_gateway_provider?) && !will_save_change_to_production_approved_at?
       self.production_approved_at = nil
       self.production_approved_by = nil
       self.production_approval_note = nil
@@ -62,6 +64,7 @@ class PosSetting < ApplicationRecord
   def nmi_production? = gateway_provider == 'nmi' && environment == 'production'
   def nmi_ready_environment? = gateway_provider == 'nmi' && (environment == 'sandbox' || production_approved_at.present?)
   def dejavoo_sandbox? = gateway_provider == 'dejavoo_spin' && environment == 'sandbox'
+  def dejavoo_ready_environment? = gateway_provider == 'dejavoo_spin' && (environment == 'sandbox' || production_approved_at.present?)
 
   def payment_fingerprint
     Digest::SHA256.hexdigest([gateway_provider, environment, gateway_id, credentials.sort].to_json)

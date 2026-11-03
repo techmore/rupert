@@ -61,6 +61,9 @@ module DejavooSpinFixture
 
       @spin_transactions.fetch(body['ReferenceId'])[:voided] = true
       spin_json('0000', body['ReferenceId'], total: format('%.2f', body['Amount']), voided: true, type: 'Void')
+    when 'v2/Payment/AbortTransaction'
+      { status: 200, headers: { 'Content-Type' => 'application/json' },
+        body: { GeneralResponse: { ResultCode: '0', StatusCode: '0000', Message: 'Success', DetailedMessage: '' } }.to_json }
     when 'v2/Payment/Settle'
       { status: 200, body: { SettleDetails: [{ MerchantNumber: 1, BatchNumber: 42, HostStatus: 'Ok',
         TransactionsReports: { TransactionsCount: 3, SaleAmount: 30.5, ReturnAmount: 5, VoidAmount: 0, TotalAmount: 25.5 } }],

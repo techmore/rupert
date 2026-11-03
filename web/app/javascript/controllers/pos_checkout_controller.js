@@ -7,7 +7,7 @@ import { Controller } from "@hotwired/stimulus"
 const A920 = "card_a920"
 export default class extends Controller {
   static targets = ["tender", "tenderButton", "cashFields", "cash", "a920Fields", "exact", "submit", "status", "result", "idChecked", "issues", "override", "overrideUser", "overridePin", "overrideReason"]
-  static values = { url: String, displayId: Number, demo: Boolean }
+  static values = { url: String, displayId: Number, demo: Boolean, terminal: Boolean }
 
   connect() {
     this.tenderChanged()
@@ -44,6 +44,7 @@ export default class extends Controller {
 
   submitLabel(cash, a920) {
     if (a920) return this.demoValue ? "Run demo A920 card sale" : "Record A920 card sale"
+    if (!cash && this.terminalValue && !this.demoValue) return "Send card sale to terminal"
     return this.demoValue ? (cash ? "Run demo cash checkout" : "Send demo card checkout") : (cash ? "Complete cash sale" : "Send card checkout to customer screen")
   }
 
@@ -100,6 +101,7 @@ export default class extends Controller {
     const signature = JSON.stringify(result)
     if (signature === this.lastReceipt) return
     this.lastReceipt = signature
+    if (result.terminal && result.status !== "paid") { this.renderTerminal(result); return }
     this.statusTarget.textContent = result.status === "paid" ? `${result.sandbox ? "Sandbox completed" : (result.demo ? "Demo completed" : "Paid")} · ${this.money(result.total_cents)}${result.tender === A920 ? " · Card (A920), no gateway charge" : ""}${result.tender === "cash" ? ` · Change ${this.money(result.change_cents)}` : ""}${result.inventory_pending ? " · Stock update pending verification" : ""}` : ["processing", "unknown"].includes(result.status) ? "Payment is unresolved. Check the receipt/gateway; do not submit another charge." : "Customer can now pay privately on their screen."
     this.resultTarget.replaceChildren()
     if (result.status === "paid") {
@@ -113,6 +115,41 @@ export default class extends Controller {
       actions.append(next, link); this.resultTarget.append(actions)
     }
     else if (["ready", "declined"].includes(result.status)) { const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "btn-ghost"; cancel.textContent = "Cancel unpaid checkout"; cancel.addEventListener("click", async () => { const response = await fetch(`${this.urlValue}/${result.id}/cancel`, { method: "POST", headers: { "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content } }); if (response.ok) window.location.reload(); else this.statusTarget.textContent = "Payment cannot be cancelled. Check the gateway status." }); this.resultTarget.append(cancel) }
+  }
+
+  // Dejavoo terminal: the customer pays on the terminal; the register sends,
+  // waits (the display poll refreshes this) and can cancel. It never sends a
+  // second sale while one is waiting or unknown.
+  renderTerminal(result) {
+    const waiting = result.status === "processing"
+    this.statusTarget.textContent = waiting ? "Waiting for the customer to tap, insert or swipe on the terminal…"
+      : result.status === "unknown" ? "The terminal did not confirm this payment. Do not charge again; open the receipt to check status."
+      : result.status === "declined" ? (result.decline_reason || "Not paid. Nothing was charged.") : "Ready to send to the terminal."
+    this.resultTarget.replaceChildren()
+    const actions = document.createElement("div"); actions.className = "pos-checkout-actions"
+    if (waiting) actions.append(this.button("Cancel on terminal", "btn-ghost btn-lg", `${result.id}/terminal_cancel`))
+    else if (["ready", "declined"].includes(result.status)) {
+      actions.append(this.button(result.status === "declined" ? "Send to terminal again" : "Send to terminal", "btn-primary btn-lg", `${result.id}/terminal`))
+      actions.append(this.button("Cancel unpaid checkout", "btn-ghost", `${result.id}/cancel`, true))
+    } else {
+      const link = document.createElement("a"); link.href = `${this.urlValue}/${result.id}`; link.textContent = "Open receipt"; link.target = "_blank"; link.rel = "noopener"; link.className = "btn-ghost btn-lg"; actions.append(link)
+    }
+    this.resultTarget.append(actions)
+  }
+
+  button(label, className, path, reload = false) {
+    const button = document.createElement("button"); button.type = "button"; button.className = className; button.textContent = label
+    button.addEventListener("click", async () => {
+      button.disabled = true
+      try {
+        const response = await fetch(`${this.urlValue}/${path}`, { method: "POST", headers: { Accept: "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "" } })
+        const result = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(result.error || "The terminal request could not be verified. Do not charge again; check the receipt.")
+        if (reload) { window.location.reload(); return }
+        this.lastReceipt = null; this.renderCheckout(result)
+      } catch (error) { this.statusTarget.textContent = error.message; button.disabled = false }
+    })
+    return button
   }
 
   money(cents) { return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100) }

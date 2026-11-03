@@ -6,7 +6,8 @@ require 'json'
 require 'securerandom'
 
 module Pos
-  # Dejavoo SPIn (semi-integrated) cloud client. SANDBOX ONLY.
+  # Dejavoo SPIn (semi-integrated) cloud client. Production only after the
+  # owner records sign-off on the POS setting.
   #
   # Rupert sends a request to Dejavoo's SPIn cloud, which forwards it to the
   # store's Dejavoo terminal. The customer taps, dips or swipes on the terminal;
@@ -17,22 +18,23 @@ module Pos
   # Contract: SPIn REST API, read 2026-11-02 at app.theneo.io/dejavoo/spin
   # (methods under /v2/Payment and /v2/Common; credentials Tpn and Authkey in
   # the JSON body; GeneralResponse.StatusCode four-digit codes). The sandbox
-  # host is the one Dejavoo's docs give for SPIn REST. Production is not
-  # enabled: it needs Dejavoo integration sign-off, a production TPN from the
-  # processor and the owner's approval, recorded the same way as NMI's.
+  # host is the one Dejavoo's docs give for SPIn REST. Production needs a live
+  # TPN from the processor and the owner's recorded sign-off, as for NMI.
   #
   # Never stored or returned: the raw response, receipts, signatures, card
   # tokens, BIN/first four, cardholder name, expiry, EMV data or messages from
   # the terminal. Only the fields in Response are kept.
   class DejavooSpinGateway
-    HOSTS = { 'sandbox' => 'https://test.spinpos.net/spin' }.freeze
+    # Production host from the SPIn REST docs. "Check gateway" proves it with a
+    # status lookup for a reference that cannot exist, before any card runs.
+    HOSTS = { 'sandbox' => 'https://test.spinpos.net/spin', 'production' => 'https://api.spinpos.net' }.freeze
     MAX_BYTES = 256 * 1024
     # Seconds the SPIn proxy waits for the terminal (documented default 120).
     TERMINAL_TIMEOUT = 90
     SETTLE_TIMEOUT = 300
     REFERENCE = /\A[A-Za-z0-9]{1,50}\z/
     TPN = /\A[A-Za-z0-9]{10,12}\z/
-    AUTH_KEY = /\A[A-Za-z0-9]{10}\z/
+    AUTH_KEY = /\A[A-Za-z0-9]{8,64}\z/
     PAYMENT_TYPES = %w[Credit Debit].freeze
 
     # What a SPIn StatusCode means for money. Only "approved" and "partial"
@@ -61,14 +63,14 @@ module Pos
 
     attr_reader :setting, :version
 
-    def self.url(environment, path) = "#{HOSTS.fetch(environment) { raise Error, 'Dejavoo production is not enabled in Rupert yet.' }}/#{path}"
+    def self.url(environment, path) = "#{HOSTS.fetch(environment) { raise Error, 'Unknown Dejavoo environment.' }}/#{path}"
 
     def self.reference = "RD#{SecureRandom.hex(12)}"
 
     def initialize(setting)
       raise Error, 'Gateway belongs to another workspace.' unless setting.persisted? && setting.tenant_id == Current.tenant_id
       raise Error, 'This store is not set up for Dejavoo terminals.' unless setting.gateway_provider == 'dejavoo_spin'
-      raise Error, 'Dejavoo production is not enabled in Rupert yet. Use the sandbox terminal.' unless HOSTS.key?(setting.environment)
+      raise Error, 'Dejavoo production needs owner sign-off in checkout setup first.' unless HOSTS.key?(setting.environment) && setting.dejavoo_ready_environment?
 
       @setting = setting
       @environment = setting.environment

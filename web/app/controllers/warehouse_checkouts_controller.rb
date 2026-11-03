@@ -8,6 +8,21 @@ class WarehouseCheckoutsController < ApplicationController
   layout 'warehouse_sale'
   include WarehousePortal
 
+  # PCI DSS 4.0 (6.4.3, 11.6.1): the payment page may only load scripts from
+  # Rupert and the named payment providers, may not be framed (clickjacking),
+  # and may only submit forms back to Rupert. The app-wide policy allows any
+  # https script host, which is the opening card-skimming attacks rely on.
+  PAYMENT_SCRIPT_HOSTS = %w[https://js.authorize.net https://jstest.authorize.net https://pay.google.com
+    https://www.gstatic.com https://payment.ipospays.tech].freeze
+  PAYMENT_CONNECT_HOSTS = %w[https://api2.authorize.net https://apitest.authorize.net https://pay.google.com
+    https://payment.ipospays.tech].freeze
+  content_security_policy(prepend: true) do |policy|
+    policy.script_src :self, :unsafe_inline, *PAYMENT_SCRIPT_HOSTS
+    policy.connect_src :self, *PAYMENT_CONNECT_HOSTS
+    policy.frame_ancestors :none
+    policy.form_action :self
+  end
+
   skip_before_action :require_login
   skip_before_action :load_last_sync
   before_action :load_share
