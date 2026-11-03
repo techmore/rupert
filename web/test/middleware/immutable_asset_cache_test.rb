@@ -12,6 +12,13 @@ class ImmutableAssetCacheTest < ActiveSupport::TestCase
     assert_equal ImmutableAssetCache::HEADER, header_for("/api/assets/tailwind-#{'a' * 64}.css")
   end
 
+  test 'marketing files are cached for a day and revalidated in the background' do
+    assert_equal ImmutableAssetCache::MARKETING_HEADER, header_for('/marketing/landing.css')
+    assert_equal ImmutableAssetCache::MARKETING_HEADER, header_for('/marketing/shots/dashboard-light.webp')
+    assert_equal 'no-cache', header_for('/marketing/missing.webp', status: 404)
+    assert_equal 'no-cache', header_for('/marketingx/landing.css')
+  end
+
   test 'pages, unfingerprinted files and errors keep their own header' do
     assert_equal 'no-cache', header_for('/api/assets/tailwind.css')
     assert_equal 'no-cache', header_for('/sales')
