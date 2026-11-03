@@ -31,8 +31,32 @@ module MasterStock
       @sites ||= StockSite.active.order(:name).to_a
     end
 
+    # The site in the URL, else the one this person used last, else the site
+    # mapped to the primary Shopify location (the shop floor, not a stockroom).
     def selected_site
-      @selected_site ||= sites.find { |site| site.id.to_s == params[:site_id].to_s } || sites.first
+      @selected_site ||= begin
+        site = sites.find { |candidate| candidate.id.to_s == params[:site_id].to_s } ||
+          sites.find { |candidate| candidate.id == session[:master_stock_site_id] } ||
+          sites.find { |candidate| primary_location_ids.include?(candidate.shopify_location_id) } || sites.first
+        session[:master_stock_site_id] = site.id if site
+        site
+      end
+    end
+
+    def primary_location_ids
+      Location.where(source: 'shopify', primary_location: true).pluck(:id)
+    end
+
+    # Each mapped platform's stored reading for these items at the site:
+    # { item_id => { 'shopify' => PushPreview::Row, ... } }. Reads snapshots only.
+    def platform_readings(site, item_ids)
+      return {} if site.nil? || item_ids.empty?
+
+      site.mapped_platforms.each_with_object({}) do |platform, out|
+        MasterStock::PushPreview.new(site: site, platform: platform, item_ids: item_ids).rows.each do |row|
+          (out[row.item.id] ||= {})[platform] = row
+        end
+      end
     end
   end
 end

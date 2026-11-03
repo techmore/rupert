@@ -579,7 +579,7 @@ html[data-full-window] .table-region { max-height:none; }
 .stock-figure { font-family:var(--font-display);font-size:1.375rem;line-height:1.1;color:var(--color-ink);font-variant-numeric:tabular-nums; }
 .stock-figure-note { margin-top:.2rem;font-size:.75rem;color:var(--color-taupe);white-space:nowrap; }
 .stock-row-actions { display:flex;flex-wrap:wrap;gap:.25rem .75rem;font-size:.8rem;font-weight:500;white-space:nowrap; }
-.stock-row-actions a { color:var(--color-olive-deep); }
+.stock-row-actions a { display:inline-flex;align-items:center;min-height:24px;color:var(--color-olive-deep); }
 .stock-row-actions a:hover { text-decoration:underline; }
 .stock-progress { display:block;height:.3rem;margin-top:.35rem;margin-left:auto;width:6rem;border-radius:var(--radius-pill);background:var(--color-haze);overflow:hidden; }
 .stock-progress > span { display:block;height:100%;background:var(--color-olive); }
@@ -2338,3 +2338,47 @@ body.tour-active { overflow-x:hidden; }
   .event-receipt { border:0;padding:0; }
   .event-receipt-actions { display:none; }
 }
+
+/* Rupert stock (master_stock/*): one row per item with its Rupert number, each platform's
+   stored reading and the four record actions. docs/ux/inventory-ux-loop.md */
+.toolbar-field-wide { flex:1 1 16rem;max-width:none; }
+.stock-list { display:grid;gap:.6rem; }
+.stock-row { display:grid;gap:.75rem;padding:.9rem 1rem; }
+.stock-row-main { display:flex;align-items:flex-start;justify-content:space-between;gap:1rem; }
+.stock-row-qty { flex-shrink:0;text-align:right;min-width:4rem; }
+.stock-qty { font-family:var(--font-display);font-size:1.75rem;line-height:1;color:var(--color-ink);font-variant-numeric:tabular-nums; }
+.stock-readings { display:flex;flex-wrap:wrap;gap:.35rem;padding-top:.15rem; }
+.stock-reading { font-variant-numeric:tabular-nums;white-space:nowrap; }
+.stock-actions { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem; }
+.stock-action { min-height:48px;justify-content:center; }
+@media(min-width:640px) {
+  .stock-actions { display:flex;flex-wrap:wrap; }
+  .stock-action { min-height:36px;min-width:6.5rem; }
+}
+.preview-table .td { vertical-align:top; }
+.preview-row-large { box-shadow:inset 3px 0 0 var(--color-rose); }
+/* Phones: each row of a .stack-table becomes a short block: first and last cells full width,
+   the cells between in a three-column grid labelled from data-label. */
+@media(max-width:639px) {
+  .stack-table thead { position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0); }
+  .stack-table, .stack-table tbody, .stack-table tr, .stack-table td { display:block;width:100%; }
+  .stack-table tr { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:.75rem 1rem;border-bottom:1px solid var(--color-fog); }
+  .stack-table td { padding:.2rem 0;text-align:left; }
+  .stack-table td:first-child, .stack-table td:last-child, .stack-table td.stack-full { grid-column:1 / -1; }
+  .stack-table td[data-label]:not(:first-child):not(:last-child):not(.stack-full)::before { content:attr(data-label);display:block;font-size:.7rem;font-weight:400;color:var(--color-taupe); }
+  .stack-table td:empty { display:none; }
+}
+/* Inventory search answer (inventory/_glance): one card per item, every source's figures side by side. */
+.glance-list { display:grid;gap:.6rem; }
+.glance-item { display:grid;gap:.6rem;padding:.85rem 1rem; }
+.glance-figures { display:grid;gap:.6rem; }
+.glance-group { display:grid;gap:.15rem;align-content:start; }
+.glance-figure { display:flex;align-items:baseline;justify-content:space-between;gap:.75rem;font-size:.875rem; }
+.glance-number { font-weight:600;color:var(--color-ink);font-variant-numeric:tabular-nums;margin-left:auto; }
+.glance-figure-zero .glance-number { color:var(--color-rose); }
+@media(min-width:768px) {
+  .glance-item { grid-template-columns:minmax(12rem,1fr) 2.4fr;align-items:start; }
+  .glance-figures { grid-template-columns:repeat(3,minmax(0,1fr));gap:1.25rem; }
+}
+/* Row checkboxes: a 24px target (WCAG 2.2 2.5.8) around the native 13px box. */
+.check-target { width:1.125rem;height:1.125rem;margin:.1875rem;cursor:pointer; }

@@ -1,47 +1,74 @@
 <% content_for :title, 'Rupert stock' %>
 <% can_write = Current.user.can?('inventory.write') %>
-<div class="page-narrow space-y-5">
+<% labels = { 'count' => 'Count', 'receive' => 'Receive', 'adjust' => 'Adjust', 'transfer' => 'Transfer' } %>
+<div class="page-medium space-y-5">
   <%= page_header 'Rupert stock', subtitle: (@site ? "Rupert’s own counts at #{@site.name}. Recording here does not change Shopify, C-Trax or Square." : 'Rupert’s own stock counts per site.'),
         menu: [['Ledger', master_stock_movements_path(site_id: @site&.id)], ['Push preview', master_stock_push_preview_path(site_id: @site&.id)], ['Setup', master_stock_setup_path], (['Add item', new_master_stock_item_path] if can_write)].compact %>
   <% if @site.nil? %>
     <%= render 'master_stock/no_sites' %>
   <% else %>
     <%= render 'master_stock/site_picker', sites: @sites, site: @site, path: :master_stock_items_path %>
-    <%= form_with url: master_stock_items_path, method: :get, class: 'toolbar' do %>
+    <% if @recorded && can_write %>
+      <div class="flex flex-wrap items-center gap-2 text-sm text-mocha" data-just-recorded>
+        <span>Mistake in <%= @recorded.kind_label.downcase %> of <%= @recorded.stock_item.name %>? Rows are never edited; record the correction.</span>
+        <%= link_to 'Count again', new_master_stock_movement_path(kind: 'count', item_id: @recorded.stock_item_id, site_id: @recorded.stock_site_id), class: 'btn-ghost btn-sm' %>
+        <%= link_to 'Adjust', new_master_stock_movement_path(kind: 'adjust', item_id: @recorded.stock_item_id, site_id: @recorded.stock_site_id), class: 'btn-ghost btn-sm' %>
+        <%= link_to 'See in ledger', master_stock_movements_path(item_id: @recorded.stock_item_id), class: 'btn-ghost btn-sm' %>
+      </div>
+    <% end %>
+    <%= form_with url: master_stock_items_path, method: :get, class: 'toolbar', role: 'search', data: { controller: 'stock-find' } do %>
       <%= hidden_field_tag :site_id, @site.id %>
       <%= hidden_field_tag :all, params[:all] if params[:all] == '1' %>
-      <div class="toolbar-field grow"><%= label_tag :q, 'Find item', class: 'field-label' %><%= search_field_tag :q, @query, class: 'input font-mono', placeholder: 'Scan or type SKU, barcode or name', autofocus: true, autocomplete: 'off', maxlength: 255 %></div>
-      <div class="toolbar-actions"><%= submit_tag 'Find', class: 'btn-primary', name: nil %><% if @query.present? %><%= link_to 'Clear', master_stock_items_path(site_id: @site.id), class: 'btn-ghost' %><% end %></div>
+      <div class="toolbar-field toolbar-field-wide"><%= label_tag :q, 'Find an item (scan, or type)', class: 'field-label' %><%= search_field_tag :q, @query, class: 'input font-mono', placeholder: 'SKU, barcode or name', autofocus: true, autocomplete: 'off', maxlength: 255, enterkeyhint: 'search', data: { stock_find_target: 'input', action: 'focus->stock-find#selectAll' } %></div>
+      <div class="toolbar-actions">
+        <%= submit_tag 'Find', class: 'btn-primary', name: nil %>
+        <%# Shown only in the iPhone app, which reads barcodes with the camera. %>
+        <button type="button" hidden class="btn-ghost" data-stock-find-target="camera" data-action="stock-find#scanWithCamera">Scan with camera</button>
+        <% if @query.present? %><%= link_to 'Clear', master_stock_items_path(site_id: @site.id), class: 'btn-ghost' %><% end %>
+      </div>
+    <% end %>
+    <% if can_write %>
+      <div class="flex flex-wrap items-center gap-2 text-xs text-taupe">
+        <span id="scan-mode-label">When a scan matches one item:</span>
+        <nav class="tabs" aria-labelledby="scan-mode-label">
+          <%= link_to 'Show it', master_stock_items_path(site_id: @site.id, scan_mode: 'show'), class: "tab #{'tab-active' if @scan_mode == 'show'}", aria: { current: (@scan_mode == 'show' ? 'true' : nil) } %>
+          <%= link_to 'Start a count', master_stock_items_path(site_id: @site.id, scan_mode: 'count'), class: "tab #{'tab-active' if @scan_mode == 'count'}", aria: { current: (@scan_mode == 'count' ? 'true' : nil) } %>
+        </nav>
+      </div>
     <% end %>
     <p class="text-xs text-taupe">
-      <% if params[:all] == '1' %>Showing every Rupert item. <%= link_to "Only items at #{@site.name}", master_stock_items_path(site_id: @site.id, q: @query.presence), class: 'underline' %>
-      <% else %>Showing items linked or counted at <%= @site.name %>. <%= link_to 'Show all items', master_stock_items_path(site_id: @site.id, q: @query.presence, all: 1), class: 'underline' %><% end %>
+      <% if params[:all] == '1' %>Showing every Rupert item. <%= link_to "Only items at #{@site.name}", master_stock_items_path(site_id: @site.id, q: @query.presence), class: 'underline' %>.
+      <% else %>Showing items linked or counted at <%= @site.name %>. <%= link_to 'Show all items', master_stock_items_path(site_id: @site.id, q: @query.presence, all: 1), class: 'underline' %>.<% end %>
+      <% if @site.mapped_platforms.any? %>Platform numbers are the latest stored reads, never live.<% end %>
     </p>
 
-    <ul class="space-y-3" aria-label="Items">
+    <ul class="stock-list" aria-label="Items at <%= @site.name %>">
       <% @items.each do |item| %>
         <% balance = @balances[item.id] %>
-        <li class="card card-pad space-y-3">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <%= link_to item.name, master_stock_item_path(item, site_id: @site.id), class: 'font-semibold text-ink hover:underline' %><% if @exact %> <span class="pill-fern">Exact code match</span><% end %>
-              <p class="text-xs text-taupe font-mono"><%= [item.sku, item.barcode].compact_blank.join(' · ').presence || 'No SKU or barcode' %></p>
+        <% readings = @readings[item.id] || {} %>
+        <li class="card stock-row" id="<%= dom_id(item) %>">
+          <div class="stock-row-main">
+            <div class="min-w-0 space-y-1">
+              <p><%= link_to item.name, master_stock_item_path(item, site_id: @site.id), class: 'font-semibold text-ink hover:underline' %><% if @exact %> <span class="pill-fern">Exact code match</span><% end %></p>
+              <p class="text-xs text-taupe"><span class="font-mono"><%= [item.sku, item.barcode].compact_blank.join(' · ').presence || 'No SKU or barcode' %></span> · <%= counted_label(balance) %></p>
+              <% chips = @site.mapped_platforms.filter_map { |platform| platform_reading_chip(platform, readings[platform]) } %>
+              <% if chips.any? %><p class="stock-readings"><%= safe_join(chips) %></p><% end %>
             </div>
-            <div class="text-right shrink-0">
+            <div class="stock-row-qty">
               <% if balance %>
-                <p class="stat-value-sm text-ink" aria-label="On hand"><%= balance.on_hand %></p>
-                <p class="text-xs text-taupe">on hand</p>
+                <p class="stock-qty" aria-label="<%= balance.on_hand %> on hand in Rupert"><%= balance.on_hand %></p>
+                <p class="text-xs text-taupe" aria-hidden="true">on hand</p>
               <% else %>
                 <span class="pill-clay">Not counted</span>
               <% end %>
             </div>
           </div>
           <% if can_write %>
-            <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div class="stock-actions" role="group" aria-label="Record for <%= item.name %>">
               <% (balance ? StockLedgerEntry::STAFF_KINDS : %w[count]).each do |kind| %>
-                <%= link_to({ 'count' => 'Count', 'receive' => 'Receive', 'adjust' => 'Adjust', 'transfer' => 'Transfer' }.fetch(kind),
-                      new_master_stock_movement_path(kind: kind, item_id: item.id, site_id: @site.id, return_q: @query.presence),
-                      class: "#{kind == 'count' && balance.nil? ? 'btn-primary' : 'btn-ghost'} btn-lg justify-center") %>
+                <%= link_to(labels.fetch(kind), new_master_stock_movement_path(kind: kind, item_id: item.id, site_id: @site.id, return_q: @query.presence),
+                      class: "#{kind == 'count' && balance.nil? ? 'btn-primary' : 'btn-ghost'} stock-action",
+                      aria: { label: "#{labels.fetch(kind)} #{item.name}" }) %>
               <% end %>
             </div>
           <% end %>
@@ -54,6 +81,6 @@
         </li>
       <% end %>
     </ul>
-    <% if @pagy.pages > 1 %><div class="text-xs text-taupe"><%== @pagy.series_nav %></div><% end %>
+    <% if @pagy.pages > 1 %><nav class="text-xs text-taupe" aria-label="Pages"><%== @pagy.series_nav %></nav><% end %>
   <% end %>
 </div>

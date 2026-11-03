@@ -13,6 +13,16 @@ module MasterStock
       @pagy, @items = pagy(:offset, scope.order(:name, :id), limit: 50)
       @balances = @site ? StockBalance.where(stock_site: @site, stock_item_id: @items.map(&:id)).index_by(&:stock_item_id) : {}
       @exact = @query.present? && @items.size == 1 && (@items.first.sku == @query || @items.first.barcode == @query)
+      session[:master_stock_scan_mode] = params[:scan_mode] if %w[show count].include?(params[:scan_mode])
+      @scan_mode = session[:master_stock_scan_mode] == 'count' && Current.user.can?('inventory.write') ? 'count' : 'show'
+      # Counting mode: a scan that matches exactly one item goes straight to its count.
+      if @exact && @scan_mode == 'count' && @site
+        return redirect_to(new_master_stock_movement_path(kind: 'count', item_id: @items.first.id, site_id: @site.id, scan: 1))
+      end
+
+      @readings = platform_readings(@site, @items.map(&:id))
+      # The movement this person just saved, so a mistake is one tap from its correction.
+      @recorded = StockLedgerEntry.includes(:stock_item, :stock_site).find_by(id: params[:recorded], actor: Current.user.email, created_at: 30.minutes.ago..) if params[:recorded].present?
     end
 
     def show
@@ -20,6 +30,8 @@ module MasterStock
       @balances = @item.balances.includes(:stock_site).index_by(&:stock_site_id)
       @links = @item.links.includes(:stock_site).order(:stock_site_id, :platform)
       @entries = @item.ledger_entries.includes(:stock_site).newest_first.limit(50)
+      @sites = StockSite.order(:name).to_a
+      @readings = @sites.select(&:active).to_h { |site| [site.id, platform_readings(site, [@item.id])[@item.id] || {}] }
       @can_setup = Current.user.can?('settings.write') && Current.user.can?('inventory.write')
     end
 

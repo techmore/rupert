@@ -1,0 +1,28 @@
+<%# Search answer: each matching item once, every location's sellable number, C-Trax counts and Rupert stock. %>
+<section aria-labelledby="glance-title" class="space-y-3">
+  <%= section_heading 'At a glance', id: 'glance-title', hint: 'Each source as last read. Numbers from different sources are never added together.' %>
+  <ul class="glance-list">
+    <% glance.each do |item| %>
+      <li class="card glance-item">
+        <div class="min-w-0">
+          <p class="font-semibold text-ink"><% if item.source == 'shopify' && item.native_id %><%= link_to stock_item_name(item.row), shopify_variant_path(item.native_id), class: 'hover:underline' %><% else %><%= stock_item_name(item.row) %><% end %></p>
+          <p class="text-xs text-taupe font-mono"><%= stock_item_sku(item.row) || 'No SKU' %></p>
+        </div>
+        <dl class="glance-figures">
+          <% [[item.source == 'square' ? 'Square, can sell' : 'Shopify, can sell', item.pools], ['C-Trax stock', item.ctrax], ['Rupert stock', item.rupert]].each do |label, figures| %>
+            <% next if figures.empty? %>
+            <div class="glance-group">
+              <dt class="text-xs font-semibold text-taupe"><%= label %></dt>
+              <% figures.each do |figure| %>
+                <dd class="glance-figure<%= ' glance-figure-zero' if figure.quantity.to_i <= 0 %>">
+                  <span class="text-mocha"><%= figure.place %></span>
+                  <span class="glance-number"><%= figure.quantity.nil? ? 'unknown' : signed_stock(figure.quantity) %></span><% unless figure.fresh %><span class="text-xs text-clay"> old read</span><% end %>
+                </dd>
+              <% end %>
+            </div>
+          <% end %>
+        </dl>
+      </li>
+    <% end %>
+  </ul>
+</section>

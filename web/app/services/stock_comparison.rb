@@ -5,7 +5,7 @@ require 'csv'
 
 # Two observations of shared stock, never a sum or an inventory adjustment.
 class StockComparison
-  attr_reader :shopify_snapshots, :ctrax_snapshots, :shopify, :ctrax, :query, :filter, :findings, :decisions
+  attr_reader :shopify_snapshots, :ctrax_snapshots, :shopify, :ctrax, :query, :filter, :findings, :decisions, :default_site
 
   def initialize(shopify_location_id: nil, ctrax_location_id: nil, query: nil, filter: nil, at: Time.current)
     @at = at
@@ -15,6 +15,7 @@ class StockComparison
     @ctrax_snapshots = CtraxStockSnapshot.includes(:location).order(:location_id).select { |s| s.location&.active }
     @shopify = selected(@shopify_snapshots, shopify_location_id, prefer_stock: true)
     @ctrax = selected(@ctrax_snapshots, ctrax_location_id)
+    default_from_site! if shopify_location_id.blank? && ctrax_location_id.blank? && !(@shopify && @ctrax)
   end
 
   def rows
@@ -75,6 +76,22 @@ class StockComparison
   end
 
   private
+
+  # With several stores and nothing chosen, open on a pair a person already
+  # declared as one shop: a Rupert stock site mapped to both platforms, the
+  # primary Shopify location first. Never guessed from names.
+  def default_from_site!
+    shopify = @shopify_snapshots.index_by(&:location_id)
+    ctrax = @ctrax_snapshots.index_by(&:location_id)
+    sites = StockSite.active.where.not(shopify_location_id: nil).where.not(ctrax_location_id: nil).order(:name).to_a
+    site = sites.select { |candidate| shopify[candidate.shopify_location_id] && ctrax[candidate.ctrax_location_id] }
+      .min_by { |candidate| shopify[candidate.shopify_location_id].location.primary_location ? 0 : 1 }
+    return unless site
+
+    @default_site = site
+    @shopify = shopify[site.shopify_location_id]
+    @ctrax = ctrax[site.ctrax_location_id]
+  end
 
   def selected(snapshots, id, prefer_stock: false)
     return snapshots.find { |s| s.location_id == id } || raise(ActiveRecord::RecordNotFound) if id.present?

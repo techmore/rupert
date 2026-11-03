@@ -11,6 +11,8 @@ module MasterStock
       scope = scope.where(stock_site_id: params[:site_id]) if params[:site_id].present?
       scope = scope.where(stock_item_id: params[:item_id]) if params[:item_id].present?
       scope = scope.where(kind: params[:kind]) if StockLedgerEntry::KINDS.include?(params[:kind])
+      @query = params[:q].to_s.strip.first(255)
+      scope = scope.where(stock_item_id: StockItem.lookup(@query).select(:id)) if @query.present?
       @item = StockItem.find_by(id: params[:item_id]) if params[:item_id].present?
       respond_to do |format|
         format.html { @pagy, @entries = pagy(:offset, scope, limit: 50) }
@@ -39,21 +41,59 @@ module MasterStock
       @site = StockSite.find(attrs[:site_id])
       @token = params.require(:request_token)
       destination = StockSite.find_by(id: attrs[:destination_site_id]) if attrs[:destination_site_id].present?
+      raise MasterStock::Error, 'That looks like a scanned barcode, not a number of units. Enter how many you have.' if scanned_code?(attrs[:quantity])
+      if @kind == 'count' && params[:confirm_variance] != '1' && (@warning = variance_warning(attrs[:quantity]))
+        @balance = StockBalance.find_by(stock_item: @item, stock_site: @site)
+        @values = attrs.to_h.merge('quantity' => '')
+        return render(:new, status: :unprocessable_entity)
+      end
+
       result = Ledger.new(actor: Current.user).record(kind: @kind, item: @item, site: @site, quantity: attrs[:quantity],
         reason: attrs[:reason], note: attrs[:note], reference: attrs[:reference], destination_site: destination, token: @token)
-      entry = result.entry
-      notice = "#{entry.kind_label}: #{@item.name} at #{@site.name} is now #{result.entries.find { |e| e.stock_site_id == @site.id }.quantity_after}."
+      entry = result.entries.find { |e| e.stock_site_id == @site.id }
+      notice = "#{result.entry.kind_label}: #{@item.name} at #{@site.name} is now #{entry.quantity_after}."
+      notice += " #{count_variance(entry)}" if entry.kind == 'count'
       notice += ' (Already recorded; nothing was added twice.)' if result.replayed
-      redirect_to(master_stock_items_path(site_id: @site.id, q: params[:return_q].presence), notice: notice)
+      # After a scan-to-count, the search is empty and focused for the next scan.
+      redirect_to(master_stock_items_path(site_id: @site.id, q: (params[:return_q].presence unless params[:scan] == '1'), recorded: entry.id), notice: notice)
     rescue MasterStock::Error => e
       @error = e.message
       @balance = StockBalance.find_by(stock_item: @item, stock_site: @site)
       @values = attrs.to_h
+      @values['quantity'] = '' if scanned_code?(@values['quantity'])
       @kind = 'count' unless StockLedgerEntry::STAFF_KINDS.include?(@kind)
       render(:new, status: :unprocessable_entity)
     end
 
     private
+
+    # A scanner fires a whole barcode into whichever field has focus. Quantities
+    # never start with a zero or run past seven digits; barcodes often do.
+    def scanned_code?(quantity)
+      quantity.to_s.strip.match?(/\A[-+]?(?:0\d{4,}|\d{8,})\z/)
+    end
+
+    # A count far from Rupert's number is more often a typo (2 for 20) or a missed
+    # shelf than real loss: ask for a recount before saving, without showing the number.
+    def variance_warning(quantity)
+      counted = Integer(quantity.to_s.strip, 10, exception: false)
+      balance = StockBalance.find_by(stock_item: @item, stock_site: @site)
+      return unless counted && balance
+
+      diff = counted - balance.on_hand
+      return unless diff.abs >= 10 && diff.abs * 2 >= [balance.on_hand, counted].max
+
+      "#{counted} is #{diff.abs} #{diff.positive? ? 'more' : 'fewer'} than Rupert expects at #{@site.name}. " \
+        'Count the shelf and any overstock once more and enter the total again.'
+    end
+
+    # After a blind count: how it compares with what Rupert had.
+    def count_variance(entry)
+      return 'First count here.' if entry.quantity_before.nil?
+      return "It matches Rupert’s #{entry.quantity_before}." if entry.delta.zero?
+
+      "Rupert had #{entry.quantity_before} (#{entry.delta.abs} #{entry.delta.positive? ? 'more' : 'fewer'} counted)."
+    end
 
     def csv(scope)
       safe = ->(value) { value.is_a?(String) ? FinanceHelper.csv_safe(value) : value }

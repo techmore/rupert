@@ -31,7 +31,15 @@
   </div>
 
   <% summary = @comparison.summary %>
-  <% unless @comparison.shopify && @comparison.ctrax %><p role="status" class="flash flash-alert">Choose both sources after their stock reads complete. Missing stock stays unknown.</p><% end %>
+  <% if @comparison.default_site %>
+    <p role="status" class="text-sm text-mocha">Showing <strong><%= @comparison.shopify.location.name %></strong> beside <strong><%= @comparison.ctrax.location.name %></strong>, mapped together as the Rupert site <%= @comparison.default_site.name %>. Pick other stores above to compare them instead.</p>
+  <% end %>
+  <% unless @comparison.shopify && @comparison.ctrax %>
+    <div role="status" class="callout callout-attention">
+      <p class="callout-title">Choose a Shopify location and a C-Trax store to compare.</p>
+      <p class="mt-1 text-sm text-mocha">Until both are chosen, the missing side shows as unknown. Map them together once as a Rupert stock site (Stock → Rupert stock → Setup) and this page opens on that pair.</p>
+    </div>
+  <% end %>
 
   <section class="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Stock comparison overview">
     <% [['Comparison rows', summary[:rows]], ['Identity pairs / candidates', summary[:paired]], ['Unknown stock rows', summary[:unknown]], ['Negative stock rows', summary[:negative]]].each do |label, value| %>

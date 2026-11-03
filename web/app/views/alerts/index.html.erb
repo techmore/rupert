@@ -21,7 +21,7 @@
           <thead>
             <tr>
               <th scope="col" class="th w-10">
-                <input type="checkbox" data-bulk-target="all" data-action="change->bulk#toggleAll" class="accent-olive" aria-label="Select all">
+                <input type="checkbox" data-bulk-target="all" data-action="change->bulk#toggleAll" class="accent-olive check-target" aria-label="Select all">
               </th>
               <th scope="col" class="th">SKU</th>
               <th scope="col" class="th">Product</th>
@@ -45,9 +45,9 @@
               <% row = @advice[alert.id] %>
               <tr>
                 <td class="td">
-                  <input type="checkbox" name="alert_ids[]" value="<%= alert.id %>" data-bulk-row data-action="change->bulk#toggleRow" class="accent-olive" aria-label="Select <%= alert.sku %>">
+                  <input type="checkbox" name="alert_ids[]" value="<%= alert.id %>" data-bulk-row data-action="change->bulk#toggleRow" class="accent-olive check-target" aria-label="Select <%= alert.sku %>">
                 </td>
-                <td class="td font-mono text-xs text-mocha"><%= alert.sku.presence || '—' %></td>
+                <td class="td whitespace-nowrap font-mono text-xs text-mocha"><%= alert.sku.presence || '—' %></td>
                 <td class="td">
                   <p class="font-medium text-ink"><%= alert.product_name.presence || '—' %></p>
                   <p class="text-xs text-taupe"><%= alert.variant_name %></p>

@@ -53,7 +53,16 @@ class InventoryCountItem < ApplicationRecord
   def inventory_title
     return comparison['product_name'] if comparison['source'] == 'ctrax'
 
-    resolved_variant&.title
+    # "Morning Ridge Coffee · 12 oz bag": a variant title alone ("Speckled") does not say what was counted.
+    variant = resolved_variant
+    return unless variant
+
+    product = variant.product&.title.to_s
+    title = variant.title.to_s
+    return title.presence if product.blank? || title.start_with?(product)
+    return product if title.blank? || title == 'Default Title'
+
+    "#{product} · #{title}"
   end
 
   def inventory_thumbnail
