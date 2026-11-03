@@ -2366,3 +2366,15 @@ body.tour-active { overflow-x:hidden; }
   .preview-table td:first-child, .preview-table td:last-child { grid-column:1 / -1; }
   .preview-table td.num::before { content:attr(data-label);display:block;font-size:.7rem;font-weight:400;color:var(--color-taupe); }
 }
+/* Inventory search answer (inventory/_glance): one card per item, every source's figures side by side. */
+.glance-list { display:grid;gap:.6rem; }
+.glance-item { display:grid;gap:.6rem;padding:.85rem 1rem; }
+.glance-figures { display:grid;gap:.6rem; }
+.glance-group { display:grid;gap:.15rem;align-content:start; }
+.glance-figure { display:flex;align-items:baseline;justify-content:space-between;gap:.75rem;font-size:.875rem; }
+.glance-number { font-weight:600;color:var(--color-ink);font-variant-numeric:tabular-nums;margin-left:auto; }
+.glance-figure-zero .glance-number { color:var(--color-rose); }
+@media(min-width:768px) {
+  .glance-item { grid-template-columns:minmax(12rem,1fr) 2.4fr;align-items:start; }
+  .glance-figures { grid-template-columns:repeat(3,minmax(0,1fr));gap:1.25rem; }
+}

@@ -108,4 +108,61 @@ class StockUxTest < ActionDispatch::IntegrationTest
     assert_select '[data-source=ctrax] p.text-rose', /Credentials rejected · 20 min ago/
     assert_select '[data-source=ctrax] p', /Check this connection’s saved login/
   end
+
+  test 'scan-to-count mode opens the count for an exact scan and returns to an empty search' do
+    sign_in(@user)
+    get master_stock_items_path(site_id: @site.id, scan_mode: 'count')
+    get master_stock_items_path(site_id: @site.id, q: 'GUM-10', all: 1)
+    assert_redirected_to new_master_stock_movement_path(kind: 'count', item_id: @item.id, site_id: @site.id, scan: 1)
+    follow_redirect!
+    assert_select 'input[name=scan][value="1"]'
+
+    post master_stock_movements_path, params: { scan: '1', return_q: 'GUM-10', request_token: SecureRandom.uuid,
+                                                movement: { kind: 'count', item_id: @item.id, site_id: @site.id, quantity: '4' } }
+    assert_redirected_to master_stock_items_path(site_id: @site.id)
+  end
+
+  test 'a barcode scanned into the quantity box is refused, and a far-off count asks for a recount' do
+    record('count', 3)
+    sign_in(@user)
+    count = ->(quantity, **extra) { post master_stock_movements_path, params: { request_token: 'same-token', movement: { kind: 'count', item_id: @item.id, site_id: @site.id, quantity: quantity } }.merge(extra) }
+    count.call('0012345678905')
+    assert_response :unprocessable_entity
+    assert_select '[role=alert]', /looks like a scanned barcode/
+    assert_select 'input[name="movement[quantity]"][value="0012345678905"]', count: 0
+
+    count.call('40')
+    assert_response :unprocessable_entity
+    assert_select '.callout-title', 'Check this count'
+    assert_select '[role=alert] p', /40 is 37 more than Rupert expects/
+    assert_select 'input[name=confirm_variance][value="1"]'
+    assert_equal 3, StockBalance.find_by!(stock_item: @item, stock_site: @site).on_hand
+
+    count.call('40', confirm_variance: '1')
+    assert_equal 40, StockBalance.find_by!(stock_item: @item, stock_site: @site).on_hand
+  end
+
+  test 'inventory search finds items by product name and answers with every source at a glance' do
+    level = InventoryLevel.create!(source: 'shopify', locationId: @shopify_location.id, shopifyVariantId: @variant.id, quantity: 6, available: 6, updatedAt: Time.current)
+    link_shopify!
+    record('count', 5)
+    ctrax_snapshot!([{ 'id' => '3001', 'quantity' => '4', 'manage_stock' => true, 'website_variant_id' => '501' }])
+    sign_in(@admin)
+    get inventory_index_path(q: 'gummies 10')
+    assert_response :success
+    assert_select '.glance-item', 1
+    assert_select '.glance-group', text: /Shopify, can sell\s+Main \(Shopify\)\s+6/
+    assert_select '.glance-group', text: /C-Trax stock\s+Main \(C-Trax\)\s+4/
+    assert_select '.glance-group', text: /Rupert stock\s+Main store\s+5/
+    assert_select '.stock-item-meta', text: 'GUM-10'
+    assert level
+  end
+
+  test 'the register explains why it is empty when every item lacks a website image' do
+    ctrax_snapshot!([{ 'id' => '3001', 'name' => 'Gummies', 'quantity' => '4', 'manage_stock' => true, 'price_cents' => 1000 }])
+    sign_in(@admin)
+    get ctrax_pos_path(location_id: @ctrax_location.id)
+    assert_response :success
+    assert_select '.empty-state-title', '1 product hidden until linked to a website image'
+  end
 end
