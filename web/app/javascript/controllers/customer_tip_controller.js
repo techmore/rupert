@@ -45,7 +45,7 @@ export default class extends Controller {
       if (!state.checkout || !["ready", "declined"].includes(state.checkout.status)) { this.paymentAbort?.abort(); this.nmi?.destroy(); this.nmi = null; this.nmiFieldsTarget.hidden = true; this.configuredCheckout = null }
       if (state.checkout?.status === "paid") {
         this.receiptTarget.hidden = false
-        this.receiptTarget.textContent = `${state.checkout.sandbox ? "Sandbox receipt · " : (state.checkout.demo ? "Demo receipt · " : "Receipt · ")}${state.checkout.reference} · Paid ${this.money(state.checkout.total_cents)} · Tip ${this.money(state.checkout.tip_cents)}${state.checkout.tender === "cash" ? ` · Change ${this.money(state.checkout.change_cents)}` : ""}${state.checkout.inventory_pending ? " · Stock update pending" : ""}`
+        this.receiptTarget.textContent = `${state.checkout.sandbox ? "Sandbox receipt · " : (state.checkout.demo ? "Demo receipt · " : "Receipt · ")}${state.checkout.reference} · Paid ${this.money(state.checkout.total_cents)} · Tip ${this.money(state.checkout.tip_cents)}${state.checkout.tender === "cash" ? ` · Change ${this.money(state.checkout.change_cents)}` : ""}${state.checkout.card?.last_four ? ` · ${state.checkout.card.brand || "Card"} ending ${state.checkout.card.last_four}${state.checkout.card.auth_code ? ` · Approval ${state.checkout.card.auth_code}` : ""}` : ""}${state.checkout.inventory_pending ? " · Stock update pending" : ""}`
         this.statusTarget.textContent = state.checkout.sandbox ? "Sandbox test complete. No live money, sales or stock movement." : (state.checkout.demo ? "Demonstration complete. No money was collected." : "Thank you. Your payment is complete.")
       } else if (["processing", "unknown"].includes(state.checkout?.status)) {
         this.statusTarget.textContent = "Verifying your payment. Please do not submit another payment."
@@ -53,7 +53,7 @@ export default class extends Controller {
         this.paymentTarget.hidden = false
         this.payTarget.textContent = `${state.checkout.sandbox ? "Sandbox pay" : (state.checkout.demo ? "Simulate payment" : "Pay")} ${this.money(state.checkout.total_cents)}`
         this.payTarget.disabled = true
-        this.statusTarget.textContent = state.checkout.status === "declined" ? "Payment declined. No paid receipt was issued. You can try a new card." : "Review the total, then pay securely."
+        this.statusTarget.textContent = state.checkout.status === "declined" ? `${state.checkout.decline_reason || "Payment declined."} No paid receipt was issued.` : "Review the total, then pay securely."
         if (this.configuredCheckout !== state.checkout.reference) await this.configurePayment(state.checkout)
         this.payTarget.disabled = this.submitting || this.tokenizing || !this.paymentReady
       } else {

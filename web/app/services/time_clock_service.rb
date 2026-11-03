@@ -65,7 +65,7 @@ class TimeClockService
   end
 
   def self.review(correction:, reviewer:, approve:)
-    raise Error, 'Payroll write permission is required.' unless reviewer.can?('payroll.write')
+    raise Error, 'Only timesheet reviewers can review clock corrections.' unless ClockCorrection.reviewer?(reviewer)
     raise ActiveRecord::RecordNotFound unless correction.tenant_id == Current.tenant_id &&
       (reviewer.super_admin? || reviewer.tenant_id == Current.tenant_id)
 

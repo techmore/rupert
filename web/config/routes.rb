@@ -283,6 +283,8 @@ Rails.application.routes.draw do
       post :release_warehouse_stock
     end
   end
+  get '/loyalty', to: 'loyalty#index', as: :loyalty
+  post '/loyalty/sync', to: 'loyalty#sync', as: :sync_loyalty
   resources :customers, only: %i[index show new create edit update] do
     post :sync_directory, on: :collection
     get :export, on: :collection
@@ -638,10 +640,18 @@ Rails.application.routes.draw do
   get '/pos_settings/:location_id', to: 'pos_settings#show', as: :pos_setting
   patch '/pos_settings/:location_id', to: 'pos_settings#update'
   post '/pos_settings/:location_id/verify', to: 'pos_settings#verify', as: :verify_pos_setting
+  get '/pos_settlements/:location_id', to: 'pos_settlements#show', as: :pos_settlement
+  get '/processor_catalogs', to: 'processor_catalogs#index', as: :processor_catalogs
+  patch '/processor_catalogs/:processor', to: 'processor_catalogs#update', as: :processor_catalog
+  post '/processor_catalogs/:processor/entries', to: 'processor_catalogs#add_entries', as: :processor_catalog_entries
+  delete '/processor_catalogs/:processor/entries/:id', to: 'processor_catalogs#remove_entry', as: :processor_catalog_entry
   resources :pos_checkouts, only: %i[create show] do
     post :cancel, on: :member
     post :reconcile, on: :member
+    post :reverse, on: :member
+    post :recheck_reversal, on: :member
   end
+  post '/webhooks/pos/:setting_id', to: 'pos_webhooks#create', as: :pos_webhook
   get '/customer_display/payment_config', to: 'customer_displays#payment_config', as: :customer_payment_config
   post '/customer_display/pay', to: 'customer_displays#pay', as: :customer_pay
   resources :ctrax_days, only: %i[index show create] do
@@ -662,6 +672,35 @@ Rails.application.routes.draw do
     member do
       get :demo
       post :clear
+    end
+  end
+  # F70: compliant ring-up guardrails (approved catalog, COAs, audit) and event mode.
+  get '/compliance', to: 'compliance#index', as: :compliance
+  namespace :compliance do
+    resources :catalog_items, only: %i[new create edit update] do
+      member do
+        post :suspend
+        post :reinstate
+      end
+      resources :certificates, only: %i[new create] do
+        post :withdraw, on: :member
+      end
+    end
+    resources :categories, only: %i[create update]
+    patch '/policies/:location_id', to: 'policies#update', as: :policy
+    resource :override_pin, only: %i[edit update]
+  end
+  resources :pos_events, except: :destroy do
+    member do
+      post :open
+      post :close
+    end
+    resources :items, controller: 'pos_event_items', only: %i[create update destroy] do
+      post :pull, on: :member
+    end
+    resource :register, controller: 'pos_event_registers', only: :show
+    resources :sales, controller: 'pos_event_sales', only: :create do
+      get :receipt, on: :member
     end
   end
   get '/customer_display', to: 'customer_displays#show', as: :customer_display

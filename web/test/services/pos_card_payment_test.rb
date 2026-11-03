@@ -3,6 +3,9 @@
 require 'test_helper'
 class PosCardPaymentTest < ActiveSupport::TestCase
   setup do
+    # Parallel test workers would otherwise share the job's one lock file, and a job that finds it held skips its sweep.
+    @lock_dir = Dir.mktmpdir('pos-reconciliation-lock')
+    PosPaymentReconciliationJob.any_instance.stubs(:lock_path).returns(Pathname(@lock_dir).join('reconciliation.lock'))
     Current.tenant = tenants(:default_tenant)
     @location = Location.create!(source: 'ctrax', externalId: 'card-fixture/1', name: 'Card fixture')
     @user = users(:regular_user)
@@ -40,7 +43,10 @@ class PosCardPaymentTest < ActiveSupport::TestCase
       { status: 200, headers: { 'Content-Type' => 'application/json' }, body: data.merge(messages: { resultCode: 'Ok' }).to_json }
     end
   end
-  teardown { Current.reset }
+  teardown do
+    Current.reset
+    FileUtils.rm_rf(@lock_dir)
+  end
 
   test 'reconciliation rotates past unresolved attempts without sending charges' do
     51.times do |i|
@@ -130,6 +136,16 @@ class PosCardPaymentTest < ActiveSupport::TestCase
     Pos::CardPayment.call(@checkout, nonce: 'different-token')
     assert_equal 1, @charge_count
     assert_empty Core::Order.where(source: 'rupert_pos')
+  end
+
+  test 'items removed from the processor approved list after checkout are never charged' do
+    @checkout.update!(lines_json: [@checkout.lines.first.merge('sku' => 'HH-THCA-1', 'category' => 'THCA Flower')])
+    ProcessorCatalog.create!(processor: 'authorize_net', enforced: true, approval_reference: 'ISO approval').entries.create!(kind: 'sku', value: 'HH-CBD-1')
+    error = assert_raises(Pos::Error) { Pos::CardPayment.call(@checkout, nonce: 'blocked-token') }
+    assert_match(/not on the Authorize.net approved list/, error.message)
+    assert_equal 0, @charge_count
+    assert_empty PosPaymentAttempt.all
+    assert_equal 'ready', @checkout.reload.status
   end
 
   test 'foreign merchant account is rejected before a charge is sent' do

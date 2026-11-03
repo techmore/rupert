@@ -55,7 +55,8 @@ module PosScreenHelper
       addable: pos_addable?(record), stock: stock[:word], stock_tone: stock[:tone], stock_detail: stock[:detail],
       image: @images.url(record, 800),
       image_link_url: (ctrax_pos_image_path(@snapshot.location_id, record['id']) if image_links),
-      image_product_id: (@images.product_for(record)&.id if image_links)
+      image_product_id: (@images.product_for(record)&.id if image_links),
+      compliance: @compliance_badges&.dig(record['id'].to_s)&.slice(:card, :coa)
     }
   end
 
@@ -80,7 +81,7 @@ module PosScreenHelper
     return if display&.demo?
 
     if tender == 'card'
-      return 'Card payments for this gateway are turned off until production use is confirmed' if setting&.gateway_provider == 'nmi' && !setting.nmi_sandbox?
+      return 'Card payments for this gateway are turned off until the owner signs off on production use' if setting&.gateway_provider == 'nmi' && !setting.nmi_ready_environment?
       return 'Card payments are not set up for this store' unless setting&.card_enabled && setting.verified_at.present?
     elsif tender == PosCheckout::TERMINAL_CARD
       return 'Card (A920) is off until real cash and A920 sales are turned on for this store' unless setting&.cash_enabled

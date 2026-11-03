@@ -38,6 +38,7 @@ class CtraxPosController < PointOfSaleController
     @pos_setting = PosSetting.find_by(location_id: @snapshot&.location_id)
     @registers = Sales::PosSession.where(location_id: @snapshot&.location_id, status: 'open').order(:opened_at)
     @images = Ctrax::CatalogImages.new(@snapshot&.location)
+    @open_events = PosEvent.where(status: 'open').order(:starts_on).select { |event| event.seller?(Current.user) }
     @display = PosDisplaySession.find_by(id: params[:display_id], user_id: Current.user.id) if params[:display_id].present?
     if params[:display_id].present? && (!@display || !@display.active? || @display.location_id != @snapshot&.location_id)
       raise ActiveRecord::RecordNotFound
@@ -49,6 +50,7 @@ class CtraxPosController < PointOfSaleController
     @category = params[:category].to_s.first(500)
     records = @snapshot&.records || []
     records = records.select { |row| row['listed'] != false }
+    records = locked_catalog(records)
     records, @missing_image_records = records.partition { |row| @images.url(row).present? }
     @categories = records.map { |row| row['category'].presence || 'Uncategorized' }.uniq.sort
     # Sizes of one product, so the item sheet can offer the sibling variants.
@@ -68,6 +70,26 @@ class CtraxPosController < PointOfSaleController
     @records = records.slice((@page - 1) * PAGE_SIZE, PAGE_SIZE) || []
     @cart_key = "rupert:ctrax:#{Current.tenant_id}:#{Current.user.id}:#{@snapshot&.location_id}:#{@display&.id}"
     @quote ||= @display.draft.deep_symbolize_keys if @display&.demo? && @display.draft['lines'].present?
+  end
+
+  # A locked store (CompliancePolicy) sells approved items only, under their
+  # compliant names and approved categories. Nothing else is shown or quotable.
+  def locked_catalog(records)
+    @compliance_policy = CompliancePolicy.for(@snapshot&.location)
+    @compliance_badges = {}
+    return records unless @compliance_policy.locked_catalog && !@display&.demo?
+
+    @compliance_badges = Compliance::Catalog.register_badges(@snapshot.location, policy: @compliance_policy)
+    @override_approvers = Compliance::SaleGate.approvers
+    approved = ComplianceCatalogItem.approved.includes(:compliance_category).where(location_id: @snapshot.location_id).index_by(&:source_variant_id)
+    records.filter_map do |row|
+      item = approved[row['id'].to_s]
+      next unless item && !item.compliance_category.prohibited
+
+      # The source title stays on the row for the website photo match (Ctrax::CatalogImages).
+      row.merge('name' => item.receipt_label, 'product_name' => item.receipt_label, 'category' => item.category_name,
+        'source_product_name' => row['product_name'].presence || row['name'])
+    end
   end
 
   def variant_group_key(row)
@@ -98,9 +120,14 @@ class CtraxPosController < PointOfSaleController
     raise QuoteError, 'Refresh C-Trax stock before using this catalog.' unless @snapshot && (@display&.demo? || @snapshot.captured_at >= 60.minutes.ago)
 
     catalog = @snapshot.records.index_by { |row| row['id'] }
+    names = Compliance::Catalog.register_names(@snapshot.location)
+    locked = !@display&.demo? && CompliancePolicy.for(@snapshot.location).locked_catalog
     rows.map do |row|
       record = catalog[row[:variant_id]]
       raise QuoteError, 'A selected variant is unavailable in this C-Trax store.' unless record && record['listed'] != false
+      raise QuoteError, 'Only approved catalog items can be sold at this register.' if locked && !names.key?(record['id'].to_s)
+
+      record = record.merge('name' => names[record['id'].to_s], 'product_name' => names[record['id'].to_s]) if locked
       raise QuoteError, 'Variable or missing source prices must be reviewed in C-Trax.' if record['variable_price'] || !record['price_cents'].is_a?(Integer)
       raise QuoteError, 'Choose a whole quantity from 1 to 999.' unless row[:quantity].to_s.match?(/\A[1-9]\d{0,2}\z/)
 

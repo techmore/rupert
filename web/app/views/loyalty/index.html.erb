@@ -1,0 +1,164 @@
+<% menu = [] %>
+<% menu << ['Sync now', sync_loyalty_path, { method: :post, data: { turbo_submits_with: 'Syncing…' } }] if @can_sync %>
+<div class="space-y-6">
+  <%= page_header 'Loyalty', subtitle: 'Members, points and rewards from the store’s loyalty program.', menu: menu %>
+
+  <% if @program.nil? %>
+    <section class="card" aria-label="No loyalty data">
+      <% if @state['last_failure'].present? %>
+        <p class="flash-alert m-4" role="alert"><%= @state['last_failure'] %></p>
+      <% end %>
+      <% if @state['last_success_at'].present? %>
+        <%= empty_state 'No loyalty program found', hint: 'The last read found no loyalty program in Square. Members and points appear here once the store runs one.' %>
+      <% else %>
+        <%= empty_state 'No loyalty data yet', hint: 'Sync Square to read the loyalty program, its members and their points. Rupert only reads; nothing changes in Square.' do %>
+          <% if @can_sync %><%= button_to 'Sync now', sync_loyalty_path, class: 'btn-primary', form_class: 'inline', data: { turbo_submits_with: 'Syncing…' } %><% end %>
+          <% if Current.user.can?('settings.read') %><%= link_to 'Open connections', connections_path, class: 'btn-ghost' %><% end %>
+        <% end %>
+      <% end %>
+    </section>
+  <% else %>
+    <section class="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Loyalty summary">
+      <div class="stat"><p class="stat-label">Members</p><p class="stat-value mt-1"><%= number_with_delimiter(@member_count) %></p></div>
+      <div class="stat"><p class="stat-label">Points outstanding</p><p class="stat-value mt-1"><%= number_with_delimiter(@points_outstanding) %></p><p class="mt-1 text-xs text-taupe">Unspent <%= @program.point_word %> across members</p></div>
+      <div class="stat"><p class="stat-label">Earned, last 30 days</p><p class="stat-value mt-1"><%= number_with_delimiter(@earned_30) %></p></div>
+      <div class="stat"><p class="stat-label">Rewards redeemed, last 30 days</p><p class="stat-value mt-1"><%= number_with_delimiter(@redeemed_30) %></p></div>
+    </section>
+
+    <section class="section-card" aria-label="Program">
+      <%= section_heading 'Program' %>
+      <% if @state['last_failure'].present? %>
+        <p class="flash-alert" role="alert"><%= @state['last_failure'] %></p>
+      <% end %>
+      <dl class="facts">
+        <div><dt>Status</dt><dd><span class="<%= @program.active? ? 'pill-fern' : 'pill-taupe' %>"><%= @program.active? ? 'Active' : (@program.status == 'MISSING' ? 'No longer in Square' : 'Inactive') %></span></dd></div>
+        <div><dt>Earning</dt><dd>
+          <% rules = @program.accrual_rule_list %>
+          <% if rules.empty? %>—<% else %><%= safe_join(rules.map { |rule| loyalty_accrual_rule(rule, @program) }, tag.br) %><% end %>
+        </dd></div>
+        <div><dt>Expiry</dt><dd><%= @program.expiration_months ? "#{@program.point_word.capitalize} expire #{pluralize(@program.expiration_months, 'month')} after they are earned" : "#{@program.point_word.capitalize} do not expire" %></dd></div>
+        <div><dt>Source</dt><dd class="flex flex-wrap items-center gap-2"><span class="pill-taupe">Square</span><span class="text-xs text-mocha"><%= loyalty_read_status(@state) %><%= ' · refreshes hourly' if @schedule_enabled %></span></dd></div>
+        <% if @state['pending_windows'].present? %>
+          <div><dt>History</dt><dd><span class="pill-clay">Still reading</span> <span class="text-xs text-mocha">Older points history is read a little more on each sync.</span></dd></div>
+        <% end %>
+      </dl>
+
+      <%= section_heading 'Rewards', level: :h3 %>
+      <% if @tiers.empty? %>
+        <p class="text-sm text-taupe">No reward tiers in the program.</p>
+      <% else %>
+        <ul class="row-list" aria-label="Reward tiers">
+          <% @tiers.each do |tier| %>
+            <li class="row-item">
+              <div class="min-w-0"><p class="font-semibold text-ink"><%= tier.name.presence || 'Reward' %></p><p class="text-xs text-taupe"><%= loyalty_points(tier.points, @program) %></p></div>
+              <div class="row-item-end"><%= link_to "#{number_with_delimiter(@tier_counts.fetch(tier.id, 0))} can claim", loyalty_path(show: 'redeemable'), class: 'text-xs text-mocha hover:underline' %></div>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+
+      <% if @promotions.any? %>
+        <%= section_heading 'Promotions', level: :h3 %>
+        <ul class="row-list" aria-label="Promotions">
+          <% @promotions.each do |promotion| %>
+            <% starts, ends = promotion.available_window %>
+            <li class="row-item">
+              <div class="min-w-0"><p class="font-semibold text-ink"><%= promotion.name.presence || 'Promotion' %></p><p class="text-xs text-taupe"><%= promotion.incentive_summary %><%= " · from #{starts}" if starts %><%= " until #{ends}" if ends %></p></div>
+              <div class="row-item-end"><%= loyalty_promotion_pill(promotion) %></div>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+      <details class="explainer row-list-foot">
+        <summary class="explainer-summary">Where this comes from</summary>
+        <p class="mt-2 text-sm text-mocha">A read-only copy of the Square Loyalty program, its members and every points change. Members link to a customer only through their Square customer record. Points and rewards are changed in Square, never here.</p>
+      </details>
+    </section>
+
+    <section class="toolbar-band space-y-4" aria-label="Find members">
+      <%= form_with url: loyalty_path, method: :get, class: 'toolbar' do %>
+        <div class="toolbar-field"><%= label_tag :q, 'Search', class: 'field-label' %><%= search_field_tag :q, @query, placeholder: 'Customer name, email or phone', class: 'search' %></div>
+        <div class="toolbar-field"><%= label_tag :show, 'Show', class: 'field-label' %><%= select_tag :show, options_for_select(LoyaltyController::SHOW.invert.to_a, @show), class: 'select w-full' %></div>
+        <div class="toolbar-field md:hidden"><%= label_tag :sort, 'Sort by', class: 'field-label' %><%= select_tag :sort, options_for_select(LoyaltyController::SORT_COLUMNS.map { |key, column| [column.label, key] }, @sort.key), class: 'select w-full' %></div>
+        <div class="toolbar-field md:hidden"><%= label_tag :dir, 'Order', class: 'field-label' %><%= select_tag :dir, options_for_select([['Ascending', 'asc'], ['Descending', 'desc']], @sort.dir), class: 'select w-full' %></div>
+        <div class="toolbar-actions"><%= submit_tag 'Apply', class: 'btn-primary', name: nil %></div>
+      <% end %>
+      <p class="text-sm text-mocha" role="status" aria-live="polite">
+        <strong class="text-ink"><%= number_with_delimiter(@pagy.count) %></strong> <%= 'member'.pluralize(@pagy.count) %> · <%= @sort.summary %>
+      </p>
+    </section>
+
+    <% if @accounts.empty? %>
+      <section class="card" aria-label="No members">
+        <% if @query.present? || @show.present? %>
+          <%= empty_state 'No members match these filters', hint: 'Try a different search, or clear the filters to see every member.' do %>
+            <%= link_to 'Clear filters', loyalty_path, class: 'btn-ghost' %>
+          <% end %>
+        <% else %>
+          <%= empty_state 'No members yet', hint: 'Members appear here after they join the loyalty program in Square and the next sync runs.' %>
+        <% end %>
+      </section>
+    <% else %>
+      <ul class="space-y-3 md:hidden" aria-label="Member list">
+        <% @accounts.each do |account| %>
+          <% customer = @customers[account.square_customer_id] %>
+          <li class="card card-pad">
+            <div class="flex items-start justify-between gap-2">
+              <% if customer %><%= link_to customer.name, customer_path(customer, anchor: 'loyalty'), class: 'text-base font-semibold text-ink hover:text-olive hover:underline' %><% else %><span class="text-base font-semibold text-ink">Not in customers</span><% end %>
+              <span class="num font-semibold text-ink"><%= loyalty_points(account.balance, @program) %></span>
+            </div>
+            <p class="mt-1 text-xs text-taupe"><%= number_with_delimiter(account.lifetime_points) %> lifetime · <%= (reward = account.redeemable_tiers(@tiers).first) ? "Can claim #{reward.name}" : 'No reward yet' %></p>
+          </li>
+        <% end %>
+      </ul>
+
+      <div class="card hidden overflow-hidden md:block">
+        <div class="table-region" role="region" tabindex="0" aria-label="Loyalty members">
+          <table class="table">
+            <caption class="sr-only">Loyalty members, <%= @sort.summary %>. Select a column heading to sort by it.</caption>
+            <thead>
+              <tr>
+                <%= sortable_th @sort, 'member' %>
+                <%= sortable_th @sort, 'balance', class: 'num' %>
+                <%= sortable_th @sort, 'lifetime', class: 'num' %>
+                <th scope="col" class="th">Rewards available</th>
+                <%= sortable_th @sort, 'enrolled' %>
+                <%= sortable_th @sort, 'activity' %>
+              </tr>
+            </thead>
+            <tbody>
+              <% @accounts.each do |account| %>
+                <% customer = @customers[account.square_customer_id] %>
+                <% rewards = account.redeemable_tiers(@tiers) %>
+                <% upcoming = account.next_tier(@tiers) %>
+                <tr>
+                  <td class="td font-medium text-ink">
+                    <% if customer %>
+                      <%= link_to customer.name, customer_path(customer, anchor: 'loyalty'), class: 'text-olive-deep hover:underline' %>
+                    <% else %>
+                      <span title="This member's Square customer record is not in Rupert's customer list yet.">Not in customers</span>
+                    <% end %>
+                    <p class="text-xs text-taupe"><%= [customer&.email.presence, account.phone_hint].compact.join(' · ').presence || '—' %></p>
+                    <% unless account.source_present %><span class="pill-taupe">No longer a member</span><% end %>
+                  </td>
+                  <td class="td num"><%= number_with_delimiter(account.balance) %></td>
+                  <td class="td num"><%= number_with_delimiter(account.lifetime_points) %></td>
+                  <td class="td text-sm">
+                    <% if rewards.any? %>
+                      <span class="pill-fern"><%= rewards.first.name.presence || 'Reward' %></span><% if rewards.size > 1 %> <span class="text-xs text-taupe">+<%= rewards.size - 1 %> more</span><% end %>
+                    <% elsif upcoming %>
+                      <span class="text-xs text-taupe"><%= number_with_delimiter(upcoming.points - account.balance) %> to <%= upcoming.name.presence || 'next reward' %></span>
+                    <% else %>—<% end %>
+                  </td>
+                  <td class="td text-mocha"><%= loyalty_date(account.enrolled_at&.to_date) %></td>
+                  <td class="td text-mocha"><%= loyalty_date(@last_activity[account.external_id]&.to_date) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <%== @pagy.series_nav if @pagy.pages > 1 %>
+    <% end %>
+  <% end %>
+</div>

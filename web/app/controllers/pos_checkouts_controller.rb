@@ -10,13 +10,18 @@ class PosCheckoutsController < AuthenticatedController
   rescue_from Pos::Error, Ctrax::Client::Error do |error|
     render json: { error: error.message }, status: :unprocessable_entity
   end
+  # Later handlers win: a compliance block also returns its issues and whether a manager may override.
+  rescue_from Compliance::Blocked do |error|
+    render json: error.payload, status: :unprocessable_entity
+  end
   def create
     display = PosDisplaySession.find_by!(id: params[:display_id], user_id: Current.user.id)
     if params[:tender] == 'cash' && display.confirmed? && display.draft['tax_verified']
       total = display.draft['subtotal_cents'] + display.draft['tax_cents'] + display.chosen_tip_cents
       raise Pos::Error, 'Cash received is less than the total.' if Pos::Checkout.money(params[:cash_received]) < total
     end
-    checkout = Pos::Checkout.prepare!(display: display, tender: params[:tender], register_id: params[:register_id])
+    checkout = Pos::Checkout.prepare!(display: display, tender: params[:tender], register_id: params[:register_id],
+      compliance: params.permit(:id_checked, :override_user_id, :override_pin, :override_reason).to_h.symbolize_keys)
     if checkout.tender == 'cash' || checkout.terminal_card?
       checkout.terminal_card? ? Pos::Checkout.terminal_card!(checkout) : Pos::Checkout.cash!(checkout, received: params[:cash_received])
       PosInventoryJob.perform_later(checkout.id) unless checkout.demo?
@@ -26,6 +31,7 @@ class PosCheckoutsController < AuthenticatedController
 
   def show
     @checkout = checkout_scope.find(params[:id])
+    @coa_badges = Compliance::Catalog.register_badges(@checkout.location)
   end
 
   def cancel
@@ -43,6 +49,33 @@ class PosCheckoutsController < AuthenticatedController
     checkout = checkout_scope.find(params[:id])
     checkout.pos_payment_attempts.where(status: %w[submitting unknown]).each { |attempt| Pos::CardPayment.reconcile!(attempt) }
     redirect_to pos_checkout_path(checkout), notice: 'Gateway status checked; no charge was sent.'
+  end
+
+  # Void or refund a gateway card payment. Money leaves the merchant account, so
+  # this needs sales.write, a reason and an amount; the gateway decides void vs refund.
+  def reverse
+    checkout = checkout_scope.find(params[:id])
+    raise Pundit::NotAuthorizedError unless Current.user.can?('sales.write')
+
+    reversal = Pos::CardReversal.call(checkout: checkout, amount_cents: Pos::Checkout.money(params[:amount]), reason: params[:reason], user: Current.user)
+    message = case reversal.status
+    when 'succeeded' then "#{reversal.kind == 'void' ? 'Voided' : 'Refunded'} #{format('%.2f', reversal.amount_cents / 100.0)} USD on the original card."
+    when 'failed' then "Not reversed: #{reversal.failure_message}"
+    else 'The gateway outcome is uncertain. Recheck before trying again; nothing new was sent.'
+    end
+    redirect_to pos_checkout_path(checkout), (reversal.status == 'succeeded' ? :notice : :alert) => message
+  rescue Pos::Error => e
+    redirect_to pos_checkout_path(checkout), alert: e.message
+  end
+
+  def recheck_reversal
+    checkout = checkout_scope.find(params[:id])
+    raise Pundit::NotAuthorizedError unless Current.user.can?('sales.write')
+
+    PosCardReversal.unresolved.where(pos_checkout: checkout).find_each { |reversal| Pos::CardReversal.reconcile!(reversal) }
+    redirect_to pos_checkout_path(checkout), notice: 'Refund status checked with the gateway; nothing new was sent.'
+  rescue Pos::Error => e
+    redirect_to pos_checkout_path(checkout), alert: e.message
   end
 
   private

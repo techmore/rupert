@@ -11,14 +11,14 @@
           <h3 class="font-semibold"><%= source.label %></h3>
           <span class="text-sm text-mocha"><%= number_with_delimiter(source.records) %> records</span>
         </div>
-        <p class="text-sm"><span class="font-semibold"><%= number_with_precision(source.hours, precision: 1) %></span> counted hours<% if source.held.positive? %> · <span class="text-rose font-semibold"><%= source.held %></span> <%= source.held_label %><% end %></p>
+        <p class="text-sm"><span class="font-semibold"><%= format_hours(source.hours) %></span> counted hours<% if source.held.positive? %> · <span class="text-rose font-semibold"><%= source.held %></span> <%= source.held_label %><% end %></p>
         <p class="text-xs text-mocha">
           <% if source.first_at %><%= source.first_at.to_date.strftime('%b %-d, %Y') %> → <%= source.last_at.to_date.strftime('%b %-d, %Y') %><% else %>No records yet<% end %>
           <% if source.last_read_at %> · read <%= time_ago_in_words(source.last_read_at) %> ago<% end %>
         </p>
-        <% if source.path == :square %><%= link_to 'View Square history', people_square_timesheets_path, class: 'text-sm text-olive underline' %>
-        <% elsif source.path == :ctrax %><%= link_to 'View C-Trax history', people_ctrax_timesheets_path, class: 'text-sm text-olive underline' %>
-        <% else %><%= link_to 'View all Rupert timesheets', people_timesheets_path(status: 'all'), class: 'text-sm text-olive underline' %>
+        <% if source.path == :square %><%= link_to 'Open Square history', people_square_timesheets_path, class: 'text-sm text-olive underline' %>
+        <% elsif source.path == :ctrax %><%= link_to 'Open C-Trax history', people_ctrax_timesheets_path, class: 'text-sm text-olive underline' %>
+        <% else %><%= link_to 'Open all Rupert timesheets', people_timesheets_path(status: 'all'), class: 'text-sm text-olive underline' %>
         <% end %>
       </article>
     <% end %>

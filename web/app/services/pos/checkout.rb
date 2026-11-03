@@ -2,7 +2,10 @@
 
 module Pos
   class Checkout
-    def self.prepare!(display:, tender:, register_id:)
+    # compliance: the cashier's ID confirmation and an optional manager override
+    # ({ id_checked:, override_user_id:, override_pin:, override_reason: }). It is
+    # only read when the store's CompliancePolicy locks the register catalog.
+    def self.prepare!(display:, tender:, register_id:, compliance: nil)
       raise Error, 'Checkout belongs to another workspace.' unless display.tenant_id == Current.tenant_id
       raise Error, 'Choose cash or card.' unless PosCheckout::TENDERS.include?(tender)
       raise Error, 'Customer must confirm their tip choice first.' unless display.active? && display.confirmed?
@@ -14,12 +17,17 @@ module Pos
       digest = display.draft_digest
       location = display.location
       setting = PosSetting.find_by(location: location)
-      if tender == 'card' && setting&.gateway_provider == 'nmi' && !setting.nmi_sandbox?
-        raise Error, 'NMI production payments are disabled pending Next Stage confirmation.'
+      if tender == 'card' && setting&.gateway_provider == 'nmi' && !setting.nmi_ready_environment?
+        raise Error, 'NMI production needs owner sign-off in checkout setup first.'
       end
       unless display.demo?
         raise Error, 'Enable this store’s checkout in POS setup first.' unless setting && (tender == 'card' ? setting.card_enabled && setting.verified_at : setting.cash_enabled)
         setting_version = setting.lock_version
+      end
+      # Compliance first (F70): a blocked cart never reaches the source stock read.
+      # Reprice below refuses any change to the cart's variants, so this result holds.
+      compliance_result, approver = check_compliance!(display, display.draft, tender, compliance)
+      unless display.demo?
         connection = PosConnection.find_by!(provider: 'ctrax', vendor_approved: true)
         Ctrax::StockSync.call(connection: connection)
       end
@@ -31,6 +39,8 @@ module Pos
         raise Error, 'Prices or taxes changed. Review the updated cart and confirm the tip again.'
       end
       raise Error, 'Source tax information is incomplete. Refresh the catalog.' unless quote['tax_verified']
+      # F69: only items the processor approved may be charged on it (cash is never restricted here).
+      assert_eligible!(Payments::ItemEligibility.processor_for_tender(tender, setting&.gateway_provider), quote['lines'])
       PosCheckout.transaction do
         # First statement is a write: serialize SQLite without a deferred read upgrade.
         Location.where(id: location.id).update_all(active: location.active)
@@ -52,7 +62,10 @@ module Pos
           tip_cents: display.chosen_tip_cents, total_cents: quote['total_before_tip_cents'] + display.chosen_tip_cents,
           gateway_id: tender == 'card' ? setting&.gateway_id : nil, environment: tender == 'card' ? setting&.environment : nil,
           gateway_provider: tender == 'card' ? setting&.gateway_provider || 'authorize_net' : 'authorize_net',
-          gateway_fingerprint: tender == 'card' ? setting&.payment_fingerprint : nil)
+          gateway_fingerprint: tender == 'card' ? setting&.payment_fingerprint : nil,
+          id_checked: compliance_result ? boolean(compliance&.dig(:id_checked)) : nil,
+          compliance_override_by_id: approver&.id, compliance_override_reason: approver && compliance&.dig(:override_reason).to_s.squish,
+          compliance_issues_json: compliance_result&.issues&.map(&:to_h))
         unless checkout.demo? || checkout.sandbox_payment?
           records = snapshot.reload.records.index_by { |r| r['id'] }
           checkout.lines.each do |line|
@@ -70,15 +83,34 @@ module Pos
       end
     end
 
+    # Locked stores: every line must be on the approved catalog and pass the
+    # pre-sale check for this tender, or carry a valid manager override.
+    def self.check_compliance!(display, quote, tender, compliance)
+      return [nil, nil] if display.demo?
+
+      policy = CompliancePolicy.for(display.location)
+      return [nil, nil] unless policy.locked_catalog
+
+      lines = Compliance::ItemEligibility.lines_for_ctrax(location: display.location, variant_ids: quote['lines'].map { |line| line['variant_id'] },
+        names: quote['lines'].to_h { |line| [line['variant_id'], line['title']] })
+      result = Compliance::SaleGate.evaluate(lines, tender: tender, id_checked: boolean(compliance&.dig(:id_checked)), policy: policy)
+      approver = Compliance::SaleGate.enforce!(result, override: Compliance::SaleGate::Override.from(compliance), location_id: display.location_id,
+        details: { 'source' => 'register', 'tender' => tender, 'cart_revision' => display.cart_revision })
+      [result, approver]
+    end
+
+    def self.boolean(value) = ActiveModel::Type::Boolean.new.cast(value) == true
+
     def self.reprice(display, snapshot)
       records = snapshot.records.index_by { |r| r['id'] }
+      names = Compliance::Catalog.register_names(display.location)
       lines = display.draft.fetch('lines').map do |line|
         record = records[line['variant_id']]
         raise Error, 'A product is unavailable or needs variable-price review.' unless record && record['listed'] != false && !record['variable_price'] && record['price_cents'].is_a?(Integer)
         quantity = line['quantity']
         raise Error, 'Invalid cart quantity.' unless quantity.is_a?(Integer) && quantity.between?(1, 999)
         price = BigDecimal(record['price_cents'].to_s) / 100
-        { variant_id: record['id'], sku: record['sku'], title: record['name'], product_title: record['product_name'], thumbnail_url: line['thumbnail_url'], quantity: quantity, unit_price: price.to_s('F'), line_total: (price * quantity).to_s('F') }
+        { variant_id: record['id'], sku: record['sku'], category: record['category'], title: names.fetch(record['id'], record['name']), product_title: names.fetch(record['id'], record['product_name']), thumbnail_url: line['thumbnail_url'], quantity: quantity, unit_price: price.to_s('F'), line_total: (price * quantity).to_s('F') }
       end
       quote = { source: 'ctrax', currency_code: 'USD', preview: display.demo?, lines: lines,
         subtotal: lines.sum { |line| BigDecimal(line[:line_total]) }.to_s('F'), tip_type: 'none', tip_amount: '0.0' }
@@ -102,6 +134,7 @@ module Pos
     # gateway call: the amount is the frozen checkout total, tip included, which
     # is what the cashier keyed on the terminal.
     def self.terminal_card!(checkout)
+      assert_eligible!('card_terminal', checkout.lines) unless checkout.paid?
       checkout.with_lock do
         return checkout if checkout.paid?
         raise Error, 'This checkout cannot be recorded as an A920 card sale.' unless checkout.terminal_card? && checkout.status == 'ready'
@@ -136,6 +169,16 @@ module Pos
       event = checkout.sandbox_payment? ? 'pos_sandbox_checkout_completed' : 'pos_checkout_paid'
       ActivityLogger.log(event, subject: checkout, details: "#{checkout.tender}#{' demo' if checkout.demo?}")
       checkout
+    end
+
+    # Raises a cashier-ready Pos::Error when a processor's approved list (or another
+    # registered guardrail) refuses any line.
+    def self.assert_eligible!(processor, lines)
+      result = Payments::ItemEligibility.check(processor: processor, items: lines)
+      return result if result.allowed?
+
+      ActivityLogger.log('payment_item_blocked', details: "#{processor}: #{result.blocked.map { |row| row[:item].sku.presence || row[:item].variant_id }.join(', ')}".truncate(500))
+      raise Error, result.message
     end
 
     def self.money(value)
