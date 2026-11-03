@@ -2,10 +2,14 @@
 
 # Turns a warehouse-sale cart into a paid canonical order. Prices and stock
 # are recomputed server-side (never trusted from the browser), payment goes
-# through Authorize.net with an Accept.js nonce, and on approval a Core::Order
-# with its lines and a card payment are recorded and marked paid.
+# through Authorize.net with an Accept.js nonce or through Dejavoo's Hosted
+# Payment Page (the shopper pays on Dejavoo's page; Rupert confirms the result
+# server-to-server), and on approval a Core::Order with its lines and a card
+# payment are recorded and marked paid.
 class WarehouseCheckoutService
-  Result = Struct.new(:success?, :order, :error, :rate_limited?, keyword_init: true)
+  Result = Struct.new(:success?, :order, :error, :rate_limited?, :redirect_url, keyword_init: true)
+  # A Dejavoo payment page link lives one day; after that an unpaid one is over.
+  HOSTED_PAGE_LIFETIME = 1.day
   ATTEMPT_WINDOW = 10.minutes
   CART_ATTEMPT_LIMIT = 5
   SHARE_ATTEMPT_LIMIT = 30
@@ -22,19 +26,23 @@ class WarehouseCheckoutService
   ].freeze
 
   class << self
-    def call(share:, cart:, shipping: {}, payment_nonce: nil, data_descriptor: nil, quote_token: nil)
+    def call(share:, cart:, shipping: {}, payment_nonce: nil, data_descriptor: nil, quote_token: nil, provider: 'authorize_net', urls: {})
       new(
         share: share,
         cart: cart,
         shipping: shipping,
         payment_nonce: payment_nonce,
         data_descriptor: data_descriptor,
-        quote_token: quote_token
+        quote_token: quote_token,
+        provider: provider,
+        urls: urls
       ).call
     end
   end
 
-  def initialize(share:, cart:, shipping: {}, payment_nonce: nil, data_descriptor: nil, quote_token: nil)
+  def initialize(share:, cart:, shipping: {}, payment_nonce: nil, data_descriptor: nil, quote_token: nil, provider: 'authorize_net', urls: {})
+    @provider = WarehousePaymentAttempt::PROVIDERS.include?(provider) ? provider : 'authorize_net'
+    @urls = urls
     @share = share
     @cart = cart
     @shipping = shipping
@@ -49,6 +57,7 @@ class WarehouseCheckoutService
 
     attempt = prepare_attempt
     return attempt if attempt.is_a?(Result)
+    return dejavoo_step(attempt) if attempt.provider == 'dejavoo_hpp' && attempt.status != 'approved'
 
     submit_payment(attempt) if @submit_new_attempt
     return failure('Payment was declined. You may try a new payment token.') if attempt.reload.status == 'declined'
@@ -78,12 +87,16 @@ class WarehouseCheckoutService
       existing = @cart.warehouse_payment_attempts.unresolved.order(:id).first
       return existing if existing
       return failure('Your cart is empty.') if @cart.items.empty?
-      return failure('Authorize.net is not configured.') unless AuthorizeNetClient.configured?
-      return failure('Payment details are missing or invalid.') unless @payment_nonce.is_a?(String) && @payment_nonce.match?(/\A[!-~]{1,4096}\z/)
+      if dejavoo?
+        return failure('Online card payments are not set up.') unless DejavooHostedPage.configured?
+      else
+        return failure('Authorize.net is not configured.') unless AuthorizeNetClient.configured?
+        return failure('Payment details are missing or invalid.') unless @payment_nonce.is_a?(String) && @payment_nonce.match?(/\A[!-~]{1,4096}\z/)
+      end
       lines = validate_lines
       return failure(lines) if lines.is_a?(String)
-      # F69: online cards go through Authorize.net; only processor-approved items.
-      eligibility = Payments::ItemEligibility.check(processor: 'authorize_net', items: lines.map { |line| eligibility_item(line) })
+      # F69: only items approved for this processor (Dejavoo shares the terminal's list).
+      eligibility = Payments::ItemEligibility.check(processor: dejavoo? ? 'dejavoo_spin' : 'authorize_net', items: lines.map { |line| eligibility_item(line) })
       unless eligibility.allowed?
         return failure("#{eligibility.blocked_summary} can't be paid for by card online. Remove #{eligibility.blocked.one? ? 'it' : 'them'} and try again. No payment was submitted.")
       end
@@ -96,11 +109,12 @@ class WarehouseCheckoutService
       end
 
       @submit_new_attempt = true
-      @gateway_snapshot = AuthorizeNetClient.credential_snapshot
+      invoice = "WH#{SecureRandom.hex(9)}"
+      @gateway_snapshot = AuthorizeNetClient.credential_snapshot unless dejavoo?
       attempt = @cart.warehouse_payment_attempts.create!(
-        tenant_id: @cart.tenant_id, invoice_number: "WH#{SecureRandom.hex(9)}",
-        nonce_digest: Digest::SHA256.hexdigest(@payment_nonce.to_s),
-        gateway_fingerprint: Digest::SHA256.hexdigest(@gateway_snapshot.to_json),
+        tenant_id: @cart.tenant_id, invoice_number: invoice, provider: @provider,
+        nonce_digest: Digest::SHA256.hexdigest(dejavoo? ? "dejavoo_hpp:#{invoice}" : @payment_nonce.to_s),
+        gateway_fingerprint: dejavoo? ? DejavooHostedPage.fingerprint : Digest::SHA256.hexdigest(@gateway_snapshot.to_json),
         amount_cents: @cart.total_cents, shipping_json: @shipping.slice(*SHIPPING_FIELDS).to_json,
         submitted_at: Time.current
       )
@@ -137,6 +151,57 @@ class WarehouseCheckoutService
   rescue AuthorizeNetClient::Error, Timeout::Error, SocketError, IOError, SystemCallError, JSON::ParserError, OpenSSL::SSL::SSLError
     attempt.update!(status: 'unknown')
     log_payment_review(attempt)
+  end
+
+  def dejavoo? = @provider == 'dejavoo_hpp'
+
+  # Dejavoo Hosted Payment Page. A new attempt gets its payment page and the
+  # shopper is sent there. Coming back (or returning to checkout later), the
+  # attempt is resolved only from Dejavoo's server-side status for its own
+  # reference and exact amount; nothing the browser carries is trusted.
+  def dejavoo_step(attempt)
+    return dejavoo_redirect(attempt) if @submit_new_attempt
+
+    raise WarehouseCart::PaymentLocked unless attempt.gateway_fingerprint == DejavooHostedPage.fingerprint
+
+    status = DejavooHostedPage.status(attempt.invoice_number)
+    if status.approved? && status.total_cents == attempt.amount_cents
+      attempt.update!(status: 'approved', transaction_id: status.transaction_id || attempt.invoice_number, resolved_at: Time.current)
+      return complete_approved(attempt)
+    end
+    if %w[declined cancelled].include?(status.outcome) ||
+       (status.outcome == 'not_found' && attempt.submitted_at < HOSTED_PAGE_LIFETIME.ago)
+      release_declined(attempt, "dejavoo_#{status.outcome}")
+      return failure(status.outcome == 'declined' ? 'Payment was declined. You can try again.' : 'Payment was not completed. You can try again; nothing was charged.')
+    end
+    if status.outcome == 'not_found' && attempt.hosted_url.present?
+      return Result.new(success?: false, redirect_url: attempt.hosted_url, error: 'Finish paying on the secure payment page.')
+    end
+
+    attempt.update!(status: 'unknown')
+    log_payment_review(attempt)
+    failure('Payment status needs review. Do not submit another payment; contact the store.')
+  rescue DejavooHostedPage::Error
+    failure('Payment status could not be checked right now. Nothing new was charged; try again in a minute.')
+  end
+
+  def dejavoo_redirect(attempt)
+    url = DejavooHostedPage.create_page(reference: attempt.invoice_number, amount_cents: attempt.amount_cents,
+      return_url: @urls.fetch(:return).call(attempt.invoice_number), cancel_url: @urls.fetch(:return).call(attempt.invoice_number),
+      merchant_name: @share.name)
+    attempt.update!(hosted_url: url)
+    Result.new(success?: false, redirect_url: url)
+  rescue DejavooHostedPage::Error => e
+    # No payment page exists, so nothing can have been charged.
+    release_declined(attempt, 'dejavoo_page_failed')
+    failure("#{e.message} No payment was taken.")
+  end
+
+  def release_declined(attempt, reason)
+    WarehousePaymentAttempt.transaction do
+      attempt.update!(status: 'declined', resolved_at: Time.current)
+      attempt.warehouse_stock_holds.held.update_all(status: 'released', release_reason: reason, released_at: Time.current, updated_at: Time.current)
+    end
   end
 
   def log_payment_review(attempt)

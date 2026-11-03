@@ -5,11 +5,13 @@ class WarehousePaymentAttempt < ApplicationRecord
 
   belongs_to :warehouse_cart
   has_many :warehouse_stock_holds, dependent: :restrict_with_exception
-  encrypts :shipping_json
+  encrypts :shipping_json, :hosted_url
   STATUSES = %w[submitting unknown approved declined paid].freeze
+  PROVIDERS = %w[authorize_net dejavoo_hpp].freeze
   scope :unresolved, -> { where(status: %w[submitting unknown approved]) }
 
   validates :status, inclusion: { in: STATUSES }
+  validates :provider, inclusion: { in: PROVIDERS }
   validates :invoice_number, :nonce_digest, :gateway_fingerprint, :submitted_at, presence: true
   validates :amount_cents, numericality: { greater_than: 0, only_integer: true }
   validate :cart_in_workspace

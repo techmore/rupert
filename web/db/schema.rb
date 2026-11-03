@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_03_210000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_03_220000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -4052,6 +4052,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_210000) do
     t.datetime "resolved_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "provider", default: "authorize_net", null: false
+    t.text "hosted_url"
     t.index ["invoice_number"], name: "index_warehouse_payment_attempts_on_invoice_number", unique: true
     t.index ["nonce_digest"], name: "index_warehouse_payment_attempts_on_nonce_digest", unique: true
     t.index ["tenant_id", "warehouse_cart_id"], name: "idx_warehouse_attempts_tenant_cart"
