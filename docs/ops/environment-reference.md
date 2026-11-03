@@ -73,6 +73,7 @@ Full detail in [team-chat.md](team-chat.md).
 | `RUPERT_CHAT_API_BASE` | Base URL for `openai`, or an override for the others |
 | `RUPERT_CHAT_API_KEY` | Key for `opencode_go` / `openai` |
 | `RUPERT_CHAT_FALLBACK` | `engine[:model]` list to try in order when the first model is refused or unreachable, or `none` |
+| `RUPERT_WEBMCP` | `off` (or `0`, `false`) switches off the in-browser assistant tools (WebMCP) without a deploy; default on. See [webmcp.md](../webmcp.md) |
 | `RUPERT_LOCAL_LLM_URL` | The rupert-llm gateway (`…/v1`); setting it turns on the local `@agents` |
 | `RUPERT_LOCAL_TOOLS` | `all` gives local bots every tool on every question (stable prompt the model server can cache) instead of only the tools for the question's topics |
 | `RUPERT_VERIFY` | `1` (every local bot) or a comma list of bot handles: check and fix each local answer against its tool data |
