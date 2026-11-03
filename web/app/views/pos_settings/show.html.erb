@@ -1,5 +1,6 @@
 <% content_for :title, 'Checkout setup' %>
 <% nmi = @setting.gateway_provider == 'nmi' %>
+<% dejavoo = @setting.gateway_provider == 'dejavoo_spin' %>
 <% menu = [] %>
 <% menu << ['Check gateway', verify_pos_setting_path(@location.id), { method: :post, data: { turbo: false } }] if @setting.persisted? %>
 <div class="page-medium space-y-6">
@@ -16,12 +17,16 @@
     </fieldset>
     <fieldset class="space-y-3">
       <legend class="card-title">Card checkout</legend>
-      <div><%= form.label :gateway_provider, 'Payment gateway', class: 'field-label' %><%= form.select :gateway_provider, [['Authorize.net', 'authorize_net'], ['NMI', 'nmi']], {}, class: 'select w-full' %></div>
+      <div><%= form.label :gateway_provider, 'Payment gateway', class: 'field-label' %><%= form.select :gateway_provider, [['Authorize.net', 'authorize_net'], ['NMI', 'nmi'], ['Dejavoo terminal (SPIn, sandbox only)', 'dejavoo_spin']], {}, class: 'select w-full' %></div>
       <%= fold_explainer('Save the gateway choice first to display its credential fields. NMI production needs owner sign-off below. Use the merchant account your processor approved for this store, and list its approved products under Processor-approved products. Card details are collected inside the selected gateway’s hosted fields; Rupert receives a one-use token. This is a browser card checkout. Terminal support requires a separate integration.', class: 'text-sm text-mocha') %>
       <% environments = [['Sandbox · test payments', 'sandbox'], ['Production · real charges', 'production']] %>
       <div><%= form.label :environment, 'Gateway environment', class: 'field-label' %><%= form.select :environment, environments, {}, class: 'select w-full' %></div>
-      <div><%= form.label :gateway_id, 'Existing Gateway ID', class: 'field-label' %><%= form.text_field :gateway_id, class: 'input', autocomplete: 'off' %></div>
-      <% if nmi %>
+      <% unless dejavoo %><div><%= form.label :gateway_id, 'Existing Gateway ID', class: 'field-label' %><%= form.text_field :gateway_id, class: 'input', autocomplete: 'off' %></div><% end %>
+      <% if dejavoo %>
+        <p class="text-sm text-mocha">The card is read on the Dejavoo terminal; Rupert never sees the card number. Sandbox only: use the UAT terminal and TPN from Dejavoo or the processor. Sandbox receipts never create live sales, register revenue or stock deductions.</p>
+        <div><label for="dejavoo_tpn" class="field-label">Terminal TPN</label><%= password_field_tag 'credentials[tpn]', nil, id: 'dejavoo_tpn', autocomplete: 'new-password', class: 'input', placeholder: 'Leave blank to keep saved value' %></div>
+        <div><label for="dejavoo_auth_key" class="field-label">SPIn auth key</label><%= password_field_tag 'credentials[auth_key]', nil, id: 'dejavoo_auth_key', autocomplete: 'new-password', class: 'input', placeholder: 'Leave blank to keep saved value' %></div>
+      <% elsif nmi %>
         <p class="text-sm text-mocha">Sandbox receipts never create live sales, register revenue or stock deductions. The company check compares the profile name, not the operator-entered Gateway ID. Card payment permissions and the public key are proven by the first test payment.</p>
         <div><label for="nmi_company" class="field-label">Expected merchant company</label><%= password_field_tag 'credentials[merchant_company]', nil, id: 'nmi_company', autocomplete: 'new-password', class: 'input', placeholder: 'Exact company shown in the NMI merchant profile' %></div>
         <div><label for="nmi_private" class="field-label">Private API security key</label><%= password_field_tag 'credentials[security_key]', nil, id: 'nmi_private', autocomplete: 'new-password', class: 'input', placeholder: 'Leave blank to keep saved value' %></div>
@@ -41,8 +46,10 @@
         <div><label for="pos_gateway_key" class="field-label">Transaction Key</label><%= password_field_tag 'credentials[transaction_key]', nil, id: 'pos_gateway_key', autocomplete: 'new-password', class: 'input', placeholder: 'Leave blank to keep saved value' %></div>
       <% end %>
       <label class="flex gap-2 text-sm"><%= form.check_box :card_enabled %><span>Enable card charges for this verified gateway and store<%= ' (sandbox test payments only)' if @setting.environment == 'sandbox' %></span></label>
+      <% unless dejavoo %>
       <div><label for="webhook_signing_key" class="field-label"><%= nmi ? 'NMI webhook signing key' : 'Authorize.net Signature Key (webhooks)' %></label><%= password_field_tag 'webhook_signing_key', nil, id: 'webhook_signing_key', autocomplete: 'new-password', class: 'input', placeholder: @setting.webhook_signing_key.present? ? 'Saved. Leave blank to keep it, or type clear to remove it' : 'Optional' %></div>
       <% if @setting.persisted? %><p class="text-xs text-taupe">Webhook URL for the gateway: <code><%= pos_webhook_url(@setting.id) %></code>. Webhooks only prompt Rupert to recheck payments and refunds with the gateway; amounts and status always come from the gateway’s own records.</p><% end %>
+      <% end %>
       <p class="text-sm"><%= link_to 'Processor-approved products', processor_catalogs_path, class: 'underline' %>: only products the processor approved can be charged.<% if @setting.persisted? %> <%= link_to 'Card settlement check', pos_settlement_path(@location.id), class: 'underline' %>: compare settled batches with Rupert sales.<% end %></p>
       <p class="text-xs text-taupe">Credentials are encrypted and never redisplayed. Changing the account, environment or credentials disables card charges until checked again. Reporting-only OAuth credentials cannot charge payments.</p>
     </fieldset>

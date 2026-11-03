@@ -33,8 +33,8 @@ class PosCheckout < ApplicationRecord
   def lines = lines_json || []
   def compliance_issues = compliance_issues_json || []
   def compliance_override? = compliance_override_by_id.present?
-  validates :gateway_provider, inclusion: { in: %w[authorize_net nmi] }
-  def sandbox_payment? = tender == 'card' && gateway_provider == 'nmi' && environment == 'sandbox'
+  validates :gateway_provider, inclusion: { in: PosSetting::CREDENTIAL_KEYS.keys }
+  def sandbox_payment? = tender == 'card' && %w[nmi dejavoo_spin].include?(gateway_provider) && environment == 'sandbox'
   def terminal_card? = tender == TERMINAL_CARD
   def payment_method = tender == 'cash' ? 'cash' : 'card'
   def tender_label = TENDER_LABELS.fetch(tender, tender.to_s.humanize)
@@ -49,7 +49,7 @@ class PosCheckout < ApplicationRecord
       card: card_receipt, decline_reason: status == 'declined' ? latest_attempt&.decline_reason : nil }
   end
 
-  def gateway_label = { 'nmi' => 'NMI', 'authorize_net' => 'Authorize.net' }.fetch(gateway_provider, gateway_provider.to_s)
+  def gateway_label = { 'nmi' => 'NMI', 'authorize_net' => 'Authorize.net', 'dejavoo_spin' => 'Dejavoo terminal' }.fetch(gateway_provider, gateway_provider.to_s)
 
   def paid_attempt = pos_payment_attempts.find_by(status: 'paid')
 
