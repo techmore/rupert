@@ -136,7 +136,8 @@ class User < ActiveRecord::Base
   }.freeze
 
   def can?(permission)
-    return true if permission.to_s == 'timesheets.self' && (effective_permissions.include?('timesheets.read') || TimeClockService.worker_for(self))
+    # A saved account linked to one active worker always has its own time records.
+    return true if permission.to_s == 'timesheets.self' && (effective_permissions.include?('timesheets.read') || (persisted? && TimeClockService.worker_for(self)))
     perms = effective_permissions
     perms.include?('*') || perms.include?(permission.to_s)
   end
@@ -147,6 +148,13 @@ class User < ActiveRecord::Base
 
   def can_review_timesheets?
     active? && can?('timesheets.read') && (can?('timesheets.review') || can?('timesheets.write'))
+  end
+
+  # Clock corrections are reviewed by payroll writers today. Nobody reviews a
+  # change to their own shift (TimeClockService.review). This is the one rule
+  # the Permissions summary reads; the time clock should check it too.
+  def can_approve_clock_corrections?
+    active? && can?('payroll.write')
   end
 
   # POS access does not grant sales history, reports or inventory management.
@@ -186,7 +194,13 @@ class User < ActiveRecord::Base
     return @can_manage_accounts if defined?(@can_manage_accounts)
 
     actor = User.find_by(id: id, active: true)
-    @can_manage_accounts = !!(actor && (actor.admin? || actor.super_admin?) && actor.can?('users.write'))
+    @can_manage_accounts = !!actor&.role_allows_account_management?
+  end
+
+  # The role half of can_manage_accounts?, without re-reading the account.
+  # The Permissions summary asks it of each role.
+  def role_allows_account_management?
+    (admin? || super_admin?) && can?('users.write')
   end
 
   def active?

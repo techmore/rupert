@@ -3,6 +3,7 @@
 <div class="space-y-6">
   <%= page_header 'Permissions', subtitle: 'What each role can do.',
         menu: (can_manage_accounts ? [['Reset to defaults', reset_permissions_path, { method: :post, data: { turbo_confirm: "Clear all role overrides and use the built-in defaults?" } }]] : nil) %>
+  <%= render 'permissions/tabs' %>
 
   <%= form_tag save_permissions_path, method: :post, class: "space-y-4" do %>
     <div class="card">

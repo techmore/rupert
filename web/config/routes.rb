@@ -162,6 +162,7 @@ Rails.application.routes.draw do
     end
   end
   resource :permissions, only: :show do
+    get :roles
     post :save
     post :reset
   end
