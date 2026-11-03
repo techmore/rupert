@@ -88,9 +88,9 @@ See [the subscriptions plan](../plans/customer-subscriptions-and-trust.md) and [
 | `RUPERT_BILLING_ENABLED` | control plane | `true` turns on Rupert subscriptions (also needs every `CSP_STRIPE_*` key); keep `false` until test-mode acceptance |
 | `RUPERT_PUBLIC_ORIGIN` | control plane | Public origin for billing return URLs and feedback links (default `https://rupertpos.com`) |
 | `RUPERT_SUPPORT_EMAIL` | `support@rupertpos.com` | Contact address on the public Support and Privacy policy pages (`/support`, `/privacy`), which the App Store listing links to |
-| `RUPERT_ANDROID_CERT_SHA256` | any public node | Comma-separated SHA-256 signing-certificate fingerprints (Play Console → App integrity) served in `/.well-known/assetlinks.json`, so Rupert links open in the Android app. Unset: links open in the browser |
 | `RUPERT_APPROVED_REFERRAL_CODES` | control plane | Comma-separated owner-approved referral codes; when set, only these are eligible |
 | `RUPERT_OWNER_GOOGLE_EMAILS` | control plane | Comma-separated owner Google mailboxes for `platform:link_owner_identities` |
+| `RUPERT_ANDROID_CERT_SHA256` | any public node | Comma-separated SHA-256 signing-certificate fingerprints (Play Console → App integrity) served in `/.well-known/assetlinks.json`, so Rupert links open in the Android app. Unset: links open in the browser |
 | `RUPERT_PROVISION_WORKSPACES` | control plane | `true` lets the control plane hand workspaces to the host provisioner |
 | `RUPERT_WORKSPACE_BASE_DOMAIN` | control plane, host | Parent domain of customer workspace hostnames (default `workspaces.rupertpos.com`) |
 | `RUPERT_PROVISIONER_TOKEN` | control plane, host | Shared private token between the control plane and the host provisioner (32+ characters) |
