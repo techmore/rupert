@@ -20,20 +20,20 @@
       <% end %>
       <%= report_table "ctrax-stock-#{snapshot.location_id.parameterize}", label: "#{snapshot.location.name} C-Trax stock", filename: "ctrax-stock-#{snapshot.store_id}" do %>
         <table class="table">
-          <thead><tr><th scope="col" class="th" data-col="variant">Variant</th><th scope="col" class="th" data-col="sku">SKU</th><th scope="col" class="th" data-col="id">C-Trax ID</th><th scope="col" class="th num" data-col="stock">Stock</th></tr></thead>
+          <thead><tr><th scope="col" class="th" data-col="variant">Variant</th><th scope="col" class="th num" data-col="stock">Stock</th><th scope="col" class="th" data-col="sku">SKU</th><th scope="col" class="th" data-col="id">C-Trax ID</th></tr></thead>
           <tbody>
             <% snapshot.records.each do |record| %>
               <% quantity = record['quantity'] %>
               <tr>
                 <td class="td"><%= record['name'].presence || "Variant #{record['id']}" %></td>
-                <td class="td font-mono text-xs"><%= record['sku'].presence || 'Missing SKU' %></td>
-                <td class="td font-mono text-xs"><%= record['id'] %></td>
                 <td class="td num" data-sort-value="<%= quantity.to_f %>">
                   <% if quantity.nil? %><span class="text-taupe">Unknown</span>
                   <% elsif quantity.to_s.start_with?('-') %><span class="font-semibold text-rose"><%= RupertStockHelper::MINUS %><%= quantity.to_s.delete_prefix('-') %></span> <span class="pill-rose">Negative</span>
                   <% else %><%= quantity %><% end %>
                   <% unless record['manage_stock'] %> <span class="pill-taupe">Not tracked</span><% end %>
                 </td>
+                <td class="td font-mono text-xs"><%= record['sku'].presence || 'Missing SKU' %></td>
+                <td class="td font-mono text-xs"><%= record['id'] %></td>
               </tr>
             <% end %>
             <% if snapshot.records.empty? %><tr><td colspan="4" class="empty-row">No variants in this read.</td></tr><% end %>

@@ -2357,14 +2357,16 @@ body.tour-active { overflow-x:hidden; }
 }
 .preview-table .td { vertical-align:top; }
 .preview-row-large { box-shadow:inset 3px 0 0 var(--color-rose); }
-/* Phones: each proposed write becomes a short stacked block with its own labels. */
+/* Phones: each row of a .stack-table becomes a short block: first and last cells full width,
+   the cells between in a three-column grid labelled from data-label. */
 @media(max-width:639px) {
-  .preview-table thead { position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0); }
-  .preview-table, .preview-table tbody, .preview-table tr, .preview-table td { display:block;width:100%; }
-  .preview-table tr { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:.75rem 1rem;border-bottom:1px solid var(--color-fog); }
-  .preview-table td { padding:.2rem 0;text-align:left; }
-  .preview-table td:first-child, .preview-table td:last-child { grid-column:1 / -1; }
-  .preview-table td.num::before { content:attr(data-label);display:block;font-size:.7rem;font-weight:400;color:var(--color-taupe); }
+  .stack-table thead { position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0); }
+  .stack-table, .stack-table tbody, .stack-table tr, .stack-table td { display:block;width:100%; }
+  .stack-table tr { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:.75rem 1rem;border-bottom:1px solid var(--color-fog); }
+  .stack-table td { padding:.2rem 0;text-align:left; }
+  .stack-table td:first-child, .stack-table td:last-child, .stack-table td.stack-full { grid-column:1 / -1; }
+  .stack-table td[data-label]:not(:first-child):not(:last-child):not(.stack-full)::before { content:attr(data-label);display:block;font-size:.7rem;font-weight:400;color:var(--color-taupe); }
+  .stack-table td:empty { display:none; }
 }
 /* Inventory search answer (inventory/_glance): one card per item, every source's figures side by side. */
 .glance-list { display:grid;gap:.6rem; }

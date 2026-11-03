@@ -47,17 +47,18 @@ module RupertStockHelper
     return if row.nil?
 
     label = MasterStock.platform_label(platform)
+    shown = row.observed.to_i.negative? ? "#{MINUS}#{row.observed.abs}" : row.observed
     stale = row.observed_at.nil? || row.observed_at < MasterStock::PushPreview::FRESH_FOR.ago
     tone, text, title = if row.observed.nil?
       ['pill-taupe', "#{label} unknown", row.reasons.first]
     elsif row.target.nil?
-      ['pill-taupe', "#{label} #{row.observed}", "#{label} shows #{row.observed}. Count it in Rupert to compare."]
+      ['pill-taupe', "#{label} #{shown}", "#{label} shows #{shown}. Count it in Rupert to compare."]
     elsif row.observed == row.target
-      ['pill-fern', "#{label} #{row.observed} · matches", "#{label} shows the same #{row.observed} as Rupert."]
+      ['pill-fern', "#{label} #{shown} · matches", "#{label} shows the same #{shown} as Rupert."]
     else
       diff = row.observed - row.target
-      ['pill-clay', "#{label} #{row.observed} · #{diff.positive? ? "#{diff} more" : "#{diff.abs} fewer"}",
-       "#{label} shows #{row.observed}; Rupert has #{row.target}."]
+      ['pill-clay', "#{label} #{shown} · #{diff.positive? ? "#{diff} more" : "#{diff.abs} fewer"}",
+       "#{label} shows #{shown}; Rupert has #{row.target}."]
     end
     if stale && !row.observed.nil?
       text = "#{text} · #{short_age(row.observed_at)} old"

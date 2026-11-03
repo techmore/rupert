@@ -36,7 +36,7 @@
 
     <% if @rows.any? %>
       <div class="card overflow-hidden">
-        <table class="table preview-table" aria-label="Proposed <%= label %> writes at <%= @site.name %>">
+        <table class="table preview-table stack-table" aria-label="Proposed <%= label %> writes at <%= @site.name %>">
           <thead><tr><th scope="col" class="th">Item</th><th scope="col" class="th num"><%= label %> now</th><th scope="col" class="th num">Rupert</th><th scope="col" class="th num">Change</th><th scope="col" class="th">What would happen</th></tr></thead>
           <tbody>
             <% @rows.each do |row| %>

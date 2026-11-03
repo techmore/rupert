@@ -13,17 +13,17 @@
   </div>
   <div class="card overflow-hidden">
     <div class="table-region" role="region" tabindex="0" aria-label="Rupert stock movements">
-      <table class="table">
+      <table class="table stack-table">
         <thead><tr><th scope="col" class="th">When / who</th><th scope="col" class="th">Item / site</th><th scope="col" class="th">Kind</th><th scope="col" class="th num">Change</th><th scope="col" class="th num">Before → after</th><th scope="col" class="th">Reason / reference</th></tr></thead>
         <tbody>
           <% @entries.each do |entry| %>
             <tr>
-              <td class="td whitespace-nowrap"><%= l(entry.created_at, format: :short) %><p class="text-xs text-taupe" title="<%= entry.actor %>"><%= stock_person(entry.actor) %></p></td>
-              <td class="td"><%= link_to entry.stock_item.name, master_stock_item_path(entry.stock_item), class: 'font-medium text-ink hover:underline' %><p class="text-xs text-taupe"><%= entry.stock_site.name %></p></td>
-              <td class="td"><span class="<%= entry.kind == 'count' ? 'pill-olive' : 'pill-taupe' %>"><%= entry.kind_label %></span><% if entry.origin != 'rupert' %><p class="text-xs text-taupe">from <%= MasterStock.platform_label(entry.origin) %></p><% end %></td>
-              <td class="td num font-semibold <%= entry.delta.negative? ? 'text-clay' : 'text-ink' %>"><%= entry.quantity_before.nil? ? tag.span('Set', class: 'font-normal text-taupe') : signed_units(entry.delta) %></td>
-              <td class="td num"><%= entry.quantity_before.nil? ? 'first count' : entry.quantity_before %> → <strong><%= entry.quantity_after %></strong></td>
-              <td class="td"><%= StockLedgerEntry::REASONS[entry.reason] %><% if entry.reference %><p class="text-xs text-taupe"><%= entry.reference %></p><% end %><% if entry.note %><p class="text-xs text-mocha"><%= entry.note %></p><% end %></td>
+              <td class="td whitespace-nowrap" data-label="When"><%= l(entry.created_at, format: :short) %><p class="text-xs text-taupe" title="<%= entry.actor %>"><%= stock_person(entry.actor) %></p></td>
+              <td class="td stack-full" data-label="Item"><%= link_to entry.stock_item.name, master_stock_item_path(entry.stock_item), class: 'font-medium text-ink hover:underline' %><p class="text-xs text-taupe"><%= entry.stock_site.name %></p></td>
+              <td class="td" data-label="Kind"><span class="<%= entry.kind == 'count' ? 'pill-olive' : 'pill-taupe' %>"><%= entry.kind_label %></span><% if entry.origin != 'rupert' %><p class="text-xs text-taupe">from <%= MasterStock.platform_label(entry.origin) %></p><% end %></td>
+              <td class="td num font-semibold <%= entry.delta.negative? ? 'text-clay' : 'text-ink' %>" data-label="Change"><%= entry.quantity_before.nil? ? tag.span('Set', class: 'font-normal text-taupe') : signed_units(entry.delta) %></td>
+              <td class="td num" data-label="Before → after"><%= entry.quantity_before.nil? ? 'first count' : entry.quantity_before %> → <strong><%= entry.quantity_after %></strong></td>
+              <td class="td" data-label="Reason"><%= StockLedgerEntry::REASONS[entry.reason] %><% if entry.reference %><p class="text-xs text-taupe"><%= entry.reference %></p><% end %><% if entry.note %><p class="text-xs text-mocha"><%= entry.note %></p><% end %></td>
             </tr>
           <% end %>
           <% if @entries.empty? %><tr><td colspan="6" class="empty-row"><%= params.values_at(:q, :site_id, :kind).any?(&:present?) ? 'No movements match these filters.' : 'No movements yet. Counts and receipts recorded in Rupert stock appear here.' %></td></tr><% end %>
