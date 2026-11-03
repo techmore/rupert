@@ -40,6 +40,7 @@
           <%= render 'ctrax_pos/a920_tender', blocker: a920_blocker, live: true %>
         </div>
         <%= render 'ctrax_pos/tender_blockers', cash_blocker: cash_blocker, card_blocker: card_blocker, a920_blocker: a920_blocker %>
+        <%= render 'ctrax_pos/compliance_checks', approvers: @override_approvers if @compliance_policy&.locked_catalog && !demo %>
         <div class="pos-cash" data-pos-checkout-target="cashFields">
           <%= label_tag :cash_received, 'Cash received', class: 'field-label' %>
           <%= number_field_tag :cash_received, nil, min: 0, max: 999999.99, step: 0.01, required: true, inputmode: 'decimal', placeholder: '0.00', class: 'input pos-cash-input', data: { pos_checkout_target: 'cash' } %>

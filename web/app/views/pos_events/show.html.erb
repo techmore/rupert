@@ -1,0 +1,113 @@
+<% content_for :title, @event.name %>
+<% status_pill = { 'draft' => 'pill-taupe', 'open' => 'pill-fern', 'closed' => 'pill-olive' }[@event.status] %>
+<div class="space-y-6">
+  <%= page_header @event.name, eyebrow: 'Event', subtitle: [@event.venue, @event.location.name].compact.join(' · '),
+        menu: [['Download CSV', pos_event_path(@event, format: :csv)], (['Edit', edit_pos_event_path(@event)] if @event.draft? && pos_event_manager?)].compact do %>
+    <span class="<%= status_pill %>"><%= @event.status.humanize %></span>
+    <% if @event.open? %><%= link_to 'Open event register', pos_event_register_path(@event), class: 'btn-primary' %><% end %>
+  <% end %>
+
+  <section class="section-card" aria-label="Event details">
+    <dl class="facts">
+      <div><dt>Dates</dt><dd><%= @event.starts_on.strftime('%b %-d, %Y') %><%= " – #{@event.ends_on.strftime('%b %-d, %Y')}" if @event.ends_on != @event.starts_on %></dd></div>
+      <div><dt>Sales tax</dt><dd><%= format('%.2f', @event.tax_rate_bps / 100.0) %>%</dd></div>
+      <div><dt>Opening float</dt><dd class="num text-left"><%= ctrax_money(@event.opening_float_cents) %></dd></div>
+      <div><dt>Staff</dt><dd><%= @event.staff_users.map { |u| u.display_name || u.email }.to_sentence.presence || 'None yet' %></dd></div>
+      <% if @event.opened_at %><div><dt>Opened</dt><dd><%= l(@event.opened_at.in_time_zone, format: :short) %> by <%= @event.opened_by&.display_name %></dd></div><% end %>
+      <% if @event.closed_at %><div><dt>Closed</dt><dd><%= l(@event.closed_at.in_time_zone, format: :short) %> by <%= @event.closed_by&.display_name %></dd></div><% end %>
+    </dl>
+  </section>
+
+  <% unless @event.draft? %>
+    <section class="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Event sales">
+      <div class="stat"><p class="stat-label">Sales</p><p class="stat-value mt-1"><%= @summary[:count] %></p><p class="mt-1 text-xs text-taupe"><%= ctrax_money(@summary[:total_cents]) %> incl. <%= ctrax_money(@summary[:tax_cents]) %> tax</p></div>
+      <div class="stat"><p class="stat-label">Cash</p><p class="stat-value mt-1"><%= ctrax_money(@summary[:cash_cents]) %></p><p class="mt-1 text-xs text-taupe"><%= pluralize(@summary[:cash_count], 'sale') %></p></div>
+      <div class="stat"><p class="stat-label">Card (terminal)</p><p class="stat-value mt-1"><%= ctrax_money(@summary[:card_cents]) %></p><p class="mt-1 text-xs text-taupe"><%= pluralize(@summary[:card_count], 'sale') %></p></div>
+      <div class="stat"><p class="stat-label">Overrides · flagged</p><p class="stat-value mt-1 <%= 'text-rose' if @summary[:flagged].positive? %>"><%= @summary[:overrides] %> · <%= @summary[:flagged] %></p><p class="mt-1 text-xs text-taupe">Manager PIN approvals · offline sales to review</p></div>
+    </section>
+  <% end %>
+
+  <%= render 'pos_events/items' %>
+
+  <% if @event.draft? && pos_event_manager? %>
+    <section class="section-card" aria-labelledby="checklist-title">
+      <%= section_heading 'Pre-event checklist', id: 'checklist-title', hint: 'Opening freezes the item list, preset prices and which items take card. After that an item can only be pulled.' %>
+      <%= form_tag open_pos_event_path(@event), class: 'space-y-3' do %>
+        <% PosEvent::CHECKLIST.each do |key, label| %>
+          <label class="flex items-start gap-2 text-sm"><%= check_box_tag "checklist[#{key}]", '1', false, class: 'checkbox mt-0.5', required: true %> <span><%= label %></span></label>
+        <% end %>
+        <div class="form-actions"><%= submit_tag 'Open event', class: 'btn-primary', data: { turbo_confirm: 'Open this event? The item list and prices freeze.' } %></div>
+      <% end %>
+    </section>
+  <% end %>
+
+  <% if @event.open? && pos_event_manager? %>
+    <section class="section-card" aria-labelledby="close-title">
+      <%= section_heading 'Close event', id: 'close-title', hint: 'Sync every event device first (the register shows “All sales sent”). Count the cash drawer and read the terminal’s batch total.' %>
+      <%= form_tag close_pos_event_path(@event), class: 'space-y-4' do %>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div><%= label_tag :counted_cash, 'Cash counted, float included (USD)', class: 'field-label' %><%= number_field_tag :counted_cash, nil, step: 0.01, min: 0, required: true, class: 'input', inputmode: 'decimal' %>
+            <p class="mt-1 text-xs text-mocha">Expected now: <%= ctrax_money(@event.expected_cash_cents) %></p></div>
+          <div><%= label_tag :terminal_card_total, 'Card terminal batch total (USD)', class: 'field-label' %><%= number_field_tag :terminal_card_total, nil, step: 0.01, min: 0, class: 'input', inputmode: 'decimal' %>
+            <p class="mt-1 text-xs text-mocha">Recorded card sales: <%= ctrax_money(@summary[:card_cents]) %>. Leave blank if no card was taken.</p></div>
+        </div>
+        <fieldset><legend class="field-label">Units left, counted (optional)</legend>
+          <div class="mt-2 grid gap-3 sm:grid-cols-2">
+            <% @event.pos_event_items.each do |item| %>
+              <div><%= label_tag "counted_#{item.id}", item.name, class: 'text-sm text-ink' %><%= number_field_tag "counted[#{item.id}]", nil, id: "counted_#{item.id}", min: 0, step: 1, class: 'input', inputmode: 'numeric' %></div>
+            <% end %>
+          </div>
+        </fieldset>
+        <div><%= label_tag :close_notes, 'Notes', class: 'field-label' %><%= text_area_tag :close_notes, nil, rows: 2, class: 'input' %></div>
+        <div class="form-actions"><%= submit_tag 'Close event', class: 'btn-primary', data: { turbo_confirm: 'Close this event? The register stops taking sales.' } %></div>
+      <% end %>
+    </section>
+  <% end %>
+
+  <% if @event.closed? %>
+    <section class="section-card" aria-labelledby="recon-title">
+      <%= section_heading 'End-of-event reconciliation', id: 'recon-title' %>
+      <dl class="facts">
+        <div><dt>Cash expected</dt><dd class="num text-left"><%= ctrax_money(@event.expected_cash_cents) %> <span class="text-xs text-mocha">(float <%= ctrax_money(@event.opening_float_cents) %> + cash sales <%= ctrax_money(@summary[:cash_cents]) %>)</span></dd></div>
+        <div><dt>Cash counted</dt><dd class="num text-left"><%= ctrax_money(@event.counted_cash_cents) %></dd></div>
+        <div><dt>Cash difference</dt><dd><span class="<%= @event.cash_variance_cents.to_i.zero? ? 'pill-fern' : 'pill-clay' %>"><%= ctrax_money(@event.cash_variance_cents) %></span></dd></div>
+        <div><dt>Card recorded · terminal</dt><dd class="num text-left"><%= ctrax_money(@summary[:card_cents]) %> · <%= @event.terminal_card_total_cents ? ctrax_money(@event.terminal_card_total_cents) : 'not entered' %></dd></div>
+        <% if @event.card_variance_cents %><div><dt>Card difference</dt><dd><span class="<%= @event.card_variance_cents.zero? ? 'pill-fern' : 'pill-clay' %>"><%= ctrax_money(@event.card_variance_cents) %></span></dd></div><% end %>
+        <% if @event.close_notes %><div><dt>Notes</dt><dd><%= @event.close_notes %></dd></div><% end %>
+      </dl>
+      <p class="text-xs text-mocha">Difference = counted minus expected. Stock differences are per item above. Rupert changed no C-Trax stock; move event stock back in C-Trax as usual.</p>
+    </section>
+  <% end %>
+
+  <section class="card overflow-hidden" id="event-sales" aria-label="Event sales">
+    <div class="card-pad pb-0"><%= section_heading 'Sales', hint: 'Who rang what, newest first.' %></div>
+    <div class="table-region" role="region" tabindex="0" aria-label="Event sales">
+      <table class="table"><caption class="sr-only">Event sales; amounts in USD</caption>
+        <thead><tr><th scope="col" class="th">When</th><th scope="col" class="th">Staff</th><th scope="col" class="th">Items</th><th scope="col" class="th">Tender</th><th scope="col" class="th num">Total</th><th scope="col" class="th">Checks</th><th scope="col" class="th"><span class="sr-only">Receipt</span></th></tr></thead>
+        <tbody>
+          <% if @sales.empty? %><tr><td class="empty-row" colspan="7">No sales yet.</td></tr><% end %>
+          <% @sales.each do |sale| %>
+            <tr>
+              <td class="td whitespace-nowrap text-mocha"><%= l(sale.occurred_at.in_time_zone, format: :short) %></td>
+              <td class="td text-ink"><%= sale.user.display_name || sale.user.email %></td>
+              <td class="td text-mocha"><%= sale.lines.map { |l| "#{l['quantity']} × #{l['name']}" }.join(', ') %></td>
+              <td class="td"><%= sale.tender_label %></td>
+              <td class="td num font-medium"><%= ctrax_money(sale.total_cents) %></td>
+              <td class="td text-sm">
+                <%= sale.id_checked ? tag.span('ID checked', class: 'pill-fern') : tag.span('No ID check', class: 'pill-rose') %>
+                <% if sale.override? %><span class="pill-clay" title="<%= sale.override_reason %>">Override: <%= sale.override_by&.display_name %></span><% end %>
+                <% sale.flags.each do |flag| %><span class="pill-rose"><%= compliance_issue_label(flag) %></span><% end %>
+              </td>
+              <td class="td text-right"><%= link_to 'Receipt', receipt_pos_event_sale_path(@event, sale), class: 'btn-ghost btn-sm', target: '_blank', rel: 'noopener' %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="event-audit" class="space-y-3">
+    <h2 class="section-title" id="event-audit">Compliance log</h2>
+    <%= render 'compliance/event_table', events: @audit, caption: 'Compliance log for this event', empty: 'Nothing recorded yet.' %>
+  </section>
+</div>

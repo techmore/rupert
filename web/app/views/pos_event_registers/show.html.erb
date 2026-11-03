@@ -1,0 +1,91 @@
+<% content_for :title, "Event register · #{@event.name}" %>
+<%# Event register (F70 event mode, docs/ctrax-retail.md "Event mode"): big tiles from the frozen
+    event list, Cash / Card (terminal), ID check, totals from the event's preset prices and tax
+    rate. The server re-prices and re-checks every sale; a sale is named on this device first,
+    so a retry or an offline queue never records it twice. %>
+<% state = { event_id: @event.id, tax_rate_bps: @event.tax_rate_bps, items: @items.map(&:register_payload),
+             approvers: @approvers.map { |u| { id: u.id, name: u.display_name || u.email } } } %>
+<div class="pos-app" data-controller="event-register"
+     data-event-register-state-value="<%= state.to_json %>"
+     data-event-register-sales-url-value="<%= pos_event_sales_path(@event) %>"
+     data-event-register-state-url-value="<%= pos_event_register_path(@event, format: :json) %>"
+     data-event-register-queue-key-value="<%= "rupert:event:#{Current.tenant_id}:#{@event.id}:#{Current.user.id}" %>"
+     data-event-register-seller-value="<%= @seller %>">
+  <header class="pos-topbar event-topbar">
+    <div class="pos-topbar-group pos-topbar-start">
+      <span class="pos-mark" aria-hidden="true"><%= render 'shared/rupert_face', size: 28 %></span>
+      <h1 class="pos-title"><span class="pos-title-label">Event</span> <span class="pos-store"><%= @event.name %></span></h1>
+    </div>
+    <div class="pos-topbar-group pos-topbar-status">
+      <span class="pill-fern" data-event-register-target="connection" role="status" aria-live="polite">Online</span>
+      <span class="pill-clay" data-event-register-target="queueBadge" hidden></span>
+      <span class="pill-olive">Approved items only</span>
+    </div>
+    <div class="pos-topbar-group pos-topbar-end">
+      <span class="pos-cashier"><span class="pos-cashier-name"><%= Current.user.display_name %></span><span class="pos-cashier-role"><%= @seller ? 'Event staff' : 'Not on staff list' %></span></span>
+      <%= link_to 'Exit', Current.user.employee? ? employee_app_path : pos_event_path(@event), class: 'btn-ghost btn-sm pos-exit', data: { turbo: false } %>
+    </div>
+  </header>
+
+  <% if !@event.open? || !@seller %>
+    <main id="main" class="pos-main pos-main-empty">
+      <div class="card pos-empty"><%= empty_state(@event.open? ? 'You are not on this event’s staff list.' : "This event is #{@event.status}.", hint: @event.open? ? 'Ask the event manager to add you.' : 'Only an open event takes sales.') %></div>
+    </main>
+  <% else %>
+    <div class="pos-flashes" data-event-register-target="refusedBox" hidden>
+      <div class="flash flash-alert" role="alert"><p class="font-semibold">Offline sales the server refused</p><p>These were paid but not recorded. Show a manager now.</p><ul class="mt-2 list-disc pl-5" data-event-register-target="refusedList"></ul></div>
+    </div>
+    <main id="main" class="pos-main event-register">
+      <section class="pos-catalog-pane" aria-label="Event items">
+        <p class="pos-announce" role="status" aria-live="polite" data-event-register-target="announce"></p>
+        <div class="pos-grid-scroll"><div class="pos-grid event-grid" data-event-register-target="grid"></div></div>
+      </section>
+
+      <section class="pos-cart" aria-label="Sale">
+        <header class="pos-cart-head">
+          <h2 class="pos-cart-title">Sale <span class="pos-cart-count"><span data-event-register-target="count">0</span> items</span></h2>
+          <button type="button" class="btn-ghost btn-sm" data-action="event-register#clear">Clear</button>
+        </header>
+        <div class="pos-cart-lines" data-event-register-target="lines"></div>
+        <form class="pos-checkout" data-action="submit->event-register#submit" novalidate>
+          <dl class="pos-totals">
+            <div><dt>Subtotal</dt><dd class="retail-money" data-event-register-target="subtotal">$0.00</dd></div>
+            <div><dt>Tax <%= format('%.2f', @event.tax_rate_bps / 100.0) %>%</dt><dd class="retail-money" data-event-register-target="tax">$0.00</dd></div>
+            <div class="pos-total"><dt>Total</dt><dd class="retail-money" data-event-register-target="total">$0.00</dd></div>
+          </dl>
+          <div class="pos-tenders" role="group" aria-label="Payment method">
+            <button type="button" class="pos-tender" data-tender="cash" aria-pressed="true" data-event-register-target="tender" data-action="event-register#choose">Cash</button>
+            <button type="button" class="pos-tender" data-tender="card_terminal" aria-pressed="false" data-event-register-target="tender" data-action="event-register#choose">Card (terminal)</button>
+          </div>
+          <p class="pos-checkout-hint" data-event-register-target="cardNote" hidden></p>
+          <label class="pos-id-check event-id-check">
+            <input type="checkbox" class="checkbox" data-event-register-target="idChecked">
+            <span>ID checked: the customer is 21 or older</span>
+          </label>
+          <div class="pos-cash" data-event-register-target="cashFields">
+            <label for="event_cash_received" class="field-label">Cash received</label>
+            <input id="event_cash_received" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" class="input pos-cash-input" data-event-register-target="cash">
+            <div class="pos-cash-quick" role="group" aria-label="Quick cash amounts">
+              <button type="button" class="pos-chip" data-action="event-register#exact">Exact</button>
+              <% [20, 50, 100].each do |bill| %><button type="button" class="pos-chip" data-action="event-register#quick" data-amount="<%= bill %>">$<%= bill %></button><% end %>
+            </div>
+          </div>
+          <ul class="pos-compliance-issues" data-event-register-target="issues" role="alert" hidden></ul>
+          <fieldset class="pos-override" data-event-register-target="override" hidden disabled>
+            <legend class="pos-override-title">Manager override</legend>
+            <p class="pos-checkout-hint">Needs a connection. A manager approves with their own PIN and a reason; both are logged.</p>
+            <label class="field-label" for="event_override_user">Manager</label>
+            <select id="event_override_user" class="select" data-event-register-target="overrideUser"><option value="">Choose manager</option><% @approvers.each do |u| %><option value="<%= u.id %>"><%= u.display_name || u.email %></option><% end %></select>
+            <label class="field-label" for="event_override_pin">Manager PIN</label>
+            <input id="event_override_pin" type="password" inputmode="numeric" autocomplete="off" maxlength="8" class="input" data-event-register-target="overridePin">
+            <label class="field-label" for="event_override_reason">Reason</label>
+            <input id="event_override_reason" type="text" maxlength="500" class="input" placeholder="Why this sale may go ahead" data-event-register-target="overrideReason">
+          </fieldset>
+          <button type="submit" class="btn-primary btn-lg pos-pay" data-event-register-target="submit" disabled>Complete cash sale</button>
+          <p role="status" aria-live="polite" class="pos-checkout-status" data-event-register-target="status"></p>
+          <div class="pos-checkout-result" data-event-register-target="result"></div>
+        </form>
+      </section>
+    </main>
+  <% end %>
+</div>

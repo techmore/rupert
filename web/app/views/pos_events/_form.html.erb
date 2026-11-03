@@ -1,0 +1,31 @@
+<% staff = User.where(tenant_id: Current.tenant_id).active.ordered.select(&:can_use_pos?) %>
+<%= form_with model: @event, class: 'card card-pad space-y-4' do |f| %>
+  <% if @event.errors.any? %><div class="flash flash-alert" role="alert"><p><%= @event.errors.full_messages.to_sentence %></p></div><% end %>
+  <%= f.hidden_field :lock_version if @event.persisted? %>
+  <div><%= f.label :name, 'Event name', class: 'field-label' %><%= f.text_field :name, required: true, maxlength: 80, class: 'input', placeholder: 'Bucks County Wellness Fair' %></div>
+  <div><%= f.label :venue, 'Venue (optional)', class: 'field-label' %><%= f.text_field :venue, maxlength: 120, class: 'input' %></div>
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div><%= f.label :starts_on, 'First day', class: 'field-label' %><%= f.date_field :starts_on, required: true, class: 'input' %></div>
+    <div><%= f.label :ends_on, 'Last day', class: 'field-label' %><%= f.date_field :ends_on, required: true, class: 'input' %></div>
+  </div>
+  <% if @event.new_record? %>
+    <div><%= f.label :location_id, 'Approved catalog and stock from', class: 'field-label' %>
+      <%= f.collection_select :location_id, Location.where(id: CtraxStockSnapshot.select(:location_id)).order(:name), :id, :name, {}, class: 'select', required: true %>
+      <p class="mt-1 text-xs text-mocha">Event items come from this store’s approved catalog, and event sales count toward this store.</p></div>
+  <% end %>
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div><%= label_tag 'pos_event[tax_rate]', 'Sales tax rate (%)', class: 'field-label' %><%= number_field_tag 'pos_event[tax_rate]', format('%.2f', @event.tax_rate_bps / 100.0), step: 0.01, min: 0, max: 25, class: 'input', inputmode: 'decimal' %>
+      <p class="mt-1 text-xs text-mocha">The rate where the event is held. Applied to every line.</p></div>
+    <div><%= label_tag 'pos_event[opening_float]', 'Opening cash float (USD)', class: 'field-label' %><%= number_field_tag 'pos_event[opening_float]', format('%.2f', @event.opening_float_cents / 100.0), step: 0.01, min: 0, class: 'input', inputmode: 'decimal' %></div>
+  </div>
+  <fieldset><legend class="field-label">Staff who sell at this event</legend>
+    <div class="mt-2 grid gap-2 sm:grid-cols-2">
+      <%= hidden_field_tag 'pos_event[staff_user_ids][]', '' %>
+      <% staff.each do |user| %>
+        <label class="flex items-center gap-2 text-sm"><%= check_box_tag 'pos_event[staff_user_ids][]', user.id, @event.staff_user_ids.include?(user.id), id: "staff_#{user.id}", class: 'checkbox' %> <%= user.display_name || user.email %></label>
+      <% end %>
+    </div>
+    <p class="mt-1 text-xs text-mocha">Managers with an override PIN can also sell.</p>
+  </fieldset>
+  <div class="form-actions"><%= f.submit 'Save', class: 'btn-primary' %><%= link_to 'Cancel', @event.persisted? ? pos_event_path(@event) : pos_events_path, class: 'btn-ghost' %></div>
+<% end %>

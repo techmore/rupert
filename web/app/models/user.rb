@@ -154,6 +154,28 @@ class User < ActiveRecord::Base
     active? && (can?('pos.use') || %w[sales.read sales.write inventory.read].all? { |permission| can?(permission) })
   end
 
+  # F70 manager overrides at the register: managers and owners (or anyone granted
+  # pos.override) approve a blocked sale with their own PIN and a reason.
+  def can_approve_pos_override?
+    active? && (super_admin? || admin? || manager? || can?('pos.override'))
+  end
+
+  def pos_override_pin_set? = pos_override_pin_digest.present?
+
+  # Four to eight digits, stored only as a BCrypt digest.
+  def pos_override_pin=(pin)
+    raise ArgumentError, 'Use a PIN of 4 to 8 digits.' unless pin.to_s.match?(/\A\d{4,8}\z/)
+
+    self.pos_override_pin_digest = BCrypt::Password.create(pin.to_s)
+    self.pos_override_pin_set_at = Time.current
+  end
+
+  def valid_pos_override_pin?(pin)
+    pos_override_pin_set? && pin.to_s.match?(/\A\d{4,8}\z/) && BCrypt::Password.new(pos_override_pin_digest).is_password?(pin.to_s)
+  rescue BCrypt::Errors::InvalidHash
+    false
+  end
+
   def permissions_signature
     Digest::SHA256.hexdigest(effective_permissions.sort.join('|'))
   end

@@ -22,7 +22,9 @@ class EmployeeAppController < ApplicationController
       @summary = EmployeeWorkSummary.preview
       @worker = @summary.employee
     elsif (@worker = TimeClockService.worker_for(Current.user, include_on_leave: true))
-      @summary = EmployeeWorkSummary.new(employee: @worker, from: Date.current.beginning_of_week, to: Date.current.end_of_week)
+      # The pay week (PayRules), so home, the timesheet and pay all count the same days.
+      first, last = PayRules.current.period_range(Date.current)
+      @summary = EmployeeWorkSummary.new(employee: @worker, from: first, to: last)
       @open_shift = ClockShift.open.find_by(employee_id: @worker.id, user_id: Current.user.id)
       @timesheet = @worker.timesheets.where('period_start <= ? AND period_end >= ?', Date.current, Date.current).first
       @next_shift = @worker.scheduled_shifts.where('ends_at > ?', Time.current).chronological.first
@@ -40,6 +42,7 @@ class EmployeeAppController < ApplicationController
     unless sheet
       first, last = People::Timesheet.default_period_for(worker, today)
       sheet = TimesheetWorkflow.new.create(employee_id: worker.id, period_start: first, period_end: last)
+      import_finished_shifts(sheet)
     end
     redirect_to people_timesheet_path(sheet)
   rescue TimesheetWorkflow::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
@@ -66,5 +69,17 @@ class EmployeeAppController < ApplicationController
     response.headers['Service-Worker-Allowed'] = '/'
     response.headers['Cache-Control'] = 'no-cache'
     send_file Rails.root.join('app/javascript/employee_service_worker.js'), type: 'application/javascript', disposition: 'inline'
+  end
+
+  private
+
+  # A new week starts from the clock: finished shifts are imported so staff check rather than type.
+  # A pending correction blocks the import; the sheet still opens and says what is waiting.
+  def import_finished_shifts(sheet)
+    return unless sheet.unimported_shift_count.positive?
+
+    TimesheetWorkflow.new.change(sheet, :import_shifts)
+  rescue TimesheetWorkflow::Error, ActiveRecord::RecordInvalid
+    nil
   end
 end
