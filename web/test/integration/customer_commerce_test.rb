@@ -21,6 +21,29 @@ class CustomerCommerceTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test 'anonymous root offers a demo by email, to the one public contact address' do
+    get root_path
+    demo = css_select('a.button[href^="mailto:"]').find { |link| link.text == 'Ask for a demo' }
+    assert demo, 'the closing section offers a demo by email'
+    assert_equal 'mailto:sdolbec@rupertpos.com?subject=Rupert%20demo%20request', demo['href']
+    assert_select 'a[href^="mailto:"]' do |links|
+      links.each { |link| assert_match(/\Amailto:sdolbec@rupertpos\.com(\?|\z)/, link['href']) }
+    end
+  end
+
+  test 'a rejected sign-up keeps what was typed and explains the address format' do
+    post start_path, params: { registration: { workspace_name: 'Corner Shop', requested_subdomain: 'www' } }
+    assert_response :unprocessable_entity
+    assert_select 'input[name=?][value=?]', 'registration[workspace_name]', 'Corner Shop'
+    assert_select 'input[name=?][value=?][aria-describedby=?]', 'registration[requested_subdomain]', 'www', 'requested-subdomain-hint'
+    assert_select '#requested-subdomain-hint', /lowercase letters, numbers or hyphens/
+  end
+
+  test 'a malformed sign-up is rejected without echoing anything back' do
+    post start_path, params: { registration: 'not-a-form' }
+    assert_response :bad_request
+  end
+
   test 'Google registration verifies identity and provisions isolated tenant records atomically' do
     GoogleOauthService.stubs(:auth_url).returns('https://accounts.google.com/')
     post start_path, params: { registration: { workspace_name: 'New business', requested_subdomain: 'fresh-business', role: 'super_admin' } }
