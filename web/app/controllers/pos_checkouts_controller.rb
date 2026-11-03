@@ -26,7 +26,28 @@ class PosCheckoutsController < AuthenticatedController
       checkout.terminal_card? ? Pos::Checkout.terminal_card!(checkout) : Pos::Checkout.cash!(checkout, received: params[:cash_received])
       PosInventoryJob.perform_later(checkout.id) unless checkout.demo?
     end
-    render json: checkout.receipt
+    send_to_terminal(checkout) if checkout.dejavoo_terminal?
+    render json: checkout.reload.receipt
+  end
+
+  # Sends (or, after a decline or cancel, re-sends) the sale to the store's
+  # Dejavoo terminal. Answers at once; the terminal wait runs in a job.
+  def terminal
+    checkout = checkout_scope.find(params[:id])
+    raise Pos::Error, 'This checkout does not use a payment terminal.' unless checkout.dejavoo_terminal?
+
+    send_to_terminal(checkout)
+    render json: checkout.reload.receipt
+  end
+
+  # Asks the terminal to stop waiting for the card. Nothing is charged twice:
+  # the waiting sale reports its own result.
+  def terminal_cancel
+    checkout = checkout_scope.find(params[:id])
+    raise Pos::Error, 'This checkout does not use a payment terminal.' unless checkout.dejavoo_terminal?
+
+    Pos::DejavooTerminalPayment.abort!(checkout)
+    render json: checkout.reload.receipt
   end
 
   def show
@@ -79,6 +100,11 @@ class PosCheckoutsController < AuthenticatedController
   end
 
   private
+
+  def send_to_terminal(checkout)
+    attempt = Pos::DejavooTerminalPayment.start!(checkout)
+    PosTerminalSaleJob.perform_later(attempt.id) if attempt
+  end
 
   def checkout_scope
     Current.user.admin? || Current.user.super_admin? ? PosCheckout.all : PosCheckout.where(user_id: Current.user.id)
