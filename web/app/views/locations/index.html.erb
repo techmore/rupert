@@ -17,7 +17,7 @@
     </div>
     <% @per_source.each do |source, count| %>
       <div class="stat">
-        <p class="stat-label capitalize"><%= source %></p>
+        <p class="stat-label"><%= MasterStock.platform_label(source) %></p>
         <p class="stat-value mt-1"><%= count %></p>
         <p class="mt-1 text-xs text-taupe"><%= 'location'.pluralize(count) %></p>
       </div>
@@ -45,7 +45,7 @@
           <% @locations.each do |location| %>
             <tr>
               <td class="td font-medium text-ink"><%= link_to location.name, location, class: 'hover:text-olive hover:underline' %></td>
-              <td class="td"><span class="pill-taupe capitalize"><%= location.source %></span></td>
+              <td class="td"><span class="pill-taupe"><%= MasterStock.platform_label(location.source) %></span></td>
               <td class="td capitalize text-mocha"><%= location.kind.presence || '—' %></td>
               <td class="td num text-mocha"><%= @units_by_location.fetch(location.id, 0) %></td>
               <td class="td">

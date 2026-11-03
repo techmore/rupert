@@ -182,4 +182,14 @@ class StockUxTest < ActionDispatch::IntegrationTest
     get inventory_counts_path
     assert_select '[data-count-kinds]', /never change a number/
   end
+
+  test 'recording and setting up Rupert stock keep Rupert stock lit in the rail; locations say C-Trax' do
+    sign_in(@admin)
+    get new_master_stock_movement_path(kind: 'count', item_id: @item.id, site_id: @site.id)
+    assert_select 'aside#app-rail a[aria-current="page"]', text: 'Rupert stock'
+    get master_stock_setup_path
+    assert_select 'aside#app-rail a[aria-current="page"]', text: 'Rupert stock'
+    get locations_path
+    assert_select 'td span.pill-taupe', text: 'C-Trax'
+  end
 end

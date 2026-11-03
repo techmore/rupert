@@ -55,19 +55,22 @@ module ApplicationHelper
   end
 
   def active_module_entry
-    @active_module_entry ||= nav_entries
-      .select { |entry| module_match_strength(safe_module_path(entry)).positive? }
-      .max_by { |entry| module_match_strength(safe_module_path(entry)) } || aliased_module_entry
+    @active_module_entry ||= begin
+      entry = nav_entries.select { |candidate| module_match_strength(safe_module_path(candidate)).positive? }
+        .max_by { |candidate| module_match_strength(safe_module_path(candidate)) }
+      alias_prefix, alias_key = MODULE_ALIASES.select { |prefix, _| request.path.start_with?(prefix) }.max_by { |prefix, _| prefix.length }
+      aliased = alias_key && nav_entries.find { |candidate| candidate.key == alias_key }
+      aliased && (entry.nil? || alias_prefix.length > module_match_strength(safe_module_path(entry))) ? aliased : entry
+    end
   end
 
-  # Record pages with no rail entry of their own sit under the module people open them from,
-  # so the rail keeps showing where they are (a product page is part of Stock, not Overview).
-  MODULE_ALIASES = { '/shopify_variants/' => 'inventory', '/ctrax_stock' => 'stock_comparison' }.freeze
-
-  def aliased_module_entry
-    key = MODULE_ALIASES.find { |prefix, _| request.path.start_with?(prefix) }&.last
-    key && nav_entries.find { |entry| entry.key == key }
-  end
+  # Pages with no rail entry of their own sit under the module people open them from, so
+  # the rail keeps showing where they are: a product page is part of Stock, not Overview,
+  # and recording a count belongs to Rupert stock even though its URL sits under the ledger.
+  MODULE_ALIASES = {
+    '/shopify_variants/' => 'inventory', '/ctrax_stock' => 'stock_comparison',
+    '/master_stock/setup' => 'master_stock', '/master_stock/movements/new' => 'master_stock'
+  }.freeze
 
   # The full-screen POS is never a landing page: the brand link and a section's rail link
   # skip it while the person has another page to go to, so they stay in the shell.
