@@ -94,7 +94,11 @@ class InstanceOverview
   end
 
   def deployment_label
-    value = ENV['RUPERT_INSTANCE_LABEL'].to_s.strip
+    # Read as UTF-8 whatever the server's locale; under a C/POSIX locale ENV values arrive as binary.
+    value = ENV['RUPERT_INSTANCE_LABEL'].to_s.dup.force_encoding(Encoding::UTF_8)
+    return 'Not configured' unless value.valid_encoding?
+
+    value = value.strip
     value.present? && value.length <= 80 && !value.match?(/[\x00-\x1f\x7f]/) ? value : 'Not configured'
   end
 
