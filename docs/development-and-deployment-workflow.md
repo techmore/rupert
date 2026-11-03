@@ -32,6 +32,13 @@ path-filtered and is not a required check. Treat current GitHub settings as the
 source of truth; see [issue #206](https://github.com/techmore/rupert/issues/206)
 for the protection history and test receipts.
 
+`CI (sqlite3)` is a gate job: the Rails suite runs as three parallel shards
+(`CI tests (n/3)`, split by `web/bin/test-shard`) beside `CI checks` (lint,
+migration checks, card-data and module tests). The gate always runs, fails
+unless every one of those jobs succeeded, merges the shards' coverage
+(`web/bin/merge-coverage-shards`) and enforces the coverage floors. Only its
+name is required, so branch protection and the SER8 deploy gate are unchanged.
+
 A read on 2026-10-25 confirmed `enforce_admins` is on. An administrator
 therefore cannot bypass the rules: a direct push to `main` was rejected with
 `GH006: Protected branch update failed` (tested 2026-10-20), and

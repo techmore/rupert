@@ -1,0 +1,23 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Combines the SimpleCov results from the CI test shards into one
+# coverage/.resultset.json for bin/check-coverage, which sums every command it
+# finds. Each shard's commands are kept under a distinct "<shard>/<name>" key.
+#
+#   bin/merge-coverage-shards coverage-shards 3
+require 'json'
+
+dir = ARGV.fetch(0)
+expected = Integer(ARGV.fetch(1))
+merged = {}
+files = Dir[File.join(dir, '*', '.resultset.json')]
+files.each do |file|
+  shard = File.basename(File.dirname(file))
+  JSON.parse(File.read(file)).each { |name, result| merged["#{shard}/#{name}"] = result }
+end
+abort "expected #{expected} shard coverage results, found #{files.size}" unless files.size == expected
+
+Dir.mkdir('coverage') unless Dir.exist?('coverage')
+File.write('coverage/.resultset.json', JSON.generate(merged))
+puts "merged #{merged.size} coverage results from #{files.size} shards"
