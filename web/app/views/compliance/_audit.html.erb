@@ -1,0 +1,9 @@
+<section class="toolbar-band" aria-label="Audit filters">
+  <%= form_tag compliance_path, method: :get, class: 'toolbar' do %>
+    <%= hidden_field_tag :tab, 'audit' %><%= hidden_field_tag :location_id, @location&.id %>
+    <div class="toolbar-field"><%= label_tag :event_action, 'What happened', class: 'field-label' %><%= select_tag :event_action, options_for_select([['Everything', '']] + ComplianceEvent::ACTIONS.map { |a| [compliance_action_label(a), a] }, @action_filter), class: 'select' %></div>
+    <div class="toolbar-actions"><%= submit_tag 'Apply', class: 'btn-primary' %></div>
+  <% end %>
+</section>
+<%= render 'compliance/event_table', events: @events, caption: 'Compliance audit log, newest first', empty: 'Nothing recorded yet.' %>
+<% if @pagy.pages > 1 %><div><%== @pagy.series_nav %></div><% end %>

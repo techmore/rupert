@@ -1,0 +1,32 @@
+<% content_for :title, "Receipt EV-#{@sale.id}" %>
+<div class="event-receipt-page"><article class="event-receipt">
+  <header>
+    <h1 class="event-receipt-title"><%= Current.tenant&.name %></h1>
+    <p><%= @event.name %><%= " · #{@event.venue}" if @event.venue %></p>
+    <p><%= l(@sale.occurred_at.in_time_zone, format: :short) %> · Receipt EV-<%= @sale.id %> · <%= @sale.user.display_name %></p>
+  </header>
+  <table class="event-receipt-lines">
+    <caption class="sr-only">Items; amounts in USD</caption>
+    <tbody>
+      <% @sale.lines.each do |line| %>
+        <tr><td><%= line['quantity'] %> × <%= line['name'] %></td><td class="num"><%= ctrax_money(line['line_cents']) %></td></tr>
+      <% end %>
+    </tbody>
+    <tfoot>
+      <tr><th scope="row">Subtotal</th><td class="num"><%= ctrax_money(@sale.subtotal_cents) %></td></tr>
+      <tr><th scope="row">Tax</th><td class="num"><%= ctrax_money(@sale.tax_cents) %></td></tr>
+      <tr class="event-receipt-total"><th scope="row">Total</th><td class="num"><%= ctrax_money(@sale.total_cents) %></td></tr>
+      <tr><th scope="row"><%= @sale.tender_label %></th><td class="num"><%= ctrax_money(@sale.cash_received_cents || @sale.total_cents) %></td></tr>
+      <% if @sale.change_cents %><tr><th scope="row">Change</th><td class="num"><%= ctrax_money(@sale.change_cents) %></td></tr><% end %>
+    </tfoot>
+  </table>
+  <% coas = @sale.lines.select { |l| l['coa_url'].present? }.uniq { |l| l['coa_url'] } %>
+  <% if coas.any? %>
+    <section aria-label="Lab certificates">
+      <h2 class="event-receipt-heading">Lab certificates (COA)</h2>
+      <div class="coa-qr-grid"><% coas.each do |line| %><%= coa_qr_svg(line['coa_url'], label: line['name']) %><% end %></div>
+    </section>
+  <% end %>
+  <p class="event-receipt-note">For adults 21 and older.<%= ' Card run on the event card terminal.' if @sale.tender == 'card_terminal' %></p>
+  <p class="event-receipt-actions"><button type="button" class="btn-primary" data-controller="print" data-action="click->print#print">Print</button></p>
+</article></div>

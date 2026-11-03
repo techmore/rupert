@@ -162,8 +162,8 @@
           <% @timesheets.each do |timesheet| %>
             <tr>
               <td class="td"><%= link_to timesheet.period_label, people_timesheet_path(timesheet), class: "font-medium text-olive hover:underline" %></td>
-              <td class="td num"><%= number_with_precision(timesheet.total_hours, precision: 1) %></td>
-              <td class="td"><span class="<%= timesheet.approved? ? 'pill-fern' : timesheet.submitted? ? 'pill-olive' : timesheet.rejected? ? 'pill-rose' : 'pill-taupe' %>"><%= timesheet.status.humanize %></span></td>
+              <td class="td num"><%= format_hours(timesheet.total_hours) %></td>
+              <td class="td"><%= timesheet_status_pill(timesheet) %></td>
             </tr>
           <% end %>
         </tbody>

@@ -1,0 +1,53 @@
+<%# Loyalty for one customer: read-only Square Loyalty mirror (LoyaltyHelper#customer_loyalty). %>
+<% loyalty = customer_loyalty(customer) %>
+<% if loyalty %>
+  <% program = loyalty[:program] %>
+  <section id="loyalty" class="section-card" aria-label="Loyalty">
+    <%= section_heading 'Loyalty' do %>
+      <span class="pill-taupe">Square</span>
+      <% if Current.user.can?('customers.read') %><%= link_to 'Open loyalty', loyalty_path, class: 'btn-ghost btn-sm' %><% end %>
+    <% end %>
+    <% if loyalty[:accounts].empty? %>
+      <p class="text-sm text-taupe">Not a loyalty member. They can join at the register in Square.</p>
+    <% else %>
+      <% loyalty[:accounts].each do |account| %>
+        <% rewards = account.redeemable_tiers(loyalty[:tiers]) %>
+        <% upcoming = account.next_tier(loyalty[:tiers]) %>
+        <div class="grid grid-cols-2 gap-3 lg:grid-cols-3" aria-label="Loyalty points">
+          <div class="stat"><p class="stat-label">Points</p><p class="stat-value mt-1"><%= number_with_delimiter(account.balance) %></p><p class="mt-1 text-xs text-taupe"><%= program ? program.point_word(account.balance).capitalize : 'Points' %> to spend</p></div>
+          <div class="stat"><p class="stat-label">Lifetime points</p><p class="stat-value mt-1"><%= number_with_delimiter(account.lifetime_points) %></p></div>
+          <div class="stat col-span-2 lg:col-span-1">
+            <p class="stat-label">Rewards available</p>
+            <p class="stat-value-sm mt-1"><%= rewards.any? ? safe_join(rewards.map { |tier| tier.name.presence || 'Reward' }, ', ') : 'None yet' %></p>
+            <% if upcoming %><p class="mt-1 text-xs text-taupe"><%= loyalty_points(upcoming.points - account.balance, program) %> to <%= upcoming.name.presence || 'the next reward' %></p><% end %>
+          </div>
+        </div>
+        <dl class="facts">
+          <div><dt>Membership</dt><dd><span class="<%= account.source_present ? 'pill-fern' : 'pill-taupe' %>"><%= account.source_present ? 'Member' : 'No longer a member' %></span></dd></div>
+          <div><dt>Enrolled</dt><dd><%= loyalty_date(account.enrolled_at&.to_date) %></dd></div>
+          <% account.expiring_deadlines.select { |deadline| deadline[:expires_at] }.first(2).each do |deadline| %>
+            <div><dt>Expiring</dt><dd><%= loyalty_points(deadline[:points], program) %> on <%= loyalty_date(deadline[:expires_at].to_date) %></dd></div>
+          <% end %>
+        </dl>
+      <% end %>
+
+      <%= section_heading 'Recent points activity', level: :h3, hint: (loyalty[:event_count] > loyalty[:events].size ? "Latest #{loyalty[:events].size} of #{number_with_delimiter(loyalty[:event_count])}." : nil) %>
+      <% if loyalty[:events].empty? %>
+        <p class="text-sm text-taupe">No points activity recorded yet.</p>
+      <% else %>
+        <ul class="row-list" aria-label="Recent points activity">
+          <% loyalty[:events].each do |event| %>
+            <% order = event.order_id && loyalty[:orders][event.order_id] %>
+            <li class="row-item">
+              <div class="min-w-0">
+                <p class="text-sm text-ink"><span class="<%= event.pill %>"><%= event.label %></span><% if event.reason.present? %> <span class="text-mocha"><%= event.reason %></span><% end %></p>
+                <p class="text-xs text-taupe"><time datetime="<%= event.occurred_at.iso8601 %>"><%= loyalty_date(event.occurred_at, with_time: true) %></time><% if order %> · <%= link_to order.display_number, order_path(order), class: 'text-olive-deep hover:underline' %><% end %></p>
+              </div>
+              <div class="row-item-end"><span class="num font-semibold <%= event.points_change.negative? ? 'text-rose' : 'text-ink' %>"><%= loyalty_change(event.points_change) %></span></div>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+    <% end %>
+  </section>
+<% end %>

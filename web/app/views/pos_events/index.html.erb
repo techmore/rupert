@@ -1,0 +1,27 @@
+<% content_for :title, 'Shows and pop-ups' %>
+<div class="space-y-6">
+  <%= page_header 'Shows and pop-ups', subtitle: 'Each event sells from a short, approved list at preset prices, with an ID check on every sale.' do %>
+    <% if pos_event_manager? %><%= link_to 'Add event', new_pos_event_path, class: 'btn-primary' %><% end %>
+  <% end %>
+  <section class="card overflow-hidden" aria-label="Events">
+    <div class="table-region" role="region" tabindex="0" aria-label="Events">
+      <table class="table"><caption class="sr-only">Events, newest first; amounts in USD</caption>
+        <thead><tr><th scope="col" class="th">Event</th><th scope="col" class="th">Dates</th><th scope="col" class="th">Store stock</th><th scope="col" class="th num">Items</th><th scope="col" class="th num">Sales</th><th scope="col" class="th">Status</th></tr></thead>
+        <tbody>
+          <% if @events.empty? %><tr><td class="empty-row" colspan="6">No events yet. Add one before the next show or pop-up.</td></tr><% end %>
+          <% @events.each do |event| %>
+            <% summary = event.sales_summary %>
+            <tr>
+              <td class="td font-medium text-ink"><%= link_to event.name, event, class: 'text-olive-deep hover:underline' %><% if event.venue %><br><span class="text-xs text-mocha"><%= event.venue %></span><% end %></td>
+              <td class="td whitespace-nowrap text-mocha"><%= event.starts_on.strftime('%b %-d') %><%= " – #{event.ends_on.strftime('%b %-d')}" if event.ends_on != event.starts_on %>, <%= event.ends_on.year %></td>
+              <td class="td text-mocha"><%= event.location.name %></td>
+              <td class="td num"><%= event.pos_event_items.size %></td>
+              <td class="td num"><%= ctrax_money(summary[:total_cents]) %></td>
+              <td class="td"><span class="<%= { 'draft' => 'pill-taupe', 'open' => 'pill-fern', 'closed' => 'pill-olive' }[event.status] %>"><%= event.status.humanize %></span></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

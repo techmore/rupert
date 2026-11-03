@@ -60,6 +60,7 @@
           <% end %>
           <% if pos_setup_allowed? %><%= link_to 'POS checkout setup', pos_setting_path(@snapshot.location_id), class: 'menu-item', role: 'menuitem' %><% end %>
         <% end %>
+        <% @open_events&.each do |event| %><%= link_to "Event register · #{event.name}", pos_event_register_path(event), class: 'menu-item', role: 'menuitem', data: { turbo: false } %><% end %>
         <% if retail_business_access?('settings.read') %><%= link_to 'C-Trax connection', pos_connection_path('ctrax'), class: 'menu-item', role: 'menuitem' %><% end %>
         <%= link_to 'Checkout lesson', learning_path('checkout'), class: 'menu-item', role: 'menuitem' %>
       </div>

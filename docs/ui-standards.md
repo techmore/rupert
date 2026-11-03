@@ -192,6 +192,8 @@ Rules that apply to all templates:
 | `.pill-*` | Status: `fern` done/positive, `clay` waiting or attention, `rose` broken or missing, `olive` info, `taupe` neutral (an outline, never a tint, so it cannot pass for "OK"). Source badges get their colour from `SourceSyncStatus.tone` |
 | `.flash-notice`, `.flash-alert` | Result of an action |
 | `.empty-state`, `.empty-state-title`, `.empty-state-hint` | Nothing here yet |
+| `.callout`, `.callout-attention`, `.callout-title` | One thing on a page that needs a decision or blocks the next step (a returned timesheet's comment, shifts not imported, corrections waiting). Quieter than a flash, louder than text |
+| Time records (`TimesheetsHelper`) | Shared by the staff and reviewer screens. `timesheet_status_pill`: Draft (taupe), In review (clay), Approved (fern), Returned (rose); filters and labels use the same words. `timesheet_state_note`: one sentence under the header with the state, who acted and the next step. `format_hours`: two decimals everywhere so a total equals its days. `shift_span`: `9:00 AM – 4:30 PM`, the end date added for overnight shifts. `period_range` / `Timesheet#period_label`: `Oct 22 – 28, 2026`. `.timesheet-state` (status line), `.timesheet-days` (one row per entry, empty days shown, `.timesheet-total` row), `.entry-edit` (row edit disclosure). Hours from the clock are changed by a correction, never typed over |
 | `.explainer` | Folded explanation |
 | `.badge`, `.nav-badge`, `.badge-clay` | Unread count on an icon or label; hidden at zero. `.badge-clay` for counts that are waiting on someone (release blockers) |
 | `.gate-menu`, `.gate-list`, `.gate-item`, `.gate-links` | The top-bar release gate dropdown (owners only): each blocker's title, what is needed and its GitHub issue links; `Done` pill once ticked off in `config/release_blockers.yml` |
@@ -260,7 +262,7 @@ end of `application.css`.
 
 - **Navigation back** is the rail or the browser, not a `Back` button. A form's `Cancel` returns
   to where it came from.
-- **Status words**: `Draft`, `Open`, `In review`, `Approved`, `Posted`, `Void`, `Locked`,
+- **Status words**: `Draft`, `Open`, `In review`, `Approved`, `Returned`, `Posted`, `Void`, `Locked`,
   `Done`, `Overdue`, `Needs attention`. One pill per status.
 - **Empty states**: "No customers yet." + "Add your first customer." Never "No data".
 - **Dates**: `Oct 21, 2026`; times `3:40 PM`; ranges `Oct 1 – Oct 21, 2026`. Money:
