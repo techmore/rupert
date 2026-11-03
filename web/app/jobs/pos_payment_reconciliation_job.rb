@@ -7,9 +7,8 @@ class PosPaymentReconciliationJob < ApplicationJob
     # SQLite deployments share one filesystem. An advisory process lock keeps
     # a slow gateway request from overlapping a later scheduled sweep; it is
     # released automatically if the worker exits.
-    directory = Rails.root.join('tmp/locks')
-    FileUtils.mkdir_p(directory)
-    File.open(directory.join('pos-payment-reconciliation.lock'), File::RDWR | File::CREAT | File::NOFOLLOW, 0o600) do |lock|
+    FileUtils.mkdir_p(lock_path.dirname)
+    File.open(lock_path, File::RDWR | File::CREAT | File::NOFOLLOW, 0o600) do |lock|
       return unless lock.flock(File::LOCK_EX | File::LOCK_NB)
 
       reconcile_batch
@@ -20,6 +19,10 @@ class PosPaymentReconciliationJob < ApplicationJob
   end
 
   private
+
+  def lock_path
+    Rails.root.join('tmp/locks/pos-payment-reconciliation.lock')
+  end
 
   def reconcile_batch
     PosPaymentAttempt.unscoped.joins(:tenant).where(tenants: { status: 'active' })

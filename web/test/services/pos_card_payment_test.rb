@@ -3,6 +3,9 @@
 require 'test_helper'
 class PosCardPaymentTest < ActiveSupport::TestCase
   setup do
+    # Parallel test workers would otherwise share the job's one lock file, and a job that finds it held skips its sweep.
+    @lock_dir = Dir.mktmpdir('pos-reconciliation-lock')
+    PosPaymentReconciliationJob.any_instance.stubs(:lock_path).returns(Pathname(@lock_dir).join('reconciliation.lock'))
     Current.tenant = tenants(:default_tenant)
     @location = Location.create!(source: 'ctrax', externalId: 'card-fixture/1', name: 'Card fixture')
     @user = users(:regular_user)
@@ -40,7 +43,10 @@ class PosCardPaymentTest < ActiveSupport::TestCase
       { status: 200, headers: { 'Content-Type' => 'application/json' }, body: data.merge(messages: { resultCode: 'Ok' }).to_json }
     end
   end
-  teardown { Current.reset }
+  teardown do
+    Current.reset
+    FileUtils.rm_rf(@lock_dir)
+  end
 
   test 'reconciliation rotates past unresolved attempts without sending charges' do
     51.times do |i|
