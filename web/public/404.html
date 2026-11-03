@@ -5,9 +5,14 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex">
   <title>Page not found — Rupert</title>
+  <script>try { var t = localStorage.getItem("rupert-theme"); if (["light", "mist", "sepia", "dark"].indexOf(t) >= 0) document.documentElement.setAttribute("data-theme", t); } catch (e) {}</script>
   <style>
-    :root { color-scheme: light dark; --bg:#fbf5ef; --card:#ffffff; --ink:#1a393d; --muted:#5a524b; --line:#efe3d8; --accent:#48736d; --accent-ink:#f5f5f5; }
-    @media (prefers-color-scheme: dark) { :root { --bg:#111514; --card:#1b2120; --ink:#eaf0ef; --muted:#b7c3c1; --line:#2b3331; --accent:#5fa39b; --accent-ink:#1a1f1e; } }
+    /* Same appearances as the app (application.css): Herbal by default, or the one saved in this browser. */
+    :root { color-scheme: light; --bg:#e6efea; --card:#fbfdfc; --ink:#17353a; --muted:#47605f; --line:#cddad3; --accent:#0e6f72; --accent-ink:#fbfdfc; }
+    :root[data-theme="light"] { --bg:#f5f7fa; --card:#ffffff; --ink:#14181f; --muted:#5b6572; --line:#dfe4ea; --accent:#2a5fcf; --accent-ink:#ffffff; }
+    :root[data-theme="mist"] { --bg:#e6ebf2; --card:#f3f6fa; --ink:#141922; --muted:#596575; --line:#cdd5e0; --accent:#2457c4; --accent-ink:#ffffff; }
+    :root[data-theme="sepia"] { --bg:#efe6d4; --card:#f7f0e2; --ink:#2b2419; --muted:#665a49; --line:#d9ccb5; --accent:#185f78; --accent-ink:#f7f0e2; }
+    :root[data-theme="dark"] { color-scheme: dark; --bg:#111514; --card:#1b2120; --ink:#eaf0ef; --muted:#97a5a2; --line:#2b3331; --accent:#5fa39b; --accent-ink:#111514; }
     * { box-sizing: border-box; }
     body { margin:0; min-height:100vh; display:grid; place-items:center; padding:1.5rem; background:var(--bg); color:var(--ink);
       font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",ui-sans-serif,system-ui,"Segoe UI",sans-serif; -webkit-font-smoothing:antialiased; }
