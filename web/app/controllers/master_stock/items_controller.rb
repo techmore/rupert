@@ -13,6 +13,7 @@ module MasterStock
       @pagy, @items = pagy(:offset, scope.order(:name, :id), limit: 50)
       @balances = @site ? StockBalance.where(stock_site: @site, stock_item_id: @items.map(&:id)).index_by(&:stock_item_id) : {}
       @exact = @query.present? && @items.size == 1 && (@items.first.sku == @query || @items.first.barcode == @query)
+      @readings = platform_readings(@site, @items.map(&:id))
     end
 
     def show
@@ -20,6 +21,8 @@ module MasterStock
       @balances = @item.balances.includes(:stock_site).index_by(&:stock_site_id)
       @links = @item.links.includes(:stock_site).order(:stock_site_id, :platform)
       @entries = @item.ledger_entries.includes(:stock_site).newest_first.limit(50)
+      @sites = StockSite.order(:name).to_a
+      @readings = @sites.select(&:active).to_h { |site| [site.id, platform_readings(site, [@item.id])[@item.id] || {}] }
       @can_setup = Current.user.can?('settings.write') && Current.user.can?('inventory.write')
     end
 

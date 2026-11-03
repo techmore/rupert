@@ -2338,3 +2338,31 @@ body.tour-active { overflow-x:hidden; }
   .event-receipt { border:0;padding:0; }
   .event-receipt-actions { display:none; }
 }
+
+/* Rupert stock (master_stock/*): one row per item with its Rupert number, each platform's
+   stored reading and the four record actions. docs/ux/inventory-ux-loop.md */
+.toolbar-field-wide { flex:1 1 16rem;max-width:none; }
+.stock-list { display:grid;gap:.6rem; }
+.stock-row { display:grid;gap:.75rem;padding:.9rem 1rem; }
+.stock-row-main { display:flex;align-items:flex-start;justify-content:space-between;gap:1rem; }
+.stock-row-qty { flex-shrink:0;text-align:right;min-width:4rem; }
+.stock-qty { font-family:var(--font-display);font-size:1.75rem;line-height:1;color:var(--color-ink);font-variant-numeric:tabular-nums; }
+.stock-readings { display:flex;flex-wrap:wrap;gap:.35rem;padding-top:.15rem; }
+.stock-reading { font-variant-numeric:tabular-nums;white-space:nowrap; }
+.stock-actions { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem; }
+.stock-action { min-height:48px;justify-content:center; }
+@media(min-width:640px) {
+  .stock-actions { display:flex;flex-wrap:wrap; }
+  .stock-action { min-height:36px;min-width:6.5rem; }
+}
+.preview-table .td { vertical-align:top; }
+.preview-row-large { box-shadow:inset 3px 0 0 var(--color-rose); }
+/* Phones: each proposed write becomes a short stacked block with its own labels. */
+@media(max-width:639px) {
+  .preview-table thead { position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0); }
+  .preview-table, .preview-table tbody, .preview-table tr, .preview-table td { display:block;width:100%; }
+  .preview-table tr { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:.75rem 1rem;border-bottom:1px solid var(--color-fog); }
+  .preview-table td { padding:.2rem 0;text-align:left; }
+  .preview-table td:first-child, .preview-table td:last-child { grid-column:1 / -1; }
+  .preview-table td.num::before { content:attr(data-label);display:block;font-size:.7rem;font-weight:400;color:var(--color-taupe); }
+}
