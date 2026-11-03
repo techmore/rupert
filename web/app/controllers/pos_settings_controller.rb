@@ -27,7 +27,7 @@ class PosSettingsController < AuthenticatedController
       @setting.save
     end
     if saved
-      ActivityLogger.log('pos_setup_saved', subject: @setting, details: "POS store configuration#{'; NMI production signed off' if @setting.saved_change_to_production_approved_at? && @setting.production_approved_at}")
+      ActivityLogger.log('pos_setup_saved', subject: @setting, details: "POS store configuration#{'; production signed off' if @setting.saved_change_to_production_approved_at? && @setting.production_approved_at}")
       redirect_to pos_setting_path(@location.id), notice: 'POS setup saved.'
     else
       render :show, status: :unprocessable_entity
@@ -64,8 +64,9 @@ class PosSettingsController < AuthenticatedController
   # NMI production is allowed only after an owner (admin) confirms the processor
   # approved this merchant account, and says who approved it and when.
   def apply_production_signoff!
-    return unless @setting.gateway_provider == 'nmi' && @setting.environment == 'production'
-    return if @setting.production_approved_at && !@setting.environment_changed? && !@setting.gateway_provider_changed? && !@setting.gateway_id_changed?
+    return unless PosSetting::SIGNOFF_PROVIDERS.include?(@setting.gateway_provider) && @setting.environment == 'production'
+    return if @setting.production_approved_at && !@setting.environment_changed? && !@setting.gateway_provider_changed? && !@setting.gateway_id_changed? &&
+              !(@setting.gateway_provider == 'dejavoo_spin' && @setting.credentials_json_changed?)
     return unless params[:nmi_production_signoff] == '1'
 
     raise Pundit::NotAuthorizedError unless Current.user.admin? || Current.user.super_admin?

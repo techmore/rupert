@@ -4,7 +4,7 @@ require 'digest'
 
 module Pos
   # Runs a register checkout on the store's Dejavoo terminal through SPIn
-  # (sandbox only for now). Same safety rules as the NMI flow:
+  # (production only after owner sign-off). Same safety rules as the NMI flow:
   #
   # - The approved-product check runs again before the terminal is asked.
   # - A durable attempt (its invoice is the SPIn ReferenceId) is saved before
