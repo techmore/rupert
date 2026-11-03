@@ -45,6 +45,7 @@ TEST_CARDS = {
     '38520000023237', '30569309025904', '6200000000000005',
 }
 TEST_PATHS = ('web/test/', 'deploy/ser8/tests/', 'bin/tests/', 'mobile/__tests__/', 'mobile/test/', 'ios/RupertTests/',
+              'web/script/ask_rupert_eval/',  # model-eval fixtures: a safety case pastes a public test card
               'bin/release-audit')  # this file lists the test cards
 SKIP_SUFFIXES = ('.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.pdf', '.woff', '.woff2', '.ttf', '.otf',
                  '.zip', '.gz', '.age', '.sqlite3', '.mp4', '.mov', '.lock', '.svg')
