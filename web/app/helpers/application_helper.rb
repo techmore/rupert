@@ -57,7 +57,16 @@ module ApplicationHelper
   def active_module_entry
     @active_module_entry ||= nav_entries
       .select { |entry| module_match_strength(safe_module_path(entry)).positive? }
-      .max_by { |entry| module_match_strength(safe_module_path(entry)) }
+      .max_by { |entry| module_match_strength(safe_module_path(entry)) } || aliased_module_entry
+  end
+
+  # Record pages with no rail entry of their own sit under the module people open them from,
+  # so the rail keeps showing where they are (a product page is part of Stock, not Overview).
+  MODULE_ALIASES = { '/shopify_variants/' => 'inventory', '/ctrax_stock' => 'stock_comparison' }.freeze
+
+  def aliased_module_entry
+    key = MODULE_ALIASES.find { |prefix, _| request.path.start_with?(prefix) }&.last
+    key && nav_entries.find { |entry| entry.key == key }
   end
 
   # The full-screen POS is never a landing page: the brand link and a section's rail link

@@ -54,13 +54,13 @@
             </tr>
           <% end %>
           <% @movements.each do |m| %>
-            <% info = @names[m.sku] %>
+            <% info = @names[m.shopifyVariantId] || @names[m.squareVariationId] || @names[m.sku] %>
             <tr>
-              <td class="td whitespace-nowrap font-medium text-ink"><%= l(m.createdAt, format: :datetime) %></td>
-              <td class="td font-mono text-xs text-mocha"><%= m.sku.presence || '—' %></td>
+              <td class="td whitespace-nowrap font-medium text-ink"><time datetime="<%= m.createdAt.iso8601 %>" title="<%= l(m.createdAt, format: :datetime) %>"><%= l(m.createdAt, format: :short) %></time></td>
+              <td class="td whitespace-nowrap font-mono text-xs text-mocha"><%= m.sku.presence || '—' %></td>
               <td class="td">
-                <p class="font-medium text-ink"><%= info ? info[:name] : '—' %></p>
-                <% if info && info[:product].present? %><p class="text-xs text-taupe"><%= info[:product] %></p><% end %>
+                <p class="font-medium text-ink"><%= info ? (info[:product].presence || info[:name]) : 'Unknown item' %></p>
+                <% if info && info[:product].present? && info[:name].present? && info[:name] != 'Default Title' %><p class="text-xs text-taupe"><%= info[:name] %></p><% end %>
               </td>
               <td class="td">
                 <% pill = case m.source

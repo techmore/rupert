@@ -181,15 +181,19 @@ class InventoryController < AuthenticatedController
   # sku => display name + product, resolved once per page so the ledger view
   # doesn't run per-row queries. Square names win for item title (they match
   # the mirrored movement), but Shopify adds the product line.
+  # Names keyed by the movement's exact variant ID, falling back to SKU (many items have none).
   def movement_names(movements)
     skus = movements.map(&:sku).compact.uniq
     names = {}
-    ShopifyVariant.where(sku: skus).includes(:product).find_each do |variant|
-      names[variant.sku] ||= { name: variant.title, product: variant.product&.title }
+    shopify = ShopifyVariant.where(sku: skus).or(ShopifyVariant.where(id: movements.filter_map(&:shopifyVariantId)))
+    shopify.includes(:product).find_each do |variant|
+      names[variant.id] = names[variant.sku] ||= { name: variant.title, product: variant.product&.title }
     end
-    SquareVariation.where(sku: skus).find_each do |variation|
-      names[variation.sku] ||= { name: variation.name, product: nil }
+    square = SquareVariation.where(sku: skus).or(SquareVariation.where(id: movements.filter_map(&:squareVariationId)))
+    square.includes(:item).find_each do |variation|
+      names[variation.id] = names[variation.sku] ||= { name: variation.name, product: variation.item&.name }
     end
+    names.delete(nil)
     names
   end
 

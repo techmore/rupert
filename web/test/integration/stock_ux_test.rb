@@ -165,4 +165,21 @@ class StockUxTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select '.empty-state-title', '1 product hidden until linked to a website image'
   end
+
+  test 'counts and movements name the product, and a product page keeps Stock lit in the rail' do
+    count = InventoryCount.create!(countedAt: Time.current, locationId: @shopify_location.id, createdBy: @admin.email)
+    item = InventoryCountItem.create!(count: count, sku: 'GUM-10', quantity: 3, shopifyVariantId: @variant.id)
+    assert_equal 'Gummies · 10 pack', item.inventory_title
+    InventoryMovement.create!(source: 'shopify', direction: 'out', delta: -1, quantityBefore: 4, quantityAfter: 3,
+      shopifyVariantId: @variant.id, sku: nil, actor: 'scheduler', reason: 'Sold online')
+
+    sign_in(@admin)
+    get movements_inventory_index_path
+    assert_select 'td p.font-medium', text: 'Gummies'
+    assert_select 'td p.text-xs', text: '10 pack'
+    get shopify_variant_path(@variant.id)
+    assert_select 'nav[aria-label="Module areas"] a[aria-label="Stock"][aria-current="page"]'
+    get inventory_counts_path
+    assert_select '[data-count-kinds]', /never change a number/
+  end
 end

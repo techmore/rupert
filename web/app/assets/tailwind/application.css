@@ -579,7 +579,7 @@ html[data-full-window] .table-region { max-height:none; }
 .stock-figure { font-family:var(--font-display);font-size:1.375rem;line-height:1.1;color:var(--color-ink);font-variant-numeric:tabular-nums; }
 .stock-figure-note { margin-top:.2rem;font-size:.75rem;color:var(--color-taupe);white-space:nowrap; }
 .stock-row-actions { display:flex;flex-wrap:wrap;gap:.25rem .75rem;font-size:.8rem;font-weight:500;white-space:nowrap; }
-.stock-row-actions a { color:var(--color-olive-deep); }
+.stock-row-actions a { display:inline-flex;align-items:center;min-height:24px;color:var(--color-olive-deep); }
 .stock-row-actions a:hover { text-decoration:underline; }
 .stock-progress { display:block;height:.3rem;margin-top:.35rem;margin-left:auto;width:6rem;border-radius:var(--radius-pill);background:var(--color-haze);overflow:hidden; }
 .stock-progress > span { display:block;height:100%;background:var(--color-olive); }
@@ -2378,3 +2378,5 @@ body.tour-active { overflow-x:hidden; }
   .glance-item { grid-template-columns:minmax(12rem,1fr) 2.4fr;align-items:start; }
   .glance-figures { grid-template-columns:repeat(3,minmax(0,1fr));gap:1.25rem; }
 }
+/* Row checkboxes: a 24px target (WCAG 2.2 2.5.8) around the native 13px box. */
+.check-target { width:1.125rem;height:1.125rem;margin:.1875rem;cursor:pointer; }
