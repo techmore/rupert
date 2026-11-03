@@ -28,13 +28,15 @@
   <div class="toolbar-band">
     <%= form_with url: workspace_inventory_index_path, method: :get, class: 'toolbar' do %>
       <%= hidden_field_tag :view, @view, id: nil %>
-      <div class="toolbar-field"><%= label_tag :q, 'Search', class: 'field-label' %><%= search_field_tag :q, params[:q], class: 'input', placeholder: 'SKU or item' %></div>
+      <div class="toolbar-field"><%= label_tag :q, 'Search', class: 'field-label' %><%= search_field_tag :q, params[:q], class: 'input', placeholder: 'SKU, barcode or item', autocomplete: 'off' %></div>
       <div class="toolbar-field"><%= label_tag :source, 'Source', class: 'field-label' %><%= select_tag :source, options_for_select([['Shopify', 'shopify'], ['Square', 'square']], params[:source]), include_blank: 'All sources', class: 'input' %></div>
       <div class="toolbar-field"><%= label_tag :location_id, 'Location', class: 'field-label' %><%= select_tag :location_id, options_from_collection_for_select(@locations, :id, :name, params[:location_id]), include_blank: 'All locations', class: 'input' %></div>
       <div class="toolbar-field"><%= label_tag :sort, 'Sort', class: 'field-label' %><%= select_tag :sort, options_for_select([['Item / location', 'item'], ['Lowest mirrored available', 'low'], ['Oldest stock read', 'oldest']], params[:sort]), class: 'input' %></div>
       <div class="toolbar-actions"><%= submit_tag 'Apply', class: 'btn-primary', name: nil %><%= link_to 'Clear', workspace_inventory_index_path, class: 'btn-ghost' %></div>
     <% end %>
   </div>
+
+  <%= render 'inventory/glance', glance: @glance if @glance.present? %>
 
   <div class="stock-viewbar">
     <p class="text-sm text-mocha"><strong class="text-ink"><%= @pagy.count %></strong> mirrored <%= 'pool'.pluralize(@pagy.count) %><% if @pagy.pages > 1 %> · <%= @pagy.from %>–<%= @pagy.to %> shown<% end %></p>
@@ -113,7 +115,7 @@
                     <%= stock_thumbnail(row) %>
                     <div class="min-w-0">
                       <p class="stock-item-name"><% if level.source == 'shopify' && row[:native_id] %><%= link_to stock_item_name(row), shopify_variant_path(row[:native_id]), class: 'hover:underline' %><% else %><%= stock_item_name(row) %><% end %></p>
-                      <p class="stock-item-meta"><%= stock_item_sku(row) || 'No SKU' %><% if row[:native_id] %> · <span class="font-mono"><%= row[:native_id] %></span><% end %></p>
+                      <p class="stock-item-meta"><%= stock_item_sku(row) || 'No SKU' %></p>
                     </div>
                   </div>
                 </td>

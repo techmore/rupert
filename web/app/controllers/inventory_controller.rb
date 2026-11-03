@@ -90,6 +90,7 @@ class InventoryController < AuthenticatedController
       send_data csv, filename: "inventory-pools-#{Date.current.iso8601}.csv", type: 'text/csv'
     else
       @view = remembered_view(:inventory_view)
+      @glance = StockGlance.new(query: params[:q]).items if params[:q].present? && params[:page].to_i <= 1
       @counts = InventoryCount.where(status: 'pending').count
       @transfers = StockRequest.where(request_kind: 'transfer', status: %w[allocated dispatched]).count
       @backorders = StockRequest.where(request_kind: 'backorder', status: 'pending').count
