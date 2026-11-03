@@ -64,7 +64,7 @@ module Mcp
         title: 'Customer profile and history',
         description: 'Finds one shop customer by name (a first name, last name or part of one, e.g. "Patel" or "Leo"), by ' \
                      'customer id, or by an order number ("who is the customer on order 10482"), and returns their profile: ' \
-                     'CRM status (lead, customer, vip, inactive), tags, owner, customer-since date and notes; lifetime ' \
+                     'CRM status (lead, customer, vip, inactive), wholesale or retail account, tags, owner, customer-since date and notes; lifetime ' \
                      'value (paid order count and spend per currency, average and biggest order, first and last order ' \
                      'date, refunds), spend in an optional date range, what they usually buy, recent orders with what ' \
                      'was in the last one, open follow-ups and recent calls, emails, meetings and notes. Lists other ' \
@@ -165,6 +165,7 @@ module Mcp
       def profile(customer)
         { id: customer.id, name: customer.name, first_name: customer.first_name, last_name: customer.last_name,
           preferred_name: customer.preferred_name, crm_status: customer.crm_status, tags: customer.tag_list,
+          wholesale: customer.wholesale?, wholesale_business_name: customer.wholesale? ? customer.wholesale_business_name : nil,
           owner: staff_name(customer.owner), source: customer.source, customer_since: iso(customer.created_at),
           last_synced_at: iso(customer.source_synced_at), notes: customer.notes.present? ? redact(customer.notes, 400) : nil,
           email_on_file: customer.email.present?, phone_on_file: customer.phone.present?,

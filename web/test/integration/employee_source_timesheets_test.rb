@@ -50,9 +50,9 @@ class EmployeeSourceTimesheetsTest < ActionDispatch::IntegrationTest
       sign_in
       get people_timesheets_path
       assert_response :success
-      assert_select 'a[href=?]', people_timesheets_path(status: 'all'), text: 'View all Rupert timesheets'
-      assert_select 'a[href=?]', people_square_timesheets_path, text: 'View Square history'
-      assert_select 'a[href=?]', people_ctrax_timesheets_path, text: 'View C-Trax history'
+      assert_select 'a[href=?]', people_timesheets_path(status: 'all'), text: 'Open all Rupert timesheets'
+      assert_select 'a[href=?]', people_square_timesheets_path, text: 'Open Square history'
+      assert_select 'a[href=?]', people_ctrax_timesheets_path, text: 'Open C-Trax history'
       get people_square_timesheets_path
       assert_response :success
       assert_select 'a[href=?]', people_square_timesheet_path(@other_square)

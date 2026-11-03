@@ -25,7 +25,10 @@ class ModuleRegistry
     Entry.new(key: 'registers', name: 'Registers', path: -> { sales_pos_sessions_path }, permission: 'sales.read', position: 22),
     Entry.new(key: 'ctrax_days', name: 'C-Trax daily close', path: -> { ctrax_days_path }, permission: 'sales.read', position: 24),
     Entry.new(key: 'swipesimple_days', name: 'SwipeSimple daily close', path: -> { swipesimple_days_path }, permission: 'sales.read', position: 24.5),
+    Entry.new(key: 'pos_events', name: 'Shows and pop-ups', path: -> { pos_events_path }, permission: 'sales.read', position: 25),
+    Entry.new(key: 'compliance', name: 'Compliance', path: -> { compliance_path }, permission: 'sales.read', position: 25.5),
     Entry.new(key: 'customers', name: 'Customers', path: -> { customers_path }, permission: 'customers.read', position: 30),
+    Entry.new(key: 'loyalty', name: 'Loyalty', path: -> { loyalty_path }, permission: 'customers.read', position: 30.5),
     # Marketing
     Entry.new(key: 'marketing', name: 'Marketing', path: -> { marketing_path }, permission: 'marketing.read', position: 35),
     Entry.new(key: 'marketing_events', name: 'Events', path: -> { marketing_events_path }, permission: 'marketing.read', position: 35.5),
@@ -216,11 +219,12 @@ class ModuleRegistry
     AREAS = [
       { key: 'overview', name: 'Overview', modules: ['dashboard'] },
       { key: 'sell', name: 'Sell',
-        modules: %w[ctrax_pos sales registers ctrax_days swipesimple_days customers],
+        modules: %w[ctrax_pos sales registers pos_events compliance ctrax_days swipesimple_days customers loyalty],
         groups: [
           { name: 'Sales & POS', modules: %w[ctrax_pos sales registers] },
+          { name: 'Events & compliance', modules: %w[pos_events compliance] },
           { name: 'Daily close', modules: %w[ctrax_days swipesimple_days] },
-          { name: 'Customers', modules: %w[customers] }
+          { name: 'Customers', modules: %w[customers loyalty] }
         ] },
       { key: 'marketing', name: 'Marketing', modules: %w[marketing marketing_events influencers] },
       { key: 'stock', name: 'Stock',

@@ -33,6 +33,12 @@
                 <span class="pos-tile-price retail-money"><%= item[:price] %></span>
                 <span class="<%= item[:stock_tone] %> pos-stock" title="<%= item[:stock_detail] %>"><%= item[:stock] %></span>
               </span>
+              <% if (badge = item[:compliance]) && (!badge[:card] || !badge[:coa]) %>
+                <span class="pos-tile-flags">
+                  <% unless badge[:card] %><span class="pill-clay" data-compliance-flag="cash-only">Cash only</span><% end %>
+                  <% unless badge[:coa] %><span class="pill-rose" data-compliance-flag="no-coa">No current COA</span><% end %>
+                </span>
+              <% end %>
             </span>
           </button>
         <% end %>

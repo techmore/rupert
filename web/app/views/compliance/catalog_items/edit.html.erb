@@ -1,0 +1,40 @@
+<div class="page-narrow space-y-6">
+  <%= page_header @item.compliant_name, eyebrow: 'Approved item', subtitle: "#{@location.name} · #{@item.approved? ? 'Approved' : 'Suspended'}" do %>
+    <%= link_to 'Add certificate', new_compliance_catalog_item_certificate_path(@item), class: 'btn-primary' %>
+  <% end %>
+  <%= render 'form' %>
+
+  <section class="section-card" aria-labelledby="item-coas">
+    <%= section_heading 'Lab certificates', id: 'item-coas', hint: 'Newest first. Withdrawn certificates stay for the record and are never current.' %>
+    <% coas = @item.certificates_of_analysis.sort_by { |c| [c.tested_on, c.id] }.reverse %>
+    <% if coas.empty? %><%= empty_state 'No certificate yet.', hint: 'Link the lab’s report for this product or batch.' %><% end %>
+    <ul class="row-list">
+      <% coas.each do |coa| %>
+        <li class="row-item">
+          <div class="min-w-0"><p class="font-semibold text-ink"><%= link_to coa.label, coa.document_url, target: '_blank', rel: 'noopener noreferrer', class: 'text-olive-deep hover:underline' %></p>
+            <p class="text-xs text-mocha">Tested <%= coa.tested_on.strftime('%b %-d, %Y') %><%= " · expires #{coa.expires_on.strftime('%b %-d, %Y')}" if coa.expires_on %><%= " · withdrawn: #{coa.withdrawal_reason}" if coa.withdrawn? %></p></div>
+          <div class="row-item-end">
+            <% if coa.withdrawn? %><span class="pill-taupe">Withdrawn</span>
+            <% else %>
+              <%= coa.current_on?(Date.current, max_age_days: CompliancePolicy.for(@location).coa_max_age_days) ? tag.span('Current', class: 'pill-fern') : tag.span('Not current', class: 'pill-rose') %>
+              <details class="menu" data-controller="navigation-menu"><summary class="menu-trigger btn-ghost btn-sm">Withdraw</summary>
+                <%= form_tag withdraw_compliance_catalog_item_certificate_path(@item, coa), class: 'menu-panel space-y-2 p-3' do %>
+                  <%= label_tag "reason_#{coa.id}", 'Reason', class: 'field-label' %><%= text_field_tag :reason, nil, id: "reason_#{coa.id}", minlength: 8, required: true, class: 'input' %>
+                  <%= submit_tag 'Withdraw certificate', class: 'btn-danger btn-sm' %>
+                <% end %>
+              </details>
+            <% end %>
+          </div>
+        </li>
+      <% end %>
+    </ul>
+  </section>
+
+  <section class="section-card" aria-labelledby="item-status">
+    <%= section_heading(@item.approved? ? 'Suspend' : 'Reinstate', id: 'item-status', hint: @item.approved? ? 'A suspended item stops ringing up at once, at the register and at events.' : 'Put this item back on the approved catalog.') %>
+    <%= form_tag(@item.approved? ? suspend_compliance_catalog_item_path(@item) : reinstate_compliance_catalog_item_path(@item), class: 'flex flex-wrap items-end gap-3') do %>
+      <div class="min-w-0 flex-1"><%= label_tag :reason, 'Reason', class: 'field-label' %><%= text_field_tag :reason, nil, minlength: 8, required: true, class: 'input' %></div>
+      <%= submit_tag(@item.approved? ? 'Suspend item' : 'Reinstate item', class: @item.approved? ? 'btn-danger' : 'btn-ghost') %>
+    <% end %>
+  </section>
+</div>

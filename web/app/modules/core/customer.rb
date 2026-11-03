@@ -10,6 +10,10 @@ module Core
 
     SOURCES = %w[shopify square ctrax swipesimple pos manual].freeze
     CRM_STATUSES = %w[lead customer vip inactive].freeze
+    # Account type filter on the customer list. Wholesale is a Rupert-only
+    # annotation: it changes no prices or tax and is never sent to a source.
+    ACCOUNT_TYPES = { 'retail' => 'Retail', 'wholesale' => 'Wholesale' }.freeze
+    WHOLESALE_FIELDS = %w[wholesale wholesale_business_name resale_certificate_number resale_certificate_expires_on wholesale_notes].freeze
 
     belongs_to :owner, class_name: 'User', optional: true
     has_many :interactions, class_name: 'CustomerInteraction', dependent: :destroy
@@ -21,6 +25,13 @@ module Core
     validates :tags, length: { maximum: 1000 }
     validates :preferred_name, length: { maximum: 255 }
     validates :notes, length: { maximum: 10_000 }
+    validates :wholesale_business_name, length: { maximum: 255 }
+    validates :resale_certificate_number, length: { maximum: 100 }
+    validates :wholesale_notes, length: { maximum: 2_000 }
+    before_validation :strip_wholesale_details
+
+    scope :wholesale, -> { where(wholesale: true) }
+    scope :retail, -> { where(wholesale: false) }
 
     has_many :orders, class_name: 'Core::Order', foreign_key: :customer_id
 
@@ -60,6 +71,13 @@ module Core
       local_name.presence || [first_name, last_name].compact.join(' ').presence || email || phone || 'Unnamed customer'
     end
 
+    def account_type = wholesale? ? 'wholesale' : 'retail'
+
+    # Only meaningful for a wholesale customer with an expiry on file.
+    def resale_certificate_expired?(today = Date.current)
+      wholesale? && resale_certificate_expires_on.present? && resale_certificate_expires_on < today
+    end
+
     def tag_list
       tags.to_s.split(',').map(&:strip).reject(&:blank?)
     end
@@ -77,6 +95,12 @@ module Core
 
     def normalize_tags
       self.tags = tag_list.uniq.sort.join(', ')
+    end
+
+    def strip_wholesale_details
+      %i[wholesale_business_name resale_certificate_number wholesale_notes].each do |key|
+        self[key] = self[key].to_s.strip.presence if has_attribute?(key)
+      end
     end
   end
 end

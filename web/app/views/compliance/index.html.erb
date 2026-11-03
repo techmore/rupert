@@ -1,0 +1,27 @@
+<% content_for :title, 'Compliance' %>
+<% base = { location_id: @location&.id } %>
+<div class="space-y-6">
+  <%= page_header 'Compliance', subtitle: 'The approved register catalog, lab certificates and every override, so a sale is never rung up in a way the card processor refuses.',
+        menu: [(['Override PIN', edit_compliance_override_pin_path] if Current.user.can_approve_pos_override?), ['Shows and pop-ups', pos_events_path]].compact do %>
+    <% if @snapshots.size > 1 %>
+      <%= form_tag compliance_path, method: :get, class: 'flex items-end gap-2' do %>
+        <%= hidden_field_tag :tab, @tab %>
+        <%= label_tag :location_id, 'Store', class: 'sr-only' %>
+        <%= select_tag :location_id, options_for_select(@snapshots.map { |s| [s.location.name, s.location_id] }, @location&.id), class: 'select', onchange: 'this.form.requestSubmit()' %>
+        <noscript><%= submit_tag 'Apply', class: 'btn-ghost' %></noscript>
+      <% end %>
+    <% end %>
+  <% end %>
+
+  <nav class="tabs" aria-label="Compliance views">
+    <% { 'catalog' => 'Approved catalog', 'certificates' => 'Lab certificates', 'categories' => 'Categories', 'audit' => 'Audit log', 'exceptions' => 'Daily exceptions' }.each do |key, label| %>
+      <%= link_to label, compliance_path(base.merge(tab: key)), class: "tab #{'tab-active' if @tab == key}".strip, aria: { current: (@tab == key ? 'page' : nil) } %>
+    <% end %>
+  </nav>
+
+  <% if @location.nil? && %w[catalog certificates].include?(@tab) %>
+    <div class="card"><%= empty_state 'No C-Trax store yet.', hint: 'Read a store’s C-Trax stock first; its items are what you approve here.' %></div>
+  <% else %>
+    <%= render "compliance/#{@tab}" %>
+  <% end %>
+</div>
