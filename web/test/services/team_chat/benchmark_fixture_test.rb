@@ -24,17 +24,11 @@ class TeamChatBenchmarkFixtureTest < ActiveSupport::TestCase
 
   test 'two runs in fresh databases give identical truth, and a different seed gives different data' do
     first = truth_of_a_fresh_run
-    assert_equal first, truth_of_a_fresh_run
-    assert_equal first.to_json, truth_of_a_fresh_run.to_json
+    second = truth_of_a_fresh_run
+    assert_equal first, second
+    assert_equal first.to_json, second.to_json
     assert_not_equal first['sales_by_month'], truth_of_a_fresh_run(seed: 7)['sales_by_month']
     assert_equal 0, Core::Order.where('source_order_id LIKE ?', 'bf-%').count
-  end
-
-  test 'a second call on the same tenant raises instead of doubling the data' do
-    TeamChat::BenchmarkFixture.call(tenant: @tenant)
-    count = Core::Order.count
-    assert_raises(TeamChat::BenchmarkFixture::AlreadyLoaded) { TeamChat::BenchmarkFixture.call(tenant: @tenant) }
-    assert_equal count, Core::Order.count
   end
 
   test 'it refuses to run in production unless explicitly allowed' do
@@ -45,19 +39,24 @@ class TeamChatBenchmarkFixtureTest < ActiveSupport::TestCase
     end
   end
 
-  test 'it writes nothing for any other tenant and the truth can be saved as JSON' do
+  # One generation serves three checks; each generation takes seconds.
+  test 'it writes nothing for any other tenant, the truth can be saved as JSON, and a second call raises' do
     other = Tenant.create!(id: 'other-tenant', name: 'Other', subdomain: 'othershop')
     fixture = TeamChat::BenchmarkFixture.call(tenant: @tenant)
     path = Rails.root.join('tmp', "benchmark-truth-#{Process.pid}.json")
     fixture.truth_json(path)
     assert_equal fixture.truth, JSON.parse(File.read(path))
     assert_equal 0, Core::Order.tenant_unscoped(other.id).count + Finance::Expense.tenant_unscoped(other.id).count
+    count = Core::Order.count
+    assert_raises(TeamChat::BenchmarkFixture::AlreadyLoaded) { TeamChat::BenchmarkFixture.call(tenant: @tenant) }
+    assert_equal count, Core::Order.count, 'a second call never doubles the data'
   ensure
     FileUtils.rm_f(path)
   end
 
-  test 'the data is rich enough for real questions' do
-    truth = TeamChat::BenchmarkFixture.call(tenant: @tenant).truth
+  test 'the data is rich enough for real questions and the database holds what the generator says' do
+    fixture = TeamChat::BenchmarkFixture.call(tenant: @tenant)
+    truth = fixture.truth
     counts = truth['counts']
     assert_operator counts['sales_orders'], :>=, 250
     assert_operator counts['sources'].size, :>=, 3
@@ -81,11 +80,7 @@ class TeamChatBenchmarkFixtureTest < ActiveSupport::TestCase
     assert_operator truth['order_queues']['paid_unshipped_orders'].size, :>=, 1
     assert_equal 14, truth['daily_orders_last_14_days'].size
     assert_operator truth['customers'].values.count { |row| row['orders'].positive? }, :>=, 5
-  end
-
-  test 'the database holds what the generator says it created' do
-    fixture = TeamChat::BenchmarkFixture.call(tenant: @tenant)
-    counts = fixture.truth['counts']
+    counts = truth['counts']
     assert_equal counts['orders'], Core::Order.count
     assert_equal counts['refunds'], Core::Refund.count
     assert_equal counts['expenses'], Finance::Expense.count
@@ -95,6 +90,7 @@ class TeamChatBenchmarkFixtureTest < ActiveSupport::TestCase
     assert_equal fixture.truth['stock']['open_alert_skus'], StockAlert.open.pluck(:sku).sort
     assert_equal fixture.truth['order_queues']['unpaid_orders'].sort, Core::Order.where(status: 'placed').pluck(:order_number).sort
   end
+
 
   # The key test: Rupert's own tools, run on the generated data, must agree with the generator's independent truth.
   test "Rupert's tools agree with the generator's truth" do
