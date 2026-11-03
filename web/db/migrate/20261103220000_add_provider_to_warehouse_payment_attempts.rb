@@ -5,7 +5,8 @@
 # lets a shopper return to an unfinished Dejavoo payment page.
 class AddProviderToWarehousePaymentAttempts < ActiveRecord::Migration[8.1]
   def change
-    add_column :warehouse_payment_attempts, :provider, :string, null: false, default: 'authorize_net'
+    # SQLite, a small table: the constant default needs no staged backfill.
+    safety_assured { add_column :warehouse_payment_attempts, :provider, :string, null: false, default: 'authorize_net' }
     add_column :warehouse_payment_attempts, :hosted_url, :text
   end
 end
