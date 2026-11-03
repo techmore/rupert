@@ -15,7 +15,7 @@ The new **POS & payments → Authorize.net reporting** connection is separate fr
 | Merchant portal username/password | Interactive portal login; user permissions apply there | Never stored or used as API reporting credentials. |
 | Public Client Key / Signature Key | Accept tokenization / webhook integrity | Not reporting authentication. |
 
-The official OAuth guide requires registration in the **Partner Interface**, followed by merchant owner/admin consent. This PR supports refreshing an already issued token; it does not implement application registration, initial consent/code exchange or imply that Herbal Healers has partner access. Do not generate or rotate live Transaction/Signature Keys: that can disrupt existing checkout integrations.
+The official OAuth guide requires registration in the **Partner Interface**, followed by merchant owner/admin consent. This PR supports refreshing an already issued token; it does not implement application registration, initial consent/code exchange or imply that the store has partner access. Do not generate or rotate live Transaction/Signature Keys: that can disrupt existing checkout integrations.
 
 ### Shared checkout credentials and Shopify
 

@@ -1,0 +1,49 @@
+<%# Cancellation and refunds for Rupert's own subscriptions: public. Card-brand and Stripe website rules
+    expect a refund and cancellation policy that customers can read before paying. DRAFT for the owner
+    to decide: the refund rules are business decisions, so they are placeholders, not invented terms.
+    The cancellation steps match BillingController#portal (Stripe customer portal; during a commitment
+    the portal is refused and the customer contacts support). Keep prices off this page (it opens in
+    the iPhone app; App Store guideline 3.1.1).
+    OWNER REVIEW: choose the refund rules, check that the Stripe portal configuration
+    (CSP_STRIPE_PORTAL_CONFIGURATION_ID) cancels at the end of the billing period as stated below. %>
+<% content_for :title, 'Cancellation and refunds' %>
+<div class="page-medium space-y-6">
+  <%= page_header 'Cancellation and refunds', subtitle: 'How to cancel a Rupert subscription, and when you get money back. Updated Nov 2, 2026.' %>
+  <%= render 'public_pages/draft_notice', legal: true %>
+
+  <section class="section-card">
+    <%= section_heading 'This page covers Rupert subscriptions only' %>
+    <p class="text-sm">It is about what your business pays <%= company_operator_name %> for Rupert. Refunds you give your own customers are made through your payment provider and follow your own store policy.</p>
+  </section>
+
+  <section class="section-card" id="cancel">
+    <%= section_heading 'How to cancel' %>
+    <ul class="list-disc space-y-1 pl-5 text-sm">
+      <li><strong>Monthly plan:</strong> the workspace owner signs in on the Rupert website and opens Subscription → Manage billing, or emails <%= mail_to PublicPagesController.support_email, nil, class: 'text-olive underline' %>. You can cancel at any time.</li>
+      <li><strong>Plan with a 12-month commitment:</strong> email us. The commitment is owed until it ends; you can cancel the renewal at any time so that billing stops when the commitment ends.</li>
+      <li>Cancelling a subscription keeps your free account and workspace, so your records stay available.</li>
+    </ul>
+  </section>
+
+  <section class="section-card" id="when">
+    <%= section_heading 'When cancellation takes effect' %>
+    <p class="text-sm">Paid features stay on until the end of the period you have already paid for, and you are not charged again. <%= owner_placeholder('confirm this matches the Stripe portal setting, or describe the actual timing') %></p>
+  </section>
+
+  <section class="section-card" id="refunds">
+    <%= section_heading 'Refunds' %>
+    <ul class="list-disc space-y-1 pl-5 text-sm">
+      <li><strong>Partly used billing periods:</strong> <%= owner_placeholder('whether unused time is refunded, e.g. “not refunded” or “refunded pro rata”') %></li>
+      <li><strong>First payment:</strong> <%= owner_placeholder('any money-back window for new subscribers, or “none”') %></li>
+      <li><strong>Billing mistakes:</strong> if we charged you twice or charged the wrong amount, we refund the difference to the original payment method once we confirm it.</li>
+      <li>Refunds go back to the card or account you paid with, usually within <%= owner_placeholder('time, e.g. 5–10 business days') %> after we approve them.</li>
+    </ul>
+  </section>
+
+  <section class="section-card" id="questions">
+    <%= section_heading 'Questions or disputes' %>
+    <p class="text-sm">Please contact us at <%= mail_to PublicPagesController.support_email, nil, class: 'text-olive underline' %> before disputing a charge with your bank. Most billing problems can be fixed faster that way. Charges appear on your statement as <%= owner_placeholder('statement descriptor shown by Stripe') %>.</p>
+  </section>
+
+  <%= render 'public_pages/policy_links' %>
+</div>

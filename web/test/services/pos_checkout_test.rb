@@ -128,6 +128,28 @@ class PosCheckoutTest < ActiveSupport::TestCase
 
   private
 
+  test 'processor approved list blocks unapproved items on the terminal card tender but not cash' do
+    @snapshot.update!(records_json: @snapshot.records.map { |row| row.merge('sku' => 'HH-THCA-1', 'category' => 'THCA Flower') })
+    catalog = ProcessorCatalog.create!(processor: 'card_terminal', enforced: true, approval_reference: 'ISO approval')
+    catalog.entries.create!(kind: 'category', value: 'CBD Tinctures')
+    @display.choose_tip!(revision: @display.cart_revision, choice: 'none')
+    error = assert_raises(Pos::Error) { Pos::Checkout.prepare!(display: @display.reload, tender: 'card_a920', register_id: @register.id) }
+    assert_includes error.message, 'Card (Card terminal (standalone)) can\'t take this item'
+    assert_includes error.message, 'Use Cash instead'
+    assert_empty PosCheckout.all
+    assert_empty PosStockAllocation.all
+    assert ActivityLog.where(action: 'payment_item_blocked').exists?
+    checkout = prepare
+    assert_equal 'THCA Flower', checkout.lines.first['category']
+    Pos::Checkout.cash!(checkout, received: '20.00')
+    assert checkout.reload.paid?
+    catalog.entries.create!(kind: 'category', value: 'thca flower')
+    other = PosDisplaySession.create!(user: @user, location: @location)
+    publish(other)
+    other.choose_tip!(revision: other.cart_revision, choice: 'none')
+    assert_equal 'card_a920', Pos::Checkout.prepare!(display: other.reload, tender: 'card_a920', register_id: @register.id).tender
+  end
+
   def prepare = Pos::Checkout.prepare!(display: @display.reload, tender: 'cash', register_id: @register.id)
 
   def publish(display, quantity: 1)

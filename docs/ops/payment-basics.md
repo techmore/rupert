@@ -33,15 +33,13 @@ The current plan is to connect Rupert to the merchant's confirmed, approved prov
 
 ## Where Valmar and Authorize.net fit
 
-The business reports using Valmar for its payment services. Valmar calls itself a processor and identifies itself as a registered merchant-services partner (ISO/MSP) for banks. Its public site also advertises gateway services. That does not identify which gateway, backend processor or bank serves Derrick's particular account. See [Valmar's official site and disclosures](https://vlmr.com/).
+The business reports using Valmar for its payment services. Valmar calls itself a processor and identifies itself as a registered merchant-services partner (ISO/MSP) for banks. Its public site also advertises gateway services. That does not identify which gateway, backend processor or bank serves a particular merchant's account. See [Valmar's official site and disclosures](https://vlmr.com/).
 
 Authorize.net is a possible gateway for that account, not a confirmed connection. Ask Valmar first. There may already be an account that Rupert can connect to; do not assume two new subscriptions are needed.
 
-## Deep Run Hemp's separate NMI history
+## Other merchant accounts
 
-Emails reviewed October 16, 2026 show a separate arrangement for Deep Run Hemp: Next Stage Payments confirmed merchant approval on July 21, supplied WooCommerce/NMI integration guidance on July 22, and matching gateway/store receipts demonstrate a completed NMI card sale on July 23. The store confirmation explicitly names "Credit Card (NMI)". NMI checkout therefore worked for at least one historical store sale; the emails do not establish current availability, bank settlement or a completed Rupert integration.
-
-Next Stage was the account approval and integration support contact in those emails. This does not confirm Next Stage's backend processor/acquiring bank or establish that Deep Run Hemp used the Valmar/Authorize.net arrangement discussed above. For the application-document limits, setup requirements, source chronology and remaining verification, see [Deep Run Hemp's historical NMI evidence in the payment setup guide](https://techmore.github.io/rupert/payment-integrations.html).
+A business may also have a separate, older card account, for example an NMI account that served its own website. Its history is kept in the owner's private records, not in this public guide. A past sale shows the account once worked; it does not establish current availability, bank settlement or a Rupert integration. See [connecting an existing NMI merchant account](https://techmore.github.io/rupert/payment-integrations.html).
 
 ## Who to contact
 
@@ -55,10 +53,10 @@ Public contact details checked 2026-10-15. These are company contacts, not a ver
 
 **Please confirm the payment setup already serving our business:** gateway name; backend processor and acquiring bank; merchant account/reference; enabled in-store and website channels; supported PAX model and installed payment application; approved integration documentation and test access; tipping/refund support; and how daily batches match bank deposits. Please identify our account support contact and any integration or recurring fees.
 
-Record their answers, support contacts and review/renewal dates in Rupert's [private owner checklist](https://herbalhealers.rupertpos.com/owner_checklists). Use the vendor's secure channel for account verification and the approved credential form for API secrets. The checklist stores references, not passwords.
+Record their answers, support contacts and review/renewal dates in Rupert's private owner checklist (**Work → Owner checklists**, `/owner_checklists`, in your workspace). Use the vendor's secure channel for account verification and the approved credential form for API secrets. The checklist stores references, not passwords.
 
 ## What Rupert can claim today
 
-Implementation scope reviewed October 17, 2026: Rupert now includes cash checkout with tax checks, confirmed customer tips and receipts; optional per-store Authorize.net hosted-card checkout with uncertain-outcome recovery; and NMI sandbox-only card testing. NMI production charging is blocked. Provider preparation/read checks, reporting and the legacy warehouse checkout are separate paths. These implemented features do not demonstrate that Derrick's intended merchant account is connected or that real payments, stock effects, terminals, refunds and bank settlement have passed acceptance. Keep the existing accepted checkout as the fallback until the [cutover checks](https://techmore.github.io/rupert/pos-parity.html) pass.
+Implementation scope reviewed October 17, 2026: Rupert now includes cash checkout with tax checks, confirmed customer tips and receipts; optional per-store Authorize.net hosted-card checkout with uncertain-outcome recovery; and NMI sandbox-only card testing. NMI production charging is blocked. Provider preparation/read checks, reporting and the legacy warehouse checkout are separate paths. These implemented features do not demonstrate that the store's intended merchant account is connected or that real payments, stock effects, terminals, refunds and bank settlement have passed acceptance. Keep the existing accepted checkout as the fallback until the [cutover checks](https://techmore.github.io/rupert/pos-parity.html) pass.
 
 See [payment account setup](https://techmore.github.io/rupert/payment-integrations.html) for the separate setup/check paths and [daily-use rollout](https://techmore.github.io/rupert/day-to-day-readiness.html) for what still needs acceptance. Public contact details above retain their stated verification date.

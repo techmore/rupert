@@ -14,6 +14,7 @@ require 'test_helper'
 class UnscopedAllowlistTest < ActiveSupport::TestCase
   ALLOWED = {
     'app/controllers/authorize_net_webhooks_controller.rb' => 'webhook resolves its connection (and tenant) by id before any sign-in',
+    'app/controllers/pos_webhooks_controller.rb' => 'gateway webhook resolves its POS setting (and tenant) by id, then verifies the signature',
     'app/controllers/concerns/warehouse_portal.rb' => 'public share link resolves its workspace by token',
     'app/controllers/customer_displays_controller.rb' => 'customer display resolves its session by token digest',
     'app/controllers/employee_access_controller.rb' => 'revokes every app session of the grant’s user',

@@ -59,6 +59,9 @@ shows only warnings and worse.
 * Parameter **values**, file contents, file names, request or response bodies, cookies, headers, query values (only names).
 * Email addresses (a short hash identifies a repeat offender), passwords, tokens, card and bank numbers,
   email bodies, chat text. Job arguments are off (`config.active_job.log_arguments = false`).
+* Card data in any shape (card numbers, magnetic-stripe track data, labelled security codes) is removed by
+  `CardData.redact` from free text and from every string event field, so it never reaches the log, `ops_events` or Sentry
+  (`test/integration/card_data_logging_test.rb`).
 * Free text that must be logged (an exception message) goes through `OpsLog.safe_text`: the request-log
   parameter filter (`config/initializers/filter_parameter_logging.rb`, via `FeedbackSanitizer`), emails,
   digit runs of six or more, double-quoted values and object dumps are removed, and the text is cut at 200 characters.

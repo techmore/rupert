@@ -186,7 +186,8 @@ class AuthorizeNetClient
     end
 
     def parse(body)
-      doc = JSON.parse(body)
+      # The live API prefixes its JSON with a UTF-8 byte-order mark.
+      doc = JSON.parse(body.to_s.b.delete_prefix("\xEF\xBB\xBF".b).force_encoding(Encoding::UTF_8))
       transaction = doc['transactionResponse'] || {}
       gateway_error = doc.dig('messages', 'message', 0, 'text').to_s
       transaction_error = transaction.dig('messages', 'description').to_s
