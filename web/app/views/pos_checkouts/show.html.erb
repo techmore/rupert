@@ -44,14 +44,18 @@
       <% reversals = @checkout.pos_card_reversals.order(:id).to_a %>
       <% if reversals.any? %>
         <ul class="mt-3 space-y-1 text-sm">
-          <% reversals.each do |r| %><li class="flex flex-wrap justify-between gap-2 border-t border-fog pt-2"><span><%= r.kind.capitalize %> <%= ctrax_money(r.amount_cents) %> · <%= r.reason %></span><span class="<%= r.status == 'succeeded' ? 'pill-fern' : r.unresolved? ? 'pill-clay' : 'pill-taupe' %>"><%= r.status == 'unknown' ? 'Needs recheck' : r.status.humanize %></span><% if r.failure_message %><span class="w-full text-mocha"><%= r.failure_message %></span><% end %></li><% end %>
+          <% reversals.each do |r| %><li class="flex flex-wrap justify-between gap-2 border-t border-fog pt-2"><span><%= r.kind.capitalize %> <%= ctrax_money(r.amount_cents) %> · <%= r.reason %></span><span class="<%= r.status == 'succeeded' ? 'pill-fern' : r.unresolved? ? 'pill-clay' : 'pill-taupe' %>"><%= r.status == 'unknown' ? 'Needs recheck' : r.status == 'submitting' && @checkout.dejavoo_terminal? ? 'Waiting on terminal' : r.status.humanize %></span><% if r.failure_message %><span class="w-full text-mocha"><%= r.failure_message %></span><% end %></li><% end %>
         </ul>
         <% if reversals.any?(&:unresolved?) %><%= button_to 'Recheck refund with gateway', recheck_reversal_pos_checkout_path(@checkout), method: :post, class: 'btn-ghost mt-3', data: { turbo: false } %><% end %>
       <% end %>
       <% remaining = @checkout.total_cents - card[:refunded_cents] %>
       <% if remaining.positive? && reversals.none?(&:unresolved?) && Current.user.can?('sales.write') %>
         <%= form_with url: reverse_pos_checkout_path(@checkout), method: :post, class: 'mt-4 space-y-3', data: { turbo: false } do %>
-          <p class="text-sm text-mocha">Refund to the original card. Before the payment settles (usually the same day) only the whole sale can be voided; after that you can refund part or all of it. Restock returned items separately.</p>
+          <% if @checkout.dejavoo_terminal? %>
+            <p class="text-sm text-mocha">Refund to the original card. The whole sale is voided while the terminal's batch is open (no card needed). A part refund, or a sale from a closed batch, is a refund on the terminal: the customer taps or inserts the same card. Restock returned items separately.</p>
+          <% else %>
+            <p class="text-sm text-mocha">Refund to the original card. Before the payment settles (usually the same day) only the whole sale can be voided; after that you can refund part or all of it. Restock returned items separately.</p>
+          <% end %>
           <div class="grid gap-3 sm:grid-cols-2">
             <div><label for="refund_amount" class="field-label">Amount (USD)</label><%= text_field_tag :amount, format('%.2f', remaining / 100.0), id: 'refund_amount', class: 'input', inputmode: 'decimal' %></div>
             <div><label for="refund_reason" class="field-label">Reason</label><%= text_field_tag :reason, nil, id: 'refund_reason', class: 'input', maxlength: 500, required: true %></div>

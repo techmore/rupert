@@ -132,7 +132,8 @@ module Pos
 
           Checkout.finalize!(checkout, transaction_id: response.processor_reference || attempt.invoice)
           attempt.update!(status: 'paid', transaction_id: response.processor_reference, resolved_at: Time.current,
-            card_brand: response.card_brand, card_last_four: response.card_last_four, auth_code: response.auth_code)
+            card_brand: response.card_brand, card_last_four: response.card_last_four, auth_code: response.auth_code,
+            batch_number: response.batch_number, payment_type: response.payment_type)
         end
       elsif response.approved?
         # Approved, but not for this checkout's exact amount (for example the

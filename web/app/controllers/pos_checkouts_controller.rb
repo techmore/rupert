@@ -82,9 +82,10 @@ class PosCheckoutsController < AuthenticatedController
     message = case reversal.status
     when 'succeeded' then "#{reversal.kind == 'void' ? 'Voided' : 'Refunded'} #{format('%.2f', reversal.amount_cents / 100.0)} USD on the original card."
     when 'failed' then "Not reversed: #{reversal.failure_message}"
+    when 'submitting' then "Refund of #{format('%.2f', reversal.amount_cents / 100.0)} USD sent to the terminal. Ask the customer to tap or insert the card there, then recheck the refund status."
     else 'The gateway outcome is uncertain. Recheck before trying again; nothing new was sent.'
     end
-    redirect_to pos_checkout_path(checkout), (reversal.status == 'succeeded' ? :notice : :alert) => message
+    redirect_to pos_checkout_path(checkout), (%w[succeeded submitting].include?(reversal.status) ? :notice : :alert) => message
   rescue Pos::Error => e
     redirect_to pos_checkout_path(checkout), alert: e.message
   end

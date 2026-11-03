@@ -21,6 +21,10 @@ module Pos
       new(reversal.pos_checkout).reconcile!(reversal)
     end
 
+    def self.run_dejavoo_refund!(reversal)
+      new(reversal.pos_checkout).run_dejavoo_refund!(reversal)
+    end
+
     def initialize(checkout)
       raise Error, 'Checkout belongs to another workspace.' unless checkout.tenant_id == Current.tenant_id
 
@@ -31,8 +35,8 @@ module Pos
       amount = amount_cents.to_i
       raise Error, 'Only paid card checkouts charged through Rupert can be refunded here.' unless @checkout.tender == 'card' && @checkout.paid? && !@checkout.demo?
       raise Error, 'Enter a reason of at least 3 characters.' unless reason.to_s.squish.length.between?(3, 500)
-      # Dejavoo reversals (SPIn Void before settlement, Return after) are not wired yet.
-      raise Error, 'Refund Dejavoo terminal sales on the terminal for now, then record the refund on the order.' if @checkout.gateway_provider == 'dejavoo_spin'
+      return call_dejavoo(amount: amount, reason: reason, user: user) if dejavoo?
+
       attempt = @checkout.pos_payment_attempts.find_by(status: 'paid')
       raise Error, 'No verified gateway payment is recorded for this checkout.' unless attempt&.transaction_id.to_s.match?(ANET_ID)
 
@@ -65,7 +69,9 @@ module Pos
       return reversal unless reversal.unresolved?
 
       attempt = reversal.pos_payment_attempt
-      result = if nmi?
+      result = if dejavoo?
+        reconcile_dejavoo(reversal, attempt)
+      elsif nmi?
         reconcile_nmi(reversal, attempt)
       else
         reconcile_authorize_net(reversal, attempt)
@@ -74,9 +80,125 @@ module Pos
       reversal.reload
     end
 
+    # Sends a saved Dejavoo Return to the terminal. Called by PosTerminalRefundJob.
+    def run_dejavoo_refund!(reversal)
+      return reversal unless reversal.status == 'submitting' && reversal.kind == 'refund'
+
+      state = dejavoo_state(reversal.pos_payment_attempt)
+      response = dejavoo.refund(reference: reversal.reference, amount_cents: reversal.amount_cents, payment_type: state[:payment_type])
+      apply(reversal, dejavoo_refund_result(reversal, response))
+      reversal.reload
+    rescue Error
+      reversal.update!(status: 'unknown') if reversal.reload.status == 'submitting'
+      raise
+    end
+
     private
 
     def nmi? = @checkout.gateway_provider == 'nmi'
+    def dejavoo? = @checkout.gateway_provider == 'dejavoo_spin'
+
+    # Dejavoo (SPIn). The whole sale is voided while its batch is open (no card
+    # needed). A partial amount, or a sale whose void the terminal refuses
+    # because the batch has closed, is a Return: the customer presents the card
+    # on the terminal, so that request runs in PosTerminalRefundJob.
+    def call_dejavoo(amount:, reason:, user:)
+      attempt = @checkout.pos_payment_attempts.find_by(status: 'paid')
+      raise Error, 'No verified terminal payment is recorded for this checkout.' unless attempt
+      raise Error, 'This payment was voided on the terminal already.' if (state = dejavoo_state(attempt))[:voided]
+
+      reversal = create_reversal!(attempt, amount, reason, user) do |refunded|
+        amount == @checkout.total_cents && refunded.zero? ? 'void' : 'refund'
+      end
+      return enqueue_refund(reversal) if reversal.kind == 'refund'
+
+      result = dejavoo_void(attempt, reversal, state)
+      if result[:status] == 'failed' && result[:settled]
+        # The batch closed: no void is possible, so refund the whole sale instead.
+        apply(reversal, result.except(:settled))
+        refund = create_reversal!(attempt, amount, reason, user) { 'refund' }
+        return enqueue_refund(refund)
+      end
+      apply(reversal, result)
+      reversal.reload
+    rescue Error
+      reversal.update!(status: 'unknown') if reversal&.reload&.status == 'submitting'
+      raise
+    end
+
+    def create_reversal!(attempt, amount, reason, user)
+      @checkout.with_lock do
+        raise Error, 'A refund for this sale is still being checked. Recheck it before starting another.' if PosCardReversal.unresolved.where(pos_checkout: @checkout).exists?
+        refunded = PosCardReversal.succeeded.where(pos_checkout: @checkout).sum(:amount_cents)
+        remaining = @checkout.total_cents - refunded
+        raise Error, "Enter an amount between 0.01 and #{format('%.2f', remaining / 100.0)}." unless amount.positive? && amount <= remaining
+
+        PosCardReversal.create!(pos_checkout: @checkout, pos_payment_attempt: attempt, kind: yield(refunded), amount_cents: amount,
+          reference: "RV#{SecureRandom.hex(9)}", reason: reason.to_s.squish, requested_by: user, submitted_at: Time.current)
+      end
+    end
+
+    def enqueue_refund(reversal)
+      PosTerminalRefundJob.perform_later(reversal.id)
+      reversal
+    end
+
+    def dejavoo
+      @dejavoo ||= DejavooSpinGateway.new(setting).tap { |gateway| gateway.assert_checkout!(@checkout) }
+    end
+
+    # { voided:, payment_type: } from SPIn's status of the original sale.
+    def dejavoo_state(attempt)
+      response = DejavooSpinGateway::PAYMENT_TYPES.lazy.map { |type| dejavoo.status(attempt.invoice, payment_type: type) }
+        .find { |row| row.charged? && row.reference_id == attempt.invoice }
+      raise Error, 'Dejavoo has no record of this payment. Check the terminal batch report.' unless response
+
+      { voided: response.voided, payment_type: response.payment_type || 'Credit' }
+    end
+
+    def dejavoo_void(attempt, reversal, state)
+      response = dejavoo.void(reference: attempt.invoice, amount_cents: reversal.amount_cents, payment_type: state[:payment_type])
+      if response.charged? && response.voided && response.reference_id == attempt.invoice
+        { status: 'succeeded', transaction_id: response.processor_reference }
+      elsif response.outcome == 'unavailable'
+        { status: 'failed', message: DejavooTerminalPayment::TERMINAL_UNAVAILABLE.sub('Nothing was charged', 'Nothing was reversed') }
+      elsif response.no_charge?
+        { status: 'failed', settled: true, message: 'The batch has closed, so this sale cannot be voided. A refund was started instead.' }
+      else
+        { status: 'unknown' }
+      end
+    end
+
+    def dejavoo_refund_result(reversal, response)
+      if response.approved? && response.reference_id == reversal.reference && response.total_cents == reversal.amount_cents
+        { status: 'succeeded', transaction_id: response.processor_reference, batch_number: response.batch_number }
+      elsif response.outcome == 'declined'
+        { status: 'failed', message: response.status_code == '1012' ? 'The refund was cancelled on the terminal. Nothing was refunded.' : 'The terminal declined the refund. Nothing was refunded.' }
+      elsif response.no_charge?
+        { status: 'failed', message: 'The terminal is offline or busy. Nothing was refunded. Check it is on and idle, then try again.' }
+      else
+        { status: 'unknown' }
+      end
+    end
+
+    # Read-only: a void shows on the original sale; a refund is looked up by
+    # its own reference. "Not found" proves nothing until the terminal wait is over.
+    def reconcile_dejavoo(reversal, attempt)
+      if reversal.kind == 'void'
+        state = dejavoo_state(attempt)
+        return { status: 'succeeded', transaction_id: nil } if state[:voided]
+
+        return reversal.submitted_at < DejavooTerminalPayment::IN_FLIGHT.ago ? { status: 'failed', message: 'The void did not apply. Nothing was reversed.' } : nil
+      end
+      return nil if reversal.submitted_at > DejavooTerminalPayment::IN_FLIGHT.ago
+
+      rows = DejavooSpinGateway::PAYMENT_TYPES.map { |type| dejavoo.status(reversal.reference, payment_type: type) }
+      found = rows.find { |row| row.charged? && row.reference_id == reversal.reference }
+      return dejavoo_refund_result(reversal, found) if found
+      return { status: 'failed', message: 'The terminal has no record of this refund. Nothing was refunded.' } if rows.all? { |row| %w[not_found rejected].include?(row.outcome) } && reversal.submitted_at < DejavooTerminalPayment::NOT_FOUND_AFTER.ago
+
+      nil
+    end
 
     def setting
       @setting ||= PosSetting.find_by!(location: @checkout.location).tap do |row|
@@ -235,7 +357,8 @@ module Pos
             refund = @checkout.order.record_refund!(amount_cents: reversal.amount_cents, method: 'card', reason: "#{reversal.kind.capitalize}: #{reversal.reason}".truncate(250),
               reference: [reversal.kind, result[:transaction_id] || reversal.reference].join('-'))
           end
-          reversal.update!(status: 'succeeded', transaction_id: result[:transaction_id], resolved_at: Time.current, core_refund: refund)
+          reversal.update!(status: 'succeeded', transaction_id: result[:transaction_id], resolved_at: Time.current, core_refund: refund,
+            batch_number: result[:batch_number])
           ActivityLogger.log("pos_card_#{reversal.kind}", subject: @checkout, details: "#{format('%.2f', reversal.amount_cents / 100.0)} USD · #{reversal.reference}")
         when 'failed'
           reversal.update!(status: 'failed', failure_message: result[:message].to_s.truncate(250), resolved_at: Time.current)
