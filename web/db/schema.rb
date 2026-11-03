@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_02_220000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -3397,6 +3397,79 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.index ["tenant_id"], name: "index_square_timecards_on_tenant_id"
   end
 
+  create_table "stock_balances", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "stock_item_id", null: false
+    t.integer "stock_site_id", null: false
+    t.integer "on_hand", null: false
+    t.datetime "counted_at"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["stock_item_id"], name: "index_stock_balances_on_stock_item_id"
+    t.index ["stock_site_id"], name: "index_stock_balances_on_stock_site_id"
+    t.index ["tenant_id", "stock_item_id", "stock_site_id"], name: "idx_stock_balances_pool", unique: true
+    t.check_constraint "on_hand >= 0", name: "stock_balances_non_negative"
+  end
+
+  create_table "stock_item_links", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "stock_item_id", null: false
+    t.integer "stock_site_id", null: false
+    t.string "platform", null: false
+    t.string "native_item_id", null: false
+    t.string "match_source", default: "manual", null: false
+    t.string "linked_by", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["stock_item_id"], name: "index_stock_item_links_on_stock_item_id"
+    t.index ["stock_site_id"], name: "index_stock_item_links_on_stock_site_id"
+    t.index ["tenant_id", "stock_item_id", "stock_site_id", "platform"], name: "idx_stock_item_links_one_per_platform", unique: true
+    t.index ["tenant_id", "stock_site_id", "platform", "native_item_id"], name: "idx_stock_item_links_native", unique: true
+    t.check_constraint "platform IN ('shopify', 'ctrax', 'square')", name: "stock_item_links_platform"
+  end
+
+  create_table "stock_items", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "name", null: false
+    t.string "sku"
+    t.string "barcode"
+    t.boolean "active", default: true, null: false
+    t.string "created_by", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "barcode"], name: "index_stock_items_on_tenant_id_and_barcode"
+    t.index ["tenant_id", "name"], name: "index_stock_items_on_tenant_id_and_name"
+    t.index ["tenant_id", "sku"], name: "index_stock_items_on_tenant_id_and_sku"
+  end
+
+  create_table "stock_ledger_entries", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "stock_item_id", null: false
+    t.integer "stock_site_id", null: false
+    t.string "kind", null: false
+    t.integer "delta", null: false
+    t.integer "quantity_before"
+    t.integer "quantity_after", null: false
+    t.string "reason"
+    t.text "note"
+    t.string "reference"
+    t.string "origin", default: "rupert", null: false
+    t.string "transfer_group"
+    t.string "actor", null: false
+    t.string "request_token", null: false
+    t.string "payload_digest", null: false
+    t.datetime "created_at", null: false
+    t.index ["stock_item_id"], name: "index_stock_ledger_entries_on_stock_item_id"
+    t.index ["stock_site_id"], name: "index_stock_ledger_entries_on_stock_site_id"
+    t.index ["tenant_id", "created_at"], name: "index_stock_ledger_entries_on_tenant_id_and_created_at"
+    t.index ["tenant_id", "request_token", "stock_site_id"], name: "idx_stock_ledger_token", unique: true
+    t.index ["tenant_id", "stock_item_id", "stock_site_id"], name: "idx_stock_ledger_pool"
+    t.check_constraint "kind IN ('count', 'receive', 'adjust', 'transfer_out', 'transfer_in', 'sale', 'return')", name: "stock_ledger_kind"
+    t.check_constraint "origin IN ('rupert', 'shopify', 'ctrax', 'square')", name: "stock_ledger_origin"
+    t.check_constraint "quantity_after >= 0", name: "stock_ledger_non_negative"
+  end
+
   create_table "stock_request_events", force: :cascade do |t|
     t.string "tenant_id", null: false
     t.integer "stock_request_id", null: false
@@ -3470,6 +3543,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.index ["tenant_id", "request_token"], name: "idx_reservations_request_token", unique: true
     t.check_constraint "quantity > 0", name: "stock_reservations_positive_quantity"
     t.check_constraint "status IN ('active', 'released')", name: "stock_reservations_status"
+  end
+
+  create_table "stock_sites", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "name", null: false
+    t.string "shopify_location_id"
+    t.string "ctrax_location_id"
+    t.string "square_location_id"
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "ctrax_location_id"], name: "index_stock_sites_on_tenant_id_and_ctrax_location_id", unique: true, where: "ctrax_location_id IS NOT NULL"
+    t.index ["tenant_id", "name"], name: "index_stock_sites_on_tenant_id_and_name", unique: true
+    t.index ["tenant_id", "shopify_location_id"], name: "index_stock_sites_on_tenant_id_and_shopify_location_id", unique: true, where: "shopify_location_id IS NOT NULL"
+    t.index ["tenant_id", "square_location_id"], name: "index_stock_sites_on_tenant_id_and_square_location_id", unique: true, where: "square_location_id IS NOT NULL"
   end
 
   create_table "support_access_events", force: :cascade do |t|
@@ -4412,6 +4500,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
   add_foreign_key "square_timecard_days", "tenants"
   add_foreign_key "square_timecards", "employees"
   add_foreign_key "square_timecards", "tenants"
+  add_foreign_key "stock_balances", "stock_items"
+  add_foreign_key "stock_balances", "stock_sites"
+  add_foreign_key "stock_item_links", "stock_items"
+  add_foreign_key "stock_item_links", "stock_sites"
+  add_foreign_key "stock_ledger_entries", "stock_items"
+  add_foreign_key "stock_ledger_entries", "stock_sites"
   add_foreign_key "stock_request_events", "stock_requests"
   add_foreign_key "stock_requests", "stock_reservation_pools", column: "destination_pool_id"
   add_foreign_key "stock_requests", "stock_reservation_pools", column: "source_pool_id"

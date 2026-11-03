@@ -1,0 +1,34 @@
+<% content_for :title, 'Rupert stock ledger' %>
+<div class="space-y-5">
+  <%= page_header 'Rupert stock ledger', subtitle: (@item ? "Movements for #{@item.name}." : 'Every count, receipt, adjustment and transfer recorded in Rupert. Rows are never edited.'),
+        menu: [['Rupert stock', master_stock_items_path], ['Export CSV', master_stock_movements_path(request.query_parameters.merge(format: :csv))]] %>
+  <div class="toolbar-band">
+    <%= form_with url: master_stock_movements_path, method: :get, class: 'toolbar' do %>
+      <%= hidden_field_tag :item_id, params[:item_id] if params[:item_id].present? %>
+      <div class="toolbar-field"><%= label_tag :site_id, 'Site', class: 'field-label' %><%= select_tag :site_id, options_from_collection_for_select(StockSite.order(:name), :id, :name, params[:site_id]), include_blank: 'All sites', class: 'input' %></div>
+      <div class="toolbar-field"><%= label_tag :kind, 'Kind', class: 'field-label' %><%= select_tag :kind, options_for_select(StockLedgerEntry::KINDS.map { |kind| [StockLedgerEntry.new(kind: kind).kind_label, kind] }, params[:kind]), include_blank: 'All kinds', class: 'input' %></div>
+      <div class="toolbar-actions"><%= submit_tag 'Apply', class: 'btn-primary', name: nil %><%= link_to 'Clear', master_stock_movements_path, class: 'btn-ghost' %></div>
+    <% end %>
+  </div>
+  <div class="card overflow-hidden">
+    <div class="table-region" role="region" tabindex="0" aria-label="Rupert stock movements">
+      <table class="table">
+        <thead><tr><th scope="col" class="th">When / who</th><th scope="col" class="th">Item / site</th><th scope="col" class="th">Kind</th><th scope="col" class="th num">Change</th><th scope="col" class="th num">Before → after</th><th scope="col" class="th">Reason / reference</th></tr></thead>
+        <tbody>
+          <% @entries.each do |entry| %>
+            <tr>
+              <td class="td"><%= l(entry.created_at, format: :short) %><p class="text-xs text-taupe"><%= entry.actor %></p></td>
+              <td class="td"><%= link_to entry.stock_item.name, master_stock_item_path(entry.stock_item), class: 'font-medium text-ink hover:underline' %><p class="text-xs text-taupe"><%= entry.stock_site.name %></p></td>
+              <td class="td"><span class="<%= entry.kind == 'count' ? 'pill-olive' : 'pill-taupe' %>"><%= entry.kind_label %></span><% if entry.origin != 'rupert' %><p class="text-xs text-taupe">from <%= MasterStock.platform_label(entry.origin) %></p><% end %></td>
+              <td class="td num font-semibold <%= entry.delta.negative? ? 'text-clay' : 'text-ink' %>"><%= entry.delta.positive? ? "+#{entry.delta}" : entry.delta %></td>
+              <td class="td num"><%= entry.quantity_before.nil? ? 'first count' : entry.quantity_before %> → <strong><%= entry.quantity_after %></strong></td>
+              <td class="td"><%= StockLedgerEntry::REASONS[entry.reason] %><% if entry.reference %><p class="text-xs text-taupe"><%= entry.reference %></p><% end %><% if entry.note %><p class="text-xs text-mocha"><%= entry.note %></p><% end %></td>
+            </tr>
+          <% end %>
+          <% if @entries.empty? %><tr><td colspan="6" class="empty-row">No movements yet. Counts and receipts recorded in Rupert stock appear here.</td></tr><% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <% if @pagy.pages > 1 %><div class="text-xs text-taupe"><%== @pagy.series_nav %></div><% end %>
+</div>

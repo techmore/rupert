@@ -1,0 +1,14 @@
+<% content_for :title, 'Add Rupert item' %>
+<div class="page-narrow space-y-5">
+  <%= page_header 'Add item', subtitle: 'A Rupert item can stand alone or link to its Shopify, C-Trax and Square items later.' %>
+  <% if @item.errors.any? %><div class="flash flash-alert" role="alert"><%= @item.errors.full_messages.to_sentence %></div><% end %>
+  <%= form_with model: @item, url: master_stock_items_path, scope: :stock_item, class: 'card card-pad space-y-4' do |f| %>
+    <div><%= f.label :name, 'Name', class: 'field-label' %><%= f.text_field :name, required: true, maxlength: 255, class: 'input' %></div>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div><%= f.label :sku, raw('SKU <span class="font-normal text-taupe">(optional)</span>'), class: 'field-label' %><%= f.text_field :sku, maxlength: 255, class: 'input font-mono', autocomplete: 'off' %></div>
+      <div><%= f.label :barcode, raw('Barcode <span class="font-normal text-taupe">(optional)</span>'), class: 'field-label' %><%= f.text_field :barcode, maxlength: 255, class: 'input font-mono', autocomplete: 'off' %></div>
+    </div>
+    <p class="text-xs text-taupe">SKU and barcode help staff find the item here. Rupert never writes them to a platform.</p>
+    <div class="form-actions"><%= f.submit 'Add item', class: 'btn-primary' %><%= link_to 'Cancel', master_stock_items_path, class: 'btn-ghost' %></div>
+  <% end %>
+</div>

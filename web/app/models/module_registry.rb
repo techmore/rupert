@@ -34,6 +34,9 @@ class ModuleRegistry
     Entry.new(key: 'marketing_events', name: 'Events', path: -> { marketing_events_path }, permission: 'marketing.read', position: 35.5),
     Entry.new(key: 'influencers', name: 'Influencers', path: -> { marketing_influencers_path }, permission: 'marketing.read', position: 36),
     # Stock
+    Entry.new(key: 'master_stock', name: 'Rupert stock', path: -> { master_stock_items_path }, permission: 'inventory.read', position: 40.05),
+    Entry.new(key: 'master_stock_ledger', name: 'Rupert stock ledger', path: -> { master_stock_movements_path }, permission: 'inventory.read', position: 40.06),
+    Entry.new(key: 'master_stock_preview', name: 'Push preview', path: -> { master_stock_push_preview_path }, permission: 'inventory.read', position: 40.07),
     Entry.new(key: 'inventory', name: 'Inventory', path: -> { inventory_index_path }, permission: 'inventory.read', position: 40),
     Entry.new(key: 'stock_comparison', name: 'Store comparison', path: -> { stock_comparison_path }, permission: 'inventory.read', position: 40.1),
     Entry.new(key: 'movements', name: 'Movements', path: -> { movements_inventory_index_path }, permission: 'inventory.read', position: 40.2),
@@ -229,12 +232,14 @@ class ModuleRegistry
       { key: 'marketing', name: 'Marketing', modules: %w[marketing marketing_events influencers] },
       { key: 'stock', name: 'Stock',
         modules: %w[inventory stock_comparison movements product_names inventory_exceptions alerts
+                    master_stock master_stock_ledger master_stock_preview
                     inventory_counts stock_requests stock_reservations
                     bulk_materials bulk_recipes bulk_consumptions
                     purchase_orders vendors
                     reconcile swipesimple_items sizes locations warehouse],
         groups: [
           { name: 'Stock', modules: %w[inventory stock_comparison movements product_names inventory_exceptions alerts] },
+          { name: 'Rupert stock', modules: %w[master_stock master_stock_ledger master_stock_preview] },
           { name: 'Counts & requests', modules: %w[inventory_counts stock_requests stock_reservations] },
           { name: 'Materials', modules: %w[bulk_materials bulk_recipes bulk_consumptions] },
           { name: 'Purchasing', modules: %w[purchase_orders vendors] },

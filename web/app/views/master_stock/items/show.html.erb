@@ -1,0 +1,62 @@
+<% content_for :title, @item.name %>
+<% can_write = Current.user.can?('inventory.write') %>
+<% sites = StockSite.order(:name).to_a %>
+<div class="page-narrow space-y-5">
+  <%= page_header @item.name, subtitle: [@item.sku, @item.barcode].compact_blank.join(' · ').presence || 'No SKU or barcode',
+        menu: [['Rupert stock', master_stock_items_path], ['Full ledger', master_stock_movements_path(item_id: @item.id)]] %>
+
+  <section class="section-card space-y-3">
+    <%= section_heading 'On hand by site', level: :h2 %>
+    <ul class="divide-y divide-fog">
+      <% sites.each do |site| %>
+        <% balance = @balances[site.id] %>
+        <li class="flex flex-wrap items-center justify-between gap-3 py-3">
+          <div><p class="font-medium text-ink"><%= site.name %></p><p class="text-xs text-taupe"><%= balance ? "Counted #{balance.counted_at ? l(balance.counted_at, format: :short) : 'never'}" : 'Not counted' %></p></div>
+          <div class="flex items-center gap-3">
+            <span class="stat-value-sm text-ink"><%= balance&.on_hand || '—' %></span>
+            <% if can_write && site.active %><%= link_to(balance ? 'Record' : 'Count', new_master_stock_movement_path(kind: balance ? 'receive' : 'count', item_id: @item.id, site_id: site.id), class: 'btn-ghost btn-sm') %><% end %>
+          </div>
+        </li>
+      <% end %>
+    </ul>
+  </section>
+
+  <section class="section-card space-y-3">
+    <%= section_heading 'Platform links', hint: 'The exact platform item Rupert would update at each site. Links never change a platform SKU or quantity.', level: :h2 %>
+    <ul class="divide-y divide-fog">
+      <% @links.each do |link| %>
+        <li class="flex flex-wrap items-center justify-between gap-3 py-2">
+          <div class="min-w-0"><p class="text-sm text-ink"><strong><%= MasterStock.platform_label(link.platform) %></strong> · <%= link.stock_site.name %></p><p class="font-mono text-xs text-taupe break-all"><%= link.native_item_id %> · <%= link.match_source.humanize %> by <%= link.linked_by %></p></div>
+          <% if @can_setup %><%= button_to 'Remove', master_stock_link_path(link), method: :delete, class: 'btn-ghost btn-sm', form: { data: { turbo_confirm: 'Remove this link? Platform stock is not changed.' } } %><% end %>
+        </li>
+      <% end %>
+      <% if @links.empty? %><li class="py-2 text-sm text-mocha">Not linked to any platform item. Rupert tracks it on its own.</li><% end %>
+    </ul>
+    <% if @can_setup && sites.any? %>
+      <details class="explainer">
+        <summary class="explainer-summary">Add a link</summary>
+        <%= form_with url: master_stock_links_path, class: 'mt-3 grid gap-3 sm:grid-cols-4 sm:items-end' do %>
+          <%= hidden_field_tag :item_id, @item.id %>
+          <div><%= label_tag :link_site_id, 'Site', class: 'field-label' %><%= select_tag :site_id, options_from_collection_for_select(sites, :id, :name), class: 'input', id: 'link_site_id' %></div>
+          <div><%= label_tag :link_platform, 'Platform', class: 'field-label' %><%= select_tag :platform, options_for_select(StockSite::PLATFORMS.map { |p| [MasterStock.platform_label(p), p] }), class: 'input', id: 'link_platform' %></div>
+          <div><%= label_tag :link_native_item_id, 'Exact item ID', class: 'field-label' %><%= text_field_tag :native_item_id, nil, required: true, maxlength: 255, class: 'input font-mono', id: 'link_native_item_id', placeholder: 'Shopify variant, C-Trax variant or Square variation ID' %></div>
+          <div><%= submit_tag 'Link', class: 'btn-primary', name: nil %></div>
+        <% end %>
+        <p class="mt-2 text-xs text-taupe">Use the native ID from Stock comparison or the platform admin. Rupert does not guess links from SKUs or names.</p>
+      </details>
+    <% end %>
+  </section>
+
+  <section class="section-card space-y-3">
+    <%= section_heading 'Recent movements', level: :h2 %>
+    <ul class="divide-y divide-fog">
+      <% @entries.each do |entry| %>
+        <li class="flex items-start justify-between gap-3 py-2 text-sm">
+          <div><p class="text-ink"><strong><%= entry.kind_label %></strong> · <%= entry.stock_site.name %><%= " · #{StockLedgerEntry::REASONS[entry.reason]}" if entry.reason %></p><p class="text-xs text-taupe"><%= l(entry.created_at, format: :short) %> · <%= entry.actor %><%= " · #{entry.reference}" if entry.reference %></p></div>
+          <p class="text-right tabular-nums"><span class="font-semibold"><%= entry.delta.positive? ? "+#{entry.delta}" : entry.delta %></span><br><span class="text-xs text-taupe"><%= entry.quantity_before || '—' %> → <%= entry.quantity_after %></span></p>
+        </li>
+      <% end %>
+      <% if @entries.empty? %><li class="py-2 text-sm text-mocha">No movements yet.</li><% end %>
+    </ul>
+  </section>
+</div>

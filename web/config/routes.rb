@@ -514,6 +514,17 @@ Rails.application.routes.draw do
   resources :stock_requests, only: %i[index new create show] do
     member { post :transition }
   end
+  # Rupert as the primary inventory (docs/plans/rupert-master-inventory.md).
+  namespace :master_stock do
+    resources :items, only: %i[index show new create]
+    resources :movements, only: %i[index new create]
+    resources :links, only: %i[create destroy]
+    resources :sites, only: %i[create update]
+    resource :push_preview, only: :show
+    resource :setup, only: :show, controller: 'setup'
+    resources :imports, only: :create
+  end
+  get '/master_stock', to: redirect('/master_stock/items')
   resources :stock_reservations, only: %i[index new create] do
     member { post :release }
   end

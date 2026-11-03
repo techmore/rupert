@@ -27,6 +27,10 @@ do not invent layout, labels or colours.
 - **Square can still be frozen any time for maintenance via `ops:push_guard:freeze[square,reason]`** — this now records state for awareness but no longer blocks writes; check `ops:push_guard:status`.
 - **SKU changes require explicit owner sign-off before writing** to Shopify or Square. You may plan and inspect freely, but never write SKUs without asking.
 
+## Rupert as primary inventory
+
+- Read `docs/plans/rupert-master-inventory.md` before changing Rupert stock (`MasterStock`, `/master_stock`) or adding any live push. Rupert stock and its push preview write no platform stock. A live push needs the owner's explicit approval per platform and starts with one test item.
+
 ## Hemp/CBD card payments (F69)
 
 Read `docs/ops/hemp-payments-setup.md` before changing card payments. Card charges on Authorize.net and NMI go through `Payments::ItemEligibility` (per-processor approved SKUs/categories); add guardrails as registered rules, not parallel checks. Refunds/voids use `Pos::CardReversal` (durable row before the gateway call, read-only recovery, no blind retries). NMI production requires recorded owner sign-off. Never miscode products or MCCs, and never route an item one processor refused to an unrestricted processor.
