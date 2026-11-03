@@ -108,8 +108,8 @@ in person and online, and be matched against deposits. Three sources:
 
 **Before online go-live through Dejavoo** (new work, larger):
 
-6. **Online checkout adapter** (HPP redirect or FTD fields) replacing Accept.js for this
-   processor, with the processor-approved product check before payment.
+6. ~~Online checkout adapter~~ **Done (HPP redirect, SAQ A):** the shopper pays on
+   Dejavoo's page; Rupert confirms with `queryPaymentStatus`. Settings `DEJAVOO_HPP_*`.
 7. **iPOS Transact client** for online refunds and voids.
 
 **Data ingestion (both channels):**
