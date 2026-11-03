@@ -43,6 +43,8 @@ Rails.application.routes.draw do
     end
   end
   root to: 'home#index'
+  # Public pages for search engines (SitemapsController); robots.txt points here.
+  get '/sitemap.xml', to: 'sitemaps#show', as: :sitemap, format: false
   post '/source_syncs/:source', to: 'source_syncs#create', as: :source_sync
   resources :authorize_net_portal_exports, only: %i[index create] do
     get :document, on: :member
