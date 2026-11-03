@@ -143,7 +143,8 @@ module Payments
       def processor_for_tender(tender, gateway_provider = nil)
         case tender.to_s
         when 'cash' then 'cash'
-        when PosCheckout::TERMINAL_CARD then 'card_terminal'
+        # The register's A920 tender and F70's event-register terminal tender.
+        when PosCheckout::TERMINAL_CARD, 'card_terminal' then 'card_terminal'
         else gateway_provider.presence || 'authorize_net'
         end
       end

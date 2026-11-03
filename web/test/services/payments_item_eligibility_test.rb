@@ -115,6 +115,7 @@ class PaymentsItemEligibilityTest < ActiveSupport::TestCase
 
   test 'tender mapping' do
     assert_equal 'card_terminal', Payments::ItemEligibility.processor_for_tender('card_a920')
+    assert_equal 'card_terminal', Payments::ItemEligibility.processor_for_tender('card_terminal', 'nmi')
     assert_equal 'nmi', Payments::ItemEligibility.processor_for_tender('card', 'nmi')
     assert_equal 'authorize_net', Payments::ItemEligibility.processor_for_tender('card', nil)
     assert_equal 'cash', Payments::ItemEligibility.processor_for_tender('cash', 'nmi')

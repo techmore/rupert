@@ -35,7 +35,7 @@
       <div>
         <dt>Customer</dt>
         <% if order.customer %>
-          <dd><%= order.customer.name %><% if order.customer.email.present? %><br><%= order.customer.email %><% end %></dd>
+          <dd><%= order.customer.name %><% if order.customer.wholesale? %> <%= customer_wholesale_pill(order.customer) %><% if order.customer.wholesale_business_name.present? && order.customer.wholesale_business_name != order.customer.name %><br><%= order.customer.wholesale_business_name %><% end %><% end %><% if order.customer.email.present? %><br><%= order.customer.email %><% end %></dd>
         <% else %>
           <dd class="text-taupe">Walk-in</dd>
         <% end %>

@@ -55,7 +55,7 @@ class SearchService
                       Result.new(
                         type: 'customer',
                         label: customer.name,
-                        sub_label: customer.email.presence || customer.phone.presence || customer.source,
+                        sub_label: [('Wholesale' if customer.wholesale?), customer.email.presence || customer.phone.presence || customer.source].compact.join(' · '),
                         path: Rails.application.routes.url_helpers.customer_path(customer)
                       )
                     end

@@ -55,7 +55,8 @@ module PosScreenHelper
       addable: pos_addable?(record), stock: stock[:word], stock_tone: stock[:tone], stock_detail: stock[:detail],
       image: @images.url(record, 800),
       image_link_url: (ctrax_pos_image_path(@snapshot.location_id, record['id']) if image_links),
-      image_product_id: (@images.product_for(record)&.id if image_links)
+      image_product_id: (@images.product_for(record)&.id if image_links),
+      compliance: @compliance_badges&.dig(record['id'].to_s)&.slice(:card, :coa)
     }
   end
 

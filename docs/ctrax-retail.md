@@ -18,6 +18,10 @@ Paid sales are canonical Rupert orders with source `rupert_pos`. Revenue exclude
 
 When paid-sale deductions are enabled, a worker submits native `inventoryAdjustments` using action `remove`, reason `other`, positive whole quantity and an exact Rupert sale/variant marker. The response must identify the store/variant and expected remaining quantity. A lost or unverifiable response stays pending/unknown and is never blindly resubmitted. Recovery uses an exact durable source marker; an incompatible source history needs operator/vendor review. The visible receipt lists each stock update status. This write contract was observed in the native vendor client and covered with transport/recovery fixtures; no production sale or stock mutation was executed for rollout testing.
 
+## Approved catalog and event mode (F70)
+
+When the owner locks a store's register (**Sell → Compliance → Register rules**), the cashier shows only owner-approved items, under their compliant names and approved categories, with **Cash only** and **No current COA** flags. Checkout asks the cashier to confirm the customer's ID (21+) and runs the pre-sale check before reading C-Trax stock; card on a cash-only item or an item without a current COA needs a manager PIN and reason. Shows and pop-ups use the separate event register (**Sell → Shows and pop-ups**). See [ring-up guardrails](compliance/ring-up-guardrails.md).
+
 ## Card (A920)
 
 Use this while card payments are taken on the A920 terminal, until Rupert handles card payments end to end. The **?** beside the button says the same.

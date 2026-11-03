@@ -1,0 +1,33 @@
+<section class="toolbar-band" aria-label="Exception report date">
+  <%= form_tag compliance_path, method: :get, class: 'toolbar' do %>
+    <%= hidden_field_tag :tab, 'exceptions' %><%= hidden_field_tag :location_id, @location&.id %>
+    <div class="toolbar-field"><%= label_tag :date, 'Business date', class: 'field-label' %>
+      <div class="date-stepper">
+        <%= link_to '‹', compliance_path(tab: 'exceptions', location_id: @location&.id, date: @day - 1), class: 'btn-ghost btn-sm', aria: { label: 'Previous day' }, title: 'Previous day' %>
+        <%= date_field_tag :date, @day, class: 'input' %>
+        <%= link_to '›', compliance_path(tab: 'exceptions', location_id: @location&.id, date: @day + 1), class: 'btn-ghost btn-sm', aria: { label: 'Next day' }, title: 'Next day' %>
+      </div>
+    </div>
+    <div class="toolbar-actions"><%= submit_tag 'Apply', class: 'btn-primary' %></div>
+  <% end %>
+</section>
+<section class="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Last seven days">
+  <% [['Blocked sales', 'sale_blocked'], ['Overrides approved', 'override_granted'], ['Overrides refused', 'override_refused'], ['Flagged event sales', 'event_sale_flagged']].each do |label, action| %>
+    <div class="stat"><p class="stat-label"><%= label %></p><p class="stat-value mt-1 <%= 'text-rose' if @week_counts[action].to_i.positive? && action != 'override_granted' %>"><%= @week_counts[action].to_i %></p><p class="mt-1 text-xs text-taupe">7 days to <%= @day.strftime('%b %-d') %></p></div>
+  <% end %>
+</section>
+<% card = @flagged_card_sales %>
+<% if card[:checkouts].any? || card[:sales].any? %>
+  <section class="section-card" aria-labelledby="flagged-card">
+    <%= section_heading 'Card sales that needed an override', id: 'flagged-card', hint: 'Review each with the manager who approved it.' %>
+    <ul class="row-list">
+      <% card[:checkouts].each do |checkout| %>
+        <li class="row-item"><div class="min-w-0"><p class="font-semibold text-ink"><%= link_to "Register receipt #{checkout.reference.first(8)}", pos_checkout_path(checkout), class: 'text-olive-deep hover:underline' %></p><p class="text-xs text-mocha"><%= checkout.compliance_override_reason %></p></div><div class="row-item-end num"><%= ctrax_money(checkout.total_cents) %></div></li>
+      <% end %>
+      <% card[:sales].each do |sale| %>
+        <li class="row-item"><div class="min-w-0"><p class="font-semibold text-ink"><%= link_to "#{sale.pos_event.name} · sale #{sale.id}", pos_event_path(sale.pos_event, anchor: 'event-sales'), class: 'text-olive-deep hover:underline' %></p><p class="text-xs text-mocha"><%= [sale.override_reason, sale.flags.map { |f| compliance_issue_label(f) }.to_sentence.presence].compact.join(' · ') %></p></div><div class="row-item-end num"><%= ctrax_money(sale.total_cents) %></div></li>
+      <% end %>
+    </ul>
+  </section>
+<% end %>
+<%= render 'compliance/event_table', events: @events, caption: "Exceptions on #{@day.strftime('%b %-d, %Y')}", empty: 'No exceptions this day.' %>

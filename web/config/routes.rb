@@ -283,6 +283,8 @@ Rails.application.routes.draw do
       post :release_warehouse_stock
     end
   end
+  get '/loyalty', to: 'loyalty#index', as: :loyalty
+  post '/loyalty/sync', to: 'loyalty#sync', as: :sync_loyalty
   resources :customers, only: %i[index show new create edit update] do
     post :sync_directory, on: :collection
     get :export, on: :collection
@@ -659,6 +661,35 @@ Rails.application.routes.draw do
     member do
       get :demo
       post :clear
+    end
+  end
+  # F70: compliant ring-up guardrails (approved catalog, COAs, audit) and event mode.
+  get '/compliance', to: 'compliance#index', as: :compliance
+  namespace :compliance do
+    resources :catalog_items, only: %i[new create edit update] do
+      member do
+        post :suspend
+        post :reinstate
+      end
+      resources :certificates, only: %i[new create] do
+        post :withdraw, on: :member
+      end
+    end
+    resources :categories, only: %i[create update]
+    patch '/policies/:location_id', to: 'policies#update', as: :policy
+    resource :override_pin, only: %i[edit update]
+  end
+  resources :pos_events, except: :destroy do
+    member do
+      post :open
+      post :close
+    end
+    resources :items, controller: 'pos_event_items', only: %i[create update destroy] do
+      post :pull, on: :member
+    end
+    resource :register, controller: 'pos_event_registers', only: :show
+    resources :sales, controller: 'pos_event_sales', only: :create do
+      get :receipt, on: :member
     end
   end
   get '/customer_display', to: 'customer_displays#show', as: :customer_display

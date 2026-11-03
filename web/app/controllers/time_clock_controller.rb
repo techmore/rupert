@@ -5,8 +5,9 @@ class TimeClockController < AuthenticatedController
   before_action :active_context
   before_action :authorize_reviewer, only: %i[approve_correction reject_correction]
   # Self-service punches: gated by active_context and scoped to Current.user's own shifts (TimeClockService
-  # checks the shift owner). Review and commissions actions still authorize against the module policy.
-  skip_after_action :verify_authorized, only: %i[index clock_in clock_out request_correction fix_clock_out]
+  # checks the shift owner). Correction reviews are gated by authorize_reviewer (ClockCorrection.reviewer?);
+  # commissions still authorize against the module policy.
+  skip_after_action :verify_authorized, only: %i[index clock_in clock_out request_correction fix_clock_out approve_correction reject_correction]
   rescue_from TimeClockService::Error, ActiveRecord::RecordInvalid, with: :clock_error
   rescue_from ActiveRecord::StatementInvalid, with: :database_error
 
@@ -16,7 +17,7 @@ class TimeClockController < AuthenticatedController
     @pagy, @shifts = pagy(:offset, ClockShift.where(user_id: Current.user.id).recent.includes(:corrections), limit: 30)
     @open_clock_outs = OpenClockOuts.new
     @open_items = @open_clock_outs.items(employee_ids: OpenClockOuts.manager?(Current.user) ? nil : [@worker&.id].compact)
-    if Current.user.can?('payroll.write')
+    if ClockCorrection.reviewer?(Current.user)
       @pending_corrections = ClockCorrection.where(status: 'pending').includes(:clock_shift).order(:created_at).limit(100)
     end
   end
@@ -54,12 +55,12 @@ class TimeClockController < AuthenticatedController
 
   def approve_correction
     TimeClockService.review(correction: ClockCorrection.find(params[:id]), reviewer: Current.user, approve: true)
-    redirect_to time_clock_path, notice: 'Correction approved and audited.'
+    redirect_to review_return_path, notice: 'Correction approved. Re-import the clock shifts on the draft timesheet to use the new times.'
   end
 
   def reject_correction
     TimeClockService.review(correction: ClockCorrection.find(params[:id]), reviewer: Current.user, approve: false)
-    redirect_to time_clock_path, notice: 'Correction rejected; shift times are unchanged.'
+    redirect_to review_return_path, notice: 'Correction rejected; shift times are unchanged.'
   end
 
   def commissions
@@ -82,8 +83,15 @@ class TimeClockController < AuthenticatedController
     redirect_to root_path, alert: 'An active sign-in account and store are required.'
   end
 
+  # Correction reviews started from a timesheet go back to it; anything else returns to the time clock.
+  def review_return_path
+    path = params[:return_to].to_s
+    path.match?(%r{\A/people/timesheets/\d+\z}) ? path : time_clock_path
+  end
+
+  # Timesheet reviewers and payroll writers (ClockCorrection.reviewer?); the service repeats the check.
   def authorize_reviewer
-    authorize(:module, :payroll_write?)
+    raise Pundit::NotAuthorizedError unless ClockCorrection.reviewer?(Current.user)
   end
 
   def clock_error(error)

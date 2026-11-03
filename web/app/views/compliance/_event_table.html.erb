@@ -1,0 +1,27 @@
+<section class="card overflow-hidden" aria-label="<%= caption %>">
+  <div class="table-region" role="region" tabindex="0" aria-label="<%= caption %>">
+    <table class="table"><caption class="sr-only"><%= caption %></caption>
+      <thead><tr><th scope="col" class="th">When</th><th scope="col" class="th">What</th><th scope="col" class="th">Who</th><th scope="col" class="th">Approved by</th><th scope="col" class="th">Subject</th><th scope="col" class="th">Reason and details</th></tr></thead>
+      <tbody>
+        <% if events.empty? %><tr><td class="empty-row" colspan="6"><%= empty %></td></tr><% end %>
+        <% events.each do |event| %>
+          <% issues = Array(event.details['issues']).map { |i| compliance_issue_label(i['code']) }.uniq %>
+          <tr data-compliance-action="<%= event.action %>">
+            <td class="td whitespace-nowrap text-mocha"><%= l(event.created_at.in_time_zone, format: :short) %></td>
+            <td class="td"><%= compliance_action_pill(event.action) %></td>
+            <td class="td text-ink"><%= event.actor_name %></td>
+            <td class="td text-mocha"><%= event.approver_name || '—' %></td>
+            <td class="td text-mocha"><%= event.subject_label || (event.pos_event_id && "Event #{event.pos_event_id}") || '—' %></td>
+            <td class="td text-sm text-mocha">
+              <%= event.reason %>
+              <% if issues.any? %><span class="block">Issues: <%= issues.to_sentence %></span><% end %>
+              <% if event.details['refusal'] %><span class="block">Refused: <%= event.details['refusal'].humanize %></span><% end %>
+              <% if event.details['flags'] %><span class="block">Flags: <%= Array(event.details['flags']).map { |f| compliance_issue_label(f) }.to_sentence %></span><% end %>
+              <% if event.details['total_cents'] %><span class="block"><%= ctrax_money(event.details['total_cents']) %><%= " · #{event.details['tender'].to_s.humanize}" if event.details['tender'] %></span><% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

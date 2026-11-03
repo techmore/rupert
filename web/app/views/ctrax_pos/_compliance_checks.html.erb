@@ -1,0 +1,30 @@
+<%# Pre-sale compliance (F70) on a locked register: the cashier confirms ID, and when the
+    server blocks the cart, the issues appear here; a manager can approve an overridable
+    block with their PIN and a reason. The server decides; nothing here is trusted. %>
+<div class="pos-compliance" data-compliance-checks>
+  <label class="pos-id-check">
+    <%= check_box_tag :id_checked, '1', false, class: 'checkbox', data: { pos_checkout_target: 'idChecked' } %>
+    <span>ID checked: the customer is 21 or older</span>
+  </label>
+  <ul class="pos-compliance-issues" data-pos-checkout-target="issues" role="alert" hidden></ul>
+  <fieldset class="pos-override" data-pos-checkout-target="override" hidden disabled>
+    <legend class="pos-override-title">Manager override</legend>
+    <p class="pos-checkout-hint">A manager approves with their own PIN and a reason. Both go in the compliance audit log.</p>
+    <% if approvers.empty? %>
+      <p class="pos-checkout-hint">No manager has an override PIN yet. A manager sets one under Compliance → Override PIN.</p>
+    <% else %>
+      <div>
+        <%= label_tag :override_user_id, 'Manager', class: 'field-label' %>
+        <%= select_tag :override_user_id, options_for_select(approvers.map { |user| [user.display_name || user.email, user.id] }), include_blank: 'Choose manager', class: 'select', data: { pos_checkout_target: 'overrideUser' } %>
+      </div>
+      <div>
+        <%= label_tag :override_pin, 'Manager PIN', class: 'field-label' %>
+        <%= password_field_tag :override_pin, nil, inputmode: 'numeric', autocomplete: 'off', pattern: '[0-9]{4,8}', maxlength: 8, class: 'input', data: { pos_checkout_target: 'overridePin' } %>
+      </div>
+      <div>
+        <%= label_tag :override_reason, 'Reason', class: 'field-label' %>
+        <%= text_field_tag :override_reason, nil, maxlength: 500, minlength: 8, placeholder: 'Why this sale may go ahead', class: 'input', data: { pos_checkout_target: 'overrideReason' } %>
+      </div>
+    <% end %>
+  </fieldset>
+</div>
