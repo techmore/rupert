@@ -39,9 +39,26 @@
         <div><label for="pos_gateway_key" class="field-label">Transaction Key</label><%= password_field_tag 'credentials[transaction_key]', nil, id: 'pos_gateway_key', autocomplete: 'new-password', class: 'input', placeholder: 'Leave blank to keep saved value' %></div>
       <% end %>
       <label class="flex gap-2 text-sm"><%= form.check_box :card_enabled %><span>Enable card charges for this verified gateway and store<%= ' (sandbox test payments only)' if @setting.environment == 'sandbox' %></span></label>
+      <% if dejavoo %>
+      <div><label for="webhook_signing_key" class="field-label">Dejavoo FEED key</label><%= password_field_tag 'webhook_signing_key', nil, id: 'webhook_signing_key', autocomplete: 'new-password', class: 'input', placeholder: @setting.webhook_signing_key.present? ? 'Saved. Leave blank to keep it, or type clear to remove it' : 'Optional: 16 or more letters, digits or symbols you choose' %></div>
+      <% if @setting.persisted? %><p class="text-xs text-taupe">So every Dejavoo sale, refund and batch reaches Rupert (including ones run outside Rupert): in iPOSpays Settings → FEED, set the endpoint URL <code><%= pos_webhook_url(@setting.id) %></code>, choose Basic Authentication, API key <code><%= Pos::DejavooFeed::BASIC_USER %></code>, and this FEED key as the secret key. Rupert keeps no card number, name, email, phone or card token from it.</p><% end %>
+      <% end %>
       <% unless dejavoo %>
       <div><label for="webhook_signing_key" class="field-label"><%= nmi ? 'NMI webhook signing key' : 'Authorize.net Signature Key (webhooks)' %></label><%= password_field_tag 'webhook_signing_key', nil, id: 'webhook_signing_key', autocomplete: 'new-password', class: 'input', placeholder: @setting.webhook_signing_key.present? ? 'Saved. Leave blank to keep it, or type clear to remove it' : 'Optional' %></div>
       <% if @setting.persisted? %><p class="text-xs text-taupe">Webhook URL for the gateway: <code><%= pos_webhook_url(@setting.id) %></code>. Webhooks only prompt Rupert to recheck payments and refunds with the gateway; amounts and status always come from the gateway’s own records.</p><% end %>
+      <% end %>
+      <% if dejavoo && @setting.persisted? %>
+        <% events = DejavooFeedEvent.where(pos_setting: @setting).where('received_at >= ?', 30.days.ago) %>
+        <% outside = events.unmatched.order(received_at: :desc).limit(20).to_a %>
+        <div class="rounded border border-fog p-3 space-y-2">
+          <p class="field-label">Dejavoo FEED, last 30 days</p>
+          <p class="text-sm"><%= events.where(event_type: 'Transaction').count %> transactions and <%= events.where(event_type: 'Settlement').count %> closed batches received. <%= events.unmatched.count %> transactions were not sent by Rupert<%= events.unmatched.any? ? ' (run on the terminal or online page directly); review them below.' : '.' %></p>
+          <% if outside.any? %>
+            <ul class="text-sm space-y-1">
+              <% outside.each do |row| %><li class="flex flex-wrap justify-between gap-2 border-t border-fog pt-1"><span><%= row.occurred_on %> · <%= row.sub_event_type %> · <%= row.card_label %> <%= "…#{row.card_last_four}" if row.card_last_four %> · batch <%= row.batch_number || '?' %></span><span class="num"><%= row.amount_cents ? format('%.2f', row.amount_cents / 100.0) : '?' %> USD</span></li><% end %>
+            </ul>
+          <% end %>
+        </div>
       <% end %>
       <p class="text-sm"><%= link_to 'Processor-approved products', processor_catalogs_path, class: 'underline' %>: only products the processor approved can be charged.<% if @setting.persisted? %> <%= link_to 'Card settlement check', pos_settlement_path(@location.id), class: 'underline' %>: compare settled batches with Rupert sales.<% end %></p>
       <p class="text-xs text-taupe">Credentials are encrypted and never redisplayed. Changing the account, environment or credentials disables card charges until checked again. Reporting-only OAuth credentials cannot charge payments.</p>

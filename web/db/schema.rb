@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_03_220000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_03_230000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -1430,6 +1430,40 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_220000) do
     t.index ["reviewed_by_id"], name: "index_daily_reconciliation_reviews_on_reviewed_by_id"
     t.index ["tenant_id", "day"], name: "idx_daily_reconciliation_review_day"
     t.index ["tenant_id"], name: "index_daily_reconciliation_reviews_on_tenant_id"
+  end
+
+  create_table "dejavoo_feed_events", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "pos_setting_id", null: false
+    t.string "feed_id", null: false
+    t.string "request_type", null: false
+    t.string "event_type", null: false
+    t.string "sub_event_type"
+    t.string "tpn"
+    t.string "transaction_id"
+    t.string "external_reference_id"
+    t.string "rrn"
+    t.string "original_rrn"
+    t.string "batch_number"
+    t.string "source_type"
+    t.string "card_label"
+    t.string "card_last_four"
+    t.string "approval_code"
+    t.string "host_response_code"
+    t.integer "amount_cents"
+    t.integer "tip_cents"
+    t.integer "settlement_count"
+    t.integer "settlement_cents"
+    t.string "occurred_on"
+    t.string "matched_kind"
+    t.bigint "matched_id"
+    t.datetime "received_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["pos_setting_id", "received_at"], name: "index_dejavoo_feed_events_on_pos_setting_id_and_received_at"
+    t.index ["pos_setting_id"], name: "index_dejavoo_feed_events_on_pos_setting_id"
+    t.index ["tenant_id", "external_reference_id"], name: "index_dejavoo_feed_events_on_tenant_id_and_external_reference_id"
+    t.index ["tenant_id", "feed_id"], name: "index_dejavoo_feed_events_on_tenant_id_and_feed_id", unique: true
   end
 
   create_table "departments", force: :cascade do |t|
