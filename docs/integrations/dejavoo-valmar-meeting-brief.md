@@ -1,98 +1,142 @@
 # Dejavoo + Valmar meeting brief
 
-For Rupert's developer, ahead of the introduction Valmar made to Dejavoo on 2026-11-02.
-Research details, sources and the gap list are in [dejavoo-spin.md](dejavoo-spin.md).
-Keep merchant IDs, TPNs, auth keys, statements and the store's product approvals out
-of this public repository.
+For Rupert's developer, for the Dejavoo ISV Integration Review on 2026-11-03 (Valmar
+joins as the ISO). Research details, sources and the earlier gap list are in
+[dejavoo-spin.md](dejavoo-spin.md).
+Keep merchant IDs, TPNs, auth keys, contact details, statements and the store's
+product approvals out of this public repository.
 
-## Our position in one paragraph
+## Where we stand (2026-11-03)
 
-Rupert wants to drive the store's Dejavoo terminal from its register through **SPIn
-REST in cloud mode** (semi-integrated). The terminal reads the card; Rupert sends the
-amount and gets back approval, brand, last four and auth code, never the card number.
-A sandbox adapter is already written and tested against Dejavoo's public docs. We need
-a sandbox account, a UAT terminal and TPN, and clear certification steps. Valmar must
-confirm the account is underwritten for hemp/CBD on the network the TPN is boarded to.
+| Item | Status |
+| --- | --- |
+| SPIn REST public docs | Read. Public, but using them needs an authorized merchant, terminal and credentials. |
+| UAT sandbox request + ISV questionnaire | Submitted. Dejavoo confirmed receipt. |
+| Sandbox TPN | Added to our iPOSpays store. **Auth key not yet copied, terminal not yet in UAT mode.** |
+| Access verified | **No.** No "Check gateway" or SPIn call has run against the TPN yet. |
+| Successful sandbox test | **No.** Needs a UAT terminal (P1) and the auth key. |
+| Rupert SPIn adapter | Built and tested against the docs, sandbox only; production host refused in code. |
+| Online (card-not-present) payments through Dejavoo | **Not built. Not covered by SPIn.** See below. |
 
-## Ask Dejavoo
+**Do not claim** in the meeting that Rupert is "integrated" or "certified". The accurate
+line is: *adapter built to the public SPIn REST spec; sandbox access requested; first
+live test pending.*
 
-1. **API choice.** Is SPIn REST (cloud) the right integration for a web-based POS? Is
-   there a LAN/local mode, and does SPIn USB matter for us? Anything replacing SPIn soon?
-2. **Hosts and credentials.** Confirm the sandbox host (`test.spinpos.net/spin`) and
-   production host (`api.spinpos.net`). REST marks `RegisterId` obsolete but the portal
-   says to copy the Register ID. Which do we send? What is `SPInToken`?
-3. **Sandbox access.** An iPOSpays UAT merchant, a **UAT terminal** (loaner or
-   purchase?) and a TPN with SPIn enabled. Developer portal access for us.
-4. **Certification.** Is there an ISV certification or integration review for SPIn?
-   What test script, who signs off, how long it takes, any fee. Do we need an `IsvId`?
-   Who holds EMV certification (the terminal app, we assume)?
-5. **Terminal models.** Which models support SPIn cloud today: P line (P1–P18), QD
-   line, Z line? Which do you recommend for a counter and for pop-up events (battery,
-   Wi-Fi/LTE)?
-6. **Behaviour we must handle.** Is `Amount` the total before or after `TipAmount`? Can
-   we turn off the terminal's own tip prompt and surcharge/dual pricing per TPN? Is
-   partial approval on by default, and how do we read the approved amount? What does
-   `AbortTransaction` do? Is a `ReferenceId` enough to make a retry safe?
-7. **Callbacks.** The `CallbackInfo.Url` payload, retries and signing. Or should we
-   poll `Status`? Any rate limits?
-8. **Offline and batches.** Can the terminal store and forward when the cloud is
-   down? Does the batch auto-close, and at what time? Is there an API for closed-batch
-   reports by TPN?
-9. **Hemp/CBD.** Any Dejavoo or iPOSpays restriction on hemp/CBD merchants or MCCs?
+## The key point: in-person and online are different APIs
 
-## Ask Valmar
+The store wants a **Dejavoo P1** at the counter **and** online payments. These are two
+integrations, and the terminal API does not cover online checkout.
 
-1. **Underwriting.** Is the merchant account approved for hemp/CBD **on the network and
-   sponsor bank the Dejavoo TPN will use** (TSYS, Fiserv, other)? Please confirm it in
-   writing. Card networks only accept products inside the federal hemp definition.
-2. **Approved product list.** Which products or categories did underwriting approve?
-   Rupert enforces that list per processor: anything not on it cannot be run on the
-   terminal. Send it in a form we can load (SKUs or categories).
-3. **The federal hemp change.** From **12 November 2026** (non-naturally-produced
-   cannabinoids) and **11 December 2026** (total-THC and per-container limits) some
-   current products leave the hemp definition. Will you re-underwrite before 11 December?
-   What documents do you need (COAs, labels, a revised product list)? Is there a risk
-   of termination or a reserve change?
-4. **Integration approval.** Do you need to approve or certify Rupert as an integrated
-   POS? Is there a partner agreement? Is Dejavoo's certified terminal app enough?
-5. **Timeline and fees.** Terminal cost or lease, per-terminal fees, gateway or SPIn
-   fees, surcharge or dual-pricing setup (we want it off unless agreed), batch time,
-   funding timing.
-6. **Test terminal.** Can you issue a UAT TPN and terminal, or must it come from Dejavoo?
-7. **PCI.** Which self-assessment (SAQ) applies with SPIn cloud? Any scan or portal
-   requirement?
-8. **Reporting.** Will the existing reporting portal (deposits, batches) show Dejavoo
-   batches? Any API access for reconciliation?
-9. **Events.** Is a second terminal or TPN for pop-up events allowed under the same
-   account and location rules?
+| | In person (P1 at the counter) | Online (website checkout) |
+| --- | --- | --- |
+| Dejavoo product | **SPIn** (REST, cloud mode) | **Hosted Payment Page (HPP)** or **Freedom to Design (FTD)** JS fields; **iPOS Transact** for token sales, voids and refunds |
+| Who reads the card | The terminal | Dejavoo's page or JS fields in the shopper's browser |
+| Card data on Rupert's server | Never | Never (with HPP or FTD) |
+| Rupert today | Adapter built (sandbox) | Uses Authorize.net Accept.js; no Dejavoo code |
+| Credentials | TPN + SPIn auth key | **Not stated in the public docs.** Same TPN or a separate e-commerce TPN? |
+
+We will **not** use the Clear Card Encryption API: it sends raw card numbers through
+our own UI and puts Rupert in full PCI scope.
+
+## All the data comes into Rupert
+
+Rupert is the store's book of record, so every Dejavoo transaction must land in it,
+in person and online, and be matched against deposits. Three sources:
+
+1. **Per-transaction result.** SPIn returns approval, amount, brand, last four, auth
+   code, batch number. Rupert already keeps these (and nothing sensitive).
+2. **FEED webhooks.** Real-time transaction and settlement events pushed to a Rupert
+   endpoint, signed with HMAC or Basic auth. This is the only way to see online
+   (HPP/FTD) payments and anything run on the terminal outside Rupert.
+3. **Batch Report and Transaction Status Check APIs.** End-of-day pull to catch
+   anything the feed missed, and to tie batches to bank deposits.
+
+## Features Rupert needs
+
+**Before the first sandbox test** (small; mostly done):
+
+- Nothing new in code. Enter the TPN and auth key on Checkout setup, press "Check
+  gateway", then run a sale, decline, cancel, timeout/recovery, void, return and settle.
+- Confirm the auth-key format. Rupert currently expects 10 letters or digits; widen it
+  if the real key differs.
+
+**Before in-person go-live:**
+
+1. **Register "Send to terminal" flow**: waiting screen, cancel (`AbortTransaction`),
+   and a background job so a 2-minute terminal wait doesn't hold a web request.
+2. **Refunds and voids through SPIn**, with the card type (credit/debit) stored.
+3. **Terminal per register / per event** (one TPN per device).
+4. **Tips and pricing**: one place prompts for tips; terminal surcharge/dual pricing off.
+5. **Production switch** after Dejavoo and Valmar sign-off (owner approval recorded).
+
+**Before online go-live through Dejavoo** (new work, larger):
+
+6. **Online checkout adapter** (HPP redirect or FTD fields) replacing Accept.js for this
+   processor, with the processor-approved product check before payment.
+7. **iPOS Transact client** for online refunds and voids.
+
+**Data ingestion (both channels):**
+
+8. **FEED webhook receiver**: verify the signature, store the event, dedupe by
+   transaction ID, link to the Rupert sale.
+9. **Batch report import and reconciliation**: pull daily batches, match to Rupert sales
+   and to the bank deposits, flag anything unmatched.
+
+## Ask Dejavoo (ISV review)
+
+1. **Which APIs for us.** Confirm SPIn REST cloud for the P1, and **which product for
+   online**: HPP, FTD, or both? Does online need its own TPN or merchant profile?
+2. **Credentials.** Where exactly is the SPIn auth key in the portal for our TPN? Do we
+   send `RegisterId` or only `Tpn`? Credentials for HPP/FTD/iPOS Transact?
+3. **UAT terminal.** Do we get a UAT P1 (loaner or purchase)? Steps to put it in UAT
+   mode on DVStore? Can we test without hardware?
+4. **Certification.** What is the ISV review/certification for SPIn and for online?
+   Test script, who signs off, timing, fees. Do we need an `IsvId`?
+5. **Data out.** FEED: payload schema, exact HMAC header and field order, retries,
+   whether it covers both terminal and online payments. Batch Report and Transaction
+   Status Check API access and credentials.
+6. **P1 behaviour.** Does P1 support SPIn cloud today? Turn off its tip prompt and
+   surcharge/dual pricing per TPN? Store-and-forward when offline? Batch auto-close time?
+7. **Edge cases.** Is `Amount` before or after `TipAmount`? Partial approval on by default?
+   What does `AbortTransaction` do mid-card? Is `ReferenceId` enough to make retries safe?
+8. **Hemp/CBD.** Any Dejavoo or iPOSpays restriction on hemp/CBD merchants or MCCs?
+
+## Ask Valmar (ISO)
+
+1. **Underwriting.** Is the account approved for hemp/CBD **on the network and sponsor
+   bank this TPN uses**, for both card-present and card-not-present? In writing.
+2. **Approved product list** in a form Rupert can load (SKUs or categories), and whether
+   online sales have a narrower list.
+3. **Federal hemp change.** From 12 November 2026 and 11 December 2026 some products
+   leave the hemp definition. Re-underwriting before 11 December? Documents needed?
+4. **Integration approval.** Do you need to approve Rupert as an integrated POS and
+   online checkout? Partner agreement?
+5. **PCI.** Which SAQ applies to SPIn (in person) and HPP/FTD (online)?
+6. **Fees and timing.** P1 cost, SPIn/gateway fees, online rates, batch time, funding.
+7. **Reporting.** Will the reporting portal show Dejavoo batches? Any API for deposits?
 
 ## Rupert summary to share
 
-> **Rupert** is the store's own point-of-sale and back-office system. It runs the
-> register, a customer-facing display, inventory (synced with the store's C-Trax
-> catalog), online orders, staff timesheets and bookkeeping. It is a web app hosted on
-> the business's own server.
+> **Rupert** is the store's own point-of-sale and back-office system: register,
+> customer display, inventory, online orders, timesheets and bookkeeping. It is a web
+> app hosted on the business's own server.
 >
-> **Payments today:** cash, and Authorize.net / NMI card gateways (sandbox and
-> production, behind processor approval). Card data is collected only in the gateway's
-> hosted fields; Rupert never sees or stores a card number.
+> **Payments today:** cash, and Authorize.net / NMI card gateways. Card data is only
+> entered in the gateway's hosted fields; Rupert never sees or stores a card number.
 >
 > **Compliance controls:** each processor has an approved product list, and Rupert
-> blocks any item not on it before a card is charged (the cashier is offered cash
-> instead). Products also carry certificates of analysis, card-eligibility and THC
-> data, with ID checks and audited manager overrides. Event (pop-up) sales use the same
-> approved list.
+> blocks any item not on it before a card is charged. Products carry certificates of
+> analysis, card-eligibility and THC data, with ID checks and audited manager overrides.
 >
-> **Dejavoo plan:** semi-integrated SPIn REST, cloud mode. Rupert sends sale, void,
-> return and status requests with a unique reference per attempt, never retries blindly
-> after a timeout (it asks for the status first), and reconciles batches against its
-> own sales. A sandbox adapter is built and tested; we need a UAT terminal to run it
-> live.
+> **Dejavoo plan:** SPIn REST (cloud) for the P1 at the counter; Dejavoo's hosted page
+> or JS fields for online. A unique reference per attempt, a status check before any
+> retry, and every transaction and batch brought back into Rupert for reconciliation.
+> The SPIn adapter is built against the public spec; we need sandbox access and a UAT
+> terminal to run the first live test.
 
 ## What the store owner needs to provide
 
-- Permission for Dejavoo/Valmar to give the developer iPOSpays sandbox and portal access.
-- The written hemp/CBD approval and the approved product list from Valmar (kept
-  privately, entered in Rupert under Processor-approved products).
-- A decision on tips (terminal or Rupert's customer display) and surcharging (off, or
-  priced into Rupert).
+- Permission for Dejavoo/Valmar to give the developer sandbox and portal access.
+- The written hemp/CBD approval and the approved product list from Valmar.
+- A decision on tips (terminal or Rupert's display) and surcharging (off, or priced in).
+- Whether online sales should move to Dejavoo or stay on the current gateway.
