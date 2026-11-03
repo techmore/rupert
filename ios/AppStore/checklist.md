@@ -12,7 +12,7 @@ the build; **Owner** = a click in App Store Connect or a secret only the owner h
 | 5 | Privacy policy URL https://pos.rupertpos.com/privacy | Done (page) | `web/app/views/public_pages/privacy.html.erb` |
 | 6 | App Privacy answers ("nutrition label") | Owner clicks, answers below | App Store Connect → App Privacy |
 | 7 | Screenshots: iPhone 6.9" 1320×2868, iPad 13" 2064×2752 | Done | `screenshots/` |
-| 8 | Age rating questionnaire → 4+ | Owner clicks, answers below | App Information → Age Rating |
+| 8 | Age rating questionnaire → 13+ (see below) | Owner clicks, answers below | App Information → Age Rating |
 | 9 | Export compliance | Done: `ITSAppUsesNonExemptEncryption = NO` in Info.plist (HTTPS only), so no question per build | `Info.plist` |
 | 10 | Price: Free · Availability: all countries (or United States only) | Owner clicks | Pricing and Availability |
 | 11 | Review notes and demo login | Notes done · demo shop task done · Owner runs it and types the password | `review-notes.md`, `rupert:app_review_demo` |
@@ -48,11 +48,13 @@ performance data). Tracking: **No**. Payments happen on the website, through Str
 
 ## Age rating answers
 
-Every content question (violence, sexual content, profanity, horror, drugs, alcohol, gambling,
-contests, medical): **None**. Unrestricted web access: **No** (the app only opens Rupert's own
+Updated 2026-11-02 (`docs/ios/app-review-readiness.md`): merchants' catalogs in the app can list
+vapes and hemp/THC products, so **Alcohol, Tobacco, or Drug Use or References: Infrequent** (13+;
+choose 18+ if hemp and vape shops become the main customers). Every other content question
+(violence, sexual content, profanity, horror, gambling, contests, medical): **None**. Unrestricted web access: **No** (the app only opens Rupert's own
 sites; other links open in a Safari view). User-generated content: Team chat is private to a
 business's own staff, not public: answer **No** for "user-generated content shared publicly".
-Messaging and chat: **Yes** if asked (private team chat). Result: **4+**.
+Messaging and chat: **Yes** if asked (private team chat). Result: **13+**.
 
 ## Guideline 4.2: why this is more than a website
 

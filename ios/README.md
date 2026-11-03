@@ -76,6 +76,12 @@ ASC_KEY_PATH=~/.appstoreconnect/private_keys/AuthKey_XXXXXXXXXX.p8 ASC_KEY_ID=XX
 `ship.sh` compiles the icon, signs with the team's distribution certificate, validates the `.ipa`
 offline and uploads it. It never submits for review.
 
+## Tests
+
+`Tests/RupertTests` covers the session watcher, the bottom inset, Rupert's own sites and the
+Info.plist privacy keys. On a Mac: `xcodebuild test -scheme Rupert -destination 'platform=iOS Simulator,name=iPhone 17'`.
+App Review readiness and partner notes: `docs/ios/app-review-readiness.md`.
+
 ## Build on a Mac
 
 Open `ios/Package.swift` in Xcode 26 or later, or use any Hotwire Native app template and add

@@ -111,6 +111,31 @@ final class BannerWebViewController: HotwireWebViewController {
         webView.evaluateJavaScript(BannerColors.readScript) { [weak self] value, _ in
             self?.apply(BannerColors(json: value) ?? .fallback)
         }
+        publishBottomInset()
+        // A sign-in or sign-out in this page restarts every tab (SessionWatcher).
+        if Instance.isRupert(webView.url) {
+            webView.evaluateJavaScript(SessionWatcher.readScript) { value, _ in
+                SessionWatcher.shared.observe(value)
+            }
+        }
+    }
+
+    override func viewSafeAreaInsetsDidChange() {
+        super.viewSafeAreaInsetsDidChange()
+        publishBottomInset()
+    }
+
+    /// Pages scroll under the floating tab bar, which is fine for scrolling content but hides the
+    /// bottom of full-height panels (Ask Rupert's question box). Rupert pads those panels by
+    /// `--native-bottom-inset` (application.css), which the app sets to the tab bar's height.
+    private func publishBottomInset() {
+        guard isViewLoaded, let webView = visitableView.webView else { return }
+        webView.evaluateJavaScript(Self.bottomInsetScript(view.safeAreaInsets.bottom))
+    }
+
+    static func bottomInsetScript(_ inset: CGFloat) -> String {
+        let points = max(0, Int(inset.rounded()))
+        return "document.documentElement.style.setProperty('--native-bottom-inset', '\(points)px')"
     }
 
     func apply(_ colors: BannerColors) {

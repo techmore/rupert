@@ -18,8 +18,9 @@
       <% end %>
     <% end %>
     <%# Signed out, only the sign-in page shows the build; public pages (landing, privacy, terms…)
-        stay clean for visitors. Every response still carries the X-Rupert-Build header. %>
-    <% if Current.user.nil? && controller_name == 'sessions' %><%= render 'layouts/build_version' %><% end %>
+        stay clean for visitors, and the iPhone app shows its version in App settings instead.
+        Every response still carries the X-Rupert-Build header. %>
+    <% if Current.user.nil? && controller_name == 'sessions' && !hotwire_native_app? %><%= render 'layouts/build_version' %><% end %>
     <% if Current.user %>
       <% if Current.user.can?('dashboard.read') %>
         <button type="button" onclick="window.dispatchEvent(new Event('rupert:open-search'))" class="topbar-search" aria-label="Search" title="Search — press /"><%= navigation_icon('search') %><span class="topbar-search-label">Search orders, customers, SKUs…</span><kbd>/</kbd></button>

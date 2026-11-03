@@ -428,6 +428,8 @@
 .native-app .topbar-search,
 .native-app .app-statusbar,
 .native-app .chat-dock { display:none !important; }
+/* Full-height panels end above the app's floating tab bar; the app sets --native-bottom-inset (ios/Sources/Rupert/Banner.swift). */
+.native-app .ask-panel:not(.hidden) { padding-bottom:var(--native-bottom-inset,0px); }
 /* Inside the iPhone app the header is one solid banner with the native bar above it, which reads
    --color-banner after each page (ios/Sources/Rupert/BannerWebViewController.swift). */
 .native-app .app-topbar { background:var(--color-banner);-webkit-backdrop-filter:none;backdrop-filter:none;border-bottom-color:var(--color-edge); }

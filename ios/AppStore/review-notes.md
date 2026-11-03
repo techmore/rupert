@@ -23,6 +23,8 @@ Native features to try:
 3. Home Screen quick actions: touch and hold the Rupert icon → Team Chat, Ask Rupert, Notifications or Search.
 4. Native tab bar with a separate navigation stack per tab, native sheets for forms, pull to refresh, and Google sign-in in the system authentication sheet (ASWebAuthenticationSession).
 
+Ask Rupert (the Ask Rupert tab) is an AI assistant for questions about using Rupert and about the shop's own records. The panel says which AI model writes the answers and that the question and the records it looks up are sent to that service. The demo shop's data is fictional.
+
 Account deletion: person icon on the Home tab → "Delete account", or the account menu (initials, top right of a page) → "Delete my account". Please do not delete the review account, or the next reviewer cannot sign in.
 
 Subscriptions: the app sells nothing. Businesses subscribe on our website; the app does not show prices, plans or purchase links (guideline 3.1.3(c), enterprise services sold to organizations). Account sign-up is not offered in the app; it signs in accounts a business already has, so Sign in with Apple is not required (4.8).

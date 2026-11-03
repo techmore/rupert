@@ -43,6 +43,8 @@
 	<string>Rupert uses the camera to scan barcodes when you count inventory, and when you take a photo to attach to a task, chat message or receipt.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Rupert opens your photos when you choose one to attach to a task, chat message or receipt.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Rupert saves a picture to your photos when you touch and hold an image in a page and choose to save it.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Rupert uses Face ID to unlock the app when you turn on Require Face ID in App settings.</string>
 	<key>UIApplicationShortcutItems</key>
