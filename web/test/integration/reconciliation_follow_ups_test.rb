@@ -521,6 +521,9 @@ class ReconciliationFollowUpsTest < ActionDispatch::IntegrationTest
       assert_includes response.body, 'October statement needed'
       assert_includes response.body, 'Overdue'
     end
+    # The request above renewed the session cookie at the traveled time, so its
+    # 14-day expiry is already past in real time; sign in again.
+    post login_path, params: { email: @user.email, password: 'password123' }
     @user.update!(role: 'reporting')
     get reconciliation_follow_up_path(item)
     assert_response :success

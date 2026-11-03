@@ -10,13 +10,18 @@ class PosCheckoutsController < AuthenticatedController
   rescue_from Pos::Error, Ctrax::Client::Error do |error|
     render json: { error: error.message }, status: :unprocessable_entity
   end
+  # Later handlers win: a compliance block also returns its issues and whether a manager may override.
+  rescue_from Compliance::Blocked do |error|
+    render json: error.payload, status: :unprocessable_entity
+  end
   def create
     display = PosDisplaySession.find_by!(id: params[:display_id], user_id: Current.user.id)
     if params[:tender] == 'cash' && display.confirmed? && display.draft['tax_verified']
       total = display.draft['subtotal_cents'] + display.draft['tax_cents'] + display.chosen_tip_cents
       raise Pos::Error, 'Cash received is less than the total.' if Pos::Checkout.money(params[:cash_received]) < total
     end
-    checkout = Pos::Checkout.prepare!(display: display, tender: params[:tender], register_id: params[:register_id])
+    checkout = Pos::Checkout.prepare!(display: display, tender: params[:tender], register_id: params[:register_id],
+      compliance: params.permit(:id_checked, :override_user_id, :override_pin, :override_reason).to_h.symbolize_keys)
     if checkout.tender == 'cash' || checkout.terminal_card?
       checkout.terminal_card? ? Pos::Checkout.terminal_card!(checkout) : Pos::Checkout.cash!(checkout, received: params[:cash_received])
       PosInventoryJob.perform_later(checkout.id) unless checkout.demo?
@@ -26,6 +31,7 @@ class PosCheckoutsController < AuthenticatedController
 
   def show
     @checkout = checkout_scope.find(params[:id])
+    @coa_badges = Compliance::Catalog.register_badges(@checkout.location)
   end
 
   def cancel

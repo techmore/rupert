@@ -2,7 +2,7 @@
 <% content_for :title, 'Support access' %>
 <div class="page-medium space-y-6">
   <%= page_header 'Support access', subtitle: 'Give one support administrator read access to selected business screens for one hour.', eyebrow: 'Your workspace',
-                  menu: [['Subscription', billing_path], ['Open workspace', root_path]] %>
+                  menu: [(['Subscription', billing_path] unless hotwire_native_app?), ['Open workspace', root_path]].compact %>
   <%= fold_explainer('Access expires automatically and can be revoked sooner. Support cannot edit records or open provider credentials through this grant. Current protection: encrypted saved credentials and application access controls. Customer-held encryption keys are not implemented; infrastructure operators can still access server-held data. A support grant does not transfer encryption keys.', class: 'text-sm text-mocha') %>
 
   <section class="section-card">

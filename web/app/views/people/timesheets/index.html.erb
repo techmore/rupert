@@ -1,17 +1,28 @@
 <% content_for :title, "Timesheets" %>
 <% content_for :head do %><meta name="turbo-cache-control" content="no-cache"><% end %>
 <div class="space-y-6">
-  <%= page_header 'Timesheets', subtitle: (@reviewer ? 'Weekly hours from staff, to review and approve.' : 'Your hours by week, submitted for review.'),
+  <%= page_header 'Timesheets', subtitle: (@reviewer ? 'Weekly hours from staff, to review and approve.' : 'Your hours by pay week. Submit each week for review.'),
         menu: [['Download CSV', people_timesheets_path(format: :csv, status: @status, from: @from&.iso8601, to: @to&.iso8601, q: @query), { data: { turbo: false } }]] do %>
-    <% if policy(People::Timesheet).create? %><%= link_to "Add timesheet", new_people_timesheet_path, class: "btn-primary" %><% end %>
+    <% if policy(People::Timesheet).create? %><%= link_to 'Add timesheet', new_people_timesheet_path, class: 'btn-primary' %><% end %>
+  <% end %>
+  <%= render 'shared/open_clock_outs', items: @open_items, limit: @open_clock_outs.limit_hours %>
+
+  <% if @reviewer && @pending_corrections_count.to_i.positive? %>
+    <section class="callout callout-attention flex flex-wrap items-center justify-between gap-3" aria-label="Clock corrections waiting" data-corrections-waiting>
+      <div>
+        <p class="callout-title"><%= pluralize(@pending_corrections_count, 'clock correction') %> waiting for review</p>
+        <p class="text-sm text-mocha">Timesheets with these shifts cannot be approved until the corrections are reviewed.</p>
+      </div>
+      <% if ClockCorrection.reviewer?(Current.user) %><%= link_to 'Review corrections', time_clock_path(anchor: 'corrections'), class: 'btn-ghost btn-sm' %><% end %>
+    </section>
   <% end %>
 
-  <% status_labels = { 'submitted' => 'Needs review', 'all' => 'All timesheets', 'approved' => 'Approved', 'rejected' => 'Returned for correction', 'draft' => 'Drafts' } %>
+  <% status_labels = { 'submitted' => 'In review', 'all' => 'All', 'approved' => 'Approved', 'rejected' => 'Returned', 'draft' => 'Draft' } %>
   <% status_count = ->(status) { status == 'submitted' ? @awaiting : status == 'all' ? (@status_counts || {}).values.sum : (@status_counts || {}).fetch(status, 0) } %>
   <div class="flex flex-wrap items-center justify-between gap-3" <%= tour_anchor('views') %>>
     <%= page_tabs([['list', 'Rupert timesheets'], ['unified', 'All sources'], ['calendar', 'Calendar']].map { |key, label| [label, people_timesheets_path(request.query_parameters.merge(view: key, month: (key == 'calendar' ? (@month || @from || Date.current).strftime('%Y-%m') : nil)).compact), @view == key] }, label: 'Timesheet view') %>
     <% if @reviewer && @awaiting.positive? && @status != 'submitted' %>
-      <%= link_to "#{@awaiting} waiting for review", people_timesheets_path(status: 'submitted', view: 'list'), class: 'text-sm font-semibold text-olive-deep underline' %>
+      <%= link_to "#{@awaiting} in review", people_timesheets_path(status: 'submitted', view: 'list'), class: 'text-sm font-semibold text-olive-deep underline' %>
     <% end %>
   </div>
 
@@ -23,21 +34,23 @@
       <% to_choices = ([@to] + weeks.map { |w| w + 6 }).compact.uniq.sort.reverse %>
       <div class="toolbar-field">
         <%= label_tag :from, 'From', class: 'field-label' %>
-        <%= select_tag :from, options_for_select([['All dates', '']] + from_choices.map { |d| [d.strftime('%a %b %-d, %Y'), d.iso8601] }, @from&.iso8601), class: 'select' %>
+        <%= select_tag :from, options_for_select([['All dates', '']] + from_choices.map { |d| [d.strftime('%a, %b %-d, %Y'), d.iso8601] }, @from&.iso8601), class: 'select' %>
       </div>
       <div class="toolbar-field">
         <%= label_tag :to, 'To', class: 'field-label' %>
-        <%= select_tag :to, options_for_select([['All dates', '']] + to_choices.map { |d| [d.strftime('%a %b %-d, %Y'), d.iso8601] }, @to&.iso8601), class: 'select' %>
+        <%= select_tag :to, options_for_select([['All dates', '']] + to_choices.map { |d| [d.strftime('%a, %b %-d, %Y'), d.iso8601] }, @to&.iso8601), class: 'select' %>
       </div>
       <div class="toolbar-field" <%= tour_anchor('tabs') %>>
         <%= label_tag :status, 'Status', class: 'field-label' %>
         <%= select_tag :status, options_for_select(status_labels.map { |key, label| ["#{label} (#{status_count.call(key)})", key] }, @status), class: 'select',
               aria: { label: @reviewer ? 'Timesheet review' : 'Status' } %>
       </div>
-      <div class="toolbar-field">
-        <%= label_tag :q, 'Staff member', class: 'field-label' %>
-        <%= search_field_tag :q, @query, class: 'input', placeholder: 'Search by name' %>
-      </div>
+      <% if @reviewer %>
+        <div class="toolbar-field">
+          <%= label_tag :q, 'Staff member', class: 'field-label' %>
+          <%= search_field_tag :q, @query, class: 'input', placeholder: 'Search by name' %>
+        </div>
+      <% end %>
       <div class="toolbar-actions">
         <%= submit_tag 'Apply', class: 'btn-primary', name: nil %>
         <%= link_to 'Clear', people_timesheets_path(view: @view), class: 'btn-ghost' %>
@@ -57,31 +70,35 @@
         </div>
       </nav>
     </div>
-    <div class="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-mocha">
-      <% Date::DAYNAMES.rotate.each do |day| %><div class="py-1"><%= day %></div><% end %>
+    <div class="table-region">
+    <div class="month-grid">
+    <div class="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-mocha" aria-hidden="true">
+      <% Date::DAYNAMES.rotate.each do |day| %><div class="py-1"><%= day[0, 3] %></div><% end %>
     </div>
-    <div class="grid grid-cols-7 gap-1">
+    <ol class="grid grid-cols-7 gap-1" aria-label="<%= @month.strftime('%B %Y') %>">
       <% @calendar_days_range.each do |day| %>
         <% in_month = day.month == @month.month %>
         <% bucket = in_month ? @calendar_days[day.iso8601] : nil %>
-        <div class="min-h-24 rounded-card border p-2 text-left <%= in_month ? (bucket && (bucket[:timesheets].any? || bucket[:punches].positive?) ? 'border-fog bg-haze/40' : 'border-fog bg-cream') : 'border-transparent bg-haze/30' %> <%= day == Date.current ? 'ring-2 ring-olive' : '' %>" role="button" tabindex="0" aria-label="<%= day.strftime('%B %-d, %Y') %>">
-          <p class="text-xs font-semibold <%= in_month ? (day == Date.current ? 'text-olive' : 'text-ink') : 'text-taupe/60' %>"><%= day.day %></p>
+        <li class="min-h-24 rounded-card border p-2 text-left <%= in_month ? (bucket && (bucket[:timesheets].any? || bucket[:punches].positive?) ? 'border-fog bg-haze/40' : 'border-fog bg-cream') : 'border-transparent bg-haze/30' %> <%= day == Date.current ? 'ring-2 ring-olive' : '' %>" <%= 'aria-hidden="true"'.html_safe unless in_month %> <%= 'aria-current="date"'.html_safe if day == Date.current %>>
+          <p class="text-xs font-semibold <%= in_month ? (day == Date.current ? 'text-olive' : 'text-ink') : 'text-mocha font-normal' %>"><span class="sr-only"><%= day.strftime('%A, %B') %> </span><%= day.day %></p>
           <% if in_month && bucket && bucket[:timesheets].any? %>
-            <div class="mt-1 space-y-0.5">
+            <ul class="mt-1 space-y-0.5">
               <% bucket[:timesheets].each do |ts| %>
-                <div class="truncate rounded px-1 py-0.5 text-xs font-semibold leading-tight <%= ts.approved? ? 'bg-fern/15 text-fern' : ts.submitted? ? 'bg-olive/15 text-olive-deep' : ts.rejected? ? 'bg-rose/15 text-rose' : 'bg-taupe/15 text-taupe' %>" title="<%= ts.employee&.name %> · <%= ts.period_label %> · <%= number_with_precision(ts.total_hours, precision: 1) %>h">
-                  <%= ts.employee&.name %> · <%= ts.status %>
-                </div>
+                <li class="truncate rounded px-1 py-0.5 text-xs font-semibold leading-tight <%= ts.approved? ? 'bg-fern/15 text-fern' : ts.submitted? ? 'bg-clay/15 text-clay' : ts.rejected? ? 'bg-rose/15 text-rose' : 'bg-taupe/15 text-taupe' %>" title="<%= ts.employee&.name %> · <%= ts.period_label %> · <%= format_hours(ts.total_hours, unit: true) %>">
+                  <%= link_to "#{ts.employee&.name} · #{timesheet_status_label(ts.status)}", people_timesheet_path(ts), class: 'hover:underline' %>
+                </li>
               <% end %>
-            </div>
+            </ul>
           <% end %>
           <% if in_month && bucket && bucket[:punches].positive? %>
-            <p class="mt-1 text-xs text-mocha"><%= bucket[:punches] %> punch<%= bucket[:punches] == 1 ? '' : 'es' %> · <%= number_with_precision(bucket[:hours], precision: 1) %>h</p>
+            <p class="mt-1 text-xs text-mocha"><%= pluralize(bucket[:punches], 'punch', plural: 'punches') %> · <%= format_hours(bucket[:hours], unit: true) %></p>
           <% end %>
-        </div>
+        </li>
       <% end %>
+    </ol>
     </div>
-    <p class="text-xs text-taupe">Timesheets (weekly periods) and punches (daily) from Rupert, Square and C-Trax. Overlapping hours are never added together.</p>
+    </div>
+    <p class="text-xs text-taupe">Timesheets (pay weeks) and punches (daily) from Rupert, Square and C-Trax. Overlapping hours are never added together.</p>
   </section>
   <% elsif @view == 'unified' %>
   <div class="card">
@@ -90,11 +107,11 @@
         <thead>
           <tr>
             <th scope="col" class="th">Source</th>
-            <th scope="col" class="th">Staff member</th>
+            <% if @reviewer %><th scope="col" class="th">Staff member</th><% end %>
             <th scope="col" class="th">Date</th>
             <th scope="col" class="th num">Hours</th>
             <th scope="col" class="th">Status</th>
-            <th scope="col" class="th"><span class="sr-only">Detail</span></th>
+            <th scope="col" class="th"><span class="sr-only">Open</span></th>
           </tr>
         </thead>
         <tbody>
@@ -104,11 +121,11 @@
           <% @unified_records.each do |record| %>
             <tr>
               <td class="td"><span class="<%= record[:source_class] %>"><%= record[:source] %></span></td>
-              <td class="td font-medium text-ink"><%= record[:employee] %></td>
-              <td class="td text-mocha"><%= record[:date]&.strftime('%b %-d, %Y') || '—' %><% if record[:end_date] && record[:end_date] != record[:date] %> – <%= record[:end_date].strftime('%b %-d') %><% end %></td>
-              <td class="td num"><%= record[:hours].nil? ? '—' : number_with_precision(record[:hours], precision: 2) %></td>
-              <td class="td"><span class="pill-taupe"><%= record[:status] %></span></td>
-              <td class="td text-right"><%= link_to (record[:detail].presence || 'Open'), record[:path], class: 'btn-ghost btn-sm' %></td>
+              <% if @reviewer %><td class="td font-medium text-ink"><%= record[:employee] %></td><% end %>
+              <td class="td text-mocha"><%= record[:date] ? (record[:end_date] && record[:end_date] != record[:date] ? period_range(record[:date], record[:end_date]) : record[:date].strftime('%b %-d, %Y')) : '–' %></td>
+              <td class="td num"><%= record[:hours].nil? ? '–' : format_hours(record[:hours]) %></td>
+              <td class="td"><% if record[:source] == 'Rupert' %><%= timesheet_status_pill(record[:status]) %><% else %><span class="pill-taupe"><%= record[:status].to_s.humanize %></span><% end %></td>
+              <td class="td text-right"><%= link_to 'Open', record[:path], class: 'btn-ghost btn-sm', aria: { label: "Open #{record[:detail]}" } %></td>
             </tr>
           <% end %>
         </tbody>
@@ -119,20 +136,26 @@
   <% else %>
   <% if @reviewer %>
     <section class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Timesheet summary">
-      <div class="stat"><p class="stat-label">Needs review</p><p class="stat-value mt-1"><%= @status_counts.fetch('submitted', 0) %></p><p class="text-xs text-mocha"><%= @awaiting %> across all dates</p></div>
-      <div class="stat"><p class="stat-label">Approved</p><p class="stat-value mt-1"><%= @status_counts.fetch('approved', 0) %></p></div>
-      <div class="stat"><p class="stat-label">Returned / drafts</p><p class="stat-value mt-1"><%= @status_counts.fetch('rejected', 0) %> / <%= @status_counts.fetch('draft', 0) %></p></div>
-      <div class="stat"><p class="stat-label">Hours in this view</p><p class="stat-value mt-1"><%= number_with_precision(@view_hours, precision: 1) %></p></div>
+      <div class="stat"><p class="stat-label">In review</p><p class="stat-value mt-1 tabular-nums"><%= @status_counts.fetch('submitted', 0) %></p><% if @awaiting != @status_counts.fetch('submitted', 0) %><p class="text-xs text-mocha"><%= @awaiting %> across all dates</p><% end %></div>
+      <div class="stat"><p class="stat-label">Approved</p><p class="stat-value mt-1 tabular-nums"><%= @status_counts.fetch('approved', 0) %></p></div>
+      <div class="stat"><p class="stat-label">Returned · Draft</p><p class="stat-value mt-1 tabular-nums"><%= @status_counts.fetch('rejected', 0) %> · <%= @status_counts.fetch('draft', 0) %></p></div>
+      <div class="stat"><p class="stat-label">Hours in this view</p><p class="stat-value mt-1 tabular-nums"><%= format_hours(@view_hours) %></p></div>
     </section>
   <% end %>
 
-  <% approvable = @timesheets.select { |t| t.submitted? && policy(t).approve? } %>
+  <% approvable = @reviewer ? @timesheets.select { |t| t.submitted? && policy(t).approve? } : [] %>
+  <% show_overtime = @timesheets.any? { |t| @summaries[t.id].overtime.positive? } || PayRules.current.overtime_enabled? %>
+  <% show_other = @timesheets.any? { |t| @summaries[t.id].other.positive? } %>
+  <% show_comp = @timesheets.any? { |t| t.compensation_total_cents.positive? } %>
+  <% show_regular = @reviewer && (show_overtime || show_other) %>
+  <% show_flags = @reviewer && @timesheets.any? { |t| @summaries[t.id].flags.any? } %>
+  <% columns = 4 + (approvable.any? ? 1 : 0) + (@reviewer ? 1 : 0) + (show_regular ? 1 : 0) + (show_flags ? 1 : 0) + (show_overtime ? 1 : 0) + (show_other ? 1 : 0) + (show_comp ? 1 : 0) %>
   <%= form_with url: bulk_approve_people_timesheets_path, method: :post, id: 'bulk-approve', data: { turbo_confirm: 'Approve the selected timesheets?' } do |f| %>
     <%= hidden_field_tag :return_status, @status %><%= hidden_field_tag :return_period, @period %><%= hidden_field_tag :return_from, @from&.iso8601 %><%= hidden_field_tag :return_to, @to&.iso8601 %><%= hidden_field_tag :return_view, 'list' %><%= hidden_field_tag :return_q, @query %>
     <% if approvable.any? %>
-      <div class="mb-3 flex flex-wrap items-center gap-2">
-        <label class="flex items-center gap-2 text-sm"><input type="checkbox" class="checkbox" onclick="document.querySelectorAll('#bulk-approve .bulk-box').forEach(function(b){b.checked=this.checked}.bind(this))"> Select all <%= approvable.size %></label>
-        <%= text_field_tag :review_note, nil, maxlength: 4000, placeholder: 'Optional comment for all', 'aria-label': 'Optional comment for all selected', class: 'input w-auto' %>
+      <div class="mb-3 flex flex-wrap items-center gap-3" role="group" aria-label="Approve several">
+        <label class="flex items-center gap-2 text-sm"><input type="checkbox" class="checkbox" data-bulk-all onclick="document.querySelectorAll('#bulk-approve .bulk-box').forEach(function(b){b.checked=this.checked}.bind(this))"> Select all <%= approvable.size %> in review</label>
+        <%= text_field_tag :review_note, nil, maxlength: 4000, placeholder: 'Comment for everyone selected (optional)', 'aria-label': 'Optional comment for everyone selected', class: 'input w-full sm:w-80' %>
         <%= f.submit 'Approve selected', class: 'btn-primary btn-sm' %>
       </div>
     <% end %>
@@ -142,42 +165,44 @@
         <thead>
           <tr>
             <% if approvable.any? %><th scope="col" class="th"><span class="sr-only">Select</span></th><% end %>
-            <th scope="col" class="th">Staff member</th>
-            <th scope="col" class="th">Period</th>
-            <th scope="col" class="th num">Regular</th>
-            <th scope="col" class="th num">Overtime</th>
-            <th scope="col" class="th num">Other</th>
-            <th scope="col" class="th num">Total</th>
-            <th scope="col" class="th num">Comp.</th>
-            <th scope="col" class="th">Check</th>
+            <% if @reviewer %><th scope="col" class="th">Staff member</th><% end %>
+            <th scope="col" class="th">Pay week</th>
+            <% if show_regular %><th scope="col" class="th num">Regular</th><% end %>
+            <% if show_overtime %><th scope="col" class="th num">Overtime</th><% end %>
+            <% if show_other %><th scope="col" class="th num">PTO, holiday</th><% end %>
+            <th scope="col" class="th num">Hours</th>
+            <% if show_comp %><th scope="col" class="th num" title="1% commission + $10 card bonus">Commission</th><% end %>
+            <% if show_flags %><th scope="col" class="th">To check</th><% end %>
             <th scope="col" class="th">Status</th>
-            <th scope="col" class="th"><span class="sr-only">Review</span></th>
+            <th scope="col" class="th"><span class="sr-only">Open</span></th>
           </tr>
         </thead>
         <tbody>
           <% if @timesheets.empty? %>
-            <tr><td colspan="11" class="empty-row"><%= @status == 'submitted' ? 'Nothing awaiting review. Try All timesheets or another week.' : 'No timesheets match. Clear the filters or add a timesheet.' %></td></tr>
+            <tr><td colspan="<%= columns %>" class="empty-row"><%= if @status == 'submitted' then 'Nothing in review. Everything submitted has been handled.' elsif @reviewer then 'No timesheets match. Clear the filters or choose other dates.' else 'No timesheets yet. Open this week from My time, or add a timesheet.' end %></td></tr>
           <% end %>
           <% @timesheets.each do |timesheet| %>
             <% sum = @summaries[timesheet.id] %>
+            <% can_review = @reviewer && timesheet.submitted? && policy(timesheet).approve? %>
             <tr>
               <% if approvable.any? %>
-                <td class="td"><% if approvable.include?(timesheet) %><input type="checkbox" class="checkbox bulk-box" name="timesheet_ids[]" value="<%= timesheet.id %>" aria-label="Select <%= timesheet.employee&.name %>"><% end %></td>
+                <td class="td"><% if approvable.include?(timesheet) %><input type="checkbox" class="checkbox bulk-box" name="timesheet_ids[]" value="<%= timesheet.id %>" aria-label="Select <%= timesheet.employee&.name %>, <%= timesheet.period_label %>"><% end %></td>
               <% end %>
-              <td class="td font-medium text-ink"><%= timesheet.employee&.name %><% if timesheet.demo? %> <span class="pill-taupe">Demo</span><% end %></td>
-              <td class="td"><%= link_to timesheet.period_label, people_timesheet_path(timesheet), class: "text-olive hover:underline" %></td>
-              <td class="td num"><%= number_with_precision(sum.regular, precision: 1) %></td>
-              <td class="td num"><%= number_with_precision(sum.overtime, precision: 1) %></td>
-              <td class="td num"><%= number_with_precision(sum.other, precision: 1) %></td>
-              <td class="td num font-medium text-ink"><%= number_with_precision(sum.total, precision: 1) %></td>
-              <td class="td num" title="1% commission + $10/card bonus"><%= number_to_currency(timesheet.compensation_total_cents / 100.0) %></td>
-              <td class="td"><% sum.flags.each do |flag| %><span class="<%= flag.start_with?('Overtime') ? 'pill-olive' : 'pill-clay' %> mr-1 mb-1 inline-block"><%= flag %></span><% end %></td>
+              <% if @reviewer %><td class="td font-medium text-ink"><%= timesheet.employee&.name %><% if timesheet.demo? %> <span class="pill-taupe">Demo</span><% end %></td><% end %>
+              <td class="td whitespace-nowrap"><%= link_to timesheet.period_label, people_timesheet_path(timesheet), class: "text-olive hover:underline" %><% if !@reviewer && timesheet.demo? %> <span class="pill-taupe">Demo</span><% end %></td>
+              <% if show_regular %><td class="td num"><%= format_hours(sum.regular) %></td><% end %>
+              <% if show_overtime %><td class="td num"><%= format_hours(sum.overtime, blank_zero: true) %></td><% end %>
+              <% if show_other %><td class="td num"><%= format_hours(sum.other, blank_zero: true) %></td><% end %>
+              <td class="td num font-semibold text-ink"><%= format_hours(sum.total) %></td>
+              <% if show_comp %><td class="td num"><%= timesheet.compensation_total_cents.positive? ? number_to_currency(timesheet.compensation_total_cents / 100.0) : '–' %></td><% end %>
+              <% if show_flags %><td class="td"><% sum.flags.each do |flag| %><span class="<%= flag.start_with?('Overtime') ? 'pill-olive' : 'pill-clay' %> mr-1 mb-1 inline-block"><%= flag %></span><% end %></td><% end %>
               <td class="td">
-                <span class="<%= timesheet.approved? ? "pill-fern" : timesheet.submitted? ? "pill-olive" : timesheet.rejected? ? "pill-rose" : "pill-taupe" %>"><%= timesheet.status.humanize %></span>
-                <% if timesheet.submitted? && timesheet.submitted_at %><p class="text-xs text-mocha">waiting <%= time_ago_in_words(timesheet.submitted_at) %></p><% end %>
+                <%= timesheet_status_pill(timesheet) %>
+                <% if timesheet.submitted? && timesheet.submitted_at %><p class="mt-0.5 text-xs text-mocha">Sent <%= time_ago_in_words(timesheet.submitted_at) %> ago</p><% end %>
               </td>
               <td class="td text-right">
-                <%= link_to (timesheet.submitted? && policy(timesheet).approve? ? 'Review timesheet' : 'Open'), people_timesheet_path(timesheet), class: 'btn-ghost btn-sm' %>
+                <% label = if can_review then 'Review' elsif !@reviewer && timesheet.draft? then 'Continue' elsif !@reviewer && timesheet.rejected? then 'Fix' else 'Open' end %>
+                <%= link_to label, people_timesheet_path(timesheet), class: (can_review ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'), aria: { label: "#{label} #{timesheet.employee&.name}, #{timesheet.period_label}" } %>
                 <% if timesheet.assigned_reviewer %><p class="text-xs text-mocha">Assigned to <%= timesheet.assigned_reviewer.display_name %></p><% end %>
                 <% if @reviewer && timesheet.submitted? && !policy(timesheet).approve? %><p class="text-xs text-mocha">Another reviewer required</p><% end %>
               </td>
@@ -193,7 +218,7 @@
 
   <% if @reviewer && @calendar_view %>
     <% clocked_in_now = @calendar.clocked_in.map(&:employee_id).uniq.size %>
-    <details class="card" <%= 'open' if clocked_in_now.positive? || params[:period].present? %>>
+    <details class="card" <%= 'open' if params[:period].present? %>>
       <summary class="card-pad cursor-pointer"><span class="section-title">This week's shift calendar</span><% if clocked_in_now.positive? %> <span class="pill-fern ml-2 align-middle"><%= clocked_in_now %> clocked in now</span><% end %><span class="block text-sm text-mocha">Rupert, Square and C-Trax shifts by day; tick staff on and off.</span></summary>
       <div class="card-pad pt-0">
         <%= render 'people/timesheets/calendar', calendar: @calendar, week: (@week_start || Date.current.beginning_of_week) %>
@@ -203,17 +228,26 @@
 
   <% if @reviewer %>
     <div class="grid gap-6 lg:grid-cols-2">
-      <section class="space-y-3" aria-label="Upcoming weeks" <%= tour_anchor('weeks') %>>
-        <%= section_heading 'Weeks at a glance' %>
+      <section class="space-y-3" aria-label="Pay periods" <%= tour_anchor('weeks') %>>
+        <%= section_heading 'Pay periods', hint: PayRules.current.summary %>
         <div class="card">
           <ul class="row-list">
-            <% @upcoming_weeks.each do |week| %>
-              <li class="row-item">
+            <% @pay_periods.each do |period| %>
+              <li class="row-item" data-pay-period="<%= period[:from].iso8601 %>">
                 <div class="min-w-0">
-                  <p class="font-semibold text-ink"><%= link_to week[:label], people_timesheets_path(period: week[:monday].iso8601, status: 'all'), class: 'hover:underline' %></p>
-                  <p class="text-xs text-mocha"><%= week[:monday].strftime('%b %-d') %> – <%= (week[:monday] + 6).strftime('%b %-d') %> · <%= week[:submitted] %> awaiting · <%= week[:approved] %> approved<% if week[:draft].positive? %> · <%= week[:draft] %> draft<% end %><% if week[:rejected].positive? %> · <%= week[:rejected] %> returned<% end %></p>
+                  <p class="font-semibold text-ink"><%= link_to period[:label], people_timesheets_path(from: period[:from].iso8601, to: period[:to].iso8601, status: 'all'), class: 'hover:underline' %></p>
+                  <p class="text-xs text-mocha"><%= period_range(period[:from], period[:to]) %><%= ' · in progress' if period[:current] %></p>
                 </div>
-                <div class="row-item-end"><span class="num font-semibold text-ink"><%= pluralize(week[:total], 'timesheet') %></span></div>
+                <div class="row-item-end text-sm">
+                  <% parts = [] %>
+                  <% parts << ["#{period[:submitted]} in review", 'pill-clay'] if period[:submitted].positive? %>
+                  <% parts << ["#{period[:rejected]} returned", 'pill-rose'] if period[:rejected].positive? %>
+                  <% parts << ["#{period[:draft]} draft", 'pill-taupe'] if period[:draft].positive? %>
+                  <% parts << ["#{period[:approved]} approved", 'pill-fern'] if period[:approved].positive? %>
+                  <% if period[:missing].positive? %><% parts << (period[:current] ? ["#{period[:missing]} clocked, not started", 'pill-taupe'] : ["#{period[:missing]} worked, no timesheet", 'pill-rose']) %><% end %>
+                  <% parts.each do |text, pill| %><span class="<%= pill %>"><%= text %></span><% end %>
+                  <% if parts.empty? %><span class="text-mocha">No timesheets</span><% end %>
+                </div>
               </li>
             <% end %>
           </ul>
@@ -238,8 +272,8 @@
                     <tr>
                       <td class="td font-medium text-ink"><%= leave.employee&.name %></td>
                       <td class="td"><%= leave.leave_type.humanize %></td>
-                      <td class="td"><%= leave.starts_on.strftime('%b %-d') %> – <%= leave.ends_on.strftime('%b %-d') %></td>
-                      <td class="td"><span class="<%= leave.approved? ? 'pill-fern' : leave.requested? ? 'pill-olive' : 'pill-taupe' %>"><%= leave.status.humanize %></span></td>
+                      <td class="td"><%= period_range(leave.starts_on, leave.ends_on) %></td>
+                      <td class="td"><span class="<%= leave.approved? ? 'pill-fern' : leave.requested? ? 'pill-clay' : 'pill-taupe' %>"><%= leave.requested? ? 'Requested' : leave.status.humanize %></span></td>
                     </tr>
                   <% end %>
                 </tbody>
@@ -251,7 +285,14 @@
     </div>
   <% end %>
 
-  <div <%= tour_anchor('sources') %>>
-    <%= render 'shared/time_source_coverage', coverage: @coverage %>
-  </div>
+  <% if @reviewer %>
+    <div <%= tour_anchor('sources') %>>
+      <%= render 'shared/time_source_coverage', coverage: @coverage %>
+    </div>
+  <% else %>
+    <details class="explainer" <%= tour_anchor('sources') %>>
+      <summary class="explainer-summary">Where these hours come from</summary>
+      <div class="mt-3"><%= render 'shared/time_source_coverage', coverage: @coverage %></div>
+    </details>
+  <% end %>
 </div>

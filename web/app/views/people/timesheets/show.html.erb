@@ -1,174 +1,211 @@
-<% content_for :title, "Timesheet" %>
+<% content_for :title, "#{@timesheet.employee.name} · #{@timesheet.period_label}" %>
 <% editable = policy(@timesheet).update? && @timesheet.draft? %>
 <% reviewing = policy(@timesheet).approve? && @timesheet.submitted? %>
+<% own = @timesheet.employee.user_id == Current.user.id %>
+<% total = @summary.total %>
 <% menu = [] %>
 <% menu << ['Download CSV', people_timesheet_path(@timesheet, format: :csv), { data: { turbo: false } }] %>
-<% menu << ["Earlier: #{@previous_sheet.period_label}", people_timesheet_path(@previous_sheet)] if @previous_sheet %>
-<% menu << ["Later: #{@next_sheet.period_label}", people_timesheet_path(@next_sheet)] if @next_sheet %>
+<% menu << ["Earlier week: #{@previous_sheet.period_label}", people_timesheet_path(@previous_sheet)] if @previous_sheet %>
+<% menu << ["Later week: #{@next_sheet.period_label}", people_timesheet_path(@next_sheet)] if @next_sheet %>
 <% if editable %>
-  <% menu << ['Import clock shifts', import_shifts_people_timesheet_path(@timesheet), { method: :post }] %>
-  <% menu << ['Edit', edit_people_timesheet_path(@timesheet)] %>
-  <% menu << ['Delete draft', people_timesheet_path(@timesheet), { method: :delete, data: { turbo_confirm: 'Delete this draft and its entries?' } }] %>
+  <% menu << ['Edit period or notes', edit_people_timesheet_path(@timesheet)] %>
+  <% menu << ['Delete draft', people_timesheet_path(@timesheet), { method: :delete, data: { turbo_confirm: 'Delete this draft and all its hours? This cannot be undone.' } }] %>
 <% end %>
-<% if policy(@timesheet).reopen? && (@timesheet.approved? || @timesheet.rejected?) && !@timesheet.payroll_locked? %>
-  <% menu << ['Reopen for editing', reopen_people_timesheet_path(@timesheet), { method: :post }] %>
+<% can_reopen = policy(@timesheet).reopen? && (@timesheet.approved? || @timesheet.rejected?) && !@timesheet.payroll_locked? %>
+<% if can_reopen && @timesheet.approved? %>
+  <% menu << ['Reopen for editing', reopen_people_timesheet_path(@timesheet), { method: :post, data: { turbo_confirm: 'Reopen this approved timesheet? It goes back to draft and must be submitted and approved again.' } }] %>
 <% end %>
-<% status_pill = @timesheet.approved? ? "pill-fern" : @timesheet.submitted? ? "pill-olive" : @timesheet.rejected? ? "pill-rose" : "pill-taupe" %>
 <div class="space-y-6">
   <%= render 'people/timesheets/demo_header', timesheet: @timesheet if @timesheet.demo? %>
-  <%= page_header @timesheet.period_label, subtitle: @timesheet.employee.name, menu: menu do %>
-    <% if editable %><%= button_to 'Submit for review', submit_people_timesheet_path(@timesheet), class: 'btn-primary' %><% end %>
+  <%= page_header @timesheet.employee.name, eyebrow: 'Timesheet', subtitle: @timesheet.period_label, menu: menu do %>
+    <% if editable %>
+      <%= button_to 'Submit for review', submit_people_timesheet_path(@timesheet), class: 'btn-primary',
+            form: { data: { turbo_confirm: "Submit #{format_hours(total, unit: true)} for #{@timesheet.period_label}? It is locked until a reviewer approves or returns it." } },
+            data: { turbo_submits_with: 'Submitting…' } %>
+    <% elsif can_reopen && @timesheet.rejected? %>
+      <%= button_to 'Reopen to fix', reopen_people_timesheet_path(@timesheet), class: 'btn-primary', data: { turbo_submits_with: 'Reopening…' } %>
+    <% end %>
   <% end %>
 
-  <dl class="facts">
-    <div><dt>Status</dt><dd><span class="<%= status_pill %>"><%= @timesheet.status.humanize %></span></dd></div>
-    <% if @timesheet.submitted_at %><div><dt>Submitted</dt><dd><%= l(@timesheet.submitted_at, format: :short) %></dd></div><% end %>
-    <% if @timesheet.reviewer %><div><dt>Reviewed by</dt><dd><%= @timesheet.reviewer.display_name %></dd></div><% end %>
-    <% if @timesheet.assigned_reviewer %><div><dt>Assigned to</dt><dd><%= @timesheet.assigned_reviewer.display_name %></dd></div><% end %>
-  </dl>
+  <section class="timesheet-state" aria-label="Timesheet status" data-timesheet-state>
+    <%= timesheet_status_pill(@timesheet) %>
+    <p class="text-sm text-mocha"><%= timesheet_state_note(@timesheet) %><% if reviewing %> <a href="#review" class="text-olive underline">Go to review</a><% end %></p>
+    <% if (reviewing || @timesheet.draft?) && @summary.flags.any? %><p class="flex basis-full flex-wrap gap-2" aria-label="Things to check"><% @summary.flags.each do |flag| %><span class="pill-clay"><%= flag %></span><% end %></p><% end %>
+  </section>
+
+  <% if @timesheet.review_note.present? %>
+    <section class="<%= @timesheet.rejected? ? 'callout callout-attention' : 'callout' %>" aria-label="Review comment">
+      <p class="callout-title"><%= @timesheet.rejected? ? 'What to fix' : 'Review comment' %><% if @timesheet.reviewer %> · <%= @timesheet.reviewer.display_name %><% end %></p>
+      <p class="whitespace-pre-wrap text-sm"><%= @timesheet.review_note %></p>
+    </section>
+  <% end %>
+
+  <%= render 'shared/open_clock_outs', items: @open_items, limit: @open_clock_outs.limit_hours %>
+
+  <% if @pending_corrections.any? %>
+    <section class="callout callout-attention" aria-label="Clock corrections waiting" data-pending-corrections>
+      <p class="callout-title"><%= pluralize(@pending_corrections.size, 'clock correction') %> waiting for review</p>
+      <p class="text-sm text-mocha">The timesheet cannot be approved until <%= @pending_corrections.size == 1 ? 'it is' : 'they are' %> reviewed<%= ' and the shifts re-imported' if @timesheet.draft? %>.</p>
+      <ul class="row-list mt-2">
+        <% @pending_corrections.each do |correction| %>
+          <li class="row-item px-0">
+            <div class="min-w-0 text-sm">
+              <p class="font-medium"><%= correction.clock_shift.started_at.in_time_zone.strftime('%a, %b %-d') %>: <%= shift_span(correction.original_started_at, correction.original_ended_at) %> → <%= shift_span(correction.proposed_started_at, correction.proposed_ended_at) %></p>
+              <p class="text-mocha"><%= correction.reason %></p>
+            </div>
+            <div class="row-item-end">
+              <% if @correction_reviewer && correction.clock_shift.user_id != Current.user.id && correction.requested_by_id != Current.user.id %>
+                <%= button_to 'Approve', approve_correction_time_clock_path(correction, return_to: people_timesheet_path(@timesheet)), class: 'btn-primary btn-sm', form: { data: { turbo_confirm: 'Apply the corrected clock times? The shift changes; payroll does not.' } } %>
+                <%= button_to 'Reject', reject_correction_time_clock_path(correction, return_to: people_timesheet_path(@timesheet)), class: 'btn-ghost btn-sm' %>
+              <% else %>
+                <span class="text-sm text-mocha"><%= own || correction.clock_shift.user_id == Current.user.id || correction.requested_by_id == Current.user.id ? 'Waiting for another reviewer' : 'Waiting for a reviewer' %></span>
+              <% end %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    </section>
+  <% end %>
+
+  <% if @square_changes.to_i.positive? %>
+    <p class="flash flash-alert" role="status" data-square-changes>
+      Square edited <%= pluralize(@square_changes, 'timecard') %> in this period after import; the original hours still count.
+      <% if SquareTimecardReviewer.allowed?(Current.user) %><%= link_to 'Review', people_square_timecard_reviews_path(employee_id: @timesheet.employee_id), class: 'underline' %><% end %>
+    </p>
+  <% end %>
+
+  <% if editable && @unimported_shifts.positive? %>
+    <section class="callout" aria-label="Clock shifts to import" data-unimported-shifts>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p class="callout-title"><%= pluralize(@unimported_shifts, 'finished clock shift') %> not on this timesheet yet</p>
+          <p class="text-sm text-mocha">Import them so the days below match your clock. Hours you added by hand stay.</p>
+        </div>
+        <%= button_to 'Import clock shifts', import_shifts_people_timesheet_path(@timesheet), class: 'btn-ghost', data: { turbo_submits_with: 'Importing…' } %>
+      </div>
+    </section>
+  <% end %>
+
+  <% other = @summary.other %>
+  <section class="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Hours">
+    <div class="stat"><p class="stat-label">Total hours</p><p class="stat-value mt-1 tabular-nums" data-total-hours><%= format_hours(total) %></p></div>
+    <% if @summary.regular != total %><div class="stat"><p class="stat-label">Regular</p><p class="stat-value mt-1 tabular-nums"><%= format_hours(@summary.regular) %></p></div><% end %>
+    <% if @summary.overtime.positive? || PayRules.current.overtime_enabled? %>
+      <div class="stat"><p class="stat-label">Overtime</p><p class="stat-value mt-1 tabular-nums"><%= format_hours(@summary.overtime) %></p></div>
+    <% end %>
+    <% if other.positive? %>
+      <div class="stat"><p class="stat-label">PTO and holiday</p><p class="stat-value mt-1 tabular-nums"><%= format_hours(other) %></p></div>
+    <% end %>
+    <div class="stat"><p class="stat-label">Days worked</p><p class="stat-value mt-1 tabular-nums"><%= @summary.days_worked %></p></div>
+  </section>
+
+  <% days = (@timesheet.period_start..@timesheet.period_end).to_a %>
+  <% by_day = @entries.group_by(&:worked_on) %>
+  <section class="section-card" aria-label="Daily hours">
+    <%= section_heading 'Day by day', id: 'days-heading', hint: "#{'Clock shifts import automatically. Add hours by hand only for work that was not clocked. ' if editable}Times are in #{Time.zone.name.sub(/ \(US & Canada\)/, '')}." %>
+    <% if @entries.empty? %><p class="text-sm text-mocha" data-empty-days>No hours yet.<%= editable ? ' Import your clock shifts or add hours by hand.' : '' %></p><% end %>
+    <ul class="row-list timesheet-days" aria-label="Hours by day">
+      <% days.each do |day| %>
+        <% rows = by_day[day] || [] %>
+        <% day_total = rows.sum(&:hours) %>
+        <% if rows.empty? %>
+          <li class="row-item timesheet-day timesheet-day-empty">
+            <p class="timesheet-day-name"><%= day.strftime('%a, %b %-d') %></p>
+            <p class="row-item-end text-sm text-mocha"><span class="sr-only">No hours</span><span aria-hidden="true">–</span></p>
+          </li>
+        <% end %>
+        <% rows.each do |entry| %>
+          <li class="row-item timesheet-day" data-entry-id="<%= entry.id %>">
+            <div class="min-w-0">
+              <p class="timesheet-day-name"><%= day.strftime('%a, %b %-d') %></p>
+              <p class="text-sm text-mocha">
+                <% if entry.clock_shift %><%= shift_span(entry.clock_shift.started_at, entry.clock_shift.ended_at) %> · Time clock<% if entry.clock_shift.ended_at && entry.clock_shift.ended_at.in_time_zone.to_date != entry.clock_shift.started_at.in_time_zone.to_date %> · <%= entry.clock_shift.started_at.in_time_zone.to_date == day ? 'hours until midnight' : 'hours after midnight' %><% end %><% else %>Added by hand<% end %>
+                <% unless entry.work_type_regular? %> · <span class="pill-olive"><%= entry.work_type.humanize %></span><% end %>
+                <% if entry.notes.present? && entry.notes != 'Imported from time clock' %> · <%= entry.notes %><% end %>
+              </p>
+            </div>
+            <div class="row-item-end">
+              <% if entry == rows.last && day_total > TimesheetInsights::LONG_DAY_HOURS %><span class="pill-rose" title="<%= format_hours(day_total, unit: true) %> this day">Long day</span><% end %>
+              <span class="num font-semibold text-ink"><%= format_hours(entry.hours, unit: true) %></span>
+              <% if editable %>
+                <details class="entry-edit">
+                  <summary class="btn-ghost btn-sm" aria-label="Edit <%= day.strftime('%A, %B %-d') %> <%= entry.clock_shift ? 'type or note' : 'hours' %>">Edit</summary>
+                  <%= form_with url: update_entry_people_timesheet_path(@timesheet, entry_id: entry.id), method: :patch, scope: :timesheet_entry, class: 'entry-edit-form' do |f| %>
+                    <% if entry.clock_shift %>
+                      <%= f.hidden_field :worked_on, value: entry.worked_on, id: "date-#{entry.id}" %>
+                      <%= f.hidden_field :hours, value: entry.hours, id: "hours-#{entry.id}" %>
+                      <p class="text-xs text-mocha sm:col-span-2">Hours come from the clock. Wrong time? <%= link_to 'Request a correction', time_clock_path(anchor: "shift-#{entry.clock_shift_id}"), class: 'underline' %>; it is re-imported after review.</p>
+                    <% else %>
+                      <div><%= f.label :worked_on, 'Date', for: "date-#{entry.id}", class: 'field-label' %><%= f.date_field :worked_on, id: "date-#{entry.id}", value: entry.worked_on, min: @timesheet.period_start, max: [@timesheet.period_end, Date.current].min, required: true, class: 'input' %></div>
+                      <div><%= f.label :hours, 'Hours', for: "hours-#{entry.id}", class: 'field-label' %><%= f.number_field :hours, id: "hours-#{entry.id}", value: entry.hours, min: 0.01, max: 24, step: 0.01, required: true, inputmode: 'decimal', class: 'input' %></div>
+                    <% end %>
+                    <div><%= f.label :work_type, 'Type', for: "type-#{entry.id}", class: 'field-label' %><%= f.select :work_type, People::TimesheetEntry::WORK_TYPES.map { |t| [t == 'pto' ? 'PTO' : t.humanize, t] }, { selected: entry.work_type }, id: "type-#{entry.id}", class: 'select' %></div>
+                    <div><%= f.label :notes, 'Note', for: "notes-#{entry.id}", class: 'field-label' %><%= f.text_field :notes, id: "notes-#{entry.id}", value: (entry.notes == 'Imported from time clock' ? nil : entry.notes), maxlength: 1000, class: 'input' %></div>
+                    <div class="form-actions sm:col-span-2">
+                      <%= f.submit 'Save', class: 'btn-primary btn-sm', data: { turbo_submits_with: 'Saving…' } %>
+                    </div>
+                  <% end %>
+                </details>
+                <% unless entry.clock_shift %>
+                  <%= button_to 'Remove', remove_entry_people_timesheet_path(@timesheet, entry_id: entry.id), method: :post, class: 'btn-ghost btn-sm text-rose',
+                        form: { data: { turbo_confirm: "Remove #{format_hours(entry.hours, unit: true)} on #{day.strftime('%a, %b %-d')}?" } }, aria: { label: "Remove #{day.strftime('%A, %B %-d')} hours" } %>
+                <% end %>
+              <% end %>
+            </div>
+          </li>
+        <% end %>
+      <% end %>
+      <li class="row-item timesheet-total">
+        <p class="font-semibold text-ink">Total</p>
+        <p class="row-item-end"><span class="num font-semibold text-ink"><%= format_hours(total, unit: true) %></span></p>
+      </li>
+    </ul>
+
+    <% if editable %>
+      <details class="explainer" <%= 'open' if @entry.errors.any? || @entries.empty? %>>
+        <summary class="explainer-summary">Add hours by hand</summary>
+        <%= form_with model: [@timesheet, @entry], scope: :timesheet_entry, url: add_entry_people_timesheet_path(@timesheet), method: :post, class: 'mt-3 grid gap-3 sm:grid-cols-4 sm:items-end' do |f| %>
+          <div><%= f.label :worked_on, 'Date', class: 'field-label' %><%= f.date_field :worked_on, min: @timesheet.period_start, max: [@timesheet.period_end, Date.current].min, required: true, class: 'input' %></div>
+          <div><%= f.label :hours, 'Hours', class: 'field-label' %><%= f.number_field :hours, step: 0.25, min: 0.25, max: 24, value: (@entry.hours.to_d.positive? ? @entry.hours : nil), required: true, inputmode: 'decimal', class: 'input' %></div>
+          <div><%= f.label :work_type, 'Type', class: 'field-label' %><%= f.select :work_type, People::TimesheetEntry::WORK_TYPES.map { |t| [t == 'pto' ? 'PTO' : t.humanize, t] }, {}, class: 'select w-full' %></div>
+          <div><%= f.label :notes, 'Note', class: 'field-label' %><%= f.text_field :notes, maxlength: 1000, class: 'input', placeholder: 'What was this time for?' %></div>
+          <div class="form-actions sm:col-span-4"><%= f.submit 'Add hours', class: 'btn-primary btn-sm', data: { turbo_submits_with: 'Adding…' } %></div>
+        <% end %>
+        <% if @entry.errors.any? %><p class="mt-2 text-xs text-rose" role="alert"><%= @entry.errors.full_messages.to_sentence %></p><% end %>
+      </details>
+    <% end %>
+  </section>
 
   <% if reviewing %>
-    <section class="section-card" aria-label="Review checklist">
-      <%= section_heading 'Before approving', hint: "Check the dates, daily hours, overtime and notes below against the staff member's shifts." %>
-      <%= fold_explainer('Approval rechecks entries, imported clock hours and pending corrections. Return the timesheet for correction if anything needs changing.', class: 'text-sm text-mocha') %>
-      <% if @summary.flags.any? %><p class="flex flex-wrap gap-2"><% @summary.flags.each do |flag| %><span class="pill-clay"><%= flag %></span><% end %></p><% end %>
-      <%= form_with url: approve_people_timesheet_path(@timesheet), class: 'flex flex-wrap items-end gap-2' do |f| %>
-        <div class="toolbar-field">
-          <%= f.label :review_note, 'Review comment', class: 'field-label' %>
-          <%= f.text_field :review_note, maxlength: 4000, placeholder: 'Optional', class: 'input' %>
+    <section class="section-card" aria-label="Review checklist" id="review">
+      <%= section_heading 'Your review', id: 'review-heading' %>
+      <%= form_with url: approve_people_timesheet_path(@timesheet), class: 'space-y-3' do |f| %>
+        <div>
+          <%= f.label :review_note, 'Comment for the staff member', class: 'field-label' %>
+          <%= f.text_area :review_note, maxlength: 4000, rows: 2, class: 'input', aria: { describedby: 'review-note-hint' } %>
+          <p id="review-note-hint" class="mt-1 text-xs text-mocha">Optional when approving. When returning, say what to fix.</p>
         </div>
-        <div class="toolbar-actions">
-          <%= f.submit 'Approve', class: 'btn-primary' %>
+        <div class="form-actions">
+          <%= f.submit 'Approve', class: 'btn-primary', data: { turbo_submits_with: 'Approving…' } %>
           <% if @next_awaiting %><%= f.submit 'Approve & next', name: 'continue', class: 'btn-ghost' %><% end %>
           <%= f.submit 'Return for correction', formaction: reject_people_timesheet_path(@timesheet), class: 'btn-ghost' %>
         </div>
       <% end %>
-      <% if @next_awaiting %><p class="text-sm"><%= link_to "Skip to next awaiting review: #{@next_awaiting.employee.name}", people_timesheet_path(@next_awaiting), class: 'text-olive underline' %></p><% end %>
+      <% if @next_awaiting %><p class="text-sm"><%= link_to "Skip to the next one: #{@next_awaiting.employee.name}", people_timesheet_path(@next_awaiting), class: 'text-olive underline' %></p><% end %>
     </section>
   <% end %>
 
-  <section class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6" aria-label="Hours and compensation">
-    <div class="stat">
-      <p class="stat-label">Total hours</p>
-      <p class="stat-value mt-1"><%= number_with_precision(@timesheet.total_hours, precision: 1) %></p>
-    </div>
-    <div class="stat">
-      <p class="stat-label">Regular</p>
-      <p class="stat-value mt-1"><%= number_with_precision(@timesheet.regular_hours, precision: 1) %></p>
-    </div>
-    <div class="stat">
-      <p class="stat-label">Overtime</p>
-      <p class="stat-value mt-1"><%= number_with_precision(@timesheet.overtime_hours, precision: 1) %></p>
-    </div>
-    <div class="stat">
-      <p class="stat-label">Commission (1%)</p>
-      <p class="stat-value mt-1"><%= number_to_currency(@timesheet.commission_cents / 100.0) %></p>
-    </div>
-    <div class="stat">
-      <p class="stat-label">Card bonus (<%= @timesheet.card_redemptions %> &times; $10)</p>
-      <p class="stat-value mt-1"><%= number_to_currency(@timesheet.card_bonus_cents / 100.0) %></p>
-    </div>
-    <div class="stat">
-      <p class="stat-label">Compensation total</p>
-      <p class="stat-value mt-1"><%= number_to_currency(@timesheet.compensation_total_cents / 100.0) %></p>
-    </div>
-  </section>
-
-  <% days = (@timesheet.period_start..@timesheet.period_end).to_a %>
-  <% by_day = @timesheet.entries.group_by(&:worked_on) %>
-  <section class="section-card" aria-label="Daily hours">
-    <%= section_heading 'Day by day' %>
-    <div class="table-region" role="region" tabindex="0" aria-label="Hours by day">
-      <table class="table">
-        <thead><tr>
-          <% days.each do |day| %><th scope="col" class="th text-center"><%= day.strftime('%a') %><br><span class="font-normal"><%= day.strftime('%b %-d') %></span></th><% end %>
-        </tr></thead>
-        <tbody><tr>
-          <% days.each do |day| %>
-            <% hours = (by_day[day] || []).sum(&:hours) %>
-            <td class="td text-center <%= hours > TimesheetInsights::LONG_DAY_HOURS ? 'font-semibold text-rose' : hours.zero? ? 'text-taupe' : 'text-ink' %>"><%= hours.zero? ? '–' : number_with_precision(hours, precision: 2, strip_insignificant_zeros: true) %></td>
-          <% end %>
-        </tr></tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="section-card">
-    <%= section_heading 'Entries' %>
-
-    <% if editable %>
-      <div class="rounded-card bg-haze/40 p-4">
-        <p class="text-xs text-taupe">Add a day's hours to this draft.</p>
-        <%= form_with model: [@timesheet, @entry], scope: :timesheet_entry, url: add_entry_people_timesheet_path(@timesheet), method: :post, class: "mt-2 flex flex-wrap items-end gap-2" do |f| %>
-          <div>
-            <%= f.label :worked_on, "Date", class: "field-label" %>
-            <%= f.date_field :worked_on, class: "input" %>
-          </div>
-          <div>
-            <%= f.label :hours, "Hours", class: "field-label" %>
-            <%= f.number_field :hours, step: 0.25, min: 0.25, max: 24, value: @entry.hours.positive? ? @entry.hours : 8, class: "input w-24" %>
-          </div>
-          <div>
-            <%= f.label :work_type, "Type", class: "field-label" %>
-            <%= f.select :work_type, People::TimesheetEntry::WORK_TYPES.map { |t| [t.humanize, t] }, {}, class: "select w-auto" %>
-          </div>
-          <div><%= f.label :notes, "Entry notes", class: "field-label" %><%= f.text_field :notes, maxlength: 1000, class: "input" %></div>
-          <%= f.submit "Add entry", class: "btn-primary btn-sm" %>
-        <% end %>
-        <% if @entry.errors.any? %>
-          <p class="mt-2 text-xs text-rose"><%= @entry.errors.full_messages.to_sentence %></p>
-        <% end %>
-      </div>
-    <% end %>
-
-    <div class="table-region" role="region" tabindex="0" aria-label="Timesheet entries">
-      <table class="table">
-        <thead>
-          <tr>
-            <th scope="col" class="th">Date</th>
-            <th scope="col" class="th">Type</th>
-            <th scope="col" class="th num">Hours</th>
-            <% if editable %><th scope="col" class="th"><span class="sr-only">Actions</span></th><% end %>
-          </tr>
-        </thead>
-        <tbody>
-          <% if @timesheet.entries.empty? %>
-            <tr><td colspan="<%= @timesheet.draft? ? 4 : 3 %>" class="empty-row">No entries yet.</td></tr>
-          <% end %>
-          <% @timesheet.entries.ordered.each do |entry| %>
-            <tr>
-              <td class="td text-mocha"><%= l(entry.worked_on, format: :long) %></td>
-              <td class="td"><span class="pill-taupe"><%= entry.work_type.humanize %></span><% if entry.clock_shift_id %> <span class="pill-olive">Time clock</span><% end %><p class="text-xs"><%= entry.notes %></p></td>
-              <td class="td num font-medium text-ink"><%= number_with_precision(entry.hours, precision: 2) %></td>
-              <% if editable %>
-                <td class="td text-right">
-                  <details class="explainer"><summary class="explainer-summary">Edit entry</summary>
-                    <%= form_with url: update_entry_people_timesheet_path(@timesheet, entry_id: entry.id), method: :patch, scope: :timesheet_entry, class: 'mt-2 space-y-2 text-left' do |f| %>
-                      <div><%= f.label :worked_on, 'Date', for: "date-#{entry.id}", class: 'field-label' %><%= f.date_field :worked_on, id: "date-#{entry.id}", value: entry.worked_on, required: true, class: 'input' %></div>
-                      <div><%= f.label :hours, 'Hours', for: "hours-#{entry.id}", class: 'field-label' %><%= f.number_field :hours, id: "hours-#{entry.id}", value: entry.hours, min: 0.01, max: 24, step: 0.01, required: true, class: 'input' %></div>
-                      <div><%= f.label :work_type, 'Type', for: "type-#{entry.id}", class: 'field-label' %><%= f.select :work_type, People::TimesheetEntry::WORK_TYPES, { selected: entry.work_type }, id: "type-#{entry.id}", class: 'select' %></div>
-                      <div><%= f.label :notes, 'Notes', for: "notes-#{entry.id}", class: 'field-label' %><%= f.text_field :notes, id: "notes-#{entry.id}", value: entry.notes, maxlength: 1000, class: 'input' %></div>
-                      <%= f.submit 'Save entry', class: 'btn-primary btn-sm' %>
-                    <% end %>
-                  </details>
-                  <%= button_to "Remove", remove_entry_people_timesheet_path(@timesheet, entry_id: entry.id), method: :post, class: "btn-ghost btn-sm text-rose" %></td>
-              <% end %>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="section-card">
-    <%= section_heading 'Compensation breakdown', hint: 'Commission is 1% of credited period sales; the staff 50%-off card adds a $10 bonus per redemption. Display figures only, not posted to payroll.' %>
-    <dl class="facts">
-      <div><dt>Credited sales</dt><dd><%= number_to_currency(@timesheet.sales_cents / 100.0) %></dd></div>
-      <div><dt>Commission (1%)</dt><dd><%= number_to_currency(@timesheet.commission_cents / 100.0) %></dd></div>
-      <div><dt>Card redemptions</dt><dd><%= @timesheet.card_redemptions %></dd></div>
-      <div><dt>Card bonus</dt><dd><%= number_to_currency(@timesheet.card_bonus_cents / 100.0) %></dd></div>
-    </dl>
-  </section>
+  <% if @timesheet.compensation_total_cents.positive? %>
+    <section class="section-card" aria-label="Commission and card bonus">
+      <%= section_heading 'Commission and card bonus', hint: 'Estimates shown for information; they are not posted to payroll.' %>
+      <dl class="facts">
+        <div><dt>Credited sales</dt><dd><%= number_to_currency(@timesheet.sales_cents / 100.0) %></dd></div>
+        <div><dt>Commission (1%)</dt><dd><%= number_to_currency(@timesheet.commission_cents / 100.0) %></dd></div>
+        <div><dt>Card bonus (<%= @timesheet.card_redemptions %> × $10)</dt><dd><%= number_to_currency(@timesheet.card_bonus_cents / 100.0) %></dd></div>
+        <div><dt>Total</dt><dd class="font-semibold"><%= number_to_currency(@timesheet.compensation_total_cents / 100.0) %></dd></div>
+      </dl>
+    </section>
+  <% end %>
 
   <% if @timesheet.notes.present? %>
     <section class="section-card">
@@ -176,15 +213,13 @@
       <p class="whitespace-pre-wrap text-sm text-mocha"><%= @timesheet.notes %></p>
     </section>
   <% end %>
-  <% if @timesheet.review_note.present? %>
-    <section class="section-card"><%= section_heading 'Review comment' %><p class="whitespace-pre-wrap text-sm"><%= @timesheet.review_note %></p></section>
-  <% end %>
-  <section class="section-card">
-    <%= section_heading 'History' %>
-    <ul class="space-y-1 text-sm">
+
+  <section class="section-card" aria-labelledby="history-heading">
+    <%= section_heading 'History', id: 'history-heading' %>
+    <ol class="timesheet-history">
       <% @timesheet.events.includes(:user).order(:id).each do |event| %>
-        <li><%= l(event.created_at, format: :short) %> · <%= event.action.humanize %> · <%= event.user&.display_name || 'Former account' %></li>
+        <li><span class="text-ink"><%= timesheet_event_sentence(event) %></span> <span class="text-mocha">· <%= event.user&.display_name || 'Former account' %> · <%= timesheet_time(event.created_at) %></span></li>
       <% end %>
-    </ul>
+    </ol>
   </section>
 </div>

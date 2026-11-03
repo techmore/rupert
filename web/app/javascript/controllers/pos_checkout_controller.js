@@ -6,7 +6,7 @@ import { Controller } from "@hotwired/stimulus"
 // disabled. Card (A920) records a card already run on the A920 terminal: no gateway charge.
 const A920 = "card_a920"
 export default class extends Controller {
-  static targets = ["tender", "tenderButton", "cashFields", "cash", "a920Fields", "exact", "submit", "status", "result"]
+  static targets = ["tender", "tenderButton", "cashFields", "cash", "a920Fields", "exact", "submit", "status", "result", "idChecked", "issues", "override", "overrideUser", "overridePin", "overrideReason"]
   static values = { url: String, displayId: Number, demo: Boolean }
 
   connect() {
@@ -65,12 +65,34 @@ export default class extends Controller {
     this.submitting = true; this.submitTarget.disabled = true; this.statusTarget.textContent = "Checking source totals and payment…"
     const form = new FormData(event.target)
     try {
-      const response = await fetch(this.urlValue, { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "" }, body: JSON.stringify({ display_id: this.displayIdValue, tender: form.get("tender"), register_id: form.get("register_id"), cash_received: form.get("cash_received") }) })
+      const body = { display_id: this.displayIdValue, tender: form.get("tender"), register_id: form.get("register_id"), cash_received: form.get("cash_received"), ...this.complianceFields() }
+      const response = await fetch(this.urlValue, { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "" }, body: JSON.stringify(body) })
       const result = await response.json()
-      if (!response.ok) throw new Error(result.error || "Checkout could not be verified. Check the receipt before retrying.")
+      if (this.hasOverridePinTarget) this.overridePinTarget.value = ""
+      if (!response.ok) { this.renderCompliance(result.compliance); throw new Error(result.error || "Checkout could not be verified. Check the receipt before retrying.") }
+      this.renderCompliance(null)
       this.renderCheckout(result)
     } catch (error) { this.statusTarget.textContent = error.message }
     finally { this.submitting = false; this.tenderChanged() }
+  }
+
+  // Locked registers (F70): ID confirmation and, once the server offers it, a manager override.
+  complianceFields() {
+    if (!this.hasIdCheckedTarget) return {}
+    const fields = { id_checked: this.idCheckedTarget.checked }
+    if (this.hasOverrideTarget && !this.overrideTarget.disabled && this.hasOverridePinTarget) {
+      Object.assign(fields, { override_user_id: this.overrideUserTarget.value, override_pin: this.overridePinTarget.value, override_reason: this.overrideReasonTarget.value })
+    }
+    return fields
+  }
+
+  renderCompliance(compliance) {
+    if (!this.hasIssuesTarget) return
+    const blocking = (compliance?.issues || []).filter(issue => issue.severity === "block")
+    this.issuesTarget.replaceChildren(...blocking.map(issue => { const item = document.createElement("li"); item.textContent = issue.message; item.dataset.code = issue.code; return item }))
+    this.issuesTarget.hidden = blocking.length === 0
+    const overridable = Boolean(compliance?.overridable)
+    if (this.hasOverrideTarget) { this.overrideTarget.hidden = !overridable; this.overrideTarget.disabled = !overridable }
   }
 
   renderCheckout(result) {

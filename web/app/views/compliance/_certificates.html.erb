@@ -1,0 +1,21 @@
+<section class="card overflow-hidden" aria-label="Lab certificates">
+  <div class="card-pad pb-0"><%= section_heading 'Lab certificates by item', hint: "Items needing a certificate first. A certificate is current for #{@policy.coa_max_age_days} days from its test date, or until its expiry date if sooner." %></div>
+  <div class="table-region" role="region" tabindex="0" aria-label="Lab certificates by item">
+    <table class="table"><caption class="sr-only">Approved items and their current lab certificate</caption>
+      <thead><tr><th scope="col" class="th">Item</th><th scope="col" class="th">Status</th><th scope="col" class="th">Current certificate</th><th scope="col" class="th">Tested</th><th scope="col" class="th"><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody>
+        <% if @items.empty? %><tr><td class="empty-row" colspan="5">No approved items yet. Approve items on the catalog tab first.</td></tr><% end %>
+        <% @items.each do |item| %>
+          <% coa = item.current_coa(max_age_days: @policy.coa_max_age_days) %>
+          <tr>
+            <td class="td font-medium text-ink"><%= item.compliant_name %><br><span class="text-xs text-mocha"><%= item.category_name %></span></td>
+            <td class="td"><%= coa_status_pill(item, @policy) %></td>
+            <td class="td text-mocha"><%= coa ? link_to(coa.label, coa.document_url, target: '_blank', rel: 'noopener noreferrer', class: 'text-olive-deep hover:underline') : '—' %></td>
+            <td class="td whitespace-nowrap text-mocha"><%= coa&.tested_on&.strftime('%b %-d, %Y') || '—' %></td>
+            <td class="td text-right whitespace-nowrap"><% if compliance_editor? %><%= link_to 'Add certificate', new_compliance_catalog_item_certificate_path(item), class: 'btn-ghost btn-sm' %><% end %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

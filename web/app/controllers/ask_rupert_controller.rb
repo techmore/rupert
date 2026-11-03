@@ -22,7 +22,9 @@ class AskRupertController < AuthenticatedController
   HISTORY_SHOWN = 50
 
   # GET /ask_rupert — what the panel needs when it opens.
+  # In the iPhone app, the Ask Rupert tab opens this as a page that opens the chat right away.
   def show
+    return render(:show) if hotwire_native_app? && !request.format.json?
     return redirect_to(learning_index_path) unless request.format.json?
 
     conversation = AskRupert::Conversation.latest_for(Current.user)

@@ -66,11 +66,13 @@ class ApplicationController < ActionController::Base
     when 'people/square_timesheets', 'people/ctrax_timesheets'
       %w[index show].include?(action_name)
     when 'time_clock'
-      %w[index clock_in clock_out request_correction].include?(action_name)
+      %w[index clock_in clock_out request_correction fix_clock_out].include?(action_name)
     when 'point_of_sale', 'ctrax_pos'
       %w[index quote].include?(action_name)
-    when 'pos_displays', 'pos_checkouts'
+    when 'pos_displays', 'pos_checkouts', 'pos_event_registers' # event register: the recorder checks the event's staff list
       true
+    when 'pos_event_sales'
+      %w[create receipt].include?(action_name)
     else
       false
     end

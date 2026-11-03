@@ -2,6 +2,8 @@
 
 class BillingController < AuthenticatedController
   before_action :redirect_isolated_billing
+  # Subscriptions are bought on the website, never inside the iPhone app (App Store guideline 3.1.1).
+  before_action :refuse_in_native_app
   before_action :require_workspace_owner
   before_action { response.headers['Cache-Control'] = 'no-store' }
   rescue_from RupertBilling::Error do |error|
@@ -55,5 +57,13 @@ class BillingController < AuthenticatedController
     return head :forbidden unless Current.user&.admin? && Current.user.tenant_id == Current.tenant&.id
 
     skip_authorization # gate: workspace owner (admin of this workspace)
+  end
+
+  def refuse_in_native_app
+    return unless hotwire_native_app?
+
+    skip_authorization # gate: nothing is shown or sold in the app
+    render html: helpers.tag.p('Subscriptions are managed on the Rupert website.', class: 'flash flash-notice'),
+      layout: true, status: :not_found
   end
 end

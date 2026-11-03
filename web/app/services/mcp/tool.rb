@@ -9,14 +9,16 @@ module Mcp
     MAX_PAGE = 1000
 
     class << self
-      attr_reader :tool_name, :title, :description, :scope, :read_only, :output_schema_definition
+      attr_reader :tool_name, :title, :description, :scope, :read_only, :destructive, :idempotent, :output_schema_definition
 
-      def tool(name, title:, description:, scope: nil, read_only: true)
+      def tool(name, title:, description:, scope: nil, read_only: true, destructive: false, idempotent: read_only)
         @tool_name = name
         @title = title
         @description = description
         @scope = scope
         @read_only = read_only
+        @destructive = destructive
+        @idempotent = idempotent
       end
 
       def input_schema(schema = nil)
@@ -39,7 +41,7 @@ module Mcp
       end
 
       def annotations
-        { title: title, readOnlyHint: read_only, destructiveHint: false, idempotentHint: read_only, openWorldHint: false }
+        { title: title, readOnlyHint: read_only, destructiveHint: destructive, idempotentHint: idempotent, openWorldHint: false }
       end
 
       def definition

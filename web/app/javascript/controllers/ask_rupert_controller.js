@@ -28,6 +28,8 @@ export default class extends Controller {
       if (event.detail === "history") this.showHistory()
     }
     window.addEventListener("rupert:open-ask", this.onOpenAsk)
+    // The Ask Rupert page (the iPhone app's tab) opens the chat as soon as it shows.
+    if (document.querySelector("[data-ask-rupert-open-on-load]")) this.open()
   }
 
   disconnect() {

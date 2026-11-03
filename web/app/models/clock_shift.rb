@@ -16,12 +16,16 @@ class ClockShift < ApplicationRecord
 
   # No real shift is longer than this; a longer interval is a forgotten clock-out to correct.
   MAX_SHIFT_HOURS = 24
-  # Pay and commission estimates count a punch that is still open for at most this long, so a
-  # forgotten clock-out does not earn hours, commission or tips for days (it is flagged instead).
+  # Default for the workspace's forgotten clock-out limit (PayRules open_shift_limit_hours): a punch
+  # still open after it is flagged and counts no hours, commission or tips until it is corrected.
   STALE_OPEN_HOURS = 16
 
   scope :open, -> { where(ended_at: nil) }
-  scope :stale_open, ->(at = Time.current) { open.where('started_at < ?', at - STALE_OPEN_HOURS.hours) }
+  scope :stale_open, ->(at = Time.current) { open.where('started_at < ?', at - stale_open_hours.hours) }
+
+  def self.stale_open_hours
+    PayRules.current.open_shift_limit_hours
+  end
   scope :recent, -> { order(started_at: :desc, id: :desc) }
 
   def hours(at: Time.current)
@@ -29,13 +33,16 @@ class ClockShift < ApplicationRecord
   end
 
   # Where an estimate stops counting this shift: the clock-out, or for a punch that is still open
-  # `at`, now -- capped at STALE_OPEN_HOURS after clock-in.
+  # `at`, now. A forgotten clock-out (open past the limit) counts nothing until it is corrected.
   def counted_end(at = Time.current)
-    ended_at || [at, started_at + STALE_OPEN_HOURS.hours].min
+    return ended_at if ended_at
+    return started_at if stale_open?(at)
+
+    at
   end
 
   def stale_open?(at = Time.current)
-    ended_at.nil? && started_at < at - STALE_OPEN_HOURS.hours
+    ended_at.nil? && started_at < at - self.class.stale_open_hours.hours
   end
 
   # All changes for one worker share a writer lock before interval reads.

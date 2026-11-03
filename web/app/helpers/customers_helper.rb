@@ -1,6 +1,14 @@
 # frozen_string_literal: true
 
 module CustomersHelper
+  # Short list dates: "Aug 29" this year, "Aug 29, 2025" before; full date on hover.
+  def customer_list_date(value)
+    return '—' unless value
+
+    date = value.to_date
+    tag.time(date.strftime(date.year == Date.current.year ? '%b %-d' : '%b %-d, %Y'), datetime: date.iso8601, title: date.strftime('%B %-d, %Y'))
+  end
+
   def customer_money(totals)
     return '—' if totals.empty?
 
@@ -26,6 +34,15 @@ module CustomersHelper
     tag.span(customer.crm_status.titleize, class: STATUS_PILLS.fetch(customer.crm_status, 'pill-taupe'))
   end
 
+  # The one mark for a wholesale account, wherever a customer is shown.
+  # Retail customers get nothing, so the pill stands out on a list.
+  def customer_wholesale_pill(customer)
+    return unless customer&.wholesale?
+
+    title = customer.wholesale_business_name.presence
+    tag.span('Wholesale', class: 'pill-olive', title: title && "Wholesale account: #{title}")
+  end
+
   def customer_tag_pills(customer)
     safe_join(customer.tag_list.map { |name| tag.span(name, class: 'pill-taupe') }, ' ')
   end
@@ -47,6 +64,7 @@ module CustomersHelper
     chips << ["Search: #{term}", params_hash.deep_merge('q' => { 'first_name_or_last_name_or_preferred_name_or_email_or_phone_cont' => '' })] if term.present?
     chips << ["Tag: #{params.dig(:q, :tags_cont)}", params_hash.deep_merge('q' => { 'tags_cont' => '' })] if params.dig(:q, :tags_cont).present?
     chips << ["Relationship: #{params[:status].titleize}", params_hash.except('status')] if Core::Customer::CRM_STATUSES.include?(params[:status])
+    chips << ["Account: #{Core::Customer::ACCOUNT_TYPES[params[:account]]}", params_hash.except('account')] if Core::Customer::ACCOUNT_TYPES.key?(params[:account])
     chips << ["Source: #{directory_label(params[:source])}", params_hash.except('source')] if Core::Customer::SOURCES.include?(params[:source])
     chips << [{ 'mine' => 'Assigned to me', 'unassigned' => 'Unassigned' }[params[:owner]], params_hash.except('owner')] if %w[mine unassigned].include?(params[:owner])
     chips << ['Follow-up due', params_hash.except('due')] if params[:due] == '1'

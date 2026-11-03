@@ -87,6 +87,7 @@ See [the subscriptions plan](../plans/customer-subscriptions-and-trust.md) and [
 | --- | --- | --- |
 | `RUPERT_BILLING_ENABLED` | control plane | `true` turns on Rupert subscriptions (also needs every `CSP_STRIPE_*` key); keep `false` until test-mode acceptance |
 | `RUPERT_PUBLIC_ORIGIN` | control plane | Public origin for billing return URLs and feedback links (default `https://rupertpos.com`) |
+| `RUPERT_SUPPORT_EMAIL` | `support@rupertpos.com` | Contact address on the public Support and Privacy policy pages (`/support`, `/privacy`), which the App Store listing links to |
 | `RUPERT_APPROVED_REFERRAL_CODES` | control plane | Comma-separated owner-approved referral codes; when set, only these are eligible |
 | `RUPERT_OWNER_GOOGLE_EMAILS` | control plane | Comma-separated owner Google mailboxes for `platform:link_owner_identities` |
 | `RUPERT_PROVISION_WORKSPACES` | control plane | `true` lets the control plane hand workspaces to the host provisioner |

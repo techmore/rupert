@@ -12,6 +12,7 @@ module Mcp
         ['ctrax', 'sales'] => %w[sales],
         ['ctrax', 'timecards'] => %w[timekeeping],
         ['square', 'timecards'] => %w[timekeeping],
+        ['square', 'loyalty'] => %w[loyalty customers],
         ['swipesimple', 'web'] => %w[sales payments deposits],
         ['bank', 'web'] => %w[bank deposits],
         ['bank', 'reporting'] => %w[bank deposits],

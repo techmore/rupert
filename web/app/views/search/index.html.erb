@@ -1,0 +1,37 @@
+<%# Search: a List page (docs/ui-standards.md §4) for the iPhone app's Search tab. The website searches
+    from the header's command palette (search_controller.js), which reads the same results as JSON. %>
+<% content_for :title, 'Search' %>
+<div class="page-medium space-y-6">
+  <%= page_header 'Search', subtitle: 'Orders, customers, products and people.' %>
+  <%= form_with url: search_path, method: :get, class: 'toolbar', role: 'search' do %>
+    <div class="toolbar-field grow">
+      <%= label_tag :q, 'Search Rupert', class: 'sr-only' %>
+      <%= search_field_tag :q, @query, placeholder: 'Order number, name, SKU or email', autocomplete: 'off', autofocus: @query.blank?, minlength: 2, class: 'search w-full' %>
+    </div>
+    <%= submit_tag 'Apply', class: 'btn-primary', name: nil %>
+  <% end %>
+
+  <% if @query.length < 2 %>
+    <div class="empty-state">
+      <p class="empty-state-title">Search your workspace.</p>
+      <p class="empty-state-hint">Type at least two letters of an order number, customer, SKU or person.</p>
+    </div>
+  <% elsif @results.empty? %>
+    <div class="empty-state">
+      <p class="empty-state-title">No matches for “<%= @query %>”.</p>
+      <p class="empty-state-hint">Try fewer letters, or an exact order number or SKU.</p>
+    </div>
+  <% else %>
+    <div class="card row-list">
+      <% @results.each do |result| %>
+        <%= link_to result.path, class: 'row-item' do %>
+          <span class="min-w-0">
+            <span class="block truncate font-semibold text-ink"><%= result.label %></span>
+            <% if result.sub_label.present? %><span class="block truncate text-sm text-mocha"><%= result.sub_label %></span><% end %>
+          </span>
+          <span class="row-item-end"><span class="pill-taupe"><%= result.type.humanize %></span></span>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

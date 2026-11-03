@@ -6,10 +6,13 @@ require 'net/http'
 # inventory counts, orders, and locations against the Square v2 REST API.
 class SquareClient
   class Error < StandardError
-    attr_reader :reason
+    attr_reader :reason, :status, :codes
 
-    def initialize(message, reason: nil)
+    # status is the HTTP status; codes are Square's error codes (e.g. INSUFFICIENT_SCOPES), never messages.
+    def initialize(message, reason: nil, status: nil, codes: [])
       @reason = reason
+      @status = status&.to_i
+      @codes = codes
       super(message)
     end
   end
@@ -30,11 +33,16 @@ class SquareClient
       environment == 'sandbox' ? 'https://connect.squareupsandbox.com/v2' : 'https://connect.squareup.com/v2'
     end
 
+    # OAuth endpoints (/oauth2/...) live beside /v2, not under it.
+    def url_for(pathname)
+      pathname.start_with?('/oauth2/') ? "#{base_url.delete_suffix('/v2')}#{pathname}" : "#{base_url}#{pathname}"
+    end
+
     # Retries 429 (honouring Retry-After), 5xx and connection failures; see
     # HttpRetry. Square writes carry idempotency keys.
     def request(pathname, method: 'GET', body: nil)
       HttpRetry.with_retries('square') do
-        uri = URI("#{base_url}#{pathname}")
+        uri = URI(url_for(pathname))
         request = case method
                   when 'POST' then Net::HTTP::Post.new(uri)
                   else Net::HTTP::Get.new(uri)
@@ -64,7 +72,8 @@ class SquareClient
           raise Error.new('Square returned invalid JSON.', reason: :response)
         end
         unless response.is_a?(Net::HTTPSuccess)
-          raise Error.new("Square request failed (HTTP #{response.code}).", reason: SyncFailure.http_reason(response.code))
+          codes = payload.is_a?(Hash) ? Array(payload['errors']).filter_map { |e| e['code'] if e.is_a?(Hash) && e['code'].is_a?(String) } : []
+          raise Error.new("Square request failed (HTTP #{response.code}).", reason: SyncFailure.http_reason(response.code), status: response.code, codes: codes.first(5))
         end
         payload
       end

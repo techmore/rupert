@@ -7,9 +7,11 @@ class PosCheckout < ApplicationRecord
   belongs_to :pos_display_session
   belongs_to :pos_session, class_name: 'Sales::PosSession', optional: true
   belongs_to :order, class_name: 'Core::Order', optional: true
+  belongs_to :compliance_override_by, class_name: 'User', optional: true
   has_many :pos_stock_allocations
   has_many :pos_payment_attempts
   serialize :lines_json, coder: JSON
+  serialize :compliance_issues_json, coder: JSON
   encrypts :lines_json
   validates :reference, uniqueness: true
   validates :status, inclusion: { in: %w[ready processing unknown declined paid cancelled] }
@@ -28,6 +30,8 @@ class PosCheckout < ApplicationRecord
     errors.add(:total_cents, 'must equal subtotal, tax and tip') unless total_cents == subtotal_cents.to_i + tax_cents.to_i + tip_cents.to_i
   end
   def lines = lines_json || []
+  def compliance_issues = compliance_issues_json || []
+  def compliance_override? = compliance_override_by_id.present?
   validates :gateway_provider, inclusion: { in: %w[authorize_net nmi] }
   def sandbox_payment? = tender == 'card' && gateway_provider == 'nmi' && environment == 'sandbox'
   def terminal_card? = tender == TERMINAL_CARD

@@ -30,8 +30,8 @@ class TimesheetReviewsTest < ActionDispatch::IntegrationTest
       get people_timesheets_path(view: 'list')
       assert_response :success
       assert_select 'nav[aria-label="Module areas"] a[aria-current="page"]', minimum: 1
-      assert_select 'select[name=status] option[value=submitted]', text: 'Needs review (1)'
-      assert_select 'a[href=?]', people_timesheet_path(@sheet), text: 'Review timesheet'
+      assert_select 'select[name=status] option[value=submitted]', text: 'In review (1)'
+      assert_select 'a[href=?]', people_timesheet_path(@sheet), text: 'Review'
       assert_select 'a[href=?]', people_timesheet_path(@draft), count: 0
       get people_timesheets_path(status: 'all', view: 'list')
       assert_select 'a[href=?]', people_timesheet_path(@draft), minimum: 1

@@ -1,7 +1,34 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["form", "code", "token", "submit", "status", "items", "itemCount", "total"]
+  static targets = ["form", "code", "token", "submit", "status", "items", "itemCount", "total", "camera"]
+
+  // The iPhone app reads barcodes with the camera (ios/Sources/Rupert/BarcodeScanner.swift): it
+  // offers a rupertScanner message handler and answers with a rupert:scanned event.
+  connect() {
+    this.scanned = (event) => this.useScannedCode(event.detail)
+    window.addEventListener("rupert:scanned", this.scanned)
+    if (this.hasCameraTarget && this.nativeScanner) this.cameraTarget.hidden = false
+  }
+
+  disconnect() {
+    window.removeEventListener("rupert:scanned", this.scanned)
+  }
+
+  get nativeScanner() {
+    return window.webkit?.messageHandlers?.rupertScanner
+  }
+
+  scanWithCamera(event) {
+    event.preventDefault()
+    this.nativeScanner?.postMessage({ action: "scan" })
+  }
+
+  useScannedCode(code) {
+    if (!code || this.saving || !this.hasFormTarget) return
+    this.codeTarget.value = String(code).trim()
+    this.formTarget.requestSubmit(this.submitTarget)
+  }
 
   async record(event) {
     event.preventDefault()

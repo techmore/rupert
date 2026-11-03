@@ -23,7 +23,8 @@ module Ctrax
       by_sku = @skus.fetch(record['sku'], []).map(&:last).uniq
       return by_sku.first if by_sku.size == 1
 
-      matches = @titles.fetch(normalized(record['product_name'].presence || record['name']), [])
+      # A locked register shows compliant names (F70) and keeps the source title for this match.
+      matches = @titles.fetch(normalized(record['source_product_name'].presence || record['product_name'].presence || record['name']), [])
       matches.first if matches.size == 1
     end
 
