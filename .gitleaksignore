@@ -1,0 +1,5 @@
+# Known gitleaks false positives (docs/ops/release-audit.md). One finding per line:
+# <file>:<rule-id>:<line>. Only made-up test values belong here; never a real key.
+# Made-up webhook signing keys that sign test requests (F69).
+web/test/integration/pos_webhooks_test.rb:generic-api-key:9
+web/test/integration/pos_webhooks_test.rb:generic-api-key:10

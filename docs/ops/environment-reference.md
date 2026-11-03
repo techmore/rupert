@@ -104,12 +104,13 @@ These are read by scripts in `deploy/ser8`, from their own environment or system
 
 | Variable | Script | Default | Purpose |
 | --- | --- | --- | --- |
-| `RUPERT_AUTODEPLOY_APP` | `rupert-autodeploy.sh` | `/opt/rupert` | Checkout to deploy |
-| `RUPERT_AUTODEPLOY_BACKUPS` | `rupert-autodeploy.sh` | `/var/backups/rupert-autodeploy` | Pre-deploy SQLite backups |
-| `RUPERT_AUTODEPLOY_LOCK` | `rupert-autodeploy.sh` | `/run/rupert-autodeploy.lock` | Single-run lock |
-| `RUPERT_AUTODEPLOY_ENV_FILE` | `rupert-autodeploy.sh` | `/etc/rupert.env` | Environment loaded for bundle, migrate and precompile |
-| `RUPERT_AUTODEPLOY_PATH` | `rupert-autodeploy.sh` | `/opt/rbenv/versions/4.0.9/bin:…` | `PATH` for the deploy (selects Ruby) |
-| `RUPERT_AUTODEPLOY_SMOKE_PATH` | `rupert-autodeploy.sh` | `/login` | Page used for the post-deploy layout and asset smoke check |
+| `RUPERT_AUTODEPLOY_APP` | `rupert-autodeploy.sh`, `rupert-rollback.sh` | `/opt/rupert` | Checkout to deploy |
+| `RUPERT_AUTODEPLOY_BACKUPS` | `rupert-autodeploy.sh`, `rupert-rollback.sh` | `/var/backups/rupert-autodeploy` | Pre-deploy SQLite backups |
+| `RUPERT_AUTODEPLOY_LOCK` | `rupert-autodeploy.sh`, `rupert-rollback.sh` | `/run/rupert-autodeploy.lock` | Single-run lock |
+| `RUPERT_AUTODEPLOY_ENV_FILE` | `rupert-autodeploy.sh`, `rupert-rollback.sh` | `/etc/rupert.env` | Environment loaded for bundle, migrate and precompile |
+| `RUPERT_AUTODEPLOY_PATH` | `rupert-autodeploy.sh`, `rupert-rollback.sh` | `/opt/rbenv/versions/4.0.9/bin:…` | `PATH` for the deploy (selects Ruby) |
+| `RUPERT_AUTODEPLOY_FORCE_HEALTH_FAIL` | `rupert-autodeploy.sh` | unset | `1` fails the new release's health check on purpose, to test the automatic rollback by hand; never set in the unit |
+| `RUPERT_AUTODEPLOY_SMOKE_PATH` | `rupert-autodeploy.sh`, `rupert-rollback.sh` | `/login` | Page used for the post-deploy layout and asset smoke check |
 | `RUPERT_CUSTOMER_IMAGE` | `customer_provisioner.py` | required | Reviewed clean image fingerprint (64 hex) |
 | `RUPERT_CUSTOMER_REVISION` | `customer_provisioner.py` | required | Exact Git revision of that image (40 hex) |
 | `RUPERT_CUSTOMER_MAX_INSTANCES` | `customer_provisioner.py` | `8` | Pilot quota, 1–50 |
@@ -120,6 +121,11 @@ These are read by scripts in `deploy/ser8`, from their own environment or system
 | `RUPERT_LLM_IMAGE` | `team-chat/setup-local-model.sh` | `images:ubuntu/24.04` | Its base image |
 | `RUPERT_LLM_MEMORY` | `team-chat/setup-local-model.sh` | `12GiB` | Its memory limit |
 | `RUPERT_LLM_CPUS` | `team-chat/setup-local-model.sh` | `6` | Its CPU limit |
+| `RUPERT_RELEASE_AUDIT` | `rupert-autodeploy.sh` | `/usr/local/sbin/rupert-release-audit` | Runtime release audit run before each install ([release-audit.md](release-audit.md)) |
+| `RUPERT_ENV_FILE` | `rupert-release-audit` | `/etc/rupert.env` | File whose company facts it checks (names only, never values) |
+| `RUPERT_LEGAL_NAME`, `RUPERT_BUSINESS_ADDRESS`, `RUPERT_SUPPORT_PHONE`, `RUPERT_SECURITY_EMAIL` | `/etc/rupert.env`, checked by `rupert-release-audit` | unset | Public company facts for the legal and security pages; the release audit fails while any is missing or a placeholder |
+| `RUPERT_PRIVACY_DENYLIST` | CI secret, read by `bin/release-audit` | unset | Hashed deny-list of names that must not appear in public content ([release-audit.md](release-audit.md)); never in the repository |
+| `RUPERT_PRIVACY_DENYLIST_FILE`, `RUPERT_PRIVACY_KEY` | `bin/release-audit` (local runs) | unset | A private deny-list file, and the HMAC key used when hashing names |
 
 ## Mobile build (EAS)
 

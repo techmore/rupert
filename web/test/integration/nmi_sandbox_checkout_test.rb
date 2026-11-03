@@ -36,7 +36,7 @@ class NmiSandboxCheckoutIntegrationTest < ActionDispatch::IntegrationTest
   test 'private customer sandbox checkout uses server totals and leaves live records untouched' do
     get pos_setting_path(@location.id)
     assert_response :success
-    assert_includes response.body, 'NMI live payments are disabled'
+    assert_includes response.body, 'NMI production sign-off'
     assert_not_includes response.body, 'sandbox-private-fixture'
     assert_not_includes @setting.attributes_before_type_cast['credentials_json'], 'sandbox-private-fixture'
     customer = ActionDispatch::Integration::Session.new(Rails.application)
@@ -47,7 +47,7 @@ class NmiSandboxCheckoutIntegrationTest < ActionDispatch::IntegrationTest
     assert_equal 'nmi', config['provider']
     assert_equal 1166, config['total_cents']
     assert_equal 'sandbox-public-fixture', config['tokenization_key']
-    assert_equal Pos::NmiGateway::SCRIPT_URL, config['script_url']
+    assert_equal 'https://sandbox.nmi.com/token/Collect.js', config['script_url']
     assert_not_includes customer.response.body, 'sandbox-private-fixture'
     assert_not_includes customer.response.body, 'Sandbox Company'
     assert_enqueued_jobs 0 do
@@ -74,11 +74,27 @@ class NmiSandboxCheckoutIntegrationTest < ActionDispatch::IntegrationTest
     assert_empty PosPaymentAttempt.all
   end
 
-  test 'NMI production cannot be selected or enabled and credentials stay encrypted' do
+  test 'NMI production needs a recorded owner sign-off and credentials stay encrypted' do
     patch pos_setting_path(@location.id), params: { pos_setting: { environment: 'production', card_enabled: true, lock_version: @setting.reload.lock_version } }
     assert_response :unprocessable_entity
     assert_equal 'sandbox', @setting.reload.environment
-    assert_equal 'nmi', @setting.gateway_provider
+    patch pos_setting_path(@location.id), params: { pos_setting: { environment: 'production', lock_version: @setting.reload.lock_version },
+      nmi_production_signoff: '1', production_approval_note: 'short' }
+    assert_response :unprocessable_entity
+    assert_equal 'sandbox', @setting.reload.environment
+    patch pos_setting_path(@location.id), params: { pos_setting: { environment: 'production', lock_version: @setting.reload.lock_version },
+      nmi_production_signoff: '1', production_approval_note: 'Backup ISO approval email, 2026-11-20' }
+    assert_redirected_to pos_setting_path(@location.id)
+    @setting.reload
+    assert_equal 'production', @setting.environment
+    assert_equal @user.id, @setting.production_approved_by_id
+    assert_not @setting.card_enabled
+    assert_nil @setting.verified_at
+    patch pos_setting_path(@location.id), params: { pos_setting: { gateway_id: '987', lock_version: @setting.lock_version } }
+    assert_response :unprocessable_entity
+    assert_equal '123', @setting.reload.gateway_id
+    assert @setting.production_approved_at
+    assert_not_includes @setting.attributes_before_type_cast['credentials_json'], 'sandbox-private-fixture'
     assert_equal 0, @nmi_sales
   end
 

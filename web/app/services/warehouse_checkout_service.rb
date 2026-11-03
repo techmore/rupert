@@ -82,6 +82,11 @@ class WarehouseCheckoutService
       return failure('Payment details are missing or invalid.') unless @payment_nonce.is_a?(String) && @payment_nonce.match?(/\A[!-~]{1,4096}\z/)
       lines = validate_lines
       return failure(lines) if lines.is_a?(String)
+      # F69: online cards go through Authorize.net; only processor-approved items.
+      eligibility = Payments::ItemEligibility.check(processor: 'authorize_net', items: lines.map { |line| eligibility_item(line) })
+      unless eligibility.allowed?
+        return failure("#{eligibility.blocked_summary} can't be paid for by card online. Remove #{eligibility.blocked.one? ? 'it' : 'them'} and try again. No payment was submitted.")
+      end
       unless WarehouseCheckoutQuote.valid?(@quote_token, @cart)
         return failure('Your cart or prices changed, or checkout expired. Review the updated total and submit again. No payment was submitted.')
       end
@@ -174,6 +179,12 @@ class WarehouseCheckoutService
       validated << { variant: variant, item: item }
     end
     validated
+  end
+
+  def eligibility_item(line)
+    variant = line[:variant]
+    { sku: line[:item].sku.presence || variant.try(:sku), category: variant.try(:product).try(:productType),
+      name: line[:item].title.presence || variant.try(:title), variant_id: variant.try(:id) }
   end
 
   def create_order(lines, attempt)

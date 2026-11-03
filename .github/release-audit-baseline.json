@@ -1,0 +1,7 @@
+{
+  "comment": "Known release-audit findings, hashed. Regenerate with bin/release-audit --write-baseline; final releases ignore this file.",
+  "fingerprints": [
+    "0d56f9d92858ae506dedd259",
+    "c41b29d6e92c33c902d100e5"
+  ]
+}

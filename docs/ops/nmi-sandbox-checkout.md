@@ -2,6 +2,8 @@
 
 Implemented October 16, 2026 on top of the customer-screen POS checkout. NMI production charging is blocked in the settings model, checkout preparation and gateway adapter. The adapter contains sandbox endpoints only; there is no production enable flag. Confirmation from the merchant's ISO and a separately reviewed implementation are required before supporting live NMI payments.
 
+**Update, November 2, 2026 (F69):** NMI is now production-capable behind a recorded owner sign-off, and uses NMI's classic Payment API (`transact.php`) and Query API on `sandbox.nmi.com` or `secure.nmi.com`, whose production hosts are documented. Refunds, voids, receipts with card details, decline reasons, signed webhooks and settlement checks are implemented. Setup: [hemp payments admin guide](hemp-payments-setup.md). The sections below describe the original sandbox release; where they say production is blocked or refunds are portal-only, the admin guide supersedes them.
+
 ## Implemented scope
 
 The cashier prepares a repriced cart after the customer's private tax/tip review. The customer enters card details into NMI Collect.js hosted fields; Rupert receives only a token. The backend submits an NMI REST sale for the frozen server total, then verifies the corresponding Query API transaction, order reference, USD currency, card transaction type, successful sale action and exact amount. No database lock spans a gateway request.

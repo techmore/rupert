@@ -38,6 +38,40 @@ module Pos
       }, transaction: true)
     end
 
+    # Void an unsettled charge (whole amount). Field order follows the API schema.
+    def void(transaction_id, reference)
+      raise Error, 'Invalid gateway transaction reference.' unless transaction_id.to_s.match?(/\A[1-9][0-9]{0,29}\z/)
+
+      request('createTransactionRequest', refId: reference, transactionRequest: {
+        transactionType: 'voidTransaction', refTransId: transaction_id.to_s
+      }, transaction: true)
+    end
+
+    # Refund part or all of a settled charge. Authorize.net needs only the last
+    # four digits of the original card, never the full number.
+    def refund(transaction_id, amount_cents, last_four, reference)
+      raise Error, 'Invalid gateway transaction reference.' unless transaction_id.to_s.match?(/\A[1-9][0-9]{0,29}\z/)
+      raise Error, 'The original card could not be identified for a refund.' unless last_four.to_s.match?(/\A\d{4}\z/)
+
+      request('createTransactionRequest', refId: reference, transactionRequest: {
+        transactionType: 'refundTransaction', amount: decimal(amount_cents),
+        payment: { creditCard: { cardNumber: last_four.to_s, expirationDate: 'XXXX' } },
+        refTransId: transaction_id.to_s, order: { invoiceNumber: reference, description: 'Rupert refund' }
+      }, transaction: true)
+    end
+
+    # Settled batches and their transactions, for settlement reconciliation.
+    def settled_batches(from:, to:)
+      batches = request('getSettledBatchListRequest', includeStatistics: true, firstSettlementDate: from.utc.iso8601, lastSettlementDate: to.utc.iso8601)['batchList'] || []
+      raise Error, 'Gateway batch list is incomplete.' unless batches.is_a?(Array) && batches.size <= 100 && batches.all? { |batch| batch.is_a?(Hash) }
+
+      batches
+    end
+
+    def batch_transactions(batch_id) = pages('getTransactionListRequest', batchId: batch_id.to_s)
+
+    def unsettled_transactions = pages('getUnsettledTransactionListRequest')
+
     def detail(id)
       raise Error, 'Invalid gateway transaction reference.' unless id.to_s.match?(/\A[1-9][0-9]{0,29}\z/)
       row = request('getTransactionDetailsRequest', transId: id)['transaction']
