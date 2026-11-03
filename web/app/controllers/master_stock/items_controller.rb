@@ -21,6 +21,8 @@ module MasterStock
       end
 
       @readings = platform_readings(@site, @items.map(&:id))
+      # The movement this person just saved, so a mistake is one tap from its correction.
+      @recorded = StockLedgerEntry.includes(:stock_item, :stock_site).find_by(id: params[:recorded], actor: Current.user.email, created_at: 30.minutes.ago..) if params[:recorded].present?
     end
 
     def show

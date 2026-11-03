@@ -8,6 +8,14 @@
     <%= render 'master_stock/no_sites' %>
   <% else %>
     <%= render 'master_stock/site_picker', sites: @sites, site: @site, path: :master_stock_items_path %>
+    <% if @recorded && can_write %>
+      <div class="flex flex-wrap items-center gap-2 text-sm text-mocha" data-just-recorded>
+        <span>Mistake in <%= @recorded.kind_label.downcase %> of <%= @recorded.stock_item.name %>? Rows are never edited; record the correction.</span>
+        <%= link_to 'Count again', new_master_stock_movement_path(kind: 'count', item_id: @recorded.stock_item_id, site_id: @recorded.stock_site_id), class: 'btn-ghost btn-sm' %>
+        <%= link_to 'Adjust', new_master_stock_movement_path(kind: 'adjust', item_id: @recorded.stock_item_id, site_id: @recorded.stock_site_id), class: 'btn-ghost btn-sm' %>
+        <%= link_to 'See in ledger', master_stock_movements_path(item_id: @recorded.stock_item_id), class: 'btn-ghost btn-sm' %>
+      </div>
+    <% end %>
     <%= form_with url: master_stock_items_path, method: :get, class: 'toolbar', role: 'search', data: { controller: 'stock-find' } do %>
       <%= hidden_field_tag :site_id, @site.id %>
       <%= hidden_field_tag :all, params[:all] if params[:all] == '1' %>

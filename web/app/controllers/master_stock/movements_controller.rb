@@ -55,7 +55,7 @@ module MasterStock
       notice += " #{count_variance(entry)}" if entry.kind == 'count'
       notice += ' (Already recorded; nothing was added twice.)' if result.replayed
       # After a scan-to-count, the search is empty and focused for the next scan.
-      redirect_to(master_stock_items_path(site_id: @site.id, q: (params[:return_q].presence unless params[:scan] == '1')), notice: notice)
+      redirect_to(master_stock_items_path(site_id: @site.id, q: (params[:return_q].presence unless params[:scan] == '1'), recorded: entry.id), notice: notice)
     rescue MasterStock::Error => e
       @error = e.message
       @balance = StockBalance.find_by(stock_item: @item, stock_site: @site)

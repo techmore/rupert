@@ -119,7 +119,7 @@ class StockUxTest < ActionDispatch::IntegrationTest
 
     post master_stock_movements_path, params: { scan: '1', return_q: 'GUM-10', request_token: SecureRandom.uuid,
                                                 movement: { kind: 'count', item_id: @item.id, site_id: @site.id, quantity: '4' } }
-    assert_redirected_to master_stock_items_path(site_id: @site.id)
+    assert_redirected_to master_stock_items_path(site_id: @site.id, recorded: StockLedgerEntry.last.id)
   end
 
   test 'a barcode scanned into the quantity box is refused, and a far-off count asks for a recount' do
