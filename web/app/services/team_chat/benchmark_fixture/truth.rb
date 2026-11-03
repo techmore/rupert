@@ -42,8 +42,8 @@ module TeamChat
 
       def meta
         { 'seed' => @seed, 'today' => @today.iso8601, 'first_order_day' => orders.map { |order| order[:date] }.min.iso8601,
-          'basis' => 'Orders counted as sales are paid, fulfilled or later refunded (what the metric tool counts); ' \
-                     'sales_summary leaves out orders whose status became refunded (see fully_refunded_orders).' }
+          'basis' => 'Orders counted as sales are paid, fulfilled or later refunded (Core::Order.sales_counted, used by ' \
+                     'the metric tool and sales_summary); refunds are reported beside gross, never subtracted from it.' }
       end
 
       def counts

@@ -129,12 +129,10 @@ class TeamChatBenchmarkFixtureTest < ActiveSupport::TestCase
     token = TeamChat::Token.new(@user)
     travel_to Time.zone.local(2026, 10, 27, 12) do
       summary = Mcp::Tools::SalesSummary.new(token: token).call({ 'from' => '2026-09-01', 'to' => '2026-09-30', 'top_products' => 5 }).data
-      # sales_summary counts only paid/fulfilled orders, so the one fully refunded order is taken out of the truth.
-      refunded = truth['fully_refunded_orders'].select { |row| row['month'] == '2026-09' }
-      expected = truth['sales_by_month']['2026-09'].to_h do |currency, row|
-        gone = refunded.select { |order| order['currency'] == currency }
-        [currency, [row['orders'] - gone.size, row['gross_cents'] - gone.sum { |order| order['gross_cents'] }]]
-      end
+      # sales_summary counts paid, fulfilled and refunded orders (Core::Order.sales_counted), so the
+      # fully refunded order stays in gross sales, like the metric tool.
+      assert truth['fully_refunded_orders'].any? { |row| row['month'] == '2026-09' }
+      expected = truth['sales_by_month']['2026-09'].transform_values { |row| [row['orders'], row['gross_cents']] }
       assert_equal expected, summary[:totals_by_currency].to_h { |row| [row[:currency], [row[:orders], row[:gross_cents]]] }
 
       daily = Mcp::Tools::SalesSummary.new(token: token).call({ 'from' => '2026-10-14', 'to' => '2026-10-27', 'include_daily' => true, 'top_products' => 0 }).data[:daily]
