@@ -99,12 +99,12 @@ in person and online, and be matched against deposits. Three sources:
 
 **Before in-person go-live:**
 
-1. **Register "Send to terminal" flow**: waiting screen, cancel (`AbortTransaction`),
-   and a background job so a 2-minute terminal wait doesn't hold a web request.
-2. **Refunds and voids through SPIn**, with the card type (credit/debit) stored.
+1. ~~Register "Send to terminal" flow~~ **Done:** waiting screen, cancel
+   (`AbortTransaction`), background job.
+2. ~~Refunds and voids through SPIn~~ **Done:** void while the batch is open, refund on the terminal after; card type and batch stored. **Close terminal batch** compares the batch with Rupert.
 3. **Terminal per register / per event** (one TPN per device).
 4. **Tips and pricing**: one place prompts for tips; terminal surcharge/dual pricing off.
-5. **Production switch** after Dejavoo and Valmar sign-off (owner approval recorded).
+5. ~~Production switch~~ **Done:** behind the owner's recorded sign-off; needs the live TPN.
 
 **Before online go-live through Dejavoo** (new work, larger):
 

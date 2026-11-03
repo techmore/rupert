@@ -73,4 +73,13 @@ class DejavooTerminalCheckoutTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_equal 1, enqueued_jobs.count { |job| job['job_class'] == 'PosTerminalSaleJob' }
   end
+
+  test 'checkout setup closes the terminal batch and reports it against Rupert' do
+    get pos_setting_path(@location.id)
+    assert_includes response.body, 'Close terminal batch'
+    post close_batch_pos_setting_path(@location.id)
+    assert_redirected_to pos_setting_path(@location.id)
+    assert_match(/Batch 42 closed: Dejavoo 25.50 USD/, flash[:alert].to_s + flash[:notice].to_s)
+    assert_includes spin_paths, 'v2/Payment/Settle'
+  end
 end

@@ -48,13 +48,27 @@ class PosSettingsController < AuthenticatedController
     count = PosSetting.where(id: @setting.id, lock_version: gateway.version).update_all(public_client_key: client_key, verified_at: Time.current, updated_at: Time.current, lock_version: gateway.version + 1)
     raise Pos::Error, 'Setup changed during the check.' if count.zero?
     notice = if @setting.gateway_provider == 'dejavoo_spin'
-      'Dejavoo sandbox terminal reached through SPIn with this TPN and auth key. Enable card charges, then run a test sale on the terminal.'
+      "Dejavoo #{@setting.environment} terminal reached through SPIn with this TPN and auth key. Enable card charges, then run a #{@setting.environment == 'sandbox' ? 'test ' : ''}sale on the terminal."
     elsif @setting.gateway_provider == 'nmi'
       "NMI #{@setting.environment} company/profile read verified. Enable card checkout, then run a test sale; payment permissions are proven by the first approved payment."
     else
       'Gateway identity, USD and hosted-card key verified. Enable card payments when ready.'
     end
     redirect_to pos_setting_path(@location.id), notice: notice
+  rescue Pos::Error => e
+    redirect_to pos_setting_path(@location.id), alert: e.message
+  end
+
+  # Closes the Dejavoo terminal's open batch and compares its totals with the
+  # terminal sales and refunds Rupert recorded in that batch. Closing is what
+  # the terminal does at end of day; nothing in Rupert's books changes.
+  def close_batch
+    raise Pos::Error, 'Batch close is for Dejavoo terminals.' unless @setting.persisted? && @setting.gateway_provider == 'dejavoo_spin'
+
+    results = Pos::DejavooBatchClose.call(@setting)
+    ActivityLogger.log('pos_dejavoo_batch_closed', subject: @setting, details: results.map(&:summary).join('; '))
+    message = results.map(&:summary).join(' ')
+    redirect_to pos_setting_path(@location.id), (results.all?(&:balanced?) ? :notice : :alert) => message
   rescue Pos::Error => e
     redirect_to pos_setting_path(@location.id), alert: e.message
   end

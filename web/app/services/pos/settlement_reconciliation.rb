@@ -32,7 +32,7 @@ module Pos
     def initialize(setting, from:, to:)
       raise Error, 'Gateway belongs to another workspace.' unless setting.tenant_id == Current.tenant_id
       raise Error, "Choose a window of at most #{MAX_DAYS} days." unless from < to && to - from <= MAX_DAYS.days
-      raise Error, 'The settlement check does not read Dejavoo batches yet. Use the terminal batch report.' if setting.gateway_provider == 'dejavoo_spin'
+      raise Error, 'For Dejavoo terminals use Close terminal batch in checkout setup: it closes the batch and compares it with Rupert.' if setting.gateway_provider == 'dejavoo_spin'
 
       @setting = setting
       @from = from

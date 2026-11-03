@@ -53,7 +53,7 @@ module DejavooSpinFixture
       if @spin_status_mode == :not_found || row.nil?
         spin_json('2009', nil, status: 400)
       else
-        spin_json(row[:code], body['ReferenceId'], total: row[:total], voided: row[:voided], payment_type: body['PaymentType'])
+        spin_json(row[:code], body['ReferenceId'], total: row[:total], voided: row[:voided], payment_type: body['PaymentType'], type: row[:type] || 'Sale')
       end
     when 'v2/Payment/Void'
       raise Net::ReadTimeout if @spin_void_mode == :timeout
@@ -61,6 +61,13 @@ module DejavooSpinFixture
 
       @spin_transactions.fetch(body['ReferenceId'])[:voided] = true
       spin_json('0000', body['ReferenceId'], total: format('%.2f', body['Amount']), voided: true, type: 'Void')
+    when 'v2/Payment/Return'
+      raise Net::ReadTimeout if @spin_return_mode == :timeout
+      return spin_json('1012', body['ReferenceId']) if @spin_return_mode == :canceled
+
+      total = format('%.2f', body['Amount'])
+      @spin_transactions[body['ReferenceId']] = { code: '0000', voided: false, total: total, type: 'Return' }
+      spin_json('0000', body['ReferenceId'], total: total, type: 'Return')
     when 'v2/Payment/AbortTransaction'
       { status: 200, headers: { 'Content-Type' => 'application/json' },
         body: { GeneralResponse: { ResultCode: '0', StatusCode: '0000', Message: 'Success', DetailedMessage: '' } }.to_json }

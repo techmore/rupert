@@ -3,6 +3,7 @@
 <% dejavoo = @setting.gateway_provider == 'dejavoo_spin' %>
 <% menu = [] %>
 <% menu << ['Check gateway', verify_pos_setting_path(@location.id), { method: :post, data: { turbo: false } }] if @setting.persisted? %>
+<% menu << ['Close terminal batch', close_batch_pos_setting_path(@location.id), { method: :post, data: { turbo: false, turbo_confirm: 'Close the Dejavoo terminal batch now? The terminal settles everything in it.' } }] if @setting.persisted? && @setting.gateway_provider == 'dejavoo_spin' && @setting.verified_at %>
 <div class="page-medium space-y-6">
   <%= page_header 'Checkout setup', subtitle: "Real cash checkout, C-Trax stock deductions and a card gateway for #{@location.name}.", menu: menu %>
   <% if @setting.errors.any? %><div role="alert" class="flash flash-alert"><%= @setting.errors.full_messages.to_sentence %></div><% end %>

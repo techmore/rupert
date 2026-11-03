@@ -173,11 +173,11 @@ class DejavooTerminalPaymentTest < ActiveSupport::TestCase
     assert_empty @spin_requests
   end
 
-  test 'the browser card path and the refund screen refuse Dejavoo checkouts' do
+  test 'the browser card path refuses Dejavoo checkouts and refunds go through the terminal' do
     assert_match(/Dejavoo terminal/, assert_raises(Pos::Error) { Pos::CardPayment.call(@checkout, nonce: 'token') }.message)
     Pos::DejavooTerminalPayment.call(@checkout)
-    error = assert_raises(Pos::Error) { Pos::CardReversal.call(checkout: @checkout.reload, amount_cents: 100, reason: 'Customer return', user: @user) }
-    assert_match(/on the terminal/, error.message)
+    refund = Pos::CardReversal.call(checkout: @checkout.reload, amount_cents: 100, reason: 'Customer return', user: @user)
+    assert_equal %w[refund submitting], [refund.kind, refund.status]
   end
 
   test 'Dejavoo has its own processor-approved list' do
