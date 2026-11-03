@@ -13,6 +13,13 @@ module MasterStock
       @pagy, @items = pagy(:offset, scope.order(:name, :id), limit: 50)
       @balances = @site ? StockBalance.where(stock_site: @site, stock_item_id: @items.map(&:id)).index_by(&:stock_item_id) : {}
       @exact = @query.present? && @items.size == 1 && (@items.first.sku == @query || @items.first.barcode == @query)
+      session[:master_stock_scan_mode] = params[:scan_mode] if %w[show count].include?(params[:scan_mode])
+      @scan_mode = session[:master_stock_scan_mode] == 'count' && Current.user.can?('inventory.write') ? 'count' : 'show'
+      # Counting mode: a scan that matches exactly one item goes straight to its count.
+      if @exact && @scan_mode == 'count' && @site
+        return redirect_to(new_master_stock_movement_path(kind: 'count', item_id: @items.first.id, site_id: @site.id, scan: 1))
+      end
+
       @readings = platform_readings(@site, @items.map(&:id))
     end
 

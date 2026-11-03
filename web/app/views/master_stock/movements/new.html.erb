@@ -4,6 +4,12 @@
   <%= page_header titles.fetch(@kind), subtitle: "#{@item.name} at #{@site.name}" %>
   <%= page_tabs((@balance ? StockLedgerEntry::STAFF_KINDS : %w[count]).map { |kind| [titles.fetch(kind).split.first, new_master_stock_movement_path(kind: kind, item_id: @item.id, site_id: @site.id, return_q: params[:return_q].presence), kind == @kind] }, label: 'Entry type') %>
   <% if @error %><div class="flash flash-alert" role="alert"><%= @error %></div><% end %>
+  <% if @warning %>
+    <div class="callout callout-attention" role="alert">
+      <p class="callout-title">Check this count</p>
+      <p class="mt-1 text-sm text-mocha"><%= @warning %></p>
+    </div>
+  <% end %>
 
   <% if @kind == 'count' %>
     <div class="card card-pad">
@@ -23,6 +29,8 @@
   <%= form_with url: master_stock_movements_path, class: 'card card-pad space-y-4', data: { turbo: false } do %>
     <%= hidden_field_tag :request_token, @token %>
     <%= hidden_field_tag :return_q, params[:return_q] %>
+    <%= hidden_field_tag :scan, '1' if params[:scan] == '1' %>
+    <%= hidden_field_tag :confirm_variance, '1' if @warning %>
     <%= hidden_field_tag 'movement[kind]', @kind %>
     <%= hidden_field_tag 'movement[item_id]', @item.id %>
     <%= hidden_field_tag 'movement[site_id]', @site.id %>
@@ -30,7 +38,7 @@
       <% label = { 'count' => 'Counted total on the shelf', 'receive' => 'Units received', 'adjust' => 'Change (use - to remove)', 'transfer' => 'Units moved' }.fetch(@kind) %>
       <%= label_tag 'movement_quantity', label, class: 'field-label' %>
       <%= text_field_tag 'movement[quantity]', @values['quantity'], id: 'movement_quantity', required: true, autofocus: true, autocomplete: 'off',
-            inputmode: (@kind == 'adjust' ? 'text' : 'numeric'), pattern: (@kind == 'adjust' ? '[-+]?[0-9]+' : '[0-9]+'), maxlength: 8,
+            inputmode: (@kind == 'adjust' ? 'text' : 'numeric'), pattern: (@kind == 'adjust' ? '[-+]?[0-9]+' : '[0-9]+'), maxlength: 20,
             class: 'input text-2xl font-semibold tabular-nums', 'aria-describedby': 'movement_quantity_hint' %>
       <p id="movement_quantity_hint" class="mt-1 text-xs text-taupe"><%= { 'count' => 'Replaces Rupert’s number with this total.', 'receive' => 'Adds to Rupert’s number.', 'adjust' => 'For example -2 for two damaged units, or 3 for found stock.', 'transfer' => 'Removes here and adds at the destination in one step.' }.fetch(@kind) %></p>
     </div>
@@ -44,8 +52,8 @@
     <div><%= label_tag 'movement_reference', raw('Reference <span class="font-normal text-taupe">(optional: invoice, PO, transfer slip)</span>'), class: 'field-label' %><%= text_field_tag 'movement[reference]', @values['reference'], id: 'movement_reference', maxlength: 200, class: 'input' %></div>
     <div><%= label_tag 'movement_note', raw("Note <span class=\"font-normal text-taupe\">#{@kind == 'adjust' ? '(required for Other)' : '(optional)'}</span>"), class: 'field-label' %><%= text_area_tag 'movement[note]', @values['note'], id: 'movement_note', rows: 2, maxlength: 1000, class: 'input' %></div>
     <div class="form-actions">
-      <%= submit_tag({ 'count' => 'Save count', 'receive' => 'Record receipt', 'adjust' => 'Record adjustment', 'transfer' => 'Record transfer' }.fetch(@kind), class: 'btn-primary btn-lg', name: nil, data: { disable_with: 'Saving…' }) %>
-      <%= link_to 'Cancel', master_stock_items_path(site_id: @site.id, q: params[:return_q].presence), class: 'btn-ghost btn-lg' %>
+      <%= submit_tag({ 'count' => (@warning ? 'Save this count' : 'Save count'), 'receive' => 'Record receipt', 'adjust' => 'Record adjustment', 'transfer' => 'Record transfer' }.fetch(@kind), class: 'btn-primary btn-lg', name: nil, data: { disable_with: 'Saving…' }) %>
+      <%= link_to 'Cancel', master_stock_items_path(site_id: @site.id, q: (params[:return_q].presence unless params[:scan] == '1')), class: 'btn-ghost btn-lg' %>
     </div>
     <p class="text-xs text-taupe">Saved to Rupert’s ledger only. Shopify, C-Trax and Square are not changed.</p>
   <% end %>

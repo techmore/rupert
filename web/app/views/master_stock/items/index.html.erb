@@ -8,15 +8,29 @@
     <%= render 'master_stock/no_sites' %>
   <% else %>
     <%= render 'master_stock/site_picker', sites: @sites, site: @site, path: :master_stock_items_path %>
-    <%= form_with url: master_stock_items_path, method: :get, class: 'toolbar', role: 'search' do %>
+    <%= form_with url: master_stock_items_path, method: :get, class: 'toolbar', role: 'search', data: { controller: 'stock-find' } do %>
       <%= hidden_field_tag :site_id, @site.id %>
       <%= hidden_field_tag :all, params[:all] if params[:all] == '1' %>
-      <div class="toolbar-field toolbar-field-wide"><%= label_tag :q, 'Find item', class: 'field-label' %><%= search_field_tag :q, @query, class: 'input font-mono', placeholder: 'Scan or type a SKU, barcode or name', autofocus: true, autocomplete: 'off', maxlength: 255, enterkeyhint: 'search' %></div>
-      <div class="toolbar-actions"><%= submit_tag 'Find', class: 'btn-primary', name: nil %><% if @query.present? %><%= link_to 'Clear', master_stock_items_path(site_id: @site.id), class: 'btn-ghost' %><% end %></div>
+      <div class="toolbar-field toolbar-field-wide"><%= label_tag :q, 'Find an item (scan, or type)', class: 'field-label' %><%= search_field_tag :q, @query, class: 'input font-mono', placeholder: 'SKU, barcode or name', autofocus: true, autocomplete: 'off', maxlength: 255, enterkeyhint: 'search', data: { stock_find_target: 'input', action: 'focus->stock-find#selectAll' } %></div>
+      <div class="toolbar-actions">
+        <%= submit_tag 'Find', class: 'btn-primary', name: nil %>
+        <%# Shown only in the iPhone app, which reads barcodes with the camera. %>
+        <button type="button" hidden class="btn-ghost" data-stock-find-target="camera" data-action="stock-find#scanWithCamera">Scan with camera</button>
+        <% if @query.present? %><%= link_to 'Clear', master_stock_items_path(site_id: @site.id), class: 'btn-ghost' %><% end %>
+      </div>
+    <% end %>
+    <% if can_write %>
+      <div class="flex flex-wrap items-center gap-2 text-xs text-taupe">
+        <span id="scan-mode-label">When a scan matches one item:</span>
+        <nav class="tabs" aria-labelledby="scan-mode-label">
+          <%= link_to 'Show it', master_stock_items_path(site_id: @site.id, scan_mode: 'show'), class: "tab #{'tab-active' if @scan_mode == 'show'}", aria: { current: (@scan_mode == 'show' ? 'true' : nil) } %>
+          <%= link_to 'Start a count', master_stock_items_path(site_id: @site.id, scan_mode: 'count'), class: "tab #{'tab-active' if @scan_mode == 'count'}", aria: { current: (@scan_mode == 'count' ? 'true' : nil) } %>
+        </nav>
+      </div>
     <% end %>
     <p class="text-xs text-taupe">
-      <% if params[:all] == '1' %>Showing every Rupert item. <%= link_to "Only items at #{@site.name}", master_stock_items_path(site_id: @site.id, q: @query.presence), class: 'underline' %>
-      <% else %>Showing items linked or counted at <%= @site.name %>. <%= link_to 'Show all items', master_stock_items_path(site_id: @site.id, q: @query.presence, all: 1), class: 'underline' %><% end %>
+      <% if params[:all] == '1' %>Showing every Rupert item. <%= link_to "Only items at #{@site.name}", master_stock_items_path(site_id: @site.id, q: @query.presence), class: 'underline' %>.
+      <% else %>Showing items linked or counted at <%= @site.name %>. <%= link_to 'Show all items', master_stock_items_path(site_id: @site.id, q: @query.presence, all: 1), class: 'underline' %>.<% end %>
       <% if @site.mapped_platforms.any? %>Platform numbers are the latest stored reads, never live.<% end %>
     </p>
 

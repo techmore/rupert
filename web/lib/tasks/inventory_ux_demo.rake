@@ -61,8 +61,14 @@ module InventoryUxDemo
     end
   end
 
+  # Starts IDs again from 1 when no other workspace has Rupert stock, so review URLs stay stable.
   def wipe_master_stock!
-    [StockLedgerEntry, StockBalance, StockItemLink, StockItem, StockSite].each { |model| model.where(tenant_id: Current.tenant_id).delete_all }
+    models = [StockLedgerEntry, StockBalance, StockItemLink, StockItem, StockSite]
+    models.each { |model| model.where(tenant_id: Current.tenant_id).delete_all }
+    return unless models.all? { |model| model.unscoped.none? }
+
+    tables = models.map { |model| ActiveRecord::Base.connection.quote(model.table_name) }.join(', ')
+    ActiveRecord::Base.connection.execute("DELETE FROM sqlite_sequence WHERE name IN (#{tables})")
   end
 
   def ensure_locations!(now)
