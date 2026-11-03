@@ -18,7 +18,8 @@ module TeamChat
     def initialize(room:, user:, body:, parent_id: nil, files: [], mention_ids: [], quote_id: nil, prior_reply_ids: [])
       @room = room
       @user = user
-      @body = body.to_s.scrub('').gsub(AskRupert::Redactor::CONTROL, '').strip
+      # Chat is stored and may be sent to an AI model: card data never stays in it.
+      @body = CardData.redact(body.to_s.scrub('').gsub(AskRupert::Redactor::CONTROL, '')).strip
       @parent_id = parent_id.presence
       @files = Array(files).compact_blank
       @mention_ids = Array(mention_ids).map(&:to_i).uniq

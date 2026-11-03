@@ -1,0 +1,96 @@
+<%# Terms of service: public. A plain-language DRAFT written for the owner and legal counsel to review.
+    It is not legal advice and has not been reviewed by a lawyer. Keep prices and checkout links off
+    this page (it opens inside the iPhone app; App Store guideline 3.1.1). When the terms change,
+    update RupertBilling::TERMS_VERSION so new subscriptions record which version they accepted.
+    OWNER + COUNSEL REVIEW before publishing: every "[Owner to add: …]" item, the warranty and
+    liability sections, governing law, and whether these terms replace any signed agreements. %>
+<% content_for :title, 'Terms of service' %>
+<div class="page-medium space-y-6">
+  <%= page_header 'Terms of service', subtitle: 'The rules for using Rupert. Draft, updated Nov 2, 2026.' %>
+  <%= render 'public_pages/draft_notice', legal: true %>
+
+  <section class="section-card" id="who">
+    <%= section_heading 'Who these terms are between' %>
+    <p class="text-sm">Rupert is provided by <%= company_operator_name %> (“we”, “us”). Legal entity: <%= company_legal_name %>. Address: <%= company_fact(:address, 'principal business address (not a PO box)') %>.</p>
+    <p class="text-sm">“You” means the business that opens a Rupert workspace, and the people that business invites. By creating an account or using Rupert you agree to these terms on behalf of your business. If your business has a signed agreement with us, that agreement wins where it differs from this page.</p>
+  </section>
+
+  <section class="section-card" id="accounts">
+    <%= section_heading 'Accounts and workspaces' %>
+    <ul class="list-disc space-y-1 pl-5 text-sm">
+      <li>Your workspace owner decides who gets an account and what role each person has, and is responsible for what those people do in Rupert.</li>
+      <li>Keep sign-in details private, and tell us at <%= mail_to PublicPagesController.support_email, nil, class: 'text-olive underline' %> if you think an account has been misused.</li>
+      <li>You must be able to enter into contracts for your business, and Rupert is not for children under 16.</li>
+    </ul>
+  </section>
+
+  <section class="section-card" id="subscriptions">
+    <%= section_heading 'Free accounts and subscriptions' %>
+    <ul class="list-disc space-y-1 pl-5 text-sm">
+      <li>Creating an account and workspace is free. Paid subscriptions are bought on the Rupert website by the workspace owner, and the price, billing period and any commitment are shown before you pay.</li>
+      <li>Subscriptions are billed in US dollars through Stripe, under the <%= company_operator_name %> billing account, and renew automatically until cancelled. Taxes may apply.</li>
+      <li>A plan with a commitment, such as a referral discount for 12 months, is owed for the whole commitment even if you stop using Rupert early.</li>
+      <li>We will give at least <%= owner_placeholder('notice period, e.g. 30 days') %> notice by email before changing the price of an existing subscription.</li>
+      <li>How to cancel and when refunds apply: see <%= link_to 'Cancellation and refunds', refund_policy_path, class: 'text-olive underline' %>.</li>
+    </ul>
+  </section>
+
+  <section class="section-card" id="acceptable-use">
+    <%= section_heading 'Acceptable use' %>
+    <p class="text-sm">Use Rupert only for a lawful business. You must not:</p>
+    <ul class="list-disc space-y-1 pl-5 text-sm">
+      <li>sell, or record sales of, goods or services that are illegal where you or your customer are;</li>
+      <li>break the rules of your payment processor or the card networks, for example by describing products or merchant categories falsely, splitting or disguising transactions, processing payments for another business, or testing stolen cards;</li>
+      <li>send marketing email or texts to people who have not agreed to receive them, or without an unsubscribe option;</li>
+      <li>try to reach another business’s workspace, get around roles or limits, overload the service, or probe it for weaknesses without our written permission;</li>
+      <li>upload malware, or material you have no right to use.</li>
+    </ul>
+    <p class="text-sm"><strong>Regulated and age-restricted products.</strong> If you sell products such as hemp-derived goods, tobacco, alcohol or supplements, you are responsible for the licences, age checks, labelling, testing records and product eligibility rules that apply to you. Rupert’s catalog and checkout controls help staff follow the rules you set; they do not decide what is legal, and they are not legal advice. Your payment processor decides which products it will accept.</p>
+    <p class="text-sm">We may suspend access, after notice where we reasonably can, if your use breaks these rules or puts other customers, the service or our payment partners at risk.</p>
+  </section>
+
+  <section class="section-card" id="your-data">
+    <%= section_heading 'Your data' %>
+    <ul class="list-disc space-y-1 pl-5 text-sm">
+      <li>Your business owns the records it puts into Rupert. We use them only to provide and secure the service, as described in the <%= link_to 'privacy policy', privacy_policy_path, class: 'text-olive underline' %>.</li>
+      <li>You can export your records while your workspace is active. After a workspace closes, we keep or delete its records as follows: <%= owner_placeholder('retention period and export window after cancellation') %></li>
+      <li>How we protect data: see <%= link_to 'Security and data handling', security_statement_path, class: 'text-olive underline' %>.</li>
+    </ul>
+  </section>
+
+  <section class="section-card" id="other-services">
+    <%= section_heading 'Other companies’ services' %>
+    <p class="text-sm">Rupert connects to services you choose, such as Shopify, Square, payment gateways and processors. Those services are provided under their own terms. We are not a bank, payment processor or money transmitter: we never hold or move your funds, and refunds, chargebacks and settlements are between you, your customer and your processor.</p>
+  </section>
+
+  <section class="section-card" id="service">
+    <%= section_heading 'The service' %>
+    <ul class="list-disc space-y-1 pl-5 text-sm">
+      <li>We improve Rupert continually and may change or retire features. We will give notice before removing a feature that paid subscribers rely on.</li>
+      <li>Features listed as partial or planned in the product guides are not yet available, and you should not rely on them.</li>
+      <li>We do not promise a specific uptime unless your signed agreement says so.</li>
+    </ul>
+  </section>
+
+  <section class="section-card" id="liability">
+    <%= section_heading 'Warranties and liability' %>
+    <p class="text-sm"><%= owner_placeholder('warranty disclaimer and limitation of liability, to be written by legal counsel') %></p>
+  </section>
+
+  <section class="section-card" id="ending">
+    <%= section_heading 'Ending these terms' %>
+    <p class="text-sm">You can stop using Rupert and cancel at any time, subject to any commitment you agreed to. We may end these terms for a serious breach, or with <%= owner_placeholder('notice period') %> notice for any other reason.</p>
+  </section>
+
+  <section class="section-card" id="law">
+    <%= section_heading 'Governing law and disputes' %>
+    <p class="text-sm"><%= owner_placeholder('governing law, venue and dispute process, to be chosen with legal counsel') %></p>
+  </section>
+
+  <section class="section-card" id="changes">
+    <%= section_heading 'Changes to these terms' %>
+    <p class="text-sm">When these terms change, the version and date at the top change too. We will email workspace owners about material changes before they take effect. Questions: <%= link_to 'Support', support_path, class: 'text-olive underline' %>.</p>
+  </section>
+
+  <%= render 'public_pages/policy_links' %>
+</div>

@@ -5,6 +5,7 @@
     account" (a new business signing up) only shows on the main Rupert site,
     not on a workspace's own address. %>
 <% content_for :title, "Sign in" %>
+<% content_for :head do %><meta name="description" content="Sign in to your Rupert workspace."><% end %>
 <% google = GoogleOauthService.configured? %>
 <% password_open = !google || request.post? || params[:password].present? %>
 <%# The iPhone app signs in existing business accounts only: no sign-up there (App Store 3.1.1, 4.8). %>
@@ -61,5 +62,5 @@
       <p class="border-t border-fog pt-4 text-center text-sm text-mocha">Rupert accounts are set up by your business.</p>
     <% end %>
   </div>
-  <p class="mt-4 text-center text-xs text-taupe"><%= link_to 'Privacy policy', privacy_policy_path, class: 'hover:underline' %> · <%= link_to 'Support', support_path, class: 'hover:underline' %></p>
+  <p class="mt-4 text-center text-xs text-taupe"><% if signup %><%= link_to 'Rupert home', root_path, class: 'hover:underline' %> · <% end %><%= link_to 'Privacy policy', privacy_policy_path, class: 'hover:underline' %> · <%= link_to 'Support', support_path, class: 'hover:underline' %></p>
 </div>

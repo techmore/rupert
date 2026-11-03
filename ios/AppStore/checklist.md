@@ -23,7 +23,7 @@ the build; **Owner** = a click in App Store Connect or a secret only the owner h
 | 16 | Privacy manifest: required-reason APIs | Done: UserDefaults CA92.1 added | `PrivacyInfo.xcprivacy` |
 | 17 | Usage strings for camera, photos, microphone, Face ID | Done | `Info.plist` |
 | 18 | Version 1.0.0, new build number | Done: build number is the UTC time at build | `ship.sh` |
-| 19 | Support mailbox | Owner: make support@rupertpos.com reach you, or set `RUPERT_SUPPORT_EMAIL` | `/etc/rupert.env` |
+| 19 | Support mailbox | Default is sdolbec@rupertpos.com (the only rupertpos.com mailbox); set `RUPERT_SUPPORT_EMAIL` to change it | `/etc/rupert.env` |
 | 20 | Submit for review | Owner only | App Store Connect |
 
 ## App Privacy answers
