@@ -88,6 +88,7 @@ See [the subscriptions plan](../plans/customer-subscriptions-and-trust.md) and [
 | `RUPERT_BILLING_ENABLED` | control plane | `true` turns on Rupert subscriptions (also needs every `CSP_STRIPE_*` key); keep `false` until test-mode acceptance |
 | `RUPERT_PUBLIC_ORIGIN` | control plane | Public origin for billing return URLs and feedback links (default `https://rupertpos.com`) |
 | `RUPERT_SUPPORT_EMAIL` | `support@rupertpos.com` | Contact address on the public Support and Privacy policy pages (`/support`, `/privacy`), which the App Store listing links to |
+| `RUPERT_ANDROID_CERT_SHA256` | any public node | Comma-separated SHA-256 signing-certificate fingerprints (Play Console → App integrity) served in `/.well-known/assetlinks.json`, so Rupert links open in the Android app. Unset: links open in the browser |
 | `RUPERT_APPROVED_REFERRAL_CODES` | control plane | Comma-separated owner-approved referral codes; when set, only these are eligible |
 | `RUPERT_OWNER_GOOGLE_EMAILS` | control plane | Comma-separated owner Google mailboxes for `platform:link_owner_identities` |
 | `RUPERT_PROVISION_WORKSPACES` | control plane | `true` lets the control plane hand workspaces to the host provisioner |
@@ -126,6 +127,8 @@ These are read by scripts in `deploy/ser8`, from their own environment or system
 | --- | --- |
 | `RUPERT_IOS_BUNDLE_ID` | iOS bundle identifier for the employee app (`mobile/app.config.ts`) |
 | `RUPERT_ANDROID_PACKAGE` | Android package name for the employee app |
+| `RUPERT_VERSION_CODE` | Play Store version code for the Rupert Android app (`android/app/build.gradle.kts`); CI sets the run number, and each upload needs a higher one |
+| `RUPERT_UPLOAD_KEYSTORE`, `RUPERT_UPLOAD_KEYSTORE_PASSWORD`, `RUPERT_UPLOAD_KEY_ALIAS`, `RUPERT_UPLOAD_KEY_PASSWORD` | Play upload key for signing Android release builds (`android/app/build.gradle.kts`); keep them in the build machine's secrets, never in the repository. Without them, release builds are unsigned |
 
 `EXPO_PUBLIC_RUPERT_URL` sets the app's default server; see [mobile/README.md](../../mobile/README.md).
 
