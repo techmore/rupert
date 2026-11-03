@@ -43,7 +43,9 @@ class CardDataLoggingTest < ActionDispatch::IntegrationTest
     end
     assert lines.any?
     assert_no_card_data(ops_raw)
-    refute_includes ops_raw, '987'
+    # The security code must not appear as a value. Match it as a whole number: the log line
+    # also carries counters and ids (allocations 2987, user ids) that may contain those digits.
+    refute_match(/(?<!\d)987(?!\d)/, ops_raw)
   end
 
   test 'an exception carrying track data is logged and stored without it' do
