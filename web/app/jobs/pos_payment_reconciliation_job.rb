@@ -12,6 +12,7 @@ class PosPaymentReconciliationJob < ApplicationJob
       return unless lock.flock(File::LOCK_EX | File::LOCK_NB)
 
       reconcile_batch
+      reconcile_reversals
     ensure
       lock.flock(File::LOCK_UN)
     end
@@ -39,6 +40,20 @@ class PosPaymentReconciliationJob < ApplicationJob
         Pos::CardPayment.reconcile!(attempt)
       rescue Pos::Error => e
         ActivityLogger.log('pos_payment_needs_review', subject: attempt, details: e.message)
+      end
+    end
+  end
+
+  # Voids/refunds whose gateway response was lost: read-only rechecks, never resent.
+  def reconcile_reversals
+    PosCardReversal.unscoped.joins(:tenant).where(tenants: { status: 'active' })
+      .where(status: %w[submitting unknown]).where('pos_card_reversals.submitted_at < ?', 1.minute.ago)
+      .where('pos_card_reversals.updated_at < ?', 2.minutes.ago).order(:updated_at, :id).limit(20).each do |reversal|
+      Current.set(tenant: reversal.tenant) do
+        PosCardReversal.where(id: reversal.id).update_all(updated_at: Time.current)
+        Pos::CardReversal.reconcile!(reversal)
+      rescue Pos::Error => e
+        ActivityLogger.log('pos_card_reversal_needs_review', subject: reversal.pos_checkout, details: e.message)
       end
     end
   end
