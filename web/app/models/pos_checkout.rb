@@ -10,6 +10,7 @@ class PosCheckout < ApplicationRecord
   belongs_to :compliance_override_by, class_name: 'User', optional: true
   has_many :pos_stock_allocations
   has_many :pos_payment_attempts
+  has_many :pos_card_reversals
   serialize :lines_json, coder: JSON
   serialize :compliance_issues_json, coder: JSON
   encrypts :lines_json
@@ -44,6 +45,24 @@ class PosCheckout < ApplicationRecord
     { id: id, reference: reference, status: status, demo: demo?, sandbox: sandbox_payment?, tender: tender, tender_label: tender_label, subtotal_cents: subtotal_cents,
       tax_cents: tax_cents, tip_cents: tip_cents, total_cents: total_cents, cash_received_cents: cash_received_cents,
       change_cents: change_cents, paid_at: paid_at&.iso8601,
-      inventory_pending: pos_stock_allocations.where.not(status: %w[applied released]).exists? }
+      inventory_pending: pos_stock_allocations.where.not(status: %w[applied released]).exists?,
+      card: card_receipt, decline_reason: status == 'declined' ? latest_attempt&.decline_reason : nil }
+  end
+
+  def gateway_label = { 'nmi' => 'NMI', 'authorize_net' => 'Authorize.net' }.fetch(gateway_provider, gateway_provider.to_s)
+
+  def paid_attempt = pos_payment_attempts.find_by(status: 'paid')
+
+  def latest_attempt = pos_payment_attempts.order(:id).last
+
+  # Card details for the receipt, from the verified gateway record. Never a card number.
+  def card_receipt
+    return nil unless tender == 'card' && paid?
+
+    attempt = paid_attempt
+    return nil unless attempt
+
+    { processor: gateway_label, brand: attempt.card_brand, last_four: attempt.card_last_four, auth_code: attempt.auth_code,
+      transaction_id: attempt.transaction_id, refunded_cents: pos_card_reversals.succeeded.sum(:amount_cents) }
   end
 end

@@ -3,13 +3,23 @@
 class PosSetting < ApplicationRecord
   include TenantScoped
   belongs_to :location
-  encrypts :credentials_json
+  belongs_to :production_approved_by, class_name: 'User', optional: true
+  encrypts :credentials_json, :webhook_signing_key
   validates :location_id, uniqueness: { scope: :tenant_id }
   validates :gateway_provider, inclusion: { in: %w[authorize_net nmi] }
   validates :environment, inclusion: { in: %w[sandbox production] }
   validate do
     errors.add(:location, 'must be a C-Trax store in this workspace') unless location&.tenant_id == tenant_id && location.source == 'ctrax'
-    errors.add(:base, 'NMI production payments are disabled pending Next Stage confirmation.') if gateway_provider == 'nmi' && environment != 'sandbox'
+    if gateway_provider == 'nmi' && environment == 'production' && !production_approved_at
+      errors.add(:base, 'NMI production needs owner sign-off: confirm the processor approved this merchant account and record the approval.')
+    end
+    if production_approved_at && (production_approval_note.to_s.squish.length < 10 || production_approval_note.to_s.length > 1000)
+      errors.add(:production_approval_note, 'must say who approved the account and when (10 to 1000 characters)')
+    end
+    errors.add(:base, 'Sign-off must be recorded by a user in this workspace.') if production_approved_by && production_approved_by.tenant_id != tenant_id
+    if webhook_signing_key.present? && !webhook_signing_key.match?(/\A[[:graph:]]{16,256}\z/)
+      errors.add(:webhook_signing_key, 'must be the signing key exactly as the gateway shows it')
+    end
     allowed = gateway_provider == 'nmi' ? %w[security_key tokenization_key merchant_company] : %w[api_login_id transaction_key]
     if credentials.any? { |key, v| !v.is_a?(String) || !(key == 'merchant_company' ? v.match?(/\A[[:print:]]{1,128}\z/) : v.match?(/\A[[:graph:]]{1,128}\z/)) } || (credentials.keys - allowed).any?
       errors.add(:base, 'Enter supported gateway credentials.')
@@ -29,8 +39,16 @@ class PosSetting < ApplicationRecord
       self.public_client_key = nil
       self.card_enabled = false
     end
+    # Sign-off covers one account: a new provider, environment or account ID needs it again.
+    if persisted? && (will_save_change_to_gateway_id? || will_save_change_to_environment? || will_save_change_to_gateway_provider?) && !will_save_change_to_production_approved_at?
+      self.production_approved_at = nil
+      self.production_approved_by = nil
+      self.production_approval_note = nil
+    end
   end
   def nmi_sandbox? = gateway_provider == 'nmi' && environment == 'sandbox'
+  def nmi_production? = gateway_provider == 'nmi' && environment == 'production'
+  def nmi_ready_environment? = gateway_provider == 'nmi' && (environment == 'sandbox' || production_approved_at.present?)
 
   def payment_fingerprint
     Digest::SHA256.hexdigest([gateway_provider, environment, gateway_id, credentials.sort].to_json)

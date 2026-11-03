@@ -10,6 +10,7 @@
 
 ### Fixed
 
+- Resolve all 15 open Dependabot alerts in the employee mobile app's build tooling. node-forge 1.4.2 (lockfile only) fixes 12 advisories, including the one the local RSA backport covered, so that backport is removed. npm `overrides` move Expo's glob to 14.0.3 and minimatch to 11.0.3. deepmerge 4.3.1 has no upstream fix and gets a source-hashed backport that blocks `__proto__` poisoning. None of these packages ship in the app bundle.
 - Enforce upload inbox quotas under SQLite's writer lock, including rejected files, and require each retained original to fit the remaining storage allowance. Identical-file duplicates consume no additional retained bytes.
 - Align the employee mobile app with Expo SDK 58's supported dependency set: Expo 58.0.17 and TypeScript 6.0.3, preserving React 19.3.0, React Native 0.88.0 and the verified security backports.
 

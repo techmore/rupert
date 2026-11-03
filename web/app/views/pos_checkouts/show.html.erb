@@ -32,6 +32,36 @@
       </dl>
     </section>
   <% end %>
+  <% if (card = @checkout.card_receipt) %>
+    <section class="section-card" aria-label="Card payment">
+      <%= section_heading 'Card payment' %>
+      <dl class="space-y-1 text-sm">
+        <div class="flex justify-between gap-3"><dt>Card</dt><dd><%= [card[:brand], card[:last_four] && "ending #{card[:last_four]}"].compact.join(' ').presence || 'Card' %></dd></div>
+        <% if card[:auth_code] %><div class="flex justify-between gap-3"><dt>Approval code</dt><dd class="num"><%= card[:auth_code] %></dd></div><% end %>
+        <div class="flex justify-between gap-3"><dt>Processed by</dt><dd><%= card[:processor] %><%= ' (sandbox)' if @checkout.environment == 'sandbox' %> · <span class="num"><%= card[:transaction_id] %></span></dd></div>
+        <% if card[:refunded_cents].positive? %><div class="flex justify-between gap-3"><dt>Refunded</dt><dd class="num font-semibold"><%= ctrax_money(card[:refunded_cents]) %></dd></div><% end %>
+      </dl>
+      <% reversals = @checkout.pos_card_reversals.order(:id).to_a %>
+      <% if reversals.any? %>
+        <ul class="mt-3 space-y-1 text-sm">
+          <% reversals.each do |r| %><li class="flex flex-wrap justify-between gap-2 border-t border-fog pt-2"><span><%= r.kind.capitalize %> <%= ctrax_money(r.amount_cents) %> · <%= r.reason %></span><span class="<%= r.status == 'succeeded' ? 'pill-fern' : r.unresolved? ? 'pill-clay' : 'pill-taupe' %>"><%= r.status == 'unknown' ? 'Needs recheck' : r.status.humanize %></span><% if r.failure_message %><span class="w-full text-mocha"><%= r.failure_message %></span><% end %></li><% end %>
+        </ul>
+        <% if reversals.any?(&:unresolved?) %><%= button_to 'Recheck refund with gateway', recheck_reversal_pos_checkout_path(@checkout), method: :post, class: 'btn-ghost mt-3', data: { turbo: false } %><% end %>
+      <% end %>
+      <% remaining = @checkout.total_cents - card[:refunded_cents] %>
+      <% if remaining.positive? && reversals.none?(&:unresolved?) && Current.user.can?('sales.write') %>
+        <%= form_with url: reverse_pos_checkout_path(@checkout), method: :post, class: 'mt-4 space-y-3', data: { turbo: false } do %>
+          <p class="text-sm text-mocha">Refund to the original card. Before the payment settles (usually the same day) only the whole sale can be voided; after that you can refund part or all of it. Restock returned items separately.</p>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div><label for="refund_amount" class="field-label">Amount (USD)</label><%= text_field_tag :amount, format('%.2f', remaining / 100.0), id: 'refund_amount', class: 'input', inputmode: 'decimal' %></div>
+            <div><label for="refund_reason" class="field-label">Reason</label><%= text_field_tag :reason, nil, id: 'refund_reason', class: 'input', maxlength: 500, required: true %></div>
+          </div>
+          <%= submit_tag 'Void or refund', class: 'btn-ghost', data: { confirm: 'Send this refund to the card gateway?' } %>
+        <% end %>
+      <% end %>
+    </section>
+  <% end %>
+  <% if @checkout.status == 'declined' && @checkout.latest_attempt&.decline_reason %><p class="flash flash-alert" role="status"><%= @checkout.latest_attempt.decline_reason %></p><% end %>
   <p class="text-sm text-mocha"><%= @checkout.demo? ? 'Demonstration only. No real payment or inventory movement was made.' : @checkout.sandbox_payment? ? 'Sandbox gateway test. No live sale or source stock movement was made.' : @checkout.terminal_card? ? 'Tender: Card (A920). The card was run on the A920 terminal and recorded here; Rupert sent no gateway charge. Refund it on the terminal, then record the refund on the order.' : "Tender: #{@checkout.tender_label}. A paid receipt requires recorded cash collection or verified gateway approval." %><% if @checkout.order && retail_business_access?('sales.read') %> <%= link_to 'Open order', order_path(@checkout.order), class: 'underline' %><% end %></p>
   <% if %w[ready declined].include?(@checkout.status) || @checkout.unresolved? %>
     <div class="flex flex-wrap gap-2">

@@ -73,6 +73,11 @@ answer 200 with a non-empty body. If any step, the health check or the smoke che
 migrations must stay backward compatible (the log says how many new migrations the commit carried and names the
 pre-deploy backup). A commit that failed is recorded in `/var/lib/rupert-autodeploy/failed-sha` and is not retried
 until `main` moves on, so a broken release does not restart the app every 5 minutes; delete that file to retry. A running scheduled job is interrupted by the restart. It serializes on
+Before installing it runs the runtime release audit (`/usr/local/sbin/rupert-release-audit`, when installed: fresh
+encrypted backups, `/up`, TLS, DMARC, company facts) and keeps the report in `/var/lib/rupert-autodeploy/audits/<sha>.md`.
+In the default warn mode a failure is logged and the install continues; `echo enforce > /var/lib/rupert-autodeploy/audit-mode`
+makes a failing audit refuse the install. See [release-audit.md](../../docs/ops/release-audit.md).
+
 Before changing the checkout it records the target as in progress; a crash
 therefore suppresses automatic retry of that commit. If the checkout is still
 at the interrupted or failed target, all subsequent updates stop for manual

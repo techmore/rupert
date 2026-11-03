@@ -120,6 +120,11 @@ These are read by scripts in `deploy/ser8`, from their own environment or system
 | `RUPERT_LLM_IMAGE` | `team-chat/setup-local-model.sh` | `images:ubuntu/24.04` | Its base image |
 | `RUPERT_LLM_MEMORY` | `team-chat/setup-local-model.sh` | `12GiB` | Its memory limit |
 | `RUPERT_LLM_CPUS` | `team-chat/setup-local-model.sh` | `6` | Its CPU limit |
+| `RUPERT_RELEASE_AUDIT` | `rupert-autodeploy.sh` | `/usr/local/sbin/rupert-release-audit` | Runtime release audit run before each install ([release-audit.md](release-audit.md)) |
+| `RUPERT_ENV_FILE` | `rupert-release-audit` | `/etc/rupert.env` | File whose company facts it checks (names only, never values) |
+| `RUPERT_LEGAL_NAME`, `RUPERT_BUSINESS_ADDRESS`, `RUPERT_SUPPORT_PHONE`, `RUPERT_SECURITY_EMAIL` | `/etc/rupert.env`, checked by `rupert-release-audit` | unset | Public company facts for the legal and security pages; the release audit fails while any is missing or a placeholder |
+| `RUPERT_PRIVACY_DENYLIST` | CI secret, read by `bin/release-audit` | unset | Hashed deny-list of names that must not appear in public content ([release-audit.md](release-audit.md)); never in the repository |
+| `RUPERT_PRIVACY_DENYLIST_FILE`, `RUPERT_PRIVACY_KEY` | `bin/release-audit` (local runs) | unset | A private deny-list file, and the HMAC key used when hashing names |
 
 ## Mobile build (EAS)
 

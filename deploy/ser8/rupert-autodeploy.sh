@@ -176,6 +176,21 @@ case "$ci" in
   *) report waiting_ci "CI for ${gated:0:8} is $ci, not deploying ${NEW:0:8} yet"; exit 0 ;;
 esac
 
+# Runtime release audit (docs/ops/release-audit.md): fresh encrypted backups, /up, TLS, DMARC and
+# the public company facts. "warn" (the default) keeps the report; "enforce" in $STATE/audit-mode
+# refuses the install while the audit fails. The report names checks only, never env values.
+AUDIT=${RUPERT_RELEASE_AUDIT:-/usr/local/sbin/rupert-release-audit}
+audit_mode=$(cat "$STATE/audit-mode" 2>/dev/null || echo warn)
+if [ -x "$AUDIT" ] && [ "${DRY_RUN:-0}" != 1 ]; then
+  mkdir -p "$STATE/audits" && chmod 755 "$STATE/audits"
+  if ! "$AUDIT" --sha "$NEW" --report "$STATE/audits/$NEW.md" --json "$STATE/audits/$NEW.json" >/dev/null 2>&1; then
+    if [ "$audit_mode" = enforce ]; then
+      report blocked "runtime release audit failed for ${NEW:0:8}; see $STATE/audits/$NEW.md"; exit 0
+    fi
+    log "runtime release audit failed for ${NEW:0:8} (warn mode, installing anyway); see $STATE/audits/$NEW.md"
+  fi
+fi
+
 migration_files=$(git diff --name-only --diff-filter=A "$CUR" "$NEW" -- web/db/migrate)
 migrations=$(printf '%s' "$migration_files" | grep -c .)
 # A request or mode may have changed while the GitHub checks were fetched.

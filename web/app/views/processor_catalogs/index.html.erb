@@ -1,0 +1,65 @@
+<% content_for :title, 'Processor-approved products' %>
+<div class="page-medium space-y-6">
+  <%= page_header 'Processor-approved products', subtitle: 'Only products a card processor approved can be charged on that processor. Cash is never restricted here.' %>
+  <%= fold_explainer('A hemp/CBD processor approves your exact product list. Charging anything else on that account can get it frozen or closed, and a closure for cause can block card acceptance at every processor. Turn on a processor’s list once you have its written approval. Rupert then refuses unlisted items at the register, on the customer screen and at online checkout, and tells the cashier to take cash or remove the item. Which products are legal to sell is your and your counsel’s decision; Rupert only enforces the list you enter.', class: 'text-sm text-mocha') %>
+
+  <% @catalogs.each do |catalog| %>
+    <section id="<%= catalog.processor %>" class="section-card space-y-4" aria-label="<%= catalog.label %> approved list">
+      <%= section_heading catalog.label do %>
+        <span class="<%= catalog.enforced ? 'pill-fern' : 'pill-taupe' %>"><%= catalog.enforced ? 'Enforced' : 'Not enforced' %></span>
+      <% end %>
+      <p class="text-sm text-mocha">
+        <% if catalog.enforced %>
+          Only listed SKUs and categories can be charged on <%= catalog.label %>.
+        <% else %>
+          Not enforced: every product can be charged on <%= catalog.label %>, as before.
+        <% end %>
+        <% if catalog.approved_at %>Approval “<%= catalog.approval_reference %>” recorded by <%= catalog.approved_by&.display_name || 'a former user' %> on <%= l(catalog.approved_at, format: :short) %>.<% end %>
+      </p>
+
+      <%= form_with model: catalog, url: processor_catalog_path(catalog.processor), method: :patch, class: 'space-y-3', data: { turbo: false } do |form| %>
+        <%= form.hidden_field :lock_version %>
+        <div><%= form.label :approval_reference, 'Processor approval reference', class: 'field-label' %><%= form.text_field :approval_reference, class: 'input', maxlength: 200, placeholder: 'For example: Approval email from the ISO, 2026-11-20, case 12345' %></div>
+        <div><%= form.label :approval_note, 'Notes (what the processor approved or excluded)', class: 'field-label' %><%= form.text_area :approval_note, rows: 2, class: 'input', maxlength: 2000 %></div>
+        <label class="flex gap-2 text-sm"><%= form.check_box :enforced %><span>Enforce this list: refuse unlisted items on <%= catalog.label %></span></label>
+        <div class="form-actions"><%= form.submit 'Save approval', class: 'btn-primary' %></div>
+      <% end %>
+
+      <% entries = catalog.persisted? ? catalog.entries.sort_by { |e| [e.kind, e.normalized_value] } : [] %>
+      <% if entries.any? %>
+        <div class="space-y-2">
+          <% entries.group_by(&:kind).each do |kind, rows| %>
+            <p class="field-label"><%= ProcessorCatalogEntry::KINDS[kind] %>s (<%= rows.size %>)</p>
+            <ul class="flex flex-wrap gap-2">
+              <% rows.each do |entry| %>
+                <li class="flex items-center gap-1 rounded border border-fog px-2 py-1 text-sm">
+                  <span><%= entry.value %></span>
+                  <%= button_to '×', processor_catalog_entry_path(catalog.processor, entry.id), method: :delete, class: 'text-taupe hover:text-rose', title: "Remove #{entry.value}", aria: { label: "Remove #{entry.value}" }, data: { turbo: false } %>
+                </li>
+              <% end %>
+            </ul>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-sm text-mocha">No products listed yet.</p>
+      <% end %>
+
+      <%= form_with url: processor_catalog_entries_path(catalog.processor), method: :post, class: 'space-y-3', data: { turbo: false } do %>
+        <div><label for="kind_<%= catalog.processor %>" class="field-label">Add</label><%= select_tag :kind, options_for_select(ProcessorCatalogEntry::KINDS.invert), id: "kind_#{catalog.processor}", class: 'select w-full' %></div>
+        <div><label for="values_<%= catalog.processor %>" class="field-label">SKUs or categories, one per line</label><%= text_area_tag :values, nil, id: "values_#{catalog.processor}", rows: 3, class: 'input', placeholder: "HH-CBD-TINC-3500\nHH-PET-CHEW-30" %></div>
+        <p class="text-xs text-taupe">Use the SKU or the C-Trax category exactly as the processor approved it. Matching ignores letter case and extra spaces. An excluded SKU is refused even when its category is approved.</p>
+        <div class="form-actions"><%= submit_tag 'Add to list', class: 'btn-ghost' %></div>
+      <% end %>
+
+      <% if catalog.enforced %>
+        <% blocked = @coverage.fetch(catalog.processor, []) %>
+        <details class="explainer text-sm">
+          <summary class="explainer-summary"><%= blocked.size %> of <%= @items.size %> current register products would be refused on <%= catalog.label %></summary>
+          <ul class="mt-2 space-y-1">
+            <% blocked.first(200).each do |row| %><li><%= row[:item].label %><% if row[:item].category.present? %> · <%= row[:item].category %><% end %> — <span class="text-mocha"><%= row[:reason] %></span></li><% end %>
+          </ul>
+        </details>
+      <% end %>
+    </section>
+  <% end %>
+</div>
