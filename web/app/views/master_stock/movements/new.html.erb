@@ -5,13 +5,20 @@
   <%= page_tabs((@balance ? StockLedgerEntry::STAFF_KINDS : %w[count]).map { |kind| [titles.fetch(kind).split.first, new_master_stock_movement_path(kind: kind, item_id: @item.id, site_id: @site.id, return_q: params[:return_q].presence), kind == @kind] }, label: 'Entry type') %>
   <% if @error %><div class="flash flash-alert" role="alert"><%= @error %></div><% end %>
 
-  <div class="card card-pad flex items-center justify-between gap-4">
-    <div>
-      <p class="text-xs text-taupe">Rupert on hand now</p>
-      <p class="stat-value text-ink"><%= @balance ? @balance.on_hand : '—' %></p>
+  <% if @kind == 'count' %>
+    <div class="card card-pad">
+      <p class="text-sm text-ink">Count every unit of this item on the shelf and in any overstock at <%= @site.name %>, then enter the total.</p>
+      <p class="mt-1 text-xs text-taupe"><%= @balance ? "Rupert’s current number stays hidden until you save, so it does not steer the count. #{counted_label(@balance)}." : 'First count at this site: it sets Rupert’s starting number.' %></p>
     </div>
-    <p class="text-xs text-taupe text-right"><%= @balance ? "Last counted #{@balance.counted_at ? l(@balance.counted_at, format: :short) : 'never'}" : 'Not counted at this site yet. Start with a count of what is on the shelf.' %></p>
-  </div>
+  <% else %>
+    <div class="card card-pad flex items-center justify-between gap-4">
+      <div>
+        <p class="text-xs text-taupe">Rupert on hand now</p>
+        <p class="stat-value text-ink"><%= @balance ? @balance.on_hand : '—' %></p>
+      </div>
+      <p class="text-xs text-taupe text-right"><%= @balance ? counted_label(@balance) : 'Not counted at this site yet. Start with a count of what is on the shelf.' %></p>
+    </div>
+  <% end %>
 
   <%= form_with url: master_stock_movements_path, class: 'card card-pad space-y-4', data: { turbo: false } do %>
     <%= hidden_field_tag :request_token, @token %>
