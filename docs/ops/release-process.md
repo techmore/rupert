@@ -11,6 +11,11 @@ release nor operator acceptance. The end-to-end policy is the canonical
 the updater's gates, receipts and files are in the
 [SER8 updater runbook](../../deploy/ser8/README.md#auto-deploy-rupert-autodeploy).
 
+Every release is also audited for card data, customer privacy on public pages, secrets,
+certification claims, draft legal pages and the server's backups, TLS and DMARC: see the
+[release audit](release-audit.md) for what blocks automatically and what the release owner
+signs off.
+
 Each PR must pass the current required checks: `CI (sqlite3)`, `Product site
 consistency`, `Dependency and static scan`, and `cla`. The updater then waits
 for the newest exact-SHA `CI (sqlite3)`, `Product site consistency`, and
