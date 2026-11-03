@@ -43,7 +43,9 @@ class CardDataLoggingTest < ActionDispatch::IntegrationTest
     end
     assert lines.any?
     assert_no_card_data(ops_raw)
-    refute_includes ops_raw, '987'
+    # The CVC as a logged value; a bare "987" also matches counters such as
+    # "allocations":2987 and made this test flaky.
+    refute_match(/[":=\s]987(?!\d)|"987"/, ops_raw.gsub(/"(?:allocations|bytes|duration_ms|db_ms|user_id)":[\d.]+/, ''))
   end
 
   test 'an exception carrying track data is logged and stored without it' do
