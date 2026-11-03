@@ -114,8 +114,8 @@ in person and online, and be matched against deposits. Three sources:
 
 **Data ingestion (both channels):**
 
-8. **FEED webhook receiver**: verify the signature, store the event, dedupe by
-   transaction ID, link to the Rupert sale.
+8. ~~FEED webhook receiver~~ **Done:** Basic auth (or HMAC), safe fields only,
+   deduped, matched to Rupert sales/refunds/online payments; outside sales listed.
 9. **Batch report import and reconciliation**: pull daily batches, match to Rupert sales
    and to the bank deposits, flag anything unmatched.
 

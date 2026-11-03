@@ -26,6 +26,8 @@ class PosWebhooksController < ActionController::API
     body = request.body.read(MAX_BYTES + 1).to_s
     return head(:content_too_large) if body.bytesize > MAX_BYTES
 
+    return dejavoo_feed(setting, secret, body) if setting.gateway_provider == 'dejavoo_spin'
+
     verified = setting.gateway_provider == 'nmi' ? nmi_signed?(secret, body) : authorize_net_signed?(secret, body)
     return head(:unauthorized) unless verified
 
@@ -44,6 +46,21 @@ class PosWebhooksController < ActionController::API
   end
 
   private
+
+  # Dejavoo FEED: authenticated (Basic or HMAC, see Pos::DejavooFeed), then
+  # recorded for reconciliation. It never marks a payment paid or refunded.
+  def dejavoo_feed(setting, secret, body)
+    event = JSON.parse(body, max_nesting: 10)
+    return head(:bad_request) unless event.is_a?(Hash)
+    return head(:unauthorized) unless Pos::DejavooFeed.authentic?(secret: secret, headers: request.headers, event: event)
+
+    Current.set(tenant: Tenant.find(setting.tenant_id)) { Pos::DejavooFeed.record!(setting, event) }
+    head(:ok)
+  rescue Pos::Error, ActiveRecord::RecordInvalid
+    head(:unprocessable_entity)
+  rescue ActiveRecord::RecordNotUnique
+    head(:ok)
+  end
 
   def authorize_net_signed?(secret, body)
     supplied = request.headers['X-ANET-Signature'].to_s
