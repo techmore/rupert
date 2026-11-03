@@ -38,6 +38,43 @@ integrations, and the terminal API does not cover online checkout.
 We will **not** use the Clear Card Encryption API: it sends raw card numbers through
 our own UI and puts Rupert in full PCI scope.
 
+**Online setup facts (FTD docs, read 2026-11-03):** FTD needs a **CloudPOS TPN**
+(likely separate from the P1's TPN), an **Ecom Token** generated in iPOSpays
+Settings → Merchant Keys/Ecom Token, and Rupert's domain added under Manage
+Whitelisted Domain. Requests from localhost are refused. FTD only returns a
+single-use `paymentTokenId` (24 h); the charge is a separate iPOS Transact call with
+a `token` header. Rupert now has a sandbox-only client for that sale call
+(`Pos::IposTransactGateway`). Void, refund and status endpoints are not in the public
+docs, so those wait for Dejavoo.
+
+## PCI DSS: keep Rupert's scope as small as possible
+
+| Channel | Choice | Expected SAQ | Why |
+| --- | --- | --- | --- |
+| In person | P1 via SPIn | **SAQ P2PE** if the P1 is on a PCI-listed P2PE solution; otherwise **SAQ B-IP** | The card is read and encrypted on the terminal. The iPad running Rupert never sees it. |
+| Online | **Hosted Payment Page (redirect)** or FTD only if its fields are Dejavoo-served iframes | **SAQ A** | The card is entered on a page Dejavoo serves. |
+| Online | FTD with fields as plain inputs on Rupert's page (as in Dejavoo's sample) | **SAQ A-EP** (much larger) | Rupert's page holds the inputs, and its script reads them. Same as today's Accept.js checkout. |
+
+What Rupert does already, and on this branch:
+
+- Never receives, logs or stores card numbers, expiry, CVV, track or EMV data; only
+  last four, brand, approval code and references.
+- Production Dejavoo hosts refused in code until sign-off.
+- **New:** the online payment page only allows scripts from Rupert, Authorize.net,
+  Google Pay and Dejavoo, cannot be framed, and can only submit to Rupert (PCI DSS 4.0
+  6.4.3 / 11.6.1, against card-skimming scripts). Before this, any https script host
+  was allowed.
+
+What the store does for in-person: nothing special. No private network is required.
+The P1 encrypts the card itself and talks to Dejavoo over its own internet link. Good
+hygiene still applies: password-protected WPA2/WPA3 Wi-Fi, not an open guest network,
+default passwords changed, and the terminal checked for tampering. Any iPad running
+Rupert works because it never handles card data.
+
+Ask Dejavoo: **Is the P1 part of a PCI-validated P2PE solution?** That decides SAQ P2PE
+(minimal) vs B-IP. **Do FTD fields render in Dejavoo iframes?** That decides SAQ A vs
+A-EP; if not, we use the Hosted Payment Page. **Does our P1 have LTE or Wi-Fi only?**
+
 ## All the data comes into Rupert
 
 Rupert is the store's book of record, so every Dejavoo transaction must land in it,

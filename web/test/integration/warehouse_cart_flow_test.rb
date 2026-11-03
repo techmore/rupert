@@ -210,6 +210,19 @@ class WarehouseCartFlowTest < ActionDispatch::IntegrationTest
     refute cart.reload.checked_out?
   end
 
+  test 'payment page only loads scripts from Rupert and named payment providers and cannot be framed' do
+    post warehouse_cart_add_item_path(@share.token), params: { variant_id: @variant.id, quantity: '1' }
+    get warehouse_checkout_path(@share.token)
+    assert_response :success
+    csp = response.headers['Content-Security-Policy']
+    script_src = csp[/script-src ([^;]+)/, 1].split
+    assert_not_includes script_src, 'https:'
+    assert_includes script_src, 'https://jstest.authorize.net'
+    assert_includes script_src, 'https://payment.ipospays.tech'
+    assert_match(/frame-ancestors 'none'/, csp)
+    assert_match(/form-action 'self'/, csp)
+  end
+
   test 'empty cart cannot reach checkout' do
     get warehouse_checkout_path(@share.token)
     assert_response :not_found
