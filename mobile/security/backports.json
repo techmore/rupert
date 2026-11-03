@@ -1,7 +1,7 @@
 {
   "advisories": {
     "braces": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
-    "node-forge": "https://github.com/advisories/GHSA-86w9-cpqp-85rv"
+    "deepmerge": "https://github.com/advisories/GHSA-gcqx-w48m-w2h4"
   },
   "changes": [
     {
@@ -40,15 +40,6 @@
       "replace": "module.exports = (ast, options = {}) => {\n  require('./security-depth')(ast);"
     },
     {
-      "package": "node-forge",
-      "version": "1.4.0",
-      "path": "lib/rsa.js",
-      "before_sha256": "fd4740238145ec26470eb3f06a627c72039538ce1307dbdce40521f94dfd0a50",
-      "after_sha256": "c30072d1621153aa8ff9544442225e32b5573b5ef1fcba2b0742e7b8bb472c2a",
-      "find": "            obj.value.length !== 2) {",
-      "replace": "            obj.value.length !== 2 ||\n            obj.value[0].value.length < 1 ||\n            obj.value[0].value.length > 2 ||\n            ('parameters' in capture && capture.parameters !== '')) {"
-    },
-    {
       "package": "braces",
       "version": "3.0.3",
       "path": "lib/parse.js",
@@ -56,6 +47,15 @@
       "after_sha256": "c4e8f82890f9175ee71620f538463e40d249525efd3fe223bb9d531e7b37e289",
       "find": "  while (index < length) {\n    block = stack[stack.length - 1];",
       "replace": "  while (index < length) {\n    if (stack.length > 256) throw new SyntaxError('Brace pattern exceeds maximum nesting depth (256)');\n    block = stack[stack.length - 1];"
+    },
+    {
+      "package": "deepmerge",
+      "version": "4.3.1",
+      "path": "dist/cjs.js",
+      "before_sha256": "2e5160f84a1141bd927264afe4d15766f1e6cf07daef182b37ff53fea121de7d",
+      "after_sha256": "882879ee9a53cb91491b4956de7380963326ecfc0f2477e98c65706edad59206",
+      "find": "function getKeys(target) {\n\treturn Object.keys(target).concat(getEnumerableOwnPropertySymbols(target))\n}",
+      "replace": "// GHSA-gcqx-w48m-w2h4: an own \"__proto__\" key (for example from JSON.parse)\n// would replace the merged object's prototype when assigned. Never merge it.\nfunction getKeys(target) {\n\treturn Object.keys(target).concat(getEnumerableOwnPropertySymbols(target)).filter(function(key) {\n\t\treturn key !== '__proto__'\n\t})\n}"
     }
   ]
 }

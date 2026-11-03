@@ -7,7 +7,81 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Full release audit (docs/ops/release-audit.md). A tag without a pre-release suffix (v1.2.3, not
+  # v1.2.3-rc.1) is a final release: the hashed baseline is ignored, the privacy deny-list must be
+  # configured, and draft legal pages block. The report is attached to the GitHub release.
+  audit:
+    name: Release audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      checks: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Static audit (card data, public privacy, claims, legal)
+        env:
+          RUPERT_PRIVACY_DENYLIST: ${{ secrets.RUPERT_PRIVACY_DENYLIST }}
+        run: |
+          final=""
+          case "$GITHUB_REF_NAME" in v*-*|"") ;; v*) [ "$GITHUB_REF_TYPE" = tag ] && final="--final --strict-docs" ;; esac
+          mkdir -p audit
+          status=0
+          # shellcheck disable=SC2086 # $final is a deliberate list of flags
+          python3 bin/release-audit $final --baseline .github/release-audit-baseline.json \
+            --report audit/release-audit-static.md --json audit/release-audit-static.json > /dev/null || status=$?
+          cat audit/release-audit-static.md >> "$GITHUB_STEP_SUMMARY"
+          exit $status
+
+      - name: Secret scan of the whole tree (gitleaks)
+        if: always()
+        run: |
+          curl -fsSL -o /tmp/gitleaks.tgz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  /tmp/gitleaks.tgz" | sha256sum -c -
+          tar -xzf /tmp/gitleaks.tgz -C /tmp gitleaks
+          mkdir -p audit
+          /tmp/gitleaks dir . --redact --no-banner --report-format csv --report-path audit/gitleaks.csv
+
+      - name: Required checks passed on the tagged commit
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p audit
+          gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?per_page=100" > audit/check-runs.json
+          python3 - <<'PY'
+          import json, sys
+          required = ['CI (sqlite3)', 'Product site consistency', 'Dependency and static scan']
+          runs = json.load(open('audit/check-runs.json'))['check_runs']
+          latest = {}
+          for run in runs:
+              if run['name'] in required and run['id'] > latest.get(run['name'], {'id': -1})['id']:
+                  latest[run['name']] = run
+          lines = ['', '## Required checks on this commit', '', '| Check | Conclusion |', '| --- | --- |']
+          ok = True
+          for name in required:
+              conclusion = latest.get(name, {}).get('conclusion') or latest.get(name, {}).get('status') or 'missing'
+              ok &= conclusion == 'success'
+              lines.append(f'| {name} | {conclusion} |')
+          with open('audit/release-audit-static.md', 'a') as f:
+              f.write('\n'.join(lines) + '\n')
+          print('\n'.join(lines))
+          sys.exit(0 if ok else 1)
+          PY
+
+      - name: Keep the audit report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-audit
+          path: audit/
+          retention-days: 90
+
   release:
+    needs: audit
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -42,9 +116,18 @@ jobs:
             echo "RELEASE_NOTES"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Fetch the release audit report
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-audit
+          path: audit
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
+          files: |
+            audit/release-audit-static.md
+            audit/release-audit-static.json
           tag_name: "v${{ steps.version.outputs.version }}"
           name: "v${{ steps.version.outputs.version }}"
           body: |

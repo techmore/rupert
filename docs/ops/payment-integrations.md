@@ -19,8 +19,8 @@ Email evidence reviewed October 16, 2026 establishes that Deep Run Hemp's separa
 | Date | Evidence | What it establishes |
 | --- | --- | --- |
 | June 16, 2026 | Andre's "Host my own store" email | General application guidance named business information, bank statements, product details and the website. It is not Next Stage's original underwriting checklist or proof of which documents were submitted. |
-| July 21, 2026 | "Fw: Approval Notification - Deep Run Hemp", forwarding Next Stage Payments underwriting | The merchant account was approved. NMI activation and an API key for the website developer were the next steps. |
-| July 22, 2026 | "Fw: Deep Run Hemp - NMI Gateway", forwarding Next Stage support and technical guidance | The intended stack was DigitalOcean, WooCommerce and NMI, with the integration requirements below. |
+| July 21, 2026 | Forwarded approval notice from Next Stage Payments underwriting | The merchant account was approved. NMI activation and an API key for the website developer were the next steps. |
+| July 22, 2026 | Forwarded NMI gateway setup message from Next Stage support, with technical guidance | The intended stack was DigitalOcean, WooCommerce and NMI, with the integration requirements below. |
 | July 23, 2026 | Matching "Deep Run Hemp Transaction Receipt" and "Your Deep Run Hemp order has been received!" emails | The gateway receipt reports a completed card sale, and the matching store confirmation explicitly names "Credit Card (NMI)". Together they demonstrate that NMI checkout was working for at least one sale on that date. |
 | October 14, 2026 | Andre's "Crypto gateway" email | Alternative crypto gateways were being explored. The email does not say NMI failed, was replaced or was disconnected. |
 
