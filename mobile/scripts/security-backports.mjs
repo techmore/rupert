@@ -31,5 +31,5 @@ export function verifyBackports({ apply = false } = {}) {
 }
 if (process.argv[1] && existsSync(process.argv[1]) && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   verifyBackports({ apply: process.argv.includes('--apply') });
-  console.log('Pinned braces/node-forge security backports verified.');
+  console.log('Pinned braces/deepmerge security backports verified.');
 }
