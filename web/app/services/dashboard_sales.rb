@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
-# A request-local sales view. Never reads payment, invoice, deposit or ledger
-# mirrors. Native C-Trax sales remain snapshots, not duplicate canonical orders.
+# A request-local sales view. Canonical orders follow Core::Order.sales_counted (paid, fulfilled, and refunded with a
+# refund on record), the same rule as the assistant's sales tools; refunds are never subtracted from gross here.
+# Never reads payment, invoice, deposit or ledger mirrors. Native C-Trax sales remain snapshots, not duplicate canonical orders.
 class DashboardSales
   SOURCES = %w[shopify square rupert_pos manual pos].freeze
   LABELS = { 'shopify' => 'Shopify', 'square' => 'Square', 'ctrax' => 'C-Trax', 'swipesimple' => 'SwipeSimple',
@@ -52,7 +53,7 @@ class DashboardSales
   private
 
   def canonical_rows
-    Core::Order.where(status: %w[paid fulfilled], occurred_at: from..now, source: SOURCES)
+    Core::Order.where(occurred_at: from..now, source: SOURCES).sales_counted
       .pluck(:source, :occurred_at, :gross_cents, :currency).filter_map do |source, at, cents, currency|
       unless cents.is_a?(Integer) && currency == 'USD'
         warnings << 'Sales with missing amounts or a currency other than USD are excluded.'

@@ -1,7 +1,9 @@
 <% content_for :title, 'Square history' %>
 <div class="space-y-6">
   <%= page_header 'Square history', subtitle: 'Read-only Square timecards, matched to staff by Square identity.',
-        menu: [['Open punch report', people_punch_history_path(source: 'square')], ['Download CSV', people_square_timesheets_path(time_range_query(@from, @to).merge(format: :csv)), { data: { turbo: false } }]] %>
+        menu: [['Open punch report', people_punch_history_path(source: 'square')], ['Download CSV', people_square_timesheets_path(time_range_query(@from, @to).merge(format: :csv)), { data: { turbo: false } }]] do %>
+    <% if @awaiting_review.positive? %><%= link_to "Review changes (#{@awaiting_review})", people_square_timecard_reviews_path, class: 'btn-primary' %><% end %>
+  <% end %>
   <%= render 'shared/square_timecard_sync' %>
 
   <section class="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Square totals">
@@ -51,5 +53,5 @@
     </div>
   </div>
   <%== @pagy.series_nav if @pagy.pages > 1 %>
-  <%= fold_explainer('Paid breaks are included; unpaid breaks are deducted. These hours appear in personal reports and calendars, and cannot create a new payroll payment. Latest punches and break records remain separate from original counted history. Square’s closed status does not establish overtime, approval or payment. Changed or missing source records retain their original imported hours for review.', class: 'text-sm text-mocha') %>
+  <%= fold_explainer('Paid breaks are included; unpaid breaks are deducted. These hours appear in personal reports and calendars, and cannot create a new payroll payment. Latest punches and break records remain separate from original counted history. Square’s closed status does not establish overtime, approval or payment. Changed or missing source records keep their original imported hours until a manager accepts Square’s version or keeps the original.', class: 'text-sm text-mocha') %>
 </div>

@@ -521,6 +521,29 @@ html[data-full-window] .table-region { max-height:none; }
 .row-item-end .num { min-width:6.5rem; }
 .row-list-foot { margin:0;padding:.7rem 1.25rem .85rem;border-top:1px solid var(--color-fog); }
 
+/* Callout: one thing on a page that needs a decision or blocks the next step (a returned timesheet's
+   comment, clock shifts not imported yet, corrections waiting). Quieter than a flash, louder than text. */
+.callout { padding:.85rem 1.1rem;border:1px solid var(--color-fog);border-radius:var(--radius-card);background:var(--color-paper); }
+.callout-attention { border-color:color-mix(in srgb,var(--color-clay) 45%,var(--color-fog));border-left-width:4px; }
+.callout-title { font-weight:600;color:var(--color-ink);font-size:.9rem; }
+
+/* Timesheets (staff and reviewer share these; docs/ui-standards.md §5). */
+.timesheet-state { display:flex;flex-wrap:wrap;align-items:center;gap:.4rem .75rem; }
+.timesheet-days .row-item { padding-left:0;padding-right:0; }
+.timesheet-days .row-item-end, .shift-week .row-item-end { margin-left:auto; }
+.timesheet-day-name { font-weight:600;color:var(--color-ink);font-size:.9rem; }
+.timesheet-day-empty .timesheet-day-name { font-weight:500;color:var(--color-mocha); }
+.timesheet-total { border-top:2px solid var(--color-edge) !important; }
+.entry-edit > summary { list-style:none;cursor:pointer; }
+.entry-edit > summary::-webkit-details-marker { display:none; }
+.entry-edit[open] { flex-basis:100%;order:3; }
+.entry-edit-form { display:grid;gap:.75rem;margin-top:.6rem;padding:.85rem;border-radius:var(--radius-card);background:color-mix(in srgb,var(--color-haze) 55%,transparent); }
+@media (min-width:640px) { .entry-edit-form { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+.timesheet-history { margin:0;padding:0;list-style:none;font-size:.875rem; }
+.timesheet-history li + li { margin-top:.35rem; }
+.shift-week + .shift-week { margin-top:1.25rem; }
+.month-grid { min-width:42rem; } /* a month of seven columns scrolls sideways on phones instead of crushing names */
+
 /* --- Data grid (spreadsheet view) and Stock --- */
 /* Data grid: the report-table controls on a dense, read-only sheet. Header row and first column
    stay put while the body scrolls both ways; numbers are tabular and right-aligned; rows are
@@ -587,7 +610,7 @@ html[data-full-window] .table-region { max-height:none; }
 .table { width:100%;font-size:.875rem; }
 .table tbody tr + tr { border-top:1px solid var(--color-fog); }
 .table tbody tr:hover { background:color-mix(in srgb,var(--color-haze) 60%,transparent); }
-.table-region { max-width:100%;overflow-x:auto;border-radius:var(--radius-card); }
+.table-region { position:relative;max-width:100%;overflow-x:auto;border-radius:var(--radius-card); } /* relative: keeps absolutely positioned .sr-only header labels inside the scroller, so wide tables never widen a phone page */
 .table-region:focus-visible { outline:2px solid var(--color-olive);outline-offset:3px; }
 
 /* Apple Pay requires its native appearance; the size and radius follow the control scale. */
@@ -802,6 +825,14 @@ html[data-full-window] .table-region { max-height:none; }
 .report-table th[hidden],.report-table td[hidden],.report-table tr[hidden] { display:none !important; }
 .report-table-sort { margin-left:.3rem;padding:0 .2rem;border-radius:.3rem;font-size:.75rem;line-height:1;color:var(--color-taupe);vertical-align:middle; }
 .report-table-sort:hover,.report-table th[aria-sort] .report-table-sort { color:var(--color-ink); }
+/* Server-sorted list headings (sortable_th + ListSort). The whole label is the link; the
+   arrow is quiet until the column is the one the list is sorted by. */
+.th-sort { display:inline-flex;align-items:center;gap:.3rem;white-space:nowrap;color:inherit;border-radius:.3rem;text-decoration:none; }
+.th-sort:hover { color:var(--color-ink); }
+.th-sort:focus-visible { outline:2px solid var(--color-olive);outline-offset:2px; }
+.th-sort-icon { font-size:.7rem;line-height:1;opacity:.45; }
+.th-sortable[aria-sort] .th-sort { color:var(--color-ink); }
+.th-sortable[aria-sort] .th-sort-icon { opacity:1;color:var(--color-olive); }
 .report-table-empty { padding:1rem;font-size:.85rem;color:var(--color-mocha); }
 @media(max-width:640px) { .report-table-filter { max-width:none;flex:1 1 100%; } .report-table-count { margin-left:0;flex-basis:100%; } .report-table-columns { left:auto;right:0; } }
 
@@ -2239,6 +2270,71 @@ body.tour-active { overflow-x:hidden; }
 .score-cell[data-level="high"] { background:color-mix(in srgb,var(--color-fern) 16%,transparent);color:var(--color-fern); }
 .score-cell[data-level="low"] { background:color-mix(in srgb,var(--color-clay) 16%,transparent);color:var(--color-clay); }
 .score-cell[data-level="none"] { color:var(--color-taupe);font-weight:400; }
+.score-table { min-width:44rem; }
+.score-table .th,.score-table .td { padding-inline:.5rem; }
+.score-table .th { white-space:normal;line-height:1.2;vertical-align:bottom; }
 .score-sticky { position:sticky;left:0;background:var(--color-surface,#fff);z-index:1; }
 .score-time { font-variant-numeric:tabular-nums; }
 .statusbar-scores { flex:none; }
+
+/* --- Compliance guardrails and event mode (F70) --- */
+/* Locked register: ID check, blocked-sale issues and the manager override, inside the checkout
+   panel; tile flags for cash-only items and items without a current COA. */
+.pos-tile-flags { display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.35rem; }
+.pos-compliance { display:grid;gap:.6rem; }
+.pos-id-check { display:flex;align-items:center;gap:.6rem;min-height:3rem;padding:.5rem .75rem;border:2px solid var(--color-edge);border-radius:var(--radius-control);background:var(--color-paper);font-size:1rem;font-weight:600;color:var(--color-ink);cursor:pointer; }
+.pos-id-check:has(input:checked) { border-color:var(--color-fern);background:color-mix(in srgb,var(--color-fern) 10%,var(--color-paper)); }
+.pos-id-check .checkbox { width:1.5rem;height:1.5rem;flex:none; }
+.pos-compliance-issues { display:grid;gap:.35rem;padding:.6rem .75rem .6rem 1.75rem;border:1px solid var(--color-rose);border-radius:var(--radius-control);background:color-mix(in srgb,var(--color-rose) 8%,var(--color-paper));font-size:.85rem;color:var(--color-ink);list-style:disc; }
+.pos-override { display:grid;gap:.4rem;padding:.75rem;border:1px solid var(--color-clay);border-radius:var(--radius-control);background:var(--color-paper); }
+.pos-override-title { padding:0 .25rem;font-weight:700;color:var(--color-ink); }
+.pos-compliance-issues[hidden],.pos-override[hidden] { display:none; }
+
+/* Event register: a short list, so bigger tiles without photos and thumb-sized controls. */
+.event-grid { grid-template-columns:repeat(auto-fill,minmax(12.5rem,1fr));gap:1rem; }
+.event-tile { min-height:9.5rem; }
+.event-tile .pos-tile-body { padding:1rem; }
+.event-tile .pos-tile-name { min-height:3.75em;-webkit-line-clamp:3;font-size:1.15rem; }
+.event-tile .pos-tile-price { font-size:1.5rem; }
+.event-line { grid-template-columns:minmax(0,1fr) auto; }
+.pos-step-value { display:inline-flex;align-items:center;justify-content:center;min-width:3rem;border-inline:1px solid var(--color-fog);font-size:1.05rem;font-variant-numeric:tabular-nums; }
+.event-register .pos-cart { overflow-y:auto;overscroll-behavior:contain; }
+.event-register .pos-cart-lines { flex:none;padding:0 1rem; }
+.event-register .pos-checkout { flex:none;overflow:visible;border-top:1px solid var(--color-fog); }
+.event-register .pos-tender { min-height:5rem; }
+.event-topbar .pos-topbar-status > span { white-space:nowrap; }
+@media (max-width:40rem) {
+  .event-topbar .pos-topbar-status { order:3;flex-basis:100%; }
+  .event-grid { grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem; }
+  .event-tile { min-height:7.5rem; }
+  .event-tile .pos-tile-body { padding:.75rem; }
+  .event-tile .pos-tile-name { font-size:1rem; }
+  .event-tile .pos-tile-price { font-size:1.25rem; }
+  .event-tile .pos-tile-foot { flex-wrap:wrap; }
+}
+
+/* COA QR codes: always black on white so cameras and printers read them. */
+.coa-qr-grid { display:flex;flex-wrap:wrap;gap:1rem; }
+.coa-qr-link { display:block;border-radius:var(--radius-control); }
+.coa-qr { display:grid;justify-items:center;gap:.35rem;width:8.5rem;margin:0; }
+.coa-qr-code { width:8.5rem;padding:.5rem;border-radius:.5rem;background:white; }
+.coa-qr-code svg { display:block;width:100%;height:auto; }
+.coa-qr-label { font-size:.75rem;line-height:1.25;color:var(--color-mocha);text-align:center; }
+
+/* Event receipt (narrow, printable). */
+.event-receipt-page { height:100dvh;overflow:auto;padding:1.5rem 1rem; }
+.event-receipt { display:grid;gap:1rem;max-width:24rem;margin:0 auto;padding:1.25rem;border:1px solid var(--color-fog);border-radius:var(--radius-card);background:var(--color-paper);color:var(--color-ink);font-size:.9rem; }
+.event-receipt-title { font-family:var(--font-display);font-size:1.4rem;line-height:1.2; }
+.event-receipt-heading { margin-bottom:.5rem;font-weight:700; }
+.event-receipt-lines { width:100%;border-collapse:collapse; }
+.event-receipt-lines td,.event-receipt-lines th { padding:.2rem 0;font-weight:400;text-align:left; }
+.event-receipt-lines .num { text-align:right;font-variant-numeric:tabular-nums; }
+.event-receipt-lines tfoot tr:first-child > * { border-top:1px solid var(--color-fog);padding-top:.5rem; }
+.event-receipt-total th,.event-receipt-total td { font-size:1.05rem;font-weight:700; }
+.event-receipt-note { font-size:.75rem;color:var(--color-mocha); }
+@media print {
+  .pos-body:has(.event-receipt-page) { height:auto;overflow:visible;background:white; }
+  .event-receipt-page { height:auto;overflow:visible;padding:0; }
+  .event-receipt { border:0;padding:0; }
+  .event-receipt-actions { display:none; }
+}

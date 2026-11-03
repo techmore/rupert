@@ -28,8 +28,11 @@ class PayRules
     'chosen_by' => nil,
     'overtime_enabled' => false,
     'overtime_threshold_hours' => 40,
-    'overtime_multiplier' => '1.5'
+    'overtime_multiplier' => '1.5',
+    'open_shift_limit_hours' => 16
   }.freeze
+  # A clock-in still open after this many hours is a forgotten clock-out (owners choose 4 to 24).
+  OPEN_SHIFT_LIMIT_RANGE = (4..24)
   MAX_THRESHOLD_HOURS = 168
   MAX_MULTIPLIER = 3
   COMMISSION_RATE = BigDecimal('0.01')
@@ -37,7 +40,7 @@ class PayRules
   class Invalid < StandardError; end
 
   attr_reader :pay_period, :week_start_day, :anchor_date, :chosen_at, :chosen_by,
-    :overtime_threshold_hours, :overtime_multiplier
+    :overtime_threshold_hours, :overtime_multiplier, :open_shift_limit_hours
 
   # One read per request: memoised in Current for the workspace.
   def self.current
@@ -86,6 +89,7 @@ class PayRules
     @overtime_enabled = data['overtime_enabled'] == true
     @overtime_threshold_hours = data['overtime_threshold_hours'].to_s.to_d
     @overtime_multiplier = data['overtime_multiplier'].to_s.to_d
+    @open_shift_limit_hours = Integer(data['open_shift_limit_hours'].to_s, exception: false) || DEFAULTS['open_shift_limit_hours']
   end
 
   attr_reader :tenant_id
@@ -99,6 +103,9 @@ class PayRules
     end
     raise Invalid, "Overtime starts after 1 to #{MAX_THRESHOLD_HOURS} hours a week." unless overtime_threshold_hours.between?(1, MAX_THRESHOLD_HOURS)
     raise Invalid, "The overtime multiplier must be between 1 and #{MAX_MULTIPLIER}." unless overtime_multiplier.between?(1, MAX_MULTIPLIER)
+    unless OPEN_SHIFT_LIMIT_RANGE.cover?(open_shift_limit_hours)
+      raise Invalid, "A forgotten clock-out is flagged after #{OPEN_SHIFT_LIMIT_RANGE.min} to #{OPEN_SHIFT_LIMIT_RANGE.max} hours."
+    end
 
     self
   end
@@ -107,7 +114,7 @@ class PayRules
     { 'pay_period' => pay_period, 'week_start_day' => week_start_day, 'anchor_date' => anchor_date&.iso8601,
       'chosen_at' => chosen_at&.iso8601, 'chosen_by' => chosen_by, 'overtime_enabled' => overtime_enabled?,
       'overtime_threshold_hours' => overtime_threshold_hours.to_s('F').delete_suffix('.0'),
-      'overtime_multiplier' => overtime_multiplier.to_s('F') }
+      'overtime_multiplier' => overtime_multiplier.to_s('F'), 'open_shift_limit_hours' => open_shift_limit_hours }
   end
 
   def chosen? = chosen_at.present?

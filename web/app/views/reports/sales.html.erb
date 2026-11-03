@@ -12,10 +12,10 @@
       <div class="stat-label">Avg order value<%= define('average_sale') %></div>
       <p class="stat-value mt-1"><%= number_to_currency(@aov) %></p>
       <%= explain_calculation(title: 'Average order value', id: 'sales-aov',
-            formula: 'Total revenue ÷ paid or fulfilled orders in the window.',
+            formula: 'Total revenue ÷ paid, fulfilled or refunded orders in the window.',
             rows: [['Total revenue', number_to_currency(@total_revenue)], ['Orders', @total_orders],
                    ['Average order value', @total_orders.to_i.zero? ? '—' : number_to_currency(@aov)]],
-            note: 'Both figures use the same paid and fulfilled orders, so the average matches the two numbers above. No orders means no average.',
+            note: 'Both figures use the same paid, fulfilled and refunded orders, so the average matches the two numbers above. No orders means no average.',
             term: 'average_sale', lesson: 'sales') %>
     </div>
     <div class="stat">
@@ -26,7 +26,7 @@
             formula: 'Daily revenue totals added together ÷ number of days shown.',
             rows: [['Sum of daily revenue', number_to_currency(daily_total)], ['Days in the window', daily_days],
                    ['Revenue per day', daily_days.zero? ? '—' : number_to_currency(daily_total / daily_days)]],
-            note: 'Daily totals include every order with a gross amount in the window, so this can differ slightly from Total revenue, which counts paid and fulfilled orders only. Days without sales count as zero.',
+            note: 'Daily totals include every order with a gross amount in the window, so this can differ slightly from Total revenue, which counts paid, fulfilled and refunded orders only. Days without sales count as zero.',
             term: 'revenue_per_day', lesson: 'reports') %>
     </div>
   </section>

@@ -21,13 +21,14 @@ module Mcp
           view: { type: 'string', enum: %w[staff daily], description: 'Default staff.' },
           employee_id: { type: 'integer', minimum: 1, description: 'Only this staff member (People employee ID).' },
           attention_only: { type: 'boolean', description: 'daily view: only person-days that need attention. Default false.' },
+          as_of: AS_OF_PROPERTY,
           **PAGE_PROPERTIES
         },
         additionalProperties: false
       )
 
       def call(args)
-        from, to = date_range(args, default_from: Date.current.beginning_of_month, default_to: Date.current.end_of_month, max_days: 93)
+        from, to = date_range(args, default_from: today(args).beginning_of_month, default_to: today(args).end_of_month, max_days: 93)
         all_employees = user.can_review_timesheets? || (user.can_manage_accounts? && user.can?('timesheets.read'))
         worker_id = all_employees ? nil : TimeClockService.worker_for(user, include_on_leave: true)&.id
         report = ::TimeKeepingReport.new(from: from, to: to, employee_id: (args['employee_id'] if all_employees),
@@ -40,6 +41,7 @@ module Mcp
           from: from.iso8601, to: to.iso8601, view: view, scope: all_employees ? 'all staff' : 'own hours only',
           totals: report.totals, rows: rows.map { |row| view == 'daily' ? day_row(row) : staff_row(row) }, meta: meta
         }
+        data = with_as_of(data, args)
         data[:sales_same_days] = if user.can?('reports.read')
           sales = ::Metrics.call('gross_sales', from: from.iso8601, to: to.iso8601, compare: 'none')
           { from: from.iso8601, to: to.iso8601, gross_sales_by_currency: sales[:values], available: true }
@@ -49,7 +51,7 @@ module Mcp
         totals = report.totals
         text = "#{from} to #{to} (#{data[:scope]}): #{totals[:people]} people, #{totals[:scheduled]} h scheduled, #{totals[:worked]} h worked, " \
                "#{totals[:ctrax]} h C-Trax observed (not added), #{totals[:attention]} person-days need attention."
-        result(text, data)
+        result("#{text}#{as_of_note(args)}", data)
       rescue ::TimeKeepingReport::Error => e
         raise ToolError.new(e.message, kind: 'invalid_arguments')
       end

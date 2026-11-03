@@ -48,6 +48,8 @@ Rails.application.routes.draw do
     get :document, on: :member
   end
 
+  get 'people/square_timesheets/review', to: 'people/square_timecard_reviews#index', as: :people_square_timecard_reviews
+  post 'people/square_timesheets/:id/review', to: 'people/square_timecard_reviews#create', as: :people_square_timecard_review
   resources :square_timesheets, path: 'people/square_timesheets', controller: 'people/square_timesheets', only: %i[index show], as: :people_square_timesheets
   resources :ctrax_timesheets, path: 'people/ctrax_timesheets', controller: 'people/ctrax_timesheets', only: %i[index show], as: :people_ctrax_timesheets
   patch '/people/ctrax_timesheets/schedule', to: 'people/ctrax_timesheet_schedules#update', as: :people_ctrax_timesheet_schedule
@@ -91,6 +93,12 @@ Rails.application.routes.draw do
   get '/employee/setup', to: 'employee_access#edit', as: :employee_setup
   patch '/employee/setup', to: 'employee_access#update'
   post '/people/employees/:employee_id/access', to: 'employee_access#create', as: :employee_access
+
+  # Public pages the App Store listing links to, and deleting your own account (guideline 5.1.1(v)).
+  get '/privacy', to: 'public_pages#privacy', as: :privacy_policy
+  get '/support', to: 'public_pages#support', as: :support
+  get '/account/delete', to: 'account_deletions#show', as: :delete_account
+  delete '/account', to: 'account_deletions#destroy', as: :own_account
 
   get '/login', to: 'sessions#new', as: :login
   post '/login', to: 'sessions#create'
@@ -275,6 +283,8 @@ Rails.application.routes.draw do
       post :release_warehouse_stock
     end
   end
+  get '/loyalty', to: 'loyalty#index', as: :loyalty
+  post '/loyalty/sync', to: 'loyalty#sync', as: :sync_loyalty
   resources :customers, only: %i[index show new create edit update] do
     post :sync_directory, on: :collection
     get :export, on: :collection
@@ -515,6 +525,7 @@ Rails.application.routes.draw do
   post '/time_clock/clock_in', to: 'time_clock#clock_in', as: :clock_in_time_clock
   post '/time_clock/clock_out', to: 'time_clock#clock_out', as: :clock_out_time_clock
   post '/time_clock/shifts/:id/correction', to: 'time_clock#request_correction', as: :request_correction_time_clock
+  get '/time_clock/shifts/:id/fix', to: 'time_clock#fix_clock_out', as: :fix_clock_out_time_clock
   post '/time_clock/corrections/:id/approve', to: 'time_clock#approve_correction', as: :approve_correction_time_clock
   post '/time_clock/corrections/:id/reject', to: 'time_clock#reject_correction', as: :reject_correction_time_clock
   get '/time_clock/commissions', to: 'time_clock#commissions', as: :commission_preview_time_clock
@@ -642,6 +653,35 @@ Rails.application.routes.draw do
     member do
       get :demo
       post :clear
+    end
+  end
+  # F70: compliant ring-up guardrails (approved catalog, COAs, audit) and event mode.
+  get '/compliance', to: 'compliance#index', as: :compliance
+  namespace :compliance do
+    resources :catalog_items, only: %i[new create edit update] do
+      member do
+        post :suspend
+        post :reinstate
+      end
+      resources :certificates, only: %i[new create] do
+        post :withdraw, on: :member
+      end
+    end
+    resources :categories, only: %i[create update]
+    patch '/policies/:location_id', to: 'policies#update', as: :policy
+    resource :override_pin, only: %i[edit update]
+  end
+  resources :pos_events, except: :destroy do
+    member do
+      post :open
+      post :close
+    end
+    resources :items, controller: 'pos_event_items', only: %i[create update destroy] do
+      post :pull, on: :member
+    end
+    resource :register, controller: 'pos_event_registers', only: :show
+    resources :sales, controller: 'pos_event_sales', only: :create do
+      get :receipt, on: :member
     end
   end
   get '/customer_display', to: 'customer_displays#show', as: :customer_display

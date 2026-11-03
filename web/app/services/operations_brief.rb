@@ -3,8 +3,6 @@
 # Builds deterministic management briefs from the canonical store database.
 # No model calls are involved; every figure is reproducible from stored rows.
 class OperationsBrief
-  REVENUE_STATUSES = %w[paid fulfilled].freeze
-
   class << self
     def publish!(kind, channel: nil)
       new(kind: kind, channel: channel).publish!
@@ -86,7 +84,7 @@ class OperationsBrief
   end
 
   def revenue_orders
-    Core::Order.where(status: REVENUE_STATUSES)
+    Core::Order.sales_counted
   end
 
   def metric_line(orders, comparison: nil)

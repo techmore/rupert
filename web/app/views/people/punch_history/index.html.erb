@@ -2,6 +2,7 @@
 <div class="space-y-6" data-controller="punch-calendar">
   <%= page_header 'Punch report', subtitle: 'Every punch from Rupert, Square and C-Trax for a date range.',
         menu: [['Download CSV', people_punch_history_path(time_range_query(@from, @to).merge(format: :csv)), { data: { turbo: false } }]] %>
+  <%= render 'shared/open_clock_outs', items: @open_items, limit: @open_clock_outs.limit_hours %>
 
   <%= page_tabs([['List', people_punch_history_path(time_range_query(@from, @to).merge(view: 'list')), @view == 'list'], ['Calendar', people_punch_history_path(time_range_query(@from, @to).merge(view: 'calendar')), @view == 'calendar']], label: 'Punch report view') %>
 

@@ -49,7 +49,7 @@ class FinanceFlowTest < ActionDispatch::IntegrationTest
     assert_select 'h1', /Expenses/
 
     post finance_expenses_path, params: {
-      expense: { payee: 'Utility Co', category: 'utilities', amount: '125.50', incurred_on: '2026-08-01',
+      expense: { payee: 'Utility Co', category: 'utilities', amount: '125.50', incurred_on: Date.current.iso8601,
                  method: 'bank_transfer' },
       shop: 'm11u0i-sb.myshopify.com',
       embedded: '1'
@@ -104,7 +104,7 @@ class FinanceFlowTest < ActionDispatch::IntegrationTest
     assert_equal 10_000, Purchasing::Payables.total_cents
 
     post finance_vendor_payments_path, params: {
-      vendor_payment: { vendor_id: vendor.id, amount: '40.00', paid_on: '2026-08-02', method: 'check' },
+      vendor_payment: { vendor_id: vendor.id, amount: '40.00', paid_on: Date.current.iso8601, method: 'check' },
       shop: 'm11u0i-sb.myshopify.com',
       embedded: '1'
     }

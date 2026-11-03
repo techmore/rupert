@@ -40,6 +40,8 @@ module TimeWorkspaceHelper
   def time_status_pill(status)
     case status.to_s
     when 'open', 'conflict', 'invalid', 'missing', 'deleted' then 'pill-rose'
+    when 'changed', 'held' then 'pill-clay'
+    when 'removed' then 'pill-taupe'
     when 'imported', 'closed' then 'pill-fern'
     else 'pill-olive'
     end

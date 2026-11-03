@@ -571,6 +571,8 @@ class TeamChatTest < ActionDispatch::IntegrationTest
     assert_select '#test-runs td', /@qwen · qwen3.5-4b/
     assert_select '#test-runs td', '4.5'
     assert_select '#test-runs details td', /Sales tax last month\?/
+    assert_select '#scorecard span.score-cell[data-level]'
+    assert_no_match(/&lt;\/?(span|small)/, response.body, 'scoreboard cells must not print their own markup as text')
     assert_match(/None in this period/, response.body)
     assert_equal '@gemma · gemma-4-e4b local gateway', rows.second.first
     assert_equal '0%', rows.second.second

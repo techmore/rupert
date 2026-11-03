@@ -9,7 +9,7 @@ decided (and undecided) picture is read. Nothing on the page posts, matches or i
 | Block | Source | Rule |
 | --- | --- | --- |
 | Into / out of the bank, net, running net | `bank_statement_lines` by `posted_on`, optionally one `account_label` | signed cents; a payout is money in, a transfer out is money out; undecided lines count |
-| Sales taken, by channel | `DashboardSales` (paid/fulfilled canonical orders + completed C-Trax sales, USD) | same rows and warnings as the home dashboard; before refunds; what was sold, not what was deposited |
+| Sales taken, by channel | `DashboardSales` (paid/fulfilled/refunded canonical orders, `Core::Order.sales_counted` + completed C-Trax sales, USD) | same rows and warnings as the home dashboard; before refunds; what was sold, not what was deposited |
 | Spend recorded, where the money went | `expenses` by `incurred_on` (by category) + `vendor_payments` by `paid_on` | undiscarded only |
 | What left the bank, by type | bank withdrawals grouped by `review_category` | "Not yet reviewed" is its own bucket and shrinks as lines get decisions |
 | From sale to bank | sales − refunds − statement credits reviewed as **Processor payout** | a comparison, not a reconciliation; the remainder is fees, cash sales, timing and undecided lines |

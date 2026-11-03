@@ -46,7 +46,7 @@ class SalesController < AuthenticatedController
   end
 
   def hourly_pivot(date, source)
-    orders = Core::Order.on_day(date).by_source(source).where(status: %w[paid fulfilled], currency: 'USD').includes(:location)
+    orders = Core::Order.on_day(date).by_source(source).sales_counted.where(currency: 'USD').includes(:location)
     names = orders.map { |order| order.location&.name || 'Unknown' }.uniq
     rows = (0..23).map do |hour|
       { hour: hour, label: date.in_time_zone.change(hour: hour).strftime('%-I %p'), cells: names.index_with { { cents: 0, count: 0 } } }

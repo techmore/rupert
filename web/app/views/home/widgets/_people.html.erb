@@ -35,7 +35,7 @@
       <% People::Timesheet.awaiting_review.includes(:employee).recent(4).each do |timesheet| %>
         <div class="flex items-center justify-between gap-3 py-2 text-sm">
           <%= link_to "#{timesheet.employee&.name} · #{timesheet.period_label}", people_timesheet_path(timesheet), class: "truncate font-medium text-ink hover:text-olive hover:underline" %>
-          <span class="shrink-0 text-xs text-taupe"><%= number_with_precision(timesheet.total_hours, precision: 1) %>h</span>
+          <span class="shrink-0 text-xs text-taupe tabular-nums"><%= format_hours(timesheet.total_hours, unit: true) %></span>
         </div>
       <% end %>
       <% if People::Timesheet.awaiting_review.count.zero? %>

@@ -25,6 +25,7 @@ module People
       @count = scope.count
       @seconds = scope.counted.sum(:payable_seconds)
       @held = scope.where(imported_at: nil).count
+      @awaiting_review = SquareTimecardReviewer.allowed?(Current.user) ? SquareTimecardReviewer.queue.count : 0
       if request.format.csv?
         data = CSV.generate do |csv|
           csv << ['Staff member', 'Square timecard ID', 'Original clock-in', 'Original clock-out', 'Original timezone', 'Original paid seconds', 'Original counted hours', 'Import status', 'Counted in history', 'Latest clock-in', 'Latest clock-out', 'Latest timezone', 'Latest source status', 'Latest break punches']
@@ -46,6 +47,8 @@ module People
       @card = SquareTimecard.visible_to(Current.user).includes(:employee, :days).find(params[:id])
       skip_authorization # gate: SquareTimecard.visible_to(Current.user) — another person's timecard is a 404
       @latest = helpers.square_latest_values(@card)
+      @history = SquareTimecardReviewer.history(@card)
+      @review = SquareTimecardReviewer.new(@card) if SquareTimecardReviewer.allowed?(Current.user) && @card.imported_at && SquareTimecard::REVIEW_STATUSES.include?(@card.import_status)
       if request.format.csv?
         data = CSV.generate do |csv|
           csv << ['Staff member', 'Square timecard ID', 'Record type', 'Clock-in', 'Clock-out', 'Timezone', 'Break name', 'Paid break', 'Original counted hours', 'Import status']

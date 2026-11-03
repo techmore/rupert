@@ -25,6 +25,23 @@ class SalesTaxReportTest < ActiveSupport::TestCase
     assert_nil shopify.tax_refunded
   end
 
+  test 'lists manual orders as their own line and its order tax equals sales_summary tax for the same range' do
+    order('2026-09-05', source: 'shopify', gross: 1115, tax: 115)
+    order('2026-09-06', source: 'manual', gross: 2000, tax: 250)
+    order('2026-09-07', source: 'manual', gross: 1000, tax: 100)
+    report = SalesTaxReport.new(from: Date.new(2026, 9, 1), to: Date.new(2026, 9, 30))
+    manual = report.lines.find { |line| line.source == 'Manual' }
+    assert_equal [2, 350], [manual.orders, manual.tax_collected]
+    assert_equal 115, report.lines.find { |line| line.source == 'Shopify' }.tax_collected
+    assert_includes report.csv, 'Manual'
+    assert_equal ['Manual'], SalesTaxReport.new(from: Date.new(2026, 9, 1), to: Date.new(2026, 9, 30), sources: ['manual']).lines.map(&:source)
+
+    summary = Mcp::Tools::SalesSummary.new(token: Struct.new(:user, :tenant).new(nil, Current.tenant)).call({ 'from' => '2026-09-01', 'to' => '2026-09-30', 'top_products' => 0 })
+    summary_tax = summary.data[:lines].sum { |line| line[:tax_cents] }
+    assert_equal 465, summary_tax
+    assert_equal summary_tax, report.lines.select { |line| SalesTaxReport::ORDER_SOURCES.value?(line.source) }.sum(&:tax_collected)
+  end
+
   test 'rejects a backwards or oversized range' do
     assert_raises(SalesTaxReport::Error) { SalesTaxReport.new(from: Date.new(2026, 10, 9), to: Date.new(2026, 10, 8)) }
     assert_raises(SalesTaxReport::Error) { SalesTaxReport.new(from: Date.new(2024, 1, 1), to: Date.new(2026, 1, 1)) }

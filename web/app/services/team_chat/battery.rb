@@ -20,7 +20,7 @@ module TeamChat
 
     Item = Struct.new(:id, :cadence, :question, :checks, :expect, :module, :needs, keyword_init: true)
     Result = Struct.new(:item, :seconds, :tools, :status, :answer, :grade, :tokens_in, :tokens_out, :unverified, :message_id, :load_seconds,
-      :verify, keyword_init: true)
+      :ttft_seconds, :verify, keyword_init: true)
 
     attr_reader :run_id, :room, :results, :record
 
@@ -187,6 +187,7 @@ module TeamChat
       meta = reply.meta.to_h
       seconds = meta['duration_ms'].to_f / 1000
       load_seconds = (meta['load_ms'].to_f / 1000).round(1).nonzero?
+      ttft_seconds = (meta['ttft_ms'].to_f / 1000).round(2).nonzero?
       grade = grade_for(item, reply)
       post_grade(reply, grade, seconds) if grade
       check = meta['verify']
@@ -194,12 +195,13 @@ module TeamChat
       log "    #{reply.status} in #{format_seconds(seconds)}#{" (#{format_seconds(load_seconds)} model load)" if load_seconds}#{check_note} · tools #{Array(meta['tools']).join(', ').presence || 'none'} · grade #{grade&.dig(:score) || '—'}"
       Result.new(item: item, seconds: seconds, tools: Array(meta['tools']), status: reply.status, answer: reply.body.to_s,
         grade: grade, tokens_in: meta['tokens_in'], tokens_out: meta['tokens_out'], unverified: Array(meta['unverified']), message_id: reply.id,
-        load_seconds: load_seconds, verify: check&.except('draft'))
+        load_seconds: load_seconds, ttft_seconds: ttft_seconds, verify: check&.except('draft'))
     end
 
     def result_row(result)
       { 'id' => result.item.id, 'cadence' => result.item.cadence, 'module' => result.item.module, 'question' => result.item.question, 'status' => result.status,
-        'seconds' => result.seconds.round(1), 'load_seconds' => result.load_seconds, 'verify' => result.verify, 'tools' => result.tools, 'grade' => result.grade&.dig(:score),
+        'seconds' => result.seconds.round(1), 'load_seconds' => result.load_seconds, 'ttft_seconds' => result.ttft_seconds,
+        'tokens_in' => result.tokens_in.to_i.nonzero?, 'tokens_out' => result.tokens_out.to_i.nonzero?, 'verify' => result.verify, 'tools' => result.tools, 'grade' => result.grade&.dig(:score),
         'verdict' => result.grade&.dig(:verdict).to_s.first(300), 'unverified' => result.unverified.to_a, 'message_id' => result.message_id }
     end
 

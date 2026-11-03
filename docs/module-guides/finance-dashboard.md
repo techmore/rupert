@@ -19,7 +19,7 @@ Operator guide: [Cash flow dashboard](../ops/cash-flow-dashboard.md).
 
 Neither page owns business records. They read:
 
-- `DashboardSales`: paid/fulfilled canonical orders plus completed C-Trax and
+- `DashboardSales`: paid/fulfilled/refunded canonical orders (`Core::Order.sales_counted`) plus completed C-Trax and
   SwipeSimple sales, USD only, built per request. It never reads payment,
   deposit or ledger mirrors.
 - `CashFlowReport`: `bank_statement_lines` (by `posted_on`, optionally one

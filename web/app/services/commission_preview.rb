@@ -72,7 +72,7 @@ class CommissionPreview
       .where('quantity IS NULL OR unit_cents IS NULL OR quantity <= 0 OR unit_cents < 0 OR (unit_cents = 0 AND line_cents > 0)')
       .distinct.pluck(:order_id).to_set
     groups = shifts.group_by(&:employee_key)
-    # A punch open past STALE_OPEN_HOURS is a forgotten clock-out: it counts only that long.
+    # A punch open past the workspace's limit is a forgotten clock-out: it counts nothing until corrected.
     @stale_open_shifts = shifts.count(&:stale_open?)
     admins = PayRules.admin_keys(shifts)
     totals = groups.to_h do |key, worker_shifts|

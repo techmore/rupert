@@ -1,0 +1,36 @@
+<% content_for :title, 'Fix clock-out' %>
+<div class="page-narrow space-y-6">
+  <%= page_header 'Fix clock-out', subtitle: "#{@shift.employee_name} · #{open_clock_out_label(@shift.started_at)}." %>
+
+  <dl class="facts">
+    <div><dt>Clocked in</dt><dd><%= l(@shift.started_at, format: '%a %b %-d, %Y · %-I:%M %p %Z') %></dd></div>
+    <div><dt>Counted now</dt><dd><%= @shift.stale_open? ? 'No hours, until this is fixed' : 'Hours so far, while the shift is open' %></dd></div>
+    <% if @pending %><div><dt>Waiting for review</dt><dd>Clock-out <%= l(@pending.proposed_ended_at, format: '%a %b %-d, %-I:%M %p') %> · <%= @pending.reason %></dd></div><% end %>
+  </dl>
+
+  <div class="card card-pad">
+    <%= form_with url: request_correction_time_clock_path(@shift), scope: :clock_correction, data: { turbo: false }, class: 'space-y-4' do |form| %>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <%= form.label :proposed_started_at, 'Clock-in', class: 'field-label' %>
+          <%= form.datetime_local_field :proposed_started_at, value: @shift.started_at.in_time_zone.strftime('%Y-%m-%dT%H:%M:%S'), step: 1, required: true, class: 'input' %>
+        </div>
+        <div>
+          <%= form.label :proposed_ended_at, 'Real clock-out', class: 'field-label' %>
+          <%= form.datetime_local_field :proposed_ended_at, value: @suggested_end&.in_time_zone&.strftime('%Y-%m-%dT%H:%M:%S'), step: 1, required: true, class: 'input',
+                min: @shift.started_at.in_time_zone.strftime('%Y-%m-%dT%H:%M'), aria: { describedby: 'fix-clock-out-hint' } %>
+          <p id="fix-clock-out-hint" class="mt-1 text-xs text-mocha"><%= @suggested_end ? 'Filled in from the planned shift. Check it before sending.' : 'No planned shift that day. Enter when they really left.' %></p>
+        </div>
+      </div>
+      <div>
+        <%= form.label :reason, 'Reason', class: 'field-label' %>
+        <%= form.text_area :reason, value: 'Forgot to clock out.', required: true, maxlength: 1000, rows: 2, class: 'input' %>
+      </div>
+      <div class="form-actions">
+        <%= form.submit 'Request review', class: 'btn-primary', data: { turbo_submits_with: 'Saving…' } %>
+        <%= link_to 'Cancel', time_clock_path, class: 'btn-ghost' %>
+      </div>
+    <% end %>
+  </div>
+  <%= fold_explainer('This sends a time correction for review, like any other: the original clock-in and the requested clock-out both stay on record, and the shift changes only when another reviewer approves it. Until then the open shift counts no hours.', class: 'text-sm text-mocha') %>
+</div>

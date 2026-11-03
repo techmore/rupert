@@ -1,0 +1,35 @@
+<%# Delete my account: a Settings page (docs/ui-standards.md §4). Also reached from the iPhone app. %>
+<% content_for :title, 'Delete my account' %>
+<div class="page-medium space-y-6">
+  <%= page_header 'Delete my account', subtitle: 'Remove your sign-in and personal details from Rupert.' %>
+
+  <section class="section-card">
+    <%= section_heading 'What happens' %>
+    <ul class="list-disc space-y-1 pl-5 text-sm text-ink">
+      <li>Your name, email address and password are erased, and you are signed out everywhere.</li>
+      <li>Google sign-in links, API tokens and app sessions for this account stop working.</li>
+      <li>Records you made for your business (sales, counts, chat messages, history) stay with the business and show “Deleted user”.</li>
+      <li>This cannot be undone. To use Rupert again, you would need a new account.</li>
+    </ul>
+    <p class="text-sm text-mocha">To have business records erased as well, ask your workspace administrator. See the <%= link_to 'privacy policy', privacy_policy_path, class: 'text-olive underline' %>.</p>
+  </section>
+
+  <section class="section-card">
+    <%= section_heading 'Delete' %>
+    <% if (reason = @deletion.blocker) %>
+      <p class="flash flash-alert" role="alert"><%= reason %></p>
+    <% else %>
+      <%= form_with url: own_account_path, method: :delete, class: 'space-y-4', data: { turbo_confirm: 'Delete your Rupert account? This cannot be undone.' } do %>
+        <div>
+          <%= label_tag :confirmation, "Type #{AccountDeletion::CONFIRMATION} to confirm", class: 'field-label' %>
+          <%= text_field_tag :confirmation, nil, required: true, autocomplete: 'off', autocapitalize: 'characters', spellcheck: false, class: 'input', aria: { describedby: 'confirmation-hint' } %>
+          <p id="confirmation-hint" class="mt-1 text-xs text-taupe">Signed in as <%= Current.user.email %>.</p>
+        </div>
+        <div class="form-actions">
+          <%= submit_tag 'Delete my account', class: 'btn-danger', name: nil, data: { turbo_submits_with: 'Deleting…' } %>
+          <%= link_to 'Cancel', navigation_start_path, class: 'btn-ghost' %>
+        </div>
+      <% end %>
+    <% end %>
+  </section>
+</div>

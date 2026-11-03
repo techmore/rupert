@@ -9,16 +9,19 @@ module Mcp
         title: 'Business pulse',
         description: 'One read-only snapshot for today: gross sales and orders per currency, non-empty waiting queues, ' \
                      'open low-stock alerts, failing source syncs and overdue tasks. Each section includes its Rupert ' \
-                     'page. Sections the asking person cannot read are marked unavailable.',
+                     'page. Sections the asking person cannot read are marked unavailable. as_of replays the date and sales figure only; the other sections are live.',
         scope: 'reports:read'
 
-      input_schema(type: 'object', properties: {}, additionalProperties: false)
+      input_schema(type: 'object', properties: { as_of: AS_OF_PROPERTY }, additionalProperties: false)
 
-      def call(_args)
-        sales = Metric.new(token: token).call('name' => 'gross_sales', 'period' => 'today', 'compare' => 'none').data
+      def call(args)
+        day = today(args)
+        sales_args = { 'name' => 'gross_sales', 'period' => 'today', 'compare' => 'none' }
+        sales_args['as_of'] = args['as_of'] if args['as_of'].present?
+        sales = Metric.new(token: token).call(sales_args).data
         queues = OrderQueues.new(token: token).call('oldest' => 3).data
         data = {
-          date: Date.current.iso8601,
+          date: day.iso8601,
           sales: { gross_sales_by_currency: sales[:values], path: report_path('sales') },
           waiting: {
             queues: queues[:queues].select { |queue| queue[:count].to_i.positive? },
@@ -29,6 +32,7 @@ module Mcp
           sync: section('sync_health', {}, 'operations', 'channels', 'failing'),
           overdue_tasks: section('list_tasks', { 'overdue' => true, 'per_page' => 5 }, nil, 'rows', 'meta', 'total')
         }
+        data = with_as_of(data, args)
         text = [
           "Today (#{data[:date]}): #{sales[:text]}",
           "Waiting queues: #{data[:waiting][:queues].map { |queue| "#{queue[:name]} #{queue[:count]}" }.join('; ').presence || 'none'}.",
@@ -36,7 +40,7 @@ module Mcp
           section_summary('Failing syncs', data[:sync]),
           section_summary('Overdue tasks', data[:overdue_tasks])
         ].compact.join(' ')
-        result(text, data)
+        result(args['as_of'].present? ? "#{text} Queues, alerts, syncs and tasks are live, not as of #{data[:as_of]}." : text, data)
       end
 
       private

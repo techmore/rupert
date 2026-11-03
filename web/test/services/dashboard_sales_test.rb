@@ -57,12 +57,38 @@ class DashboardSalesTest < ActiveSupport::TestCase
     end
   end
 
-  test 'fully refunded canonical orders stay outside paid sales and refund payments never create sales' do
+  test 'a fully refunded canonical order counts in gross, as in the sales tools, and refund payments never create sales' do
     order = canonical(source: 'shopify', source_order_id: 'refunded', status: 'refunded',
       occurred_at: @now, gross_cents: 2000, currency: 'USD')
     order.refunds.create!(amount_cents: 2000, method: 'card', refunded_at: @now)
-    assert_equal 0, DashboardSales.new(now: @now).gross
-    assert_equal 0, DashboardSales.new(now: @now).count
+    canonical(source: 'shopify', source_order_id: 'canceled-import', status: 'refunded', source_financial_status: 'CANCELED',
+      occurred_at: @now, gross_cents: 9000, currency: 'USD')
+    assert_equal 2000, DashboardSales.new(now: @now).gross
+    assert_equal 1, DashboardSales.new(now: @now).count
+  end
+
+  test 'dashboard and business snapshot gross equal sales_summary gross for a month with a fully refunded order' do
+    token = TeamChat::Token.new(users(:regular_user))
+    Current.user = users(:regular_user)
+    at = Time.zone.parse('2026-09-10 12:00:00')
+    canonical(source: 'shopify', source_order_id: 'paid', status: 'paid', occurred_at: at, gross_cents: 5000, currency: 'USD')
+    refunded = canonical(source: 'shopify', source_order_id: 'full-refund', status: 'paid', occurred_at: at + 1.hour, gross_cents: 2823, currency: 'USD')
+    Core::Refund.create!(order: refunded, amount_cents: 2823, refunded_at: at + 2.hours, method: 'card')
+    refunded.refund!
+    canonical(source: 'shopify', source_order_id: 'canceled-import', status: 'refunded', source_financial_status: 'CANCELED',
+      occurred_at: at + 3.hours, gross_cents: 9999, currency: 'USD')
+
+    summary = Mcp::Registry.find('sales_summary').new(token: token).call({ 'from' => '2026-09-01', 'to' => '2026-09-30' }).data
+    summary_gross, summary_orders = summary[:totals_by_currency].first.values_at(:gross_cents, :orders)
+    assert_equal [7823, 2], [summary_gross, summary_orders]
+
+    now = Time.zone.parse('2026-09-30 18:00:00')
+    dashboard = DashboardSales.new(days: 30, now: now, include_ctrax: false)
+    assert_equal [summary_gross, summary_orders], [dashboard.gross, dashboard.count]
+    assert_equal summary_gross, (dashboard.daily.values.sum * 100).round
+
+    snapshot = BusinessSnapshot.new(now: now).to_h
+    assert_equal [{ 'source' => 'shopify', 'cents' => summary_gross, 'orders' => summary_orders }], snapshot.dig('sales', 'windows', '30')
   end
 
   test 'native identity spans dates and keeps stores independent' do

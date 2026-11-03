@@ -34,6 +34,22 @@ class TeamChatBatteryTest < ActiveSupport::TestCase
      TeamChat::Battery::Item.new(id: 'm3', cadence: 'monthly', question: 'Sales tax last month?', checks: [{ 'tool' => 'sales_tax_report', 'args' => { 'from' => 'last_month.from', 'to' => 'last_month.to' } }])]
   end
 
+  test 'results carry first-token seconds and token counts from the reply, and leave them out when not recorded' do
+    @gateway_last_timing = { model: 'qwen3.5-4b', ttft_ms: 1500, finished_at: Time.now.to_f, prompt_tokens: 80, completion_tokens: 9 }
+    script_model({ text: 'Quick.' })
+    battery = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: FakeGrader.new([]), items: items.first(1), out: nil)
+    battery.run
+    row = TeamChat::BatteryRun.find_by!(run_key: battery.run_id).results_list.first
+
+    assert_equal [1.5, 80, 9], [row['ttft_seconds'], row['tokens_in'], row['tokens_out']]
+
+    @gateway_last_timing = nil
+    script_model({ text: 'Quick.' })
+    later = TeamChat::Battery.new(user: @user, agent: 'qwen', grader: FakeGrader.new([]), items: items.first(1), out: nil)
+    later.run
+    assert_nil TeamChat::BatteryRun.find_by!(run_key: later.run_id).results_list.first['ttft_seconds']
+  end
+
   test 'asks each question to the bot on its own in its test room, times it, grades it and posts a pinned summary' do
     requests = script_model({ tool: 'period_review', arguments: { period: 'yesterday' } }, { text: 'Yesterday: 2 orders, $100.' }, { text: 'No tax data.' })
     grader = FakeGrader.new([])

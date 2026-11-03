@@ -5,16 +5,32 @@ require 'csv'
 class CustomersController < AuthenticatedController
   LAST_ORDER_SQL = '(SELECT MAX(orders.occurred_at) FROM orders WHERE orders.customer_id = customers.id)'
   SPEND_SQL = '(SELECT COALESCE(SUM(orders.gross_cents), 0) FROM orders WHERE orders.customer_id = customers.id)'
+  ORDER_COUNT_SQL = '(SELECT COUNT(*) FROM orders WHERE orders.customer_id = customers.id)'
+  OWNER_NAME_SQL = "(SELECT LOWER(COALESCE(NULLIF(TRIM(users.name), ''), users.email)) FROM users WHERE users.id = customers.owner_id)"
   UNKNOWN_LAST_SQL = "CASE WHEN #{Core::Customer::UNKNOWN_SQL} THEN 1 ELSE 0 END".freeze
-  SORTS = {
-    'recent' => [{ created_at: :desc, id: :desc }, 'Newest first'],
-    'oldest' => [{ created_at: :asc, id: :asc }, 'Oldest first'],
-    'name' => [[Arel.sql(UNKNOWN_LAST_SQL), :last_name, :first_name, :id], 'Name A–Z (unknown last)'],
-    'email' => [%i[email id], 'Email A–Z'],
-    'last_order' => [[Arel.sql("#{LAST_ORDER_SQL} IS NULL"), Arel.sql("#{LAST_ORDER_SQL} DESC"), { id: :desc }], 'Most recent order'],
-    'spend' => [[Arel.sql("#{SPEND_SQL} DESC"), { id: :desc }], 'Biggest spenders']
+  NO_EMAIL_LAST_SQL = "CASE WHEN COALESCE(TRIM(customers.email), '') = '' THEN 1 ELSE 0 END"
+  STAGE_SQL = "CASE customers.crm_status #{Core::Customer::CRM_STATUSES.each_with_index.map { |status, i| "WHEN '#{status}' THEN #{i}" }.join(' ')} ELSE #{Core::Customer::CRM_STATUSES.size} END".freeze
+  # The CRM list's sortable headings (ListSort). Blank names, emails, owners
+  # and never-ordered customers sort last in both directions. `dir` is only
+  # ever :asc or :desc, so the SQL fragments below are fixed text.
+  SORT_COLUMNS = {
+    'name' => ListSort.column('Name') { |dir| [Arel.sql(UNKNOWN_LAST_SQL), { last_name: dir, first_name: dir, id: dir }] },
+    'email' => ListSort.column('Contact') { |dir| [Arel.sql(NO_EMAIL_LAST_SQL), Arel.sql("LOWER(customers.email) #{dir.upcase}"), { id: dir }] },
+    'status' => ListSort.column('Relationship', phrases: { 'asc' => 'lead first', 'desc' => 'inactive first' }) { |dir| [Arel.sql("#{STAGE_SQL} #{dir.upcase}"), { id: dir }] },
+    'owner' => ListSort.column('Owner') { |dir| [Arel.sql('customers.owner_id IS NULL'), Arel.sql("#{OWNER_NAME_SQL} #{dir.upcase}"), { id: dir }] },
+    'source' => ListSort.column('Source') { |dir| { source: dir, id: dir } },
+    'orders' => ListSort.column('Orders', :number) { |dir| [Arel.sql("#{ORDER_COUNT_SQL} #{dir.upcase}"), { id: dir }] },
+    'last_order' => ListSort.column('Last order', :date) { |dir| [Arel.sql("#{LAST_ORDER_SQL} IS NULL"), Arel.sql("#{LAST_ORDER_SQL} #{dir.upcase}"), { id: dir }] },
+    'lifetime' => ListSort.column('Lifetime', :number) { |dir| [Arel.sql("#{SPEND_SQL} #{dir.upcase}"), { id: dir }] },
+    'created' => ListSort.column('Added', :date) { |dir| { created_at: dir, id: dir } }
+  }.freeze
+  SORT_DEFAULT = %w[created desc].freeze
+  # Older one-word sort links and bookmarks.
+  SORT_ALIASES = {
+    'recent' => %w[created desc], 'oldest' => %w[created asc], 'spend' => %w[lifetime desc], 'last_order' => %w[last_order desc]
   }.freeze
   NAME_FILTERS = { 'unknown' => 'Unknown (no name)', 'named' => 'Named' }.freeze
+  EXPORT_COLUMNS = %w[source external_id first_name last_name preferred_name email phone crm_status tags wholesale wholesale_business_name].freeze
 
   before_action :set_customer, only: %i[show edit update]
 
@@ -26,12 +42,13 @@ class CustomersController < AuthenticatedController
     @due_follow_ups = CustomerFollowUp.due.includes(:customer, :owner).order(:due_on, :id).limit(20)
     @due_count = CustomerFollowUp.due.count
     @owners = crm_owners
-    @sort = SORTS.key?(params[:sort]) ? params[:sort] : 'recent'
+    @sort = ListSort.new(SORT_COLUMNS, sort: params[:sort], dir: params[:dir], default: SORT_DEFAULT, aliases: SORT_ALIASES)
     # Ordered outside the DISTINCT search, so the order and spend sorts work on every database.
-    matching = Core::Customer.where(id: @q.result.select(:id))
-    @pagy, @customers = pagy(:offset, matching.order(*Array.wrap(SORTS.fetch(@sort).first)), limit: 25)
+    matching = Core::Customer.where(id: @q.result.select(:id)).includes(:owner)
+    @pagy, @customers = pagy(:offset, @sort.apply(matching), limit: 25)
     @unknown_count = Core::Customer.unknown.count
     @status_counts = Core::Customer.group(:crm_status).count
+    @wholesale_count = Core::Customer.wholesale.count
     @total_customers = @status_counts.values.sum
     @filtered = filters_active?
     # One grouped SUM + one grouped COUNT for the page instead of a lifetime-
@@ -39,6 +56,7 @@ class CustomersController < AuthenticatedController
     ids = @customers.map(&:id)
     @lifetime_totals = Core::Order.where(customer_id: ids).group(:customer_id, :currency).sum(:gross_cents)
     @order_counts = Core::Order.where(customer_id: ids).group(:customer_id).count
+    @last_orders = Core::Order.where(customer_id: ids).group(:customer_id).maximum(:occurred_at)
   end
 
   def sync_directory
@@ -78,7 +96,7 @@ class CustomersController < AuthenticatedController
     @customer.external_id = "manual:#{SecureRandom.hex(8)}"
 
     if @customer.save
-      log_customer('customer_created', 'manual profile')
+      log_customer('customer_created', @customer.wholesale? ? 'manual profile, wholesale' : 'manual profile')
       redirect_to(customer_path(@customer), notice: 'Customer added.')
     else
       render(:new, status: :unprocessable_entity)
@@ -95,7 +113,7 @@ class CustomersController < AuthenticatedController
     @owners = crm_owners
     if @customer.update(customer_params)
       changed = @customer.previous_changes.keys.excluding('updated_at')
-      log_customer('customer_updated', "fields: #{changed.join(', ')}") if changed.any?
+      log_customer(update_action, "fields: #{changed.join(', ')}") if changed.any?
       redirect_to(customer_path(@customer), notice: 'Customer updated.')
     else
       render(:edit, status: :unprocessable_entity)
@@ -110,9 +128,9 @@ class CustomersController < AuthenticatedController
       return redirect_to(customers_path, alert: 'Narrow your filters to 25,000 profiles or fewer before exporting.')
     end
     csv = CSV.generate do |rows|
-      rows << %w[source external_id first_name last_name preferred_name email phone crm_status tags]
+      rows << EXPORT_COLUMNS
       records.find_each do |customer|
-        rows << %i[source external_id first_name last_name preferred_name email phone crm_status tags].map do |key|
+        rows << EXPORT_COLUMNS.map do |key|
           value = customer.public_send(key).to_s
           value.match?(/\A[\s]*[=+@-]/) ? "'#{value}" : value
         end
@@ -131,10 +149,18 @@ class CustomersController < AuthenticatedController
     ActivityLogger.log(action, subject: @customer, label: "Customer ##{@customer.id}", details: details)
   end
 
+  # Marking or unmarking wholesale gets its own Activity log entry so it can
+  # be found without reading field lists.
+  def update_action
+    return 'customer_updated' unless @customer.saved_change_to_wholesale?
+
+    @customer.wholesale? ? 'customer_marked_wholesale' : 'customer_unmarked_wholesale'
+  end
+
   # Which filters shaped the export and how many profiles it held; no values
   # from the profiles themselves.
   def export_summary(total)
-    filters = %i[status source owner due directory name].filter_map { |key| "#{key}=#{params[key]}" if params[key].present? }
+    filters = %i[status source owner due directory name account].filter_map { |key| "#{key}=#{params[key]}" if params[key].present? }
     filters << 'search' if params[:q].respond_to?(:values) && params[:q].values.any?(&:present?)
     [helpers.pluralize(total, 'profile'), filters.join(' ').presence].compact.join(', ')
   end
@@ -149,12 +175,13 @@ class CustomersController < AuthenticatedController
 
   def filters_active?
     q = params[:q].respond_to?(:values) ? params[:q].values.any?(&:present?) : false
-    q || %i[status source owner due directory name].any? { |key| params[key].present? }
+    q || %i[status source owner due directory name account].any? { |key| params[key].present? }
   end
 
   def filtered_customers
     records = Core::Customer.all
     records = records.where(crm_status: params[:status]) if Core::Customer::CRM_STATUSES.include?(params[:status])
+    records = records.where(wholesale: params[:account] == 'wholesale') if Core::Customer::ACCOUNT_TYPES.key?(params[:account])
     records = records.where(source: params[:source]) if Core::Customer::SOURCES.include?(params[:source])
     records = records.where(owner_id: Current.user.id) if params[:owner] == 'mine'
     records = records.where(owner_id: nil) if params[:owner] == 'unassigned'
@@ -181,7 +208,7 @@ class CustomersController < AuthenticatedController
   end
 
   def customer_params
-    attributes = params.require(:customer).permit(:preferred_name, :crm_status, :tags, :owner_id, :notes)
+    attributes = params.require(:customer).permit(:preferred_name, :crm_status, :tags, :owner_id, :notes, *Core::Customer::WHOLESALE_FIELDS)
     if !@customer || @customer.source == 'manual'
       attributes.merge!(params.require(:customer).permit(:first_name, :last_name, :email, :phone))
     end

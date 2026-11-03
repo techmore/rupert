@@ -1,51 +1,109 @@
 <% content_for :title, 'Time clock' %>
 <% content_for :head do %><meta name="turbo-cache-control" content="no-cache"><% end %>
+<% correction_pill = { 'pending' => ['Waiting for review', 'pill-clay'], 'approved' => ['Approved', 'pill-fern'], 'rejected' => ['Rejected', 'pill-rose'] } %>
 <div class="space-y-6">
-  <%= page_header 'Time clock', subtitle: "Clock your own work from this device, including remote work (#{Time.zone.name} time).",
+  <%= page_header 'Time clock', subtitle: "Clock your own work from this device. Times are in #{Time.zone.name.sub(/ \(US & Canada\)/, '')}.",
         menu: (Current.user.can?('payroll.read') ? [['Commission preview', commission_preview_time_clock_path]] : nil) %>
-  <section class="section-card">
+  <%= render 'shared/open_clock_outs', items: @open_items, limit: @open_clock_outs.limit_hours %>
+  <section class="section-card" aria-label="Clock in or out">
     <% if @worker %>
-      <%= section_heading "#{@worker.name} · #{@worker.employment_type.humanize}", hint: 'Corrections require review; these records do not automatically change payroll.' do %>
+      <%= section_heading @worker.name, hint: (@open_shift ? nil : 'Clock in when you start working, clock out when you finish.') do %>
         <% if @open_shift %><span class="pill-fern">Clocked in</span><% else %><span class="pill-taupe">Clocked out</span><% end %>
-      <% end %>
-      <% if @open_shift %>
-        <p class="text-sm">Since <%= l(@open_shift.started_at, format: '%b %-d, %Y %-I:%M:%S %p %Z') %> · <%= number_with_precision(@open_shift.hours, precision: 2) %> hours so far</p>
-        <%= button_to 'Clock out', clock_out_time_clock_path, params: { shift_id: @open_shift.id }, method: :post, class: 'btn-primary btn-lg', data: { turbo: false } %>
-      <% else %>
-        <%= button_to 'Clock in', clock_in_time_clock_path, params: { request_token: SecureRandom.uuid }, method: :post, class: 'btn-primary btn-lg', data: { turbo: false } %>
       <% end %>
     <% else %>
       <%= section_heading 'Link your worker record', hint: 'Ask an administrator to connect exactly one active Staff record to your sign-in account. Contractors can use the same time clock. Your existing shift history stays below.' %>
-      <% if @open_shift %>
-        <p class="text-sm"><span class="pill-fern">Clocked in</span> <%= l(@open_shift.started_at, format: '%b %-d, %Y %-I:%M:%S %p %Z') %> · <%= number_with_precision(@open_shift.hours, precision: 2) %> hours so far</p>
-        <%= button_to 'Clock out', clock_out_time_clock_path, params: { shift_id: @open_shift.id }, method: :post, class: 'btn-primary btn-lg', data: { turbo: false } %>
+    <% end %>
+    <% if @open_shift %>
+      <% if @open_shift.stale_open? %>
+        <p class="text-sm"><%= open_clock_out_label(@open_shift.started_at) %> (<%= timesheet_time(@open_shift.started_at) %>). Not counted until fixed.</p>
+      <% else %>
+        <p class="text-2xl font-semibold tabular-nums" data-controller="elapsed-time" data-elapsed-time-start-value="<%= @open_shift.started_at.iso8601 %>"><span data-elapsed-time-target="duration"><%= format_hours(@open_shift.hours, unit: true) %></span></p>
+        <p class="text-sm text-mocha">Since <%= @open_shift.started_at.in_time_zone.strftime('%-I:%M %p') %><%= " on #{@open_shift.started_at.in_time_zone.strftime('%a, %b %-d')}" unless @open_shift.started_at.in_time_zone.to_date == Date.current %></p>
       <% end %>
+      <% if @open_shift.started_at >= ClockShift::MAX_SHIFT_HOURS.hours.ago %>
+        <%= button_to 'Clock out', clock_out_time_clock_path, params: { shift_id: @open_shift.id }, method: :post, class: 'btn-primary btn-lg', data: { turbo: false } %>
+      <% else %>
+        <%= link_to 'Fix clock-out', fix_clock_out_time_clock_path(@open_shift), class: 'btn-primary btn-lg' %>
+      <% end %>
+    <% elsif @worker %>
+      <%= button_to 'Clock in', clock_in_time_clock_path, params: { request_token: SecureRandom.uuid }, method: :post, class: 'btn-primary btn-lg', data: { turbo: false } %>
     <% end %>
   </section>
 
-  <section class="space-y-3">
-    <%= section_heading 'Your latest shifts' %>
-    <% @shifts.each do |shift| %>
-      <article class="card card-pad space-y-3">
-        <p class="font-medium"><%= l(shift.started_at, format: '%b %-d, %Y %-I:%M:%S %p %Z') %> → <%= shift.ended_at ? l(shift.ended_at, format: '%b %-d, %Y %-I:%M:%S %p %Z') : 'Open shift' %></p>
-        <p class="text-sm text-mocha"><%= number_with_precision(shift.hours, precision: 2) %> hours</p>
-        <details class="explainer"><summary class="explainer-summary">Request a time correction</summary>
-          <%= form_with url: request_correction_time_clock_path(shift), scope: :clock_correction, data: { turbo: false }, class: 'mt-3 space-y-3' do |form| %>
-            <div class="grid gap-3 sm:grid-cols-2"><div><%= form.label :proposed_started_at, 'Correct clock-in', class: 'field-label' %><%= form.datetime_local_field :proposed_started_at, value: shift.started_at.in_time_zone.strftime('%Y-%m-%dT%H:%M:%S'), step: 1, required: true, class: 'input' %></div><div><%= form.label :proposed_ended_at, 'Correct clock-out', class: 'field-label' %><%= form.datetime_local_field :proposed_ended_at, value: shift.ended_at&.in_time_zone&.strftime('%Y-%m-%dT%H:%M:%S'), step: 1, required: true, class: 'input' %></div></div>
-            <div><%= form.label :reason, 'Reason for correction', class: 'field-label' %><%= form.text_area :reason, required: true, maxlength: 1000, class: 'input', rows: 2 %></div>
-            <%= form.submit 'Request review', class: 'btn-ghost' %>
-          <% end %>
-        </details>
-        <% shift.corrections.sort_by(&:created_at).reverse.each do |correction| %><p class="text-xs text-taupe"><%= correction.status.capitalize %> correction: <%= l(correction.proposed_started_at, format: :short) %> → <%= l(correction.proposed_ended_at, format: :short) %> · <%= correction.reason %><% if correction.reviewed_at %> · reviewed <%= l(correction.reviewed_at, format: :short) %><% end %></p><% end %>
-      </article>
+  <section class="space-y-3" aria-labelledby="shifts-heading">
+    <%= section_heading 'Your shifts', id: 'shifts-heading', hint: 'Wrong time? Request a correction; a reviewer approves it and the original stays on record. Payroll does not change by itself.' %>
+    <% if @shifts.empty? %>
+      <%= empty_state 'No shifts yet', hint: 'Your shifts appear here after you clock in.' %>
+    <% else %>
+      <% rules = PayRules.current %>
+      <% @shifts.group_by { |shift| rules.period_range(shift.started_at.in_time_zone.to_date) }.each do |(from, to), shifts| %>
+        <% week_hours = shifts.reject(&:stale_open?).sum { |shift| shift.hours.to_d } %>
+        <div class="card shift-week" data-shift-week="<%= from.iso8601 %>">
+          <div class="row-item border-b border-fog">
+            <h3 class="card-title"><%= period_range(from, to) %></h3>
+            <p class="row-item-end text-sm"><span class="num font-semibold text-ink"><%= format_hours(week_hours, unit: true) %></span></p>
+          </div>
+          <ul class="row-list">
+            <% shifts.each do |shift| %>
+              <li class="row-item" id="shift-<%= shift.id %>" data-shift-id="<%= shift.id %>">
+                <div class="min-w-0">
+                  <p class="timesheet-day-name"><%= shift.started_at.in_time_zone.strftime('%a, %b %-d') %></p>
+                  <p class="text-sm text-mocha"><%= shift.stale_open? ? "#{shift.started_at.in_time_zone.strftime('%-I:%M %p')} – never clocked out" : shift_span(shift.started_at, shift.ended_at) %></p>
+                  <% shift.corrections.sort_by(&:created_at).reverse.each do |correction| %>
+                    <% label, pill = correction_pill.fetch(correction.status, [correction.status.humanize, 'pill-taupe']) %>
+                    <p class="mt-1 text-xs text-mocha"><span class="<%= pill %>"><%= label %></span> Correction to <%= shift_span(correction.proposed_started_at, correction.proposed_ended_at) %> · <%= correction.reason %></p>
+                  <% end %>
+                </div>
+                <div class="row-item-end">
+                  <span class="num font-semibold text-ink"><%= shift.stale_open? ? '–' : format_hours(shift.hours, unit: true) %></span>
+                  <% if shift.stale_open? && shift.corrections.none? { |c| c.status == 'pending' } %>
+                    <%= link_to 'Fix clock-out', fix_clock_out_time_clock_path(shift), class: 'btn-ghost btn-sm' %>
+                  <% elsif shift.ended_at && shift.corrections.none? { |c| c.status == 'pending' } %>
+                    <details class="entry-edit">
+                      <summary class="btn-ghost btn-sm" aria-label="Request a correction for <%= shift.started_at.in_time_zone.strftime('%A, %B %-d') %>">Correct</summary>
+                      <%= form_with url: request_correction_time_clock_path(shift), scope: :clock_correction, data: { turbo: false }, class: 'entry-edit-form' do |form| %>
+                        <div><%= form.label :proposed_started_at, 'Clock-in', for: "in-#{shift.id}", class: 'field-label' %><%= form.datetime_local_field :proposed_started_at, id: "in-#{shift.id}", value: shift.started_at.in_time_zone.strftime('%Y-%m-%dT%H:%M:%S'), step: 1, required: true, class: 'input' %></div>
+                        <div><%= form.label :proposed_ended_at, 'Clock-out', for: "out-#{shift.id}", class: 'field-label' %><%= form.datetime_local_field :proposed_ended_at, id: "out-#{shift.id}", value: shift.ended_at.in_time_zone.strftime('%Y-%m-%dT%H:%M:%S'), step: 1, max: Time.current.strftime('%Y-%m-%dT%H:%M:%S'), required: true, class: 'input' %></div>
+                        <div class="sm:col-span-2"><%= form.label :reason, 'Why', for: "reason-#{shift.id}", class: 'field-label' %><%= form.text_area :reason, id: "reason-#{shift.id}", required: true, maxlength: 1000, class: 'input', rows: 2, placeholder: 'For example: forgot to clock in when I arrived' %></div>
+                        <div class="form-actions sm:col-span-2"><%= form.submit 'Request review', class: 'btn-primary btn-sm', data: { turbo_submits_with: 'Sending…' } %></div>
+                      <% end %>
+                    </details>
+                  <% end %>
+                </div>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+      <% if @pagy.pages > 1 %><%== @pagy.series_nav %><% end %>
     <% end %>
-    <% if @shifts.empty? %><%= empty_state 'No shifts yet', hint: 'Your shifts appear here after you clock in.' %><% end %>
-    <% if @pagy.pages > 1 %><%== @pagy.series_nav %><% end %>
   </section>
 
-  <% if @pending_corrections %><section class="space-y-3">
-    <%= section_heading 'Pending correction review', hint: 'Up to 100 pending requests shown. Approval records the reviewer and original values. A request becomes stale if the shift changes before approval.' %>
-    <% @pending_corrections.each do |correction| %><article class="card card-pad space-y-3"><p class="font-medium"><%= correction.clock_shift.employee_name %></p><p class="text-sm">Original: <%= l(correction.original_started_at, format: '%b %-d, %Y %-I:%M:%S %p %Z') %> → <%= correction.original_ended_at ? l(correction.original_ended_at, format: '%b %-d, %Y %-I:%M:%S %p %Z') : 'Open' %><br>Requested: <%= l(correction.proposed_started_at, format: '%b %-d, %Y %-I:%M:%S %p %Z') %> → <%= l(correction.proposed_ended_at, format: '%b %-d, %Y %-I:%M:%S %p %Z') %></p><p class="text-sm text-mocha"><%= correction.reason %></p><% if correction.clock_shift.user_id == Current.user.id || correction.requested_by_id == Current.user.id %><p class="text-sm text-taupe">Your own shift: another reviewer must review it.</p><% else %><div class="flex gap-2"><%= button_to 'Approve', approve_correction_time_clock_path(correction), method: :post, class: 'btn-primary btn-sm', data: { turbo_confirm: 'Apply these corrected shift times? This does not pay payroll.' } %><%= button_to 'Reject', reject_correction_time_clock_path(correction), method: :post, class: 'btn-ghost btn-sm' %></div><% end %></article><% end %>
-    <% if @pending_corrections.empty? %><%= empty_state 'No corrections awaiting review' %><% end %>
+  <% if @pending_corrections %><section class="space-y-3" id="corrections" aria-labelledby="corrections-heading">
+    <%= section_heading 'Corrections to review', id: 'corrections-heading', hint: 'Approving changes the shift times and keeps the original on record. It does not change an approved timesheet or payroll.' %>
+    <% if @pending_corrections.empty? %>
+      <%= empty_state 'No corrections waiting', hint: 'Requests from staff appear here.' %>
+    <% else %>
+      <div class="card"><ul class="row-list">
+        <% @pending_corrections.each do |correction| %>
+          <li class="row-item" data-correction-id="<%= correction.id %>">
+            <div class="min-w-0 text-sm">
+              <p class="font-semibold text-ink"><%= correction.clock_shift.employee_name %> · <%= correction.original_started_at.in_time_zone.strftime('%a, %b %-d') %></p>
+              <p><span class="text-mocha">Was</span> <%= correction.original_ended_at ? shift_span(correction.original_started_at, correction.original_ended_at) : "#{correction.original_started_at.in_time_zone.strftime('%-I:%M %p')} – never clocked out" %></p>
+              <p><span class="text-mocha">Asks for</span> <strong><%= shift_span(correction.proposed_started_at, correction.proposed_ended_at) %></strong></p>
+              <p class="text-mocha"><%= correction.reason %></p>
+            </div>
+            <div class="row-item-end">
+              <% if correction.clock_shift.user_id == Current.user.id || correction.requested_by_id == Current.user.id %>
+                <span class="text-sm text-mocha">Your own request: another reviewer approves it.</span>
+              <% else %>
+                <%= button_to 'Approve', approve_correction_time_clock_path(correction), method: :post, class: 'btn-primary btn-sm', form: { data: { turbo_confirm: 'Apply these corrected shift times? Payroll does not change.' } } %>
+                <%= button_to 'Reject', reject_correction_time_clock_path(correction), method: :post, class: 'btn-ghost btn-sm' %>
+              <% end %>
+            </div>
+          </li>
+        <% end %>
+      </ul></div>
+    <% end %>
   </section><% end %>
 </div>

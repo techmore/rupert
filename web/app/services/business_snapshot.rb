@@ -51,14 +51,14 @@ class BusinessSnapshot
         { 'key' => key, 'label' => label, 'note' => note, 'last_sale_at' => (last_row || last_orders[key])&.utc&.iso8601,
           'last_import_at' => freshness.dig(key, :finished_at)&.utc&.iso8601 }
       end,
-      'note' => 'Sources are separate evidence layers and are listed side by side, not netted. C-Trax and the canonical order store are different systems; check both before concluding a source has stopped.'
+      'note' => 'Canonical orders are paid, fulfilled or refunded with a refund on record, so a refunded sale stays in gross (refunds are in cash.refunds_30d_cents, not subtracted). Sources are separate evidence layers and are listed side by side, not netted. C-Trax and the canonical order store are different systems; check both before concluding a source has stopped.'
     }
   end
 
   def products
     threshold = TenantSettings.low_stock_threshold_int
     since = generated_at - 90.days
-    top = Core::OrderLine.joins(:order).where(orders: { occurred_at: since.., status: %w[paid fulfilled] })
+    top = Core::OrderLine.joins(:order).where(orders: { occurred_at: since.. }).merge(Core::Order.sales_counted)
       .group(:name, :sku).sum(:line_cents).sort_by { |_, c| -c }.first(10)
     {
       'active_products' => ShopifyProduct.active.count, 'variants' => ShopifyVariant.count,

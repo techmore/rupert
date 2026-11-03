@@ -335,7 +335,7 @@ class PageGuides
         { heading: "What you're seeing",
           body: 'Sales cards and charts use paid canonical orders and completed native C-Trax orders. Each native C-Trax order is counted once by source, store and order ID. Source pull times and latest sale dates describe different kinds of coverage; a recent pull can contain older sales.' },
         { heading: 'How to read the numbers',
-          body: "Sales are recorded USD totals from paid and fulfilled orders plus completed C-Trax sales. C-Trax tips remain separate. Payment reports, invoices and deposits are never added. Refunds require separate source review. Yesterday is the whole previous day; the last 7 and 30 days include today. Missing imports do not prove zero activity." }
+          body: "Sales are recorded USD totals from paid, fulfilled and refunded orders plus completed C-Trax sales. C-Trax tips remain separate. Payment reports, invoices and deposits are never added. Refunds require separate source review. Yesterday is the whole previous day; the last 7 and 30 days include today. Missing imports do not prove zero activity." }
       ],
       tips: [
         "Check the attention rail first every morning — it's ordered by severity.",
@@ -348,7 +348,7 @@ class PageGuides
       summary: 'Recorded sales across channels and a separate canonical order journal, filtered by date and source.',
       sections: [
         { heading: "What you're seeing",
-          body: "Summary and charts include USD paid/fulfilled canonical orders and completed native C-Trax orders once. The chart period ends on the selected business date. Payments, tips and deposits are separate. The canonical journal shows each order's own currency and selected status; C-Trax receipts stay in daily close." },
+          body: "Summary and charts include USD paid, fulfilled and refunded canonical orders and completed native C-Trax orders once. The chart period ends on the selected business date. Payments, tips and deposits are separate. The canonical journal shows each order's own currency and selected status; C-Trax receipts stay in daily close." },
         { heading: 'The source toggle',
           body: 'All / Shopify / C-Trax / Square filters the selected source — useful to see online vs in-store separately. The choice is in the URL, so you can bookmark a filtered view.' }
       ],

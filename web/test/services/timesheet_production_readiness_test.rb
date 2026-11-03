@@ -67,14 +67,14 @@ class TimesheetProductionReadinessTest < ActiveSupport::TestCase
     end
   end
 
-  test 'a punch left open counts at most 16 hours in pay, commission and tip estimates' do
+  test 'a punch left open past the limit counts nothing in pay, commission and tip estimates until fixed' do
     travel_to Time.zone.parse('2026-10-25 12:00') do
       open = shift('2026-10-17 09:00', nil)
       assert open.stale_open?
-      assert_equal open.started_at + 16.hours, open.counted_end
+      assert_equal open.started_at, open.counted_end
       pay = EmployeePayWeek.new(employee: @worker, week_of: Date.new(2026, 10, 17))
-      assert_in_delta 16.0, pay.hours, 0.0001
-      assert(pay.notes.any? { |note| note.include?('open more than 16 hours') })
+      assert_in_delta 0.0, pay.hours, 0.0001
+      assert(pay.notes.any? { |note| note.include?('open more than 16 hours') && note.include?('counts no hours') })
 
       # A sale two days later is not credited to the forgotten punch.
       order = Core::Order.new(source: 'shopify', source_order_id: SecureRandom.uuid, occurred_at: Time.zone.parse('2026-10-19 10:00'),

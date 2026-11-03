@@ -32,7 +32,7 @@
 
   <section class="grid gap-4 lg:grid-cols-3">
     <div class="card card-pad lg:col-span-2 cash-flow-chart-card">
-      <%= section_heading 'Sales taken, by channel', hint: "Per #{report.bucket} · paid or fulfilled orders and completed C-Trax sales, before refunds" %>
+      <%= section_heading 'Sales taken, by channel', hint: "Per #{report.bucket} · paid, fulfilled or refunded orders and completed C-Trax sales, before refunds" %>
       <div class="cash-flow-canvas"><canvas data-cash-flow-target="channelChart" role="img" aria-label="Sales by channel per <%= report.bucket %>. The table below lists every value."></canvas></div>
       <%= render 'finance/cash_flow/channels_table', report: report %>
     </div>

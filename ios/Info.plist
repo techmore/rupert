@@ -40,9 +40,46 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>Rupert uses the camera when you take a photo to attach to a task, chat message or receipt.</string>
+	<string>Rupert uses the camera to scan barcodes when you count inventory, and when you take a photo to attach to a task, chat message or receipt.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Rupert opens your photos when you choose one to attach to a task, chat message or receipt.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Rupert uses Face ID to unlock the app when you turn on Require Face ID in App settings.</string>
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.rupertpos.Rupert.chat</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Team Chat</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>bubble.left.and.bubble.right</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.rupertpos.Rupert.ask</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Ask Rupert</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>sparkles</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.rupertpos.Rupert.inbox</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Notifications</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>bell</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.rupertpos.Rupert.search</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Search</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>magnifyingglass</string>
+		</dict>
+	</array>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Rupert uses the microphone when you record a video to attach to a chat message.</string>
 </dict>

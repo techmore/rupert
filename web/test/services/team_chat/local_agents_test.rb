@@ -78,6 +78,31 @@ class TeamChatLocalAgentsTest < ActiveSupport::TestCase
     assert_equal 17.5, reply.answer_timing[:load_seconds]
   end
 
+  test 'a local reply records the gateway time to first token, and its token counts when the run counted none' do
+    @gateway_last_timing = { model: 'qwen3.5-4b', ttft_ms: 1234.5, finished_at: Time.now.to_f, prompt_tokens: 900, completion_tokens: 33 }
+    script_model({ text: 'Fast start.' })
+    reply = post('@qwen hello').replies.first
+    TeamChat::Agent.new(reply).run
+    meta = reply.reload.meta
+
+    assert_equal 1235, meta['ttft_ms']
+    assert_equal [900, 33], [meta['tokens_in'], meta['tokens_out']], 'the run counted none, so the gateway counts are used'
+  end
+
+  test 'first-token time is left out when the gateway timing is for another model, stale or missing' do
+    [{ model: 'gemma-4-e4b', ttft_ms: 500, finished_at: Time.now.to_f },
+     { model: 'qwen3.5-4b', ttft_ms: 500, finished_at: Time.now.to_f - 600 },
+     { model: 'qwen3.5-4b', ttft_ms: nil, finished_at: Time.now.to_f },
+     nil].each do |timing|
+      @gateway_last_timing = timing
+      script_model({ text: 'Ready.' })
+      reply = post('@qwen hello').replies.first
+      TeamChat::Agent.new(reply).run
+
+      assert_not reply.reload.meta.key?('ttft_ms'), timing.inspect
+    end
+  end
+
   test 'a load for another model, an older load or the keep-loaded warm-up is not counted' do
     [{ model: 'lfm2.5-8b-a1b', finished_at: Time.now.to_f, reason: 'request' },
      { model: 'qwen3.6-35b-a3b', finished_at: Time.now.to_f - 600, reason: 'request' },
@@ -113,6 +138,26 @@ class TeamChatLocalAgentsTest < ActiveSupport::TestCase
       reply.meta['verify'])
   ensure
     ENV['RUPERT_VERIFY'] = previous
+  end
+
+  test 'RUPERT_LOCAL_TOOLS=core: gives a local bot the same fixed tool list for every question' do
+    previous = ENV['RUPERT_LOCAL_TOOLS']
+    ENV['RUPERT_LOCAL_TOOLS'] = 'core:metric, sales_summary,list_alerts'
+    lists = ['@qwen how much sales tax did we collect last month?', '@qwen hello there'].map do |question|
+      requests = script_model({ text: 'Fine.' })
+      reply = post(question).replies.first
+      TeamChat::Agent.new(reply).run
+      requests.first['tools'].map { |tool| tool.dig('function', 'name') }
+    end
+
+    assert_equal lists.first, lists.last, 'one list for every question, so the prompt prefix is stable and cacheable'
+    assert_includes lists.first, 'metric'
+    assert_includes lists.first, 'list_alerts'
+    assert_includes lists.first, 'data_guide', 'the always-on tools are kept'
+    assert_not_includes lists.first, 'sales_tax_report', 'the per-topic tools are not added in core mode'
+    assert_operator lists.first.size, :<, Mcp::Registry.tools.size / 2
+  ensure
+    ENV['RUPERT_LOCAL_TOOLS'] = previous
   end
 
   test 'a local bot gets only the tools for what the question is about, and the matching data guide card' do

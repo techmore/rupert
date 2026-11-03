@@ -11,6 +11,23 @@ class SquareTimecardImport
   class Error < StandardError; end
   RELEVANT = %w[id team_member_id location_id timezone start_at end_at status wage breaks].freeze
 
+  def self.digest(row)
+    Digest::SHA256.hexdigest(JSON.generate(canonical(row.slice(*RELEVANT))))
+  end
+
+  def self.canonical(value)
+    case value
+    when Hash then value.sort.to_h.transform_values { |child| canonical(child) }
+    when Array then value.map { |child| canonical(child) }
+    else value
+    end
+  end
+
+  # What a manager's "Keep original" remembers, so the same Square edit is not flagged again.
+  def self.kept_key(digest, employee_id)
+    "#{digest}:#{employee_id}"
+  end
+
   def initialize(actor: Current.user, rows: nil, sync_configuration: nil)
     @actor, @rows = actor, rows
     @sync_configuration = sync_configuration
@@ -43,7 +60,10 @@ class SquareTimecardImport
       now = Time.current
       stats = result(plan)
       plan.each { |item| publish(item, now) }
-      SquareTimecard.where.not(external_id: ids).where.not(import_status: 'missing').update_all(import_status: 'missing', issue: 'Not returned by the latest complete Square read; retained for review.', updated_at: now)
+      gone = SquareTimecard.where.not(external_id: ids).where.not(import_status: %w[missing removed])
+        .where('kept_source_key IS NULL OR kept_source_key != ?', 'missing')
+      gone.find_each { |card| SquareTimecardVersion.record!(card, kind: 'missing', seen_at: now) }
+      gone.update_all(import_status: 'missing', issue: 'Not returned by the latest complete Square read; retained for review.', updated_at: now)
       ActivityLogger.log('square_timecards_imported', details: stats.to_json)
       stats
     end
@@ -65,6 +85,8 @@ class SquareTimecardImport
       item = normalize(row).merge(row: row, old: old, employee: worker)
       if old&.imported_at
         changed = old.original_digest != item[:digest] || old.employee_id != worker&.id
+        # A manager already chose to keep the counted hours over this exact Square version.
+        changed = false if changed && old.kept_source_key == self.class.kept_key(item[:digest], worker&.id)
         item[:state] = changed ? 'changed' : 'imported'
         item[:issue] = changed ? 'Square source or staff mapping changed; original imported hours retained for review.' : nil
       elsif !worker
@@ -77,8 +99,12 @@ class SquareTimecardImport
     plan
   end
 
+  public
+
+  # Parses one Square timecard into counted seconds per local day. Public so a
+  # review can rebuild a card's days from Square's latest version.
   def normalize(row)
-    digest = Digest::SHA256.hexdigest(JSON.generate(canonical(row.slice(*RELEVANT))))
+    digest = self.class.digest(row)
     result = { digest: digest, state: 'invalid', days: [], attributes: {} }
     zone = Time.find_zone!(row.fetch('timezone'))
     start_at = timestamp(row.fetch('start_at'))
@@ -119,17 +145,11 @@ class SquareTimecardImport
     result.merge(issue: 'Invalid timecard dates, timezone, wage or breaks; no hours counted.')
   end
 
+  private
+
   def timestamp(value)
     raise ArgumentError unless value.is_a?(String) && value.match?(/(?:Z|[+-]\d{2}:\d{2})\z/)
     Time.iso8601(value)
-  end
-
-  def canonical(value)
-    case value
-    when Hash then value.sort.to_h.transform_values { |child| canonical(child) }
-    when Array then value.map { |child| canonical(child) }
-    else value
-    end
   end
 
   def check_overlaps(plan)
@@ -139,12 +159,7 @@ class SquareTimecardImport
       attrs, worker = item.values_at(:attributes, :employee)
       start_at, end_at = attrs.values_at(:started_at, :ended_at)
       next unless start_at && end_at && end_at > start_at
-      if SquareTimecard.overlapping(worker.id, start_at, end_at).exists? ||
-          ClockShift.where(employee_id: worker.id).where('started_at < ?', end_at)
-            .where('ended_at > ? OR (ended_at IS NULL AND started_at > ?)', start_at, start_at - OPEN_SHIFT_REACH).exists? ||
-          local_day_overlap?(worker, start_at, end_at)
-        hold(item)
-      end
+      hold(item) if overlaps_existing?(worker, start_at, end_at)
     end
     ready.group_by { |item| item[:employee].id }.each_value do |items|
       active = []
@@ -161,6 +176,21 @@ class SquareTimecardImport
       end
     end
   end
+
+  public
+
+  # True when the interval would double hours already counted for this person:
+  # another counted Square card, a Rupert clock shift, or a manual timesheet day.
+  def overlaps_existing?(worker, start_at, end_at, except_card: nil)
+    cards = SquareTimecard.overlapping(worker.id, start_at, end_at)
+    cards = cards.where.not(id: except_card.id) if except_card
+    cards.exists? ||
+      ClockShift.where(employee_id: worker.id).where('started_at < ?', end_at)
+        .where('ended_at > ? OR (ended_at IS NULL AND started_at > ?)', start_at, start_at - OPEN_SHIFT_REACH).exists? ||
+      local_day_overlap?(worker, start_at, end_at)
+  end
+
+  private
 
   def local_day_overlap?(worker, start_at, end_at)
     worker.timesheet_entries.where(work_type: %w[regular overtime]).where(worked_on: start_at.in_time_zone.to_date..end_at.in_time_zone.to_date).includes(:clock_shift).any? do |entry|
@@ -184,6 +214,8 @@ class SquareTimecardImport
     previously_imported = card.imported_at.present?
     attrs = { import_status: item[:state], issue: item[:issue], latest_payload: JSON.generate(row), last_seen_at: now,
       source_version: row['version'].is_a?(Integer) ? row['version'] : nil, source_updated_at: (Time.iso8601(row['updated_at']) rescue nil) }
+    # Back in Square after a manager kept hours it had removed: a later removal is a new edit.
+    attrs[:kept_source_key] = nil if card.kept_source_key == 'missing'
     unless card.imported_at
       attrs.merge!(item[:attributes]).merge!(employee: item[:employee], team_member_id: row['team_member_id'])
       if item[:state] == 'imported'
@@ -191,6 +223,7 @@ class SquareTimecardImport
       end
     end
     card.update!(attrs)
+    SquareTimecardVersion.record!(card, kind: 'seen', seen_at: now, row: row, digest: item[:digest], employee_id: item[:employee]&.id)
     if item[:state] == 'imported' && !previously_imported
       item[:days].each { |day| card.days.create!(day) }
     end

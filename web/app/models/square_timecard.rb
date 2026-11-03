@@ -1,11 +1,18 @@
 # frozen_string_literal: true
 
 # A read-only historical source, separate from new payable Rupert timesheets.
+# source_payload is the Square version whose hours count (the first import until a
+# manager accepts a later edit); latest_payload is the newest one read. Every
+# version in between is in `versions`, every review decision in `reviews`.
 class SquareTimecard < ApplicationRecord
-  STATUSES = %w[imported open unmatched conflict invalid changed missing].freeze
+  # removed: Square deleted the card and a manager accepted that, so it counts no hours.
+  STATUSES = %w[imported open unmatched conflict invalid changed missing removed].freeze
+  REVIEW_STATUSES = %w[changed missing].freeze
   include TenantScoped
   belongs_to :employee, class_name: 'People::Employee', optional: true
   has_many :days, class_name: 'SquareTimecardDay', dependent: :restrict_with_exception
+  has_many :versions, class_name: 'SquareTimecardVersion', dependent: :restrict_with_exception
+  has_many :reviews, class_name: 'SquareTimecardReview', dependent: :restrict_with_exception
   encrypts :source_payload, :latest_payload
   attr_readonly :tenant_id, :external_id
   validates :external_id, :import_status, :last_seen_at, presence: true
@@ -14,6 +21,8 @@ class SquareTimecard < ApplicationRecord
   validate :same_workspace
 
   scope :counted, -> { where.not(imported_at: nil) }
+  # Edited or removed in Square after import; the counted hours wait on a manager.
+  scope :awaiting_review, -> { counted.where(import_status: REVIEW_STATUSES) }
 
   def hours
     BigDecimal(payable_seconds.to_s) / 3600

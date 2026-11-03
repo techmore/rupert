@@ -22,7 +22,7 @@ class McpController < ActionController::API
     message = parse_body
     return if performed?
 
-    payload, status = Mcp::Server.new(token: @api_token).handle(message)
+    payload, status = Mcp::Server.new(token: @api_token, client: request.user_agent).handle(message)
     payload ? render(json: payload, status: status) : head(status)
   end
 

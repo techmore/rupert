@@ -11,7 +11,9 @@ module TeamChat
   #   reliability  answered questions out of attempted
   #   tool use     answers that called a Rupert tool
   #   grounding    answers with no figure the checker could not find in tool output
-  #   first token  not recorded per question yet, so it shows as a dash until it is
+  #   first token  the MEDIAN time to first token (local models only; the gateway measures it) on a log scale: 9 at
+  #                FIRST_TOKEN_FAST seconds or less, 0 at FIRST_TOKEN_SLOW seconds or more, even steps of log time between.
+  #                Answers without a recorded time (remote models, older runs) are left out; none recorded means blank.
   #
   # A blank is not a zero: an axis with nothing measured stays nil. Each model also carries the change since its
   # previous run of the same question sets, so improvement can be followed run over run.
@@ -20,14 +22,16 @@ module TeamChat
              'tool_use' => 'Tool use', 'grounding' => 'Grounding' }.freeze
     FREE_SECONDS = 20.0
     SLOW_SECONDS = ModelScores::SLOW_SECONDS.to_f
+    FIRST_TOKEN_FAST = 1.0
+    FIRST_TOKEN_SLOW = 20.0
     # Hash the scale so a table is only compared with another produced by the same rules.
-    SCALE = "quality=(grade-1)/4*9;speed=mean(9 to #{FREE_SECONDS}s then linear to 0 at #{SLOW_SECONDS}s; ignore beyond);reliability=answered/attempted;tool_use;grounding".freeze
+    SCALE = "quality=(grade-1)/4*9;speed=mean(9 to #{FREE_SECONDS}s then linear to 0 at #{SLOW_SECONDS}s; ignore beyond);first_token=log-scale median ttft(9 at <=#{FIRST_TOKEN_FAST}s to 0 at >=#{FIRST_TOKEN_SLOW}s);reliability=answered/attempted;tool_use;grounding".freeze
 
     Card = Struct.new(:model, :handle, :where, :overall, :modules, :graded, :change, :tested_at, :timing, keyword_init: true)
     # Real seconds behind the speed score: the median and slow tail of answers, how many ran past the limit, and model load time.
     # Median, p95 and slowest are of answers within the limit; slow is how many took longer than FREE_SECONDS; ignored is how many
     # passed the limit and are left out of the speed score and these figures.
-    Timing = Struct.new(:median, :p95, :slowest, :slow, :ignored, :answered, :load, keyword_init: true)
+    Timing = Struct.new(:median, :p95, :slowest, :slow, :ignored, :answered, :load, :ttft_median, :ttft_p95, keyword_init: true)
 
     module_function
 
@@ -53,10 +57,11 @@ module TeamChat
       done = results.select { |row| row['status'].blank? || row['status'] == 'done' }
       graded = results.filter_map { |row| row['grade'] if row['grade'].is_a?(Numeric) }
       times = answer_times(done)
+      first_tokens = first_token_times(done)
       {
         'quality' => (scale((graded.sum.to_f / graded.size - 1) / 4) if graded.any?),
         'speed' => (scale(times.sum { |value| speed_fraction(value) } / times.size) if times.any?),
-        'first_token' => nil,
+        'first_token' => (scale(first_token_fraction(first_tokens.sort[first_tokens.size / 2])) if first_tokens.any?),
         'reliability' => (scale(done.size.to_f / results.size) if results.any?),
         'tool_use' => (scale(done.count { |row| Array(row['tools']).any? }.to_f / done.size) if done.any?),
         'grounding' => (scale(done.count { |row| Array(row['unverified']).empty? }.to_f / done.size) if done.any?)
@@ -68,15 +73,26 @@ module TeamChat
       all = done.filter_map { |row| row['seconds'].to_f if row['seconds'].to_f.positive? }
       times = answer_times(done).sort
       loads = done.filter_map { |row| row['load_seconds'].to_f if row['load_seconds'].to_f.positive? }.sort
+      firsts = first_token_times(done).sort
       ignored = all.size - times.size
-      return Timing.new(answered: 0, slow: 0, ignored: ignored) if times.empty?
+      first = { ttft_median: (firsts[firsts.size / 2].round(2) if firsts.any?), ttft_p95: (firsts[[(firsts.size * 0.95).ceil - 1, 0].max].round(2) if firsts.any?) }
+      return Timing.new(answered: 0, slow: 0, ignored: ignored, **first) if times.empty?
 
       Timing.new(median: times[times.size / 2].round(1), p95: times[[(times.size * 0.95).ceil - 1, 0].max].round(1), slowest: times.last.round(1),
-        slow: times.count { |value| value > FREE_SECONDS }, ignored: ignored, answered: times.size, load: (loads[loads.size / 2].round(1) if loads.any?))
+        slow: times.count { |value| value > FREE_SECONDS }, ignored: ignored, answered: times.size, load: (loads[loads.size / 2].round(1) if loads.any?), **first)
     end
 
     # Seconds of the answers that count: past the limit they are ignored.
     def answer_times(done) = done.filter_map { |row| row['seconds'].to_f if row['seconds'].to_f.positive? && row['seconds'].to_f <= SLOW_SECONDS }
+
+    # Seconds to first token of the answers that recorded one.
+    def first_token_times(done) = done.filter_map { |row| row['ttft_seconds'].to_f if row['ttft_seconds'].to_f.positive? }
+
+    # 1.0 at FIRST_TOKEN_FAST seconds or less, 0.0 at FIRST_TOKEN_SLOW or more, linear in log time between (so 1 s to 2 s
+    # costs as much as 10 s to 20 s).
+    def first_token_fraction(seconds)
+      1 - (Math.log(seconds.clamp(FIRST_TOKEN_FAST, FIRST_TOKEN_SLOW) / FIRST_TOKEN_FAST) / Math.log(FIRST_TOKEN_SLOW / FIRST_TOKEN_FAST))
+    end
 
     def scale(fraction) = (fraction.clamp(0.0, 1.0) * 9).round
 

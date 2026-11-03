@@ -90,6 +90,10 @@ final class BannerWebViewController: HotwireWebViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         apply(colors)
+        // A tab's first page carries the App settings button (AppSettings.swift).
+        if navigationController?.viewControllers.first === self, presentingViewController == nil {
+            AppSettings.addButton(to: self)
+        }
     }
 
     override func visitableDidActivateWebView(_ webView: WKWebView) {
@@ -99,6 +103,10 @@ final class BannerWebViewController: HotwireWebViewController {
 
     override func visitableDidRender() {
         super.visitableDidRender()
+        // Page titles end in " · Rupert" for browser tabs; the app's bar does not need it.
+        if let title = navigationItem.title, title.hasSuffix(" · Rupert") {
+            navigationItem.title = String(title.dropLast(" · Rupert".count))
+        }
         guard let webView = visitableView.webView else { return }
         webView.evaluateJavaScript(BannerColors.readScript) { [weak self] value, _ in
             self?.apply(BannerColors(json: value) ?? .fallback)

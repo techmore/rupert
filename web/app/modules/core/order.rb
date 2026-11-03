@@ -28,6 +28,16 @@ module Core
     scope :recent, ->(limit = 200) { order(occurred_at: :desc).limit(limit) }
     scope :since, ->(date) { where('occurred_at >= ?', date) }
     scope :on_day, ->(date) { where(occurred_at: date.beginning_of_day...date.end_of_day) }
+    # The one definition of "counts as a sale" for the sales tools (metric, sales_summary, period_review): paid and
+    # fulfilled orders, plus fully refunded ones, because a later refund does not erase the original gross sale (the
+    # refund is shown beside it). A status of refunded needs evidence of a real refund (a REFUNDED/PARTIALLY_REFUNDED
+    # financial status or a stored refund), since some canceled imports carry the same status.
+    scope :sales_counted, lambda {
+      refunded = where(status: 'refunded').where(
+        'orders.source_financial_status IN (?) OR orders.id IN (?)',
+        %w[REFUNDED PARTIALLY_REFUNDED], ::Core::Refund.select(:order_id))
+      where(status: %w[paid fulfilled]).or(refunded)
+    }
     scope :by_source, ->(source) { source.present? && source != 'all' ? where(source: source) : all }
 
     aasm column: 'status', no_direct_assignment: true do

@@ -180,6 +180,7 @@ Rules that apply to all templates:
 | `.row-list`, `.row-item`, `.row-item-end`, `.row-list-foot` | A handful of like things (sources, channels, queues) as rows in one card, never a grid of small cards |
 | `full_window_button` (`html[data-full-window]`) | Wide pages (schedules, grids): hides top bar, rail and status bar and asks the browser for fullscreen; Esc or the floating Exit returns |
 | `.table`, `.th`, `.td`, `.num`, `.empty-row` | Data tables |
+| `.th-sortable`, `.th-sort` (`sortable_th` helper + `ListSort`) | Server-sorted list headings: click a heading for ascending, again for descending, with ▲/▼ and `aria-sort` on the sorted column. The sort lives in the URL (`?sort=…&dir=…`), so it survives paging, filters and reloads. The controller whitelists the columns in a `ListSort` (never raw params in SQL) and sorts blanks last. Use it on paged lists; `report_table` sorts only the rows on screen. Phones, where the table folds to cards, get `Sort by` + `Order` fields in the toolbar |
 | `.report-table` (`report_table` helper) | A table the viewer can shape: Columns chooser (`th[data-default-hidden]` starts folded), click-to-sort headings (`td[data-sort-value]`), optional row narrowing and Download view. Layout is remembered per browser |
 | `.data-grid`, `.data-grid-table` (`data_grid` helper) | Spreadsheet view for scanning many rows: dense hairlined zebra rows, header row and first column frozen while scrolling, tabular right-aligned numbers, Columns chooser, click-to-sort, arrow keys between cells, Download CSV (server CSV with the visible columns via `th[data-csv]`, or the rows on screen). Read-only. Offer it as a `List · Grid` `.tabs` pair beside the list, remembered per browser; the list keeps the lead figure, the grid shows every column |
 | `.facts`, `.facts dt/dd` | Key–value summary on a detail page |
@@ -191,6 +192,8 @@ Rules that apply to all templates:
 | `.pill-*` | Status: `fern` done/positive, `clay` waiting or attention, `rose` broken or missing, `olive` info, `taupe` neutral (an outline, never a tint, so it cannot pass for "OK"). Source badges get their colour from `SourceSyncStatus.tone` |
 | `.flash-notice`, `.flash-alert` | Result of an action |
 | `.empty-state`, `.empty-state-title`, `.empty-state-hint` | Nothing here yet |
+| `.callout`, `.callout-attention`, `.callout-title` | One thing on a page that needs a decision or blocks the next step (a returned timesheet's comment, shifts not imported, corrections waiting). Quieter than a flash, louder than text |
+| Time records (`TimesheetsHelper`) | Shared by the staff and reviewer screens. `timesheet_status_pill`: Draft (taupe), In review (clay), Approved (fern), Returned (rose); filters and labels use the same words. `timesheet_state_note`: one sentence under the header with the state, who acted and the next step. `format_hours`: two decimals everywhere so a total equals its days. `shift_span`: `9:00 AM – 4:30 PM`, the end date added for overnight shifts. `period_range` / `Timesheet#period_label`: `Oct 22 – 28, 2026`. `.timesheet-state` (status line), `.timesheet-days` (one row per entry, empty days shown, `.timesheet-total` row), `.entry-edit` (row edit disclosure). Hours from the clock are changed by a correction, never typed over |
 | `.explainer` | Folded explanation |
 | `.badge`, `.nav-badge`, `.badge-clay` | Unread count on an icon or label; hidden at zero. `.badge-clay` for counts that are waiting on someone (release blockers) |
 | `.gate-menu`, `.gate-list`, `.gate-item`, `.gate-links` | The top-bar release gate dropdown (owners only): each blocker's title, what is needed and its GitHub issue links; `Done` pill once ticked off in `config/release_blockers.yml` |
@@ -259,7 +262,7 @@ end of `application.css`.
 
 - **Navigation back** is the rail or the browser, not a `Back` button. A form's `Cancel` returns
   to where it came from.
-- **Status words**: `Draft`, `Open`, `In review`, `Approved`, `Posted`, `Void`, `Locked`,
+- **Status words**: `Draft`, `Open`, `In review`, `Approved`, `Returned`, `Posted`, `Void`, `Locked`,
   `Done`, `Overdue`, `Needs attention`. One pill per status.
 - **Empty states**: "No customers yet." + "Add your first customer." Never "No data".
 - **Dates**: `Oct 21, 2026`; times `3:40 PM`; ranges `Oct 1 – Oct 21, 2026`. Money:

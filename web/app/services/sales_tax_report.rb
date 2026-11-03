@@ -3,7 +3,7 @@
 require 'csv'
 
 # Sales tax collected over any date range, one line per source and store.
-# Shopify/Square/Rupert POS come from stored orders, C-Trax from its stored
+# Shopify/Square/Rupert POS/manual/POS come from stored orders, C-Trax from its stored
 # store-days, SwipeSimple from its pulled Reporting → tax CSV (falling back to its
 # transaction exports, which carry no tax figure, when no report was pulled; the
 # two are never both shown). When a tax rate is given, sources without a reported tax figure get a
@@ -14,10 +14,12 @@ require 'csv'
 class SalesTaxReport
   MAX_DAYS = 400
   MAX_RATE = 30
-  ORDER_SOURCES = { 'shopify' => 'Shopify', 'square' => 'Square', 'rupert_pos' => 'Rupert POS' }.freeze
+  # Exactly the order sources the sales tools count (Metrics::SOURCES, sales_summary, period_review), so this report's
+  # tax agrees with theirs; manual (typed in by a person) and legacy pos orders are their own labelled lines.
+  ORDER_SOURCES = { 'shopify' => 'Shopify', 'square' => 'Square', 'rupert_pos' => 'Rupert POS', 'manual' => 'Manual', 'pos' => 'POS' }.freeze
   # Filter keys offered in the report form, in display order.
   SOURCES = { 'shopify' => 'Shopify', 'square' => 'Square', 'ctrax' => 'C-Trax', 'swipesimple' => 'SwipeSimple',
-              'rupert_pos' => 'Rupert POS' }.freeze
+              'rupert_pos' => 'Rupert POS', 'manual' => 'Manual', 'pos' => 'POS' }.freeze
 
   Line = Struct.new(:source, :store, :currency, :orders, :sales_before_tax, :tax_collected, :tax_refunded, :net_tax,
     :gross_sales, :estimated_tax, :note, keyword_init: true)

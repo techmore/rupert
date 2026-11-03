@@ -17,6 +17,8 @@ module People
         source: params[:source].presence, status: params[:status].presence,
         all_employees: @all_employees, worker_id: @worker_id)
       @summary = @history.summary
+      @open_clock_outs = OpenClockOuts.new
+      @open_items = @open_clock_outs.items(employee_ids: @all_employees ? nil : [@worker_id].compact)
       @employees = @all_employees ? People::Employee.order(:last_name, :first_name) : People::Employee.where(id: @worker_id)
       if request.format.csv?
         return send_data @history.to_csv, filename: "punch-history-#{@from.iso8601}-to-#{@to.iso8601}.csv", type: 'text/csv'

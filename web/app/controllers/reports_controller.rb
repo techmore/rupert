@@ -36,7 +36,7 @@ class ReportsController < AuthenticatedController
     @days = window_days
     since = @days.days.ago
 
-    payload = DataCache.fetch("reports/sales/v2/#{range_key}", ttl: 10.minutes) do
+    payload = DataCache.fetch("reports/sales/v3/#{range_key}", ttl: 10.minutes) do
       {
         revenue_daily: Core::Order.since(since).group_by_day(:occurred_at, range: since..@range_end)
                                   .sum(:gross_cents).transform_values { |c| (c / 100.0).round(2) },
@@ -47,9 +47,9 @@ class ReportsController < AuthenticatedController
         by_channel: Core::Order.since(since).group(:channel).sum(:gross_cents)
                                .transform_keys { |k| k.to_s.capitalize }.transform_values { |c| c / 100.0 },
         by_location: by_location_totals(since),
-        aov: Core::Order.since(since).where(status: %w[paid fulfilled]).average(:gross_cents).to_f / 100.0,
-        total_orders: Core::Order.since(since).where(status: %w[paid fulfilled]).count,
-        total_revenue: Core::Order.since(since).where(status: %w[paid fulfilled]).sum(:gross_cents) / 100.0,
+        aov: Core::Order.since(since).sales_counted.average(:gross_cents).to_f / 100.0,
+        total_orders: Core::Order.since(since).sales_counted.count,
+        total_revenue: Core::Order.since(since).sales_counted.sum(:gross_cents) / 100.0,
         orders_daily: Core::Order.since(since).group_by_day(:occurred_at, range: since..@range_end).count,
         top_products: Core::OrderLine.joins(:order)
                                      .where(orders: { occurred_at: since..@range_end })
@@ -107,9 +107,10 @@ class ReportsController < AuthenticatedController
 
   def financial
     since = @range
-    orders = Core::Order.since(since).where(status: %w[paid fulfilled])
+    orders = Core::Order.since(since).sales_counted
+    taxed_orders = Core::Order.since(since).where(status: %w[paid fulfilled])
 
-    payload = DataCache.fetch("reports/financial/#{range_key}", ttl: 10.minutes) do
+    payload = DataCache.fetch("reports/financial/v2/#{range_key}", ttl: 10.minutes) do
       revenue_cents = orders.sum(:gross_cents)
       unrecorded_refunds = Core::Order.where(status: 'refunded', occurred_at: since..@range_end)
                                       .where.not(id: Core::Refund.select(:order_id))
@@ -118,7 +119,7 @@ class ReportsController < AuthenticatedController
                                  .sum('refunds.amount_cents')
       {
         revenue_cents: revenue_cents,
-        tax_cents: orders.sum(:tax_cents),
+        tax_cents: taxed_orders.sum(:tax_cents),
         refund_cents: refund_cents,
         unrecorded_refund_orders: unrecorded_refunds.count,
         unrecorded_refund_cents: unrecorded_refunds.sum(:gross_cents),

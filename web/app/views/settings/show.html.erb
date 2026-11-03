@@ -135,6 +135,14 @@
             <input type="number" id="overtime_multiplier" name="overtime_multiplier" value="<%= pay_rules.overtime_multiplier.to_s('F') %>" min="1" max="<%= PayRules::MAX_MULTIPLIER %>" step="0.05" class="input">
           </div>
         </fieldset>
+        <fieldset class="grid gap-4 sm:grid-cols-3">
+          <legend class="field-label">Forgotten clock-outs</legend>
+          <div>
+            <label class="field-label" for="open_shift_limit_hours">Flag a clock-in still open after (hours)</label>
+            <input type="number" id="open_shift_limit_hours" name="open_shift_limit_hours" value="<%= pay_rules.open_shift_limit_hours %>" min="<%= PayRules::OPEN_SHIFT_LIMIT_RANGE.min %>" max="<%= PayRules::OPEN_SHIFT_LIMIT_RANGE.max %>" step="1" class="input" aria-describedby="open-shift-limit-hint">
+            <p id="open-shift-limit-hint" class="mt-1 text-xs text-mocha">Managers are told once, and the shift counts no hours until its clock-out is fixed.</p>
+          </div>
+        </fieldset>
         <div class="form-actions">
           <%= submit_tag 'Save pay rules', class: 'btn-primary' %>
         </div>
@@ -143,6 +151,7 @@
       <dl class="facts">
         <div><dt>Pay period</dt><dd><%= pay_rules.summary %><%= ' (not chosen yet)' unless pay_rules.chosen? %></dd></div>
         <div><dt>Overtime</dt><dd><%= pay_rules.overtime_enabled? ? "Over #{pay_rules.to_h['overtime_threshold_hours']} hours at #{pay_rules.overtime_multiplier.to_s('F')}×" : 'Off' %></dd></div>
+        <div><dt>Forgotten clock-outs</dt><dd>Flagged after <%= pay_rules.open_shift_limit_hours %> hours open</dd></div>
       </dl>
     <% end %>
     <details class="explainer text-sm text-mocha">

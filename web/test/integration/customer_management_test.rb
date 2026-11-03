@@ -244,6 +244,58 @@ class CustomerManagementTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test 'column headings sort on the server, toggle direction and keep filters in the link' do
+    @customer.update!(first_name: 'Mia', last_name: 'Middle', crm_status: 'vip', email: 'mia@example.test', owner: @user)
+    Core::Customer.create!(source: 'manual', external_id: 'crm-a', first_name: 'Amy', last_name: 'Apple', crm_status: 'lead', email: 'zoe@example.test')
+    Core::Customer.create!(source: 'manual', external_id: 'crm-z', first_name: 'Zed', last_name: 'Zebra', crm_status: 'inactive')
+    first_names = -> { css_select('tbody tr td:first-child > a:first-child').map { |a| a.text.split.first } }
+
+    get customers_path, params: { status: '', sort: 'name', dir: 'asc', page: '2' }
+    assert_equal %w[Amy Mia Zed], first_names.call
+    assert_select 'th[aria-sort]', count: 1
+    assert_select 'th[aria-sort="ascending"] a.th-sort', text: /Name/
+    assert_select 'th[aria-sort="ascending"] .th-sort-icon[aria-hidden="true"]', text: '▲'
+    name_link = css_select('th[aria-sort] a').first['href']
+    assert_includes name_link, 'sort=name'
+    assert_includes name_link, 'dir=desc'
+    assert_includes name_link, 'status='
+    refute_includes name_link, 'page='
+    assert_includes css_select('th a.th-sort').map { |a| a['href'] }.grep(/sort=email/).first, 'dir=asc'
+    assert_includes response.body, 'sorted by name, A to Z'
+
+    get customers_path, params: { sort: 'name', dir: 'desc' }
+    assert_equal %w[Zed Mia Amy], first_names.call
+    assert_select 'th[aria-sort="descending"] .th-sort-icon', text: '▼'
+
+    get customers_path, params: { sort: 'status', dir: 'asc' }
+    assert_equal %w[Amy Mia Zed], first_names.call
+    get customers_path, params: { sort: 'status', dir: 'desc' }
+    assert_equal %w[Zed Mia Amy], first_names.call
+
+    # Customers without an email or owner stay at the end both ways.
+    get customers_path, params: { sort: 'email', dir: 'desc' }
+    assert_equal %w[Amy Mia Zed], first_names.call
+    get customers_path, params: { sort: 'owner', dir: 'asc' }
+    assert_equal 'Mia', first_names.call.first
+    assert_includes response.body, @user.display_name
+
+    # Filters keep the sort: the hidden phone fields carry it into Apply, and chips keep it.
+    get customers_path, params: { sort: 'name', dir: 'desc', status: 'vip' }
+    assert_select 'select[name=sort] option[selected][value=name]'
+    assert_select 'select[name=dir] option[selected][value=desc]'
+    chip = css_select('ul[aria-label="Active filters"] a').map { |a| a['href'] }.first
+    assert_includes chip, 'sort=name'
+    assert_includes chip, 'dir=desc'
+
+    %w[orders last_order lifetime created source].each do |column|
+      %w[asc desc].each do |dir|
+        get customers_path, params: { sort: column, dir: dir }
+        assert_response :success
+        assert_select "th[aria-sort=#{dir == 'asc' ? 'ascending' : 'descending'}]", count: 1
+      end
+    end
+  end
+
   test 'empty states distinguish a new workspace from a filter with no matches' do
     get customers_path, params: { status: 'inactive' }
     assert_select '.empty-state-title', text: 'No customers match these filters'

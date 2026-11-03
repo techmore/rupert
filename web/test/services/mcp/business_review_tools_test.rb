@@ -33,6 +33,30 @@ class BusinessReviewToolsTest < ActiveSupport::TestCase
 
   def call(tool, args = {}) = Mcp::Registry.find(tool).new(token: @token).call(args)
 
+  test 'a fully refunded order counts identically in metric, sales_summary and period_review, with its refund beside it' do
+    day = Date.new(2026, 9, 10)
+    at = day.in_time_zone.change(hour: 12)
+    order(at: at, cents: 5000)
+    refunded = order(at: at + 1.hour, cents: 2823)
+    Core::Refund.create!(order: refunded, amount_cents: 2823, refunded_at: at + 2.hours, method: 'card')
+    refunded.refund!
+    canceled = order(at: at + 3.hours, cents: 9999)
+    canceled.update_columns(status: 'refunded', source_financial_status: 'CANCELED')
+
+    range = { 'from' => day.iso8601, 'to' => day.iso8601 }
+    metric_gross = Metrics.call('gross_sales', from: day.iso8601, to: day.iso8601, compare: 'none')[:values].first
+    metric_orders = Metrics.call('orders', from: day.iso8601, to: day.iso8601, compare: 'none')[:values].first
+    summary = call('sales_summary', range).data
+    review = call('period_review', range).data
+
+    assert_equal [7823, 2], [metric_gross[:value], metric_orders[:value]]
+    assert_equal [2, 7823], summary[:totals_by_currency].first.values_at(:orders, :gross_cents)
+    assert_equal [2, 7823], review[:sales].first.values_at(:orders, :gross_cents)
+    assert_equal %w[paid fulfilled refunded], summary[:counted_statuses]
+    assert_equal [{ currency: 'USD', refunds: 1, amount_cents: 2823 }], summary[:refunds_by_currency]
+    assert_equal [{ currency: 'USD', refunds: 1, amount_cents: 2823 }], review[:refunds]
+  end
+
   test 'period_review compares a period with the one before it' do
     order(at: 1.day.ago.change(hour: 12), cents: 6000)
     order(at: 1.day.ago.change(hour: 13), cents: 4000)

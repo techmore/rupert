@@ -20,6 +20,8 @@ module People
       @report = TimeKeepingReport.new(from: @from, to: @to, employee_id: (params[:employee_id] if @all_employees),
         all_employees: @all_employees, worker_id: worker_id)
       @employees = @all_employees ? People::Employee.order(:last_name, :first_name) : People::Employee.where(id: worker_id)
+      @open_clock_outs = OpenClockOuts.new
+      @open_items = @open_clock_outs.items(employee_ids: @all_employees ? nil : [worker_id].compact)
 
       respond_to do |format|
         format.html

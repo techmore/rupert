@@ -368,6 +368,96 @@ class McpServerTest < ActionDispatch::IntegrationTest
     assert_equal 'done', feedback.reload.status
   end
 
+  test 'create_task dry_run previews the task and writes nothing' do
+    _, secret = issue
+    assert_no_difference [-> { Projects::Task.count }, -> { ActivityLog.where(action: 'mcp_task_write').count }] do
+      result = call_tool(secret, 'create_task', { title: 'Preview me', priority: 'high', dry_run: true })
+      assert_equal false, result['isError'], result.dig('content', 0, 'text')
+      assert_equal true, result.dig('structuredContent', 'dry_run')
+      assert_equal 'Preview me', result.dig('structuredContent', 'title')
+      assert_match(/Nothing was saved/, result.dig('content', 0, 'text'))
+    end
+    result = call_tool(secret, 'create_task', { title: 'Bad project', project_id: 'nope', dry_run: true })
+    assert_equal true, result['isError']
+  end
+
+  test 'update_task dry_run returns a before/after and writes nothing' do
+    token, secret = issue
+    task = Projects::Task.find_by!(title: 'Restock tea shelf')
+    result = call_tool(secret, 'update_task', { task_id: task.id, priority: 'low', status: 'in_progress', note: 'hello', dry_run: true })
+    assert_equal false, result['isError'], result.dig('content', 0, 'text')
+    changes = result.dig('structuredContent', 'would_change')
+    assert_equal({ 'before' => 'high', 'after' => 'low' }, changes['priority'])
+    assert_equal 'in_progress', changes.dig('status', 'after')
+    assert_equal 'hello', result.dig('structuredContent', 'note_added')
+    task.reload
+    assert_equal 'high', task.priority
+    assert task.todo?
+    assert_no_match(/hello/, task.description.to_s)
+    # Scoped to this token: an unscoped table-wide count can see another test's real write (SQLite CI lane).
+    assert_equal 0, ActivityLog.where(action: 'mcp_task_write', subject_label: "token:#{token.id}").count
+  end
+
+  test 'create_task idempotency_key replays the original result per token for 24 hours' do
+    _, secret = issue
+    args = { title: 'Once only', idempotency_key: 'key-0001' }
+    first = call_tool(secret, 'create_task', args)
+    assert_equal false, first['isError'], first.dig('content', 0, 'text')
+    assert_no_difference -> { Projects::Task.count } do
+      again = call_tool(secret, 'create_task', args.merge(title: 'Different title'))
+      assert_equal first.dig('structuredContent', 'id'), again.dig('structuredContent', 'id')
+      assert_equal true, again.dig('structuredContent', 'idempotent_replay')
+    end
+    assert_equal 1, Projects::Task.where(title: 'Once only').count
+
+    _, other_secret = issue
+    assert_difference -> { Projects::Task.count }, 1 do
+      call_tool(other_secret, 'create_task', args.merge(title: 'Other token'))
+    end
+
+    travel 25.hours do
+      assert_difference -> { Projects::Task.count }, 1 do
+        call_tool(secret, 'create_task', args)
+      end
+    end
+  end
+
+  test 'task writes are capped per token per minute with a remediation message' do
+    _, secret = issue
+    limit = Mcp::TaskWriteGuard::MAX_TASK_WRITES_PER_MINUTE
+    limit.times { |i| assert_equal false, call_tool(secret, 'create_task', { title: "Bulk #{i}" })['isError'] }
+    result = call_tool(secret, 'create_task', { title: 'One too many' })
+    assert_equal true, result['isError']
+    assert_match(/limit #{limit}.*Wait a minute.*dry_run/m, result.dig('content', 0, 'text'))
+    assert_nil Projects::Task.find_by(title: 'One too many')
+    assert_equal false, call_tool(secret, 'create_task', { title: 'Preview ok', dry_run: true })['isError']
+    task = Projects::Task.find_by!(title: 'Bulk 0')
+    assert_equal true, call_tool(secret, 'update_task', { task_id: task.id, priority: 'low' })['isError']
+    travel 61.seconds do
+      assert_equal false, call_tool(secret, 'create_task', { title: 'After the minute' })['isError']
+    end
+  end
+
+  test 'tool annotations mark update_task destructive and read tools idempotent' do
+    _, secret = issue
+    rpc(secret, 'tools/list')
+    tools = response.parsed_body.dig('result', 'tools').index_by { |t| t['name'] }
+    assert_equal [false, false], tools['create_task']['annotations'].values_at('destructiveHint', 'idempotentHint')
+    assert_equal [true, false], tools['update_task']['annotations'].values_at('destructiveHint', 'idempotentHint')
+    assert_equal [false, true], tools['inventory_search']['annotations'].values_at('destructiveHint', 'idempotentHint')
+  end
+
+  test 'audit record carries an argument fingerprint and the client, never the arguments' do
+    token, secret = issue
+    call_tool_with_agent(secret, 'create_task', { title: 'Secret plan', dry_run: true }, 'Claude Desktop/1.2; evil=1')
+    log = ActivityLog.where(action: 'mcp_tool_call').order(:id).last
+    expected = Digest::SHA256.hexdigest(JSON.generate([['dry_run', true], ['title', 'Secret plan']]))
+    assert_includes log.details, "args_sha256=#{expected}"
+    assert_includes log.details, 'client=Claude Desktop/1.2 evil 1'
+    assert_includes log.details, "token_id=#{token.id}"
+    assert_no_match(/Secret plan/, log.details)
+  end
+
   test 'every tool call is audited with tool, token, outcome and duration but no arguments' do
     token, secret = issue
     assert_difference -> { ActivityLog.where(action: 'mcp_tool_call').count }, 2 do
@@ -455,6 +545,12 @@ class McpServerTest < ActionDispatch::IntegrationTest
   def rpc(secret, method, params = nil, headers: {})
     body = { jsonrpc: '2.0', id: 1, method: method, params: params }.compact
     post mcp_path, params: body.to_json, headers: headers_for(secret, headers)
+  end
+
+  def call_tool_with_agent(secret, name, arguments, agent)
+    body = { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: name, arguments: arguments } }
+    post mcp_path, params: body.to_json, headers: headers_for(secret, 'User-Agent' => agent)
+    assert_response :success
   end
 
   def call_tool(secret, name, arguments = {})

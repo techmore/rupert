@@ -5,7 +5,7 @@
 # sources and are drawn as separate, labelled blocks; nothing here is summed,
 # approved or written back.
 class TimesheetCalendar
-  Block = Struct.new(:employee_id, :employee_name, :source, :unmatched, :starts_at, :ends_at, :open, :past, :lane, :lanes, keyword_init: true) do
+  Block = Struct.new(:employee_id, :employee_name, :source, :unmatched, :starts_at, :ends_at, :open, :past, :lane, :lanes, :forgotten, keyword_init: true) do
     def day = starts_at.to_date
     def top_percent = (starts_at.seconds_since_midnight / 86_400.0 * 100).round(3)
 
@@ -14,8 +14,9 @@ class TimesheetCalendar
       [((finish - starts_at) / 86_400.0 * 100), 1.2].max.round(3)
     end
 
-    def hours = ((ends_at - starts_at) / 3600.0).round(2)
-    def label = "#{starts_at.strftime('%-l:%M%P')} – #{open ? 'now' : ends_at.strftime('%-l:%M%P')}"
+    # A forgotten clock-out is drawn as a marker at its clock-in and counts no hours.
+    def hours = forgotten ? 0.0 : ((ends_at - starts_at) / 3600.0).round(2)
+    def label = "#{starts_at.strftime('%-l:%M%P')} – #{forgotten ? 'never clocked out' : open ? 'now' : ends_at.strftime('%-l:%M%P')}"
   end
 
   Entry = Struct.new(:employee_id, :employee_name, :day, :hours, :work_type, keyword_init: true)
@@ -35,7 +36,7 @@ class TimesheetCalendar
 
   def blocks_for(day) = @blocks.select { |b| b.day == day }
   def entries_for(day) = @entries.select { |e| e.day == day }
-  def clocked_in = @blocks.select(&:open)
+  def clocked_in = @blocks.select { |block| block.open && !block.forgotten }
 
   # Hours per employee and source. Sources overlap, so they are never added together.
   def hours_by_employee
@@ -47,9 +48,10 @@ class TimesheetCalendar
   private
 
   def build(employee_id, name, source, from, to, unmatched: false)
-    finish = to || @now
+    forgotten = to.nil? && from < @now - ClockShift.stale_open_hours.hours
+    finish = forgotten ? from : (to || @now)
     Block.new(employee_id: employee_id, employee_name: name, source: source, unmatched: unmatched, starts_at: from.in_time_zone,
-      ends_at: [finish, from + 1.minute].max.in_time_zone, open: to.nil?, past: !to.nil? && to < @now)
+      ends_at: [finish, from + 1.minute].max.in_time_zone, open: to.nil?, past: !to.nil? && to < @now, forgotten: forgotten)
   end
 
   # Overlap with the week, so shifts that began the night before or are still open show up.

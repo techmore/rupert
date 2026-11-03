@@ -25,6 +25,7 @@
 
   <section class="section-card" aria-label="Details">
     <dl class="facts">
+      <div><dt>Account</dt><dd class="flex flex-wrap gap-1"><% if @customer.wholesale? %><%= customer_wholesale_pill(@customer) %><% if @customer.resale_certificate_expired? %><span class="pill-clay">Certificate expired</span><% end %><% else %>Retail<% end %></dd></div>
       <div><dt>Relationship</dt><dd class="flex flex-wrap gap-1"><%= customer_status_pill(@customer) %><%= customer_tag_pills(@customer) %></dd></div>
       <div><dt>Email</dt><dd><%= @customer.email.presence || '—' %></dd></div>
       <div><dt>Phone</dt><dd><%= @customer.phone.presence || '—' %></dd></div>
@@ -37,6 +38,21 @@
 
   <div class="grid gap-4 lg:grid-cols-3">
     <div class="space-y-4 lg:col-span-1">
+      <% if @customer.wholesale? %>
+        <section class="section-card" aria-label="Wholesale account">
+          <%= section_heading 'Wholesale account' do %>
+            <% if can_write %><%= link_to 'Edit', edit_customer_path(@customer, anchor: 'wholesale'), class: 'btn-ghost btn-sm', aria: { label: 'Edit wholesale account' } %><% end %>
+          <% end %>
+          <dl class="facts">
+            <div><dt>Business name</dt><dd><%= @customer.wholesale_business_name.presence || '—' %></dd></div>
+            <div><dt>Resale certificate</dt><dd><%= @customer.resale_certificate_number.presence || 'None on file' %></dd></div>
+            <div><dt>Certificate expires</dt><dd><%= @customer.resale_certificate_expires_on ? l(@customer.resale_certificate_expires_on, format: :long) : '—' %></dd></div>
+          </dl>
+          <% if @customer.wholesale_notes.present? %><p class="mt-3 whitespace-pre-wrap text-sm text-mocha"><%= @customer.wholesale_notes %></p><% end %>
+          <p class="mt-3 text-xs text-taupe">Kept in Rupert only. Marking a customer wholesale does not change prices or tax.</p>
+        </section>
+      <% end %>
+
       <section class="section-card" aria-label="Notes">
         <%= section_heading 'Notes' do %>
           <% if can_write %><%= link_to 'Edit notes', edit_customer_path(@customer, anchor: 'customer_notes'), class: 'btn-ghost btn-sm' %><% end %>
@@ -71,6 +87,8 @@
     </div>
 
     <div class="space-y-4 lg:col-span-2">
+      <%= render 'customers/loyalty', customer: @customer %>
+
       <section id="timeline" class="section-card" aria-label="Activity timeline">
         <%= section_heading 'Activity timeline', hint: 'Newest first.' %>
         <% if can_write %>

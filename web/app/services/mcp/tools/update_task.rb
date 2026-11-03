@@ -10,8 +10,11 @@ module Mcp
         title: 'Update a task (writes to Rupert)',
         description: 'WRITES DATA: changes one task on Rupert\'s own Tasks board: assign it (a name, an email, "me" or "nobody"), ' \
                      'move it (todo, in_progress, blocked, done), change its priority or due date, rename it, or add a note. ' \
-                     'It never changes Shopify, Square or C-Trax. Find the task ID with list_tasks first. Returns the task.',
-        scope: 'tasks:write', read_only: false
+                     'It never changes Shopify, Square or C-Trax. Find the task ID with list_tasks first. Pass dry_run: true to ' \
+                     'preview the before/after of the changed fields without saving. Limited to 20 task writes per token per minute. Returns the task.',
+        scope: 'tasks:write', read_only: false, destructive: true, idempotent: false
+
+      include TaskWriteGuard
 
       input_schema(
         type: 'object',
@@ -23,7 +26,8 @@ module Mcp
           due_on: DATE_PROPERTY.merge(description: 'New due date, YYYY-MM-DD.'),
           clear_due_date: { type: 'boolean', description: 'Remove the due date.' },
           title: { type: 'string', minLength: 1, maxLength: 200, description: 'New title.' },
-          note: { type: 'string', maxLength: 1000, description: 'A note added to the end of the description.' }
+          note: { type: 'string', maxLength: 1000, description: 'A note added to the end of the description.' },
+          dry_run: { type: 'boolean', description: 'Validate and return a before/after of the fields that WOULD change, without saving. Default false.' }
         },
         required: %w[task_id],
         additionalProperties: false
@@ -34,10 +38,14 @@ module Mcp
         raise ToolError.new("No task ##{args['task_id']} that you can see.", kind: 'not_found') unless task
         raise ToolError.new("You cannot change task ##{task.id}.", kind: 'denied') unless Projects::TaskPolicy.new(user, task).update?
 
+        before = snapshot(task)
         changes = apply(task, args)
         target = args['status']
         raise ToolError.new('Say what to change: assignee, status, priority, due date, title or a note.', kind: 'invalid_arguments') if changes.empty? && target.blank?
 
+        return preview(task, before, changes, target, args) if dry_run?(args)
+
+        enforce_write_cap!
         Projects::Task.transaction do
           raise ToolError.new("The task was not saved: #{task.errors.full_messages.to_sentence}.", kind: 'invalid_arguments') if changes.any? && !task.save
 
@@ -53,6 +61,7 @@ module Mcp
         end
         raise ToolError.new("Task ##{task.id} already looks like that.", kind: 'invalid_arguments') if changes.empty?
 
+        record_write!
         ActivityLogger.log('task_updated', subject: task, details: "Via MCP token #{token.token_hint}; #{changes.join('; ')}".first(500))
         result("Updated task ##{task.id} “#{task.title}”: #{changes.join(', ')}.",
           { id: task.id, title: task.title, status: task.status, priority: task.priority, due_on: task.due_on&.iso8601,
@@ -60,6 +69,32 @@ module Mcp
       end
 
       private
+
+      FIELDS = %w[title status priority due_on assignee_id].freeze
+
+      def snapshot(task)
+        task.attributes.slice(*FIELDS).transform_values { |value| value.respond_to?(:iso8601) ? value.iso8601 : value }
+      end
+
+      # Nothing is saved or moved: report what the changes above would do.
+      def preview(task, before, changes, target, args)
+        raise ToolError.new("The change would not be saved: #{task.errors.full_messages.to_sentence}.", kind: 'invalid_arguments') unless task.valid?
+
+        after = snapshot(task)
+        if target.present? && target != task.status
+          waiting = %w[in_progress done].include?(target) ? task.open_blockers.limit(3).pluck(:title) : []
+          raise ToolError.new("Task ##{task.id} cannot move from #{task.status} to #{target}; it is waiting on #{waiting.to_sentence}.", kind: 'invalid_arguments') if waiting.any?
+
+          after['status'] = target
+          changes << "moved to #{target.tr('_', ' ')}"
+        end
+        raise ToolError.new("Task ##{task.id} already looks like that.", kind: 'invalid_arguments') if changes.empty?
+
+        changed = after.reject { |field, value| before[field] == value }
+        data = { id: task.id, dry_run: true, would_change: changed.to_h { |field, value| [field, { before: before[field], after: value }] } }
+        data[:note_added] = AgentFeedback.clean(args['note'], 1000, multiline: true) if args['note'].present?
+        result("Dry run: would update task ##{task.id} “#{before['title']}”: #{changes.join(', ')}. Nothing was saved.", data)
+      end
 
       def apply(task, args)
         changes = []

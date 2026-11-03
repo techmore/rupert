@@ -19,6 +19,7 @@ module Mcp
       ## Rules of thumb
       - Call `get_workspace_info` first: it tells you the store, its time zone, today's date and your tools.
       - Dates are ISO `YYYY-MM-DD` in the workspace time zone. Ranges are inclusive.
+      - To replay a question, pass `as_of` (YYYY-MM-DD) to metric, period_review, sales_summary, sales_tax_report, daily_close, time_keeping_report or business_pulse: that date counts as today for named periods and defaults.
       - Money is integer cents unless a field says otherwise.
       - Sources are separate. The same card sale can appear in a store (Shopify, Square, C-Trax) and in its
         processor (SwipeSimple). Never add sources together unless a tool says its total is safe.

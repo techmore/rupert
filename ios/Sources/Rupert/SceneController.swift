@@ -18,6 +18,13 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         self.window = window
 
         tabBarController.load(HotwireTab.all(on: Instance.current))
+        AppLock.shared.attach(to: window)
+        AppSettings.openInApp = { [weak self] url in
+            self?.tabBarController.activeNavigator.route(url)
+        }
+        if let shortcut = connectionOptions.shortcutItem {
+            _ = open(shortcut)
+        }
 
         GoogleSignIn.shared.onSignedIn = { [weak self] landing in
             self?.show(instance: Instance.httpsOrigin(landing) ?? Instance.current, landing: landing)
@@ -25,6 +32,27 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         WorkspaceHandoff.shared.onOpened = { [weak self] origin, landing in
             self?.show(instance: origin, landing: landing)
         }
+    }
+
+    func sceneDidEnterBackground(_ scene: UIScene) {
+        AppLock.shared.sceneDidEnterBackground()
+    }
+
+    func sceneDidBecomeActive(_ scene: UIScene) {
+        AppLock.shared.sceneDidBecomeActive()
+    }
+
+    /// Home Screen quick actions (Info.plist UIApplicationShortcutItems): open that tab.
+    func windowScene(_ windowScene: UIWindowScene, performActionFor shortcutItem: UIApplicationShortcutItem,
+                     completionHandler: @escaping (Bool) -> Void) {
+        completionHandler(open(shortcutItem))
+    }
+
+    private func open(_ shortcut: UIApplicationShortcutItem) -> Bool {
+        let tab = shortcut.type.components(separatedBy: ".").last ?? ""
+        guard let index = HotwireTab.all(on: Instance.current).firstIndex(where: { $0.id == tab }) else { return false }
+        tabBarController.selectedIndex = index
+        return true
     }
 
     /// Point every tab at `instance` (after a sign-in or a workspace handoff) and open `landing`
