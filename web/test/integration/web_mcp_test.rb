@@ -176,11 +176,14 @@ class WebMcpTest < ActionDispatch::IntegrationTest
 
   test 'a call without the page’s CSRF token is refused' do
     sign_in @admin
-    ActionController::Base.allow_forgery_protection = true
+    # Set it on ApplicationController: another test may have given that class its own value,
+    # which would hide a change made on ActionController::Base.
+    old_forgery = ApplicationController.allow_forgery_protection
+    ApplicationController.allow_forgery_protection = true
     call_tool('inventory_search', {})
     assert_response :unprocessable_content
     assert_equal 'csrf', json['error']
   ensure
-    ActionController::Base.allow_forgery_protection = false
+    ApplicationController.allow_forgery_protection = old_forgery
   end
 end
