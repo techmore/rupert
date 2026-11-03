@@ -11,19 +11,35 @@
     </section>
   <% end %>
   <% @snapshots.each do |snapshot| %>
+    <% old = snapshot.captured_at < SourceSyncStatus::FRESH_FOR.ago %>
+    <% negative = snapshot.records.count { |record| record['quantity'].to_s.start_with?('-') } %>
     <section class="section-card">
-      <%= section_heading snapshot.location.name, hint: "Store #{snapshot.store_id} · read started #{l(snapshot.captured_at, format: :long)} · #{pluralize(snapshot.records.size, 'variant')}" do %>
+      <%= section_heading snapshot.location.name, hint: "Store #{snapshot.store_id} · #{pluralize(snapshot.records.size, 'variant')}#{" · #{negative} negative" if negative.positive?}" do %>
+        <span class="<%= old ? 'pill-clay' : 'pill-fern' %>" title="Read started <%= l(snapshot.captured_at, format: :long) %>">Read <%= short_age(snapshot.captured_at) %> ago<%= ' · old' if old %></span>
         <% if Current.user.can?('inventory.write') %><%= link_to 'Add physical count', new_inventory_count_path(location_id: snapshot.location_id), class: 'btn-ghost btn-sm' %><% end %>
       <% end %>
-      <div class="table-region" role="region" tabindex="0" aria-label="<%= snapshot.location.name %> C-Trax stock">
+      <%= report_table "ctrax-stock-#{snapshot.location_id.parameterize}", label: "#{snapshot.location.name} C-Trax stock", filename: "ctrax-stock-#{snapshot.store_id}" do %>
         <table class="table">
-          <thead><tr><th scope="col" class="th">Variant</th><th scope="col" class="th">SKU</th><th scope="col" class="th">C-Trax ID</th><th scope="col" class="th num">Stock</th></tr></thead>
+          <thead><tr><th scope="col" class="th" data-col="variant">Variant</th><th scope="col" class="th" data-col="sku">SKU</th><th scope="col" class="th" data-col="id">C-Trax ID</th><th scope="col" class="th num" data-col="stock">Stock</th></tr></thead>
           <tbody>
-            <% snapshot.records.each do |record| %><tr><td class="td"><%= record['name'].presence || "Variant #{record['id']}" %></td><td class="td font-mono text-xs"><%= record['sku'].presence || 'Missing SKU' %></td><td class="td font-mono text-xs"><%= record['id'] %></td><td class="td num"><%= record['quantity'].nil? ? 'Unknown' : record['quantity'] %><%= ' · stock tracking unverified/off' unless record['manage_stock'] %></td></tr><% end %>
+            <% snapshot.records.each do |record| %>
+              <% quantity = record['quantity'] %>
+              <tr>
+                <td class="td"><%= record['name'].presence || "Variant #{record['id']}" %></td>
+                <td class="td font-mono text-xs"><%= record['sku'].presence || 'Missing SKU' %></td>
+                <td class="td font-mono text-xs"><%= record['id'] %></td>
+                <td class="td num" data-sort-value="<%= quantity.to_f %>">
+                  <% if quantity.nil? %><span class="text-taupe">Unknown</span>
+                  <% elsif quantity.to_s.start_with?('-') %><span class="font-semibold text-rose"><%= RupertStockHelper::MINUS %><%= quantity.to_s.delete_prefix('-') %></span> <span class="pill-rose">Negative</span>
+                  <% else %><%= quantity %><% end %>
+                  <% unless record['manage_stock'] %> <span class="pill-taupe">Not tracked</span><% end %>
+                </td>
+              </tr>
+            <% end %>
             <% if snapshot.records.empty? %><tr><td colspan="4" class="empty-row">No variants in this read.</td></tr><% end %>
           </tbody>
         </table>
-      </div>
+      <% end %>
     </section>
   <% end %>
   <%= fold_explainer('Negative stock is preserved and missing stock remains unknown. Each read replaces the local store snapshot after every page has been validated. C-Trax can change while pages are being read.', class: 'text-sm text-mocha') %>

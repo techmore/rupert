@@ -14,7 +14,16 @@
     </nav>
     <div class="pos-grid-scroll">
       <p class="pos-results-meta"><%= pluralize(@total, 'product') %><%= " matching “#{@query}”" if @query.present? %><%= " in #{@category}" if @category.present? %><%= " · page #{@page} of #{pages}" if pages > 1 %></p>
-      <% if @records.empty? %>
+      <% if @records.empty? && @query.blank? && @category.blank? %>
+        <%# Nothing filtered: say why the register is empty instead of blaming filters. %>
+        <div class="card">
+          <% hidden = @missing_image_records&.size.to_i %>
+          <%= empty_state(hidden.positive? ? "#{pluralize(hidden, 'product')} hidden until linked to a website image" : 'No products in this store’s C-Trax read',
+                hint: hidden.positive? ? 'The register shows items with a website image only. Source stock and SKUs are not changed by linking one.' : 'Sync C-Trax stock for this store, or choose another store above.') do %>
+            <% if hidden.positive? && image_links %><button type="button" class="btn-primary" data-action="pos-screen#openImages">Link website images</button><% end %>
+          <% end %>
+        </div>
+      <% elsif @records.empty? %>
         <div class="card">
           <%= empty_state 'No products match these filters', hint: 'Try a different name, SKU, barcode or category.' do %>
             <%= link_to 'Clear', ctrax_pos_path(base.except(:q).compact), class: 'btn-ghost', data: { action: 'pos-screen#clearSearch' } %>
