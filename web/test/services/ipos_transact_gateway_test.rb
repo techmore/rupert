@@ -56,8 +56,8 @@ class IposTransactGatewayTest < ActiveSupport::TestCase
   test 'card data in a response is never kept' do
     stub_sale
     result = @gateway.sale(reference: @reference, payment_token_id: PAYMENT_TOKEN, amount_cents: 1250)
-    assert_not_includes result.to_h.values.map(&:to_s).join, '4111111111111111'
-    assert_not_includes result.to_h.values.map(&:to_s).join, 'secret'
+    assert_not_includes result.to_h.values.join, '4111111111111111'
+    assert_not_includes result.to_h.values.join, 'secret'
   end
 
   test 'a decline is declined and an approval for another reference is unknown' do

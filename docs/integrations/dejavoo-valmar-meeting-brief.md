@@ -71,7 +71,7 @@ hygiene still applies: password-protected WPA2/WPA3 Wi-Fi, not an open guest net
 default passwords changed, and the terminal checked for tampering. Any iPad running
 Rupert works because it never handles card data.
 
-Ask Dejavoo: **Is the P1 part of a PCI-validated P2PE solution?** That decides SAQ P2PE
+Ask Dejavoo: **Is the P1 on the PCI Council's list of validated P2PE solutions?** That decides SAQ P2PE
 (minimal) vs B-IP. **Do FTD fields render in Dejavoo iframes?** That decides SAQ A vs
 A-EP; if not, we use the Hosted Payment Page. **Does our P1 have LTE or Wi-Fi only?**
 
