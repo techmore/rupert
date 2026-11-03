@@ -3,12 +3,41 @@
 require 'test_helper'
 
 class HostVitalsTest < ActiveSupport::TestCase
-  test 'reads load, memory, disk and database size from this host' do
+  # /proc is Linux-only, so these readings are stubbed and the parsing is checked on any host (CI or a Mac).
+  PROC_FILES = {
+    '/proc/loadavg' => "1.50 0.80 0.40 2/345 6789\n",
+    '/proc/meminfo' => "MemTotal:       16000000 kB\nMemFree:         2000000 kB\nMemAvailable:    4000000 kB\n"
+  }.freeze
+
+  test 'reads load, memory, disk and database size' do
+    HostVitals.stub(:cgroup_cpu_usec, nil) do
+      HostVitals.stub(:read_host_file, ->(path) { PROC_FILES.fetch(path) }) do
+        Etc.stub(:nprocessors, 4) do
+          reading = HostVitals.read
+          assert_equal 38, reading.cpu, 'one-minute load 1.5 on 4 cores'
+          assert_equal 75, reading.memory, '12 of 16 GB in use'
+          assert reading.disk.between?(0, 100)
+          assert reading.db_bytes.positive?
+        end
+      end
+    end
+  end
+
+  test 'a reading this host cannot take is nil, never 0' do
+    HostVitals.stub(:cgroup_cpu_usec, nil) do
+      HostVitals.stub(:read_host_file, ->(path) { raise Errno::ENOENT, path }) do
+        reading = HostVitals.read
+        assert_nil reading.cpu
+        assert_nil reading.memory
+      end
+    end
+  end
+
+  test 'reads CPU and memory from a real Linux host' do
+    skip 'needs Linux /proc' unless File.readable?('/proc/meminfo')
     reading = HostVitals.read
     assert_kind_of Integer, reading.cpu
     assert reading.memory.between?(0, 100)
-    assert reading.disk.between?(0, 100)
-    assert reading.db_bytes.positive?
   end
 
   test 'CPU is this container\'s own CPU time, not the host load average' do
