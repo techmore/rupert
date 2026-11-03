@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_03_230000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_03_240000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -2523,6 +2523,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_230000) do
     t.integer "compliance_override_by_id"
     t.text "compliance_override_reason"
     t.text "compliance_issues_json"
+    t.bigint "pos_terminal_id"
     t.index ["order_id"], name: "index_pos_checkouts_on_order_id"
     t.index ["pos_display_session_id"], name: "index_pos_checkouts_on_pos_display_session_id"
     t.index ["pos_session_id"], name: "index_pos_checkouts_on_pos_session_id"
@@ -2739,6 +2740,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_230000) do
     t.index ["pos_checkout_id", "variant_id"], name: "index_pos_stock_allocations_on_pos_checkout_id_and_variant_id", unique: true
     t.index ["pos_checkout_id"], name: "index_pos_stock_allocations_on_pos_checkout_id"
     t.index ["tenant_id", "location_id", "variant_id"], name: "idx_pos_stock_pool"
+  end
+
+  create_table "pos_terminals", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "location_id", null: false
+    t.string "name", null: false
+    t.string "register_name", null: false
+    t.text "credentials_json", null: false
+    t.datetime "verified_at"
+    t.datetime "retired_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "location_id"], name: "index_pos_terminals_on_tenant_id_and_location_id"
   end
 
   create_table "positions", force: :cascade do |t|

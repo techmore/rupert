@@ -24,8 +24,9 @@ module DejavooSpinFixture
     stub_request(:post, %r{\A#{Regexp.escape(HOST)}/v2/}).to_return do |request|
       path = request.uri.path.delete_prefix('/spin/')
       body = JSON.parse(request.body)
-      assert_equal TPN, body.fetch('Tpn')
-      assert_equal AUTH_KEY, body.fetch('Authkey')
+      # The main terminal, plus any extra terminals a test registers.
+      keys = { TPN => AUTH_KEY }.merge(@spin_extra_terminals || {})
+      assert_equal keys.fetch(body.fetch('Tpn')), body.fetch('Authkey')
       assert_nil request.headers['Authorization']
       @spin_requests << [path, body]
       spin_response(path, body)

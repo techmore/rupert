@@ -59,13 +59,15 @@ module Pos
         unless display.demo?
           register = Sales::PosSession.lock.find_by!(id: register_id, location_id: location.id, status: 'open')
         end
-        checkout = PosCheckout.create!(location: location, user: display.user, pos_display_session: display,
+        # A register with its own Dejavoo terminal uses it; others use the main TPN.
+        terminal = tender == 'card' && setting&.gateway_provider == 'dejavoo_spin' ? PosTerminal.for_register(location, register) : nil
+        checkout = PosCheckout.create!(location: location, user: display.user, pos_display_session: display, pos_terminal: terminal,
           pos_session: register, cart_revision: display.cart_revision, reference: SecureRandom.hex(16), tender: tender,
           demo: display.demo?, lines_json: quote['lines'], subtotal_cents: quote['subtotal_cents'], tax_cents: quote['tax_cents'],
           tip_cents: display.chosen_tip_cents, total_cents: quote['total_before_tip_cents'] + display.chosen_tip_cents,
           gateway_id: tender == 'card' ? setting&.gateway_id : nil, environment: tender == 'card' ? setting&.environment : nil,
           gateway_provider: tender == 'card' ? setting&.gateway_provider || 'authorize_net' : 'authorize_net',
-          gateway_fingerprint: tender == 'card' ? setting&.payment_fingerprint : nil,
+          gateway_fingerprint: tender == 'card' ? (terminal ? terminal.payment_fingerprint(setting) : setting&.payment_fingerprint) : nil,
           id_checked: compliance_result ? boolean(compliance&.dig(:id_checked)) : nil,
           compliance_override_by_id: approver&.id, compliance_override_reason: approver && compliance&.dig(:override_reason).to_s.squish,
           compliance_issues_json: compliance_result&.issues&.map(&:to_h))

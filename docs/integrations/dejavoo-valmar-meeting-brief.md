@@ -102,7 +102,7 @@ in person and online, and be matched against deposits. Three sources:
 1. ~~Register "Send to terminal" flow~~ **Done:** waiting screen, cancel
    (`AbortTransaction`), background job.
 2. ~~Refunds and voids through SPIn~~ **Done:** void while the batch is open, refund on the terminal after; card type and batch stored. **Close terminal batch** compares the batch with Rupert.
-3. **Terminal per register / per event** (one TPN per device).
+3. ~~Terminal per register / per event~~ **Done:** extra terminals by register name, checked before use.
 4. **Tips and pricing**: one place prompts for tips; terminal surcharge/dual pricing off.
 5. ~~Production switch~~ **Done:** behind the owner's recorded sign-off; needs the live TPN.
 

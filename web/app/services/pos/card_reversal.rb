@@ -144,7 +144,7 @@ module Pos
     end
 
     def dejavoo
-      @dejavoo ||= DejavooSpinGateway.new(setting).tap { |gateway| gateway.assert_checkout!(@checkout) }
+      @dejavoo ||= DejavooSpinGateway.new(setting, terminal: @checkout.pos_terminal).tap { |gateway| gateway.assert_checkout!(@checkout) }
     end
 
     # { voided:, payment_type: } from SPIn's status of the original sale.

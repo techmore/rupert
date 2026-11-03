@@ -68,4 +68,35 @@
       <%= link_to 'Cancel', ctrax_pos_path(location_id: @location.id), class: 'btn-ghost' %>
     </div>
   <% end %>
+
+  <% if dejavoo && @setting.persisted? %>
+    <section class="card card-pad space-y-4" aria-labelledby="dejavoo-terminals">
+      <h2 id="dejavoo-terminals" class="field-label">Extra Dejavoo terminals</h2>
+      <p class="text-sm text-mocha">Give a register (or an event) its own terminal: its card sales, refunds and batch close use that terminal’s TPN. Registers without one use the main TPN above. Each new terminal must pass Check before it is used. Retired terminals keep their keys so past sales can still be refunded.</p>
+      <% terminals = PosTerminal.where(location_id: @location.id).order(:retired_at, :name).to_a %>
+      <% if terminals.any? %>
+        <ul class="space-y-2 text-sm">
+          <% terminals.each do |terminal| %>
+            <li class="flex flex-wrap items-center justify-between gap-2 border-t border-fog pt-2">
+              <span><strong><%= terminal.name %></strong> · register <%= terminal.register_name %> · TPN <%= terminal.tpn_hint %>
+                <span class="<%= terminal.retired_at ? 'pill-taupe' : terminal.verified_at ? 'pill-fern' : 'pill-clay' %>"><%= terminal.retired_at ? 'Retired' : terminal.verified_at ? 'Checked' : 'Not checked' %></span></span>
+              <% unless terminal.retired_at %>
+                <span class="flex gap-2">
+                  <%= button_to 'Check', check_pos_setting_terminal_path(@location.id, terminal.id), method: :post, class: 'btn-ghost', data: { turbo: false } %>
+                  <%= button_to 'Retire', retire_pos_setting_terminal_path(@location.id, terminal.id), method: :post, class: 'btn-ghost', data: { turbo: false, turbo_confirm: "Retire #{terminal.name}?" } %>
+                </span>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+      <%= form_with url: pos_setting_terminals_path(@location.id), method: :post, class: 'grid gap-3 sm:grid-cols-2', data: { turbo: false } do %>
+        <div><label for="terminal_name" class="field-label">Terminal name</label><%= text_field_tag :terminal_name, nil, id: 'terminal_name', class: 'input', maxlength: 60, required: true, placeholder: 'For example: Event terminal' %></div>
+        <div><label for="register_name" class="field-label">Register it serves</label><%= text_field_tag :register_name, nil, id: 'register_name', class: 'input', maxlength: 60, required: true, placeholder: 'The register’s name, as opened at the till' %></div>
+        <div><label for="terminal_tpn" class="field-label">Terminal TPN</label><%= password_field_tag :terminal_tpn, nil, id: 'terminal_tpn', class: 'input', autocomplete: 'new-password', required: true %></div>
+        <div><label for="terminal_auth_key" class="field-label">SPIn auth key</label><%= password_field_tag :terminal_auth_key, nil, id: 'terminal_auth_key', class: 'input', autocomplete: 'new-password', required: true %></div>
+        <div class="sm:col-span-2"><%= submit_tag 'Add terminal', class: 'btn-ghost' %></div>
+      <% end %>
+    </section>
+  <% end %>
 </div>
