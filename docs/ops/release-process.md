@@ -87,21 +87,20 @@ Nightly prereleases follow [nightly releases](nightly-releases.md).
   `failed-sha` hold.
 - **Bad change that deployed healthy:** revert it with a PR (`git revert`) and
   let the updater install the revert. This keeps `/opt/rupert` on `main`.
-- **Emergency manual rollback:** first switch System → Updates to **Only when I
-  click Install** (or `systemctl disable --now rupert-autodeploy.timer
-  rupert-autodeploy.path`), otherwise the next poll fast-forwards back to the
-  `main` tip. Then, under the updater's lock, check out the previous good SHA
-  from the latest receipt's `previous_sha`, rebuild assets and restart:
+- **Emergency manual rollback:** inside the `rupert` container, as root:
 
   ```bash
-  flock /run/rupert-autodeploy.lock sh -c 'cd /opt/rupert && git checkout -q --detach <previous_sha>'
-  # as rupert, with /etc/rupert.env loaded, in /opt/rupert/web:
-  bin/rails tailwindcss:build && bin/rails assets:precompile
-  sudo systemctl restart rupert-web rupert-jobs
+  rupert-rollback              # back to the latest receipt's previous_sha
+  rupert-rollback <sha>        # or any earlier commit
   ```
 
-  The updater does not write a receipt for a manual rollback; record it in the
-  operator log. Return to automatic mode only after the fix is merged and green.
+  It pauses the updater (`/var/lib/rupert-autodeploy/paused`) so the next poll
+  does not fast-forward back to `main`, rebuilds, restarts and verifies `/up`
+  and the served build. It logs to `/var/lib/rupert-autodeploy/rollback.log`;
+  the updater writes no receipt for it, so also record it in the operator log.
+  Resume with `rm /var/lib/rupert-autodeploy/paused` only after the fix is
+  merged and green. Details, including `--restore-db`, are in
+  [deploy/ser8/README.md](../../deploy/ser8/README.md#pause-and-roll-back).
 
 Additive migrations can stay in place (the previous code ignores new
 tables/columns). A migration that changed existing columns needs its `down`

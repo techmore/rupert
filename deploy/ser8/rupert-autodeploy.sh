@@ -73,6 +73,15 @@ exec 9>"$LOCK"
 flock -n 9 || { log "another deploy is running"; exit 0; }
 
 mode=automatic; [ -e "$INBOX/manual" ] && mode=manual
+requested=0; requested_at=0
+# Operator pause (root-owned, unlike the app's `manual` switch): while
+# $STATE/paused exists nothing is fetched or installed, and install requests
+# wait. rupert-rollback creates it; `rm $STATE/paused` resumes.
+if [ -e "$STATE/paused" ]; then
+  reason=$(head -c 200 "$STATE/paused" 2>/dev/null | head -n 1)
+  report blocked "paused by operator${reason:+: $reason}; rm $STATE/paused to resume"
+  exit 0
+fi
 request_mtime_ns() {
   python3 - "$INBOX/install-requested" <<'PY'
 import os, sys
@@ -297,6 +306,13 @@ with os.scandir(sys.argv[1]) as entries:
                and entry.is_file(follow_symlinks=False)]
 for _, name in sorted(backups, reverse=True)[4:]:
     os.unlink(os.path.join(sys.argv[1], name))
+# The integrity check can leave -shm/-wal files beside a backup; drop any whose backup is gone.
+with os.scandir(sys.argv[1]) as entries:
+    for entry in entries:
+        for suffix in ('-shm', '-wal'):
+            if (entry.name.endswith('.sqlite3' + suffix) and entry.is_file(follow_symlinks=False)
+                    and not os.path.lexists(os.path.join(sys.argv[1], entry.name[:-len(suffix)]))):
+                os.unlink(entry.path)
 PY
 
 # Persist the target before changing the checkout. A killed updater must not
@@ -316,6 +332,14 @@ health() {
     [ "$health_code" = 200 ] && systemctl is-active --quiet rupert-web && systemctl is-active --quiet rupert-jobs && return 0
     sleep 2
   done; return 1
+}
+# The health check of the new release. RUPERT_AUTODEPLOY_FORCE_HEALTH_FAIL=1 (manual test runs only) fails it
+# so the automatic rollback can be proven on the real host; the rollback's own check is unaffected.
+deploy_health() {
+  if [ "${RUPERT_AUTODEPLOY_FORCE_HEALTH_FAIL:-0}" = 1 ]; then
+    log "forced health-check failure (RUPERT_AUTODEPLOY_FORCE_HEALTH_FAIL=1)"; health_code=forced; health_attempts=1; return 1
+  fi
+  health
 }
 # A responsive server is not enough: verify that the prior build is serving.
 rollback_build_matches() {
@@ -390,7 +414,7 @@ stage=checkout; git checkout -q --detach "$NEW" \
   && stage=db_migrate && in_web bundle exec rails db:migrate && migrate_ran=1 \
   && stage=assets_precompile && in_web bundle exec rails assets:precompile >/dev/null \
   && stage=restart && fix_owner && systemctl restart rupert-web rupert-jobs \
-  && stage=health && health_result=failed && health && health_result=passed \
+  && stage=health && health_result=failed && deploy_health && health_result=passed \
   && stage=asset_smoke && asset_smoke
 # shellcheck disable=SC2181 # the && chain above records $stage; one status check keeps it readable
 if [ $? -ne 0 ]; then

@@ -103,12 +103,13 @@ These are read by scripts in `deploy/ser8`, from their own environment or system
 
 | Variable | Script | Default | Purpose |
 | --- | --- | --- | --- |
-| `RUPERT_AUTODEPLOY_APP` | `rupert-autodeploy.sh` | `/opt/rupert` | Checkout to deploy |
-| `RUPERT_AUTODEPLOY_BACKUPS` | `rupert-autodeploy.sh` | `/var/backups/rupert-autodeploy` | Pre-deploy SQLite backups |
-| `RUPERT_AUTODEPLOY_LOCK` | `rupert-autodeploy.sh` | `/run/rupert-autodeploy.lock` | Single-run lock |
-| `RUPERT_AUTODEPLOY_ENV_FILE` | `rupert-autodeploy.sh` | `/etc/rupert.env` | Environment loaded for bundle, migrate and precompile |
-| `RUPERT_AUTODEPLOY_PATH` | `rupert-autodeploy.sh` | `/opt/rbenv/versions/4.0.9/bin:…` | `PATH` for the deploy (selects Ruby) |
-| `RUPERT_AUTODEPLOY_SMOKE_PATH` | `rupert-autodeploy.sh` | `/login` | Page used for the post-deploy layout and asset smoke check |
+| `RUPERT_AUTODEPLOY_APP` | `rupert-autodeploy.sh`, `rupert-rollback.sh` | `/opt/rupert` | Checkout to deploy |
+| `RUPERT_AUTODEPLOY_BACKUPS` | `rupert-autodeploy.sh`, `rupert-rollback.sh` | `/var/backups/rupert-autodeploy` | Pre-deploy SQLite backups |
+| `RUPERT_AUTODEPLOY_LOCK` | `rupert-autodeploy.sh`, `rupert-rollback.sh` | `/run/rupert-autodeploy.lock` | Single-run lock |
+| `RUPERT_AUTODEPLOY_ENV_FILE` | `rupert-autodeploy.sh`, `rupert-rollback.sh` | `/etc/rupert.env` | Environment loaded for bundle, migrate and precompile |
+| `RUPERT_AUTODEPLOY_PATH` | `rupert-autodeploy.sh`, `rupert-rollback.sh` | `/opt/rbenv/versions/4.0.9/bin:…` | `PATH` for the deploy (selects Ruby) |
+| `RUPERT_AUTODEPLOY_FORCE_HEALTH_FAIL` | `rupert-autodeploy.sh` | unset | `1` fails the new release's health check on purpose, to test the automatic rollback by hand; never set in the unit |
+| `RUPERT_AUTODEPLOY_SMOKE_PATH` | `rupert-autodeploy.sh`, `rupert-rollback.sh` | `/login` | Page used for the post-deploy layout and asset smoke check |
 | `RUPERT_CUSTOMER_IMAGE` | `customer_provisioner.py` | required | Reviewed clean image fingerprint (64 hex) |
 | `RUPERT_CUSTOMER_REVISION` | `customer_provisioner.py` | required | Exact Git revision of that image (40 hex) |
 | `RUPERT_CUSTOMER_MAX_INSTANCES` | `customer_provisioner.py` | `8` | Pilot quota, 1–50 |

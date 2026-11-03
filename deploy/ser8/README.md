@@ -93,6 +93,7 @@ moves the checkout back to `main`. The normal, emergency and stable-release path
 
 ```sh
 install -m755 deploy/ser8/rupert-autodeploy.sh /usr/local/sbin/
+install -m755 deploy/ser8/rupert-rollback.sh /usr/local/sbin/rupert-rollback
 install -m755 deploy/ser8/rupert-deploy-receipt /usr/local/bin/
 install -m644 deploy/ser8/rupert-autodeploy.service deploy/ser8/rupert-autodeploy.timer deploy/ser8/rupert-autodeploy.path /etc/systemd/system/
 systemctl daemon-reload && systemctl enable --now rupert-autodeploy.timer rupert-autodeploy.path
@@ -157,7 +158,33 @@ install that has already started. The page warns when the updater has not report
 outside Rupert.
 
 Check by hand: `DRY_RUN=1 /usr/local/sbin/rupert-autodeploy.sh`. Logs: `journalctl -u rupert-autodeploy`.
-Stop it with `systemctl disable --now rupert-autodeploy.timer`.
+
+### Pause and roll back
+
+- **Pause** (root, inside the container): `echo "reason" > /var/lib/rupert-autodeploy/paused`. While that file
+  exists every run reports `blocked` ("paused by operator: reason") and fetches and installs nothing; install requests
+  from the app wait. **Resume:** `rm /var/lib/rupert-autodeploy/paused`. The app's **Only when I click Install** mode is
+  the operator-facing equivalent; to stop the units entirely, `systemctl disable --now rupert-autodeploy.timer
+  rupert-autodeploy.path`.
+- **Roll back** with one command: `rupert-rollback` returns the code to the commit before the last healthy
+  auto-deploy (`last-deploy.json` `previous`); `rupert-rollback <sha>` to any commit. It pauses the updater first,
+  takes the updater lock, checks out, runs `bundle install` and `assets:precompile`, restarts web and jobs, and
+  succeeds only when `/up` is healthy and `/login` serves `X-Rupert-Build: <sha>`. It stays paused afterwards, so
+  remove the pause once `main` has the fix. Every run is appended to `/var/lib/rupert-autodeploy/rollback.log`.
+- **Roll back the database too** (only when the old code cannot run on the migrated database, and only with the
+  owner's approval of losing writes since the backup): `rupert-rollback <sha> --restore-db <file.sqlite3>`, usually the
+  pre-deploy backup named in the receipt. It stops web and jobs, waits until no process holds the database, keeps the
+  current database as `/var/backups/rupert-autodeploy/pre-rollback-<time>-<sha>.sqlite3`, restores, then rolls the
+  code back as above.
+
+The automatic rollback after a failed deploy restores code only; it never restores the database, because jobs and
+staff keep writing during the deploy.
+
+To prove the automatic rollback on the host, with the checkout one commit behind `main` (for example after
+`rupert-rollback HEAD~1`, then `rm /var/lib/rupert-autodeploy/paused`), run
+`RUPERT_AUTODEPLOY_FORCE_HEALTH_FAIL=1 /usr/local/sbin/rupert-autodeploy.sh`: it installs `main`, fails the health check
+on purpose, rolls back and verifies the old build. Then `rm /var/lib/rupert-autodeploy/failed-sha` so the next run
+installs `main` normally.
 
 When updating an installed watcher, replace the copied `/usr/local/sbin/rupert-autodeploy.sh` with the current repository version before re-enabling the timer. Older copies may still require the retired PostgreSQL CI check, may gate on only one required check, or may write no release receipts. The installed watcher is a hand-copied file and is **not** updated by an autodeploy. From the SER8 host, in a checkout of the merged `main`:
 

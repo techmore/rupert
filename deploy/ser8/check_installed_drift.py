@@ -27,6 +27,7 @@ MANIFEST = (
     ('container', 'ser8/rupert-autodeploy.sh', '/usr/local/sbin/rupert-autodeploy.sh'),
     ('container', 'ser8/rupert-backup-frequent.sh', '/usr/local/sbin/rupert-backup-frequent.sh'),
     ('container', 'ser8/rupert-deploy-receipt', '/usr/local/bin/rupert-deploy-receipt'),
+    ('container', 'ser8/rupert-rollback.sh', '/usr/local/sbin/rupert-rollback'),
     ('container', 'ser8/rupert-logs', '/usr/local/bin/rupert-logs'),
     ('container', 'ser8/rupert-release-audit', '/usr/local/sbin/rupert-release-audit'),
     ('container', 'ser8/journald-rupert.conf', '/etc/systemd/journald.conf.d/rupert.conf'),
