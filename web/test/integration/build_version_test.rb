@@ -13,6 +13,13 @@ class BuildVersionTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Build #{'d' * 12}"
   end
 
+  test 'public pages carry the build header but no visible build banner' do
+    get privacy_policy_path
+    assert_response :success
+    assert_equal 'd' * 40, response.headers['X-Rupert-Build']
+    assert_select '[aria-label="Rupert build version"]', count: 0
+  end
+
   test 'health and redirect responses include build identity without needing a layout' do
     get '/up'
     assert_response :success

@@ -6,7 +6,7 @@ Centralized inventory operations: a Shopify + Square sync
 engine with a web dashboard (neutral blue palette, light and dark themes), backed by SQLite in production. Runs as a
 Ruby on Rails 8.1 app (based on the
 [Shopify Ruby app template](https://github.com/Shopify/shopify-app-template-ruby))
-and is currently hosted at [herbalhealers.rupertpos.com](https://herbalhealers.rupertpos.com/).
+and is hosted at [rupertpos.com](https://rupertpos.com/).
 
 ```
 Shopify ──┐                     ┌── Dashboard
@@ -71,7 +71,7 @@ Start with the [operator runbook](docs/ops/operator-runbook.md) (daily checks, s
 
 [Purchase receipt uploads and approvals](docs/purchase-receipts.md) are available from the Receipts tab, including staff self-service and an independent review queue.
 
-For the current daily-use limits and the next payment/inventory rollout gates, start with [Derrick's day-to-day pickup plan](docs/ops/day-to-day-readiness.md).
+For the current daily-use limits and the next payment/inventory rollout gates, start with [the day-to-day pickup plan](docs/ops/day-to-day-readiness.md).
 
 ```bash
 bin/rails ops:sync                    # full Shopify + Square mirror sync
@@ -161,8 +161,8 @@ manual source (`SwipesimpleImporter`) feeds CSV exports through the same seam.
 
 ## Production and deployment
 
-Production is hosted on SER8 in Incus and served at
-[herbalhealers.rupertpos.com](https://herbalhealers.rupertpos.com/). GitHub is the source
+Production is hosted on SER8 in Incus and served under
+[rupertpos.com](https://rupertpos.com/). GitHub is the source
 repository. Merging to `main` deploys: the SER8 updater polls `main` every 5
 minutes and, once the exact SHA's required checks are green, installs it
 automatically (the default mode) or on an operator's request (click-only mode,

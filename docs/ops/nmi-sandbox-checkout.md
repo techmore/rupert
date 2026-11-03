@@ -1,6 +1,6 @@
 # NMI sandbox checkout
 
-Implemented October 16, 2026 on top of the customer-screen POS checkout. NMI production charging is blocked in the settings model, checkout preparation and gateway adapter. The adapter contains sandbox endpoints only; there is no production enable flag. Next Stage confirmation and a separately reviewed implementation are required before supporting live NMI payments.
+Implemented October 16, 2026 on top of the customer-screen POS checkout. NMI production charging is blocked in the settings model, checkout preparation and gateway adapter. The adapter contains sandbox endpoints only; there is no production enable flag. Confirmation from the merchant's ISO and a separately reviewed implementation are required before supporting live NMI payments.
 
 **Update, November 2, 2026 (F69):** NMI is now production-capable behind a recorded owner sign-off, and uses NMI's classic Payment API (`transact.php`) and Query API on `sandbox.nmi.com` or `secure.nmi.com`, whose production hosts are documented. Refunds, voids, receipts with card details, decline reasons, signed webhooks and settlement checks are implemented. Setup: [hemp payments admin guide](hemp-payments-setup.md). The sections below describe the original sandbox release; where they say production is blocked or refunds are portal-only, the admin guide supersedes them.
 
@@ -14,7 +14,7 @@ Sandbox receipts are explicitly labeled. They create no canonical sales/orders/p
 
 ## Set up a dedicated sandbox merchant
 
-Ask Next Stage/NMI for a dedicated sandbox merchant with tokenization, REST payment and Query API permissions. Shared demonstration credentials do not establish Query API access. No dedicated sandbox credentials were available for the October 16 implementation, so vendor-connected acceptance remains pending; automated fixture tests are not a real sandbox sale.
+Ask the ISO or NMI for a dedicated sandbox merchant with tokenization, REST payment and Query API permissions. Shared demonstration credentials do not establish Query API access. No dedicated sandbox credentials were available for the October 16 implementation, so vendor-connected acceptance remains pending; automated fixture tests are not a real sandbox sale.
 
 In the store's POS checkout setup, select **NMI · sandbox only**, keep the environment **Sandbox**, and save the selection first. This clears incompatible gateway credentials and verification. Supply the sandbox account reference, exact expected sandbox company, private API security key and public tokenization key using the encrypted credential form. Do not paste keys into GitHub or chat, and do not reuse WooCommerce's application keys.
 
