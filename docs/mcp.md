@@ -83,6 +83,10 @@ curl -s https://<host>/mcp \
 > never with a write scope). Its scopes come from that person's current permissions, so it
 > shows no more than the same person would get from a token with those scopes.
 
+> **Also in the browser.** [WebMCP](webmcp.md) offers an allow-listed subset of these tools to an
+> AI assistant running in a signed-in person's browser, through their normal session and CSRF token.
+> Writes there (`create_task` only) need the person to confirm in a browser dialog first.
+
 ## 3. Tools
 
 `tools/list` only returns the tools the token may use. Every tool is read-only

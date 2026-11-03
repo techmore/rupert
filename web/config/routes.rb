@@ -97,6 +97,12 @@ Rails.application.routes.draw do
   # Public pages the App Store listing links to, and deleting your own account (guideline 5.1.1(v)).
   get '/privacy', to: 'public_pages#privacy', as: :privacy_policy
   get '/support', to: 'public_pages#support', as: :support
+  # Plain-text site maps for AI assistants (https://llmstxt.org); facts from WebMcp::PublicSite.
+  get '/llms.txt', to: 'public_pages#llms', as: :llms_txt, format: false
+  get '/llms-full.txt', to: 'public_pages#llms_full', as: :llms_full_txt, format: false
+  # WebMCP: tools the signed-in page offers to an in-browser AI assistant (docs/webmcp.md).
+  get '/webmcp/tools', to: 'web_mcp#index', as: :webmcp_tools
+  post '/webmcp/tools/:name', to: 'web_mcp#create', as: :webmcp_tool, constraints: { name: /[a-z][a-z0-9_]{0,63}/ }
   get '/account/delete', to: 'account_deletions#show', as: :delete_account
   delete '/account', to: 'account_deletions#destroy', as: :own_account
 

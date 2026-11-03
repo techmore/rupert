@@ -155,6 +155,7 @@
   <%= render 'shared/help_panel' if Current.user %>
   <%= render 'shared/feedback_panel' if Current.user %>
   <%= render 'shared/ask_rupert' if ask_rupert_available? %>
+  <%= render 'shared/webmcp' %>
   <% if chat_dock_here %>
     <section id="chat-dock-panel" class="chat-dock" data-chat-dock-target="panel" data-turbo-permanent role="dialog" aria-label="Team chat" hidden>
       <turbo-frame id="chat_dock" data-chat-dock-target="frame"></turbo-frame>

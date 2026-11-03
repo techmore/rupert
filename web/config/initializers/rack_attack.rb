@@ -54,6 +54,11 @@ class Rack::Attack
     token = req.get_header('HTTP_AUTHORIZATION').to_s[/\ABearer (\S+)\z/i, 1]
     token ? Digest::SHA256.hexdigest(token) : nil
   end
+  # WebMCP: an in-browser assistant calling tools through the signed-in page
+  # (docs/webmcp.md). Task writes have their own per-person cap on top.
+  throttle('webmcp/ip', limit: 60, period: 1.minute) do |req|
+    req.ip if req.path.start_with?('/webmcp/')
+  end
   # Uploads: the inbox keeps encrypted originals, so sending files has its own,
   # tighter buckets on top of the general API and per-IP ceilings.
   throttle('uploads-api/token', limit: 30, period: 1.minute) do |req|
