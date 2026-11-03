@@ -206,6 +206,8 @@ class PlatformTest < ActionDispatch::IntegrationTest
     %w[PRIVATE_SYNC_DETAILS PRIVATE_BACKUP_FILENAME PRIVATE_BACKUP_LINK].each { |value| refute_includes response.body, value }
     ENV['RUPERT_INSTANCE_LABEL'] = "Invalid\nlabel"
     assert_equal 'Not configured', InstanceOverview.call(actor: @owner)[:instance][:label]
+    ENV['RUPERT_INSTANCE_LABEL'] = "Not UTF-8 \xFF".b
+    assert_equal 'Not configured', InstanceOverview.call(actor: @owner)[:instance][:label]
   ensure
     ENV['RUPERT_INSTANCE_LABEL'] = old_label
   end
