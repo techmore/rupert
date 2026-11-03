@@ -7,6 +7,10 @@
     <% end %>
   <% end %>
 
+  <% if StockSite.active.exists? %>
+    <p class="text-sm text-mocha" data-count-kinds>Worksheets here are compared with Shopify and C-Trax for review and never change a number. Counting an item in <%= link_to 'Rupert stock', master_stock_items_path, class: 'font-semibold text-olive-deep underline' %> sets Rupert’s own number for it.</p>
+  <% end %>
+
   <div class="toolbar-band">
     <%= form_tag inventory_counts_path, method: :get, class: 'toolbar', data: { tour: 'status' } do %>
       <div class="toolbar-field">
