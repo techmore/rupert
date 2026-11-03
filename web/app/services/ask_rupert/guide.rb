@@ -16,7 +16,8 @@ module AskRupert
     SYNONYMS = {
       'dashboard' => 'home overview summary today', 'sales' => 'orders revenue sold sale sell transactions receipts',
       'ctrax_pos' => 'register till checkout pos cashier ring', 'registers' => 'till drawer cash shift',
-      'customers' => 'crm contacts clients shoppers buyers', 'inventory' => 'stock products items sku quantity catalog',
+      'customers' => 'crm contacts clients shoppers buyers', 'loyalty' => 'rewards points members loyalty program square',
+      'inventory' => 'stock products items sku quantity catalog',
       'inventory_counts' => 'count counting recount stocktake cycle', 'alerts' => 'low reorder shortage notification',
       'locations' => 'store warehouse', 'stock_requests' => 'transfer backorder move',
       'reports' => 'report analytics numbers export', 'sales_tax' => 'tax taxes',

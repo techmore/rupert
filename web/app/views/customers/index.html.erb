@@ -9,7 +9,7 @@
     <% if can_write %><span <%= tour_anchor('actions') %>><%= link_to 'Add customer', new_customer_path, class: 'btn-primary' %></span><% end %>
   <% end %>
 
-  <section class="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Customer summary" <%= tour_anchor('stats') %>>
+  <section class="grid grid-cols-2 gap-3 lg:grid-cols-5" aria-label="Customer summary" <%= tour_anchor('stats') %>>
     <%= link_to customers_path, class: 'stat block hover:border-taupe' do %>
       <p class="stat-label">All customers</p>
       <p class="stat-value mt-1"><%= number_with_delimiter(@total_customers) %></p>
@@ -25,7 +25,12 @@
       <p class="stat-value mt-1"><%= number_with_delimiter(@status_counts.fetch('vip', 0)) %></p>
       <p class="mt-1 text-xs text-taupe">Your best relationships</p>
     <% end %>
-    <%= link_to customers_path(due: '1'), class: 'stat block hover:border-taupe' do %>
+    <%= link_to customers_path(account: 'wholesale'), class: 'stat block hover:border-taupe' do %>
+      <p class="stat-label">Wholesale</p>
+      <p class="stat-value mt-1"><%= number_with_delimiter(@wholesale_count) %></p>
+      <p class="mt-1 text-xs text-taupe">Business accounts</p>
+    <% end %>
+    <%= link_to customers_path(due: '1'), class: 'stat col-span-2 block hover:border-taupe lg:col-span-1' do %>
       <p class="stat-label">Follow-ups due</p>
       <p class="stat-value mt-1 <%= 'text-rose' if @due_count.positive? %>"><%= @due_count %></p>
       <p class="mt-1 text-xs text-taupe">Due today or overdue</p>
@@ -52,6 +57,7 @@
     <%= search_form_for @q, url: customers_path, class: 'toolbar' do |f| %>
       <div class="toolbar-field"><%= f.label search_key, 'Search', class: 'field-label' %><%= f.search_field search_key, placeholder: 'Name, email or phone', class: 'search' %></div>
       <div class="toolbar-field"><%= f.label :tags_cont, 'Tag', class: 'field-label' %><%= f.search_field :tags_cont, placeholder: 'Any tag', class: 'search' %></div>
+      <div class="toolbar-field"><%= label_tag :account, 'Account', class: 'field-label' %><%= select_tag :account, options_for_select([["All accounts · #{number_with_delimiter(@total_customers)}", ''], ["Retail · #{number_with_delimiter(@total_customers - @wholesale_count)}", 'retail'], ["Wholesale · #{number_with_delimiter(@wholesale_count)}", 'wholesale']], params[:account]), class: 'select w-full' %></div>
       <div class="toolbar-field"><%= label_tag :source, 'Source', class: 'field-label' %><%= select_tag :source, options_for_select([['All sources', '']] + Core::Customer::SOURCES.map { |v| [directory_label(v), v] }, params[:source]), class: 'select w-full' %></div>
       <div class="toolbar-field"><%= label_tag :directory, 'Profiles', class: 'field-label' %><%= select_tag :directory, options_for_select([['All profiles', ''], ['Verified in latest read', 'verified'], ['Unverified / historical', 'historical']], params[:directory]), class: 'select w-full' %></div>
       <div class="toolbar-field"><%= label_tag :owner, 'Assignment', class: 'field-label' %><%= select_tag :owner, options_for_select([['All assignments', ''], ['Assigned to me', 'mine'], ['Unassigned', 'unassigned']], params[:owner]), class: 'select w-full' %></div>
@@ -102,7 +108,7 @@
         <li class="card card-pad">
           <div class="flex items-start justify-between gap-2">
             <%= link_to customer.name, customer_path(customer), class: 'text-base font-semibold text-ink hover:text-olive hover:underline' %>
-            <%= customer_status_pill(customer) %>
+            <span class="flex flex-none flex-wrap justify-end gap-1"><%= customer_wholesale_pill(customer) %><%= customer_status_pill(customer) %></span>
           </div>
           <p class="mt-1 text-sm text-mocha"><%= customer.email.presence || 'No email' %> · <%= customer.phone.presence || 'No phone' %></p>
           <p class="mt-2 flex flex-wrap items-center gap-2 text-xs text-taupe">
@@ -134,7 +140,7 @@
           <tbody>
             <% @customers.each do |customer| %>
               <tr>
-                <td class="td font-medium text-ink"><%= link_to customer.name, customer_path(customer), class: 'text-olive-deep hover:underline' %><% if customer.unknown? %> <%= link_to 'Unknown', customers_path(name: 'unknown'), class: 'pill-taupe', title: 'No name on file. Shown by email or phone when there is one.' %><% end %></td>
+                <td class="td font-medium text-ink"><%= link_to customer.name, customer_path(customer), class: 'text-olive-deep hover:underline' %><% if customer.unknown? %> <%= link_to 'Unknown', customers_path(name: 'unknown'), class: 'pill-taupe', title: 'No name on file. Shown by email or phone when there is one.' %><% end %><% if customer.wholesale? %> <%= customer_wholesale_pill(customer) %><% if customer.wholesale_business_name.present? && customer.wholesale_business_name != customer.name %><p class="text-xs font-normal text-taupe"><%= customer.wholesale_business_name %></p><% end %><% end %></td>
                 <td class="td text-mocha"><%= customer.email.presence || '—' %><p class="text-xs text-taupe"><%= customer.phone.presence || '—' %></p></td>
                 <td class="td"><%= customer_status_pill(customer) %><% if customer.tag_list.any? %><p class="mt-1 text-xs text-taupe"><%= customer.tag_list.join(', ') %></p><% end %></td>
                 <td class="td text-mocha"><%= customer.owner&.display_name || '—' %></td>

@@ -66,17 +66,30 @@ covers the period. A sheet with submission history cannot be deleted. All of
 this runs inside `TimesheetWorkflow`, used by both the web and the staff app.
 
 Clock corrections go `pending` → `approved` or `rejected`; approval changes the
-shift, the request is kept.
+shift, the request is kept. Anyone who reviews timesheets (admins, managers, shift
+leaders) or holds `payroll.write` can review them (`ClockCorrection.reviewer?`, owner
+decision 2026-11-02), never for their own shift; the queue is on Time clock and on the
+affected timesheet.
 
 A new timesheet (staff "this week" link, Add timesheet) covers the pay period from
 `PayRules` (weekly Thursday–Wednesday until chosen), shortened so it never overlaps
-an existing sheet. Sheets that match the pay period can be approved as soon as the
+an existing sheet. Opening the week from the staff home imports finished clock shifts
+straight away (a pending correction leaves it empty and says so). On the web, returning
+a sheet needs a comment saying what to fix. Sheets that match the pay period can be approved as soon as the
 period ends, so a pay run is not missing the days of a sheet that straddles it.
 
 ## UI patterns
 
 Timesheets is a List page with a Detail page per sheet (`More` menu) and Add/Edit
-forms. Time keeping and Punch report are Report pages with a date range. Square
+forms. Staff and reviewers share one vocabulary (`TimesheetsHelper`, see the
+[interface guidelines](../ui-standards.md) §5): Draft, In review, Approved, Returned;
+hours to two decimals; clock in → out on every clock row; pay periods as
+`Oct 22 – 28, 2026`. The detail page leads with a status line saying the next step,
+callouts for whatever blocks it (shifts not imported, corrections waiting, a return
+comment), then one row per day with a total and the review form. Hours from the clock
+are changed only by a correction. The list hides columns that are empty for every row
+and, for staff, the reviewer's staff column and search. The review findings behind this
+are in [the 2026-11 timesheets review](../audits/2026-11-02-timesheets-ux-review.md). Time keeping and Punch report are Report pages with a date range. Square
 and C-Trax history are read-only List/Detail pages. Known departure: Square and
 C-Trax history are source-named pages, which the
 [interface guidelines](../ui-standards.md) mark as transitional.
@@ -111,7 +124,8 @@ race on SQLite. Restore follows the
 `test/services/timesheet_production_readiness_test.rb`,
 `demo_timesheets_test.rb`, `time_keeping_test.rb`, `punch_history_test.rb`,
 `square_timecard_history_test.rb`, `ctrax_timesheet_schedule_test.rb`,
-`employee_source_timesheets_test.rb`, the release-gate walkthrough
+`employee_source_timesheets_test.rb`, `timesheet_experience_test.rb`,
+`test/helpers/timesheets_helper_test.rb`, the release-gate walkthrough
 `test/acceptance/timesheet_lifecycle_walkthrough_test.rb` (#422), and the Square timecard service and job
 tests under `test/services` and `test/jobs`.
 

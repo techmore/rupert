@@ -1,0 +1,59 @@
+<% editable = @event.draft? && pos_event_manager? %>
+<section class="card overflow-hidden" id="event-items" aria-label="Event items">
+  <div class="card-pad pb-0"><%= section_heading 'Items and preset prices', hint: @event.draft? ? 'Only approved items from this store can be added. Prices here are what the event register charges.' : 'Frozen when the event opened.' %></div>
+  <div class="table-region" role="region" tabindex="0" aria-label="Event items">
+    <table class="table"><caption class="sr-only">Event items; prices in USD</caption>
+      <thead><tr><th scope="col" class="th">Item</th><th scope="col" class="th num">Price</th><th scope="col" class="th">Tenders</th><th scope="col" class="th">COA</th>
+        <th scope="col" class="th num">Loaded</th><th scope="col" class="th num">Sold</th><th scope="col" class="th num">Expected left</th><th scope="col" class="th num">Counted</th><th scope="col" class="th"><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody>
+        <% if @event.pos_event_items.empty? %><tr><td class="empty-row" colspan="9">No items yet. Add the approved items you are taking to the event.</td></tr><% end %>
+        <% @event.pos_event_items.each do |item| %>
+          <% sold = @units_sold[item.id] %>
+          <% expected = item.loaded_quantity && item.loaded_quantity - sold %>
+          <% catalog = item.compliance_catalog_item %>
+          <tr<%= ' class="opacity-60"'.html_safe if item.pulled? %>>
+            <td class="td font-medium text-ink"><%= item.name %><br><span class="text-xs text-mocha"><%= item.category_name || catalog.category_name %><%= ' · pulled' if item.pulled? %></span></td>
+            <% if editable %>
+              <td class="td num" colspan="1"><%= form_tag pos_event_item_path(@event, item), method: :patch, id: "event-item-#{item.id}" do %><%= label_tag "price_#{item.id}", "Price for #{item.name}", class: 'sr-only' %><%= number_field_tag :price, format('%.2f', item.price_cents / 100.0), id: "price_#{item.id}", step: 0.01, min: 0.01, class: 'input w-24 text-right' %><% end %></td>
+            <% else %>
+              <td class="td num"><%= ctrax_money(item.price_cents) %></td>
+            <% end %>
+            <td class="td"><% if @event.draft? %><%= catalog.card_eligible && catalog.compliance_category.card_eligible ? tag.span('Card and cash', class: 'pill-fern') : tag.span('Cash only', class: 'pill-clay') %><% else %><%= item.card_eligible ? tag.span('Card and cash', class: 'pill-fern') : tag.span('Cash only', class: 'pill-clay') %><% end %></td>
+            <td class="td"><% if @event.draft? %><%= coa_status_pill(catalog, @policy) %><% elsif item.coa_url %><%= link_to 'Current', item.coa_url, target: '_blank', rel: 'noopener noreferrer', class: 'pill-fern' %><% else %><span class="pill-rose">None</span><% end %></td>
+            <td class="td num"><% if editable %><%= label_tag "loaded_#{item.id}", "Units loaded for #{item.name}", class: 'sr-only' %><%= number_field_tag :loaded_quantity, item.loaded_quantity, id: "loaded_#{item.id}", form: "event-item-#{item.id}", min: 0, step: 1, class: 'input w-20 text-right' %><% else %><%= item.loaded_quantity || '—' %><% end %></td>
+            <td class="td num"><%= sold %></td>
+            <td class="td num"><%= expected || '—' %></td>
+            <td class="td num"><% if item.counted_remaining %><%= item.counted_remaining %><% if expected && item.counted_remaining != expected %> <span class="pill-clay"><%= item.counted_remaining - expected %></span><% end %><% else %>—<% end %></td>
+            <td class="td text-right whitespace-nowrap">
+              <% if editable %>
+                <%= submit_tag 'Save', form: "event-item-#{item.id}", class: 'btn-ghost btn-sm' %>
+                <%= button_to 'Remove', pos_event_item_path(@event, item), method: :delete, class: 'btn-ghost btn-sm', form_class: 'inline' %>
+              <% elsif @event.open? && pos_event_manager? && !item.pulled? %>
+                <details class="menu" data-controller="navigation-menu"><summary class="menu-trigger btn-ghost btn-sm">Pull</summary>
+                  <%= form_tag pull_pos_event_item_path(@event, item), class: 'menu-panel space-y-2 p-3' do %>
+                    <%= label_tag "pull_reason_#{item.id}", 'Reason', class: 'field-label' %><%= text_field_tag :reason, nil, id: "pull_reason_#{item.id}", minlength: 8, required: true, class: 'input' %>
+                    <%= submit_tag 'Pull from event', class: 'btn-danger btn-sm' %>
+                  <% end %>
+                </details>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+  <% if editable %>
+    <div class="card-pad border-t border-fog">
+      <% if @catalog_items.empty? %>
+        <p class="text-sm text-mocha">No more approved items at <%= @event.location.name %>. <%= link_to 'Approve items', compliance_path(location_id: @event.location_id, filter: 'unapproved'), class: 'underline' if compliance_editor? %></p>
+      <% else %>
+        <%= form_tag pos_event_items_path(@event), class: 'flex flex-wrap items-end gap-3' do %>
+          <div class="min-w-0 flex-1"><%= label_tag :compliance_catalog_item_id, 'Approved item', class: 'field-label' %><%= select_tag :compliance_catalog_item_id, options_for_select(@catalog_items.map { |i| ["#{i.compliant_name}#{' · cash only' unless i.card_eligible && i.compliance_category.card_eligible}", i.id] }), class: 'select', required: true %></div>
+          <div><%= label_tag :price, 'Preset price (blank: approved price)', class: 'field-label' %><%= number_field_tag :price, nil, step: 0.01, min: 0.01, class: 'input w-36', inputmode: 'decimal' %></div>
+          <div><%= label_tag :loaded_quantity, 'Units loaded', class: 'field-label' %><%= number_field_tag :loaded_quantity, nil, min: 0, step: 1, class: 'input w-28', inputmode: 'numeric' %></div>
+          <%= submit_tag 'Add item', class: 'btn-ghost' %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+</section>

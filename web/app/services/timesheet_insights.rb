@@ -42,11 +42,4 @@ class TimesheetInsights
     flags << 'Staff member inactive' if sheet.employee && !sheet.employee.active?
     flags
   end
-
-  # Active employees with no timesheet overlapping the week containing +day+.
-  def self.missing_for_week(day)
-    from = day.beginning_of_week
-    covered = People::Timesheet.where('period_start <= ? AND period_end >= ?', from + 6, from).select(:employee_id)
-    People::Employee.active.where.not(id: covered).ordered
-  end
 end

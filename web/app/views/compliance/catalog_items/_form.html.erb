@@ -1,0 +1,33 @@
+<% url = @item.persisted? ? compliance_catalog_item_path(@item) : compliance_catalog_items_path(location_id: @location.id, variant_id: @item.source_variant_id) %>
+<%= form_with model: @item, url: url, method: (@item.persisted? ? :patch : :post), class: 'card card-pad space-y-4' do |f| %>
+  <% if @item.errors.any? %><div class="flash flash-alert" role="alert"><p><%= @item.errors.full_messages.to_sentence %></p></div><% end %>
+  <%= f.hidden_field :lock_version if @item.persisted? %>
+  <dl class="facts">
+    <div><dt>C-Trax item</dt><dd><%= @record ? @record['name'] : "#{@item.source_name} (no longer in the latest stock read)" %></dd></div>
+    <div><dt>SKU · ID</dt><dd><%= [@item.sku, @item.source_variant_id].compact.join(' · ') %></dd></div>
+    <% if @record %><div><dt>C-Trax price</dt><dd class="num text-left"><%= ctrax_money(@record['price_cents']) %></dd></div><% end %>
+  </dl>
+  <fieldset class="space-y-4">
+    <legend class="card-title">Name and category</legend>
+    <div><%= f.label :compliant_name, 'Register name', class: 'field-label' %><%= f.text_field :compliant_name, maxlength: 80, required: true, class: 'input', aria: { invalid: @item.errors[:compliant_name].any? || nil, describedby: 'compliant-name-hint' } %>
+      <p id="compliant-name-hint" class="mt-1 text-xs text-mocha">The name your processor approved. No health or medical claims (relief, heal, treat, pain…) and no marijuana words.</p></div>
+    <div><%= f.label :receipt_name, 'Receipt name (optional, 40 characters)', class: 'field-label' %><%= f.text_field :receipt_name, maxlength: 40, class: 'input' %></div>
+    <div><%= f.label :compliance_category_id, 'Approved category', class: 'field-label' %>
+      <%= f.collection_select :compliance_category_id, ComplianceCategory.ordered, :id, ->(c) { "#{c.name}#{' (prohibited)' if c.prohibited}#{' (card)' if c.card_eligible}" }, { include_blank: 'Choose category' }, class: 'select', required: true %>
+      <p class="mt-1 text-xs text-mocha"><%= link_to 'Add or edit categories', compliance_path(tab: 'categories', location_id: @location.id), class: 'underline' %></p></div>
+  </fieldset>
+  <fieldset class="space-y-3">
+    <legend class="card-title">Tenders and checks</legend>
+    <label class="flex items-center gap-2 text-sm"><%= f.check_box :card_eligible, class: 'checkbox' %> Approved for card (the category must allow card too)</label>
+    <label class="flex items-center gap-2 text-sm"><%= f.check_box :cash_eligible, class: 'checkbox' %> Can be sold for cash</label>
+    <label class="flex items-center gap-2 text-sm"><%= f.check_box :age_restricted, class: 'checkbox' %> 21+ ID check</label>
+    <label class="flex items-center gap-2 text-sm"><%= f.check_box :coa_required, class: 'checkbox' %> Needs a current COA</label>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div><%= f.label :thc_mg_per_container, 'Total THC per container (mg)', class: 'field-label' %><%= f.number_field :thc_mg_per_container, step: 0.001, min: 0, class: 'input', inputmode: 'decimal' %>
+        <p class="mt-1 text-xs text-mocha">From the COA. From Dec 11, 2026 the federal limit is 0.4 mg per container.</p></div>
+      <div><%= label_tag 'compliance_catalog_item[approved_price]', 'Approved price (USD)', class: 'field-label' %><%= number_field_tag 'compliance_catalog_item[approved_price]', (@item.approved_price_cents && format('%.2f', @item.approved_price_cents / 100.0)), step: 0.01, min: 0, class: 'input', inputmode: 'decimal' %>
+        <p class="mt-1 text-xs text-mocha">Used for events and the drift check. The register still charges the C-Trax price.</p></div>
+    </div>
+  </fieldset>
+  <div class="form-actions"><%= f.submit 'Save', class: 'btn-primary' %><%= link_to 'Cancel', compliance_path(location_id: @location.id), class: 'btn-ghost' %></div>
+<% end %>

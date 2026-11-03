@@ -1,13 +1,13 @@
 {
-  "reviewed": "2026-10-15",
+  "reviewed": "2026-11-02",
   "basis": "Verified implementation evidence plus sanitized requirements from the August 27\u201328 and October 12 operator discussions and POS comparison. Private chat text, attachments, customer records and credentials are excluded. Available describes implemented scope; partial entries name the missing production workflow.",
   "production": "SER8/Incus runs SQLite 3.53.2 with conservative job concurrency. This catalog describes code scope; deployment and recovery verification are recorded in the repository release receipts.",
   "phases": [
     {
       "id": "0",
       "name": "Now \u00b7 reliable SQLite operations",
-      "goal": "Ship the feature catalog, planner maintenance and conservative worker concurrency. Reconcile production documentation.",
-      "acceptance": "Both adapter CI jobs pass; authenticated catalog renders; diagnostics contain no customer data; Pages links and mobile layout verified."
+      "goal": "Top priority: hemp/CBD-compatible card acceptance in store and online before the December 11, 2026 federal hemp change (F69), with ring-up guardrails and an event mode so staff cannot record sales in a way the processor forbids (F70). Ship the feature catalog, planner maintenance and conservative worker concurrency. Reconcile production documentation.",
+      "acceptance": "A processor that underwrites the store's hemp/CBD categories is approved in writing for both card-present and online sales, and Rupert records a reconciled live sale and refund through it. Both adapter CI jobs pass; authenticated catalog renders; diagnostics contain no customer data; Pages links and mobile layout verified."
     },
     {
       "id": "1",
@@ -35,6 +35,24 @@
     }
   ],
   "features": [
+    {
+      "id": "F69",
+      "area": "Commerce",
+      "name": "Hemp/CBD payment acceptance (top priority)",
+      "status": "Planned",
+      "scope": "Get a processor approved for hemp/CBD retail, in store and online, while the Valmar POS approval is pending. Shopify Payments and PayPal do not support CBD/hemp sellers. Square closed its CBD program: an August 7, 2026 notice set an October 15 catalog-removal deadline, with reported closures of hemp-focused accounts from November 5. Even its earlier program excluded smokable hemp, vapes, infused drinks and synthetic cannabinoids, so a Square reinstatement or new account is not a hemp payment path. Before any new application, get the prior processor's termination reason, held-funds status and any MATCH listing in writing. Stripe reviews negligible-THC CBD case by case and prohibits edibles and products over the THC limit. Ranked path: (1) confirm in writing which product categories the existing Valmar-arranged Authorize.net/NMI merchant account approves, then enable Rupert's Authorize.net capture; (2) in parallel, apply to one or two CBD-underwriting high-risk ISOs on Authorize.net or NMI, so Rupert's existing gateway code applies; (3) keep Rupert cash checkout as the fallback. Federal hemp redefinition (P.L. 119-37 \u00a7781): total THC including THCA at most 0.3%, and finished products at most 0.4 mg total THC per container. P.L. 119-103 \u00a72019 delayed most of it to December 11, 2026; products with cannabinoids the plant cannot naturally produce lose hemp status on November 12, 2026. Sourced evidence and a customer-ready summary: docs/compliance/hemp-federal-deadline-2026.md. Card networks prohibit products outside the hemp definition, so each processor must approve the exact catalog. Terminal execution still needs a processor-approved terminal and SDK. Not legal advice; product eligibility needs counsel.",
+      "evidence": "docs/compliance/hemp-federal-deadline-2026.md",
+      "phase": "0"
+    },
+    {
+      "id": "F70",
+      "area": "Commerce",
+      "name": "Compliant ring-up guardrails and event mode",
+      "status": "Partial",
+      "scope": "Make it hard to ring up a sale in a way the processor forbids, especially at shows and pop-ups. Locked, owner-approved catalog: each product has a compliant display and receipt name, an approved category, and per-tender eligibility (card or cash only); edits need owner approval. Current COA link per product and batch, required before card sale and printable as a receipt QR code. Card tender blocked for custom, open-price or free-text items, with manager PIN and reason for any override. Pre-sale cart check: card eligibility, COA present, 21+ ID confirmation, and destination-state rules for shipped orders. Event mode: a separate event location with an owner-picked subset of pre-approved items, preset prices and discounts only, staff sign-in, and end-of-event reconciliation. Audit log and daily exception report of overrides, catalog edits and flagged card sales. Read-only drift check between Rupert's approved catalog and each connected processor or storefront catalog. Processor-neutral; builds on the POS cart (F51) and the COA module request. Built: approved catalog with audited edits, COA links and receipt QR codes, the shared Compliance::ItemEligibility check (F69 processor allow-lists plug in), manager PIN overrides, locked C-Trax register, event mode with offline queue and reconciliation, audit log and daily exception report, read-only C-Trax drift check. Not yet: destination-state rules for shipped orders, Shopify/Square drift, event discounts, owner alert delivery, COA file upload (#549).",
+      "evidence": "docs/compliance/ring-up-guardrails.md",
+      "phase": "0"
+    },
     {
       "id": "F01",
       "area": "Commerce",
