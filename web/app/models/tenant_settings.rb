@@ -4,7 +4,8 @@
 # working before any settings are configured.
 class TenantSettings
   DEFAULTS = {
-    business_name: 'Herbal Healers',
+    # Blank: business_name falls back to the workspace's own name (below).
+    business_name: '',
     invoice_prefix: 'INV',
     low_stock_threshold: 5,
     # Percent used only to estimate tax for sources that do not report it
@@ -16,7 +17,7 @@ class TenantSettings
   }.freeze
 
   class << self
-    DEFAULTS.each_key do |key|
+    (DEFAULTS.keys - [:business_name]).each do |key|
       define_method(key) do
         value = Setting.for_tenant("tenant_#{key}")&.value
         value.presence || DEFAULTS[key]
@@ -29,6 +30,12 @@ class TenantSettings
       Setting.find_or_create_for("tenant_#{key}", Current.tenant_id) do |setting|
         setting.value = value.to_s
       end
+    end
+
+    # The name printed on invoices and receipts. Until the owner sets one, it is
+    # the workspace's name, never another business's.
+    def business_name
+      Setting.for_tenant('tenant_business_name')&.value.presence || Current.tenant&.name.presence || 'Rupert'
     end
 
     def low_stock_threshold_int
