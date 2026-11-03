@@ -14,6 +14,11 @@
   <meta property="og:title" content="Rupert — Point of sale, stock and books in one place">
   <meta property="og:url" content="https://rupertpos.com/">
   <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Rupert">
+  <meta property="og:description" content="Point of sale and back office for shops: ring up sales, keep stock right across stores, close the day and keep the books.">
+  <meta property="og:image" content="https://rupertpos.com/marketing/shots/dashboard-light.webp">
+  <meta property="og:image:alt" content="Rupert dashboard for a demo shop with made-up data">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="assets/landing.css?v=5">
 </head>
 <body>
@@ -131,7 +136,7 @@
         <p class="eyebrow">Works with what you have</p>
         <h2>Keep your tools. Connect them here.</h2>
         <p class="section-lead">Bring in sales, items and hours from the systems you already run. Each connection is set up and authorized separately in your workspace, and signing in to Rupert never connects anything on its own.</p>
-        <a class="link" href="overview.html">See what each connection supports →</a>
+        <a class="link" href="https://pos.rupertpos.com/integrations">See what each connection supports →</a>
       </div>
       <ul class="logos" aria-label="Supported connections">
         <li>Shopify</li>
@@ -172,6 +177,7 @@
         <a class="button quiet" href="https://rupertpos.com/billing">Use a referral code</a>
       </article>
     </div>
+    <p class="note pricing-terms">Prices in US dollars. Subscriptions renew until cancelled. Read the <a href="https://pos.rupertpos.com/terms">terms of service</a> and <a href="https://pos.rupertpos.com/refunds">cancellation and refund policy</a> before you subscribe.</p>
   </section>
 
   <section class="band">
@@ -183,6 +189,7 @@
       <div>
         <p>Connecting a provider and granting Rupert support access are separate decisions. Choose a support administrator, grant temporary read access and revoke it from your workspace.</p>
         <p class="note">Saved provider credentials are encrypted on the server. Customer-held encryption keys are planned; current encryption does not prevent access by infrastructure operators.</p>
+        <a class="link" href="https://pos.rupertpos.com/security">Security and data handling →</a>
         <a class="link" href="https://rupertpos.com/support-access">Manage support permissions →</a>
       </div>
     </div>
@@ -194,6 +201,7 @@
     <details><summary>Do I need a card to sign up?</summary><p>No. Create your account with a verified Google identity. Paid checkout is a separate step inside your workspace.</p></details>
     <details><summary>How does the referral discount work?</summary><p>An active paying Rupert customer can share their referral code. Eligible new subscriptions receive 50% off the $499 monthly price for 12 months in exchange for a 12-month commitment. You pay $249.50 per month, then $499 per month after the first year. Taxes may apply.</p></details>
     <details><summary>Who bills my subscription?</summary><p>Stripe processes subscription payments using the CSP Cyber Security Pilot billing account. You review the amount before confirming payment.</p></details>
+    <details><summary>Do card numbers pass through Rupert?</summary><p>No. Card details are typed into fields hosted by the payment gateway, and Rupert receives only a one-time token and the result. Read <a href="https://pos.rupertpos.com/security#card-payments">how card payments are handled</a>.</p></details>
     <details><summary>Does Google sign-in connect all my business accounts?</summary><p>No. It verifies your identity for Rupert. Each supported provider connection needs its own authorization and setup.</p></details>
     <details><summary>Where can I check current capabilities?</summary><p>Read the <a href="overview.html">feature overview</a> and <a href="roadmap.html">roadmap</a> for implemented, partial and planned functionality.</p></details>
     <details><summary>Can I see Rupert before I sign up?</summary><p>Yes. <a href="mailto:sdolbec@rupertpos.com?subject=Rupert%20demo%20request">Email sdolbec@rupertpos.com</a> to ask for a demo in a workspace with made-up data.</p></details>
@@ -211,14 +219,21 @@
 </main>
 
 <footer class="wrap foot">
-  <span><img class="mark small" src="assets/marketing/rupert-80.png?v=1" width="22" height="22" alt="">Rupert · Point of sale and back office</span>
-  <div>
+  <div class="foot-id">
+    <span><img class="mark small" src="assets/marketing/rupert-80.png?v=1" width="22" height="22" alt="">Rupert · Point of sale and back office</span>
+    <span>Provided by CSP Cyber Security Pilot · <a href="mailto:sdolbec@rupertpos.com">sdolbec@rupertpos.com</a> · <a href="https://pos.rupertpos.com/support#company">Address and phone</a></span>
+  </div>
+  <nav aria-label="Company and policies">
     <a href="overview.html">Product guides</a>
+    <a href="https://pos.rupertpos.com/integrations">Integrations</a>
+    <a href="https://pos.rupertpos.com/security">Security</a>
     <a href="https://pos.rupertpos.com/support">Support</a>
     <a href="https://pos.rupertpos.com/privacy">Privacy</a>
+    <a href="https://pos.rupertpos.com/terms">Terms</a>
+    <a href="https://pos.rupertpos.com/refunds">Cancellation and refunds</a>
     <a href="https://github.com/techmore/rupert">GitHub</a>
     <a href="https://rupertpos.com/login">Sign in</a>
-  </div>
+  </nav>
 </footer>
 </body>
 </html>

@@ -17,7 +17,9 @@
         <%= render "shared/rupert_face", size: 32 %><span class="app-brand-name">Rupert</span>
       <% end %>
     <% end %>
-    <% unless Current.user %><%= render 'layouts/build_version' %><% end %>
+    <%# Signed out, only the sign-in page shows the build; public pages (landing, privacy, terms…)
+        stay clean for visitors. Every response still carries the X-Rupert-Build header. %>
+    <% if Current.user.nil? && controller_name == 'sessions' %><%= render 'layouts/build_version' %><% end %>
     <% if Current.user %>
       <% if Current.user.can?('dashboard.read') %>
         <button type="button" onclick="window.dispatchEvent(new Event('rupert:open-search'))" class="topbar-search" aria-label="Search" title="Search — press /"><%= navigation_icon('search') %><span class="topbar-search-label">Search orders, customers, SKUs…</span><kbd>/</kbd></button>

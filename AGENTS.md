@@ -27,6 +27,10 @@ do not invent layout, labels or colours.
 - **Square can still be frozen any time for maintenance via `ops:push_guard:freeze[square,reason]`** — this now records state for awareness but no longer blocks writes; check `ops:push_guard:status`.
 - **SKU changes require explicit owner sign-off before writing** to Shopify or Square. You may plan and inspect freely, but never write SKUs without asking.
 
+## Hemp/CBD card payments (F69)
+
+Read `docs/ops/hemp-payments-setup.md` before changing card payments. Card charges on Authorize.net and NMI go through `Payments::ItemEligibility` (per-processor approved SKUs/categories); add guardrails as registered rules, not parallel checks. Refunds/voids use `Pos::CardReversal` (durable row before the gateway call, read-only recovery, no blind retries). NMI production requires recorded owner sign-off. Never miscode products or MCCs, and never route an item one processor refused to an unrestricted processor.
+
 ## C-Trax integration context
 
 - Read `docs/ctrax-retail.md` and `docs/ops/ctrax-retail-deployment-2026-10-15.md` for daily order/register imports and paired cashier/customer checkout. Real cash checkout and private tip receipts are implemented; optional hosted-card charges require verified merchant credentials. The web demo simulates both tenders and does not mutate source stock. No PAX/TRX terminal execution is implemented; **Card (A920)** only records a card the cashier already ran on the SwipeSimple A920 (method `card`, reference `swipesimple_a920-…`, no gateway call).

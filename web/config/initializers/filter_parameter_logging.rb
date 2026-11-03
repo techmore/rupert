@@ -72,3 +72,9 @@ Rails.application.config.filter_parameters += [
 
 # Register override PINs (F70) never reach request logs.
 Rails.application.config.filter_parameters += [/\A(override_)?pin(_confirmation)?\z/i]
+
+# Card data under other common names (Authorize.net, NMI, terminal SDKs). Rupert never
+# accepts these; if one is ever sent, its value must not reach a log. Anchored where a
+# short name would otherwise hide unrelated fields ("company", "tracking").
+Rails.application.config.filter_parameters += %i[cardnumber cardcode cvc security_code expirationdate magstripe]
+Rails.application.config.filter_parameters += [/\Apan\z/i, /\Atrack[12]?(_?data)?\z/i]

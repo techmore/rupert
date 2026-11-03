@@ -1,0 +1,79 @@
+<%# Security and data handling: public. Written for payment partners, processors and merchants
+    reviewing Rupert. Every statement must stay true to the code and the running service; check
+    docs/ops/backups.md, app/javascript/controllers/accept_payment_controller.js and
+    app/javascript/lib/nmi_fields.js before changing it. Never claim a certification Rupert does not hold.
+    OWNER REVIEW before publishing:
+    - Backups: scheduled backups refuse to run while no backup key is active (Settings → Backups).
+      Make sure a key is active and backups report OK before this page goes live.
+    - Fill the hosting location and the off-site copy status, and confirm the "not certified" paragraph is still accurate. %>
+<% content_for :title, 'Security and data handling' %>
+<div class="page-medium space-y-6">
+  <%= page_header 'Security and data handling', subtitle: 'How Rupert handles card payments, business records and access. Updated Nov 2, 2026.' %>
+  <%= render 'public_pages/draft_notice' %>
+
+  <section class="section-card">
+    <%= section_heading 'In short' %>
+    <ul class="list-disc space-y-1 pl-5 text-sm">
+      <li>Rupert’s servers never receive, store or send full card numbers, expiry dates or security codes.</li>
+      <li>Everything travels over HTTPS. Saved provider credentials and sensitive records are encrypted in the database.</li>
+      <li>Backups are encrypted before they are written, and the server cannot decrypt them.</li>
+      <li>Each business sees only its own workspace. Our support staff see it only when the business grants temporary access.</li>
+    </ul>
+  </section>
+
+  <section class="section-card" id="card-payments">
+    <%= section_heading 'Card payments and PCI DSS' %>
+    <p class="text-sm">Rupert is business software, not a payment processor or gateway. Card payments are approved and settled by the merchant’s own payment provider under the merchant’s agreement with that provider.</p>
+    <ul class="list-disc space-y-1 pl-5 text-sm">
+      <li><strong>Online and keyed cards.</strong> Card details are typed into fields hosted by the payment gateway (Authorize.net Accept.js hosted fields; NMI Collect.js, test accounts only for now). The gateway returns a one-time token, and Rupert sends only that token to complete the sale.</li>
+      <li><strong>In-store card terminals.</strong> Rupert does not control card terminals today. Planned terminal connections are semi-integrated: the card is read on the terminal, and Rupert sends the amount and receives only the result, such as approved or declined, the card brand and last four digits.</li>
+      <li><strong>What Rupert keeps.</strong> The sale, amount, tender, approval result, gateway transaction reference and masked card details such as the last four digits.</li>
+    </ul>
+    <p class="text-sm">Because the page that shows the hosted card fields is served by Rupert, it still matters for the merchant’s PCI DSS assessment. The PCI Security Standards Council expects merchants that embed a provider’s payment fields to protect the scripts on that page (PCI DSS requirements 6.4.3 and 11.6.1) and to run external vulnerability scans. Your payment provider tells you which self-assessment applies to your business.</p>
+    <p class="text-sm text-mocha">Rupert does not currently hold a PCI DSS attestation of compliance, a SOC 2 report or a third-party penetration test report. We will say so here when that changes.</p>
+  </section>
+
+  <section class="section-card" id="encryption">
+    <%= section_heading 'Encryption' %>
+    <ul class="list-disc space-y-1 pl-5 text-sm">
+      <li><strong>In transit:</strong> HTTPS only, with HTTP Strict Transport Security, for the website, the iPhone and iPad app and the API.</li>
+      <li><strong>At rest:</strong> provider tokens and credentials, imported bank and processor files, and other sensitive records are encrypted in the database with application-level encryption. Passwords are stored only as one-way hashes.</li>
+      <li><strong>Keys:</strong> database encryption keys are held on the server. They protect a copied database file, but they do not stop the people who run the infrastructure from reaching the data. Customer-held keys are planned.</li>
+    </ul>
+  </section>
+
+  <section class="section-card" id="hosting">
+    <%= section_heading 'Hosting and backups' %>
+    <p class="text-sm">Rupert runs on a dedicated server operated by <%= company_operator_name %>, in an isolated Linux container behind a web server that renews its TLS certificates automatically. Location: <%= company_fact(:hosting_location, 'server location (city/state or data centre) and any hosting provider') %>.</p>
+    <ul class="list-disc space-y-1 pl-5 text-sm">
+      <li>Every backup is encrypted before it is written. The server holds only the public key; the private key exists only in the owner’s offline recovery kit.</li>
+      <li>Backups run on a schedule, from rolling snapshots every few minutes to six-hourly sets, with a copy kept outside the app’s container. Off-site copy: <%= owner_placeholder('whether a copy on a second machine or cloud storage is running') %></li>
+      <li>A backup is never written unencrypted. Restoring one needs the recovery kit, and the steps are documented.</li>
+    </ul>
+  </section>
+
+  <section class="section-card" id="access">
+    <%= section_heading 'Access control' %>
+    <ul class="list-disc space-y-1 pl-5 text-sm">
+      <li>Each business has its own workspace. Records are scoped to that workspace, and tests check that one workspace cannot read another.</li>
+      <li>Workspace administrators give each person a role, and the role decides which pages and actions they can use.</li>
+      <li>Sign-in is with Google or with an email and password. Repeated failed sign-ins are locked out for a while. The iPhone and iPad app can also require Face ID.</li>
+      <li>Our support staff can open a workspace only after the business grants temporary, read-only support access, which it can revoke at any time.</li>
+      <li>Sign-ins and changes are recorded in the workspace’s activity history.</li>
+      <li>Connecting Shopify, Square or any other provider is a separate step that a workspace administrator authorizes. Signing in to Rupert never connects anything on its own.</li>
+    </ul>
+  </section>
+
+  <section class="section-card" id="availability">
+    <%= section_heading 'Availability' %>
+    <p class="text-sm">Rupert is monitored with automatic health checks, and an update that fails its checks is rolled back automatically. There is no public status page yet. <%= owner_placeholder('status page link, if you set one up') %></p>
+    <p class="text-sm">We do not promise a specific uptime. Any service level is set out in your agreement with us.</p>
+  </section>
+
+  <section class="section-card" id="report">
+    <%= section_heading 'Report a security problem' %>
+    <p class="text-sm">Email <%= mail_to PublicPagesController.company[:security_email], nil, class: 'font-semibold text-olive underline' %> with what you found and how to reproduce it. Please do not access other businesses’ data or disrupt the service while testing. We reply as soon as we can.</p>
+  </section>
+
+  <%= render 'public_pages/policy_links' %>
+</div>

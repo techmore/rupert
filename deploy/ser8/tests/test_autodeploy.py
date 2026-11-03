@@ -194,6 +194,35 @@ class AutodeployTest(unittest.TestCase):
         self.assertEqual(self.status('last-deploy.json')['current'], new)
         self.assertEqual(self.status('last-deploy.json')['previous'], self.old)
 
+    def release_audit(self, passing):
+        audit = self.tmp / 'bin' / 'release-audit'
+        audit.write_text('#!/bin/sh\necho "release-audit $*" >> "$CALLS"\n'
+                         'while [ $# -gt 0 ]; do [ "$1" = --report ] && echo "# report" > "$2"; shift; done\n'
+                         f'exit {0 if passing else 1}\n')
+        audit.chmod(0o755)
+        return str(audit)
+
+    def test_failed_runtime_audit_warns_by_default_and_still_deploys(self):
+        new = self.commit('feature')
+        result, calls = self.run_deploy(RUPERT_RELEASE_AUDIT=self.release_audit(False))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('runtime release audit failed', result.stdout)
+        self.assertIn(f'release-audit --sha {new}', calls)
+        self.assertEqual(self.head(self.tmp / 'app'), new)
+        self.assertTrue((self.tmp / 'state' / 'audits' / f'{new}.md').exists())
+
+    def test_failed_runtime_audit_blocks_the_install_in_enforce_mode(self):
+        new = self.commit('feature')
+        (self.tmp / 'state').mkdir(exist_ok=True)
+        (self.tmp / 'state' / 'audit-mode').write_text('enforce\n')
+        result, calls = self.run_deploy(RUPERT_RELEASE_AUDIT=self.release_audit(False))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('runtime release audit failed', self.status()['message'])
+        self.assertEqual(self.head(self.tmp / 'app'), self.old)
+        self.assertNotIn('systemctl restart', calls)
+        result, calls = self.run_deploy(RUPERT_RELEASE_AUDIT=self.release_audit(True))
+        self.assertEqual(self.head(self.tmp / 'app'), new, result.stdout + result.stderr)
+
     def test_inactive_job_worker_cannot_pass_health(self):
         self.commit('feature')
         result, _ = self.run_deploy(INACTIVE_UNIT='rupert-jobs')

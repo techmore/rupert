@@ -61,6 +61,8 @@ class CustomerCommerceTest < ActionDispatch::IntegrationTest
     get billing_path
     assert_response :success
     assert_includes response.body, 'being configured'
+    assert_select "a[href='#{terms_of_service_path}']", minimum: 1
+    assert_select "a[href='#{refund_policy_path}']", minimum: 1
   end
 
   test 'registration rejects unverified identities and operator mailbox self provisioning' do

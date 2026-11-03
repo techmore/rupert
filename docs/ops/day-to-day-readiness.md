@@ -1,4 +1,4 @@
-# Derrick’s day-to-day rollout and pickup plan
+# Day-to-day rollout and pickup plan
 
 Reviewed October 17, 2026 (America/New_York). Current verified application checkpoint: `b5e2a40`, including the newer timesheet review workspace plus the financial consolidation, preserved operator sign-in preferences and native Shopify count-basis change described below. This supersedes the October 15 assessment: substantial checkout, C-Trax stock, reporting and recovery work has since landed. Implementation, deployment and merchant/operator acceptance are different evidence levels.
 
@@ -37,15 +37,15 @@ Details: [shared-stock comparison](shared-stock-comparison.md), [C-Trax stock an
 
 | Next action | Owner | Acceptance evidence |
 | --- | --- | --- |
-| Confirm Herbal Healers’ actual merchant account, Valmar gateway/backend, approved channels and intended PAX payment application/SDK. | Business owner + provider | Store-specific account and integration confirmation. Historical evidence for another business does not authorize this store. |
+| Confirm the store’s actual merchant account, Valmar gateway/backend, approved channels and intended PAX payment application/SDK. | Business owner + provider | Store-specific account and integration confirmation. Historical evidence for another business does not authorize this store. |
 | Obtain intended Authorize.net test checkout access or a dedicated NMI sandbox merchant with tokenization, REST and Query permissions. Configure the separate per-store checkout settings. | Business owner + implementer | Correct account/environment and hosted form verified; reporting credentials/checks alone do not prove checkout access. No shared key rotation solely to enable reporting. |
 | Run vendor-connected acceptance of the implemented checkout. | Implementer + operator | Approval/decline, fresh tokens, tax/tip repricing, stale customer confirmation, double/concurrent submit, lost response followed by read-only recovery, account isolation and exact receipt totals. Fixture tests are not vendor acceptance. NMI sandbox receipts create no live revenue or stock. |
-| Complete the workflows Derrick actually requires. | Implementer + operator | Refunds/voids/tip reversals, discounts, split/gift tenders, variable-price items and cash drops as required. Existing local order refund records do not return money or restock. |
+| Complete the workflows the store operator actually requires. | Implementer + operator | Refunds/voids/tip reversals, discounts, split/gift tenders, variable-price items and cash drops as required. Existing local order refund records do not return money or restock. |
 | Implement/verify approved PAX or other card-present terminal integration if required. | Provider + implementer | Intended hardware/payment application passes its own test matrix. Hosted browser card entry is not EMV/contactless terminal execution. |
 | Reconcile a trading day and later refund from register through gateway batch, fees/payout and actual bank deposit. | Operator/bookkeeper + implementer | Exact source identities and period/currency/location coverage agree; missing/open/cross-day evidence stays unknown and overlapping reports are never summed. |
 | Train, prove fallback, and conduct explicitly approved controlled live acceptance. | Business owner + staff | Written signoff covers checkout, failures, refunds, stock effects and daily close before replacing the existing POS. |
 
-Authorize.net browser capture/recovery is implemented conditionally; it is no longer accurate to describe all Rupert payment work as credential checks only. NMI remains explicitly sandbox-only with production charging blocked. The actual Herbal Healers gateway and a successful Rupert merchant round trip remain unconfirmed here. Historical Next Stage/NMI evidence for Deep Run Hemp does not resolve those gates.
+Authorize.net browser capture/recovery is implemented conditionally; it is no longer accurate to describe all Rupert payment work as credential checks only. NMI remains explicitly sandbox-only with production charging blocked. The store’s actual gateway and a successful Rupert merchant round trip remain unconfirmed here. Historical NMI evidence for a separate merchant account does not resolve those gates.
 
 Details: [retail checkout](../ctrax-retail.md), [NMI sandbox safeguards](nmi-sandbox-checkout.md), [provider setup](payment-integrations.md), [POS acceptance](pos-parity.md), [money reconciliation](money-reconciliation.md). Credentials, original reports and merchant/contact evidence belong in encrypted private setup/owner records, never public Git or chat.
 
