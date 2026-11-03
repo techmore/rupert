@@ -33,7 +33,7 @@
 
   <div class="card overflow-hidden">
     <div class="table-region" role="region" tabindex="0" aria-label="Inventory movements">
-      <table class="table">
+      <table class="table stack-table">
         <thead>
           <tr>
             <th scope="col" class="th">When</th>
@@ -56,13 +56,13 @@
           <% @movements.each do |m| %>
             <% info = @names[m.shopifyVariantId] || @names[m.squareVariationId] || @names[m.sku] %>
             <tr>
-              <td class="td whitespace-nowrap font-medium text-ink"><time datetime="<%= m.createdAt.iso8601 %>" title="<%= l(m.createdAt, format: :datetime) %>"><%= l(m.createdAt, format: :short) %></time></td>
-              <td class="td whitespace-nowrap font-mono text-xs text-mocha"><%= m.sku.presence || '—' %></td>
-              <td class="td">
+              <td class="td whitespace-nowrap font-medium text-ink" data-label="When"><time datetime="<%= m.createdAt.iso8601 %>" title="<%= l(m.createdAt, format: :datetime) %>"><%= l(m.createdAt, format: :short) %></time></td>
+              <td class="td whitespace-nowrap font-mono text-xs text-mocha" data-label="SKU"><%= m.sku.presence || '—' %></td>
+              <td class="td stack-full" data-label="Item">
                 <p class="font-medium text-ink"><%= info ? (info[:product].presence || info[:name]) : 'Unknown item' %></p>
                 <% if info && info[:product].present? && info[:name].present? && info[:name] != 'Default Title' %><p class="text-xs text-taupe"><%= info[:name] %></p><% end %>
               </td>
-              <td class="td">
+              <td class="td" data-label="Source">
                 <% pill = case m.source
                   when 'square' then 'pill-olive'
                   when 'shopify' then 'pill-fern'
@@ -71,15 +71,15 @@
                 end %>
                 <span class="<%= pill %>"><%= source_labels.fetch(m.source, m.source.humanize) %></span>
               </td>
-              <td class="td num">
+              <td class="td num" data-label="Change">
                 <span class="font-mono text-xs font-semibold <%= m.delta.negative? ? 'text-clay' : m.delta.positive? ? 'text-fern' : 'text-taupe' %>">
                   <%= m.delta >= 0 ? "+#{m.delta}" : m.delta %>
                 </span>
               </td>
-              <td class="td num whitespace-nowrap text-mocha"><%= m.quantityBefore %> → <span class="font-semibold text-ink"><%= m.quantityAfter %></span></td>
-              <td class="td text-xs text-mocha"><%= m.reason.presence || '—' %></td>
-              <td class="td text-xs text-mocha"><%= m.actor.presence || '—' %></td>
-              <td class="td whitespace-nowrap">
+              <td class="td num whitespace-nowrap text-mocha" data-label="Qty"><%= m.quantityBefore %> → <span class="font-semibold text-ink"><%= m.quantityAfter %></span></td>
+              <td class="td text-xs text-mocha stack-full" data-label="Reason"><%= m.reason.presence || '—' %></td>
+              <td class="td text-xs text-mocha" data-label="Actor"><%= m.actor.presence || '—' %></td>
+              <td class="td whitespace-nowrap" data-label="Sync run">
                 <% if m.sync_run %>
                   <span class="font-mono text-xs text-taupe" title="Started <%= l(m.sync_run.startedAt, format: :long) %> · <%= m.sync_run.mode %>">
                     #<%= m.sync_run.id.to_s.first(8) %>
