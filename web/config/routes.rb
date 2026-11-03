@@ -107,9 +107,11 @@ Rails.application.routes.draw do
   get '/auth/google', to: 'oauth#authorize', as: :google_auth
   get '/auth/google/callback', to: 'oauth#callback', as: :google_callback
 
-  # The Rupert iPhone app (ios/): navigation rules and the Google sign-in handoff.
+  # The Rupert iPhone and Android apps (ios/, android/): navigation rules and the Google sign-in handoff.
   get '/native/ios/path-configuration.json', to: 'native/configurations#ios', as: :native_ios_path_configuration,
     defaults: { format: :json }
+  get '/native/android/path-configuration.json', to: 'native/configurations#android',
+    as: :native_android_path_configuration, defaults: { format: :json }
   post '/native/session', to: 'native/sessions#create', as: :native_session
 
   get '/workspace', to: 'workspaces#show', as: :workspace
@@ -764,6 +766,8 @@ Rails.application.routes.draw do
 
   get '/w/:token/checkout', to: 'warehouse_checkouts#show', as: :warehouse_checkout
   post '/w/:token/checkout', to: 'warehouse_checkouts#create', as: :warehouse_checkout_submit
+  # Android App Links: which signed builds of the Rupert app may open Rupert links (android/README.md).
+  get '/.well-known/assetlinks.json', to: 'android_asset_links#show', as: :android_asset_links, defaults: { format: :json }
   get '/.well-known/apple-developer-merchantid-domain-association', to: 'apple_pay_domain#show', as: :apple_pay_domain_association
   post '/w/:token/apple_pay/session', to: 'warehouse_checkouts#apple_pay_session', as: :warehouse_apple_pay_session
 

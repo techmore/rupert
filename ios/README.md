@@ -25,7 +25,8 @@ other sites open in an in-app Safari view. Pages pull to refresh, except chat, A
 POS. The navigation rules come from Rupert at `/native/ios/path-configuration.json`, so they
 change with a deploy. The app bundles a copy for its first launch.
 
-This is separate from `mobile/`, the Expo staff timesheet app.
+This is separate from `mobile/`, the Expo staff timesheet app. `android/` is the Android twin of this
+app; both read the same navigation rules (`Resources/path-configuration.json`).
 
 ## How Rupert treats the app
 

@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/banner"
+        android:fitsSystemWindows="true">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:navigationContentDescription="@string/close"
+            app:navigationIcon="@drawable/ic_close"
+            app:navigationIconTint="@color/accent"
+            app:title="@string/app_settings" />
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <ScrollView
+        android:id="@+id/settings_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView style="@style/Rupert.Section" android:text="@string/settings_security" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/settings_lock"
+                style="@style/Rupert.Row"
+                android:background="@null"
+                android:text="@string/settings_lock" />
+
+            <TextView android:id="@+id/settings_lock_footer" style="@style/Rupert.Footer" />
+
+            <TextView style="@style/Rupert.Section" android:text="@string/settings_workspace" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:focusable="true"
+                android:minHeight="56dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/settings_connected_to"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textColor="@color/on_surface" />
+
+                <TextView
+                    android:id="@+id/settings_connected_to"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textColor="@color/on_surface_muted" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/settings_server"
+                style="@style/Rupert.Row"
+                android:orientation="vertical"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_server"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textColor="@color/on_surface" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_server_detail"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="@color/on_surface_muted" />
+            </LinearLayout>
+
+            <TextView style="@style/Rupert.Section" android:text="@string/settings_help" />
+            <TextView android:id="@+id/settings_support" style="@style/Rupert.Row" android:text="@string/settings_support" />
+            <TextView android:id="@+id/settings_report" style="@style/Rupert.Row" android:text="@string/settings_report" />
+            <TextView android:id="@+id/settings_privacy" style="@style/Rupert.Row" android:text="@string/settings_privacy" />
+
+            <TextView
+                android:id="@+id/settings_delete"
+                style="@style/Rupert.Row"
+                android:layout_marginTop="16dp"
+                android:text="@string/settings_delete"
+                android:textColor="@color/danger" />
+            <TextView style="@style/Rupert.Footer" android:text="@string/settings_delete_footer" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:focusable="true"
+                android:minHeight="56dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/settings_version"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textColor="@color/on_surface" />
+
+                <TextView
+                    android:id="@+id/settings_version"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textColor="@color/on_surface_muted" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

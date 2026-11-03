@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The iPhone app's asset colours (ios/Sources/Rupert/Assets.xcassets), light appearance. -->
+<resources>
+    <color name="banner">#CCE0DC</color>
+    <color name="banner_title">#17353A</color>
+    <color name="accent">#0E6F72</color>
+    <color name="launch_background">#FBFDFC</color>
+    <color name="surface">#FBFDFC</color>
+    <color name="on_surface">#17353A</color>
+    <color name="on_surface_muted">#4D6266</color>
+    <color name="danger">#B3261E</color>
+    <color name="icon_background">#C2D4CD</color>
+    <color name="on_accent">#FFFFFF</color>
+    <color name="selection">#CCE0DC</color>
+    <color name="bar">#EEF4F2</color>
+</resources>

@@ -2,7 +2,8 @@
 
 require 'test_helper'
 
-# The Rupert iPhone app (ios/): path configuration, native layout and the Google sign-in handoff.
+# The Rupert iPhone and Android apps (ios/, android/): path configuration, native layout, App Links and the
+# Google sign-in handoff.
 class NativeAppTest < ActionDispatch::IntegrationTest
   VERIFIER = 'v' * 20 + 'erifier-abcdefghijklmnopqrstuvwxyz'
 
@@ -39,6 +40,45 @@ class NativeAppTest < ActionDispatch::IntegrationTest
     rules = response.parsed_body['rules']
     assert_equal ['.*'], rules.first['patterns']
     assert(rules.any? { |rule| rule['properties']['context'] == 'modal' })
+  end
+
+  test 'the Android app gets the same rules, and both apps bundle a copy that matches them' do
+    get native_ios_path_configuration_path
+    ios = response.parsed_body
+    get native_android_path_configuration_path
+    assert_response :success
+    assert_equal ios, response.parsed_body
+
+    # ios/Sources/Rupert/Resources/path-configuration.json is the one bundled copy (android/ copies it at build time).
+    bundled = Rails.root.join('../ios/Sources/Rupert/Resources/path-configuration.json')
+    skip 'ios/ is not part of this checkout' unless bundled.exist?
+    assert_equal ios, JSON.parse(bundled.read)
+  end
+
+  test 'the Android app is recognised as the app' do
+    agent = 'Mozilla/5.0 (Linux; Android 16) Rupert Android/1.0.0 (1); Hotwire Native Android; Turbo Native Android; bridge-components: []; Chrome/140'
+    get root_path, headers: { 'User-Agent' => agent }
+    assert_redirected_to login_path
+  end
+
+  test 'App Links list nothing until the signing certificate is configured' do
+    ENV.delete('RUPERT_ANDROID_CERT_SHA256')
+    get android_asset_links_path
+    assert_response :success
+    assert_equal [], response.parsed_body
+  end
+
+  test 'App Links name the Android package and only well-formed fingerprints' do
+    good = (['AB'] * 32).join(':')
+    ENV['RUPERT_ANDROID_CERT_SHA256'] = "#{good.downcase}, not-a-fingerprint"
+    get android_asset_links_path
+    assert_response :success
+    statement = response.parsed_body.sole
+    assert_equal ['delegate_permission/common.handle_all_urls'], statement['relation']
+    assert_equal 'com.rupertpos.rupert', statement.dig('target', 'package_name')
+    assert_equal [good], statement.dig('target', 'sha256_cert_fingerprints')
+  ensure
+    ENV.delete('RUPERT_ANDROID_CERT_SHA256')
   end
 
   test 'a signed-out app opening Home goes to sign-in, not the marketing page' do

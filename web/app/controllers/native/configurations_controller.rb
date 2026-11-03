@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
 module Native
-  # GET /native/ios/path-configuration.json: navigation rules for the Rupert iPhone app
-  # (Hotwire Native). Served from here so rules change with a deploy, not an App Store release;
-  # the app also bundles a copy for its first launch and for offline starts.
+  # GET /native/ios/path-configuration.json and /native/android/path-configuration.json: navigation
+  # rules for the Rupert iPhone and Android apps (Hotwire Native). Served from here so rules change
+  # with a deploy, not a store release. Both apps also bundle one shared copy for their first launch
+  # and offline starts, ios/Sources/Rupert/Resources/path-configuration.json, which must match RULES
+  # (test/integration/native_app_test.rb). Each platform has its own URL so the rules can diverge.
   class ConfigurationsController < ApplicationController
     skip_before_action :require_login
 
@@ -20,6 +22,12 @@ module Native
     def ios
       expires_in 5.minutes, public: true
       render json: { settings: {}, rules: RULES }
+    end
+
+    # Hotwire Native Android reads the same keys (context, presentation, pull_to_refresh_enabled);
+    # pages without a `uri` open in the app's default web fragment.
+    def android
+      ios
     end
   end
 end

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press the app icon: the same quick actions as the iPhone app. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="chat" android:enabled="true" android:icon="@drawable/ic_shortcut_chat"
+        android:shortcutShortLabel="@string/tab_chat">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.rupertpos.rupert"
+            android:targetClass="com.rupertpos.rupert.MainActivity">
+            <extra android:name="com.rupertpos.rupert.TAB" android:value="chat" />
+        </intent>
+    </shortcut>
+    <shortcut android:shortcutId="ask" android:enabled="true" android:icon="@drawable/ic_shortcut_ask"
+        android:shortcutShortLabel="@string/tab_ask">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.rupertpos.rupert"
+            android:targetClass="com.rupertpos.rupert.MainActivity">
+            <extra android:name="com.rupertpos.rupert.TAB" android:value="ask" />
+        </intent>
+    </shortcut>
+    <shortcut android:shortcutId="inbox" android:enabled="true" android:icon="@drawable/ic_shortcut_inbox"
+        android:shortcutShortLabel="@string/tab_inbox">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.rupertpos.rupert"
+            android:targetClass="com.rupertpos.rupert.MainActivity">
+            <extra android:name="com.rupertpos.rupert.TAB" android:value="inbox" />
+        </intent>
+    </shortcut>
+    <shortcut android:shortcutId="search" android:enabled="true" android:icon="@drawable/ic_shortcut_search"
+        android:shortcutShortLabel="@string/tab_search">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.rupertpos.rupert"
+            android:targetClass="com.rupertpos.rupert.MainActivity">
+            <extra android:name="com.rupertpos.rupert.TAB" android:value="search" />
+        </intent>
+    </shortcut>
+</shortcuts>
