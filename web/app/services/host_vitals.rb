@@ -68,14 +68,14 @@ class HostVitals
 
     # Without a cgroup (a laptop, say): the one-minute load average as a share of the cores.
     def load_percent
-      load1 = File.read('/proc/loadavg').split.first.to_f
+      load1 = read_host_file('/proc/loadavg').split.first.to_f
       [(load1 / Etc.nprocessors * 100).round, 100].min
     rescue SystemCallError, ZeroDivisionError
       nil
     end
 
     def memory_percent
-      info = File.read('/proc/meminfo').lines.to_h do |line|
+      info = read_host_file('/proc/meminfo').lines.to_h do |line|
         key, value = line.split(':')
         [key, value.to_i]
       end
@@ -84,6 +84,11 @@ class HostVitals
       total.positive? ? ((total - available) * 100.0 / total).round : nil
     rescue SystemCallError
       nil
+    end
+
+    # Linux-only /proc files; tests stub this so the parsing is checked on any host.
+    def read_host_file(path)
+      File.read(path)
     end
 
     # Use of the filesystem holding the database, as df reports it.
