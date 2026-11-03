@@ -22,12 +22,12 @@ class CustomerDisplaysController < ApplicationController
     if checkout.gateway_provider == 'nmi'
       gateway = Pos::NmiGateway.new(setting)
       gateway.assert_checkout!(checkout)
-      return render json: { demo: false, provider: 'nmi', sandbox: true, tokenization_key: setting.credentials.fetch('tokenization_key'), script_url: Pos::NmiGateway::SCRIPT_URL, total_cents: checkout.total_cents }
+      return render json: { demo: false, provider: 'nmi', sandbox: gateway.sandbox?, tokenization_key: setting.credentials.fetch('tokenization_key'), script_url: Pos::NmiGateway.script_url(setting.environment), total_cents: checkout.total_cents }
     end
     render json: { demo: false, login_id: setting.credentials.fetch('api_login_id'), client_key: setting.public_client_key,
       script_url: setting.environment == 'sandbox' ? 'https://jstest.authorize.net/v3/AcceptUI.js' : 'https://js.authorize.net/v3/AcceptUI.js', total_cents: checkout.total_cents }
   rescue Pos::Error, KeyError
-    render json: { error: 'Sandbox payment setup is unavailable.' }, status: :conflict
+    render json: { error: 'Card payment setup is unavailable. Ask the cashier to check checkout setup.' }, status: :conflict
   end
 
   def pay

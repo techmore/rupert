@@ -30,6 +30,18 @@ jobs:
       - name: Install age
         run: sudo apt-get -o Acquire::Retries=5 update -qq && sudo apt-get -o Acquire::Retries=5 install -y -qq age
       - run: python3 -m unittest discover -s deploy/ser8/tests -v
+      # Release audit, static part (docs/ops/release-audit.md): card numbers in the repo, customer
+      # names and email evidence on public pages (hashed deny-list secret), unproven certification
+      # claims, draft legal pages. Known findings in the hashed baseline warn instead of failing.
+      - run: python3 -m unittest discover -s bin/tests -v
+      - name: Release audit (card data, public privacy, claims, legal)
+        env:
+          RUPERT_PRIVACY_DENYLIST: ${{ secrets.RUPERT_PRIVACY_DENYLIST }}
+        run: |
+          status=0
+          python3 bin/release-audit --baseline .github/release-audit-baseline.json --report release-audit.md > /dev/null || status=$?
+          cat release-audit.md >> "$GITHUB_STEP_SUMMARY"
+          exit $status
       - name: Run all browser-controller tests
         run: node --test web/test/javascript/*_test.mjs web/engines/*/test/javascript/*_test.mjs
   CI:
@@ -110,6 +122,10 @@ jobs:
 
       - name: Precompile assets
         run: bin/rails assets:precompile
+
+      # Named separately so a release-audit failure is obvious: card data never reaches logs, chat or AI prompts.
+      - name: Card data redaction tests
+        run: bin/rails test test/services/card_data_test.rb test/integration/card_data_logging_test.rb
 
       - name: Run tests (with coverage)
         run: COVERAGE=1 bin/rails test

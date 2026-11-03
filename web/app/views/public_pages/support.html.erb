@@ -9,6 +9,20 @@
     <p class="text-sm text-mocha">Signed in? Use <strong>Report a problem</strong> in the account menu: it sends us the page you were on, so we can see what went wrong.</p>
   </section>
 
+  <%# OWNER REVIEW: set RUPERT_BUSINESS_ADDRESS, RUPERT_SUPPORT_PHONE, RUPERT_SUPPORT_HOURS and
+      RUPERT_LEGAL_NAME in the deployment environment; until then this card shows placeholders. %>
+  <section class="section-card" id="company">
+    <%= section_heading 'Who runs Rupert' %>
+    <dl class="facts">
+      <div><dt>Company</dt><dd><%= company_operator_name %></dd></div>
+      <div><dt>Legal entity</dt><dd><%= company_legal_name %></dd></div>
+      <div><dt>Business address</dt><dd><%= company_fact(:address, 'principal business address (not a PO box)') %></dd></div>
+      <div><dt>Phone</dt><dd><% if (phone = PublicPagesController.company[:phone]) %><%= link_to phone, "tel:#{phone.gsub(/[^\d+]/, '')}", class: 'text-olive underline' %><% else %><%= owner_placeholder('support phone number') %><% end %></dd></div>
+      <div><dt>Email</dt><dd><%= mail_to @support_email, nil, class: 'text-olive underline' %></dd></div>
+      <div><dt>Support hours</dt><dd><%= company_fact(:hours, 'support hours and time zone') %></dd></div>
+    </dl>
+  </section>
+
   <section class="section-card">
     <%= section_heading 'Common questions' %>
     <details class="explainer">
@@ -34,7 +48,9 @@
   </section>
 
   <section class="section-card">
-    <%= section_heading 'More' %>
-    <p class="text-sm"><%= link_to 'Privacy policy', privacy_policy_path, class: 'text-olive underline' %> · <%= link_to 'Product guides', 'https://techmore.github.io/rupert/overview.html', class: 'text-olive underline' %></p>
+    <%= section_heading 'Product guides' %>
+    <p class="text-sm"><%= link_to 'How Rupert works, feature by feature', 'https://techmore.github.io/rupert/overview.html', class: 'text-olive underline' %></p>
   </section>
+
+  <%= render 'public_pages/policy_links' %>
 </div>

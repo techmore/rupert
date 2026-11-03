@@ -1,14 +1,23 @@
 <%# Free account: a Form page (docs/ui-standards.md §4). %>
 <% content_for :title, 'Create your free account' %>
+<% content_for :head do %><meta name="description" content="Create a free Rupert account for your shop with Google sign-in. No card needed."><% end %>
+<%# A rejected form comes back with what the person typed, so they fix one field instead of retyping both. %>
+<% typed = @typed || {} %>
 <div class="page-narrow space-y-6 pt-6">
-  <%= page_header 'Create your free account', subtitle: 'Create your account free with Google; no card required.', eyebrow: 'Your business, connected' %>
+  <%= page_header 'Create your free account', subtitle: 'Sign up with Google. No card needed.', eyebrow: 'Your business, connected' %>
   <p class="text-sm text-mocha">Google verifies your email before we create your account. Connecting a business provider is a separate permission you control, and you can choose a paid subscription from your workspace.</p>
 
   <%= form_with scope: :registration, url: start_path, data: { turbo: false }, class: 'card card-pad space-y-4' do |f| %>
     <fieldset class="space-y-3">
       <legend class="card-title">Your business</legend>
-      <div><%= f.label :workspace_name, 'Business name', class: 'field-label' %><%= f.text_field :workspace_name, required: true, maxlength: 160, class: 'input' %></div>
-      <div><%= f.label :requested_subdomain, 'Workspace address', class: 'field-label' %><%= f.text_field :requested_subdomain, required: true, minlength: 2, maxlength: 63, pattern: '[a-z0-9][a-z0-9\-]*[a-z0-9]', class: 'input', autocapitalize: 'none' %></div>
+      <div><%= f.label :workspace_name, 'Business name', class: 'field-label' %><%= f.text_field :workspace_name, value: typed['workspace_name'], required: true, maxlength: 160, autocomplete: 'organization', class: 'input' %></div>
+      <div>
+        <%= f.label :requested_subdomain, 'Workspace address', class: 'field-label' %>
+        <%= f.text_field :requested_subdomain, value: typed['requested_subdomain'], required: true, minlength: 2, maxlength: 63, pattern: '[a-z0-9][a-z0-9\-]*[a-z0-9]',
+                         title: '2–63 lowercase letters, numbers or hyphens', placeholder: 'corner-shop', class: 'input', autocapitalize: 'none', autocomplete: 'off', spellcheck: false,
+                         aria: { describedby: 'requested-subdomain-hint' } %>
+        <p id="requested-subdomain-hint" class="mt-1 text-xs text-mocha">2–63 lowercase letters, numbers or hyphens. It can't start or end with a hyphen.</p>
+      </div>
     </fieldset>
     <div class="form-actions">
       <%= f.submit 'Continue with Google', class: 'btn-primary' %>
@@ -16,3 +25,4 @@
     </div>
   <% end %>
 </div>
+<p class="page-narrow mt-4 text-center text-xs text-taupe"><%= link_to 'Privacy policy', privacy_policy_path, class: 'hover:underline' %> · <%= link_to 'Support', support_path, class: 'hover:underline' %></p>
