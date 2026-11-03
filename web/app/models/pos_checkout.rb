@@ -3,6 +3,7 @@
 class PosCheckout < ApplicationRecord
   include TenantScoped
   belongs_to :location
+  belongs_to :pos_terminal, optional: true
   belongs_to :user
   belongs_to :pos_display_session
   belongs_to :pos_session, class_name: 'Sales::PosSession', optional: true

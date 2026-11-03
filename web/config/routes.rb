@@ -635,6 +635,9 @@ Rails.application.routes.draw do
   patch '/pos_settings/:location_id', to: 'pos_settings#update'
   post '/pos_settings/:location_id/verify', to: 'pos_settings#verify', as: :verify_pos_setting
   post '/pos_settings/:location_id/close_batch', to: 'pos_settings#close_batch', as: :close_batch_pos_setting
+  post '/pos_settings/:location_id/terminals', to: 'pos_settings#add_terminal', as: :pos_setting_terminals
+  post '/pos_settings/:location_id/terminals/:id/check', to: 'pos_settings#check_terminal', as: :check_pos_setting_terminal
+  post '/pos_settings/:location_id/terminals/:id/retire', to: 'pos_settings#retire_terminal', as: :retire_pos_setting_terminal
   get '/pos_settlements/:location_id', to: 'pos_settlements#show', as: :pos_settlement
   get '/processor_catalogs', to: 'processor_catalogs#index', as: :processor_catalogs
   patch '/processor_catalogs/:processor', to: 'processor_catalogs#update', as: :processor_catalog

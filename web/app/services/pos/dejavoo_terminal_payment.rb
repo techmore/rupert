@@ -195,7 +195,7 @@ module Pos
 
     def self.gateway_for(checkout)
       setting = PosSetting.find_by!(location: checkout.location)
-      gateway = DejavooSpinGateway.new(setting)
+      gateway = DejavooSpinGateway.new(setting, terminal: checkout.pos_terminal)
       gateway.assert_checkout!(checkout)
       raise Error, 'Card terminal checkout is disabled.' unless setting.card_enabled && setting.verified_at
 

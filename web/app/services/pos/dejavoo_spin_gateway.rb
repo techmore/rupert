@@ -61,13 +61,14 @@ module Pos
       def no_charge? = %w[declined rejected unavailable].include?(outcome)
     end
 
-    attr_reader :setting, :version
+    attr_reader :setting, :version, :terminal
 
     def self.url(environment, path) = "#{HOSTS.fetch(environment) { raise Error, 'Unknown Dejavoo environment.' }}/#{path}"
 
     def self.reference = "RD#{SecureRandom.hex(12)}"
 
-    def initialize(setting)
+    # terminal: an extra PosTerminal of this store, or nil for the main TPN.
+    def initialize(setting, terminal: nil)
       raise Error, 'Gateway belongs to another workspace.' unless setting.persisted? && setting.tenant_id == Current.tenant_id
       raise Error, 'This store is not set up for Dejavoo terminals.' unless setting.gateway_provider == 'dejavoo_spin'
       raise Error, 'Dejavoo production needs owner sign-off in checkout setup first.' unless HOSTS.key?(setting.environment) && setting.dejavoo_ready_environment?
@@ -75,10 +76,15 @@ module Pos
       @setting = setting
       @environment = setting.environment
       @version = setting.lock_version
-      @credentials = setting.credentials
+      if terminal && !(terminal.tenant_id == setting.tenant_id && terminal.location_id == setting.location_id)
+        raise Error, 'That terminal belongs to another store.'
+      end
+
+      @terminal = terminal
+      @credentials = terminal ? terminal.credentials : setting.credentials
       raise Error, 'Save the Dejavoo terminal TPN and auth key first.' unless @credentials['tpn'].to_s.match?(TPN) && @credentials['auth_key'].to_s.match?(AUTH_KEY)
 
-      @fingerprint = setting.payment_fingerprint
+      @fingerprint = terminal ? terminal.payment_fingerprint(setting) : setting.payment_fingerprint
     end
 
     def sandbox? = @environment == 'sandbox'

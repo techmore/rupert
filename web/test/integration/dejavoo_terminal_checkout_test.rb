@@ -81,7 +81,7 @@ class DejavooTerminalCheckoutTest < ActionDispatch::IntegrationTest
     assert_includes response.body, 'Dejavoo FEED, last 30 days'
     post close_batch_pos_setting_path(@location.id)
     assert_redirected_to pos_setting_path(@location.id)
-    assert_match(/Batch 42 closed: Dejavoo 25.50 USD/, flash[:alert].to_s + flash[:notice].to_s)
+    assert_match(/Main terminal: batch 42 closed: Dejavoo 25.50 USD/, flash[:alert].to_s + flash[:notice].to_s)
     assert_includes spin_paths, 'v2/Payment/Settle'
   end
 end

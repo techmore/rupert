@@ -59,6 +59,44 @@ class PosSettingsController < AuthenticatedController
     redirect_to pos_setting_path(@location.id), alert: e.message
   end
 
+  # Extra Dejavoo terminals, one per register (or event). A new one must pass
+  # a check (a status lookup that cannot charge) before any register uses it.
+  def add_terminal
+    raise Pos::Error, 'Extra terminals are for Dejavoo stores.' unless @setting.persisted? && @setting.gateway_provider == 'dejavoo_spin'
+
+    terminal = PosTerminal.new(location: @location, name: params[:terminal_name].to_s.squish, register_name: params[:register_name].to_s,
+      credentials_json: { tpn: params[:terminal_tpn].to_s.strip, auth_key: params[:terminal_auth_key].to_s.strip }.to_json)
+    raise Pos::Error, terminal.errors.full_messages.to_sentence unless terminal.save
+
+    ActivityLogger.log('pos_terminal_added', subject: @setting, details: "#{terminal.name} for register #{terminal.register_name}")
+    redirect_to pos_setting_path(@location.id), notice: "#{terminal.name} added. Check it before register #{terminal.register_name} can use it."
+  rescue Pos::Error => e
+    redirect_to pos_setting_path(@location.id), alert: e.message
+  end
+
+  def check_terminal
+    terminal = PosTerminal.active.find_by!(id: params[:id], location_id: @location.id)
+    Pos::DejavooSpinGateway.new(@setting, terminal: terminal).verify!
+    terminal.update!(verified_at: Time.current)
+    redirect_to pos_setting_path(@location.id), notice: "#{terminal.name} reached through SPIn. Register #{terminal.register_name} now sends card sales to it."
+  rescue Pos::Error => e
+    redirect_to pos_setting_path(@location.id), alert: e.message
+  end
+
+  # Retired terminals keep their keys so past sales can still be refunded.
+  def retire_terminal
+    terminal = PosTerminal.active.find_by!(id: params[:id], location_id: @location.id)
+    if PosCheckout.where(pos_terminal_id: terminal.id, status: %w[processing unknown]).exists?
+      raise Pos::Error, 'Resolve this terminal’s unfinished card payments first.'
+    end
+
+    terminal.update!(retired_at: Time.current)
+    ActivityLogger.log('pos_terminal_retired', subject: @setting, details: terminal.name)
+    redirect_to pos_setting_path(@location.id), notice: "#{terminal.name} retired. Register #{terminal.register_name} uses the main terminal again."
+  rescue Pos::Error => e
+    redirect_to pos_setting_path(@location.id), alert: e.message
+  end
+
   # Closes the Dejavoo terminal's open batch and compares its totals with the
   # terminal sales and refunds Rupert recorded in that batch. Closing is what
   # the terminal does at end of day; nothing in Rupert's books changes.
