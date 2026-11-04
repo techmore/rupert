@@ -5,7 +5,7 @@
 <% if ReleaseBlockers.visible_to?(Current.user) && gate.any_open? %>
   <% open_items = gate.open_items %>
   <% label = "#{gate.title}: #{gate.open_count} open" %>
-  <div data-controller="dropdown" class="relative" data-release-gate>
+  <div data-controller="dropdown" class="relative topbar-wide-only" data-release-gate>
     <button type="button" class="nav-utility" data-action="dropdown#toggle" data-dropdown-target="trigger" aria-label="<%= label %>" aria-expanded="false" aria-controls="release-gate-panel" title="<%= label %>"><%= navigation_icon('gate') %><span class="badge badge-clay nav-badge" aria-hidden="true" data-release-gate-open="<%= gate.open_count %>"><%= gate.open_count %></span></button>
     <div id="release-gate-panel" data-dropdown-target="menu" class="account-menu gate-menu hidden" role="region" aria-labelledby="release-gate-title">
       <div class="account-menu-head">

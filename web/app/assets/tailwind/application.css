@@ -408,7 +408,15 @@
 @media(max-width:640px) {
   .app-topbar { gap:.35rem;padding:0 .5rem; }
   .app-main { padding-left:1rem;padding-right:1rem; }
+  /* Release blockers and the release gate stay on wider screens; on a phone they are in the
+     rail (System → Release blockers), so the bar keeps 44px targets without running off-screen. */
+  .topbar-wide-only { display:none !important; }
+  .header-utilities { gap:0; }
 }
+/* Narrow phones: the face alone is the home link (it keeps its accessible name). */
+@media(max-width:439px) { .app-brand-name { display:none; } }
+/* 320px reflow (WCAG 1.4.10): the menu button and the rail's Overview lead home. */
+@media(max-width:359px) { .app-brand { display:none; } }
 
 /* Status bar: one thin strip under every page (sync, Team chat badge, report a problem, help, build). */
 /* Next thing to do (shared shell, docs/ui-standards.md §2): one quiet line at the top of the page,
@@ -506,6 +514,9 @@ html[data-full-window] .table-region { max-height:none; }
 .toolbar { display:flex;flex-wrap:wrap;align-items:flex-end;gap:.75rem; }
 .toolbar > * { min-width:0; }
 .toolbar-field { flex:1 1 11rem;max-width:20rem; }
+.toolbar-field > .input,.toolbar-field > .select,.toolbar-field > .search { width:100%; }
+/* Phones: one filter per row, full width, so the band reads as a form instead of a ragged row. */
+@media(max-width:640px) { .toolbar > .toolbar-field { flex-basis:100%;max-width:none; } }
 .toolbar-field .field-label { margin-bottom:.3rem;font-size:.75rem;color:var(--color-taupe); }
 .toolbar-actions { display:flex;flex-wrap:wrap;align-items:center;gap:.5rem; }
 /* A toolbar that sits on the page itself, not in a card: filters are controls, not content. */
@@ -823,9 +834,10 @@ html[data-full-window] .table-region { max-height:none; }
 .report-table-column { display:flex;align-items:center;gap:.5rem;padding:.3rem .4rem;border-radius:.5rem;font-size:.85rem;color:var(--color-ink);cursor:pointer; }
 .report-table-column:hover { background:var(--color-haze); }
 .report-table-column input:disabled + span { color:var(--color-mocha); }
-.report-table-scroll { overflow-x:auto; }
+.report-table-scroll { position:relative;overflow-x:auto; } /* relative: keeps .sr-only header labels inside the scroller (see .table-region) */
 .report-table th[hidden],.report-table td[hidden],.report-table tr[hidden] { display:none !important; }
-.report-table-sort { margin-left:.3rem;padding:0 .2rem;border-radius:.3rem;font-size:.75rem;line-height:1;color:var(--color-taupe);vertical-align:middle; }
+.report-table-sort { display:inline-grid;place-items:center;min-width:24px;min-height:24px;margin-left:.15rem;padding:0 .2rem;border-radius:.3rem;font-size:.75rem;line-height:1;color:var(--color-taupe);vertical-align:middle; } /* 24px: WCAG 2.5.8 target size */
+.report-table-sort:focus-visible { outline:2px solid var(--color-olive);outline-offset:1px; }
 .report-table-sort:hover,.report-table th[aria-sort] .report-table-sort { color:var(--color-ink); }
 /* Server-sorted list headings (sortable_th + ListSort). The whole label is the link; the
    arrow is quiet until the column is the one the list is sorted by. */
@@ -1049,6 +1061,7 @@ select.input {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+  min-height: 24px; /* WCAG 2.5.8 target size */
   cursor: pointer;
   list-style: none;
   font-size: 0.75rem;
@@ -1345,7 +1358,7 @@ a.card:focus-visible {
 .term-inline { margin-left:.35rem; }
 .term > summary { list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:.3rem;color:var(--color-olive-deep);border-radius:999px; }
 .term > summary::-webkit-details-marker { display:none; }
-.term-trigger { padding:.1rem .15rem; }
+.term-trigger { justify-content:center;min-width:24px;min-height:24px;padding:.1rem .15rem; } /* 24px: WCAG 2.5.8 target size; the visible mark stays small */
 .term-label { font:inherit;color:inherit;text-decoration:underline dotted;text-decoration-color:var(--color-olive);text-underline-offset:3px; }
 .term-mark { display:inline-grid;place-items:center;width:.95rem;height:.95rem;border:1px solid var(--color-fog);border-radius:999px;font-size:.6rem;font-weight:700;line-height:1;color:var(--color-taupe);background:transparent;transition:color .15s,border-color .15s,background .15s; }
 .term > summary:hover .term-mark,.term[open] .term-mark { background:var(--color-olive);color:var(--color-cream); }
@@ -1362,7 +1375,10 @@ a.card:focus-visible {
 .term-list-panel > div + div { margin-top:.65rem;padding-top:.65rem;border-top:1px solid var(--color-fog); }
 
 .calculation { font-size:.875rem; }
-.calculation-trigger { cursor:pointer;font-weight:600;color:var(--color-olive-deep); }
+.calculation-trigger { padding-block:.2rem;cursor:pointer;font-weight:600;color:var(--color-olive-deep); }
+/* Disclosure summaries are standalone targets, not inline text: padding keeps them at least 24px
+   tall (WCAG 2.5.8) while they stay list items with their native marker. */
+.workspace-help > summary { padding-block:.2rem; }
 .calculation-panel { margin-top:.75rem;padding:1rem;border:1px solid var(--color-fog);border-radius:1rem;background:var(--color-haze); }
 .calculation-title { font-weight:600;color:var(--color-ink); }
 .calculation-formula { margin-top:.35rem;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.8rem;color:var(--color-mocha); }

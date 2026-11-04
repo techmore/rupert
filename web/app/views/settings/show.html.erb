@@ -1,56 +1,7 @@
 <%# Settings: the Settings template (docs/ui-standards.md §4). One section card per topic. %>
 <% can_write = Current.user.can?("settings.write") %>
 <div class="page-medium space-y-6">
-  <%= page_header 'Settings', subtitle: 'Environment keys, backups, business details, pay rules, sign-in and integrations.' %>
-
-  <section id="env" class="section-card" data-controller="settings">
-    <%= section_heading 'Environment (.env)', hint: 'Paste or import a .env file to update managed keys.' do %>
-      <% if Current.user.super_admin? %>
-        <%= link_to "Download .env", env_export_confirm_settings_path, class: "btn-ghost btn-sm", data: { turbo: false } %>
-      <% end %>
-    <% end %>
-    <p class="text-xs text-taupe">Values are stored encrypted in the database and override the server environment.</p>
-
-    <div data-settings-target="envList" class="space-y-2"></div>
-
-    <% if can_write %>
-      <form data-settings-target="envForm" data-action="submit->settings#submitEnv" class="space-y-3">
-        <div>
-          <label class="field-label" for="env_text">Keys and values</label>
-          <textarea id="env_text" name="text" rows="8" placeholder="KEY=VALUE&#10;# comments are ignored&#10;SQUARE_ACCESS_TOKEN=..." class="input font-mono text-xs"></textarea>
-        </div>
-        <div>
-          <label class="field-label" for="env_file">Or upload a file</label>
-          <input id="env_file" type="file" name="file" accept=".env,text/plain" class="text-xs">
-        </div>
-        <div class="form-actions">
-          <button type="submit" class="btn-primary">Import</button>
-          <span data-settings-target="envResult" class="text-xs"></span>
-        </div>
-      </form>
-    <% end %>
-    <details class="explainer text-sm text-mocha">
-      <summary class="explainer-summary">Which keys can change here</summary>
-      <p class="mt-1">Environment keys apply to the sync engine immediately. Boot-time keys (Shopify API key and secret, database) come from the server environment and cannot be changed here. Credentials for each source live under Credentials & sync.</p>
-    </details>
-  </section>
-
-  <section class="section-card">
-    <%= section_heading 'Database backup', hint: 'Download a consistent database snapshot.' %>
-    <% if Current.user.super_admin? %>
-      <div class="flex flex-wrap items-center gap-3">
-        <%= link_to "Download backup", backup_settings_path, class: "btn-primary", data: { turbo: false } %>
-        <%= link_to "Open backup encryption", settings_backups_path, class: "btn-ghost" %>
-      </div>
-      <% unless BackupEncryptionKey.current %>
-        <p class="flash flash-alert text-sm" role="status">Server backups are not encrypted yet and will be refused. Create a backup key in backup encryption.</p>
-      <% end %>
-      <p class="text-xs text-taupe">Database restores need offline maintenance with web and jobs stopped and a verified recovery backup. Contact the instance operator.</p>
-      <p data-settings-target="restoreResult" class="text-xs"></p>
-    <% else %>
-      <p class="text-sm text-taupe">Instance backups and restores are managed by the platform administrator.</p>
-    <% end %>
-  </section>
+  <%= page_header 'Settings', subtitle: 'Business details, pay rules, backups, sign-in, integrations and environment keys.' %>
 
   <section class="section-card">
     <%= section_heading 'Business settings', hint: 'Shown on printed invoices and used by stock alerts.' %>
@@ -158,6 +109,55 @@
       <summary class="explainer-summary">How pay is estimated</summary>
       <p class="mt-1">Tips are split evenly between everyone clocked in when the tip was left, except administrators. Commission is 1% of before-tax, after-discount sales rung up while each person was clocked in, each their own 1%; administrators earn none. A tip left while only administrators were clocked in is shown as unassigned. Clock punches are used as recorded, never rounded. Overtime is only calculated when turned on here.</p>
     </details>
+  </section>
+
+  <section id="env" class="section-card" data-controller="settings">
+    <%= section_heading 'Environment (.env)', hint: 'Paste or import a .env file to update managed keys.' do %>
+      <% if Current.user.super_admin? %>
+        <%= link_to "Download .env", env_export_confirm_settings_path, class: "btn-ghost btn-sm", data: { turbo: false } %>
+      <% end %>
+    <% end %>
+    <p class="text-xs text-taupe">Values are stored encrypted in the database and override the server environment.</p>
+
+    <div data-settings-target="envList" class="space-y-2"></div>
+
+    <% if can_write %>
+      <form data-settings-target="envForm" data-action="submit->settings#submitEnv" class="space-y-3">
+        <div>
+          <label class="field-label" for="env_text">Keys and values</label>
+          <textarea id="env_text" name="text" rows="8" placeholder="KEY=VALUE&#10;# comments are ignored&#10;SQUARE_ACCESS_TOKEN=..." class="input font-mono text-xs"></textarea>
+        </div>
+        <div>
+          <label class="field-label" for="env_file">Or upload a file</label>
+          <input id="env_file" type="file" name="file" accept=".env,text/plain" class="text-xs">
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary">Import</button>
+          <span data-settings-target="envResult" class="text-xs"></span>
+        </div>
+      </form>
+    <% end %>
+    <details class="explainer text-sm text-mocha">
+      <summary class="explainer-summary">Which keys can change here</summary>
+      <p class="mt-1">Environment keys apply to the sync engine immediately. Boot-time keys (Shopify API key and secret, database) come from the server environment and cannot be changed here. Credentials for each source live under Credentials & sync.</p>
+    </details>
+  </section>
+
+  <section class="section-card">
+    <%= section_heading 'Database backup', hint: 'Download a consistent database snapshot.' %>
+    <% if Current.user.super_admin? %>
+      <div class="flex flex-wrap items-center gap-3">
+        <%= link_to "Download backup", backup_settings_path, class: "btn-primary", data: { turbo: false } %>
+        <%= link_to "Open backup encryption", settings_backups_path, class: "btn-ghost" %>
+      </div>
+      <% unless BackupEncryptionKey.current %>
+        <p class="flash flash-alert text-sm" role="status">Server backups are not encrypted yet and will be refused. Create a backup key in backup encryption.</p>
+      <% end %>
+      <p class="text-xs text-taupe">Database restores need offline maintenance with web and jobs stopped and a verified recovery backup. Contact the instance operator.</p>
+      <p data-settings-target="restoreResult" class="text-xs"></p>
+    <% else %>
+      <p class="text-sm text-taupe">Instance backups and restores are managed by the platform administrator.</p>
+    <% end %>
   </section>
 
   <section class="section-card">
