@@ -74,6 +74,8 @@ Full detail in [team-chat.md](team-chat.md).
 | `RUPERT_CHAT_API_KEY` | Key for `opencode_go` / `openai` |
 | `RUPERT_CHAT_FALLBACK` | `engine[:model]` list to try in order when the first model is refused or unreachable, or `none` |
 | `RUPERT_LOCAL_LLM_URL` | The rupert-llm gateway (`…/v1`); setting it turns on the local `@agents` |
+| `RUPERT_MLX_LLM_URL` | Experimental: an Apple-silicon `mlx_lm.server` (`…/v1`) that answers Ask Rupert's local turns instead of the gateway or Ollama; unset = unchanged. See [local LLM backends](../ai/local-llm-backends.md) |
+| `RUPERT_MLX_LLM_MODEL` | Model name sent to that server; default `default_model` (the model it was started with) |
 | `RUPERT_LOCAL_TOOLS` | `all` gives local bots every tool on every question (stable prompt the model server can cache) instead of only the tools for the question's topics |
 | `RUPERT_VERIFY` | `1` (every local bot) or a comma list of bot handles: check and fix each local answer against its tool data |
 | `RUPERT_VOICE_URL` | Local speech worker for Team chat voice (`http://127.0.0.1:<port>` only); voice controls appear only when this and the token are set |

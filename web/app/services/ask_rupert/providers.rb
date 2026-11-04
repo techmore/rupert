@@ -23,7 +23,11 @@ module AskRupert
 
     # Both chat surfaces share the one-model gateway when it is configured.
     # Keep Ollama for installations that have not installed that gateway.
+    # RUPERT_MLX_LLM_URL (an Apple-silicon MLX server, experimental) wins only when set.
     def local_provider(config)
+      mlx = Mlx.new
+      return mlx if mlx.configured?
+
       gateway = LocalGateway.new
       gateway.configured? ? gateway : Ollama.new(config)
     end
@@ -32,7 +36,7 @@ module AskRupert
       local = local_provider(config)
       return 'not set up on this server' unless local.configured?
 
-      location = local.name == 'local_gateway' ? 'shared local gateway' : 'Ollama on this network'
+      location = { 'local_gateway' => 'shared local gateway', 'mlx' => 'MLX on this network' }.fetch(local.name, 'Ollama on this network')
       "#{local.model} (#{location})"
     end
 
