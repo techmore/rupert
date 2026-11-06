@@ -1,0 +1,735 @@
+# Learning center course: how our card payments work. Loaded by Lms::Seeder (see docs/lms/README.md).
+# Bump `version` when the content changes; the seeder updates workspaces that have not edited the course.
+# Figures are from the sources listed in docs/lms/SOURCES.md. Anything that depends on our Valmar contract
+# says "check the statement" and is listed in docs/lms/OPEN-QUESTIONS.md.
+key: how-our-card-payments-work
+slug: how-our-card-payments-work
+version: 1
+status: published
+position: 10
+title: How our card payments work
+summary: Who touches a card sale, why we use each of them, where the fees go, and what never to do.
+badge_title: Card payments, understood
+description: |
+  Eight short lessons, about 25 minutes in all. By the end you can explain to a new hire or a curious customer
+  what happens between the tap on the **Dejavoo P18** and the deposit in our bank, why the money takes days,
+  why a refund is not instant, what a chargeback costs us, and which habits keep card data (and the business) safe.
+
+  Read them in order the first time. Every lesson ends with a quick check; all answers must be right to move on,
+  and you can retry as often as you like.
+assign:
+  - role: manager
+    required: true
+    due_days: 30
+  - role: admin
+    required: false
+  - role: shift_leader
+    required: false
+glossary:
+  - key: authorization
+    term: Authorization
+    definition: The customer's bank saying "yes, this card can pay this amount" and holding the money. Nothing has moved yet.
+  - key: capture
+    term: Capture
+    definition: Marking an authorized sale as "really charge this". On our terminal a sale is authorized and captured in the same tap.
+  - key: batch
+    term: Batch
+    definition: All of the day's captured card sales bundled together and sent to the processor at close. Also called settlement.
+  - key: settlement
+    term: Settlement
+    definition: The overnight process where the card networks move money from the customers' banks toward ours and take their fees.
+  - key: funding
+    term: Funding
+    definition: The deposit of settled money into our business checking account, usually a few business days after the sale.
+  - key: terminal
+    term: Terminal
+    definition: The device that reads the card. Ours is a Dejavoo P18. It encrypts the card so nothing else in the shop ever sees the number.
+  - key: gateway
+    term: Gateway
+    definition: The secure pipe between the place the sale happens (terminal or website) and the processor. It carries the request and brings back the answer.
+  - key: processor
+    term: Processor
+    definition: The company that routes the transaction to the card network and back and that moves the settled money. We reach ours through Valmar.
+  - key: acquirer
+    term: Acquiring bank
+    definition: The bank that holds our merchant account and receives settled money on our behalf. It sits behind Valmar; it is not our everyday bank.
+  - key: iso
+    term: Merchant services (ISO)
+    definition: The company that sells and supports our merchant account, sets our pricing and handles disputes. For us that is Valmar.
+  - key: issuer
+    term: Issuing bank
+    definition: The customer's bank, the one that gave them the card. It approves or declines, and it is the one that pays us.
+  - key: network
+    term: Card network
+    definition: Visa, Mastercard, American Express or Discover. They set the rules, carry the messages and charge assessment fees.
+  - key: interchange
+    term: Interchange
+    definition: The largest part of card fees. Paid to the customer's bank, set by the card network per card type, and not negotiable by anyone.
+  - key: assessments
+    term: Assessments
+    definition: The card network's own fee, a small percentage of volume, charged to every merchant alike.
+  - key: markup
+    term: Markup
+    definition: What the processor, gateway and Valmar add on top of interchange and assessments. The only part of the fee that is negotiated.
+  - key: interchange_plus
+    term: Interchange-plus pricing
+    definition: A pricing model where the statement shows the real interchange and assessments plus one fixed markup. Transparent, so you can see what each card cost.
+  - key: emv
+    term: EMV (chip)
+    definition: The chip-card standard. A chip or tap creates a one-time code for each sale, so a copied card does not work. Named after Europay, Mastercard and Visa.
+  - key: liability_shift
+    term: Liability shift
+    definition: Since October 2015, if a counterfeit card is used and the merchant did not take the chip, the merchant eats the loss instead of the bank.
+  - key: tip_adjust
+    term: Tip adjust
+    definition: Changing the tip on a sale after the card was run but before the batch closes. After the batch closes the amount is final.
+  - key: void
+    term: Void
+    definition: Cancelling a sale that is still in the open batch. Nothing is sent, nothing is charged, no fee.
+  - key: refund
+    term: Refund
+    definition: A new transaction that sends money back to the customer after the original sale has settled. It takes days to appear on their statement.
+  - key: chargeback
+    term: Chargeback
+    definition: A customer disputing a charge with their bank. The money is pulled from us at once, a fee is added, and we have a deadline to respond with evidence.
+  - key: pci
+    term: PCI DSS
+    definition: The card industry's security rules for anyone who handles card data. Our setup keeps card data on the terminal and the gateway so almost none of it applies to us.
+  - key: skimmer
+    term: Skimmer
+    definition: A hidden device or tampered terminal that copies card data. Checking the terminal for anything odd is part of our routine.
+  - key: descriptor
+    term: Descriptor
+    definition: The business name that shows on the customer's card statement. A clear one prevents "I don't recognize this" disputes.
+  - key: tokenization
+    term: Tokenization
+    definition: Replacing a card number with a stand-in code that is useless to a thief. Authorize.net does this for our online sales, so Rupert never holds a card number.
+  - key: p2pe
+    term: Point-to-point encryption
+    definition: The terminal encrypts the card the instant it is read and only the processor can decrypt it. It is what keeps our PCI work small.
+lessons:
+  - slug: life-of-a-tap
+    title: The life of a tap
+    summary: What happens between the customer's tap and the money in our bank, and how long each step takes.
+    minutes: 4
+    diagram: card_flow
+    body: |
+      A card sale feels instant. The customer taps, the terminal beeps, Rupert prints a receipt. Underneath, that one tap
+      starts a chain of six steps that takes days to finish. Knowing the chain is what lets you answer "why isn't the
+      money in yet?" and "why can't I just cancel it?"
+
+      ## 1. The tap
+
+      The **Dejavoo P18** reads the chip (dip, tap, or a phone's wallet). It encrypts the card number the instant it reads it.
+      Rupert only told the terminal "charge $48.00"; it never sees the card.
+
+      ## 2. [[authorization|Authorization]], in one to three seconds
+
+      The terminal sends the encrypted request through Dejavoo's cloud to our [[processor]], on to the [[network|card network]],
+      and to the customer's bank, the [[issuer|issuing bank]]. That bank answers **approved** or **declined** and, if approved,
+      puts a hold on the customer's money. The answer comes back the same way. Nothing has moved yet: a hold is a promise.
+
+      ## 3. [[capture|Capture]], the same moment
+
+      Our terminal captures as it authorizes: the sale is marked "really charge this". Tips can still be adjusted while
+      the day's batch is open (lesson 4).
+
+      ## 4. [[batch|Batch close]], end of day
+
+      All captured sales are bundled and sent to the processor in one batch. Until the batch closes **nothing is deposited**,
+      and a sale can still be voided for free. Our batch closes from **Close terminal batch** in checkout setup, or on the
+      terminal's own schedule. Online sales through Authorize.net batch on their own cut-off time (the default is 4:00 PM
+      Pacific; check the account setting).
+
+      ## 5. [[settlement|Settlement]], overnight
+
+      The card networks move the money from each customer's bank toward our [[acquirer|acquiring bank]] and take the
+      fees on the way (lesson 3).
+
+      ## 6. [[funding|Funding]], one to three business days
+
+      Our merchant account deposits what is left into our checking account. Weekends and bank holidays do not count, so a
+      Friday evening sale often lands on Tuesday or Wednesday. The deposit is for a whole batch, minus fees, not one sale
+      at a time. That is why Rupert's **Daily reconciliation** matches batches to deposits, not receipts to deposits.
+
+      > why: A customer asking "has my payment gone through?" at the counter is asking about step 2. The owner asking
+      > "where is Friday's money?" is asking about step 6. They are four days apart, and both are normal.
+
+      > tip: Approved is not deposited. If a sale is approved and the terminal then loses power, use **Recheck** on the sale
+      > in Rupert before doing anything else. One tap, one charge.
+    quiz:
+      - prompt: A customer taps and the terminal says approved. What has actually happened to the money?
+        choices:
+          - It has been moved into our bank account
+          - The customer's bank has approved the amount and put a hold on it; nothing has moved yet
+          - It is sitting with Valmar until the end of the month
+          - It has been sent to Visa
+        answer: 1
+        explanation: Authorization is a promise and a hold. Money only starts moving after the batch closes and settles overnight.
+      - prompt: It is Friday 7 PM. Roughly when should a card sale from today show up in our checking account?
+        choices:
+          - Tonight at midnight
+          - Saturday morning
+          - Early next week, after one to three business days
+          - On the first of next month
+        answer: 2
+        explanation: Settlement happens overnight after the batch closes, then funding takes one to three business days, and weekends do not count.
+      - prompt: Which step bundles the day's card sales and sends them to the processor?
+        choices:
+          - Authorization
+          - Batch close
+          - Funding
+          - Tokenization
+        answer: 1
+        explanation: Batch close is the end-of-day bundle. Until it happens nothing settles and a sale can still be voided.
+  - slug: who-is-who
+    title: Who is who, and why we use each one
+    summary: Terminal, gateway, merchant services, processor, networks and the customer's bank, and the reason we split the job.
+    minutes: 4
+    diagram: players
+    body: |
+      Six different companies touch a single card sale. That is not a mess; it is deliberate. Each one takes a piece of
+      the job, and each one carries a piece of the **liability**. Here is the cast, in the order a sale meets them.
+
+      ## At our counter
+
+      **Rupert, the register.** Builds the sale: items, tax, total. It asks the terminal to charge the total and records the
+      answer. Rupert keeps only the card brand, the last four digits and an approval code. It never sees the card number.
+
+      **The [[terminal]]: Dejavoo P18.** Reads the chip or tap, takes the customer's tip and PIN, encrypts the card and sends
+      the request. Because it uses [[emv|EMV chip]] technology, the [[liability_shift|liability for counterfeit cards]]
+      stays with the banks, not with us. It also prints the card slip. Think of it as the only object in the shop that is
+      allowed to know a card number.
+
+      ## Our providers
+
+      **The [[gateway]].** The secure pipe. In store it is Dejavoo's cloud, which drives the P18 and talks to the processor.
+      Online it is **Authorize.net**: the card form on our site is Authorize.net's, the card number goes straight to them, and
+      we get back a [[tokenization|token]]. Either way raw card data never passes through our systems, which keeps our
+      [[pci|PCI]] obligations small (lesson 7). Authorize.net also gives us settlement reports that Rupert imports.
+
+      **Merchant services: Valmar.** Our [[iso|merchant services provider]]. Valmar sold us the account, set our pricing,
+      sends the monthly statement, handles our underwriting (whether we are allowed to sell what we sell by card), holds
+      any reserve, is our first call on a chargeback, and supports the terminal they shipped. When something about *money*
+      is wrong, Valmar is who we call.
+
+      **The [[processor]] and the [[acquirer|acquiring bank]].** Behind Valmar. The processor routes every transaction to
+      the right network; the acquiring bank holds our merchant account and receives the settled money before it is funded to
+      us. We rarely talk to them directly; Valmar does.
+
+      ## The card world
+
+      **The [[network|card networks]]: Visa, Mastercard, American Express, Discover.** Set the rules everyone follows
+      (chargeback deadlines, receipt rules, chip rules), carry the messages, and charge a small [[assessments|assessment]].
+
+      **The [[issuer|issuing bank]].** The customer's bank. It approves or declines, it pays us, and it bills the customer.
+      When a card is declined, this is who said no. We never know why; only the customer can ask them.
+
+      ## Why split it up?
+
+      - **Liability.** The terminal and the gateway hold the card data, so a breach of our Wi-Fi or an iPad does not expose
+        cards. The chip keeps counterfeit losses with the banks.
+      - **Cost.** Interchange and assessments are the same for everyone. The only part we can negotiate is the markup, and
+        we negotiate that with Valmar, once, instead of with every bank.
+      - **Security and scope.** Fewer systems see the card, so fewer systems need PCI work. Rupert, our tablets and our
+        staff are out of scope by design.
+      - **Flexibility.** Because Rupert only talks to a gateway, we can change terminals or processors without
+        retraining the team or losing our records.
+
+      ## Where Square fits today
+
+      Square was our previous card provider. Today Rupert syncs Square's catalog, order history, loyalty program and
+      timecards, but **cards do not run through Square at the counter**. If you find a Square reader in a drawer, do not use
+      it for a sale; ask the owner.
+    quiz:
+      - prompt: A customer's card is declined. Who decided that?
+        choices:
+          - Valmar
+          - The Dejavoo terminal
+          - The customer's own bank (the issuer)
+          - Rupert
+        answer: 2
+        explanation: Declines come from the issuing bank. Nobody in the chain is told why; the customer has to ask their bank.
+      - prompt: Which company do we call first about our monthly statement, a chargeback or a terminal problem?
+        choices:
+          - Visa
+          - Valmar, our merchant services provider
+          - Square
+          - The customer's bank
+        answer: 1
+        explanation: |-
+          Valmar is our merchant account relationship: pricing, statements, disputes, underwriting and terminal support start there.
+      - prompt: Why does Rupert never see the card number?
+        choices:
+          - Because the terminal and the gateway handle the card data, which keeps us out of most PCI scope
+          - Because Rupert is too slow to read cards
+          - Because the law forbids registers from processing cards
+          - It does see it, but hides it from cashiers
+        answer: 0
+        explanation: The P18 encrypts the card and the gateway carries it. Rupert keeps only the brand, last four and an approval code, by design.
+  - slug: where-the-fees-go
+    title: Where the fees go
+    summary: Interchange, assessments and markup; why a rewards card costs more than debit; how to read a statement.
+    minutes: 4
+    diagram: fee_split
+    body: |
+      Every card sale costs us a slice. Three different parties take it, and only one of the three is negotiable. Once
+      you can tell them apart, a merchant statement stops being a wall of numbers.
+
+      ## The three slices
+
+      **[[interchange|Interchange]]**, the big one, goes to the **customer's bank**. The card network publishes a table of
+      rates; the rate depends on the kind of card and how it was presented. Published Visa card-present rates for a retail
+      sale, as an example:
+
+      | Card | Interchange | On a $100 sale |
+      | --- | --- | --- |
+      | Regulated debit (big-bank debit card) | 0.05% + $0.21 | $0.26 |
+      | Small-bank debit card | 0.80% + $0.15 | $0.95 |
+      | Basic credit card | 1.51% + $0.10 | $1.61 |
+      | Rewards credit card | 1.65% + $0.10 | $1.75 |
+      | Premium rewards (Signature Preferred, Infinite) | 2.10% to 2.30% + $0.10 | $2.20 to $2.40 |
+
+      Those airline miles are paid for by us, not by the bank. Mastercard's table is similar. Keyed-in or online sales
+      cost more than a chip or tap, because they carry more fraud risk.
+
+      **[[assessments|Assessments]]** go to the **card network**: about 0.14% of volume on Visa and Mastercard credit, plus a
+      few cents per transaction. Everyone pays the same.
+
+      **[[markup|Markup]]** goes to the **processor, the gateway and Valmar**. This is their revenue and the only slice that
+      is set by our contract. It may be a percentage, a per-transaction fee, monthly fees, or all three.
+
+      ## Why the pricing model matters
+
+      - **[[interchange_plus|Interchange-plus]]** shows the real interchange and assessments on the statement, plus one fixed
+        markup. You can see exactly what each card type cost.
+      - **Tiered** pricing sorts sales into "qualified", "mid" and "non-qualified" buckets. Simpler to read, harder to
+        audit, and usually dearer.
+      - **Flat rate** charges one percentage for every card. Easy, but debit sales subsidize rewards cards.
+
+      Which one we are on is in the Valmar agreement. If the statement shows lines like "Visa CPS Retail" or
+      "MC Merit III", that is interchange-plus. Check the statement rather than assuming.
+
+      ## Reading a statement in five minutes
+
+      {{steps}}
+      - **Volume and count.** Total card sales and number of transactions for the month. Should match Rupert's sales report for cards.
+      - **Interchange lines.** One per card category. Scan for a category that grew: more keyed-in sales, more premium cards.
+      - **Assessments and network fees.** Small, steady percentages. If they jump, a network changed a rate.
+      - **Processor and Valmar fees.** Markup, monthly, statement, gateway, batch and PCI fees. These are the ones to question.
+      - **Chargebacks and adjustments.** Every dispute and its fee is listed here. Zero is the goal.
+      - **Effective rate.** Total fees divided by total volume. Note it each month; a rising rate with the same sales mix needs a call.
+      {{/steps}}
+
+      > why: A $100 regulated-debit sale costs us about $0.26 in interchange. The same $100 on a premium rewards card costs about
+      > $2.30 before markup. We cannot refuse cards by type, but we can run chips instead of keying, close the batch daily, and
+      > avoid fees that are avoidable: PCI non-compliance, chargebacks, and manual-entry surcharges.
+
+      > note: Our exact markup, monthly fees and pricing model are contract terms. The course does not guess them: open the
+      > latest Valmar statement with the owner once and write the numbers in the Owner checklist.
+    quiz:
+      - prompt: Which slice of card fees can Valmar and we actually negotiate?
+        choices:
+          - Interchange
+          - Assessments
+          - The processor and merchant-services markup
+          - None of them
+        answer: 2
+        explanation: Interchange is set by the networks and paid to the customer's bank; assessments are the network's. Only the markup is in our contract.
+      - prompt: Why does a premium rewards credit card cost us more than a regulated debit card?
+        choices:
+          - Because the terminal charges extra for rewards cards
+          - Because interchange is higher on rewards cards; the rewards are funded by merchant fees
+          - Because Valmar prefers debit
+          - It does not; all cards cost the same
+        answer: 1
+        explanation: The card network sets higher interchange on rewards and premium cards. Those miles and points are paid for by merchants.
+      - prompt: Where does interchange end up?
+        choices:
+          - With the customer's bank, the issuer
+          - With Valmar
+          - With Dejavoo
+          - With the IRS
+        answer: 0
+        explanation: Interchange is paid to the issuing bank. The network keeps assessments; the processor, gateway and Valmar keep the markup.
+  - slug: tips
+    title: Tips
+    summary: How tips go on a card sale on the P18, why they must be adjusted before the batch closes, and how they reach pay.
+    minutes: 3
+    diagram: tip_timeline
+    body: |
+      A tip is the one part of a card sale that can change after the customer has tapped. That makes it the part most likely
+      to go wrong at close. Here is how it works on our setup.
+
+      ## Two ways a tip gets on the sale
+
+      **On the screen.** When tipping is turned on for our terminal, the P18 shows a tip prompt before the customer
+      taps. The sale is authorized for the total including the tip, and nothing else needs to happen.
+
+      **On the slip.** When the customer writes a tip on the signed receipt, the sale was authorized for the pre-tip total.
+      The cashier then uses **[[tip_adjust|tip adjust]]** so the final amount includes the tip. Our register's customer
+      display can also confirm the tip with the customer before the card is run; that is the cleanest path.
+
+      ## The deadline nobody tells you about
+
+      A tip adjustment only works **while the day's [[batch]] is still open**. The moment the batch closes, every amount in
+      it is final and goes to [[settlement]]. A slip found the next morning with an unadjusted $10 tip means the employee does
+      not get that $10 from the card, and there is no clean way to add it later.
+
+      {{steps}}
+      - Before you close the batch, gather every signed slip with a written tip.
+      - Adjust each one on the sale in Rupert (or on the terminal) so the amount matches the slip.
+      - Then close the batch. Compare the batch total with Rupert's register summary; they should agree.
+      {{/steps}}
+
+      ## Why the tip lands "later"
+
+      The customer sees one amount on their statement: the final total, after settlement. If their bank showed a hold for the
+      pre-tip amount first, the two may differ for a day or two. That is normal, and it is why "I was charged twice" calls
+      are often a hold plus the real charge. Point them at the final amount and the date.
+
+      ## How the tip reaches the employee
+
+      The card tip is money the customer gave to a person, collected through our merchant account. Rupert's tip report
+      lists card tips per employee per day; payroll pays them out. The card fee on the tip is a business cost, not something
+      taken from the employee.
+
+      > never: Never adjust a tip to anything other than what the customer wrote or confirmed. Never add a tip to a sale that
+      > had none. Both are card fraud, and both show up as chargebacks with the slip as evidence against us.
+
+      > tip: An unusually large tip (bigger than the sale, or hundreds of dollars) deserves a second look before adjusting.
+      > A customer who meant $5.00 and wrote $50.00 will dispute it, and we will lose.
+    quiz:
+      - prompt: When is the last moment a tip can be added or changed on a card sale?
+        choices:
+          - Any time in the next 180 days
+          - Before the day's batch closes
+          - Before payroll runs
+          - Before the customer leaves the store
+        answer: 1
+        explanation: Tip adjustments only work while the batch is open. After it closes the amounts are final and settle as they are.
+      - prompt: A customer says their bank shows $40 and then $48 for the same visit. What is most likely going on?
+        choices:
+          - They were charged twice; refund $40 at once
+          - The $40 is the authorization hold before the tip; the $48 is the final settled amount and the hold will drop off
+          - The terminal added a surcharge
+          - Rupert made a rounding error
+        answer: 1
+        explanation: A hold for the pre-tip amount and the final charge can both show for a day or two. Do not refund; show them the final amount and date.
+      - prompt: Who pays the card processing fee on a $10 tip?
+        choices:
+          - The employee, out of the tip
+          - The customer
+          - The business, as a normal card cost
+          - Valmar waives fees on tips
+        answer: 2
+        explanation: The tip is passed to the employee in full through the tip report and payroll. The fee on it is a business cost.
+  - slug: refunds-and-voids
+    title: Refunds, voids, and why a refund is not instant
+    summary: Void while the batch is open, refund after, and what to tell a customer waiting for their money.
+    minutes: 3
+    diagram: refund_paths
+    body: |
+      "Just put it back on my card" sounds simple. Whether it is simple depends on one thing: has the day's batch closed?
+
+      ## [[void|Void]]: the batch is still open
+
+      A void cancels the sale before it is ever sent. Nothing settles, no fees are charged, and the customer sees the
+      hold drop off their account in a few days. Use it for a wrong amount, a duplicate, or a customer who changes their mind
+      the same day. In Rupert, a Dejavoo sale is voided from its receipt while the batch is open; no card is needed.
+
+      ## [[refund|Refund]]: the batch has closed
+
+      Once the sale has settled, the money has moved. A refund is a **new transaction** that sends money the other way.
+      The customer taps the same card on the P18 (a part refund, or a sale from a closed batch, always goes back to the
+      terminal). Online sales through Authorize.net are refunded against the original transaction, within 180 days of
+      settlement; after that, Authorize.net needs a different method and the owner handles it.
+
+      ## Why "not instant"
+
+      A refund settles like a sale, in reverse: it goes into tonight's batch, settles overnight, and then the customer's
+      bank posts it. Banks take anywhere from a few days to two weeks to show it. Tell the customer:
+
+      > example: "I've sent the refund now. It will show on your card in roughly five to fourteen days, depending on your bank.
+      > Here is the receipt with the reference number if you need to ask them."
+
+      ## What it costs us
+
+      Interchange on the original sale is usually **not** returned to us, and some processors charge a fee on the refund
+      itself. A void costs nothing. So: same day, void; next day, refund; never "ring it again and we'll sort it out".
+
+      ## Rules of the road
+
+      - **Same card, same amount or less.** A refund goes to the card that paid, never to a different card or to cash,
+        unless the owner approves a documented exception. Refunding to a different card is a classic fraud pattern.
+      - **Never refund more than the sale.** The processor will refuse it or flag it.
+      - **One refund per return.** If Rupert says the refund is "unresolved" or "waiting", use **Recheck refund**.
+        Do not send it again; a lost answer is not a failed refund.
+      - **Write the reason.** Every void and refund in Rupert carries a reason and your name. That is the evidence if the
+        customer later disputes the original sale anyway.
+
+      > never: Never take a card number over the phone to "process a refund". A real refund goes to the original transaction.
+      > Someone asking you to key in a different card for a refund is attempting fraud.
+    quiz:
+      - prompt: A customer returns an item two hours after buying it; the batch has not closed. What is the right action?
+        choices:
+          - Refund to the card; it will show up in five to fourteen days
+          - Void the sale from its receipt; nothing was sent and the hold drops off
+          - Give cash from the drawer
+          - Ring a negative sale
+        answer: 1
+        explanation: While the batch is open, a void cancels the sale outright at no cost. Refunds are for sales that have already settled.
+      - prompt: Why does a refund take days to show on the customer's statement?
+        choices:
+          - Valmar holds refunds for review
+          - It is a new transaction that batches, settles overnight, and is then posted by the customer's bank on its own schedule
+          - Dejavoo only processes refunds on Fridays
+          - Because Rupert is offline at night
+        answer: 1
+        explanation: A refund moves money through the same chain as a sale, in reverse. The customer's bank decides when it appears.
+      - prompt: Someone calls, says they were overcharged last week, and asks you to refund to a different card they read out over the phone. What do you do?
+        choices:
+          - Key in the new card and refund it
+          - |-
+            Refuse: refunds go back to the original card only, and card numbers are never taken over the phone
+          - Refund in cash by mail
+          - Ask Valmar to do it
+        answer: 1
+        explanation: Refund-to-a-different-card is a fraud pattern. A real refund references the original transaction; no card number is needed and none is ever taken by phone.
+  - slug: chargebacks
+    title: Chargebacks and disputes
+    summary: What a dispute costs, the deadlines, the evidence that wins, and the habits that prevent most of them.
+    minutes: 4
+    diagram: dispute_timeline
+    body: |
+      A [[chargeback]] is a customer going to their bank instead of to us. The bank pulls the money from our account first
+      and asks questions later. It is the most expensive thing that can happen to a card sale, and most of them are
+      preventable at the counter.
+
+      ## What happens
+
+      {{steps}}
+      - The customer disputes a charge with their bank, usually within 120 days of the sale.
+      - The money is taken from our merchant account immediately, plus a chargeback fee set by our processor (commonly $15 to $40; check the Valmar statement).
+      - Valmar notifies us with a reason code: "fraud", "not recognized", "not received", "duplicate", "credit not processed".
+      - We have a deadline to answer with evidence, about 30 days on Visa and 45 on Mastercard. Miss it and the dispute is lost by default.
+      - The bank decides. Win: the money comes back. Lose: it stays with the customer. The fee usually stays with us either way.
+      {{/steps}}
+
+      Too many chargebacks (about 1% of transactions or more) puts the whole merchant account at risk: higher fees, a reserve
+      held back, or closure. The owner watches this number.
+
+      ## Why chip matters here
+
+      For an in-store sale run on the **chip or tap**, the [[liability_shift|liability shift]] means a *counterfeit card*
+      dispute lands on the bank, not on us. A sale that was keyed in or swiped on a chip card loses that protection. That
+      is the single biggest reason we insert or tap and never key in a card number at the counter.
+
+      ## Evidence that wins
+
+      Keep it in Rupert, where it is already attached to the sale:
+
+      - The itemized receipt with date, time, amount, last four and the **approval code**.
+      - The signed slip, if there was one, including any written tip.
+      - Proof of pickup or delivery for online orders, matching the name and address on the card.
+      - Rupert's record of a refund already given, for "credit not processed" disputes.
+      - Any email or message with the customer about the order.
+
+      You respond through Valmar, not by calling the customer's bank.
+
+      ## Preventing them
+
+      - **Tap or dip, never key.** If the chip fails, try again; if it still fails, ask for another card.
+      - **A clear [[descriptor]]** on the statement, so customers recognize the charge. If customers ask "what is this
+        charge?", tell the owner: the descriptor may need fixing with Valmar.
+      - **Itemized, correct receipts.** Prices and quantities right, every time.
+      - **Refund promptly** when a return is legitimate. A refund costs less than a dispute and never counts against us.
+      - **Match the person to the card** on large sales: the name on the card and a signature or ID when something feels off.
+      - **Write down the return policy** on the receipt and at the counter; "no refunds" disputes lose without it.
+
+      > never: Never pressure a customer who wants a legitimate refund into disputing with their bank instead. It costs us the
+      > sale, a fee and a mark against the account, where the refund would have cost us almost nothing.
+    quiz:
+      - prompt: A chargeback arrives. What happened to the money?
+        choices:
+          - Nothing until the dispute is decided
+          - It was taken from our account immediately, with a fee, and we must respond by a deadline to get it back
+          - Valmar paid it on our behalf
+          - The customer's bank is holding it in escrow for us
+        answer: 1
+        explanation: The bank pulls the funds first. We have roughly 30 to 45 days (by network) to respond with evidence or the dispute is lost.
+      - prompt: Which in-store habit shifts counterfeit-card losses onto the bank instead of us?
+        choices:
+          - Asking for a signature
+          - Running the chip or tap instead of keying in the card number
+          - Printing two receipts
+          - Calling Valmar after each sale
+        answer: 1
+        explanation: Since October 2015, the party without chip technology bears counterfeit fraud. Taking the chip or tap keeps that liability with the issuer.
+      - prompt: A customer with a legitimate return wants their money back. What is the cheapest outcome for the business?
+        choices:
+          - Tell them to dispute it with their bank
+          - Refund it promptly to the original card
+          - Offer store credit only, no exceptions
+          - Ignore it
+        answer: 1
+        explanation: A prompt refund costs little and never counts as a dispute. A chargeback costs the sale, a fee and a mark against our account.
+  - slug: security-and-pci
+    title: Security and PCI, what managers must never do
+    summary: Where card data is allowed to exist, the habits that keep us out of scope, and how to spot a tampered terminal.
+    minutes: 4
+    diagram: pci_scope
+    body: |
+      [[pci|PCI DSS]] is the card industry's rulebook for anyone who stores, processes or transmits card data. Our setup is
+      designed so that **we do almost none of those things**: the P18 encrypts the card as it reads it
+      ([[p2pe|point-to-point encryption]]) and our online checkout hands the card straight to the gateway. That design only
+      works if people do not create card data elsewhere. The rules below are how we keep it that way.
+
+      ## Never
+
+      > never: Never write down a card number, expiry or security code. Not on a sticky note, not on an order form, not on the
+      > back of a receipt, not in Team chat, not in Rupert's notes field. If a card number exists on paper, we are in scope
+      > and it is a breach waiting to happen.
+
+      > never: Never take card details over the phone, by text or by email. If a customer wants to pay remotely, send them the
+      > online checkout link: the card is entered on the gateway's page, not with us. A caller reading out a card number is
+      > the most common fraud attempt we will ever see.
+
+      > never: Never key a card number into the terminal as a workaround for a chip that will not read. Ask for another
+      > card. Keyed sales lose the liability shift and cost more.
+
+      > never: Never store a card on a customer's profile "for next time", photograph a card, or keep a copy of the front
+      > and back. Customer records in Rupert hold names and contact details only.
+
+      > never: Never use the gateway or terminal credentials for anything but the checkout setup page, and never read them
+      > out to anyone who calls "from Valmar" or "from Dejavoo". Real support staff have their own access.
+
+      ## Always
+
+      - **Keep receipts truncated.** The customer copy shows at most the last four digits, which the terminal does for us.
+        If a printout ever shows a full number, stop and tell the owner.
+      - **Inspect the terminal** at every open and close: serial number matches the inventory sheet, seals and casing intact,
+        nothing attached to the card slot or the cable, no unfamiliar device nearby. This is a PCI requirement (9.5) and the
+        way [[skimmer|skimmers]] are caught.
+      - **Keep the terminal in sight.** Nobody from "the terminal company" services it without the owner's say-so; ask for
+        ID and call Valmar to confirm before letting anyone touch it.
+      - **Use our Wi-Fi, not a guest network**, for the terminal and the tablets. Password-protected, default passwords changed.
+      - **Lock Rupert when you step away**, and keep your own login. Shared logins break the audit trail.
+
+      ## What is actually in scope for us
+
+      With the terminal on Dejavoo's cloud and the website on the gateway's hosted page, the paperwork we owe is a yearly
+      **self-assessment questionnaire** (a short one, provided the hardware is on the PCI-listed encryption list) and a
+      promise to keep doing the above. Valmar tells us which questionnaire applies. A merchant that lets card data creep
+      onto paper or into email moves to a far longer questionnaire and, after a breach, to fines and forensic costs.
+
+      ## Spotting fraud at the counter
+
+      - A customer insisting you key in the number, or offering several cards after declines.
+      - A "rush" order paid with a card and shipped to an address that does not match.
+      - A caller who knows our staff names and wants a refund to a new card.
+      - A chip that "never works" on a card that looks fine; the magnetic stripe may be cloned.
+
+      If something feels off, it is fine to decline the sale politely and tell the manager. We will never be in trouble for
+      losing one doubtful sale.
+    quiz:
+      - prompt: A regular customer phones in an order and offers to read out their card number. What do you do?
+        choices:
+          - Write it down carefully and run it on the terminal when the order is ready
+          - Decline the card by phone and send them the online checkout link, where the card goes straight to the gateway
+          - Type it into Rupert's customer notes for later
+          - Ask them to text it instead
+        answer: 1
+        explanation: Card details are never taken by phone, text or email. The online checkout keeps the card with the gateway and out of our systems.
+      - prompt: Why do we check the terminal's serial number and casing at open and close?
+        choices:
+          - To make sure it is charged
+          - To catch a swapped or tampered terminal (a skimmer), which is a PCI requirement
+          - Because Dejavoo charges us if we do not
+          - To count how many sales it made
+        answer: 1
+        explanation: Terminal inspection is PCI DSS requirement 9.5. Skimmers and substituted devices are caught by noticing a changed serial, seal or attachment.
+      - prompt: Which of these keeps us out of most of the PCI rulebook?
+        choices:
+          - Having a strong password on the office PC
+          - Card data staying on the terminal and the gateway, and never on paper, phones, email or Rupert
+          - Taking only debit cards
+          - Closing the batch every day
+        answer: 1
+        explanation: Scope follows card data. The P18 encrypts it and the gateway carries it; as long as nobody copies it elsewhere, our obligations stay small.
+  - slug: when-things-break
+    title: When things break
+    summary: Terminal offline, declines, a sale stuck "waiting", a batch that did not close, and who to call.
+    minutes: 3
+    diagram: when_things_break
+    body: |
+      Most card problems have a boring cause and a two-minute fix. The expensive mistakes come from guessing: charging twice,
+      keying a number in, or leaving a batch open overnight. Work the list, and call before improvising.
+
+      ## Terminal offline or "not connected"
+
+      {{steps}}
+      - Check power and the network light. The P18 uses Wi-Fi or its own SIM; a dead router is the usual cause.
+      - Restart the terminal. Wait for it to show its idle screen, then send the sale from Rupert again.
+      - Still down after five minutes: take cash or the backup terminal, keep the receipts, and call support (below).
+      - Do not switch to writing down card numbers "to run later". There is no later; see lesson 7.
+      {{/steps}}
+
+      ## Declined
+
+      Say "the bank declined it" and ask for another way to pay. The reason is between the customer and their bank; "do
+      not honor" means the bank said no without a reason, and we are not told either. Do not retry the same card again and
+      again (the networks limit retries and the bank may flag the card), and never key the number in to "try it another way".
+
+      ## Tap worked, Rupert says "waiting"
+
+      The terminal approved, but the answer did not reach Rupert. **Do not charge again.** Open the sale and use
+      **Recheck**: Rupert asks the terminal what happened and records the result. If it stays unresolved after a few
+      minutes, note the approval code from the terminal slip and tell the manager. One tap, one charge, always.
+
+      ## Batch did not close
+
+      Nothing is deposited, and tips cannot be adjusted, until it does. Use **Close terminal batch** in checkout setup
+      (or the terminal's own menu) before the end of the day. Rupert shows whether the batch total matches the register's
+      card sales; a mismatch is information for the owner, not something to fix by re-ringing.
+
+      ## Totals do not match
+
+      Compare the terminal's batch report with Rupert's register summary. Common causes: a tip adjusted on one side only, a
+      void after the batch was counted, a sale run on the terminal outside Rupert. Write down the difference and the
+      receipts involved; the daily reconciliation page is where it gets resolved.
+
+      ## Who to call
+
+      Have ready: the store name, the terminal's serial number, the time of the problem, and the approval code or reference
+      from the slip. **Never** read a card number to anyone, including support.
+
+      {{contacts}}
+
+      > tip: Support numbers above come from the Learning center settings, so the owner can keep them current. If one is
+      > missing, ask the owner to fill it in rather than searching the web for a number.
+    quiz:
+      - prompt: The customer tapped, the terminal printed "approved", but Rupert still says "waiting". What now?
+        choices:
+          - Send the sale to the terminal again
+          - Use Recheck on the sale in Rupert; do not charge again
+          - Void it and start over
+          - Ask the customer to pay cash as well, to be safe
+        answer: 1
+        explanation: The charge happened. Recheck asks the terminal for the result. A second send is a second charge and a certain chargeback.
+      - prompt: A card is declined with "do not honor". What is the right move?
+        choices:
+          - Retry it five or six times
+          - Key the number in manually
+          - Tell the customer their bank declined it and ask for another way to pay
+          - Call the customer's bank yourself
+        answer: 2
+        explanation: Do not honor is the issuer saying no without a reason. Repeated retries and manual entry both cause problems; the customer contacts their own bank.
+      - prompt: What is at stake if the batch is left open overnight?
+        choices:
+          - Nothing; it closes itself next month
+          - No deposit for that day, and tips can still be adjusted so the amounts are not final
+          - The terminal deletes the sales
+          - Valmar charges double interchange
+        answer: 1
+        explanation: Settlement only starts when the batch closes. Until then nothing is deposited, and amounts (including tips) are not final.

@@ -36,6 +36,7 @@
         <% links = @preview ? [['Today', employee_app_path(preview: 1)], ['Schedule', employee_preview_schedule_path], ['Time off', employee_preview_time_off_path], ['Pay', employee_preview_pay_path], ['Timesheets', employee_preview_timesheets_path]] : [['Today', employee_app_path], ['Schedule', employee_schedule_path], ['Time off', employee_time_off_path], ['Pay', employee_pay_path], ['Timesheets', people_timesheets_path], ['Receipts', receipts_path]] %>
         <% links << ['My tasks', projects_tasks_path] if !@preview && Current.user.employee? && Current.user.can?('tasks.self') %>
         <% links << ['Training', employee_training_index_path] unless @preview %>
+        <% links << ['Learning center', lms_root_path] unless @preview %>
         <% links.unshift(['POS', ctrax_pos_path]) if !@preview && Current.user.can_use_pos? %>
         <%# One pill is current: the longest matching path (so /employee/pay lights Pay, not Today). %>
         <% active_link = links.select { |_l, p| module_match_strength(p.split('?').first).positive? }.max_by { |_l, p| module_match_strength(p.split('?').first) } %>

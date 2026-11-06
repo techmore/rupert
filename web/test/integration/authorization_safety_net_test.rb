@@ -12,6 +12,8 @@ class AuthorizationSafetyNetTest < ActionDispatch::IntegrationTest
     'feedback_reports_controller.rb' => 'reads scoped to reported_by(Current.user) unless an attachment viewer',
     'home_controller.rb' => 'only the signed-out marketing landing page',
     'learning_controller.rb' => 'the signed-in account’s own learning journey (team still checks hr.read)',
+    'lms/courses_controller.rb' => 'the signed-in account’s own Learning center enrollments (team and admin pages authorize hr.read / hr.write)',
+    'lms/lessons_controller.rb' => 'reads and answers only the signed-in account’s own lesson progress',
     'next_things_controller.rb' => 'NextThings.for(Current.user) filters by the person’s own permissions',
     'notifications_controller.rb' => 'Notification.where(user_id: Current.user.id)',
     'receipts_controller.rb' => 'PurchaseReceipt.visible_to + ReceiptWorkflow ownership/review checks',

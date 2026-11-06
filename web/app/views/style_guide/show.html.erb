@@ -193,6 +193,18 @@
       <%= page_tabs([['Sales', '#', true], ['Sales tax', '#', false], ['Financial', '#', false], ['Inventory', '#', false]], label: 'Sample report tabs') %>
       <%= fold_explainer('Totals include paid, fulfilled and refunded orders once, before refunds. Tips, payment reports and bank deposits stay separate so a day never counts money twice. The order journal status filter changes only the journal below.', class: 'text-sm text-mocha') %>
     </article>
+    <article class="section-card">
+      <%= section_heading 'Learning center', hint: 'Courses as a row list with a progress ring; lesson text with callouts and step cards; quiz choices with an explanation. Diagrams are HTML figures, never images.', level: :h3 %>
+      <ul class="row-list">
+        <li class="row-item lms-course-row"><%= lms_progress_ring 62, label: 'Sample course' %><div class="min-w-0 flex-1"><p class="font-semibold text-ink">How our card payments work</p><p class="text-xs text-mocha">Who touches a card sale, why we use each of them, where the fees go.</p><p class="mt-1 text-xs text-taupe">8 lessons · 29 min · Due Dec 6, 2026</p></div><div class="row-item-end"><span class="pill-clay">In progress</span><a href="#" class="btn-primary btn-sm">Continue</a></div></li>
+        <li class="row-item lms-course-row"><%= lms_progress_ring 100, label: 'Sample finished course' %><div class="min-w-0 flex-1"><p class="font-semibold text-ink">Opening and closing the register</p><p class="text-xs text-mocha">Cash drawer, float, close-out.</p></div><div class="row-item-end"><span class="pill-fern">Done</span><a href="#" class="btn-ghost btn-sm">Review</a></div></li>
+      </ul>
+      <div class="lesson-prose">
+        <aside class="lesson-callout lesson-callout-never"><p class="lesson-callout-kind">Never</p><p>Never write down a card number. Not on a sticky note, not in Team chat.</p></aside>
+        <ol class="lms-steps"><li class="lms-step"><span class="lms-step-number" aria-hidden="true">1</span><p>Gather every signed slip with a written tip.</p></li><li class="lms-step"><span class="lms-step-number" aria-hidden="true">2</span><p>Adjust each one, then close the batch.</p></li></ol>
+      </div>
+      <fieldset class="quiz-question lms-question lms-question-right"><legend class="font-semibold"><span class="text-olive-deep">1.</span> Which step bundles the day's card sales? <span class="pill-fern">Correct</span></legend><div class="mt-3 space-y-2"><label class="lms-choice lms-choice-right"><input type="radio" class="lms-choice-input" checked disabled><span class="text-sm">Batch close</span></label><label class="lms-choice"><input type="radio" class="lms-choice-input" disabled><span class="text-sm">Authorization</span></label></div><p class="lms-explanation lms-explanation-right">Batch close is the end-of-day bundle; until then nothing settles.</p></fieldset>
+    </article>
   </section>
 
   <section id="tokens" class="space-y-6">

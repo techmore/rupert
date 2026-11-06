@@ -102,6 +102,7 @@ class ModuleRegistry
     Entry.new(key: 'receipts', name: 'My receipts', path: -> { receipts_path }, permission: nil, position: 54),
     Entry.new(key: 'time_clock', name: 'Time clock', path: -> { time_clock_path }, permission: nil, position: 87.4),
     Entry.new(key: 'learning', name: 'Learn Rupert', path: -> { learning_index_path }, permission: nil, position: 89),
+    Entry.new(key: 'learning_center', name: 'Learning center', path: -> { lms_root_path }, permission: nil, position: 88.5),
     # Team
     Entry.new(key: 'employees', name: 'Staff', path: -> { people_employees_path }, permission: 'hr.read', position: 85),
     Entry.new(key: 'team_chat', name: 'Team chat', path: -> { team_chat_path }, permission: 'settings.write', position: 85.5),
@@ -191,7 +192,7 @@ class ModuleRegistry
       return [] unless user&.active?
 
       if user.employee?
-        return all.select { |entry| %w[ctrax_pos time_clock timesheets receipts learning].include?(entry.key) }.sort_by(&:position)
+        return all.select { |entry| %w[ctrax_pos time_clock timesheets receipts learning learning_center].include?(entry.key) }.sort_by(&:position)
       end
 
       all.select do |entry|
@@ -271,7 +272,7 @@ class ModuleRegistry
       { key: 'work', name: 'Work', modules: %w[projects tasks calendar requests goals kpis] },
       # Personal staff self-service (own receipts, own hours). Receipts has no permission, so
       # this area is visible to everyone.
-      { key: 'me', name: 'Me', modules: %w[receipts time_clock learning] },
+      { key: 'me', name: 'Me', modules: %w[receipts time_clock learning_center learning] },
       { key: 'team', name: 'Team',
         modules: %w[employees team_chat accounts permissions departments positions clock_devices
                     approvals time_keeping timesheets punch_history square_timesheets ctrax_timesheets schedule team_schedule leave shift_trades blackout_dates
