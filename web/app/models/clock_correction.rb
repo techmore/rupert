@@ -23,7 +23,18 @@ class ClockCorrection < ApplicationRecord
     !!(user&.active? && (user.can_review_timesheets? || user.can?('payroll.write')))
   end
 
+  # Break lists carried with the request: [{ 'kind', 'started_at', 'ended_at' }, …].
+  def proposed_breaks = parse_breaks(proposed_breaks_json)
+  def original_breaks = parse_breaks(original_breaks_json)
+  def changes_breaks? = proposed_breaks_json.present? && proposed_breaks != original_breaks
+
   private
+
+  def parse_breaks(json)
+    json.present? ? Array(JSON.parse(json)).map { |row| row.to_h.slice('kind', 'started_at', 'ended_at') } : []
+  rescue JSON::ParserError
+    []
+  end
 
   def ordered_proposal
     return if proposed_started_at.nil? || proposed_ended_at.nil?

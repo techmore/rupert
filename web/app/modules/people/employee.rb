@@ -121,7 +121,7 @@ module People
       raise ArgumentError, "Your PIN is #{length} digits." unless digits.match?(/\A\d{#{length}}\z/)
       raise ArgumentError, 'Choose a PIN that is not a run or a repeat.' if digits.chars.uniq.one? || %w[1234 12345 123456 4321 0000].include?(digits)
 
-      update!(pin_digest: BCrypt::Password.create(digits, cost: 10), pin_set_at: Time.current, pin_failed_count: 0, pin_locked_until: nil)
+      update!(pin_digest: BCrypt::Password.create(digits, cost: 8), pin_set_at: Time.current, pin_failed_count: 0, pin_locked_until: nil)
     end
 
     def pin_locked?(at = Time.current) = pin_locked_until.present? && pin_locked_until > at

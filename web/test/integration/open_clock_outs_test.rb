@@ -143,7 +143,9 @@ class OpenClockOutsTest < ActionDispatch::IntegrationTest
       OpenClockOutAlertJob.perform_now
       assert Notification.exists?(user: @admin, dedupe_key: "open_clock_out:rupert:#{later.id}")
       assert_not Notification.exists?(user: @second_admin, dedupe_key: "open_clock_out:rupert:#{later.id}")
-      assert_not Notification.exists?(user: @staff)
+      # The worker is told once, as a one-tap fix (time & pay: clock); never as an "open clock-out" manager alert.
+      assert_not Notification.exists?(user: @staff, kind: 'open_clock_out')
+      assert_equal 1, Notification.where(user: @staff, kind: 'missed_clock_out').count
     end
   end
 end

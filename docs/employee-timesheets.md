@@ -126,6 +126,8 @@ Base: `/api/v1/employee`. Requests/responses are JSON. Except login, supply `Aut
 | `POST /leave_requests` | `{leave_request:{leave_type,starts_on,ends_on,hours?,reason?,request_key}}`. Hours default from posted shifts (8 h a weekday otherwise). The same `request_key` returns the existing request (200) instead of a duplicate. Managers with `leave.write` are notified. |
 | `POST /trades` | `{kind: give|swap|pickup, shift_id, counter_shift_id?, note?}`. Guardrails (double-booking, overtime, minors, time off, notice, position) refuse with 422 and the reason; a pickup applies at once when the store does not require approval. |
 | `POST /trades/:id/accept` · `POST /trades/:id/cancel` | Take a colleague's give-away / agree to a swap, or withdraw. Status words: open, accepted (waiting for a manager), approved, denied, cancelled, expired. |
+| `POST /clock/:id/breaks` | `{kind}` (`rest` or `meal`) starts a break on the own open shift; 201 with the break. One open break at a time. |
+| `PATCH /clock/:id/breaks/:break_id` | Ends that open break; safe to retry. `GET /clock` rows now include `breaks`, `source` and `location_id`. |
 
 IDs belonging to another worker or workspace return 404. Missing, revoked, expired, or inactive credentials return 401. Unsupported review actions/invalid entries return 422; role denial returns 403. Native APIs never accept staff member IDs, review decisions, token scopes, or administrator role changes from clients. Browser endpoints remain CSRF protected.
 

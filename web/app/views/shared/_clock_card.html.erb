@@ -1,0 +1,50 @@
+<%# The clock card (docs/time-and-pay/DESIGN.md): state, one big button, Break / Meal. Shared by the staff
+    home and the time clock page. Locals: worker, open_shift, preview (boolean), return_to ('home' or nil). %>
+<% preview = local_assigns.fetch(:preview, false) %>
+<% return_to = local_assigns[:return_to] %>
+<% open_break = open_shift&.open_break %>
+<% stale = open_shift&.stale_open? %>
+<% can_close = open_shift && !stale && open_shift.started_at >= ClockShift::MAX_SHIFT_HOURS.hours.ago %>
+<section class="card card-pad space-y-4" <%= tour_anchor('clock') %> aria-labelledby="clock-card-title">
+  <div class="clock-card-state">
+    <h2 id="clock-card-title" class="card-title">
+      <% if stale %><%= t('time.clock.state.never_clocked_out') %>
+      <% elsif open_break %><%= open_break.kind == 'meal' ? t('time.clock.state.on_meal_minutes', minutes: open_break.minutes) : t('time.clock.state.on_break_minutes', minutes: open_break.minutes) %>
+      <% elsif open_shift %><%= t('time.clock.state.clocked_in') %>
+      <% elsif worker.respond_to?(:on_leave?) && worker.on_leave? %><%= t('time.clock.state.on_leave') %>
+      <% else %><%= t('time.clock.state.ready') %><% end %>
+    </h2>
+    <% if stale %><span class="pill-rose"><%= t('time.clock.state.never_clocked_out') %></span>
+    <% elsif open_break %><span class="pill-olive"><%= open_break.kind == 'meal' ? t('time.clock.state.on_meal') : t('time.clock.state.on_break') %></span>
+    <% elsif open_shift %><span class="pill-fern"><%= t('time.clock.state.clocked_in') %></span>
+    <% else %><span class="pill-taupe"><%= t('time.clock.state.clocked_out') %></span><% end %>
+  </div>
+  <% if stale %>
+    <p class="text-sm" data-open-clock-out="rupert-<%= open_shift.id %>"><%= open_clock_out_label(open_shift.started_at) %>. <%= t('time.clock.home.hours_not_counted') %></p>
+  <% elsif open_shift %>
+    <p class="text-3xl font-semibold tabular-nums" data-controller="elapsed-time" data-elapsed-time-start-value="<%= open_shift.started_at.iso8601 %>"><span data-elapsed-time-target="duration"><%= format_hours(open_shift.hours, unit: true) %></span></p>
+    <p class="text-sm text-mocha"><%= t('time.clock.state.since', time: open_shift.started_at.in_time_zone.strftime('%-l:%M %p')) %><%= " · #{open_shift.started_at.in_time_zone.strftime('%a, %b %-d')}" unless open_shift.started_at.in_time_zone.to_date == Date.current %></p>
+    <% if open_shift.breaks.any? %><p class="clock-break-list" aria-label="<%= t('time.clock.page.breaks') %>"><% open_shift.breaks.chronological.each do |b| %><span><%= b.kind == 'meal' ? t('time.clock.page.meal_kind') : t('time.clock.page.break_kind') %> · <%= b.minutes %> min</span><% end %></p><% end %>
+  <% else %>
+    <p class="text-sm text-mocha"><%= worker.respond_to?(:on_leave?) && worker.on_leave? ? t('time.clock.state.on_leave_hint') : t('time.clock.state.clock_in_hint') %></p>
+  <% end %>
+  <div class="clock-card-actions">
+    <% if preview %>
+      <button type="button" disabled class="btn-primary btn-lg clock-main opacity-60"><%= t('time.clock.actions.clock_in') %></button>
+    <% elsif stale %>
+      <%= link_to t('time.clock.home.fix_clock_out'), fix_clock_out_time_clock_path(open_shift), class: 'btn-primary btn-lg clock-main' %>
+    <% elsif can_close %>
+      <%= button_to t('time.clock.actions.clock_out'), clock_out_time_clock_path, params: { shift_id: open_shift.id, return_to: return_to }.compact, class: 'btn-primary btn-lg clock-main', data: { turbo: false } %>
+      <% if open_break %>
+        <%= button_to t('time.clock.actions.end_break'), end_break_time_clock_path, params: { return_to: return_to }.compact, class: 'btn-ghost btn-lg', data: { turbo: false } %>
+      <% else %>
+        <%= button_to t('time.clock.actions.break'), start_break_time_clock_path, params: { kind: 'rest', return_to: return_to }.compact, class: 'btn-ghost btn-lg', data: { turbo: false } %>
+        <%= button_to t('time.clock.actions.meal'), start_break_time_clock_path, params: { kind: 'meal', return_to: return_to }.compact, class: 'btn-ghost btn-lg', data: { turbo: false } %>
+      <% end %>
+    <% elsif open_shift %>
+      <%= link_to t('time.clock.home.fix_clock_out'), fix_clock_out_time_clock_path(open_shift), class: 'btn-primary btn-lg clock-main' %>
+    <% elsif worker.active? %>
+      <%= button_to t('time.clock.actions.clock_in'), clock_in_time_clock_path, params: { request_token: SecureRandom.uuid, return_to: return_to }.compact, class: 'btn-primary btn-lg clock-main', data: { turbo: false } %>
+    <% end %>
+  </div>
+</section>

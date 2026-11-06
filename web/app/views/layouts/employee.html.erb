@@ -32,7 +32,8 @@
     </div>
     <% if Current.user %>
       <nav aria-label="My workspace" class="workspace-navigation mx-auto max-w-3xl px-4 pb-3 sm:px-6" <%= tour_anchor('nav') %>>
-        <% links = @preview ? [['Today', employee_app_path(preview: 1)], ['Timesheets', employee_preview_timesheets_path], ['Schedule', employee_preview_schedule_path], ['Pay', employee_preview_pay_path], ['Time off', employee_preview_time_off_path], ['Reports', employee_preview_reports_path]] : [['Today', employee_app_path], ['Receipts', receipts_path], ['Timesheets', people_timesheets_path], ['Pay', employee_pay_path], ['Schedule', employee_schedule_path], ['Time off', employee_time_off_path], ['Reports', employee_reports_path]] %>
+        <%# time & pay: Today · Schedule · Time off · Pay · Timesheets, then the rest. Reports lives under Pay. %>
+        <% links = @preview ? [['Today', employee_app_path(preview: 1)], ['Schedule', employee_preview_schedule_path], ['Time off', employee_preview_time_off_path], ['Pay', employee_preview_pay_path], ['Timesheets', employee_preview_timesheets_path]] : [['Today', employee_app_path], ['Schedule', employee_schedule_path], ['Time off', employee_time_off_path], ['Pay', employee_pay_path], ['Timesheets', people_timesheets_path], ['Receipts', receipts_path]] %>
         <% links << ['My tasks', projects_tasks_path] if !@preview && Current.user.employee? && Current.user.can?('tasks.self') %>
         <% links << ['Training', employee_training_index_path] unless @preview %>
         <% links.unshift(['POS', ctrax_pos_path]) if !@preview && Current.user.can_use_pos? %>
@@ -56,7 +57,7 @@
   <footer class="mx-auto flex max-w-3xl flex-wrap gap-4 px-4 pb-8 text-xs text-mocha sm:px-6">
     <%= link_to 'Learn Rupert & definitions', learning_index_path, class: 'underline' if Current.user && !@preview %>
     <%= link_to 'Privacy & support', employee_privacy_path(preview: @preview ? 1 : nil), class: 'underline' %>
-    <%= link_to 'Signed-in devices', employee_devices_path, class: 'underline' if Current.user && !@preview %>
+    <%= link_to t('time.clock.settings.title'), employee_devices_path, class: 'underline' if Current.user && !@preview %>
     <% if Current.user&.can_manage_accounts? %><%= link_to 'Back to management', root_path, class: 'underline' %><% end %>
   </footer>
 </body>

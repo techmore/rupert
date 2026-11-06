@@ -2372,3 +2372,62 @@ body.tour-active { overflow-x:hidden; }
 .type-chip:has(input:checked) { border-color:var(--color-olive);background:var(--color-olive);color:var(--color-cream); }
 .type-chip:has(input:focus-visible) { outline:2px solid var(--color-olive);outline-offset:2px; }
 @media (max-width: 640px) { .schedule-grid .schedule-grid-name { width:7.5rem; } }
+/* ---- time & pay: clock ---- */
+/* The PIN clock pad (shared/_pin_clock): on the POS strip as a dialog, full-screen on /clock. */
+.pos-clock-button { position:relative;display:inline-flex;align-items:center;gap:.4rem;min-height:2.25rem; }
+.pos-clock-button .nav-symbol { width:1.1rem;height:1.1rem; }
+.pos-clock-dot { width:.6rem;height:.6rem;border-radius:var(--radius-pill);background:var(--color-taupe); }
+.pos-clock-dot[data-state="clocked_in"] { background:var(--color-fern); }
+.pos-clock-dot[data-state="on_break"] { background:var(--color-olive); }
+.pos-clock-dot[data-state="stale"] { background:var(--color-rose); }
+.pin-clock-body { display:grid;gap:.75rem;padding:1.25rem 1.5rem 1.5rem; }
+.pin-clock-kiosk { width:min(26rem,100%);margin:0 auto;padding:1rem; }
+.pin-clock-kiosk .pin-clock-body { padding:0; }
+.pin-clock-head { display:flex;align-items:center;justify-content:space-between;gap:.75rem;min-height:2.25rem; }
+.pin-clock-head .pos-sheet-title { font-size:1.4rem; }
+.pin-clock-message { min-height:1.4rem;font-size:.95rem;color:var(--color-mocha); }
+.pin-clock-message:empty { display:none; }
+.pin-clock-message[data-tone="error"] { color:var(--color-danger);font-weight:600; }
+.pin-clock-message[data-tone="warn"] { color:var(--color-warn);font-weight:600; }
+.pin-clock-message[data-tone="ok"] { color:var(--color-success);font-weight:600; }
+.pin-clock-dots { display:flex;justify-content:center;gap:.9rem;padding:.5rem 0 .25rem; }
+.pin-clock-dot { width:1rem;height:1rem;border:2px solid var(--color-taupe);border-radius:var(--radius-pill);transition:background-color 120ms,border-color 120ms; }
+.pin-clock-dot-on { border-color:var(--color-olive);background:var(--color-olive); }
+.pin-clock-input { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0; }
+.pin-clock-keys { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem; }
+.pin-clock-key { min-height:4rem;border:1px solid var(--color-fog);border-radius:var(--radius-control);background:var(--color-cream);color:var(--color-ink);font-family:var(--font-display);font-size:1.75rem;font-variant-numeric:tabular-nums;transition:background-color 120ms,transform 120ms; }
+.pin-clock-key:hover { background:var(--color-haze); }
+.pin-clock-key:active { transform:scale(.97);background:var(--color-haze); }
+.pin-clock-key:focus-visible { outline:2px solid var(--color-olive);outline-offset:2px; }
+.pin-clock-key-soft { font-family:var(--font-sans);font-size:.9rem;color:var(--color-mocha); }
+.pin-clock-foot { text-align:center; }
+.pin-clock-options,.pin-clock-fix,.pin-clock-setup { display:grid;gap:.75rem; }
+.pin-clock-since { font-size:1rem;color:var(--color-mocha); }
+.pin-clock-option { width:100%;min-height:3.5rem;font-size:1.1rem; }
+.pin-clock-option-row { display:grid;grid-template-columns:repeat(auto-fit,minmax(7rem,1fr));gap:.6rem; }
+.pin-clock-fix-options { display:grid;gap:.6rem; }
+.pin-clock-setup-pin { font-size:1.4rem;letter-spacing:.4em;text-align:center; }
+.pin-clock-confirm { display:grid;justify-items:center;gap:.5rem;padding:1.5rem 0 .5rem;text-align:center; }
+.pin-clock-confirm-name { font-size:1rem;color:var(--color-mocha); }
+.pin-clock-confirm-line { font-family:var(--font-display);font-size:2rem;line-height:1.15;color:var(--color-success); }
+.pin-clock-queue { font-size:.85rem;color:var(--color-warn);text-align:center; }
+.pin-clock-shake { animation:pin-clock-shake 300ms; }
+@keyframes pin-clock-shake { 20%,60% { transform:translateX(-6px); } 40%,80% { transform:translateX(6px); } }
+.pin-clock [hidden] { display:none !important; }
+.clock-kiosk { display:grid;align-content:center;justify-items:center;gap:1rem;min-height:100dvh;padding:1.5rem 1rem;background:var(--color-cream); }
+.clock-kiosk-brand { display:flex;align-items:center;gap:.6rem;font-family:var(--font-display);font-size:1.25rem;color:var(--color-olive-deep); }
+.clock-kiosk-time { font-family:var(--font-display);font-size:3rem;line-height:1;font-variant-numeric:tabular-nums;color:var(--color-ink); }
+.clock-kiosk-card { width:min(28rem,100%);border:1px solid var(--color-fog);border-radius:var(--radius-card);background:var(--color-paper); }
+.clock-kiosk-foot { font-size:.8rem;color:var(--color-taupe); }
+/* Employee home and time clock: the clock card, breaks and the Fix a punch form. */
+.clock-card-state { display:flex;flex-wrap:wrap;align-items:center;gap:.5rem; }
+.clock-card-actions { display:grid;grid-template-columns:repeat(auto-fit,minmax(8rem,1fr));gap:.6rem;width:100%; }
+.clock-card-actions form { display:contents; }
+.clock-card-actions .btn-lg,.clock-card-actions .btn-primary,.clock-card-actions .btn-ghost { width:100%;justify-content:center;min-height:3.25rem; }
+.clock-card-actions .clock-main { grid-column:1 / -1;min-height:4rem;font-size:1.25rem; }
+.clock-break-list { display:flex;flex-wrap:wrap;gap:.35rem .75rem;font-size:.8rem;color:var(--color-mocha); }
+.fix-punch-breaks { display:grid;gap:.5rem; }
+.fix-punch-break { display:grid;grid-template-columns:minmax(0,6rem) minmax(0,1fr) minmax(0,1fr) auto;gap:.5rem;align-items:end; }
+@media (max-width:640px) { .fix-punch-break { grid-template-columns:1fr 1fr; } .pin-clock-key { min-height:3.5rem; } }
+@media (prefers-reduced-motion: reduce) { .pin-clock-shake { animation:none; } .pin-clock-key { transition:none; } }
+/* ---- end time & pay: clock ---- */

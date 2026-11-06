@@ -38,6 +38,10 @@ production:
     class: Tips::ReconcileJob
     queue: default
     schedule: '12 * * * *'
+  break_reminders: # time & pay: clock
+    class: BreakReminderJob
+    queue: default
+    schedule: every 10 minutes
   source_directories:
     class: DirectorySyncJob
     queue: default
