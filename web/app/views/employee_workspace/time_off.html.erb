@@ -74,7 +74,7 @@
   <div class="grid grid-cols-7 gap-1" role="list" aria-label="<%= t('time.time_off.calendar') %>">
     <% (1..7).each do |i| %><div aria-hidden="true" class="py-1 text-center text-xs text-mocha"><%= t('date.abbr_day_names')[i % 7] %></div><% end %>
     <% (@month.beginning_of_week..@month.end_of_month.end_of_week).each do |day| %>
-      <div role="listitem" aria-label="<%= l(day, format: :long) %>" class="min-h-16 min-w-0 rounded-control p-1 text-xs <%= day.month == @month.month ? 'bg-haze/60' : 'text-taupe' %>">
+      <div role="listitem" data-date="<%= day.iso8601 %>" aria-label="<%= l(day, format: :long) %>" class="min-h-16 min-w-0 rounded-control p-1 text-xs <%= day.month == @month.month ? 'bg-haze/60' : 'text-taupe' %>">
         <span class="inline-flex h-6 w-6 items-center justify-center rounded-pill font-semibold <%= day == Date.current ? 'bg-olive text-white' : '' %>"><%= day.day %></span>
         <% if @summary.daily_hours(day).positive? %><p class="mt-1 break-words"><%= number_with_precision(@summary.daily_hours(day), precision: 2, strip_insignificant_zeros: true) %>h</p><% elsif @summary.clock_hours(day).positive? %><p class="mt-1 break-words"><%= number_with_precision(@summary.clock_hours(day), precision: 2, strip_insignificant_zeros: true) %>h</p><% end %>
         <% @summary.daily_requests(day).each do |leave| %><p class="mt-1 break-words text-olive"><%= t("time.time_off.short.#{leave.leave_type}") %><span class="block"><%= leave.requested? ? t('time.time_off.status.requested') : t('time.time_off.status.approved') %></span></p><% end %>
