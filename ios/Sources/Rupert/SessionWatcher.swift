@@ -29,6 +29,10 @@ final class SessionWatcher {
     /// Called once per sign-in or sign-out a page reveals.
     var onChange: ((State) -> Void)?
 
+    /// Called with every state a page reports or the app sets, the first one included. The tab bar
+    /// hides while signed out (SceneController).
+    var onState: ((State) -> Void)?
+
     /// Records what a rendered page reported (the result of `readScript`). Returns true, and calls
     /// `onChange`, when that differs from the last known state.
     @discardableResult
@@ -36,6 +40,7 @@ final class SessionWatcher {
         guard let text = value as? String, let new = State(rawValue: text) else { return false }
         let old = state
         state = new
+        onState?(new)
         guard let old, old != new else { return false }
         onChange?(new)
         return true
@@ -45,5 +50,6 @@ final class SessionWatcher {
     /// on its own, so the next page should not count as a change.
     func set(_ new: State) {
         state = new
+        onState?(new)
     }
 }

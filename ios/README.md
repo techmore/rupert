@@ -100,6 +100,12 @@ Native parts beyond the web pages: camera barcode scanning on inventory counts
 sheet behind the person button on each tab's first page (`AppSettings.swift`, SwiftUI) and Home
 Screen quick actions (`Info.plist`, `SceneController.swift`).
 
+The native chrome (tab bar, sheets, keyboard) follows the appearance picked in Rupert's account
+menu, not the phone's dark mode (`Banner.swift`). Signed out, the tab bar hides and only Home's
+sign-in page shows. Pages follow the iPhone's text size (`TextSize.swift`). Pages that fail to load
+show `ErrorView.swift`, which reloads when the phone is back online. UI/UX review and screenshots:
+`docs/ios/ux-pass.md`.
+
 Inside the app Rupert offers no sign-up and no subscription purchase (App Store guideline 3.1.1):
 `hotwire_native_app?` hides them in `sessions/new` and the account menu, and `BillingController`
 refuses them. Account deletion is in the account menu (`/account/delete`).

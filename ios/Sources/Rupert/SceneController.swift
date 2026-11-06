@@ -13,14 +13,19 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
 
         let window = UIWindow(windowScene: windowScene)
         window.tintColor = UIColor(named: "AccentColor", in: .module, compatibleWith: nil)
+        window.overrideUserInterfaceStyle = PageStyle.last
         window.rootViewController = tabBarController
         window.makeKeyAndVisible()
         self.window = window
 
         tabBarController.load(HotwireTab.all(on: Instance.current))
+        showTabs(UserDefaults.standard.bool(forKey: Self.signedInKey), animated: false)
         AppLock.shared.attach(to: window)
         AppSettings.openInApp = { [weak self] url in
             self?.tabBarController.activeNavigator.route(url)
+        }
+        AppSettings.leaveWorkspace = { [weak self] in
+            self?.leaveWorkspace()
         }
         if let shortcut = connectionOptions.shortcutItem {
             _ = open(shortcut)
@@ -31,6 +36,9 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         }
         WorkspaceHandoff.shared.onOpened = { [weak self] origin, landing in
             self?.show(instance: origin, landing: landing)
+        }
+        SessionWatcher.shared.onState = { [weak self] state in
+            self?.showTabs(state == .signedIn, animated: true)
         }
         SessionWatcher.shared.onChange = { [weak self] _ in
             // The change is noticed while the old page is still finishing its visit; replacing the
@@ -54,10 +62,31 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
     }
 
     private func open(_ shortcut: UIApplicationShortcutItem) -> Bool {
+        // Signed out there is only the sign-in page; the app opens on it.
+        guard signedIn else { return true }
         let tab = shortcut.type.components(separatedBy: ".").last ?? ""
         guard let index = HotwireTab.all(on: Instance.current).firstIndex(where: { $0.id == tab }) else { return false }
         select(index)
         return true
+    }
+
+    private static let signedInKey = "rupert.signedIn"
+    private var signedIn = false
+
+    /// Signed out, every tab showed the same sign-in page, most of them under a "Please sign in"
+    /// error. Now only Home's shows, without the tab bar; the tabs come back with the sign-in.
+    /// Remembered across launches, so a signed-out start does not flash five tabs.
+    private func showTabs(_ visible: Bool, animated: Bool) {
+        signedIn = visible
+        UserDefaults.standard.set(visible, forKey: Self.signedInKey)
+        if !visible, tabBarController.selectedIndex != 0 { select(0) }
+        if #available(iOS 18.0, *) {
+            if tabBarController.isTabBarHidden == visible {
+                tabBarController.setTabBarHidden(!visible, animated: animated)
+            }
+        } else {
+            tabBarController.tabBar.isHidden = !visible
+        }
     }
 
     /// Selecting a tab in code skips the tab bar's delegate, which is where lazily loaded tabs
@@ -73,6 +102,18 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         let index = tabBarController.selectedIndex
         tabBarController.load(HotwireTab.all(on: Instance.current))
         select(index)
+    }
+
+    /// Back to the control plane's workspace list, to open another business. A workspace used to be
+    /// the app's home for good once opened; deleting the app was the only way back.
+    private func leaveWorkspace() {
+        Instance.setCurrent(Instance.controlPlane)
+        let tabs = HotwireTab.all(on: Instance.controlPlane)
+        tabBarController.load(tabs)
+        select(0)
+        if let home = tabs.first, let navigator = tabBarController.navigator(for: home) {
+            navigator.route(Instance.url("/workspace", on: Instance.controlPlane), options: VisitOptions(action: .replace))
+        }
     }
 
     /// Point every tab at `instance` (after a sign-in or a workspace handoff) and open `landing`
@@ -92,20 +133,14 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
 
 extension SceneController: NavigatorDelegate {
     func visitableDidFailRequest(_ visitable: any Visitable, error: HotwireNativeError, retryHandler: RetryBlock?) {
-        // Rupert's JavaScript did not start: say why, with the page's own diagnostics.
-        if case .load = error {
+        // Rupert's JavaScript did not start: the error page (RupertErrorView) offers the page's own
+        // diagnostics as "Copy Details for Support". They used to arrive in an alert on top of the
+        // error page, user agent and import map included.
+        if case .load = error, let presenter = visitable as? ErrorPresenter {
             let webView = tabBarController.activeNavigator.activeWebView
             Task { @MainActor in
                 let details = await WebViewSupport.report(from: webView)
-                let alert = UIAlertController(title: "Rupert's page did not start",
-                                              message: "\(error.localizedDescription)\n\n\(details)", preferredStyle: .alert)
-                alert.addAction(UIAlertAction(title: "Copy Details", style: .default) { _ in
-                    UIPasteboard.general.string = details
-                })
-                alert.addAction(UIAlertAction(title: "Try Again", style: .cancel) { _ in retryHandler?() })
-                self.tabBarController.activeNavigator.present(alert, animated: true)
-            }
-            if let presenter = visitable as? ErrorPresenter {
+                ErrorDetails.latest = "\(error.localizedDescription)\n\n\(details)"
                 presenter.presentError(error) { retryHandler?() }
             }
             return

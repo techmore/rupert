@@ -73,6 +73,21 @@ final class SessionWatcherTests: XCTestCase {
     }
 }
 
+final class SessionStateTests: XCTestCase {
+    func testEveryReportedStateReachesOnStateIncludingTheFirst() {
+        // The tab bar hides while signed out, so the first page's state matters too.
+        let watcher = SessionWatcher()
+        var states: [SessionWatcher.State] = []
+        watcher.onState = { states.append($0) }
+
+        watcher.observe("signed-out")
+        watcher.observe(nil)
+        watcher.observe("signed-in")
+        watcher.set(.signedOut)
+        XCTAssertEqual(states, [.signedOut, .signedIn, .signedOut])
+    }
+}
+
 final class BottomInsetTests: XCTestCase {
     func testScriptSetsTheCSSVariableInWholePoints() {
         XCTAssertEqual(BannerWebViewController.bottomInsetScript(83.4),

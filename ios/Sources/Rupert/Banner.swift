@@ -78,6 +78,14 @@ struct BannerColors {
 final class BannerWebViewController: HotwireWebViewController {
     private var colors = BannerColors.current
 
+    /// The person typed in a form on this page (BannerBridge). In a sheet, closing it then asks first.
+    private var edited = false
+
+    /// The first page of a sheet: forms (`/new`, `/edit`) open as sheets (path-configuration.json).
+    private var isSheetRoot: Bool {
+        presentingViewController != nil && navigationController?.viewControllers.first === self
+    }
+
     override var preferredStatusBarStyle: UIStatusBarStyle {
         colors.isDark(for: traitCollection) ? .lightContent : .darkContent
     }
@@ -94,6 +102,13 @@ final class BannerWebViewController: HotwireWebViewController {
         if navigationController?.viewControllers.first === self, presentingViewController == nil {
             AppSettings.addButton(to: self)
         }
+        if isSheetRoot { addCancelButton() }
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        // A swipe down on a sheet with edits asks before discarding them (see formEdited()).
+        if isSheetRoot { navigationController?.presentationController?.delegate = self }
     }
 
     override func visitableDidActivateWebView(_ webView: WKWebView) {
@@ -108,6 +123,11 @@ final class BannerWebViewController: HotwireWebViewController {
             navigationItem.title = String(title.dropLast(" · Rupert".count))
         }
         guard let webView = visitableView.webView else { return }
+        // Sheets have their own title and Cancel; Rupert hides its menu bar and "Next" card in them.
+        if presentingViewController != nil {
+            webView.evaluateJavaScript("document.documentElement.dataset.nativeModal = ''")
+        }
+        TextSize.apply(to: webView)
         webView.evaluateJavaScript(BannerColors.readScript) { [weak self] value, _ in
             self?.apply(BannerColors(json: value) ?? .fallback)
         }
@@ -141,6 +161,12 @@ final class BannerWebViewController: HotwireWebViewController {
     func apply(_ colors: BannerColors) {
         self.colors = colors
         BannerColors.current = colors
+        // Rupert's appearance is chosen in the account menu, not by the phone's dark mode, so the
+        // tab bar, sheets, alerts, keyboard and loading screens follow the page. Without this a dark
+        // phone showed a black tab bar and black loading screens around light pages.
+        if let window = view.window {
+            PageStyle.apply(colors.isDark(for: traitCollection) ? .dark : .light, to: window)
+        }
         let appearance = colors.appearance
         navigationItem.standardAppearance = appearance
         navigationItem.scrollEdgeAppearance = appearance
@@ -149,6 +175,66 @@ final class BannerWebViewController: HotwireWebViewController {
             navigationController?.navigationBar.tintColor = colors.accent
             navigationController?.setNeedsStatusBarAppearanceUpdate()
         }
+    }
+}
+
+/// Light or dark native chrome, following the appearance the person picked in Rupert. The last one
+/// is remembered so the next launch starts in it instead of flashing the phone's setting.
+enum PageStyle {
+    private static let key = "rupert.pageStyle"
+
+    static var last: UIUserInterfaceStyle {
+        switch UserDefaults.standard.string(forKey: key) {
+        case "dark": return .dark
+        // Before any page: Herbal, Rupert's default appearance, is light.
+        default: return .light
+        }
+    }
+
+    static func apply(_ style: UIUserInterfaceStyle, to window: UIWindow) {
+        guard window.overrideUserInterfaceStyle != style else { return }
+        window.overrideUserInterfaceStyle = style
+        UserDefaults.standard.set(style == .dark ? "dark" : "light", forKey: key)
+    }
+}
+
+// MARK: Form sheets
+
+/// Hotwire's Done tick on sheets read as "save" but threw the form away, and a swipe down did the
+/// same without a word. Sheets now have Cancel, as in Mail or Calendar, and once the person has
+/// typed something, Cancel and the swipe both ask before discarding it.
+extension BannerWebViewController: UIAdaptivePresentationControllerDelegate {
+    func formEdited() {
+        guard presentingViewController != nil, !edited else { return }
+        edited = true
+        navigationController?.isModalInPresentation = true
+    }
+
+    func presentationControllerDidAttemptToDismiss(_ presentationController: UIPresentationController) {
+        confirmDiscard()
+    }
+
+    private func addCancelButton() {
+        guard navigationItem.leftBarButtonItem == nil else { return }
+        navigationItem.leftBarButtonItem = UIBarButtonItem(systemItem: .cancel, primaryAction: UIAction { [weak self] _ in
+            self?.cancel()
+        })
+    }
+
+    private func cancel() {
+        let edits = navigationController?.viewControllers.contains { ($0 as? BannerWebViewController)?.edited == true } ?? edited
+        if edits { confirmDiscard() } else { dismiss(animated: true) }
+    }
+
+    private func confirmDiscard() {
+        let sheet = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+        sheet.addAction(UIAlertAction(title: "Discard Changes", style: .destructive) { [weak self] _ in
+            UINotificationFeedbackGenerator().notificationOccurred(.warning)
+            self?.dismiss(animated: true)
+        })
+        sheet.addAction(UIAlertAction(title: "Keep Editing", style: .cancel))
+        sheet.popoverPresentationController?.barButtonItem = navigationItem.leftBarButtonItem
+        (navigationController ?? self).present(sheet, animated: true)
     }
 }
 
@@ -162,15 +248,33 @@ final class BannerBridge: NSObject, WKScriptMessageHandler {
     static let shared = BannerBridge()
     let pages = NSMapTable<WKWebView, BannerWebViewController>.weakToWeakObjects()
 
+    /// Tells the app the first time the person changes a field in one of the page's forms.
+    static let formEditScript = """
+    (() => {
+      const post = (event) => {
+        if (!event.isTrusted || !(event.target instanceof Element) || !event.target.closest("form")) return;
+        try { window.webkit.messageHandlers.rupertForm.postMessage("edited"); } catch (_) {}
+      };
+      addEventListener("input", post, true);
+      addEventListener("change", post, true);
+    })();
+    """
+
     static func install(in controller: WKUserContentController) {
         controller.add(shared, name: "rupertBanner")
+        controller.add(shared, name: "rupertForm")
         controller.addUserScript(WKUserScript(source: BannerColors.watchScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+        controller.addUserScript(WKUserScript(source: formEditScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard let webView = message.webView, let page = pages.object(forKey: webView),
-              let colors = BannerColors(json: message.body) else { return }
-        page.apply(colors)
+        guard message.frameInfo.isMainFrame, let webView = message.webView,
+              let page = pages.object(forKey: webView) else { return }
+        if message.name == "rupertForm" {
+            page.formEdited()
+        } else if let colors = BannerColors(json: message.body) {
+            page.apply(colors)
+        }
     }
 }
 

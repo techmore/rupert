@@ -7,9 +7,14 @@ struct AppSettingsView: View {
     /// Opens a Rupert page in the current tab (the sheet closes first).
     var open: (URL) -> Void
     var close: () -> Void
+    /// Moves the app back to the control plane's workspace list (SceneController).
+    var switchWorkspace: () -> Void = {}
+    var signedIn = SessionWatcher.shared.state == .signedIn
+    var onWorkspace = Instance.current.host != Instance.controlPlane.host
 
     @State private var lockEnabled = AppLock.shared.isEnabled
     @State private var lockAvailable = AppLock.isAvailable
+    @State private var grace = AppLock.shared.gracePeriod
     private let method = AppLock.methodName
 
     var body: some View {
@@ -18,16 +23,33 @@ struct AppSettingsView: View {
                 Section {
                     Toggle("Require \(method)", isOn: Binding(get: { lockEnabled }, set: setLock(_:)))
                         .disabled(!lockAvailable)
+                    if lockEnabled {
+                        Picker("Ask Again", selection: $grace) {
+                            ForEach(AppLock.gracePeriods, id: \.seconds) { period in
+                                Text(period.label).tag(period.seconds)
+                            }
+                        }
+                        .onChange(of: grace) { _, seconds in AppLock.shared.gracePeriod = seconds }
+                    }
                 } header: {
                     Text("Security")
                 } footer: {
                     Text(lockAvailable
-                        ? "Ask for \(method) each time Rupert comes back to the screen. The app switcher shows a cover instead of your pages."
+                        ? "Ask for \(method) when Rupert comes back to the screen. The app switcher always shows a cover instead of your pages."
                         : "Set a passcode on this iPhone to lock Rupert.")
                 }
 
-                Section("Workspace") {
+                Section {
                     LabeledContent("Connected to", value: Instance.current.host ?? "")
+                    if onWorkspace {
+                        Button("Switch Workspace", action: switchWorkspace)
+                    }
+                } header: {
+                    Text("Workspace")
+                } footer: {
+                    if onWorkspace {
+                        Text("Go back to \(Instance.controlPlane.host ?? "Rupert") to open another business.")
+                    }
                 }
 
                 Section("Help") {
@@ -36,10 +58,12 @@ struct AppSettingsView: View {
                     Button("Privacy policy") { open(Instance.url("/privacy", on: Instance.controlPlane)) }
                 }
 
-                Section {
-                    Button("Delete account", role: .destructive) { open(Instance.url("/account/delete")) }
-                } footer: {
-                    Text("Erases your name, email and sign-in from Rupert. You confirm on the next page.")
+                if signedIn {
+                    Section {
+                        Button("Delete account", role: .destructive) { open(Instance.url("/account/delete")) }
+                    } footer: {
+                        Text("Erases your name, email and sign-in from Rupert. You confirm on the next page.")
+                    }
                 }
 
                 Section {
@@ -75,6 +99,8 @@ struct AppSettingsView: View {
 enum AppSettings {
     /// Set by SceneController: open a URL in the selected tab.
     @MainActor static var openInApp: ((URL) -> Void)?
+    /// Set by SceneController: point the app back at the control plane.
+    @MainActor static var leaveWorkspace: (() -> Void)?
 
     @MainActor
     static func addButton(to controller: UIViewController) {
@@ -95,7 +121,10 @@ enum AppSettings {
             open: { url in
                 host?.dismiss(animated: true) { openInApp?(url) }
             },
-            close: { host?.dismiss(animated: true) }
+            close: { host?.dismiss(animated: true) },
+            switchWorkspace: {
+                host?.dismiss(animated: true) { leaveWorkspace?() }
+            }
         )
         let sheet = UIHostingController(rootView: view)
         host = sheet
