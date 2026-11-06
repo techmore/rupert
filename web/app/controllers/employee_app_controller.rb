@@ -2,7 +2,7 @@
 
 class EmployeeAppController < ApplicationController
   layout 'employee'
-  before_action -> { response.headers['Cache-Control'] = 'no-store' }, only: %i[show privacy devices revoke week]
+  before_action -> { response.headers['Cache-Control'] = 'no-store' }, only: %i[show privacy devices revoke week update_settings]
   skip_before_action :require_login, only: %i[show privacy manifest service_worker]
   # This public script contains no session or employee data. Rails otherwise
   # rejects non-XHR JavaScript responses, including service worker registration.
@@ -25,9 +25,10 @@ class EmployeeAppController < ApplicationController
       # The pay week (PayRules), so home, the timesheet and pay all count the same days.
       first, last = PayRules.current.period_range(Date.current)
       @summary = EmployeeWorkSummary.new(employee: @worker, from: first, to: last)
-      @open_shift = ClockShift.open.find_by(employee_id: @worker.id, user_id: Current.user.id)
+      @open_shift = ClockShift.open.includes(:breaks).find_by(employee_id: @worker.id)
       @timesheet = @worker.timesheets.where('period_start <= ? AND period_end >= ?', Date.current, Date.current).first
-      @next_shift = @worker.scheduled_shifts.where('ends_at > ?', Time.current).chronological.first
+      @today_shift = @worker.scheduled_shifts.live.where(starts_at: BusinessClock.day_window(Date.current)).where('ends_at > ?', Time.current).chronological.first
+      @next_shift = @worker.scheduled_shifts.live.where('ends_at > ?', Time.current).chronological.first
       @next_leave = @worker.leave_requests.where(status: %w[requested approved]).where('ends_on >= ?', Date.current).order(:starts_on).first
     end
   end
@@ -49,9 +50,30 @@ class EmployeeAppController < ApplicationController
     redirect_to employee_app_path, alert: 'Could not open this week. Refresh and try again.'
   end
 
+  # Settings: language, clock PIN and signed-in devices (time & pay: clock).
   def devices
     response.headers['Cache-Control'] = 'no-store'
+    @worker = TimeClockService.worker_for(Current.user, include_on_leave: true)
     @sessions = EmployeeAppSession.where(user_id: Current.user.id, revoked_at: nil).where('expires_at > ?', Time.current).order(created_at: :desc)
+  end
+
+  def update_settings
+    worker = TimeClockService.worker_for(Current.user, include_on_leave: true)
+    return redirect_to employee_devices_path, alert: 'Ask an administrator to link your staff record.' unless worker
+
+    if params[:locale].present?
+      locale = params[:locale].to_s
+      return redirect_to employee_devices_path, alert: 'Choose English or Español.' unless I18n.available_locales.map(&:to_s).include?(locale)
+
+      worker.update!(locale: locale)
+    end
+    if params[:pin].present?
+      TimeClockService.set_clock_pin!(worker, params[:pin], confirmation: params[:pin_confirmation])
+      ActivityLogger.log('clock_pin.set', subject: worker, details: { by: Current.user.id, self: true }.to_json)
+    end
+    I18n.with_locale(worker.locale_or_default) { redirect_to employee_devices_path, notice: t('time.clock.settings.saved') }
+  rescue ArgumentError => e
+    redirect_to employee_devices_path, alert: e.message
   end
 
   def revoke

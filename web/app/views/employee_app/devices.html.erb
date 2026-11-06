@@ -1,6 +1,33 @@
-<% content_for :title, 'Signed-in devices' %>
-<%= page_header 'Signed-in devices', subtitle: 'Sign out a device you no longer use.' %>
-<% if @sessions.empty? %><%= empty_state 'No active device sessions', hint: 'Devices appear here after you sign in to the staff app.' %><% end %>
-<% @sessions.each do |record| %>
-  <section class="card card-pad flex flex-wrap items-center justify-between gap-3"><div><h2 class="card-title"><%= record.device_name %></h2><p class="text-sm text-mocha">Expires <%= l(record.expires_at, format: :short) %></p></div><%= button_to 'Sign out device', revoke_employee_device_path(record), class: 'btn-ghost btn-sm' %></section>
+<% content_for :title, t('time.clock.settings.title') %>
+<%= page_header t('time.clock.settings.title'), subtitle: t('time.clock.settings.subtitle') %>
+<% if @worker %>
+  <section class="card card-pad space-y-3" aria-labelledby="language-heading">
+    <h2 id="language-heading" class="card-title"><%= t('time.clock.settings.language') %></h2>
+    <%= form_with url: employee_settings_path, method: :patch, class: 'flex flex-wrap items-end gap-3', data: { turbo: false } do |f| %>
+      <div>
+        <%= f.label :locale, t('time.clock.settings.language'), class: 'sr-only' %>
+        <%= f.select :locale, [['English', 'en'], ['Español', 'es']], { selected: @worker.locale_or_default }, class: 'select' %>
+      </div>
+      <%= f.submit t('time.clock.settings.save'), class: 'btn-primary btn-sm' %>
+    <% end %>
+  </section>
+  <section class="card card-pad space-y-3" aria-labelledby="pin-heading">
+    <h2 id="pin-heading" class="card-title"><%= t('time.clock.settings.pin') %></h2>
+    <p class="text-sm text-mocha"><%= @worker.pin_set? ? t('time.clock.settings.pin_set', when: l(@worker.pin_set_at.to_date, format: '%b %-d, %Y')) : t('time.clock.settings.pin_unset') %></p>
+    <details class="entry-edit">
+      <summary class="btn-ghost btn-sm"><%= @worker.pin_set? ? t('time.clock.settings.change_pin') : t('time.clock.setup.title') %></summary>
+      <%= form_with url: employee_settings_path, method: :patch, class: 'entry-edit-form', data: { turbo: false } do |f| %>
+        <div><%= f.label :pin, t('time.clock.setup.pin'), class: 'field-label' %><%= f.password_field :pin, class: 'input', inputmode: 'numeric', pattern: '[0-9]*', maxlength: 6, minlength: 4, autocomplete: 'new-password', required: true %></div>
+        <div><%= f.label :pin_confirmation, t('time.clock.setup.confirm'), class: 'field-label' %><%= f.password_field :pin_confirmation, class: 'input', inputmode: 'numeric', pattern: '[0-9]*', maxlength: 6, minlength: 4, autocomplete: 'new-password', required: true %></div>
+        <div class="form-actions sm:col-span-2"><%= f.submit t('time.clock.setup.save'), class: 'btn-primary btn-sm' %></div>
+      <% end %>
+    </details>
+  </section>
 <% end %>
+<section class="space-y-3" aria-labelledby="devices-heading">
+  <%= section_heading t('time.clock.settings.devices'), id: 'devices-heading', hint: t('time.clock.settings.devices_hint') %>
+  <% if @sessions.empty? %><%= empty_state t('time.clock.settings.no_devices'), hint: t('time.clock.settings.no_devices_hint') %><% end %>
+  <% @sessions.each do |record| %>
+    <div class="card card-pad flex flex-wrap items-center justify-between gap-3"><div><h3 class="card-title"><%= record.device_name %></h3><p class="text-sm text-mocha"><%= t('time.clock.settings.expires', when: l(record.expires_at, format: :short)) %></p></div><%= button_to t('time.clock.settings.sign_out_device'), revoke_employee_device_path(record), class: 'btn-ghost btn-sm' %></div>
+  <% end %>
+</section>

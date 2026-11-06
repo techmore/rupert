@@ -67,7 +67,9 @@ class ApplicationController < ActionController::Base
     when 'people/square_timesheets', 'people/ctrax_timesheets'
       %w[index show].include?(action_name)
     when 'time_clock'
-      %w[index clock_in clock_out request_correction fix_clock_out].include?(action_name)
+      %w[index clock_in clock_out request_correction fix_clock_out start_break end_break].include?(action_name)
+    when 'pin_clock' # time & pay: clock — the PIN pad; the service only accepts the signed-in person's own PIN here
+      true
     when 'point_of_sale', 'ctrax_pos'
       %w[index quote].include?(action_name)
     when 'pos_displays', 'pos_checkouts', 'pos_event_registers' # event register: the recorder checks the event's staff list
@@ -178,6 +180,9 @@ class ApplicationController < ActionController::Base
   end
 
   def worker_locale
+    # The staff preview (EmployeePreviewController) must not touch real staff rows.
+    return I18n.default_locale if controller_path == 'employee_preview' || params[:preview] == '1'
+
     @worker_locale ||= People::Employee.where(tenant_id: Current.tenant_id, user_id: Current.user&.id).pick(:locale).presence&.to_sym || I18n.default_locale
   end
 

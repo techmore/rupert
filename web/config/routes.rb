@@ -194,6 +194,8 @@ Rails.application.routes.draw do
       post 'employee/clock', to: 'employee_clock#create'
       patch 'employee/clock/:id', to: 'employee_clock#update'
       post 'employee/clock/:id/corrections', to: 'employee_clock#correction'
+      post 'employee/clock/:id/breaks', to: 'employee_clock#start_break' # time & pay: clock
+      patch 'employee/clock/:id/breaks/:break_id', to: 'employee_clock#end_break' # time & pay: clock
       get :catalog, to: 'catalog#index'
       get :inventory, to: 'inventory#index'
       get :roadmap, to: 'roadmap#index'
@@ -526,6 +528,21 @@ Rails.application.routes.draw do
   get '/point_of_sale', to: 'point_of_sale#index', as: :point_of_sale
   post '/point_of_sale/quote', to: 'point_of_sale#quote', as: :quote_point_of_sale
   post '/point_of_sale/lookup', to: 'point_of_sale#lookup', as: :lookup_point_of_sale
+  # ---- time & pay: clock ----
+  # The PIN clock: kiosk page, punches, first-use PIN setup, and the pad's name picker.
+  get '/clock', to: 'pin_clock#kiosk', as: :clock_kiosk
+  post '/clock/pin', to: 'pin_clock#punch', as: :clock_pin
+  post '/clock/pin/setup', to: 'pin_clock#setup', as: :clock_pin_setup
+  get '/clock/workers', to: 'pin_clock#workers', as: :clock_workers
+  post '/time_clock/break', to: 'time_clock#start_break', as: :start_break_time_clock
+  post '/time_clock/end_break', to: 'time_clock#end_break', as: :end_break_time_clock
+  patch '/employee/settings', to: 'employee_app#update_settings', as: :employee_settings
+  post '/people/employees/:employee_id/clock_pin/reset', to: 'people/clock_pins#reset', as: :reset_people_employee_clock_pin
+  post '/people/employees/:employee_id/clock_pin', to: 'people/clock_pins#create', as: :people_employee_clock_pin
+  namespace :people do
+    resources :clock_devices, only: %i[index create destroy]
+  end
+  # ---- end time & pay: clock ----
   get '/time_clock', to: 'time_clock#index', as: :time_clock
   post '/time_clock/clock_in', to: 'time_clock#clock_in', as: :clock_in_time_clock
   post '/time_clock/clock_out', to: 'time_clock#clock_out', as: :clock_out_time_clock

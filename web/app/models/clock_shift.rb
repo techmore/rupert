@@ -125,6 +125,8 @@ class ClockShift < ApplicationRecord
   def linked_worker
     return if user&.active? && employee&.active? && employee.user_id == user_id &&
       employee.tenant_id == tenant_id && employee_key == employee.id.to_s
+    # A PIN punch for a worker who has no sign-in account yet (source pos): the HR record vouches.
+    return if user_id.nil? && employee&.active? && employee.user_id.nil? && employee.tenant_id == tenant_id && employee_key == employee.id.to_s
 
     errors.add(:employee, 'must be an active worker linked to this sign-in account and store')
   end

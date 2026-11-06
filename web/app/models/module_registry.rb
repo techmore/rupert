@@ -109,6 +109,7 @@ class ModuleRegistry
     Entry.new(key: 'permissions', name: 'Permissions', path: -> { permissions_path }, permission: 'users.read', position: 92),
     Entry.new(key: 'departments', name: 'Departments', path: -> { people_departments_path }, permission: 'hr.read', position: 86),
     Entry.new(key: 'positions', name: 'Positions', path: -> { people_positions_path }, permission: 'hr.read', position: 87),
+    Entry.new(key: 'clock_devices', name: 'Clock devices', path: -> { people_clock_devices_path }, permission: 'hr.write', position: 87.2), # time & pay: clock
     Entry.new(key: 'time_keeping', name: 'Time keeping', path: -> { people_time_keeping_path }, permission: 'timesheets.read', position: 87),
     Entry.new(key: 'timesheets', name: 'Timesheets', path: -> { people_timesheets_path }, permission: 'timesheets.self', position: 87.5),
     Entry.new(key: 'punch_history', name: 'Punch report', path: -> { people_punch_history_path }, permission: 'timesheets.read', position: 88),
@@ -261,11 +262,11 @@ class ModuleRegistry
       # this area is visible to everyone.
       { key: 'me', name: 'Me', modules: %w[receipts time_clock learning] },
       { key: 'team', name: 'Team',
-        modules: %w[employees team_chat accounts permissions departments positions
+        modules: %w[employees team_chat accounts permissions departments positions clock_devices
                     time_keeping timesheets punch_history square_timesheets ctrax_timesheets schedule team_schedule leave
                     payroll incentives employee_reports training_modules training],
         groups: [
-          { name: 'People', modules: %w[employees team_chat accounts permissions departments positions] },
+          { name: 'People', modules: %w[employees team_chat accounts permissions departments positions clock_devices] },
           { name: 'Time', modules: %w[time_keeping timesheets punch_history square_timesheets ctrax_timesheets schedule team_schedule leave] },
           { name: 'Pay & reports', modules: %w[payroll incentives employee_reports training_modules training] }
         ] },
