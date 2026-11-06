@@ -76,3 +76,10 @@ specific to time and pay so that web, POS and the iPhone app say the same thing.
 | Tips | Report | Period stepper; Settled vs estimated vs unassigned. |
 | Payroll periods | List → Detail | Lock, Download CSV. |
 | Time rules | Settings | One section-card per topic, store selector. |
+
+## Tips (F3 notes)
+
+- A tip row's state pill: `Estimated` (taupe) until the batch settles, `Final` (fern) once settled or carried, `Reversed` (rose) on an original that a refund/void undid; its mirrored negative row shows as Final.
+- Pay page stat row: Hours (paid hours, unpaid breaks excluded) · Estimated gross / Gross pay (once locked) · Tips · Bonuses. "How this adds up" is a disclosure.
+- Manager Tips page stats: Terminal tips · Settled · Estimated, not yet settled · Unassigned · Reversed. Sums always include reversal pairs so the ledger nets.
+- Cash tips: "Add cash tips" → pick shift (latest first) → amount → **Save cash tips**.
