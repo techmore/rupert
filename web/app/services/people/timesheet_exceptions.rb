@@ -115,18 +115,19 @@ module People
       items
     end
 
+    # One item per person: the days they worked past the meal threshold with no meal recorded.
     def missed_meals
-      shifts.select(&:closed?).filter_map do |shift|
-        rules = TimeRules.for(shift.location_id)
-        threshold = rules.meal_break_after_hours
-        next if threshold.nil? || !threshold.positive?
-        next unless shift.hours > threshold.to_f
-        next if shift.breaks.any? { |b| b.kind == 'meal' }
-
-        Item.new(kind: 'missed_meal', employee: @employee_by_id[shift.employee_id], record: shift, level: 'warn',
-          title: KIND_LABELS['missed_meal'], date: shift.started_at.to_date,
-          detail: "#{format('%.1f', shift.hours)} h on #{shift.started_at.strftime('%a %b %-d')} with no meal recorded (rule: after #{threshold.to_s('F')} h).",
-          timesheet: sheet_for(shift.employee_id, shift.started_at.to_date))
+      missing = shifts.select(&:closed?).select do |shift|
+        threshold = TimeRules.for(shift.location_id).meal_break_after_hours
+        threshold.present? && threshold.positive? && shift.hours > threshold.to_f && shift.breaks.none? { |b| b.kind == 'meal' }
+      end
+      missing.group_by(&:employee_id).map do |employee_id, rows|
+        first = rows.min_by(&:started_at)
+        days = rows.map { |s| s.started_at.strftime('%a %-d') }
+        Item.new(kind: 'missed_meal', employee: @employee_by_id[employee_id], record: first, level: 'warn',
+          title: KIND_LABELS['missed_meal'], date: first.started_at.to_date,
+          detail: "#{rows.size} long #{'day'.pluralize(rows.size)} with no meal recorded (#{days.first(5).join(', ')}#{'…' if days.size > 5}); rule: after #{TimeRules.for(first.location_id).meal_break_after_hours.to_s('F')} h.",
+          timesheet: sheet_for(employee_id, first.started_at.to_date))
       end
     end
 

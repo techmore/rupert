@@ -26,7 +26,7 @@ class TimesheetExceptionsTest < ActionDispatch::IntegrationTest
       assert_select '[data-needs-attention] [data-exception="missed_punch"]', text: /Never clocked out.*Sam Staff/m
       assert_select '[data-needs-attention] [data-exception="missed_punch"] a', text: 'Fix clock-out'
       assert_select '[data-needs-attention] [data-exception="correction"] button', text: 'Approve'
-      assert_select '[data-needs-attention] [data-exception="missed_meal"]', text: /No meal break.*Casey Clerk.*10\.0 h/m
+      assert_select '[data-needs-attention] [data-exception="missed_meal"]', text: /No meal break.*Casey Clerk.*1 long day with no meal recorded \(Fri 30\)/m
       assert_select '[data-needs-attention] [data-exception="unimported"] button', text: 'Import clock shifts'
     end
   end
