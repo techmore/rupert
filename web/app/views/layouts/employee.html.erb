@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title><%= safe_join([content_for(:title), 'Rupert'].compact, " · ") %></title>
   <meta name="turbo-cache-control" content="no-cache">
+  <%# The iPhone app watches this to restart its tabs after a sign-in or sign-out (SessionWatcher). %>
+  <% if hotwire_native_app? %><meta name="rupert-session" content="<%= Current.user ? 'signed-in' : 'signed-out' %>"><% end %>
   <meta name="theme-color" content="#e6efea">
   <%= render 'layouts/theme' %>
   <link rel="manifest" href="/employee/manifest.webmanifest">
