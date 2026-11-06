@@ -1516,7 +1516,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_06_110000) do
     t.datetime "tip_attributed_at"
     t.index ["pos_setting_id", "received_at"], name: "index_dejavoo_feed_events_on_pos_setting_id_and_received_at"
     t.index ["pos_setting_id"], name: "index_dejavoo_feed_events_on_pos_setting_id"
-    t.index ["tenant_id", "external_reference_id"], name: "index_dejavoo_feed_events_on_tenant_id_and_external_reference_id"
+    t.index ["tenant_id", "external_reference_id"], name: "idx_on_tenant_id_external_reference_id_e26edee850"
     t.index ["tenant_id", "feed_id"], name: "index_dejavoo_feed_events_on_tenant_id_and_feed_id", unique: true
   end
 
