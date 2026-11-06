@@ -78,7 +78,15 @@ Rails.application.routes.draw do
   end
   post '/training/assignments/:id/cancel', to: 'training_assignments#cancel', as: :cancel_training_assignment
   get '/employee/reports', to: 'employee_workspace#reports', as: :employee_reports
-  get '/employee/pay', to: 'employee_workspace#pay', as: :employee_pay
+  # ---- time & pay: tips ----
+  # The worker's own pay period (EmployeePayController) and declared cash tips; the manager Tips report.
+  get '/employee/pay', to: 'employee_pay#show', as: :employee_pay
+  post '/employee/tips/declare', to: 'employee_pay#declare_tips', as: :declare_employee_tips
+  post '/api/v1/employee/tips', to: 'api/v1/employee_tips#create'
+  get '/api/v1/employee/pay', to: 'api/v1/employee_tips#show'
+  get '/people/tips', to: 'people/tips#index', as: :people_tips
+  post '/people/tips/assign', to: 'people/tips#assign', as: :assign_people_tips
+  # ---- end time & pay: tips ----
   get '/employee/schedule', to: 'employee_workspace#schedule', as: :employee_schedule
   get '/employee/time-off', to: 'employee_workspace#time_off', as: :employee_time_off
   post '/employee/time-off', to: 'employee_workspace#request_time_off'

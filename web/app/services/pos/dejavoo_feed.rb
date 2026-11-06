@@ -53,6 +53,8 @@ module Pos
       row.assign_attributes(pos_setting: setting, received_at: Time.current, **attributes(event))
       row.matched_kind, row.matched_id = match(setting, row) unless row.matched?
       row.save!
+      # Tips: who earned the tip on this sale (or which batch just settled) is worked out off the request.
+      Tips::AttributeFeedEventJob.perform_later(row.id) if row.tip_cents.to_i.positive? || row.event_type == 'Settlement' || row.sub_event_type.to_s.match?(/VOID|RETURN|REFUND|TIP/i)
       row
     end
 
@@ -72,7 +74,12 @@ module Pos
         amount_cents: cents(data['amount']), tip_cents: cents(data['tipAmount']),
         settlement_count: settlement && event['settlementCount'].to_s.match?(/\A\d{1,7}\z/) ? event['settlementCount'].to_i : nil,
         settlement_cents: settlement ? cents(event['settlementAmount']) : nil,
-        occurred_on: text(data['txDate'] || event['settlementDate'])[/\A\d{4}-\d{2}-\d{2}/]
+        occurred_on: text(data['txDate'] || event['settlementDate'])[/\A\d{4}-\d{2}-\d{2}/],
+        # Tip attribution: the clerk number typed on the terminal, the terminal and the invoice Rupert sent.
+        performed_by: text(data['performedBy'])[/\A[A-Za-z0-9 ._-]{1,32}\z/],
+        terminal_id: text(data['TermId'] || data['termId'])[/\A[A-Za-z0-9]{1,16}\z/],
+        invoice_number: text(data['invoiceNumber'])[/\A[A-Za-z0-9._-]{1,64}\z/],
+        device_model: text(data['deviceModel'])[/\A[A-Za-z0-9 ._-]{1,32}\z/]
       }
     end
 

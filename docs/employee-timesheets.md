@@ -119,6 +119,8 @@ Base: `/api/v1/employee`. Requests/responses are JSON. Except login, supply `Aut
 | `POST /clock` | `{request_token}` (16–64 URL-safe characters). Retry the same clock-in token safely. |
 | `PATCH /clock/:id` | Clock out own shift; safe to retry. |
 | `POST /clock/:id/corrections` | `{clock_correction:{proposed_started_at,proposed_ended_at,reason}}`. Times are ISO 8601 with offset; reviewer approval is still required. |
+| `GET /pay?period=YYYY-MM-DD` | Own pay period: paid hours, rate, base, commission, tips (card/cash, estimated/final), next payday and each tip row. |
+| `POST /tips` | `{cash_tips:{amount_cents, shift_id|on}}`. Declares cash tips for one of the worker's shifts (or a day); a repeat for the same shift replaces the figure. |
 
 IDs belonging to another worker or workspace return 404. Missing, revoked, expired, or inactive credentials return 401. Unsupported review actions/invalid entries return 422; role denial returns 403. Native APIs never accept staff member IDs, review decisions, token scopes, or administrator role changes from clients. Browser endpoints remain CSRF protected.
 

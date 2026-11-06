@@ -8,16 +8,6 @@ class EmployeeWorkspaceController < AuthenticatedController
   before_action :require_worker
   rescue_from Date::Error, ArgumentError, with: :invalid_range
 
-  # GET /employee/pay?week=YYYY-MM-DD — the signed-in worker's own pay for a week (EmployeePayWeek).
-  def pay
-    week = begin
-      params[:week].present? ? Date.iso8601(params[:week].to_s) : Date.current
-    rescue Date::Error
-      Date.current
-    end
-    @pay_week = EmployeePayWeek.new(employee: @worker, week_of: week)
-  end
-
   # GET /employee/reports?range=…&from=YYYY-MM-DD&to=YYYY-MM-DD — the signed-in worker's own
   # hours, estimated pay and time off for a preset or custom range (up to one year). Dates are
   # business days in the app time zone. Unusable dates are rejected on this page with the reason,

@@ -38,7 +38,7 @@ class ApplicationController < ActionController::Base
     allowed = case controller_path
     when 'learning'
       %w[index show complete preferences welcome onboard].include?(action_name)
-    when 'sessions', 'oauth', 'employee_app', 'employee_workspace', 'employee_training', 'employee_preview', 'customer_displays', 'feedback_reports',
+    when 'sessions', 'oauth', 'employee_app', 'employee_workspace', 'employee_pay', 'employee_training', 'employee_preview', 'customer_displays', 'feedback_reports',
       'next_things' # the Next thing to do bar: an employee sees only their own tasks there (NextThings)
       true
     when 'employee_access'
