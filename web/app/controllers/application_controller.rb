@@ -5,6 +5,7 @@ class ApplicationController < ActionController::Base
   before_action :reject_preview_mutation
   before_action :enforce_workspace_hostname
   before_action :set_current_context
+  around_action :switch_locale
   before_action :require_login
   before_action :identify_trace_session
   before_action :enforce_instance_support_access
@@ -167,6 +168,17 @@ class ApplicationController < ActionController::Base
     else
       email.present? && email == user.email
     end
+  end
+
+  # Staff-facing pages render in the worker's language (People::Employee#locale, 'en' or 'es');
+  # management pages stay in English. The locale never comes from the request.
+  def switch_locale(&)
+    locale = Current.user && I18n.available_locales.include?(worker_locale) ? worker_locale : I18n.default_locale
+    I18n.with_locale(locale, &)
+  end
+
+  def worker_locale
+    @worker_locale ||= People::Employee.where(tenant_id: Current.tenant_id, user_id: Current.user&.id).pick(:locale).presence&.to_sym || I18n.default_locale
   end
 
   def set_current_context
