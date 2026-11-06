@@ -88,6 +88,14 @@ Rails.application.routes.draw do
   post '/people/tips/assign', to: 'people/tips#assign', as: :assign_people_tips
   # ---- end time & pay: tips ----
   get '/employee/schedule', to: 'employee_workspace#schedule', as: :employee_schedule
+  # ---- time & pay: schedule ----
+  resources :employee_trades, path: 'employee/trades', only: %i[index create] do
+    member do
+      post :accept
+      post :cancel
+    end
+  end
+  resources :employee_availability, path: 'employee/availability', only: %i[index create destroy]
   get '/employee/time-off', to: 'employee_workspace#time_off', as: :employee_time_off
   post '/employee/time-off', to: 'employee_workspace#request_time_off'
   post '/employee/time-off/:id/cancel', to: 'employee_workspace#cancel_time_off', as: :cancel_employee_time_off
@@ -202,6 +210,13 @@ Rails.application.routes.draw do
       post 'employee/clock', to: 'employee_clock#create'
       patch 'employee/clock/:id', to: 'employee_clock#update'
       post 'employee/clock/:id/corrections', to: 'employee_clock#correction'
+      # ---- time & pay: schedule ----
+      get 'employee/schedule', to: 'employee_schedule#index'
+      get 'employee/leave_requests', to: 'employee_leave_requests#index'
+      post 'employee/leave_requests', to: 'employee_leave_requests#create'
+      post 'employee/trades', to: 'employee_trades#create'
+      post 'employee/trades/:id/accept', to: 'employee_trades#accept'
+      post 'employee/trades/:id/cancel', to: 'employee_trades#cancel'
       get :catalog, to: 'catalog#index'
       get :inventory, to: 'inventory#index'
       get :roadmap, to: 'roadmap#index'
@@ -468,6 +483,21 @@ Rails.application.routes.draw do
     resources :positions, only: %i[index new create edit update]
     resources :scheduled_shifts, path: 'schedule', only: %i[index new create edit update destroy] do
       post :copy_last_week, on: :collection
+      # ---- time & pay: schedule ----
+      post :publish, on: :collection
+      post :cancel, on: :member
+    end
+    # ---- time & pay: schedule ----
+    resources :schedule_templates, only: %i[index new create destroy] do
+      post :apply, on: :member
+    end
+    resources :blackout_dates, only: %i[index create destroy]
+    resources :availabilities, only: %i[index create destroy]
+    resources :shift_trades, only: %i[index show] do
+      member do
+        post :approve
+        post :deny
+      end
     end
     resources :timesheets, only: %i[index show new create edit update destroy] do
       collection { post :bulk_approve }

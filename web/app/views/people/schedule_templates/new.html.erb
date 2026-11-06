@@ -1,0 +1,18 @@
+<% content_for :title, 'Save week as template' %>
+<div class="page-narrow space-y-6">
+  <%= page_header 'Save week as template', subtitle: "The #{pluralize(@shift_count, 'shift')} planned for #{@week.strftime('%b %-d')} – #{(@week + 6).strftime('%b %-d, %Y')}, by weekday and time." %>
+  <div class="card card-pad">
+    <%= form_with model: @template, scope: :schedule_template, url: people_schedule_templates_path(week: @week.iso8601, location_id: @location_id), class: 'space-y-6' do |f| %>
+      <% if @template.errors.any? %><div role="alert" class="flash flash-alert"><%= @template.errors.full_messages.to_sentence %></div><% end %>
+      <fieldset class="space-y-4">
+        <legend class="card-title">Template</legend>
+        <div><%= f.label :name, 'Name', class: 'field-label' %><%= f.text_field :name, class: 'input', maxlength: 80, required: true, autofocus: true %></div>
+        <p class="text-sm text-mocha">Shifts keep their person when one is set; open shifts stay open. Applying a template adds drafts to a week and skips anything that would overlap.</p>
+      </fieldset>
+      <div class="form-actions">
+        <%= f.submit 'Save', class: 'btn-primary' %>
+        <%= link_to 'Cancel', people_scheduled_shifts_path(week: @week.iso8601, location_id: @location_id), class: 'btn-ghost' %>
+      </div>
+    <% end %>
+  </div>
+</div>

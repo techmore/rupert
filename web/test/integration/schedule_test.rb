@@ -10,8 +10,8 @@ class ScheduleTest < ActionDispatch::IntegrationTest
     @worker = People::Employee.create!(first_name: 'Alex', last_name: 'Planned', user: @user)
     @other = People::Employee.create!(first_name: 'Someone', last_name: 'Else')
     @monday = Date.new(2026, 10, 19)
-    @mine = @worker.scheduled_shifts.create!(starts_at: @monday.in_time_zone + 9.hours, ends_at: @monday.in_time_zone + 17.hours, role_label: 'Counter', notes: 'Bring keys')
-    @other.scheduled_shifts.create!(starts_at: @monday.in_time_zone + 9.hours, ends_at: @monday.in_time_zone + 17.hours, role_label: 'PRIVATEOTHER')
+    @mine = @worker.scheduled_shifts.create!(starts_at: @monday.in_time_zone + 9.hours, ends_at: @monday.in_time_zone + 17.hours, role_label: 'Counter', notes: 'Bring keys', published_at: Time.current)
+    @other.scheduled_shifts.create!(starts_at: @monday.in_time_zone + 9.hours, ends_at: @monday.in_time_zone + 17.hours, role_label: 'PRIVATEOTHER', published_at: Time.current)
   end
   teardown { Current.reset }
 
@@ -117,7 +117,7 @@ class ScheduleTest < ActionDispatch::IntegrationTest
       post copy_last_week_people_scheduled_shifts_path(week: next_monday.iso8601)
     end
     assert_redirected_to people_scheduled_shifts_path(week: next_monday.iso8601)
-    assert_includes flash[:notice], 'Copied 1 shift from last week.'
+    assert_includes flash[:notice], 'Copied 1 shift from last week as drafts.'
     assert_includes flash[:notice], 'Skipped 1'
     copy = @other.scheduled_shifts.where('starts_at >= ?', next_monday.in_time_zone).sole
     assert_equal next_monday.in_time_zone + 9.hours, copy.starts_at
@@ -161,22 +161,21 @@ class ScheduleTest < ActionDispatch::IntegrationTest
   test 'shifts on approved leave are flagged but still saved' do
     sign_in(users(:regular_user), 'password')
     get people_scheduled_shifts_path(week: @monday.iso8601)
-    assert_select '[data-leave-warning]', count: 0
+    assert_select "[data-shift-id='#{@mine.id}'] [data-warning='time_off']", count: 0
     @worker.leave_requests.create!(leave_type: 'unpaid', starts_on: @monday, ends_on: @monday)
     get people_scheduled_shifts_path(week: @monday.iso8601)
-    assert_select '[data-on-leave]', count: 0
+    assert_select "[data-shift-id='#{@mine.id}'] [data-warning='time_off']", 'Time off requested'
 
     @worker.leave_requests.create!(leave_type: 'unpaid', starts_on: @monday, ends_on: @monday).approve!
     get people_scheduled_shifts_path(week: @monday.iso8601)
-    assert_select '[data-leave-warning]', text: /1 shift this week falls on approved leave/
-    assert_select "[data-on-leave='#{@mine.id}']", 'On approved leave'
+    assert_select "[data-shift-id='#{@mine.id}'] [data-warning='time_off']", 'Time off'
 
     assert_difference 'People::ScheduledShift.count', 1 do
       post people_scheduled_shifts_path, params: { scheduled_shift: { employee_id: @worker.id, starts_at: "#{@monday}T18:00", ends_at: "#{@monday}T20:00" } }
     end
     assert_includes flash[:notice], 'Alex Planned has approved leave on this day'
     post people_scheduled_shifts_path, params: { scheduled_shift: { employee_id: @worker.id, starts_at: "#{@monday + 2}T10:00", ends_at: "#{@monday + 2}T12:00" } }
-    assert_equal 'Shift scheduled.', flash[:notice]
+    assert_equal 'Shift added as a draft. Post the week when it is ready.', flash[:notice]
   end
 
   test 'over 40 planned hours is flagged against the Thursday-Wednesday pay week but saving still works' do
@@ -185,22 +184,20 @@ class ScheduleTest < ActionDispatch::IntegrationTest
     thursday = @monday + 3
     4.times { |offset| @worker.scheduled_shifts.create!(starts_at: (thursday + offset).in_time_zone + 9.hours, ends_at: (thursday + offset).in_time_zone + 18.hours) }
     get people_scheduled_shifts_path(week: @monday.iso8601)
-    assert_select '[data-hours-warning]', count: 0
+    assert_select "[data-warning='over_hours']", count: 0
 
     assert_difference 'People::ScheduledShift.count', 1 do
       post people_scheduled_shifts_path, params: { scheduled_shift: { employee_id: @worker.id, starts_at: "#{@monday + 7}T09:00", ends_at: "#{@monday + 7}T18:00" } }
     end
-    assert_includes flash[:notice], 'Shift scheduled.'
+    assert_includes flash[:notice], 'Shift added as a draft.'
     assert_includes flash[:notice], 'Alex Planned is planned for 45 hours in the pay week Thu Oct 22 – Wed Oct 28, over 40.'
 
-    # The Monday-Sunday grid shows 36 hours, but the pay week reaching into next Monday is over 40.
+    # The Monday-Sunday grid shows 36 hours, but the pay week reaching into next Monday is over 40: every chip of that pay week says so.
     get people_scheduled_shifts_path(week: @monday.iso8601)
-    assert_select '[data-hours-warning]', text: /Alex Planned: 45 hours, Thu Oct 22 – Wed Oct 28/
-    assert_select '[data-hours-warning]', text: /planned hours, not pay/
-    assert_select "[data-over-hours='#{@worker.id}']", /Over 40 in pay week/
-    refute_includes css_select('[data-hours-warning]').text, 'Someone Else'
+    assert_select "[data-employee-id='#{@worker.id}'] [data-warning='over_hours']", text: '45.0 h this week'
+    assert_select "[data-employee-id='#{@other.id}'] [data-warning='over_hours']", count: 0
     get people_scheduled_shifts_path(week: (@monday - 7).iso8601)
-    assert_select '[data-hours-warning]', count: 0
+    assert_select "[data-warning='over_hours']", count: 0
   end
 
   test 'a short rest between shifts is flagged across the week boundary but saving still works' do
@@ -215,10 +212,9 @@ class ScheduleTest < ActionDispatch::IntegrationTest
     assert_includes flash[:notice], 'Only 7 hours between this shift and another for Alex Planned (less than 10).'
 
     get people_scheduled_shifts_path(week: (@monday + 7).iso8601)
-    assert_select '[data-rest-warning]', text: /1 shift this week starts less than 10 hours after/
-    assert_select "[data-short-rest='#{early.id}']", 'Short rest: 7 h since last shift'
+    assert_select "[data-shift-id='#{early.id}'] [data-warning='short_rest']", 'Short rest'
     get people_scheduled_shifts_path(week: @monday.iso8601)
-    assert_select '[data-rest-warning]', count: 0
+    assert_select "[data-warning='short_rest']", count: 0
 
     # Editing the earlier shift warns about the gap to the next one; exactly 10 hours is fine.
     patch people_scheduled_shift_path(late), params: { scheduled_shift: { starts_at: "#{sunday}T12:00", ends_at: "#{sunday}T22:00" } }
@@ -244,11 +240,11 @@ class ScheduleTest < ActionDispatch::IntegrationTest
     assert_equal harbor.id, @mine.reload.location_id
 
     get people_scheduled_shifts_path(week: @monday.iso8601)
-    assert_select "[data-shift-store='#{at_main.id}']", 'Main Street'
+    assert_select "[data-shift-id='#{at_main.id}'] .shift-chip-meta", /Main Street/
     assert_includes response.body, 'PRIVATEOTHER'
     get people_scheduled_shifts_path(week: @monday.iso8601, location_id: main.id)
-    assert_select "a[href='#{edit_people_scheduled_shift_path(at_main)}']"
-    assert_select "a[href='#{edit_people_scheduled_shift_path(@mine)}']", count: 0
+    assert_select "[data-shift-id='#{at_main.id}']"
+    assert_select "[data-shift-id='#{@mine.id}']", count: 0
     refute_includes response.body, 'PRIVATEOTHER'
     assert_select 'a[aria-label="Next week"][href=?]', people_scheduled_shifts_path(location_id: main.id, week: (@monday + 7).iso8601)
 

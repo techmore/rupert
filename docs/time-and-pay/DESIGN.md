@@ -83,3 +83,10 @@ specific to time and pay so that web, POS and the iPhone app say the same thing.
 - Pay page stat row: Hours (paid hours, unpaid breaks excluded) · Estimated gross / Gross pay (once locked) · Tips · Bonuses. "How this adds up" is a disclosure.
 - Manager Tips page stats: Terminal tips · Settled · Estimated, not yet settled · Unassigned · Reversed. Sums always include reversal pairs so the ledger nets.
 - Cash tips: "Add cash tips" → pick shift (latest first) → amount → **Save cash tips**.
+## Schedule (F2 notes)
+
+- A planned shift is a **Draft** (`pill-taupe`, dashed left edge on the builder chip) until the manager **Posts the week**; only posted shifts reach staff, the calendar feed and the staff app. A posted shift is never deleted: **Cancel shift** marks it and tells the person.
+- Builder warning chips on a shift: `Time off` / `Time off requested`, `Unavailable`, `9.5 h this week` (over the planned limit), `Short rest`, `Minor · …`, `Blackout`. They warn; only double-booking blocks.
+- Trade words: **Give away**, **Swap**, **Pick up**; status pills Open (`clay`), Waiting (`clay`), Approved (`fern`), Denied (`rose`), Cancelled / Expired (`taupe`). The manager page is **Shift trades**; the employee page is **My trades**.
+- Time off types are chips (Vacation · Sick · Personal · Unpaid). Request status pills: Waiting (`clay`), Approved (`fern`), Denied (`rose`), Cancelled (`taupe`).
+- Spanish strings for these screens live in `config/locales/time_schedule.es.yml`.

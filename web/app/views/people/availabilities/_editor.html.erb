@@ -1,0 +1,29 @@
+<%# Weekday availability blocks for one person. Locals: blocks, create_url, destroy_url (lambda block -> path), self_service. %>
+<section class="section-card">
+  <div class="card-head"><h2 class="card-title"><%= self_service ? t('time.schedule.availability.mine') : t('time.schedule.availability.title') %></h2></div>
+  <% if blocks.empty? %>
+    <p class="text-sm text-mocha"><%= self_service ? t('time.schedule.availability.empty_self') : t('time.schedule.availability.empty') %></p>
+  <% else %>
+    <ul class="row-list">
+      <% blocks.each do |block| %>
+        <li class="row-item">
+          <div><p class="font-medium text-ink"><%= t("date.day_names")[block.weekday] %> · <%= block.time_label == 'All day' ? t('time.schedule.availability.all_day') : block.time_label %></p><p class="text-xs text-mocha"><%= t("time.schedule.availability.kinds.#{block.kind}") %><%= " · #{block.note}" if block.note.present? %></p></div>
+          <div class="row-item-end"><span class="<%= block.kind == 'unavailable' ? 'pill-rose' : 'pill-olive' %>"><%= t("time.schedule.availability.kinds.#{block.kind}") %></span><%= button_to t('time.schedule.availability.remove'), destroy_url.call(block), method: :delete, class: 'btn-ghost btn-sm' %></div>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+  <%= form_with url: create_url, scope: :employee_availability, class: 'mt-4 space-y-3', data: { turbo: false } do |f| %>
+    <div class="grid gap-3 sm:grid-cols-4">
+      <div><%= f.label :weekday, t('time.schedule.availability.day'), class: 'field-label' %><%= f.select :weekday, (0..6).map { |d| [t('date.day_names')[d], d] }, { selected: 1 }, class: 'select w-full' %></div>
+      <div><%= f.label :kind, t('time.schedule.availability.kind'), class: 'field-label' %><%= f.select :kind, People::EmployeeAvailability::KINDS.map { |k| [t("time.schedule.availability.kinds.#{k}"), k] }, {}, class: 'select w-full' %></div>
+      <div><%= f.label :start_time, t('time.schedule.availability.from'), class: 'field-label' %><%= f.time_field :start_time, class: 'input w-full', step: 900 %></div>
+      <div><%= f.label :end_time, t('time.schedule.availability.to'), class: 'field-label' %><%= f.time_field :end_time, class: 'input w-full', step: 900 %></div>
+    </div>
+    <div class="flex flex-wrap items-center gap-3">
+      <label class="flex items-center gap-2 text-sm"><%= f.check_box :all_day, class: 'checkbox' %> <%= t('time.schedule.availability.all_day') %></label>
+      <%= f.text_field :note, class: 'input flex-1', maxlength: 120, placeholder: t('time.schedule.availability.note') %>
+      <%= f.submit t('time.schedule.availability.add'), class: 'btn-ghost' %>
+    </div>
+  <% end %>
+</section>
