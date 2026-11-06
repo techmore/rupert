@@ -28,3 +28,19 @@ Production: Incus container `rupert` on SER8 (`ssh ser8`, then `incus exec ruper
 - Post-deploy: checkout clean (no schema.rb drift this time), `rupert-logs errors` empty for the window, `rupert-web`
   and `rupert-jobs` active, `/login` and `/up` 200 (staff pages redirect to sign-in as expected). No user-facing
   change in this deploy.
+
+## 2026-11-06 14:12 UTC — PR #642 clock, scheduling, tips, manager (`eb246e60`) — deployed, healthy
+
+- Pre-deploy: manual `sqlite3 .backup` to `/var/backups/rupert-manual/production-20261106-140603-pre-pr642.sqlite3`
+  (sha256 `756b98a1…`), integrity ok; deployer backup `production-20261106-141146-b7fdbf63-09c7fa9af6f4b569.sqlite3`.
+- Install: autodeploy, 1 additive migration (`pay_period_adjustments`, `leave_accruals`, two employee columns), `/up` healthy,
+  smoke passed, `X-Rupert-Build: eb246e60`, checkout clean afterwards (the FEED index name in `schema.rb` now matches what
+  migrate generates, so the Nov 3 drift cannot recur).
+- Live smoke test (Playwright against https://herbalhealers.rupertpos.com) with two temporary accounts created in the
+  workspace for the test (`smoke-staff@`, `smoke-manager@rupertpos.com`): staff **clock in → break → end break → clock out**
+  on `/employee` (EST times shown), `/employee/schedule`, `/employee/time-off`, `/employee/pay`, `/time_clock` all render;
+  manager `/people/approvals`, `/people/timesheets`, `/people/schedule` render. `/people/tips`, `/people/pay_periods`,
+  `/settings/time_rules`, `/people/clock_devices` refused the `manager` role as designed (payroll/settings/hr.write are
+  admin permissions). `rupert-logs errors` empty for the window. The smoke punch and break were deleted, the smoke worker
+  terminated and both accounts deactivated (owner may delete them from Accounts).
+- Host disk: 99% used (15 GB free) on SER8's root volume; the deployer keeps five 300 MB backups. Worth a cleanup soon.
