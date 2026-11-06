@@ -23,7 +23,7 @@ the one click nobody but the owner makes.
 | # | Item | Status | Where |
 |---|---|---|---|
 | 10 | What's new, description, keywords | Done (text) · Owner pastes | `listing.md` |
-| 11 | Screenshots: iPhone 6.9" 1320×2868, iPad 13" 2064×2752 | Done for this build; **regenerate after the clock, schedule, tips and manager pages merge** (`screenshots/make-screenshots.sh`, now signs in as the worker for the Time pages) | `screenshots/` |
+| 11 | Screenshots: iPhone 6.9" 1320×2868, iPad 13" 2064×2752 | Done: regenerated 2026-11-06 on the merged clock, schedule, time-off and pay pages (`screenshots/make-screenshots.sh`, signs in as the worker for the Time pages) | `screenshots/` |
 | 12 | App Privacy answers | Owner clicks; answers below (unchanged by push: an APNs token is not collected data under Apple's labels) | App Store Connect → App Privacy |
 | 13 | Privacy manifest | Done: UserDefaults CA92.1 only; push and notifications need no required-reason API | `PrivacyInfo.xcprivacy` |
 | 14 | Usage strings | Done: camera, photos, microphone, Face ID unchanged; notifications need none (the system prompt has its own text; the app explains first) | `Info.plist` |
