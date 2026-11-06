@@ -25,6 +25,7 @@ class UnscopedAllowlistTest < ActiveSupport::TestCase
     'app/jobs/ctrax_sales_sync_job.rb' => 'scheduler sweeps connections across workspaces',
     'app/jobs/ctrax_stock_sync_job.rb' => 'scheduler sweeps connections across workspaces',
     'app/jobs/github_issue_post_job.rb' => 'job loads its feedback by id',
+    'app/jobs/push_delivery_job.rb' => 'job loads its notification by id, then sets the tenant from it',
     'app/jobs/iris_daily_deposits_web_job.rb' => 'scheduler sweeps connections across workspaces',
     'app/jobs/pos_inventory_job.rb' => 'sweeps pending stock allocations across workspaces',
     'app/jobs/pos_payment_reconciliation_job.rb' => 'sweeps unsettled payment attempts across workspaces',

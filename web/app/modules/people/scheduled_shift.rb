@@ -12,7 +12,12 @@ module People
     PLANNED_HOURS_LIMIT = 40
     MIN_REST_HOURS = 10
 
-    belongs_to :employee, class_name: 'People::Employee'
+    # Nil for an open shift (nobody assigned yet; staff may pick it up).
+    belongs_to :employee, class_name: 'People::Employee', optional: true
+    belongs_to :position, class_name: 'People::Position', optional: true
+    belongs_to :created_by, class_name: 'User', optional: true
+    has_many :trades, class_name: 'People::ShiftTrade', foreign_key: :scheduled_shift_id, dependent: :destroy
+    has_many :clock_shifts, dependent: :nullify
     # Optional store (#469). Clock punches carry no store, so worked hours are never split by it.
     belongs_to :location, class_name: 'Location', optional: true
 
@@ -25,6 +30,19 @@ module People
     validate :non_overlapping_interval
 
     scope :chronological, -> { order(:starts_at, :id) }
+    scope :live, -> { where(cancelled_at: nil) }
+    scope :open_shifts, -> { live.where(employee_id: nil) }
+    scope :assigned, -> { where.not(employee_id: nil) }
+    scope :published, -> { where.not(published_at: nil) }
+    scope :unpublished, -> { where(published_at: nil) }
+    scope :for_location, ->(location_id) { location_id.present? ? where(location_id: location_id) : all }
+
+    def open? = employee_id.nil?
+    def published? = published_at.present?
+    def cancelled? = cancelled_at.present?
+    def paid_hours = [hours - (break_minutes.to_i / 60.0), 0].max
+    def label = role_label.presence || position&.name
+    def date_label = starts_at.strftime('%a %b %-d')
     scope :between, lambda { |from, to|
       where('starts_at < ? AND ends_at > ?', (to + 1).in_time_zone, from.in_time_zone)
     }
@@ -85,10 +103,11 @@ module People
       copied = []
       skipped = 0
       transaction do
-        between(week - 7, week - 1).where('starts_at >= ?', (week - 7).in_time_zone).chronological.includes(:employee).each do |source|
+        between(week - 7, week - 1).live.where('starts_at >= ?', (week - 7).in_time_zone).chronological.includes(:employee).each do |source|
           shift = new(employee: source.employee, starts_at: source.starts_at + 7.days, ends_at: source.ends_at + 7.days,
-            role_label: source.role_label, notes: source.notes, location_id: source.location_id)
-          if source.employee&.status == 'active' && shift.save
+            role_label: source.role_label, notes: source.notes, location_id: source.location_id, position_id: source.position_id,
+            break_minutes: source.break_minutes, created_by: Current.user)
+          if (source.employee.nil? || source.employee.status == 'active') && shift.save
             copied << shift
           else
             skipped += 1
@@ -105,6 +124,8 @@ module People
     private
 
     def employee_in_workspace
+      return if employee_id.nil?
+
       errors.add(:employee, 'must belong to this workspace') unless employee && employee.tenant_id == tenant_id
     end
 
@@ -124,7 +145,7 @@ module People
     def non_overlapping_interval
       return if starts_at.nil? || ends_at.nil? || employee_id.blank?
 
-      overlap = self.class.where(employee_id: employee_id).where.not(id: id).where('starts_at < ? AND ends_at > ?', ends_at, starts_at)
+      overlap = self.class.live.where(employee_id: employee_id).where.not(id: id).where('starts_at < ? AND ends_at > ?', ends_at, starts_at)
       errors.add(:base, 'This overlaps another scheduled shift for this person') if overlap.exists?
     end
   end

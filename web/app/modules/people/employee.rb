@@ -38,6 +38,9 @@ module People
     has_many :scheduled_shifts, class_name: 'People::ScheduledShift', dependent: :destroy
     has_many :payslips, class_name: 'People::Payslip', dependent: :destroy
     has_many :managed_departments, class_name: 'People::Department', foreign_key: :manager_id, dependent: :nullify
+    has_many :availabilities, class_name: 'People::EmployeeAvailability', dependent: :destroy
+    has_many :tip_allocations, dependent: :restrict_with_exception
+    has_many :clock_shifts, dependent: :restrict_with_exception
 
     validates :first_name, presence: true
     validates :last_name, presence: true
@@ -106,6 +109,70 @@ module People
     def on_payroll?
       active? && current_pay_rate.present?
     end
+
+    # ---- Clock PIN (POS clock and counter tablet) -------------------------------------------
+    # Digits only, length from the store's time rules. Only the digest is stored; a locked PIN
+    # (too many wrong tries) refuses punches until the lockout passes. Set once on first clock-in.
+
+    def pin_set? = pin_digest.present?
+
+    def set_pin!(pin, length: TimeRules.for.pin_length)
+      digits = pin.to_s.strip
+      raise ArgumentError, "Your PIN is #{length} digits." unless digits.match?(/\A\d{#{length}}\z/)
+      raise ArgumentError, 'Choose a PIN that is not a run or a repeat.' if digits.chars.uniq.one? || %w[1234 12345 123456 4321 0000].include?(digits)
+
+      update!(pin_digest: BCrypt::Password.create(digits, cost: 10), pin_set_at: Time.current, pin_failed_count: 0, pin_locked_until: nil)
+    end
+
+    def pin_locked?(at = Time.current) = pin_locked_until.present? && pin_locked_until > at
+
+    # True when `pin` matches; counts failures and locks after the configured attempts.
+    def verify_pin(pin, rules: TimeRules.for)
+      return false unless pin_set? && !pin_locked?
+
+      if BCrypt::Password.new(pin_digest) == pin.to_s.strip
+        update_columns(pin_failed_count: 0, pin_locked_until: nil, updated_at: Time.current) if pin_failed_count.positive?
+        true
+      else
+        failed = pin_failed_count + 1
+        locked = failed >= rules.pin_lockout_attempts ? rules.pin_lockout_minutes.minutes.from_now : nil
+        update_columns(pin_failed_count: locked ? 0 : failed, pin_locked_until: locked, updated_at: Time.current)
+        false
+      end
+    end
+
+    # ---- Stores and minors -------------------------------------------------------------------
+
+    def location_ids
+      location_ids_json.present? ? Array(JSON.parse(location_ids_json)).map(&:to_s) : []
+    rescue JSON::ParserError
+      []
+    end
+
+    def location_ids=(ids)
+      self.location_ids_json = Array(ids).map(&:to_s).reject(&:blank?).uniq.to_json
+    end
+
+    def works_at?(location_id) = location_ids.empty? || location_ids.include?(location_id.to_s)
+
+    def age_on(date = Date.current)
+      return nil if date_of_birth.blank?
+
+      dob = date_of_birth.is_a?(Date) ? date_of_birth : Date.parse(date_of_birth.to_s)
+      date.year - dob.year - ((date.month > dob.month || (date.month == dob.month && date.day >= dob.day)) ? 0 : 1)
+    rescue Date::Error
+      nil
+    end
+
+    def minor?(date = Date.current, rules: TimeRules.for)
+      age = age_on(date)
+      age.present? && age < rules.minor_age
+    end
+
+    # Admins (owner decision 2026-10-25) and workers marked ineligible never receive a tip share.
+    def tip_eligible_for_pool? = tip_eligible? && !PayRules.admin_employee?(self)
+
+    def locale_or_default = locale.presence || 'en'
 
     def leave_balance(leave_type, year = Date.current.year)
       leave_balances.find_or_initialize_by(leave_type: leave_type, year: year) do |balance|
