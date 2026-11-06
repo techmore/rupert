@@ -1,0 +1,20 @@
+<% content_for :title, t('lms.admin.title') %>
+<div class="page-medium space-y-6">
+  <%= page_header t('lms.admin.title'), subtitle: t('lms.admin.subtitle'), menu: [[t('lms.admin.edit_contacts'), lms_admin_support_contacts_path], [t('lms.index.team'), lms_team_path]] %>
+  <section class="section-card" aria-labelledby="lms-admin-courses">
+    <%= section_heading 'Courses', id: 'lms-admin-courses' %>
+    <ul class="row-list">
+      <% @courses.each do |course| %>
+        <li class="row-item">
+          <div class="min-w-0"><p class="font-semibold text-ink"><%= course.title %></p><p class="text-xs text-mocha"><%= t('lms.index.lessons', count: course.lessons.size) %> · <%= lms_minutes(course.minutes) %> · <%= course.assignment_rules.size %> <%= 'rule'.pluralize(course.assignment_rules.size) %><% if course.seed_key %> · <%= course.edited_at ? t('lms.admin.edited') : t('lms.admin.seeded') %><% end %></p></div>
+          <div class="row-item-end"><span class="<%= course.published? ? 'pill-fern' : 'pill-taupe' %>"><%= course.published? ? t('lms.admin.published') : t('lms.admin.draft') %></span><%= link_to 'Edit', edit_lms_admin_course_path(course), class: 'btn-ghost btn-sm' %></div>
+        </li>
+      <% end %>
+      <% if @courses.empty? %><li class="row-item"><p class="text-sm text-mocha"><%= t('lms.index.empty_title') %></p></li><% end %>
+    </ul>
+  </section>
+  <section class="section-card" aria-labelledby="lms-admin-contacts">
+    <%= section_heading t('lms.admin.contacts'), hint: t('lms.admin.contacts_hint'), id: 'lms-admin-contacts' do %><%= link_to 'Edit', lms_admin_support_contacts_path, class: 'btn-ghost btn-sm' %><% end %>
+    <%= render 'lms/shared/contacts', contacts: @contacts %>
+  </section>
+</div>

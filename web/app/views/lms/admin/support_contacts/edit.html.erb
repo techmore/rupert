@@ -1,0 +1,16 @@
+<% content_for :title, t('lms.admin.contacts') %>
+<div class="page-narrow space-y-6">
+  <%= page_header t('lms.admin.contacts'), subtitle: t('lms.admin.contacts_hint'), eyebrow: t('lms.admin.title') %>
+  <%= form_with url: lms_admin_support_contacts_path, method: :patch, class: 'card card-pad space-y-6', data: { busy: false } do |form| %>
+    <% @contacts.each do |contact| %>
+      <fieldset class="space-y-3">
+        <legend class="font-semibold"><%= contact.label %></legend>
+        <p class="text-xs text-mocha"><%= contact.role %></p>
+        <div><%= label_tag "contacts_#{contact.key}_phone", 'Phone', class: 'field-label' %><%= text_field_tag "contacts[#{contact.key}][phone]", contact.phone, id: "contacts_#{contact.key}_phone", class: 'input', maxlength: 40, inputmode: 'tel' %></div>
+        <div><%= label_tag "contacts_#{contact.key}_hours", 'Hours', class: 'field-label' %><%= text_field_tag "contacts[#{contact.key}][hours]", contact.hours, id: "contacts_#{contact.key}_hours", class: 'input', maxlength: 80, placeholder: 'Mon–Fri 9–5 ET' %></div>
+        <div><%= label_tag "contacts_#{contact.key}_notes", 'Notes', class: 'field-label' %><%= text_field_tag "contacts[#{contact.key}][notes]", contact.notes, id: "contacts_#{contact.key}_notes", class: 'input', maxlength: 300, placeholder: 'Account rep name, what to have ready' %></div>
+      </fieldset>
+    <% end %>
+    <div class="form-actions"><%= form.submit 'Save', class: 'btn-primary', data: { turbo_submits_with: 'Saving…' } %><%= link_to 'Cancel', lms_admin_courses_path, class: 'btn-ghost' %></div>
+  <% end %>
+</div>

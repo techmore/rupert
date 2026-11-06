@@ -1,0 +1,131 @@
+es:
+  lms:
+    title: Centro de aprendizaje
+    minutes:
+      one: "%{count} min"
+      other: "%{count} min"
+    status:
+      completed: Completado
+      in_progress: En curso
+      assigned: Sin empezar
+      not_assigned: Sin asignar
+      overdue: Atrasado
+    index:
+      subtitle: Lecciones cortas sobre cómo funciona la tienda. El progreso se guarda solo.
+      required: Obligatorio para ti
+      other: Más cursos
+      empty_title: Todavía no hay cursos.
+      empty_hint: Los cursos aparecen aquí cuando el propietario publica uno.
+      badges: Tus insignias
+      continue: Continuar
+      start: Empezar
+      review: Repasar
+      due: Vence el %{date}
+      overdue: Atrasado desde el %{date}
+      lessons: "%{count} lecciones"
+      team: Avance del equipo
+      manage: Administrar cursos
+    course:
+      lessons: Lecciones
+      about: Sobre este curso
+      start: Empezar el curso
+      continue: Continuar con la lección %{number}
+      done: Terminaste este curso
+      badge: Abrir tu insignia
+      lesson_done: Hecho
+      lesson_next: Siguiente
+      lesson_locked: Todavía no
+      required_by: Obligatorio · vence el %{date}
+      required: Obligatorio
+      glossary: Palabras que verás
+    lesson:
+      of: Lección %{number} de %{total}
+      previous: Anterior
+      next: Siguiente lección
+      back: Resumen del curso
+      quiz_title: Comprobación rápida
+      quiz_hint: Todas las respuestas deben ser correctas para terminar la lección. Las incorrectas muestran el porqué para que lo intentes de nuevo.
+      quiz_passed: Aprobaste esta lección.
+      check: Comprobar mis respuestas
+      checking: Comprobando…
+      no_quiz: Esta lección no tiene prueba. Leerla cuenta.
+      mark_read: Marcar como leída
+      terms: Palabras de esta lección
+      correct: Correcto
+      incorrect: No del todo
+    quiz:
+      passed: "“%{lesson}” lista. Bien hecho."
+      try_again:
+        one: Una respuesta por revisar. La explicación está debajo.
+        other: "%{count} respuestas por revisar. Las explicaciones están debajo."
+      course_complete: "Completaste “%{course}”. Tu insignia está lista."
+    badge:
+      title: Insignia del curso
+      subtitle: "%{course}"
+      earned_by: Obtenida por
+      on: Completado el
+      not_yet: Termina todas las lecciones para ganar esta insignia.
+      share_hint: Esta página se imprime bien si quieres una copia para el expediente.
+      print: Imprimir
+    team:
+      title: Avance del equipo
+      subtitle: Quién terminó qué curso y quién está atrasado.
+      people: Personas
+      completed: Completados
+      in_progress: En curso
+      overdue: Atrasados
+      not_started: Sin empezar
+      person: Persona
+      role: Rol
+      course: Curso
+      status: Estado
+      progress: Avance
+      due: Vence
+      completed_on: Completado
+      empty: Nadie coincide con estos filtros.
+      download: Descargar CSV
+      all_courses: Todos los cursos
+      all_roles: Todos los roles
+      all_statuses: Todos los estados
+    admin:
+      title: Administrar cursos
+      subtitle: Edita lecciones y pruebas, decide quién toma cada curso y mantén al día los contactos de soporte.
+      saved: Guardado.
+      edit_course: Editar curso
+      edit_lesson: Editar lección
+      lessons: Lecciones
+      rules: Quién lo toma
+      rules_hint: Las reglas inscriben por rol, ahora y cada vez que se añade una cuenta. Quitar una regla conserva lo que la gente ya hizo.
+      add_rule: Añadir regla
+      rule_added:
+        one: Regla añadida. Una persona inscrita.
+        other: Regla añadida. %{count} personas inscritas.
+      rule_removed: Regla eliminada.
+      people: Asignar personas
+      people_hint: Elige nombres para una asignación puntual, con fecha límite opcional.
+      assign: Asignar
+      assigned:
+        one: Asignado a una persona (%{existing} ya lo tenían).
+        other: Asignado a %{count} personas (%{existing} ya lo tenían).
+      pick_people: Elige al menos una persona.
+      bad_date: Esa fecha límite no es una fecha.
+      enrolled: Inscritos
+      contacts: Contactos de soporte
+      contacts_hint: Se muestran dentro de la lección “Cuando algo falla”. Mantenlos al día; aquí no va ninguna contraseña.
+      contacts_saved: Contactos de soporte guardados.
+      edit_contacts: Editar contactos de soporte
+      status: Estado
+      published: Publicado
+      draft: Borrador
+      required: Obligatorio
+      due_days: Vence en (días)
+      role: Rol
+      body_help: "Texto sencillo con algunas marcas: ## título, - viñeta, **negrita**, [[término]] para una palabra del glosario, > tip: para un aviso, {{diagram:nombre}} para una imagen."
+      preview: Vista previa
+      questions: Preguntas de la prueba
+      choices_help: Una opción por línea. La correcta es el número de línea que elijas abajo (la primera es 1).
+      remove_question: Quitar esta pregunta
+      add_question: Añadir una pregunta
+      seeded: Incluido con Rupert
+      edited: Editado por ti
+      diagram_none: Sin diagrama

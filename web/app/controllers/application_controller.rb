@@ -38,6 +38,8 @@ class ApplicationController < ActionController::Base
     allowed = case controller_path
     when 'learning'
       %w[index show complete preferences welcome onboard].include?(action_name)
+    when 'lms/courses', 'lms/lessons' # the Learning center: a staff account reads its own courses and answers its own quizzes
+      %w[index show badge quiz].include?(action_name)
     when 'sessions', 'oauth', 'employee_app', 'employee_workspace', 'employee_pay', 'employee_training', 'employee_preview', 'customer_displays', 'feedback_reports',
       'employee_trades', 'employee_availability', # time & pay: schedule
       'next_things' # the Next thing to do bar: an employee sees only their own tasks there (NextThings)
