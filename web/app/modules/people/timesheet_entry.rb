@@ -4,8 +4,11 @@ module People
   # One day's hours on a timesheet, by work type.
   class TimesheetEntry < ApplicationRecord
     include TenantScoped
+    include LockedPayPeriodGuard
 
     self.table_name = 'timesheet_entries'
+
+    guards_pay_period { [worked_on, worked_on_was] }
 
     WORK_TYPES = %w[regular overtime pto holiday].freeze
 

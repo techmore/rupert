@@ -1,0 +1,26 @@
+<%# One thing waiting for a decision. Local: item (People::ApprovalInbox::Item). %>
+<li id="<%= item.dom_id %>" class="card card-pad approval-item" data-approval-kind="<%= item.kind %>">
+  <div class="approval-head">
+    <p class="text-sm"><span class="pill-clay">Waiting</span> <span class="text-mocha"><%= People::ApprovalInbox::KIND_LABELS[item.kind] %> · <%= item.requested_at ? "#{time_ago_in_words(item.requested_at)} ago" : '' %></span></p>
+    <h2 class="card-title"><%= item.employee&.name || 'Staff member' %></h2>
+    <p class="text-sm text-ink"><%= item.title %></p>
+  </div>
+  <ul class="approval-facts">
+    <% item.facts.each do |fact| %><li><%= fact %></li><% end %>
+  </ul>
+  <% if item.warnings.any? %>
+    <p class="approval-warnings" aria-label="Checks"><% item.warnings.each do |warning| %><span class="pill-clay"><%= warning %></span><% end %></p>
+  <% end %>
+  <%= form_with url: people_approval_decision_path(kind: item.kind, id: item.record.id, decision: 'approve'), method: :post, class: 'approval-actions', data: { turbo: true } do |f| %>
+    <%= hidden_field_tag :return_kind, @kind %>
+    <details class="approval-note">
+      <summary class="text-sm text-olive underline">Add a note<%= ' (needed to return a timesheet)' if item.kind == 'timesheet' %></summary>
+      <%= text_field_tag :note, nil, maxlength: 1000, class: 'input mt-2', placeholder: 'One sentence to the staff member (optional)', 'aria-label': 'Note to the staff member', id: "note-#{item.dom_id}" %>
+    </details>
+    <div class="approval-buttons">
+      <%= f.submit 'Approve', class: 'btn-primary', data: { turbo_submits_with: 'Approving…' }, aria: { label: "Approve #{item.employee&.name}: #{item.title}" } %>
+      <%= f.submit(item.kind == 'timesheet' ? 'Return' : 'Deny', formaction: people_approval_decision_path(kind: item.kind, id: item.record.id, decision: 'deny'), class: 'btn-ghost', data: { turbo_submits_with: 'Saving…' }, aria: { label: "#{item.kind == 'timesheet' ? 'Return' : 'Deny'} #{item.employee&.name}: #{item.title}" }) %>
+      <%= link_to 'Open', item.path, class: 'btn-ghost btn-sm', aria: { label: "Open #{item.title}" } %>
+    </div>
+  <% end %>
+</li>

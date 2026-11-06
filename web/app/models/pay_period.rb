@@ -12,6 +12,7 @@ class PayPeriod < ApplicationRecord
 
   belongs_to :locked_by, class_name: 'User', optional: true
   belongs_to :exported_by, class_name: 'User', optional: true
+  has_many :adjustments, class_name: 'PayPeriodAdjustment', dependent: :restrict_with_exception
 
   validates :starts_on, :ends_on, presence: true
   validates :status, inclusion: { in: STATUSES }

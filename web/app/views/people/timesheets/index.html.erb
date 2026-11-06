@@ -7,13 +7,15 @@
   <% end %>
   <%= render 'shared/open_clock_outs', items: @open_items, limit: @open_clock_outs.limit_hours %>
 
-  <% if @reviewer && @pending_corrections_count.to_i.positive? %>
+  <% if @exceptions %>
+    <%= render 'people/timesheets/exceptions', exceptions: @exceptions %>
+  <% elsif @reviewer && @pending_corrections_count.to_i.positive? %>
     <section class="callout callout-attention flex flex-wrap items-center justify-between gap-3" aria-label="Clock corrections waiting" data-corrections-waiting>
       <div>
         <p class="callout-title"><%= pluralize(@pending_corrections_count, 'clock correction') %> waiting for review</p>
         <p class="text-sm text-mocha">Timesheets with these shifts cannot be approved until the corrections are reviewed.</p>
       </div>
-      <% if ClockCorrection.reviewer?(Current.user) %><%= link_to 'Review corrections', time_clock_path(anchor: 'corrections'), class: 'btn-ghost btn-sm' %><% end %>
+      <% if ClockCorrection.reviewer?(Current.user) %><%= link_to 'Review corrections', people_approvals_path, class: 'btn-ghost btn-sm' %><% end %>
     </section>
   <% end %>
 
@@ -152,11 +154,14 @@
   <% columns = 4 + (approvable.any? ? 1 : 0) + (@reviewer ? 1 : 0) + (show_regular ? 1 : 0) + (show_flags ? 1 : 0) + (show_overtime ? 1 : 0) + (show_other ? 1 : 0) + (show_comp ? 1 : 0) %>
   <%= form_with url: bulk_approve_people_timesheets_path, method: :post, id: 'bulk-approve', data: { turbo_confirm: 'Approve the selected timesheets?' } do |f| %>
     <%= hidden_field_tag :return_status, @status %><%= hidden_field_tag :return_period, @period %><%= hidden_field_tag :return_from, @from&.iso8601 %><%= hidden_field_tag :return_to, @to&.iso8601 %><%= hidden_field_tag :return_view, 'list' %><%= hidden_field_tag :return_q, @query %>
+    <% blocked_ids = @blocked_employee_ids || Set.new %>
+    <% clean = approvable.reject { |t| blocked_ids.include?(t.employee_id) } %>
     <% if approvable.any? %>
-      <div class="mb-3 flex flex-wrap items-center gap-3" role="group" aria-label="Approve several">
-        <label class="flex items-center gap-2 text-sm"><input type="checkbox" class="checkbox" data-bulk-all onclick="document.querySelectorAll('#bulk-approve .bulk-box').forEach(function(b){b.checked=this.checked}.bind(this))"> Select all <%= approvable.size %> in review</label>
-        <%= text_field_tag :review_note, nil, maxlength: 4000, placeholder: 'Comment for everyone selected (optional)', 'aria-label': 'Optional comment for everyone selected', class: 'input w-full sm:w-80' %>
-        <%= f.submit 'Approve selected', class: 'btn-primary btn-sm' %>
+      <div class="bulk-bar" role="group" aria-label="Approve several" data-controller="bulk-approve" data-bulk-approve-count-value="0">
+        <label class="flex items-center gap-2 text-sm"><input type="checkbox" class="checkbox" data-bulk-all data-action="bulk-approve#toggleAll" aria-label="Select all clean timesheets"> Select all clean (<%= clean.size %>)</label>
+        <% if clean.size < approvable.size %><span class="text-xs text-mocha"><%= approvable.size - clean.size %> need attention first</span><% end %>
+        <details class="bulk-bar-note"><summary class="text-sm text-olive underline">Add a comment</summary><%= text_field_tag :review_note, nil, maxlength: 4000, placeholder: 'Comment for everyone selected (optional)', 'aria-label': 'Optional comment for everyone selected', class: 'input mt-2 w-full sm:w-80' %></details>
+        <%= f.submit 'Approve selected', class: 'btn-primary', data: { bulk_approve_target: 'button' } %>
       </div>
     <% end %>
   <div class="card" <%= tour_anchor('table') %>>
@@ -186,7 +191,7 @@
             <% can_review = @reviewer && timesheet.submitted? && policy(timesheet).approve? %>
             <tr>
               <% if approvable.any? %>
-                <td class="td"><% if approvable.include?(timesheet) %><input type="checkbox" class="checkbox bulk-box" name="timesheet_ids[]" value="<%= timesheet.id %>" aria-label="Select <%= timesheet.employee&.name %>, <%= timesheet.period_label %>"><% end %></td>
+                <td class="td"><% if approvable.include?(timesheet) && !blocked_ids.include?(timesheet.employee_id) %><input type="checkbox" class="checkbox bulk-box" name="timesheet_ids[]" value="<%= timesheet.id %>" data-action="bulk-approve#recount" aria-label="Select <%= timesheet.employee&.name %>, <%= timesheet.period_label %>"><% elsif approvable.include?(timesheet) %><span class="pill-rose" title="Fix the missed punch or correction first">Needs attention</span><% end %></td>
               <% end %>
               <% if @reviewer %><td class="td font-medium text-ink"><%= timesheet.employee&.name %><% if timesheet.demo? %> <span class="pill-taupe">Demo</span><% end %></td><% end %>
               <td class="td whitespace-nowrap"><%= link_to timesheet.period_label, people_timesheet_path(timesheet), class: "text-olive hover:underline" %><% if !@reviewer && timesheet.demo? %> <span class="pill-taupe">Demo</span><% end %></td>

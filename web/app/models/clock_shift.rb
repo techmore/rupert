@@ -2,6 +2,10 @@
 
 class ClockShift < ApplicationRecord
   include TenantScoped
+  include LockedPayPeriodGuard
+
+  # A punch cannot be added to, or moved within, a locked pay period (only the dates that change are checked).
+  guards_pay_period { [(new_record? || started_at_changed?) ? started_at : nil, ended_at_changed? ? ended_at : nil] }
 
   belongs_to :user, optional: true
   belongs_to :employee, class_name: 'People::Employee', optional: true

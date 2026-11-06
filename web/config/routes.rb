@@ -847,6 +847,22 @@ Rails.application.routes.draw do
     end
   end
 
+  # ---- time & pay: manager ----
+  namespace :people do
+    get 'approvals', to: 'approvals#index', as: :approvals
+    post 'approvals/:kind/:id/:decision', to: 'approvals#decide', as: :approval_decision, constraints: { decision: /approve|deny/ }
+    resources :pay_periods, only: %i[index show] do
+      member do
+        post :lock
+        post :reopen
+        post :adjustments, to: 'pay_periods#add_adjustment'
+      end
+    end
+  end
+  get '/settings/time_rules', to: 'time_rules_settings#show', as: :time_rules_settings
+  post '/settings/time_rules', to: 'time_rules_settings#update'
+  # ---- end time & pay: manager ----
+
   get '/up', to: HealthCheck
   get '/up/ready', to: ReadinessCheck
 

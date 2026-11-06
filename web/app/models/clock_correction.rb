@@ -4,6 +4,10 @@
 # operational shift but never silently replaces the audit request.
 class ClockCorrection < ApplicationRecord
   include TenantScoped
+  include LockedPayPeriodGuard
+
+  # Approving a correction changes hours on the original and the proposed dates; both must be open.
+  guards_pay_period { status == 'approved' && status_changed? ? [original_started_at, original_ended_at, proposed_started_at, proposed_ended_at] : [] }
 
   belongs_to :clock_shift
   belongs_to :requester, class_name: 'User', foreign_key: :requested_by_id, optional: true

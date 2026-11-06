@@ -39,6 +39,7 @@ module People
     has_many :payslips, class_name: 'People::Payslip', dependent: :destroy
     has_many :managed_departments, class_name: 'People::Department', foreign_key: :manager_id, dependent: :nullify
     has_many :availabilities, class_name: 'People::EmployeeAvailability', dependent: :destroy
+    has_many :leave_accruals, class_name: 'People::LeaveAccrual', dependent: :destroy
     has_many :tip_allocations, dependent: :restrict_with_exception
     has_many :clock_shifts, dependent: :restrict_with_exception
 

@@ -33,6 +33,10 @@ production:
     class: OpenClockOutAlertJob
     queue: default
     schedule: every 30 minutes
+  leave_accrual:
+    class: LeaveAccrualJob
+    queue: default
+    schedule: "10 4 * * * America/New_York"
   source_directories:
     class: DirectorySyncJob
     queue: default

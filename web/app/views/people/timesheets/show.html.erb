@@ -214,11 +214,11 @@
     </section>
   <% end %>
 
-  <section class="section-card" aria-labelledby="history-heading">
-    <%= section_heading 'History', id: 'history-heading' %>
+  <section class="section-card" aria-labelledby="history-heading" data-audit-trail>
+    <%= section_heading 'History', id: 'history-heading', hint: 'Every change to this timesheet and to the punches in its period. Originals stay on record.' %>
     <ol class="timesheet-history">
-      <% @timesheet.events.includes(:user).order(:id).each do |event| %>
-        <li><span class="text-ink"><%= timesheet_event_sentence(event) %></span> <span class="text-mocha">· <%= event.user&.display_name || 'Former account' %> · <%= timesheet_time(event.created_at) %></span></li>
+      <% @audit_trail.each do |line| %>
+        <li data-audit-kind="<%= line.kind %>"><span class="text-ink"><%= line.sentence %></span> <span class="text-mocha">· <%= line.actor %> · <%= timesheet_time(line.at) %></span><% if line.detail.present? %><p class="text-xs text-mocha"><%= line.detail %></p><% end %></li>
       <% end %>
     </ol>
   </section>

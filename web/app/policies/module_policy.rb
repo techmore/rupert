@@ -58,4 +58,9 @@ class ModulePolicy < ApplicationPolicy
   # Add, change and remove planned shifts. hr.write still covers it, so people granted HR editing keep it.
   def schedule_write? = module?('schedule.write') || module?('hr.write')
   def schedule_read? = hr_read? || schedule_write?
+
+  # time & pay: manager. The approvals inbox is for anyone who decides something in it.
+  def approvals_read? = (user&.can_review_timesheets? || false) || leave_write? || schedule_write? || ClockCorrection.reviewer?(user)
+  # Per-store time rules are saved by whoever may save the pay rules (settings).
+  def time_rules_write? = settings_write?
 end
