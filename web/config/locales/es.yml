@@ -1,0 +1,52 @@
+# Spanish for the staff-facing pages (a worker's People::Employee#locale). Rails dates, times and
+# common model messages here; each time & pay screen keeps its own strings in time_*.es.yml.
+# Management pages stay in English (ApplicationController#switch_locale).
+es:
+  date:
+    abbr_day_names: [dom, lun, mar, mié, jue, vie, sáb]
+    abbr_month_names: [~, ene, feb, mar, abr, may, jun, jul, ago, sep, oct, nov, dic]
+    day_names: [domingo, lunes, martes, miércoles, jueves, viernes, sábado]
+    month_names: [~, enero, febrero, marzo, abril, mayo, junio, julio, agosto, septiembre, octubre, noviembre, diciembre]
+    formats:
+      default: "%d/%m/%Y"
+      long: "%-d de %B de %Y"
+      short: "%-d %b"
+    order:
+      - :day
+      - :month
+      - :year
+  time:
+    am: am
+    pm: pm
+    formats:
+      default: "%a, %-d %b %Y %H:%M"
+      short: "%-d %b %H:%M"
+      long: "%A, %-d de %B de %Y"
+      time: "%-I:%M %p"
+      datetime: "%A, %-d %b %Y · %-I:%M %p"
+  number:
+    format:
+      delimiter: ","
+      separator: "."
+    currency:
+      format:
+        format: "%u%n"
+        unit: "$"
+  errors:
+    messages:
+      blank: "no puede estar en blanco"
+      invalid: "no es válido"
+      taken: "ya está en uso"
+      too_long: "es demasiado largo (máximo %{count} caracteres)"
+      not_a_number: "no es un número"
+      greater_than: "debe ser mayor que %{count}"
+      less_than_or_equal_to: "debe ser menor o igual que %{count}"
+  helpers:
+    submit:
+      create: "Guardar"
+      update: "Guardar"
+      submit: "Guardar"
+  activerecord:
+    errors:
+      messages:
+        record_invalid: "La validación falló: %{errors}"
