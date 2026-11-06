@@ -60,9 +60,27 @@ clocked-in staff at that store/time; owner's pool rule, admins excluded, whole c
 Authorize.net settled transactions and Dejavoo batch close, mirrors refunds/voids/adjustments as negative rows and carries money that
 settles after a lock into the next open period.
 
-## Production status
+## Production status (SER8, herbalhealers.rupertpos.com)
 
-_(see DEPLOYS.md)_
+Three PRs merged to `main` and installed by the autodeployer, each preceded by a verified SQLite backup and
+followed by a live smoke test; details and receipts in [DEPLOYS.md](DEPLOYS.md).
+
+| PR | Build | What | Result |
+| --- | --- | --- | --- |
+| #640 | `b7fdbf63` | Foundation (3 additive migrations) | Healthy |
+| #642 | `eb246e60` | Clock, scheduling, tips, manager pages (1 additive migration) | Healthy; live clock in → break → clock out verified with a temporary worker, then cleaned up |
+| #644 | see DEPLOYS.md | Push notifications, iPhone 1.1.0, App Store package | see DEPLOYS.md |
+
+Operational findings the owner should act on:
+
+1. **Encrypted backups have been failing** since at least Nov 1 (no active backup key). Create the key at
+   **Settings → Backups** and keep the recovery kit. Until then only the deployer's pre-deploy copies and the
+   manual copies in `/var/backups/rupert-manual` exist.
+2. **Push needs keys**: `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_KEY_P8`, `APNS_TOPIC`, `APNS_ENVIRONMENT` (and optionally
+   `VAPID_*`) in `/etc/rupert.env`; the bell works without them.
+3. **SER8 root volume is 99% full** (15 GB free).
+4. Pick the stores' **state preset** at Settings → Time rules (defaults are federal) and register each register browser
+   or counter tablet at **Team → Clock devices** so PIN punches work without a sign-in.
 
 ## Payroll provider recommendation
 
@@ -99,4 +117,17 @@ Sources: [Homebase: best payroll providers 2026](https://wf.joinhomebase.com/blo
 
 ## What's left
 
-_(filled in at the end)_
+- **Owner clicks**: App Store Connect submission (checklist item 22), Push Notifications capability and APNs key,
+  backup key, time-rules preset, clock-device registration, payroll provider sign-up.
+- **Live tip attribution has no real data yet**: the Dejavoo FEED and Authorize.net reporting connectors are configured
+  per the payments docs but the terminal programme is still in sandbox (`docs/integrations/dejavoo-spin.md`); the first
+  live batches will exercise `Tips::Reconciliation` for real. Watch **Team → Tips** for unassigned rows that first week.
+- **Clerk ids on the terminal**: for the `performedBy` evidence path, staff must key the same number on the terminal as
+  `employees.employee_number`; otherwise attribution falls back to the checkout cashier or clocked-in staff (still correct
+  under the pool rule).
+- **Photo capture at the clock** is designed but off (privacy); GPS is deliberately not used.
+- **Expo staff app** (`mobile/`) keeps working against the extended API but gets no new screens; the iPhone app is the one
+  being shipped.
+- Pre-existing flaky test `TeamChatRestartTest#SIGKILL…` fails under full-suite load and passes alone; unrelated to this work.
+- Nice-to-haves noted during review: a plain `‹ period ›` stepper on the Pay page (today it is a date field + Apply, which
+  works but is one tap more), and a "Next thing to do" item for pending approvals (NextThings only reads MCP tools today).
