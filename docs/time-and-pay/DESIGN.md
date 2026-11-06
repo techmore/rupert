@@ -76,3 +76,10 @@ specific to time and pay so that web, POS and the iPhone app say the same thing.
 | Tips | Report | Period stepper; Settled vs estimated vs unassigned. |
 | Payroll periods | List → Detail | Lock, Download CSV. |
 | Time rules | Settings | One section-card per topic, store selector. |
+
+## Clock (F1 notes)
+
+- **PIN pad** (`shared/_pin_clock`, `pin_clock_controller.js`): the same dialog on the POS strip (`Clock` button with a state dot: fern in, olive on break, rose never clocked out, taupe out) and full screen at `/clock`. Four digits clock in; already in → Clock out / Break / Meal / End break; forgotten clock-out → "You never clocked out on Wed" with Planned end / 8 hours / Another time. Confirmation lines: `Clocked in · 9:02 AM ✓`, `Clocked out · 5:31 PM · 8.2 h`, `On break · 1:05 PM`, `On meal · …`, `Back at work · … ✓`.
+- **Trusted device**: a manager registers the register/tablet at **Team → Clock devices**; the kiosk says "This device is not registered" otherwise. Error copy: "That PIN didn't match.", "Too many wrong PINs. Try again in 10 minutes.", "Use the store register, or sign in on your phone."
+- **Fix a punch** (`time_clock/_fix_punch_form`): clock-in, clock-out, the breaks as rows, why. Pills on history rows: Waiting (clay) · Approved (fern) · Denied (rose). A shift closed from the pad shows `Closed from the clock` (olive) to reviewers.
+- **Staff Settings** (`/employee/devices`): Language / Idioma, Clock PIN, Signed-in devices. All clock strings live in `config/locales/time_clock.{en,es}.yml` under `time.clock.*`.
