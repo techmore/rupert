@@ -178,11 +178,24 @@ class ApplicationController < ActionController::Base
   # Staff-facing pages render in the worker's language (People::Employee#locale, 'en' or 'es');
   # management pages stay in English. The locale never comes from the request.
   def switch_locale(&)
-    when 'sessions', 'oauth', 'employee_app', 'employee_workspace', 'employee_pay', 'employee_training', 'employee_preview', 'customer_displays', 'feedback_reports',
-      'employee_trades', 'employee_availability', # time & pay: schedule
-      'next_things', # the Next thing to do bar: an employee sees only their own tasks there (NextThings)
-      'employee_notifications', 'native/push_devices', # time & pay: ios — own notification choices and push devices
-      'account_deletions' # App Store 5.1.1(v): every account, staff included, can delete itself from the app
+    locale = Current.user && localized_controller? && I18n.available_locales.include?(worker_locale) ? worker_locale : I18n.default_locale
+    I18n.with_locale(locale, &)
+  end
+
+  # Only staff-facing controllers read the worker's language (one small query, cached in the session
+  # until the worker changes it); management and preview pages never touch the staff record for this.
+  LOCALIZED_CONTROLLERS = %w[employee_app employee_workspace employee_pay employee_training time_clock pin_clock employee_trades
+                             employee_notifications notifications].freeze
+
+  def localized_controller?
+    return false if params[:preview].present? || controller_path == 'employee_preview'
+
+    Current.user.employee? || LOCALIZED_CONTROLLERS.include?(controller_path) || controller_path.start_with?('api/v1/employee')
+  end
+
+  def worker_locale
+    @worker_locale ||= (session[:worker_locale].presence ||
+      session[:worker_locale] = (People::Employee.where(tenant_id: Current.tenant_id, user_id: Current.user&.id).pick(:locale).presence || 'en')).to_sym
   end
 
   def set_current_context

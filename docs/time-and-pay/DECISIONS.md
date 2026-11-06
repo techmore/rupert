@@ -112,8 +112,6 @@ All new screens: 44 px targets, Dynamic Type friendly (rem sizes), VoiceOver lab
 contrast checked with `bin/check-palette-contrast`, dark mode via tokens. Spanish strings for the
 employee-facing clock, time-off and pay screens live in `config/locales/es.yml`; a worker's `locale`
 is set from their profile.
-<<<<<<< HEAD
-=======
 
 ## App Store (iPhone app 1.1.0)
 
@@ -141,4 +139,3 @@ is set from their profile.
 - **Session awareness in every layout.** The app watches `<meta name="rupert-session">` to restart
   its tabs after a sign-in; the employee and POS layouts now carry it, so a sign-in on the Time tab
   no longer leaves the other tabs on the sign-in page.
->>>>>>> tp/ios
