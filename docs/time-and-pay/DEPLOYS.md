@@ -18,3 +18,13 @@ Production: Incus container `rupert` on SER8 (`ssh ser8`, then `incus exec ruper
   unencrypted pre-deploy copy (`/var/backups/rupert-autodeploy`) is being taken. **Owner action**: create
   the backup key in Settings → Backups and store the recovery kit; until then every deploy here is
   preceded by a manual `sqlite3 .backup` + `integrity_check` inside the container (recorded below).
+
+## 2026-11-06 13:30 UTC — PR #640 foundation (`b7fdbf63`) — deployed, healthy
+
+- Pre-deploy: manual `sqlite3 .backup` to `/var/backups/rupert-manual/production-20261106-132414-pre-timepay.sqlite3`
+  (sha256 `88a4f7b0…0f67`), `PRAGMA integrity_check` ok, foreign keys clean; the deployer's own backup
+  `production-20261106-133001-f10b74f9-15e212e5fe97ea85.sqlite3` was also taken.
+- Install: autodeploy, 3 additive migrations applied, `/up` healthy, smoke passed, `X-Rupert-Build: b7fdbf63`.
+- Post-deploy: checkout clean (no schema.rb drift this time), `rupert-logs errors` empty for the window, `rupert-web`
+  and `rupert-jobs` active, `/login` and `/up` 200 (staff pages redirect to sign-in as expected). No user-facing
+  change in this deploy.
