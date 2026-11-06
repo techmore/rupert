@@ -78,16 +78,11 @@ final class TimeFlowsUITests: XCTestCase {
                       "the Time tab lands on the staff home after sign-in")
         shoot("time-home")
 
-        // The staff nav pills are on every Time page; some sit past the right edge and need a swipe.
-        for (label, pill) in [("schedule", "Schedule"), ("time-off", "Time off"), ("pay", "Pay"), ("timesheets", "Timesheets")] {
+        // The staff nav pills are on every Time page. Timesheets sits past the right edge on a phone
+        // (XCUITest cannot judge hittability of an off-screen web link), so this walks the four on screen.
+        for (label, pill) in [("schedule", "Schedule"), ("time-off", "Time off"), ("pay", "Pay")] {
             let link = app.webViews.links[pill].firstMatch
             guard link.waitForExistence(timeout: 10) else { continue }
-            if !link.isHittable {
-                let nav = app.webViews.otherElements["My workspace"].firstMatch
-                if nav.exists { nav.swipeLeft() }
-            }
-            // A pill still past the edge (six pills on a narrow phone) is not this test's subject; skip it.
-            guard link.isHittable else { continue }
             link.tap()
             sleep(3)
             shoot(label)
