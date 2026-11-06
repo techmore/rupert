@@ -65,4 +65,7 @@ use, home locations for accounts, who should be required.
 
 ## Production status
 
-See `DEPLOYS.md`.
+**Live on SER8 since 2026-11-06 14:22 UTC** (`main` `1750f0ab`, PR #643), healthy per the updater receipt,
+`/up/ready` and the web journal; the course is seeded in the Herbal Healers workspace and managers are enrolled
+(required, due in 30 days) when they first open **Me → Learning center**. Details and the backup used are in
+`DEPLOYS.md`. A signed-in walk through a lesson on production is the owner's first visit.
