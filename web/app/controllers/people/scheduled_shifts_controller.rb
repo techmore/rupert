@@ -142,6 +142,7 @@ module People
     def shift_params
       permitted = params.require(:scheduled_shift).permit(:employee_id, :starts_at, :ends_at, :role_label, :notes, :location_id, :position_id, :break_minutes, :open)
       permitted[:employee_id] = nil if permitted.delete(:open).to_s == '1' || permitted[:employee_id].to_s == 'open'
+      %i[location_id position_id].each { |key| permitted[key] = nil if permitted.key?(key) && permitted[key].blank? }
       permitted
     end
 

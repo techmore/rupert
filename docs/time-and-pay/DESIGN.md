@@ -76,3 +76,11 @@ specific to time and pay so that web, POS and the iPhone app say the same thing.
 | Tips | Report | Period stepper; Settled vs estimated vs unassigned. |
 | Payroll periods | List → Detail | Lock, Download CSV. |
 | Time rules | Settings | One section-card per topic, store selector. |
+
+## Schedule (F2 notes)
+
+- A planned shift is a **Draft** (`pill-taupe`, dashed left edge on the builder chip) until the manager **Posts the week**; only posted shifts reach staff, the calendar feed and the staff app. A posted shift is never deleted: **Cancel shift** marks it and tells the person.
+- Builder warning chips on a shift: `Time off` / `Time off requested`, `Unavailable`, `9.5 h this week` (over the planned limit), `Short rest`, `Minor · …`, `Blackout`. They warn; only double-booking blocks.
+- Trade words: **Give away**, **Swap**, **Pick up**; status pills Open (`clay`), Waiting (`clay`), Approved (`fern`), Denied (`rose`), Cancelled / Expired (`taupe`). The manager page is **Shift trades**; the employee page is **My trades**.
+- Time off types are chips (Vacation · Sick · Personal · Unpaid). Request status pills: Waiting (`clay`), Approved (`fern`), Denied (`rose`), Cancelled (`taupe`).
+- Spanish strings for these screens live in `config/locales/time_schedule.es.yml`.

@@ -31,8 +31,9 @@
         <%= link_to "›", people_scheduled_shifts_path(store.merge(week: (@week + 7).iso8601)), class: "btn-ghost btn-sm", aria: { label: "Next week" }, title: "Next week" %>
       </div>
       <% unless Date.current.between?(@week, @week + 6) %><%= link_to "This week", people_scheduled_shifts_path(store), class: "btn-ghost btn-sm" %><% end %>
-      <% if @publication %><span class="pill-fern" data-posted>Posted <%= @publication.published_at.strftime('%b %-d') %></span><% elsif @schedule.shifts.any? %><span class="pill-taupe" data-posted>Not posted</span><% end %>
-      <% if @schedule.draft_count.positive? && @publication %><span class="pill-clay"><%= pluralize(@schedule.draft_count, 'draft') %> since</span><% end %>
+      <% if @schedule.draft_count.positive? %><span class="pill-clay" data-posted><%= pluralize(@schedule.draft_count, 'draft') %> not posted</span>
+      <% elsif @publication %><span class="pill-fern" data-posted>Posted <%= @publication.published_at.strftime('%b %-d') %></span>
+      <% elsif @schedule.shifts.any? %><span class="pill-fern" data-posted>Posted</span><% end %>
     </nav>
     <%= render 'people/scheduled_shifts/store_filter', url: people_scheduled_shifts_path, week: @week, locations: @locations, location_id: @location_id %>
   </section>

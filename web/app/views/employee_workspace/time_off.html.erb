@@ -1,5 +1,5 @@
 <% content_for :title, t('time.time_off.title') %>
-<% balances = @balances || [] %>
+<% balances = (@balances || []).select { |b| b.accrued_hours.to_f.positive? } %>
 <% blackouts = @blackouts || [] %>
 <% rules = @rules %>
 <%= page_header t('time.time_off.title'), subtitle: t('time.time_off.subtitle') do %>
