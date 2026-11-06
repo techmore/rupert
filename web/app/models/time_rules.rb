@@ -56,7 +56,9 @@ class TimeRules
     'tip_method' => 'pool',
     'tip_pool_excludes_admins' => true,
     'tip_pool_by_location' => true,
-    'cash_tips_declared' => true
+    'cash_tips_declared' => true,
+    # Payday: days after the pay period ends (the employee Pay page shows "Next payday").
+    'payday_days_after_period_end' => 5
   }.freeze
 
   PRESETS = {
@@ -76,7 +78,7 @@ class TimeRules
   DECIMAL_KEYS = %w[meal_break_after_hours rest_break_every_hours daily_overtime_threshold_hours daily_overtime_multiplier minor_max_daily_hours
                     minor_max_weekly_hours min_rest_between_shifts_hours trade_min_notice_hours sick_accrual_hours_per_hour_worked
                     sick_accrual_cap_hours vacation_annual_hours sick_annual_hours carryover_max_hours].freeze
-  INTEGER_KEYS = %w[meal_break_minutes rest_break_minutes minor_age schedule_notice_days rounding_minutes grace_minutes pin_length
+  INTEGER_KEYS = %w[meal_break_minutes rest_break_minutes minor_age schedule_notice_days rounding_minutes grace_minutes pin_length payday_days_after_period_end
                     pin_lockout_attempts pin_lockout_minutes time_off_min_notice_days].freeze
   BOOLEAN_KEYS = %w[meal_break_paid rest_break_paid break_reminders pin_requires_trusted_device trade_requires_approval trade_block_overtime
                     open_shift_requires_position tip_pool_excludes_admins tip_pool_by_location cash_tips_declared].freeze
@@ -228,4 +230,5 @@ class TimeRules
   def tip_pool_excludes_admins? = bool('tip_pool_excludes_admins')
   def tip_pool_by_location? = bool('tip_pool_by_location')
   def cash_tips_declared? = bool('cash_tips_declared')
+  def payday_days_after_period_end = integer('payday_days_after_period_end')
 end

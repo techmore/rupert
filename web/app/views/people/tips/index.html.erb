@@ -1,0 +1,114 @@
+<% content_for :title, 'Tips' %>
+<% money = ->(cents) { number_to_currency(cents.to_i / 100.0) } %>
+<% step = PayRules.current.period_days %>
+<% totals = @report.totals %>
+<%= page_header 'Tips', subtitle: 'Card tips from the terminal and gateway, cash tips staff declared, and how they match settled batches.',
+      menu: [['Download CSV', people_tips_path(period: @starts_on.iso8601, format: :csv)], ['Tip rules', '/settings/time_rules']] %>
+
+<section class="toolbar-band" aria-label="Tips period">
+  <%= form_with url: people_tips_path, method: :get, class: 'toolbar', data: { turbo: false } do %>
+    <div class="toolbar-field">
+      <%= label_tag :period, 'Pay period', class: 'field-label' %>
+      <div class="date-stepper">
+        <%= link_to '‹', people_tips_path(period: (@starts_on - step).iso8601), class: 'btn-ghost btn-sm', aria: { label: 'Previous pay period' } %>
+        <%= date_field_tag :period, @starts_on, class: 'input' %>
+        <%= link_to '›', people_tips_path(period: (@starts_on + step).iso8601), class: 'btn-ghost btn-sm', aria: { label: 'Next pay period' } %>
+      </div>
+    </div>
+    <div class="toolbar-actions"><%= submit_tag 'Apply', class: 'btn-primary', name: nil %></div>
+    <p class="basis-full text-xs text-mocha"><%= @starts_on.strftime('%a %b %-d') %> – <%= @ends_on.strftime('%a %b %-d, %Y') %> · <%= PayRules.current.summary %><% if @period %> · <span class="<%= @period.open? ? 'pill-taupe' : (@period.status == 'exported' ? 'pill-fern' : 'pill-olive') %>"><%= @period.status.capitalize %></span><% end %></p>
+  <% end %>
+</section>
+
+<section class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5" aria-label="Tip totals">
+  <div class="stat"><p class="stat-label">Terminal tips</p><p class="stat-value-sm mt-1 tabular-nums"><%= money.call(totals[:terminal_cents]) %></p></div>
+  <div class="stat"><p class="stat-label">Settled</p><p class="stat-value-sm mt-1 tabular-nums"><%= money.call(totals[:settled_cents]) %></p></div>
+  <div class="stat"><p class="stat-label">Estimated, not yet settled</p><p class="stat-value-sm mt-1 tabular-nums"><%= money.call(totals[:estimated_cents]) %></p></div>
+  <div class="stat"><p class="stat-label">Unassigned</p><p class="stat-value-sm mt-1 tabular-nums <%= 'text-danger' if totals[:unassigned_cents].positive? %>"><%= money.call(totals[:unassigned_cents]) %></p></div>
+  <div class="stat"><p class="stat-label">Reversed</p><p class="stat-value-sm mt-1 tabular-nums"><%= money.call(totals[:reversed_cents]) %></p></div>
+</section>
+
+<section class="card" aria-labelledby="tips-by-person">
+  <div class="card-pad card-head"><h2 id="tips-by-person" class="card-title">By person</h2><span class="text-xs text-mocha">Cash <%= money.call(totals[:cash_cents]) %> · Adjustments <%= money.call(totals[:adjustment_cents]) %></span></div>
+  <% if @report.by_employee.empty? %>
+    <p class="empty-state card-pad"><span class="empty-state-title">No tips this pay period.</span><span class="empty-state-hint">Card tips arrive from the terminal within a day; cash tips when staff declare them.</span></p>
+  <% else %>
+    <%= report_table 'tips-by-person', label: 'Tips by person', filename: "tips-#{@starts_on}" do %>
+      <table class="table">
+        <thead><tr><th class="th">Staff member</th><th class="th num">Card tips</th><th class="th num">Cash tips</th><th class="th num">Shares</th><th class="th num">Final</th><th class="th num">Estimated</th><th class="th num">Total</th></tr></thead>
+        <tbody>
+          <% @report.by_employee.each do |row| %>
+            <tr>
+              <td class="td"><%= link_to row.employee.name, people_employee_path(row.employee) %></td>
+              <td class="td num tabular-nums" data-sort-value="<%= row.card_cents %>"><%= money.call(row.card_cents) %></td>
+              <td class="td num tabular-nums" data-sort-value="<%= row.cash_cents %>"><%= money.call(row.cash_cents) %></td>
+              <td class="td num tabular-nums"><%= row.shares %></td>
+              <td class="td num tabular-nums" data-sort-value="<%= row.final_cents %>"><%= money.call(row.final_cents) %></td>
+              <td class="td num tabular-nums" data-sort-value="<%= row.estimated_cents %>"><%= row.estimated_cents.zero? ? '–' : money.call(row.estimated_cents) %></td>
+              <td class="td num tabular-nums font-semibold" data-sort-value="<%= row.final_cents + row.estimated_cents %>"><%= money.call(row.final_cents + row.estimated_cents) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+  <% end %>
+</section>
+
+<section class="card" aria-labelledby="tips-unassigned">
+  <div class="card-pad card-head"><h2 id="tips-unassigned" class="card-title">Unassigned</h2><span class="text-xs text-mocha">Tips left when nobody eligible was clocked in. Assign each one to the person who earned it.</span></div>
+  <% if @report.unassigned.empty? %>
+    <p class="empty-state card-pad"><span class="empty-state-title">Nothing unassigned.</span><span class="empty-state-hint">Every tip this period reached a person.</span></p>
+  <% else %>
+    <ul class="row-list">
+      <% @report.unassigned.each do |a| %>
+        <li class="row-item">
+          <div class="min-w-0"><p class="font-semibold text-ink"><%= a.occurred_at.strftime('%a %b %-d · %-l:%M %p') %></p><p class="text-xs text-mocha"><%= a.source_kind.humanize %> · <%= a.evidence.to_s.humanize %><% if a.location_id && (loc = Location.find_by(id: a.location_id)) %> · <%= loc.name %><% end %></p></div>
+          <div class="row-item-end">
+            <span class="pill-rose">Unassigned</span>
+            <span class="num font-semibold tabular-nums"><%= money.call(a.amount_cents) %></span>
+            <% if Current.user.can?('payroll.write') %>
+              <%= form_with url: assign_people_tips_path(period: @starts_on.iso8601), method: :post, class: 'flex items-center gap-2', data: { turbo: false } do %>
+                <%= hidden_field_tag :allocation_id, a.id %>
+                <%= select_tag :employee_id, options_from_collection_for_select(@employees, :id, :name), class: 'select', 'aria-label': 'Assign to' %>
+                <%= submit_tag 'Assign', class: 'btn-ghost btn-sm', name: nil %>
+              <% end %>
+            <% end %>
+          </div>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</section>
+
+<section class="card" aria-labelledby="tips-settlements">
+  <div class="card-pad card-head"><h2 id="tips-settlements" class="card-title">Settlement matching</h2><span class="text-xs text-mocha">Authorize.net settled batches and Dejavoo batch closes this period's tips were matched to.</span></div>
+  <table class="table">
+    <thead><tr><th class="th">Settlement</th><th class="th">Settled</th><th class="th num">Rows</th><th class="th num">Tips</th><th class="th">Status</th></tr></thead>
+    <tbody>
+      <% if @report.settlements.empty? %><tr><td class="td empty-row" colspan="5">No settlements matched yet. The hourly reconciliation matches tips as batches settle.</td></tr><% end %>
+      <% @report.settlements.each do |s| %>
+        <tr>
+          <td class="td"><%= s[:label] %></td>
+          <td class="td"><%= s[:settled_at] ? s[:settled_at].strftime('%a %b %-d · %-l:%M %p') : '–' %></td>
+          <td class="td num tabular-nums"><%= s[:count] %></td>
+          <td class="td num tabular-nums"><%= money.call(s[:tip_cents]) %></td>
+          <td class="td"><span class="<%= s[:matched] ? 'pill-fern' : 'pill-clay' %>"><%= s[:matched] ? 'Matched' : 'Waiting' %></span></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</section>
+
+<section class="card" aria-labelledby="tips-by-day">
+  <div class="card-pad card-head"><h2 id="tips-by-day" class="card-title">By day</h2></div>
+  <table class="table">
+    <thead><tr><th class="th">Day</th><th class="th num">Card tips</th><th class="th num">Cash tips</th><th class="th num">Unassigned</th></tr></thead>
+    <tbody>
+      <% if @report.by_day.empty? %><tr><td class="td empty-row" colspan="4">No tips recorded on any day of this period.</td></tr><% end %>
+      <% @report.by_day.each do |d| %>
+        <tr><td class="td"><%= d[:date].strftime('%a %b %-d') %></td><td class="td num tabular-nums"><%= money.call(d[:card_cents]) %></td><td class="td num tabular-nums"><%= money.call(d[:cash_cents]) %></td><td class="td num tabular-nums <%= 'text-danger' if d[:unassigned_cents].positive? %>"><%= d[:unassigned_cents].zero? ? '–' : money.call(d[:unassigned_cents]) %></td></tr>
+      <% end %>
+    </tbody>
+  </table>
+</section>
+<%= fold_explainer('Each card tip is credited by the strongest evidence. First the checkout Rupert sent to the terminal (cashier and store), then the clerk number typed on the terminal, then whoever was clocked in at that store at that moment. Under the shared rule the tip is split evenly among everyone clocked in (administrators excluded); under the direct rule the cashier keeps it. Terminal figures are Estimated until the batch settles at Authorize.net or the terminal closes its batch, when they become Final; refunds and voids add a mirrored negative row. Money that settles after a pay period is locked is carried into the next open period.', class: 'text-sm text-mocha') %>

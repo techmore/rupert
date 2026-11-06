@@ -1,0 +1,45 @@
+<% content_for :title, t('time.schedule.my_trades') %>
+<%= page_header t('time.schedule.my_trades'), subtitle: t('time.schedule.trades.subtitle') do %>
+  <%= link_to t('time.schedule.back_to_schedule'), employee_schedule_path, class: 'btn-ghost' %>
+<% end %>
+
+<section class="space-y-3" aria-labelledby="offers-title">
+  <h2 id="offers-title" class="section-title"><%= t('time.schedule.trades.offers') %></h2>
+  <% if @offers.empty? %>
+    <%= empty_state t('time.schedule.trades.no_offers'), hint: t('time.schedule.trades.no_offers_hint') %>
+  <% else %>
+    <% @offers.each do |trade| %>
+      <article class="card card-pad flex flex-wrap items-center justify-between gap-3" data-offer="<%= trade.id %>">
+        <div>
+          <p class="font-semibold"><%= trade_shift_label(trade.scheduled_shift) %></p>
+          <p class="text-sm text-mocha"><%= trade.kind == 'swap' ? t('time.schedule.trades.swap_from', name: trade.from_employee&.first_name, shift: trade_shift_label(trade.counter_shift)) : t('time.schedule.trades.give_from', name: trade.from_employee&.first_name) %><%= " · #{trade.note}" if trade.note.present? %></p>
+        </div>
+        <%= button_to (trade.kind == 'swap' ? t('time.schedule.trades.agree_swap') : t('time.schedule.trades.take_it')), accept_employee_trade_path(trade), class: 'btn-primary' %>
+      </article>
+    <% end %>
+  <% end %>
+</section>
+
+<section class="space-y-3" aria-labelledby="mine-title">
+  <h2 id="mine-title" class="section-title"><%= t('time.schedule.trades.mine') %></h2>
+  <% if @mine.empty? %>
+    <%= empty_state t('time.schedule.trades.none_yet'), hint: t('time.schedule.trades.none_yet_hint') %>
+  <% else %>
+    <% @mine.each do |trade| %>
+      <article class="card card-pad space-y-1" data-trade="<%= trade.id %>">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <p class="font-semibold"><%= trade_kind_label(trade) %> · <%= trade_shift_label(trade.scheduled_shift) %></p>
+          <%= trade_status_pill(trade) %>
+        </div>
+        <p class="text-sm text-mocha">
+          <% if trade.kind == 'pickup' %><%= t('time.schedule.trades.you_picked_up') %>
+          <% elsif trade.from_employee_id == @worker.id %><%= trade.to_employee ? t('time.schedule.trades.taken_by', name: trade.to_employee.first_name) : t('time.schedule.trades.waiting_for_taker') %>
+          <% else %><%= t('time.schedule.trades.from_name', name: trade.from_employee&.first_name) %><% end %>
+          <% if trade.kind == 'swap' && trade.counter_shift %> · <%= t('time.schedule.trades.for_shift', shift: trade_shift_label(trade.counter_shift)) %><% end %>
+        </p>
+        <% if trade.review_note.present? %><p class="text-sm"><%= trade.review_note %></p><% end %>
+        <% if trade.live? %><%= button_to t('time.schedule.trades.cancel'), cancel_employee_trade_path(trade), class: 'btn-ghost btn-sm' %><% end %>
+      </article>
+    <% end %>
+  <% end %>
+</section>

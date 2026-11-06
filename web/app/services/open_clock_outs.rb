@@ -58,6 +58,8 @@ class OpenClockOuts
     items.sum do |item|
       url = item.rupert? ? routes.fix_clock_out_time_clock_path(item.record) : routes.people_square_timesheet_path(item.record)
       where = item.rupert? ? 'Rupert time clock' : 'Square'
+      # The worker hears first: a forgotten clock-out is a one-tap fix for them (time & pay: clock).
+      TimeNotifier.missed_clock_out(item.record.user, shift: item.record, url: url) if item.rupert? && item.record.user
       managers.count do |manager|
         # Nobody is told about their own shift.
         next false if (item.rupert? && item.record.user_id == manager.id) || item.record.employee&.user_id == manager.id

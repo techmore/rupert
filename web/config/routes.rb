@@ -78,8 +78,24 @@ Rails.application.routes.draw do
   end
   post '/training/assignments/:id/cancel', to: 'training_assignments#cancel', as: :cancel_training_assignment
   get '/employee/reports', to: 'employee_workspace#reports', as: :employee_reports
-  get '/employee/pay', to: 'employee_workspace#pay', as: :employee_pay
+  # ---- time & pay: tips ----
+  # The worker's own pay period (EmployeePayController) and declared cash tips; the manager Tips report.
+  get '/employee/pay', to: 'employee_pay#show', as: :employee_pay
+  post '/employee/tips/declare', to: 'employee_pay#declare_tips', as: :declare_employee_tips
+  post '/api/v1/employee/tips', to: 'api/v1/employee_tips#create'
+  get '/api/v1/employee/pay', to: 'api/v1/employee_tips#show'
+  get '/people/tips', to: 'people/tips#index', as: :people_tips
+  post '/people/tips/assign', to: 'people/tips#assign', as: :assign_people_tips
+  # ---- end time & pay: tips ----
   get '/employee/schedule', to: 'employee_workspace#schedule', as: :employee_schedule
+  # ---- time & pay: schedule ----
+  resources :employee_trades, path: 'employee/trades', only: %i[index create] do
+    member do
+      post :accept
+      post :cancel
+    end
+  end
+  resources :employee_availability, path: 'employee/availability', only: %i[index create destroy]
   get '/employee/time-off', to: 'employee_workspace#time_off', as: :employee_time_off
   post '/employee/time-off', to: 'employee_workspace#request_time_off'
   post '/employee/time-off/:id/cancel', to: 'employee_workspace#cancel_time_off', as: :cancel_employee_time_off
@@ -194,6 +210,15 @@ Rails.application.routes.draw do
       post 'employee/clock', to: 'employee_clock#create'
       patch 'employee/clock/:id', to: 'employee_clock#update'
       post 'employee/clock/:id/corrections', to: 'employee_clock#correction'
+      # ---- time & pay: schedule ----
+      get 'employee/schedule', to: 'employee_schedule#index'
+      get 'employee/leave_requests', to: 'employee_leave_requests#index'
+      post 'employee/leave_requests', to: 'employee_leave_requests#create'
+      post 'employee/trades', to: 'employee_trades#create'
+      post 'employee/trades/:id/accept', to: 'employee_trades#accept'
+      post 'employee/trades/:id/cancel', to: 'employee_trades#cancel'
+      post 'employee/clock/:id/breaks', to: 'employee_clock#start_break' # time & pay: clock
+      patch 'employee/clock/:id/breaks/:break_id', to: 'employee_clock#end_break' # time & pay: clock
       get :catalog, to: 'catalog#index'
       get :inventory, to: 'inventory#index'
       get :roadmap, to: 'roadmap#index'
@@ -460,6 +485,21 @@ Rails.application.routes.draw do
     resources :positions, only: %i[index new create edit update]
     resources :scheduled_shifts, path: 'schedule', only: %i[index new create edit update destroy] do
       post :copy_last_week, on: :collection
+      # ---- time & pay: schedule ----
+      post :publish, on: :collection
+      post :cancel, on: :member
+    end
+    # ---- time & pay: schedule ----
+    resources :schedule_templates, only: %i[index new create destroy] do
+      post :apply, on: :member
+    end
+    resources :blackout_dates, only: %i[index create destroy]
+    resources :availabilities, only: %i[index create destroy]
+    resources :shift_trades, only: %i[index show] do
+      member do
+        post :approve
+        post :deny
+      end
     end
     resources :timesheets, only: %i[index show new create edit update destroy] do
       collection { post :bulk_approve }
@@ -526,6 +566,21 @@ Rails.application.routes.draw do
   get '/point_of_sale', to: 'point_of_sale#index', as: :point_of_sale
   post '/point_of_sale/quote', to: 'point_of_sale#quote', as: :quote_point_of_sale
   post '/point_of_sale/lookup', to: 'point_of_sale#lookup', as: :lookup_point_of_sale
+  # ---- time & pay: clock ----
+  # The PIN clock: kiosk page, punches, first-use PIN setup, and the pad's name picker.
+  get '/clock', to: 'pin_clock#kiosk', as: :clock_kiosk
+  post '/clock/pin', to: 'pin_clock#punch', as: :clock_pin
+  post '/clock/pin/setup', to: 'pin_clock#setup', as: :clock_pin_setup
+  get '/clock/workers', to: 'pin_clock#workers', as: :clock_workers
+  post '/time_clock/break', to: 'time_clock#start_break', as: :start_break_time_clock
+  post '/time_clock/end_break', to: 'time_clock#end_break', as: :end_break_time_clock
+  patch '/employee/settings', to: 'employee_app#update_settings', as: :employee_settings
+  post '/people/employees/:employee_id/clock_pin/reset', to: 'people/clock_pins#reset', as: :reset_people_employee_clock_pin
+  post '/people/employees/:employee_id/clock_pin', to: 'people/clock_pins#create', as: :people_employee_clock_pin
+  namespace :people do
+    resources :clock_devices, only: %i[index create destroy]
+  end
+  # ---- end time & pay: clock ----
   get '/time_clock', to: 'time_clock#index', as: :time_clock
   post '/time_clock/clock_in', to: 'time_clock#clock_in', as: :clock_in_time_clock
   post '/time_clock/clock_out', to: 'time_clock#clock_out', as: :clock_out_time_clock
@@ -846,6 +901,22 @@ Rails.application.routes.draw do
       post :transition, on: :member
     end
   end
+
+  # ---- time & pay: manager ----
+  namespace :people do
+    get 'approvals', to: 'approvals#index', as: :approvals
+    post 'approvals/:kind/:id/:decision', to: 'approvals#decide', as: :approval_decision, constraints: { decision: /approve|deny/ }
+    resources :pay_periods, only: %i[index show] do
+      member do
+        post :lock
+        post :reopen
+        post :adjustments, to: 'pay_periods#add_adjustment'
+      end
+    end
+  end
+  get '/settings/time_rules', to: 'time_rules_settings#show', as: :time_rules_settings
+  post '/settings/time_rules', to: 'time_rules_settings#update'
+  # ---- end time & pay: manager ----
 
   get '/up', to: HealthCheck
   get '/up/ready', to: ReadinessCheck

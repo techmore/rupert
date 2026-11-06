@@ -2,6 +2,10 @@
 
 class ClockShift < ApplicationRecord
   include TenantScoped
+  include LockedPayPeriodGuard
+
+  # A punch cannot be added to, or moved within, a locked pay period (only the dates that change are checked).
+  guards_pay_period { [(new_record? || started_at_changed?) ? started_at : nil, ended_at_changed? ? ended_at : nil] }
 
   belongs_to :user, optional: true
   belongs_to :employee, class_name: 'People::Employee', optional: true
@@ -125,6 +129,8 @@ class ClockShift < ApplicationRecord
   def linked_worker
     return if user&.active? && employee&.active? && employee.user_id == user_id &&
       employee.tenant_id == tenant_id && employee_key == employee.id.to_s
+    # A PIN punch for a worker who has no sign-in account yet (source pos): the HR record vouches.
+    return if user_id.nil? && employee&.active? && employee.user_id.nil? && employee.tenant_id == tenant_id && employee_key == employee.id.to_s
 
     errors.add(:employee, 'must be an active worker linked to this sign-in account and store')
   end

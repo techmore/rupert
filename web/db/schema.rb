@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_06_100200) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_06_110000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -1516,7 +1516,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_06_100200) do
     t.datetime "tip_attributed_at"
     t.index ["pos_setting_id", "received_at"], name: "index_dejavoo_feed_events_on_pos_setting_id_and_received_at"
     t.index ["pos_setting_id"], name: "index_dejavoo_feed_events_on_pos_setting_id"
-    t.index ["tenant_id", "external_reference_id"], name: "index_dejavoo_feed_events_on_tenant_id_and_external_reference_id"
+    t.index ["tenant_id", "external_reference_id"], name: "idx_on_tenant_id_external_reference_id_e26edee850"
     t.index ["tenant_id", "feed_id"], name: "index_dejavoo_feed_events_on_tenant_id_and_feed_id", unique: true
   end
 
@@ -1665,6 +1665,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_06_100200) do
     t.string "locale"
     t.boolean "tip_eligible", default: true, null: false
     t.text "location_ids_json"
+    t.datetime "sick_accrued_through"
+    t.integer "vacation_granted_for_year"
     t.index ["merged_into_id"], name: "index_employees_on_merged_into_id"
     t.index ["tenant_id", "department_id"], name: "index_employees_on_tenant_id_and_department_id"
     t.index ["tenant_id", "employee_number"], name: "index_employees_on_tenant_id_and_employee_number", unique: true
@@ -1995,6 +1997,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_06_100200) do
     t.string "unit"
     t.datetime "updated_at", null: false
     t.index ["tenant_id", "name"], name: "index_kpis_on_tenant_id_and_name"
+  end
+
+  create_table "leave_accruals", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "employee_id", null: false
+    t.string "leave_type", null: false
+    t.decimal "hours", precision: 7, scale: 2, null: false
+    t.string "reason", null: false
+    t.date "period_start"
+    t.date "period_end"
+    t.integer "year", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "employee_id", "leave_type", "year"], name: "idx_leave_accrual_employee_year"
   end
 
   create_table "leave_balances", force: :cascade do |t|
@@ -2456,6 +2472,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_06_100200) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["tenant_id", "created_at", "id"], name: "idx_owner_checklists_timeline"
+  end
+
+  create_table "pay_period_adjustments", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "pay_period_id", null: false
+    t.bigint "employee_id", null: false
+    t.string "kind", null: false
+    t.decimal "hours", precision: 7, scale: 2
+    t.integer "amount_cents"
+    t.text "note", null: false
+    t.bigint "created_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "employee_id"], name: "index_pay_period_adjustments_on_tenant_id_and_employee_id"
+    t.index ["tenant_id", "pay_period_id"], name: "index_pay_period_adjustments_on_tenant_id_and_pay_period_id"
   end
 
   create_table "pay_periods", force: :cascade do |t|

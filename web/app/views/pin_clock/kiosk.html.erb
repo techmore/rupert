@@ -1,0 +1,31 @@
+<% content_for :title, t('time.clock.title') %>
+<%# The counter tablet: the clock, full screen. Trusted devices show the pad; an unregistered browser
+    shows the pad only for a signed-in worker (their own PIN) and the register form to a manager. %>
+<main id="main" class="clock-kiosk" tabindex="-1">
+  <p class="clock-kiosk-brand"><%= render 'shared/rupert_face', size: 32 %><span>Rupert</span></p>
+  <% zone = BusinessClock.zone(tenant: Current.tenant, location: @device&.location) %>
+  <p class="clock-kiosk-time" data-controller="wall-clock" data-wall-clock-zone-value="<%= zone.tzinfo.name %>" aria-hidden="true"><%= Time.current.in_time_zone(zone).strftime('%-l:%M %p') %></p>
+  <% if notice %><p role="status" class="flash flash-notice"><%= notice %></p><% end %>
+  <% if alert %><p role="alert" class="flash flash-alert"><%= alert %></p><% end %>
+  <section class="clock-kiosk-card">
+    <% if @trusted || @own_worker %>
+      <%= render 'shared/pin_clock', kiosk: true, trusted: @trusted, location_id: @device&.location_id, register_name: @device&.name %>
+    <% else %>
+      <div class="pin-clock-body">
+        <h1 class="pos-sheet-title"><%= t('time.clock.not_trusted_title') %></h1>
+        <p class="text-sm text-mocha"><%= t('time.clock.not_trusted_hint') %></p>
+        <% if @can_register %>
+          <%= form_with url: people_clock_devices_path, method: :post, class: 'space-y-3', data: { turbo: false } do |f| %>
+            <div><%= f.label :name, 'Device name', class: 'field-label' %><%= f.text_field :name, class: 'input', required: true, placeholder: 'Front counter tablet', maxlength: 80 %></div>
+            <% if @locations.present? %><div><%= f.label :location_id, 'Store', class: 'field-label' %><%= f.select :location_id, @locations.map { |l| [l.name, l.id] }, { include_blank: 'Any store' }, class: 'select' %></div><% end %>
+            <%= f.submit t('time.clock.register_device'), class: 'btn-primary w-full justify-center' %>
+          <% end %>
+          <p class="text-xs text-mocha"><%= t('time.clock.register_hint') %></p>
+        <% elsif !Current.user %>
+          <%= link_to 'Sign in', login_path, class: 'btn-primary w-full justify-center' %>
+        <% end %>
+      </div>
+    <% end %>
+  </section>
+  <p class="clock-kiosk-foot"><%= @device ? "#{@device.name}#{" · #{@device.location.name}" if @device.location}" : '' %> <% if Current.user %>· <%= link_to Current.user.employee? ? employee_app_path : navigation_start_path, class: 'underline' do %><%= Current.user.display_name %><% end %><% end %></p>
+</main>

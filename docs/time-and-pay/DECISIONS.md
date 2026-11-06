@@ -51,7 +51,7 @@ to Square.
 | Trades | Need manager approval; 2 h minimum notice; blocked when they would create overtime, double-booking, a minor rule breach or an unqualified position | Guardrails run when a taker accepts and again at approval (`checks_json`). |
 | Time off | 7 days notice requested (warning); blackout dates flagged, not blocked | Managers decide; the system informs. |
 | Sick accrual | Off (0 per hour) | Most state laws use 1 h per 30 h worked; the state presets set that. |
-| Vacation | 80 h/year grant; sick 40 h/year; carry-over cap 40 h | Matches the existing `LeaveBalance` defaults. |
+| Vacation | 80 h/year grant; sick 40 h/year; carry-over cap 40 h | Matches the existing `LeaveBalance` defaults. The grant lands on **January 1** (the first `LeaveAccrualJob` run of the year), not the hire anniversary, so every balance resets on the same day as the leave year. On that run last year's unused vacation and sick hours carry over up to the cap; the excess is written to the ledger as a `carryover_cap` line so nothing disappears silently. Sick hours earned on hours worked are credited daily from paid clock hours since the last run (`employees.sick_accrued_through`). Every change is a `People::LeaveAccrual` line visible on the staff member's page. |
 | Tips | Pool, admins excluded, per store, cash tips declared by the worker at clock-out | Owner rule plus a declared-cash step so the record is complete for tax reporting. |
 
 ## Card tip attribution (`Tips::Attribution`)

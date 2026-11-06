@@ -54,6 +54,20 @@
           <%= f.select :employment_type, People::Employee::EMPLOYMENT_TYPES.map { |t| [t.tr("_", " ").capitalize, t] }, {}, class: "select w-full" %>
         </div>
       </div>
+      <% stores = Location.for_shifts.order(:name).to_a %>
+      <% if stores.many? %>
+        <fieldset data-employee-stores>
+          <legend class="field-label">Stores</legend>
+          <p class="mb-2 text-xs text-taupe">Where this person works. Nothing ticked means every store.</p>
+          <%= hidden_field_tag 'employee[location_ids][]', '' %>
+          <div class="grid gap-2 sm:grid-cols-3">
+            <% stores.each do |store| %>
+              <label class="flex items-center gap-2 text-sm"><%= check_box_tag 'employee[location_ids][]', store.id, employee.location_ids.include?(store.id.to_s), class: 'checkbox', id: "employee_location_#{store.id}" %> <%= store.name %></label>
+            <% end %>
+          </div>
+        </fieldset>
+      <% end %>
+      <label class="flex items-center gap-2 text-sm" data-employee-tip-eligible><%= f.check_box :tip_eligible, class: 'checkbox' %> Shares in tips (administrators never do)</label>
       <div class="grid gap-4 sm:grid-cols-2">
         <div>
           <%= f.label :hire_date, "Hire date", class: "field-label" %>

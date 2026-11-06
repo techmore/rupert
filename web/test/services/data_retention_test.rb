@@ -39,6 +39,12 @@ class DataRetentionTest < ActiveSupport::TestCase
     assert_operator totals['LedgerEntry'], :>=, 1
   end
 
+  test 'time and pay records are never in the retention policy' do
+    %w[ClockShift ClockBreak ClockCorrection TipAllocation PayPeriod PayPeriodAdjustment People::LeaveAccrual People::Timesheet People::TimesheetEntry].each do |model|
+      assert_not DataRetention::POLICIES.key?(model), "#{model} is kept at least four years (docs/ops/daily-reconciliation-retention.md)"
+    end
+  end
+
   test 'diagnostic retention prunes only old receipts in the current workspace' do
     old = SyncAttempt.create!(source: 'shopify', operation: 'catalog', status: 'succeeded', queued_at: 100.days.ago)
     fresh = SyncAttempt.create!(source: 'shopify', operation: 'catalog', status: 'succeeded', queued_at: 1.day.ago)

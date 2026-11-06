@@ -106,7 +106,7 @@ class UsersController < AuthenticatedController
   end
 
   def user_params
-    permitted = params.require(:user).permit(:name, :email, :password, :active, :role)
+    permitted = params.require(:user).permit(:name, :email, :password, :active, :role, location_ids: [])
     permitted.delete(:role) if permitted[:role].blank?
     permitted
   end

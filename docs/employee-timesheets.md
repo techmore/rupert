@@ -119,6 +119,15 @@ Base: `/api/v1/employee`. Requests/responses are JSON. Except login, supply `Aut
 | `POST /clock` | `{request_token}` (16–64 URL-safe characters). Retry the same clock-in token safely. |
 | `PATCH /clock/:id` | Clock out own shift; safe to retry. |
 | `POST /clock/:id/corrections` | `{clock_correction:{proposed_started_at,proposed_ended_at,reason}}`. Times are ISO 8601 with offset; reviewer approval is still required. |
+| `GET /pay?period=YYYY-MM-DD` | Own pay period: paid hours, rate, base, commission, tips (card/cash, estimated/final), next payday and each tip row. |
+| `POST /tips` | `{cash_tips:{amount_cents, shift_id|on}}`. Declares cash tips for one of the worker's shifts (or a day); a repeat for the same shift replaces the figure. |
+| `GET /schedule?week=YYYY-MM-DD` | Own **posted** shifts for the Monday–Sunday week (`data`) and open shifts at the worker's stores (`open_shifts`). Drafts are never returned. |
+| `GET /leave_requests` | Own time-off requests (up to 100), this year's balances per paid type, and upcoming blackout dates. |
+| `POST /leave_requests` | `{leave_request:{leave_type,starts_on,ends_on,hours?,reason?,request_key}}`. Hours default from posted shifts (8 h a weekday otherwise). The same `request_key` returns the existing request (200) instead of a duplicate. Managers with `leave.write` are notified. |
+| `POST /trades` | `{kind: give|swap|pickup, shift_id, counter_shift_id?, note?}`. Guardrails (double-booking, overtime, minors, time off, notice, position) refuse with 422 and the reason; a pickup applies at once when the store does not require approval. |
+| `POST /trades/:id/accept` · `POST /trades/:id/cancel` | Take a colleague's give-away / agree to a swap, or withdraw. Status words: open, accepted (waiting for a manager), approved, denied, cancelled, expired. |
+| `POST /clock/:id/breaks` | `{kind}` (`rest` or `meal`) starts a break on the own open shift; 201 with the break. One open break at a time. |
+| `PATCH /clock/:id/breaks/:break_id` | Ends that open break; safe to retry. `GET /clock` rows now include `breaks`, `source` and `location_id`. |
 
 IDs belonging to another worker or workspace return 404. Missing, revoked, expired, or inactive credentials return 401. Unsupported review actions/invalid entries return 422; role denial returns 403. Native APIs never accept staff member IDs, review decisions, token scopes, or administrator role changes from clients. Browser endpoints remain CSRF protected.
 

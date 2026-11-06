@@ -1,39 +1,85 @@
-<% content_for :title, 'My time off' %>
-<%= page_header 'Time off', subtitle: 'Your calendar, vacations and days off.' do %>
-  <a href="#time-off-request" class="btn-primary">Request time off</a>
+<% content_for :title, t('time.time_off.title') %>
+<% balances = (@balances || []).select { |b| b.accrued_hours.to_f.positive? } %>
+<% blackouts = @blackouts || [] %>
+<% rules = @rules %>
+<%= page_header t('time.time_off.title'), subtitle: t('time.time_off.subtitle') do %>
+  <a href="#time-off-request" class="btn-primary"><%= t('time.time_off.request') %></a>
 <% end %>
-<section class="card card-pad space-y-4">
-  <div class="flex items-center justify-between gap-2"><%= link_to '←', personal_time_off_path(month: @month.prev_month.strftime('%Y-%m')), class: 'btn-ghost btn-sm', aria: { label: 'Previous month' } %><h2 class="card-title"><%= @month.strftime('%B %Y') %></h2><%= link_to '→', personal_time_off_path(month: @month.next_month.strftime('%Y-%m')), class: 'btn-ghost btn-sm', aria: { label: 'Next month' } %></div>
-  <div class="grid grid-cols-7 gap-1" role="table" aria-label="Your calendar">
-    <% %w[Mon Tue Wed Thu Fri Sat Sun].each do |day| %><div role="columnheader" class="py-1 text-center text-xs text-mocha"><%= day %></div><% end %>
-    <% (@month.beginning_of_week..@month.end_of_month.end_of_week).each do |day| %>
-      <div role="cell" aria-label="<%= day.iso8601 %>" class="min-h-20 min-w-0 rounded-control p-1 text-xs <%= day.month == @month.month ? 'bg-haze/60' : 'text-taupe' %>">
-        <span class="inline-flex h-6 w-6 items-center justify-center rounded-pill font-semibold <%= day == Date.current ? 'bg-olive text-white' : '' %>"><%= day.day %></span>
-        <% if @summary.daily_hours(day).positive? %><p class="mt-1 break-words"><%= number_with_precision(@summary.daily_hours(day), precision: 2, strip_insignificant_zeros: true) %>h</p><% elsif @summary.clock_hours(day).positive? %><p class="mt-1 break-words"><%= number_with_precision(@summary.clock_hours(day), precision: 2, strip_insignificant_zeros: true) %>h<span class="block">clock</span></p><% end %>
-        <% @summary.daily_requests(day).each do |leave| %><p class="mt-1 break-words text-olive"><span class="hidden sm:inline"><%= leave.leave_type.humanize %></span><span class="sm:hidden"><%= { 'vacation' => 'Vac', 'sick' => 'Sick', 'personal' => 'Off', 'unpaid' => 'Off' }.fetch(leave.leave_type) %></span><span class="block text-xs"><%= leave.requested? ? 'Pending' : 'Approved' %></span></p><% end %>
-      </div>
+
+<% if balances.any? %>
+  <div class="grid grid-cols-3 gap-3" aria-label="<%= t('time.time_off.balances') %>">
+    <% balances.each do |balance| %>
+      <div class="stat"><div class="stat-label"><%= t("time.time_off.types.#{balance.leave_type}") %></div><p class="stat-value-sm tabular-nums" data-balance="<%= balance.leave_type %>"><%= number_with_precision(balance.remaining_hours, precision: 1, strip_insignificant_zeros: true) %> h</p><p class="text-xs text-mocha"><%= t('time.time_off.remaining_of', total: number_with_precision(balance.accrued_hours, precision: 1, strip_insignificant_zeros: true)) %></p></div>
     <% end %>
   </div>
-  <p class="text-xs text-mocha">Hours and approved or pending time off. Empty days have no records; this is not a work schedule. Times use <%= Time.zone.tzinfo.identifier %>.</p>
-</section>
-<section class="card card-pad space-y-3"><h2 class="card-title">Leave balance · <%= @month.year %></h2>
-  <% if @balances.empty? %><p class="text-sm text-mocha">Your leave allowance hasn’t been entered yet. You can still request time off.</p><% end %>
-  <% @balances.each do |balance| %><p class="flex justify-between gap-3 text-sm"><span><%= balance.leave_type.humanize %></span><span><%= number_with_precision(balance.remaining_hours, precision: 2, strip_insignificant_zeros: true) %>h remaining</span></p><% end %>
-</section>
-<section id="time-off-request" class="card card-pad space-y-4"><h2 class="card-title">Request time off</h2>
+  <% if rules&.sick_accrues? %><p class="text-xs text-mocha"><%= t('time.time_off.accrual_note', hours: number_with_precision(rules.sick_accrual_hours_per_hour_worked * 30, precision: 1, strip_insignificant_zeros: true)) %></p><% end %>
+<% end %>
+
+<section id="time-off-request" class="card card-pad space-y-4" data-controller="time-off-request" data-time-off-request-default-url-value="<%= @preview ? '' : employee_time_off_path %>">
+  <h2 class="card-title"><%= t('time.time_off.request') %></h2>
   <% if @request.errors.any? %><p role="alert" class="text-sm text-rose"><%= @request.errors.full_messages.to_sentence %></p><% end %>
-  <%= form_with model: @request, scope: :leave_request, url: (@preview ? employee_preview_time_off_path(preview: 1) : employee_time_off_path), class: 'space-y-3' do |f| %>
-    <fieldset <%= 'disabled' if @preview %> class="space-y-3">
-    <div><%= f.label :leave_type, 'Type', class: 'field-label' %><%= f.select :leave_type, People::LeaveRequest::LEAVE_TYPES.map { |type| [type == 'unpaid' ? 'Unpaid day off' : type.humanize, type] }, {}, class: 'select w-full' %></div>
-    <div class="grid grid-cols-2 gap-3"><div><%= f.label :starts_on, 'First day', class: 'field-label' %><%= f.date_field :starts_on, required: true, class: 'input w-full' %></div><div><%= f.label :ends_on, 'Last day', class: 'field-label' %><%= f.date_field :ends_on, required: true, class: 'input w-full' %></div></div>
-    <div><%= f.label :hours, 'Hours off', class: 'field-label' %><%= f.number_field :hours, min: 0.01, step: 0.01, class: 'input w-full', aria: { describedby: 'time-off-hours-help' } %><p id="time-off-hours-help" class="mt-1 text-xs text-mocha">Enter your total working hours off. Optional for unpaid days. Approval is required.</p></div>
-    <div><%= f.label :reason, 'Note (optional)', class: 'field-label' %><%= f.text_area :reason, rows: 2, maxlength: 2000, class: 'input w-full' %></div>
-    <%= f.submit 'Send request', class: 'btn-primary' %>
+  <% if blackouts.any? || (rules && rules.time_off_min_notice_days.positive?) %>
+    <div class="callout text-sm">
+      <% if rules && rules.time_off_min_notice_days.positive? %><p><%= t('time.time_off.notice_days', days: rules.time_off_min_notice_days) %></p><% end %>
+      <% if blackouts.any? %><p class="mt-1"><strong><%= t('time.time_off.blackouts') %>:</strong> <%= blackouts.first(4).map { |b| "#{b.label} (#{b.reason})" }.join(' · ') %></p><% end %>
+    </div>
+  <% end %>
+  <%= form_with model: @request, scope: :leave_request, url: (@preview ? employee_preview_time_off_path(preview: 1) : employee_time_off_path), class: 'space-y-4', data: { turbo: false } do |f| %>
+    <fieldset <%= 'disabled' if @preview %> class="space-y-4">
+      <%= hidden_field_tag 'leave_request[request_key]', @request_key, id: nil %>
+      <div>
+        <p class="field-label" id="leave-type-label"><%= t('time.time_off.type') %></p>
+        <div class="flex flex-wrap gap-2" role="radiogroup" aria-labelledby="leave-type-label">
+          <% People::LeaveRequest::LEAVE_TYPES.each do |type| %>
+            <label class="type-chip"><%= f.radio_button :leave_type, type, class: 'sr-only', checked: (@request.leave_type.presence || 'vacation') == type %><span><%= t("time.time_off.types.#{type}") %></span></label>
+          <% end %>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><%= f.label :starts_on, t('time.time_off.first_day'), class: 'field-label' %><%= f.date_field :starts_on, required: true, class: 'input w-full', min: Date.current.iso8601, data: { action: 'change->time-off-request#syncEnd' } %></div>
+        <div><%= f.label :ends_on, t('time.time_off.last_day'), class: 'field-label' %><%= f.date_field :ends_on, required: true, class: 'input w-full', min: Date.current.iso8601 %></div>
+      </div>
+      <details class="explainer">
+        <summary class="explainer-summary"><%= t('time.time_off.more_options') %></summary>
+        <div class="mt-3 space-y-3">
+          <div><%= f.label :hours, t('time.time_off.hours'), class: 'field-label' %><%= f.number_field :hours, min: 0.25, step: 0.25, class: 'input w-full', aria: { describedby: 'time-off-hours-help' } %><p id="time-off-hours-help" class="mt-1 text-xs text-mocha"><%= t('time.time_off.hours_help') %></p></div>
+          <div><%= f.label :reason, t('time.time_off.note'), class: 'field-label' %><%= f.text_area :reason, rows: 2, maxlength: 2000, class: 'input w-full' %></div>
+        </div>
+      </details>
+      <%= f.submit t('time.time_off.send'), class: 'btn-primary btn-lg w-full sm:w-auto', data: { turbo_submits_with: t('time.time_off.sending') } %>
     </fieldset>
     <% if @preview %><p class="text-sm text-mocha">Example form · Sending is disabled in preview.</p><% end %>
   <% end %>
 </section>
-<section class="space-y-3"><h2 class="section-title">My requests</h2>
-  <% if @requests.empty? %><%= empty_state 'No time-off requests yet', hint: 'Use the form above to request your first day off.' %><% end %>
-  <% @requests.each do |leave| %><article class="card card-pad space-y-2"><div class="flex flex-wrap items-center justify-between gap-2"><h3 class="font-semibold"><%= leave.leave_type.humanize %> · <%= leave.starts_on.strftime('%b %-d') %> – <%= leave.ends_on.strftime('%b %-d, %Y') %></h3><span class="pill-olive"><%= leave.requested? ? 'Awaiting review' : leave.status.humanize %></span></div><p class="text-sm text-mocha"><%= leave.duration_label %></p><% if leave.reason.present? %><p class="text-sm whitespace-pre-wrap"><%= leave.reason %></p><% end %><% if leave.requested? && @preview %><button type="button" disabled class="text-sm text-mocha">Cancel request · disabled in preview</button><% elsif leave.requested? %><%= button_to 'Cancel request', cancel_employee_time_off_path(leave), class: 'btn-ghost btn-sm' %><% elsif leave.approved? %><p class="text-xs text-mocha">Ask your manager if these approved dates need to change.</p><% end %></article><% end %>
+
+<section class="space-y-3"><h2 class="section-title"><%= t('time.time_off.my_requests') %></h2>
+  <% if @requests.empty? %><%= empty_state t('time.time_off.none_yet'), hint: t('time.time_off.none_yet_hint') %><% end %>
+  <% @requests.each do |leave| %>
+    <article class="card card-pad space-y-2" data-leave-request="<%= leave.id %>">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h3 class="font-semibold"><%= t("time.time_off.types.#{leave.leave_type}") %> · <%= leave.starts_on.strftime('%b %-d') %><%= " – #{leave.ends_on.strftime('%b %-d')}" if leave.ends_on != leave.starts_on %>, <%= leave.ends_on.year %></h3>
+        <span class="<%= { 'requested' => 'pill-clay', 'approved' => 'pill-fern', 'denied' => 'pill-rose', 'cancelled' => 'pill-taupe' }.fetch(leave.status, 'pill-taupe') %>"><%= t("time.time_off.status.#{leave.status}") %></span>
+      </div>
+      <p class="text-sm text-mocha"><%= leave.duration_label %><% if leave.review_note.present? %> · <%= leave.review_note %><% end %></p>
+      <% if leave.reason.present? %><p class="text-sm whitespace-pre-wrap"><%= leave.reason %></p><% end %>
+      <% if leave.requested? && @preview %><button type="button" disabled class="text-sm text-mocha"><%= t('time.time_off.cancel_request') %> · disabled in preview</button>
+      <% elsif leave.requested? %><%= button_to t('time.time_off.cancel_request'), cancel_employee_time_off_path(leave), class: 'btn-ghost btn-sm' %>
+      <% elsif leave.approved? %><p class="text-xs text-mocha"><%= t('time.time_off.ask_manager') %></p><% end %>
+    </article>
+  <% end %>
+</section>
+
+<section class="card card-pad space-y-4">
+  <div class="date-stepper"><%= link_to '‹', personal_time_off_path(month: @month.prev_month.strftime('%Y-%m')), class: 'btn-ghost btn-sm', aria: { label: t('time.time_off.previous_month') } %><h2 class="card-title flex-1 text-center"><%= l(@month, format: '%B %Y') %></h2><%= link_to '›', personal_time_off_path(month: @month.next_month.strftime('%Y-%m')), class: 'btn-ghost btn-sm', aria: { label: t('time.time_off.next_month') } %></div>
+  <div class="grid grid-cols-7 gap-1" role="table" aria-label="<%= t('time.time_off.calendar') %>">
+    <% (1..7).each do |i| %><div role="columnheader" class="py-1 text-center text-xs text-mocha"><%= t('date.abbr_day_names')[i % 7] %></div><% end %>
+    <% (@month.beginning_of_week..@month.end_of_month.end_of_week).each do |day| %>
+      <div role="cell" aria-label="<%= day.iso8601 %>" class="min-h-16 min-w-0 rounded-control p-1 text-xs <%= day.month == @month.month ? 'bg-haze/60' : 'text-taupe' %>">
+        <span class="inline-flex h-6 w-6 items-center justify-center rounded-pill font-semibold <%= day == Date.current ? 'bg-olive text-white' : '' %>"><%= day.day %></span>
+        <% if @summary.daily_hours(day).positive? %><p class="mt-1 break-words"><%= number_with_precision(@summary.daily_hours(day), precision: 2, strip_insignificant_zeros: true) %>h</p><% elsif @summary.clock_hours(day).positive? %><p class="mt-1 break-words"><%= number_with_precision(@summary.clock_hours(day), precision: 2, strip_insignificant_zeros: true) %>h</p><% end %>
+        <% @summary.daily_requests(day).each do |leave| %><p class="mt-1 break-words text-olive"><%= t("time.time_off.short.#{leave.leave_type}") %><span class="block"><%= leave.requested? ? t('time.time_off.status.requested') : t('time.time_off.status.approved') %></span></p><% end %>
+      </div>
+    <% end %>
+  </div>
+  <p class="text-xs text-mocha"><%= t('time.time_off.calendar_note', zone: Time.zone.tzinfo.identifier) %></p>
 </section>

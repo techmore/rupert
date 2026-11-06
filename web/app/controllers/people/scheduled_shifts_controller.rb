@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 module People
-  # Managers plan shifts here; employees read their own in the personal workspace.
+  # The schedule builder: managers plan a Monday–Sunday week on a drag-and-drop grid, post it to
+  # staff, and keep templates. Employees read their own posted shifts in the personal workspace.
   class ScheduledShiftsController < AuthenticatedController
-    before_action :set_shift, only: %i[edit update destroy]
+    before_action :set_shift, only: %i[edit update destroy cancel]
     rescue_from Date::Error, with: :invalid_week
 
     def index
@@ -14,15 +15,12 @@ module People
       @week = day.beginning_of_week
       @locations = Location.for_shifts.to_a
       @location_id = params[:location_id].presence&.to_s
-      @shifts = People::ScheduledShift.between(@week, @week + 6).chronological.includes(:employee, :location)
-      @shifts = @shifts.where(location_id: @location_id) if @location_id
-      @by_employee = @shifts.group_by(&:employee).sort_by { |employee, _| [employee.last_name.to_s, employee.first_name.to_s] }
-      leave = People::LeaveRequest.where(status: 'approved', employee_id: @shifts.map(&:employee_id).uniq)
-        .where('starts_on <= ? AND ends_on >= ?', @week + 7, @week).to_a
-      @on_leave = @shifts.select do |shift|
-        leave.any? { |item| item.employee_id == shift.employee_id && item.starts_on <= shift.ends_at.to_date && item.ends_on >= shift.starts_at.to_date }
-      end.map(&:id).to_set
-      load_hours_warnings
+      @schedule = People::ScheduleWeek.new(@week, location_id: @location_id)
+      @employees = @schedule.employees
+      @positions = People::Position.order(:name).to_a
+      @templates = People::ScheduleTemplate.ordered.to_a
+      @can_write = Current.user.can?('schedule.write') || Current.user.can?('hr.write')
+      @publication = People::SchedulePublication.first_for(@week, @location_id)
       load_planned_and_worked
     end
 
@@ -34,29 +32,49 @@ module People
 
       copied, skipped = People::ScheduledShift.copy_week_forward(week)
       ActivityLogger.log('scheduled_week_copied', details: "#{(week - 7).strftime('%b %-d')} → #{week.strftime('%b %-d, %Y')}: #{copied.size} copied, #{skipped} skipped")
-      message = copied.empty? && skipped.zero? ? 'Last week has no shifts to copy.' : "Copied #{helpers.pluralize(copied.size, 'shift')} from last week."
+      message = copied.empty? && skipped.zero? ? 'Last week has no shifts to copy.' : "Copied #{helpers.pluralize(copied.size, 'shift')} from last week as drafts."
       message += " Skipped #{skipped}: they overlap a shift already planned or the person is no longer active." if skipped.positive?
-      leave = copied.count { |shift| shift.approved_leave.exists? }
-      message += " #{helpers.pluralize(leave, 'copied shift')} #{leave == 1 ? 'falls' : 'fall'} on approved leave." if leave.positive?
-      redirect_to(people_scheduled_shifts_path(week: week.iso8601), notice: message)
+      redirect_to(people_scheduled_shifts_path(week: week.iso8601, location_id: params[:location_id].presence), notice: message)
+    end
+
+    # Posts the week: stamps every draft shift, records the publication and tells each worker.
+    def publish
+      authorize(:module, :schedule_write?)
+      week = Date.iso8601(params[:week].to_s).beginning_of_week
+      result = People::SchedulePublisher.publish_week!(week, location_id: params[:location_id].presence, by: Current.user)
+      message = result.published.empty? ? 'Everything this week is already posted.' : "Posted #{helpers.pluralize(result.published.size, 'shift')} to #{helpers.pluralize(result.workers.size, 'person')}."
+      if result.short_notice?
+        message += " Note: #{result.notice_days.negative? ? 'this week has already started' : "only #{helpers.pluralize(result.notice_days, 'day')} of notice"}; the store asks for #{TimeRules.for(params[:location_id].presence).schedule_notice_days}."
+      end
+      redirect_to(people_scheduled_shifts_path(week: week.iso8601, location_id: params[:location_id].presence), notice: message)
     end
 
     def new
       authorize(:module, :schedule_write?)
       day = params[:date].present? ? Date.iso8601(params[:date]) : Date.current
-      @shift = People::ScheduledShift.new(employee_id: params[:employee_id], location_id: params[:location_id].presence, starts_at: day.in_time_zone + 9.hours, ends_at: day.in_time_zone + 17.hours)
+      @shift = People::ScheduledShift.new(employee_id: params[:employee_id], location_id: params[:location_id].presence,
+        starts_at: day.in_time_zone + 9.hours, ends_at: day.in_time_zone + 17.hours)
       load_employees
     end
 
+    # HTML: the form. JSON (the builder's quick-add): { shift: {…} } → the cell partial and warnings.
     def create
       authorize(:module, :schedule_write?)
-      @shift = People::ScheduledShift.new(shift_params)
+      @shift = People::ScheduledShift.new(shift_params.merge(created_by: Current.user))
       if @shift.save
         ActivityLogger.log('scheduled_shift_created', subject: @shift, details: shift_details)
-        redirect_to(people_scheduled_shifts_path(week: @shift.starts_at.to_date.iso8601), notice: with_planning_warnings('Shift scheduled.'))
+        respond_to do |format|
+          format.html { redirect_to(people_scheduled_shifts_path(week: @shift.starts_at.to_date.iso8601, location_id: @shift.location_id), notice: with_planning_warnings('Shift added as a draft. Post the week when it is ready.')) }
+          format.json { render_cell(@shift, status: :created) }
+        end
       else
-        load_employees
-        render(:new, status: :unprocessable_entity)
+        respond_to do |format|
+          format.html do
+            load_employees
+            render(:new, status: :unprocessable_entity)
+          end
+          format.json { render json: { error: @shift.errors.full_messages.to_sentence }, status: :unprocessable_entity }
+        end
       end
     end
 
@@ -65,46 +83,92 @@ module People
       load_employees
     end
 
+    # HTML: the form. JSON (drag, resize, reassign): { shift: { starts_at, ends_at, employee_id } }.
     def update
       authorize(:module, :schedule_write?)
-      if @shift.update(shift_params)
+      previous_employee = @shift.employee
+      was_published = @shift.published?
+      if @shift.update(shift_params.merge(last_changed_at: Time.current))
         ActivityLogger.log('scheduled_shift_updated', subject: @shift, details: shift_details)
-        redirect_to(people_scheduled_shifts_path(week: @shift.starts_at.to_date.iso8601), notice: with_planning_warnings('Shift updated.'))
+        People::SchedulePublisher.notify_change(@shift, change: 'changed', previous_employee: previous_employee) if was_published
+        respond_to do |format|
+          format.html { redirect_to(people_scheduled_shifts_path(week: @shift.starts_at.to_date.iso8601, location_id: @shift.location_id), notice: with_planning_warnings('Shift updated.')) }
+          format.json { render_cell(@shift) }
+        end
       else
-        load_employees
-        render(:edit, status: :unprocessable_entity)
+        respond_to do |format|
+          format.html do
+            load_employees
+            render(:edit, status: :unprocessable_entity)
+          end
+          format.json { render json: { error: @shift.errors.full_messages.to_sentence }, status: :unprocessable_entity }
+        end
       end
     end
 
+    # A posted shift is cancelled (kept, marked, worker told); a draft is simply removed.
     def destroy
       authorize(:module, :schedule_write?)
-      @shift.destroy!
-      ActivityLogger.log('scheduled_shift_deleted', subject: @shift, details: shift_details)
-      redirect_to(people_scheduled_shifts_path(week: @shift.starts_at.to_date.iso8601), notice: 'Shift removed.')
+      if @shift.published?
+        @shift.update!(cancelled_at: Time.current, last_changed_at: Time.current)
+        People::SchedulePublisher.notify_change(@shift, change: 'cancelled')
+        ActivityLogger.log('scheduled_shift_cancelled', subject: @shift, details: shift_details)
+        notice = 'Shift cancelled. The person has been told.'
+      else
+        @shift.destroy!
+        ActivityLogger.log('scheduled_shift_deleted', subject: @shift, details: shift_details)
+        notice = 'Draft shift removed.'
+      end
+      respond_to do |format|
+        format.html { redirect_to(people_scheduled_shifts_path(week: @shift.starts_at.to_date.iso8601, location_id: @shift.location_id), notice: notice) }
+        format.json { render json: { ok: true, id: @shift.id, cancelled: @shift.cancelled? } }
+      end
     end
+    alias cancel destroy
 
     private
 
     def set_shift
-      @shift = People::ScheduledShift.find_by!(tenant_id: Current.tenant_id, id: params[:id])
+      @shift = People::ScheduledShift.live.find_by!(tenant_id: Current.tenant_id, id: params[:id])
     end
 
     def load_employees
       @employees = People::Employee.active.ordered
+      @positions = People::Position.order(:name).to_a
       @locations = Location.for_shifts.to_a
       @locations.unshift(@shift.location) if @shift.location && @locations.exclude?(@shift.location)
     end
 
     def shift_params
-      params.require(:scheduled_shift).permit(:employee_id, :starts_at, :ends_at, :role_label, :notes, :location_id)
+      permitted = params.require(:scheduled_shift).permit(:employee_id, :starts_at, :ends_at, :role_label, :notes, :location_id, :position_id, :break_minutes, :open)
+      permitted[:employee_id] = nil if permitted.delete(:open).to_s == '1' || permitted[:employee_id].to_s == 'open'
+      %i[location_id position_id].each { |key| permitted[key] = nil if permitted.key?(key) && permitted[key].blank? }
+      permitted
+    end
+
+    # The builder re-renders the one cell it changed, plus warnings and the labour line.
+    def render_cell(shift, status: :ok)
+      week = shift.starts_at.to_date.beginning_of_week
+      schedule = People::ScheduleWeek.new(week, location_id: params[:location_id].presence)
+      html = render_to_string(partial: 'people/scheduled_shifts/shift', formats: [:html], locals: { shift: shift, warnings: schedule.warnings_for(shift), can_write: true, location_id: params[:location_id].presence })
+      render json: { id: shift.id, employee_id: shift.employee_id, date: shift.starts_at.to_date.iso8601, html: html,
+                     warnings: schedule.warnings_for(shift).map(&:to_h), labor: labor_json(schedule) }, status: status
+    end
+
+    def labor_json(schedule)
+      total = schedule.labor_total
+      { days: schedule.labor.transform_keys(&:iso8601).transform_values { |row| row.merge(percent: People::ScheduleWeek.percent(row[:cost_cents], row[:sales_cents])) },
+        total: total.merge(percent: People::ScheduleWeek.percent(total[:cost_cents], total[:sales_cents])) }
     end
 
     def shift_details
-      "#{@shift.employee&.full_name} · #{@shift.starts_at.strftime('%b %-d %-l:%M %p')} – #{@shift.ends_at.strftime('%-l:%M %p')}#{" · #{@shift.location.name}" if @shift.location}"
+      "#{@shift.employee&.full_name || 'Open shift'} · #{@shift.starts_at.strftime('%b %-d %-l:%M %p')} – #{@shift.ends_at.strftime('%-l:%M %p')}#{" · #{@shift.location.name}" if @shift.location}"
     end
 
     # Warnings only: the shift is already saved.
     def with_planning_warnings(message)
+      return message if @shift.employee.nil?
+
       name = @shift.employee.full_name
       notes = []
       notes << "#{name} has approved leave on this day." if @shift.approved_leave.exists?
@@ -117,39 +181,14 @@ module People
       notes.empty? ? message : "#{message} Note: #{notes.join(' ')}"
     end
 
-    # Pay weeks run Thursday-Wednesday, so a Monday-Sunday grid week touches two.
-    # Planned hours only; this does not calculate pay.
-    def load_hours_warnings
-      @pay_weeks = [EmployeePayWeek.week_start(@week), EmployeePayWeek.week_start(@week + 6)]
-      nearby = @nearby = People::ScheduledShift.between(@pay_weeks.first, @pay_weeks.last + 6).includes(:employee).to_a
-      limit = People::ScheduledShift::PLANNED_HOURS_LIMIT
-      @over_hours = nearby.group_by(&:employee).filter_map do |employee, list|
-        weeks = @pay_weeks.filter_map do |start|
-          total = list.sum { |shift| shift.hours_within(start.in_time_zone, (start + 7).in_time_zone) }
-          [start, total] if total > limit
-        end
-        [employee, weeks] if weeks.any?
-      end.sort_by { |employee, _| [employee.last_name.to_s, employee.first_name.to_s] }.to_h
-      shown = @shifts.map(&:id).to_set
-      @short_rest = {}
-      nearby.group_by(&:employee_id).each_value do |list|
-        list.sort_by(&:starts_at).each_cons(2) do |previous, shift|
-          gap = (shift.starts_at - previous.ends_at) / 3600.0
-          @short_rest[shift.id] = gap if gap < People::ScheduledShift::MIN_REST_HOURS && shown.include?(shift.id)
-        end
-      end
-    end
-
-    # Planned against worked for the Monday-Sunday week shown (#469 gap 10). Planned
-    # comes from shifts at every store (reusing the rows loaded for the warnings);
-    # worked from Rupert clock punches, which record no store. An open punch, or no
-    # punch at all that week, makes worked hours unknown: never counted as zero.
+    # Planned against worked for the week shown (#469 gap 10). Worked comes from Rupert clock
+    # punches; an open punch, or none that week, makes worked hours unknown, never zero.
     def load_planned_and_worked
       from = @week.in_time_zone
       to = (@week + 7).in_time_zone
       planned = Hash.new(0.0)
-      @nearby.each { |shift| planned[shift.employee_id] += shift.hours_within(from, to) }
-      people = @by_employee.map(&:first)
+      @schedule.shifts.each { |shift| planned[shift.employee_id] += shift.hours_within(from, to) if shift.employee_id }
+      people = @employees.select { |e| planned.key?(e.id) }
       punches = ClockShift.where.not(employee_id: nil).where('started_at < ? AND (ended_at IS NULL OR ended_at > ?)', to, from)
       punches = punches.where(employee_id: people.map(&:id)) if @location_id
       worked = {}

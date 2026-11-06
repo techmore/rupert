@@ -1,0 +1,40 @@
+<% content_for :title, 'Clock devices' %>
+<%# Settings template: the registers and tablets whose PIN punches are trusted (docs/time-and-pay/DECISIONS.md). %>
+<div class="page-medium space-y-6">
+  <%= page_header 'Clock devices', subtitle: 'Registers and counter tablets where staff clock in with a PIN.' %>
+
+  <section class="section-card space-y-3" aria-labelledby="this-device-heading">
+    <%= section_heading 'This browser', id: 'this-device-heading', hint: 'Register the register or tablet in front of you once; PIN punches from it are trusted from then on. Staff on their own phones sign in instead.' %>
+    <% if @this_device %>
+      <p class="text-sm"><span class="pill-fern">Registered</span> <%= @this_device.name %><%= " · #{@this_device.location.name}" if @this_device.location %></p>
+    <% else %>
+      <%= form_with url: people_clock_devices_path, method: :post, class: 'flex flex-wrap items-end gap-3', data: { turbo: false } do |f| %>
+        <div><%= f.label :name, 'Device name', class: 'field-label' %><%= f.text_field :name, class: 'input', required: true, placeholder: 'Front register', maxlength: 80 %></div>
+        <% if @locations.any? %><div><%= f.label :location_id, 'Store', class: 'field-label' %><%= f.select :location_id, @locations.map { |l| [l.name, l.id] }, { include_blank: 'Any store' }, class: 'select' %></div><% end %>
+        <%= f.submit 'Register this browser', class: 'btn-primary' %>
+      <% end %>
+    <% end %>
+    <p class="text-xs text-mocha">The kiosk lives at <%= link_to clock_kiosk_path, clock_kiosk_path, class: 'underline' %>; the same pad is on the POS strip.</p>
+  </section>
+
+  <section class="section-card" aria-labelledby="devices-heading">
+    <%= section_heading 'Registered devices', id: 'devices-heading' %>
+    <% if @devices.empty? %>
+      <%= empty_state 'No clock devices yet', hint: 'Register the browser on the register or counter tablet above.' %>
+    <% else %>
+      <ul class="row-list">
+        <% @devices.each do |device| %>
+          <li class="row-item" data-clock-device-id="<%= device.id %>">
+            <div class="min-w-0">
+              <p class="font-semibold text-ink"><%= device.name %> <% if device.revoked_at %><span class="pill-taupe">Revoked</span><% elsif @this_device&.id == device.id %><span class="pill-fern">This browser</span><% end %></p>
+              <p class="text-sm text-mocha"><%= device.location&.name || 'Any store' %> · <%= device.last_seen_at ? "Last used #{l(device.last_seen_at, format: :short)}" : 'Never used' %><%= " · registered by #{device.registered_by.display_name}" if device.registered_by %></p>
+            </div>
+            <div class="row-item-end">
+              <% if device.revoked_at.nil? %><%= button_to 'Revoke', people_clock_device_path(device), method: :delete, class: 'btn-ghost btn-sm', form: { data: { turbo_confirm: "Stop trusting #{device.name}? Staff there will need to sign in to clock." } } %><% end %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </section>
+</div>

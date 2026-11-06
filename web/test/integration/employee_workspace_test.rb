@@ -93,7 +93,7 @@ class EmployeeWorkspaceTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select '[role="table"][aria-label="Your calendar"]'
     assert_includes response.body, 'My vacation'
-    assert_includes response.body, '40h remaining'
+    assert_select '[data-balance="vacation"]', '40 h'
     refute_includes response.body, 'PRIVATE OTHER LEAVE'
     get employee_reports_path(format: :csv), params: { from: @from, to: @from + 30, kind: 'time_off', employee_id: @other.id }
     assert_response :success
@@ -117,9 +117,15 @@ class EmployeeWorkspaceTest < ActionDispatch::IntegrationTest
     assert_response :not_found
     post approve_people_leave_request_path(@leave)
     assert @leave.reload.requested?
-    post employee_time_off_path, params: { leave_request: { leave_type: 'vacation', starts_on: '2026-11-02', ends_on: '2026-11-02' } }
+    # Hours default from posted shifts (8 h a weekday when none are posted), so a one-day vacation is one tap.
+    assert_difference -> { @worker.leave_requests.count }, 1 do
+      post employee_time_off_path, params: { leave_request: { leave_type: 'vacation', starts_on: '2026-11-02', ends_on: '2026-11-02' } }
+    end
+    assert_redirected_to employee_time_off_path
+    assert_equal 8, @worker.leave_requests.order(:id).last.hours
+    post employee_time_off_path, params: { leave_request: { leave_type: 'vacation', starts_on: '2026-12-30', ends_on: '2027-01-02' } }
     assert_response :unprocessable_entity
-    assert_includes response.body, 'must be entered for paid time off'
+    assert_includes response.body, 'same calendar year'
     get employee_time_off_path, params: { month: 'not-a-month' }
     assert_redirected_to employee_app_path
   end
@@ -178,21 +184,20 @@ class EmployeeWorkspaceTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test 'the Pay tab shows the worker their own week: rate, base pay, commission, tips and the total' do
+  # The Pay tab is EmployeePayController (time & pay: tips): a pay-period report with hours, estimated
+  # gross, tips and bonuses; the detailed breakdown sits in a disclosure.
+  test 'the Pay tab shows the worker their own pay period: hours, rate, tips, bonuses and the total' do
     sign_in
     get employee_app_path
     assert_select 'nav[aria-label="My workspace"] a', 'Pay'
-    get employee_pay_path(week: @from.iso8601)
+    get employee_pay_path(period: @from.iso8601)
     assert_response :success
     assert_equal 'no-store', response.headers['Cache-Control']
-    assert_select '#pay-week h2', 'Your week'
-    assert_select '#pay-week', /Thursday to Wednesday/
-    %w[Hours\ worked Rate\ per\ hour Base\ pay Commission Tips Total\ for\ the\ week].each do |label|
-      assert_select '#pay-week dt', /#{label}/
-    end
-    assert_select '#pay-week dd', /\$20\.00/, 'the hourly rate on file'
-    assert_select '#pay-week', /Total = base pay \+ commission \+ tips/
-    get employee_pay_path(week: 'not-a-date')
+    assert_select 'h1', 'Pay'
+    ['Hours', 'Estimated gross', 'Tips', 'Bonuses'].each { |label| assert_select '.stat-label', label }
+    assert_select 'details.explainer dd', /\$20\.00/, 'the hourly rate on file'
+    assert_select 'body', /Next payday/
+    get employee_pay_path(period: 'not-a-date')
     assert_response :success
   end
 end

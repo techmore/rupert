@@ -109,6 +109,7 @@ class ModuleRegistry
     Entry.new(key: 'permissions', name: 'Permissions', path: -> { permissions_path }, permission: 'users.read', position: 92),
     Entry.new(key: 'departments', name: 'Departments', path: -> { people_departments_path }, permission: 'hr.read', position: 86),
     Entry.new(key: 'positions', name: 'Positions', path: -> { people_positions_path }, permission: 'hr.read', position: 87),
+    Entry.new(key: 'clock_devices', name: 'Clock devices', path: -> { people_clock_devices_path }, permission: 'hr.write', position: 87.2), # time & pay: clock
     Entry.new(key: 'time_keeping', name: 'Time keeping', path: -> { people_time_keeping_path }, permission: 'timesheets.read', position: 87),
     Entry.new(key: 'timesheets', name: 'Timesheets', path: -> { people_timesheets_path }, permission: 'timesheets.self', position: 87.5),
     Entry.new(key: 'punch_history', name: 'Punch report', path: -> { people_punch_history_path }, permission: 'timesheets.read', position: 88),
@@ -117,8 +118,17 @@ class ModuleRegistry
     Entry.new(key: 'schedule', name: 'Shifts', path: -> { people_scheduled_shifts_path }, permission: 'hr.read', position: 88),
     Entry.new(key: 'team_schedule', name: 'Team schedule', path: -> { people_team_schedule_path }, permission: 'timesheets.read', position: 88.3),
     Entry.new(key: 'leave', name: 'Leave & PTO', path: -> { people_leave_requests_path }, permission: 'leave.read', position: 89),
+    # time & pay: schedule
+    Entry.new(key: 'shift_trades', name: 'Shift trades', path: -> { people_shift_trades_path }, permission: 'schedule.write', position: 88.1),
+    Entry.new(key: 'blackout_dates', name: 'Blackout dates', path: -> { people_blackout_dates_path }, permission: 'leave.write', position: 89.1),
+    # time & pay: manager. Approvals is for anyone who decides something (see nav_for); pay periods for payroll readers.
+    Entry.new(key: 'approvals', name: 'Approvals', path: -> { people_approvals_path }, permission: nil, position: 87.3),
+    Entry.new(key: 'pay_periods', name: 'Pay periods', path: -> { people_pay_periods_path }, permission: 'payroll.read', position: 89.9),
+    Entry.new(key: 'time_rules', name: 'Time rules', path: -> { time_rules_settings_path }, permission: 'settings.write', position: 96.4),
     Entry.new(key: 'payroll', name: 'Payroll', path: -> { people_pay_runs_path }, permission: 'payroll.read', position: 90),
     Entry.new(key: 'incentives', name: 'Incentives model', path: -> { people_incentives_path }, permission: 'payroll.read', position: 90.5),
+    # time & pay: tips
+    Entry.new(key: 'tips', name: 'Tips', path: -> { people_tips_path }, permission: 'payroll.read', position: 90.2),
     Entry.new(key: 'employee_reports', name: 'Staff reports', path: -> { people_work_reports_path }, permission: 'hr.read', position: 86),
     Entry.new(key: 'training', name: 'Training progress', path: -> { learning_team_path }, permission: 'hr.read', position: 86.5),
     Entry.new(key: 'training_modules', name: 'Training', path: -> { training_modules_path }, permission: 'hr.read', position: 86.4),
@@ -189,6 +199,8 @@ class ModuleRegistry
         next false if %w[platform system].include?(entry.key) && !user.super_admin?
         next false if entry.key == 'employee_reports' && !user.can_manage_accounts?
         next user.can?('hr.read') || user.can?('schedule.write') if entry.key == 'schedule'
+        # time & pay: manager. Anyone who decides something sees the inbox.
+        next ModulePolicy.new(user, :module).approvals_read? if entry.key == 'approvals'
         next false if entry.key == 'owner_checklists' && !(user&.active? && (user.admin? || user.super_admin?))
 
         next false if %w[influencers marketing_events].include?(entry.key) && !FeatureFlag.enabled?(:marketing)
@@ -261,22 +273,22 @@ class ModuleRegistry
       # this area is visible to everyone.
       { key: 'me', name: 'Me', modules: %w[receipts time_clock learning] },
       { key: 'team', name: 'Team',
-        modules: %w[employees team_chat accounts permissions departments positions
-                    time_keeping timesheets punch_history square_timesheets ctrax_timesheets schedule team_schedule leave
-                    payroll incentives employee_reports training_modules training],
+        modules: %w[employees team_chat accounts permissions departments positions clock_devices
+                    approvals time_keeping timesheets punch_history square_timesheets ctrax_timesheets schedule team_schedule leave shift_trades blackout_dates
+                    pay_periods payroll tips incentives employee_reports training_modules training],
         groups: [
-          { name: 'People', modules: %w[employees team_chat accounts permissions departments positions] },
-          { name: 'Time', modules: %w[time_keeping timesheets punch_history square_timesheets ctrax_timesheets schedule team_schedule leave] },
-          { name: 'Pay & reports', modules: %w[payroll incentives employee_reports training_modules training] }
+          { name: 'People', modules: %w[employees team_chat accounts permissions departments positions clock_devices] },
+          { name: 'Time', modules: %w[approvals time_keeping timesheets punch_history square_timesheets ctrax_timesheets schedule team_schedule leave shift_trades blackout_dates] },
+          { name: 'Pay & reports', modules: %w[pay_periods payroll tips incentives employee_reports training_modules training] }
         ] },
       { key: 'system', name: 'System',
         modules: %w[system platform activity access_log
                     connections pos_connections sync uploads
-                    settings api_access_tokens agent_feedback ask_rupert_usage owner_checklists release roadmap style_guide],
+                    settings time_rules api_access_tokens agent_feedback ask_rupert_usage owner_checklists release roadmap style_guide],
         groups: [
           { name: 'Health', modules: %w[system platform activity access_log] },
           { name: 'Connections', modules: %w[connections pos_connections sync uploads] },
-          { name: 'Settings', modules: %w[settings api_access_tokens agent_feedback ask_rupert_usage owner_checklists release roadmap style_guide] }
+          { name: 'Settings', modules: %w[settings time_rules api_access_tokens agent_feedback ask_rupert_usage owner_checklists release roadmap style_guide] }
         ] }
     ].freeze
 

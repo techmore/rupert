@@ -1,0 +1,108 @@
+<% content_for :title, t('time.pay.title') %>
+<% money = ->(cents) { cents.nil? ? '–' : number_to_currency(cents / 100.0) } %>
+<% step = @rules.period_days %>
+<%= page_header t('time.pay.title'), subtitle: t('time.pay.subtitle') do %>
+  <%= link_to t('time.pay.reports'), employee_reports_path, class: 'btn-ghost' %>
+<% end %>
+
+<section class="card card-pad space-y-4" aria-labelledby="pay-period-title">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h2 id="pay-period-title" class="card-title"><%= @pay.start_date.strftime('%b %-d') %> – <%= @pay.end_date.strftime('%b %-d, %Y') %></h2>
+      <p class="text-xs text-mocha"><%= @final ? content_tag(:span, t('time.pay.final'), class: 'pill-fern') : content_tag(:span, t('time.pay.estimated'), class: 'pill-taupe') %> · <%= t('time.pay.next_payday') %> <strong><%= @payday.strftime('%a, %b %-d') %></strong></p>
+    </div>
+    <%= form_with url: employee_pay_path, method: :get, class: 'flex items-center gap-2', data: { turbo: false } do %>
+      <div class="date-stepper">
+        <%= link_to '‹', employee_pay_path(period: (@pay.start_date - step).iso8601), class: 'btn-ghost btn-sm', aria: { label: t('time.pay.previous_period') } %>
+        <%= date_field_tag :period, @pay.start_date, class: 'input', 'aria-label': t('time.pay.any_date') %>
+        <%= link_to '›', employee_pay_path(period: (@pay.start_date + step).iso8601), class: 'btn-ghost btn-sm', aria: { label: t('time.pay.next_period') } %>
+      </div>
+      <%= submit_tag t('time.pay.apply'), class: 'btn-ghost btn-sm', name: nil %>
+    <% end %>
+  </div>
+  <dl class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div class="stat"><dt class="stat-label"><%= t('time.pay.hours') %></dt><dd class="stat-value-sm mt-1 tabular-nums"><%= format_hours(@pay.paid_hours) %> h</dd></div>
+    <div class="stat"><dt class="stat-label"><%= @final ? t('time.pay.gross') : t('time.pay.estimated_gross') %></dt><dd class="stat-value-sm mt-1 tabular-nums"><%= money.call(@pay.base_cents.nil? ? nil : @pay.total_cents + @bonus_cents) %></dd></div>
+    <div class="stat"><dt class="stat-label"><%= t('time.pay.tips') %></dt><dd class="stat-value-sm mt-1 tabular-nums"><%= money.call(@pay.tip_cents) %></dd></div>
+    <div class="stat"><dt class="stat-label"><%= t('time.pay.bonuses') %></dt><dd class="stat-value-sm mt-1 tabular-nums"><%= money.call(@pay.commission_cents + @bonus_cents) %></dd></div>
+  </dl>
+  <details class="explainer"><summary><%= t('time.pay.how') %></summary>
+    <dl class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+      <dt class="text-mocha"><%= t('time.pay.base') %></dt><dd class="text-right tabular-nums"><%= @pay.hourly_rate_cents ? "#{format_hours(@pay.paid_hours)} h × #{money.call(@pay.hourly_rate_cents)} = #{money.call(@pay.base_cents)}" : money.call(@pay.base_cents) %></dd>
+      <% if @rules.overtime_enabled? %><dt class="text-mocha"><%= t('time.pay.overtime') %></dt><dd class="text-right tabular-nums"><%= format_hours(@pay.overtime_hours) %> h · <%= money.call(@pay.overtime_premium_cents.round) %></dd><% end %>
+      <dt class="text-mocha"><%= t('time.pay.card_tips') %></dt><dd class="text-right tabular-nums"><%= money.call(@pay.card_tip_cents) %></dd>
+      <dt class="text-mocha"><%= t('time.pay.cash_tips') %></dt><dd class="text-right tabular-nums"><%= money.call(@pay.cash_tip_cents) %></dd>
+      <% if @pay.adjustment_tip_cents != 0 %><dt class="text-mocha"><%= t('time.pay.tip_adjustments') %></dt><dd class="text-right tabular-nums"><%= money.call(@pay.adjustment_tip_cents) %></dd><% end %>
+      <% if (@pay.tip_cents - @pay.card_tip_cents - @pay.cash_tip_cents - @pay.adjustment_tip_cents) != 0 %><dt class="text-mocha"><%= t('time.pay.other_tips') %></dt><dd class="text-right tabular-nums"><%= money.call(@pay.tip_cents - @pay.card_tip_cents - @pay.cash_tip_cents - @pay.adjustment_tip_cents) %></dd><% end %>
+      <dt class="text-mocha"><%= t('time.pay.commission') %></dt><dd class="text-right tabular-nums"><%= money.call(@pay.commission_cents) %></dd>
+      <dt class="text-mocha"><%= t('time.pay.card_bonus') %></dt><dd class="text-right tabular-nums"><%= money.call(@bonus_cents) %></dd>
+    </dl>
+    <p class="mt-2 text-xs text-mocha"><%= @final ? t('time.pay.final_note') : t('time.pay.estimated_note', threshold: @time_rules.tip_method_label) %></p>
+    <% @pay.notes.each do |note| %><p class="text-xs text-mocha"><%= note %></p><% end %>
+  </details>
+</section>
+
+<section class="card" aria-labelledby="pay-days-title">
+  <div class="card-pad card-head"><h2 id="pay-days-title" class="card-title"><%= t('time.pay.by_day') %></h2></div>
+  <table class="table">
+    <thead><tr><th class="th"><%= t('time.pay.day') %></th><th class="th num"><%= t('time.pay.hours') %></th><th class="th num"><%= t('time.pay.card_tips') %></th><th class="th num"><%= t('time.pay.cash_tips') %></th></tr></thead>
+    <tbody>
+      <% @days.each do |row| %>
+        <tr class="<%= 'bg-haze/40' if row[:date] == Date.current %>">
+          <td class="td"><%= row[:date].strftime('%a %-d') %><% if row[:date] > Date.current %><span class="sr-only"> <%= t('time.pay.upcoming') %></span><% end %></td>
+          <td class="td num tabular-nums"><%= row[:hours].positive? ? "#{format_hours(row[:hours])} h" : '–' %></td>
+          <td class="td num tabular-nums"><%= row[:card_cents].zero? ? '–' : money.call(row[:card_cents]) %><% if row[:estimated] && row[:card_cents] != 0 %> <span class="pill-taupe"><%= t('time.pay.estimated') %></span><% end %></td>
+          <td class="td num tabular-nums"><%= row[:cash_cents].zero? ? '–' : money.call(row[:cash_cents]) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+    <tfoot><tr class="font-semibold"><td class="td"><%= t('time.pay.total') %></td><td class="td num tabular-nums"><%= format_hours(@pay.paid_hours) %> h</td><td class="td num tabular-nums"><%= money.call(@pay.card_tip_cents) %></td><td class="td num tabular-nums"><%= money.call(@pay.cash_tip_cents) %></td></tr></tfoot>
+  </table>
+</section>
+
+<section id="tips" class="card card-pad space-y-3" aria-labelledby="tips-title">
+  <div class="card-head"><h2 id="tips-title" class="card-title"><%= t('time.pay.tips') %></h2><span class="text-xs text-mocha"><%= @time_rules.tip_method_label %></span></div>
+  <% if @allocations.empty? %>
+    <p class="empty-state"><span class="empty-state-title"><%= t('time.pay.no_tips') %></span><span class="empty-state-hint"><%= t('time.pay.no_tips_hint') %></span></p>
+  <% else %>
+    <ul class="row-list" aria-label="<%= t('time.pay.tips') %>">
+      <% @allocations.reverse.first(40).each do |a| %>
+        <li class="row-item">
+          <div class="min-w-0">
+            <p class="font-semibold text-ink"><%= a.occurred_at.in_time_zone(BusinessClock.zone(location: a.location_id && Location.find_by(id: a.location_id))).strftime('%a %b %-d · %-l:%M %p') %></p>
+            <p class="text-xs text-mocha">
+              <%= a.tip_method == 'cash' ? t('time.pay.cash_tips') : t('time.pay.card_tips') %>
+              <% if a.tip_method == 'pool' && a.share_count.to_i > 1 %> · <%= t('time.pay.shared_with', count: a.share_count - 1) %> (<%= money.call(a.gross_tip_cents) %>)<% elsif a.tip_method == 'direct' %> · <%= t('time.pay.yours') %><% end %>
+              <% if a.note.present? %> · <%= a.note %><% end %>
+            </p>
+          </div>
+          <div class="row-item-end">
+            <span class="<%= a.status == 'estimated' ? 'pill-taupe' : (a.status == 'reversed' ? 'pill-rose' : 'pill-fern') %>"><%= a.status == 'estimated' ? t('time.pay.estimated') : (a.status == 'reversed' ? t('time.pay.reversed') : t('time.pay.final')) %></span>
+            <span class="num font-semibold tabular-nums <%= 'text-danger' if a.amount_cents.negative? %>"><%= money.call(a.amount_cents) %></span>
+          </div>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</section>
+
+<section id="cash-tips" class="card card-pad space-y-3" aria-labelledby="cash-tips-title">
+  <h2 id="cash-tips-title" class="card-title"><%= t('time.pay.add_cash_tips') %></h2>
+  <p class="text-sm text-mocha"><%= t('time.pay.add_cash_hint') %></p>
+  <%= form_with url: declare_employee_tips_path, method: :post, class: 'flex flex-wrap items-end gap-3', data: { turbo: false } do |f| %>
+    <%= hidden_field_tag :period, @pay.start_date.iso8601 %>
+    <div class="toolbar-field">
+      <%= label_tag 'cash_tips_shift_id', t('time.pay.shift'), class: 'field-label' %>
+      <%= select_tag 'cash_tips[shift_id]', options_for_select(@declarable_shifts.map { |s| ["#{s.started_at.strftime('%a %b %-d')} · #{shift_span(s.started_at, s.ended_at)}", s.id] } + [[t('time.pay.today_no_shift'), '']]), class: 'select', id: 'cash_tips_shift_id' %>
+    </div>
+    <div class="toolbar-field">
+      <%= label_tag 'cash_tips_amount', t('time.pay.amount'), class: 'field-label' %>
+      <%= number_field_tag 'cash_tips[amount]', nil, step: '0.01', min: 0, inputmode: 'decimal', required: true, class: 'input', id: 'cash_tips_amount', placeholder: '0.00' %>
+    </div>
+    <%= hidden_field_tag 'cash_tips[on]', Date.current.iso8601 %>
+    <%= f.submit t('time.pay.save_cash'), class: 'btn-primary', data: { turbo_submits_with: t('time.pay.saving') } %>
+  <% end %>
+</section>
+
+<%= render 'employee_workspace/payslips' %>
+<p class="text-sm text-mocha"><%= link_to t('time.pay.report_problem'), employee_reports_path(anchor: 'problems'), class: 'text-olive underline' %></p>

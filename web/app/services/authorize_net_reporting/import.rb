@@ -56,6 +56,7 @@ module AuthorizeNetReporting
       # OAuth rotation may have advanced this instance's setup version.
       version = @connection.lock_version
       fresh = PosConnection.find(@connection.id)
+      touched_ids = []
       fresh.with_lock do
         raise Client::Error.new('Reporting setup changed during import; retry.', reason: :changed) unless fresh.lock_version == version
         normalized_batches.each do |attrs|
@@ -71,11 +72,14 @@ module AuthorizeNetReporting
             history << { 'status' => attrs[:payment_status], 'observed_at' => observed_at.iso8601 }
           end
           record.update!(attrs.merge(status_history: history))
+          touched_ids << record.id
         end
         fresh.update!(last_reported_at: observed_at, last_report_status: 'complete',
           last_report_message: "Imported #{rows.size} payment observations and #{batches.size} settlement batches.") unless transaction_id
       end
       @connection.reload
+      # Tips: settle, attribute or reverse the tip on each refreshed transaction (Tips::Reconciliation).
+      Tips::AttributeAuthorizeNetJob.perform_later(tenant_id: @connection.tenant_id, transaction_ids: touched_ids) if touched_ids.any?
       { transactions: rows.size, batches: batches.size }
     rescue KeyError, ArgumentError, TypeError
       raise Client::Error.new('Reporting data did not match the verified contract. No import was completed.', reason: :response)

@@ -38,7 +38,8 @@ class ApplicationController < ActionController::Base
     allowed = case controller_path
     when 'learning'
       %w[index show complete preferences welcome onboard].include?(action_name)
-    when 'sessions', 'oauth', 'employee_app', 'employee_workspace', 'employee_training', 'employee_preview', 'customer_displays', 'feedback_reports',
+    when 'sessions', 'oauth', 'employee_app', 'employee_workspace', 'employee_pay', 'employee_training', 'employee_preview', 'customer_displays', 'feedback_reports',
+      'employee_trades', 'employee_availability', # time & pay: schedule
       'next_things' # the Next thing to do bar: an employee sees only their own tasks there (NextThings)
       true
     when 'employee_access'
@@ -67,7 +68,9 @@ class ApplicationController < ActionController::Base
     when 'people/square_timesheets', 'people/ctrax_timesheets'
       %w[index show].include?(action_name)
     when 'time_clock'
-      %w[index clock_in clock_out request_correction fix_clock_out].include?(action_name)
+      %w[index clock_in clock_out request_correction fix_clock_out start_break end_break].include?(action_name)
+    when 'pin_clock' # time & pay: clock — the PIN pad; the service only accepts the signed-in person's own PIN here
+      true
     when 'point_of_sale', 'ctrax_pos'
       %w[index quote].include?(action_name)
     when 'pos_displays', 'pos_checkouts', 'pos_event_registers' # event register: the recorder checks the event's staff list

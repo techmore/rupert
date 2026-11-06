@@ -1,0 +1,36 @@
+<% content_for :title, "#{@trade.kind_label} · #{trade_shift_label(@trade.scheduled_shift)}" %>
+<div class="page-narrow space-y-6">
+  <%= page_header "#{@trade.kind_label}: #{trade_shift_label(@trade.scheduled_shift)}", eyebrow: 'Shift trade' do %>
+    <% if @trade.status == 'accepted' && Current.user.can?('schedule.write') %>
+      <%= button_to 'Approve', approve_people_shift_trade_path(@trade), class: 'btn-primary' %>
+    <% end %>
+  <% end %>
+  <dl class="facts">
+    <dt>Status</dt><dd><%= trade_status_pill(@trade) %></dd>
+    <dt>From</dt><dd><%= @trade.from_employee&.name || 'Open shift' %></dd>
+    <dt>To</dt><dd><%= @trade.to_employee&.name || 'Nobody yet' %></dd>
+    <% if @trade.kind == 'swap' && @trade.counter_shift %><dt>In exchange for</dt><dd><%= trade_shift_label(@trade.counter_shift) %> (<%= @trade.counter_shift.employee&.name %>)</dd><% end %>
+    <% if @trade.note.present? %><dt>Note</dt><dd><%= @trade.note %></dd><% end %>
+    <dt>Asked</dt><dd><%= @trade.created_at.strftime('%b %-d, %Y · %-l:%M %p') %></dd>
+    <% if @trade.reviewed_at %><dt>Decided</dt><dd><%= @trade.reviewed_at.strftime('%b %-d, %Y · %-l:%M %p') %><%= " by #{@trade.reviewed_by.display_name}" if @trade.reviewed_by %><%= " · #{@trade.review_note}" if @trade.review_note.present? %></dd><% end %>
+  </dl>
+  <section class="section-card">
+    <div class="card-head"><h2 class="card-title">Checks</h2></div>
+    <% if @trade.checks.empty? %>
+      <p class="text-sm text-mocha">No warnings. Double-booking, overtime, minors, time off, notice and position were all clear.</p>
+    <% else %>
+      <ul class="space-y-2">
+        <% @trade.checks.each do |check| %><li class="flex items-start gap-2 text-sm"><span class="<%= check['level'] == 'block' ? 'pill-rose' : 'pill-clay' %>"><%= check['level'] == 'block' ? 'Blocks' : 'Warning' %></span><span><%= check['message'] %></span></li><% end %>
+      </ul>
+    <% end %>
+  </section>
+  <% if @trade.status == 'accepted' && Current.user.can?('schedule.write') %>
+    <section class="section-card">
+      <div class="card-head"><h2 class="card-title">Deny with a note</h2></div>
+      <%= form_with url: deny_people_shift_trade_path(@trade), class: 'space-y-3' do |f| %>
+        <%= f.text_area :note, rows: 2, maxlength: 1000, class: 'input w-full', placeholder: 'Why (optional). Both people see this.' %>
+        <%= f.submit 'Deny', class: 'btn-ghost' %>
+      <% end %>
+    </section>
+  <% end %>
+</div>

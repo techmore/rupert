@@ -50,7 +50,7 @@ class EmployeePreviewTest < ActionDispatch::IntegrationTest
           refute_includes response.body, 'PRIVATE REAL'
           refute_includes response.body, 'PRIVATE REAL WORKER'
           assert_select 'a[href^="/people"], a[href="/sales"], a[href="/reconcile"], a[href="/time_clock"]', count: 0
-          assert_select 'nav[aria-label="My workspace"] a', count: 6
+          assert_select 'nav[aria-label="My workspace"] a', count: 5
           response.parsed_body.css('form:not([method="get"])').each do |form|
             assert form['action'].start_with?('/employee/preview/')
             assert_equal 1, form.css('fieldset[disabled]').size
@@ -66,7 +66,7 @@ class EmployeePreviewTest < ActionDispatch::IntegrationTest
     get employee_preview_time_off_path
     assert_select 'a[aria-label="Next month"][href^="/employee/preview/time-off"]'
     assert_select 'a[aria-label="Previous month"][href^="/employee/preview/time-off"]'
-    assert_includes response.body, '64h remaining'
+    assert_select '[data-balance="vacation"]', '64 h'
     assert_includes response.body, 'Example vacation request'
     get employee_preview_time_off_path(month: Date.current.next_month.strftime('%Y-%m'))
     assert_response :success

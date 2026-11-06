@@ -76,3 +76,23 @@ specific to time and pay so that web, POS and the iPhone app say the same thing.
 | Tips | Report | Period stepper; Settled vs estimated vs unassigned. |
 | Payroll periods | List → Detail | Lock, Download CSV. |
 | Time rules | Settings | One section-card per topic, store selector. |
+
+## Tips (F3 notes)
+
+- A tip row's state pill: `Estimated` (taupe) until the batch settles, `Final` (fern) once settled or carried, `Reversed` (rose) on an original that a refund/void undid; its mirrored negative row shows as Final.
+- Pay page stat row: Hours (paid hours, unpaid breaks excluded) · Estimated gross / Gross pay (once locked) · Tips · Bonuses. "How this adds up" is a disclosure.
+- Manager Tips page stats: Terminal tips · Settled · Estimated, not yet settled · Unassigned · Reversed. Sums always include reversal pairs so the ledger nets.
+- Cash tips: "Add cash tips" → pick shift (latest first) → amount → **Save cash tips**.
+## Schedule (F2 notes)
+
+- A planned shift is a **Draft** (`pill-taupe`, dashed left edge on the builder chip) until the manager **Posts the week**; only posted shifts reach staff, the calendar feed and the staff app. A posted shift is never deleted: **Cancel shift** marks it and tells the person.
+- Builder warning chips on a shift: `Time off` / `Time off requested`, `Unavailable`, `9.5 h this week` (over the planned limit), `Short rest`, `Minor · …`, `Blackout`. They warn; only double-booking blocks.
+- Trade words: **Give away**, **Swap**, **Pick up**; status pills Open (`clay`), Waiting (`clay`), Approved (`fern`), Denied (`rose`), Cancelled / Expired (`taupe`). The manager page is **Shift trades**; the employee page is **My trades**.
+- Time off types are chips (Vacation · Sick · Personal · Unpaid). Request status pills: Waiting (`clay`), Approved (`fern`), Denied (`rose`), Cancelled (`taupe`).
+- Spanish strings for these screens live in `config/locales/time_schedule.es.yml`.
+## Clock (F1 notes)
+
+- **PIN pad** (`shared/_pin_clock`, `pin_clock_controller.js`): the same dialog on the POS strip (`Clock` button with a state dot: fern in, olive on break, rose never clocked out, taupe out) and full screen at `/clock`. Four digits clock in; already in → Clock out / Break / Meal / End break; forgotten clock-out → "You never clocked out on Wed" with Planned end / 8 hours / Another time. Confirmation lines: `Clocked in · 9:02 AM ✓`, `Clocked out · 5:31 PM · 8.2 h`, `On break · 1:05 PM`, `On meal · …`, `Back at work · … ✓`.
+- **Trusted device**: a manager registers the register/tablet at **Team → Clock devices**; the kiosk says "This device is not registered" otherwise. Error copy: "That PIN didn't match.", "Too many wrong PINs. Try again in 10 minutes.", "Use the store register, or sign in on your phone."
+- **Fix a punch** (`time_clock/_fix_punch_form`): clock-in, clock-out, the breaks as rows, why. Pills on history rows: Waiting (clay) · Approved (fern) · Denied (rose). A shift closed from the pad shows `Closed from the clock` (olive) to reviewers.
+- **Staff Settings** (`/employee/devices`): Language / Idioma, Clock PIN, Signed-in devices. All clock strings live in `config/locales/time_clock.{en,es}.yml` under `time.clock.*`.

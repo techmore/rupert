@@ -4,6 +4,10 @@
 # operational shift but never silently replaces the audit request.
 class ClockCorrection < ApplicationRecord
   include TenantScoped
+  include LockedPayPeriodGuard
+
+  # Approving a correction changes hours on the original and the proposed dates; both must be open.
+  guards_pay_period { status == 'approved' && status_changed? ? [original_started_at, original_ended_at, proposed_started_at, proposed_ended_at] : [] }
 
   belongs_to :clock_shift
   belongs_to :requester, class_name: 'User', foreign_key: :requested_by_id, optional: true
@@ -23,7 +27,18 @@ class ClockCorrection < ApplicationRecord
     !!(user&.active? && (user.can_review_timesheets? || user.can?('payroll.write')))
   end
 
+  # Break lists carried with the request: [{ 'kind', 'started_at', 'ended_at' }, …].
+  def proposed_breaks = parse_breaks(proposed_breaks_json)
+  def original_breaks = parse_breaks(original_breaks_json)
+  def changes_breaks? = proposed_breaks_json.present? && proposed_breaks != original_breaks
+
   private
+
+  def parse_breaks(json)
+    json.present? ? Array(JSON.parse(json)).map { |row| row.to_h.slice('kind', 'started_at', 'ended_at') } : []
+  rescue JSON::ParserError
+    []
+  end
 
   def ordered_proposal
     return if proposed_started_at.nil? || proposed_ended_at.nil?

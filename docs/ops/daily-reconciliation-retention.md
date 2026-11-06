@@ -51,6 +51,15 @@ New native IRIS Daily Deposits and monthly Health CSV imports retain exact sourc
 
 Historical IRIS originals were not retained by previous importer versions and cannot be reconstructed from parsed snapshots. Reupload an available original or retain it directly. This workflow does not fabricate a native document from parsed data, certify API entitlement, or enable unavailable source integrations.
 
+### Time and pay records
+
+Clock punches (`clock_shifts`, `clock_breaks`), punch corrections (`clock_corrections`), the tips ledger
+(`tip_allocations`), pay periods and their adjustments, and the leave ledger (`leave_accruals`) are kept
+for at least **four years** (FLSA asks for three years of payroll records, plus a year) and are **not pruned**
+by `DataRetention` (its `POLICIES` list only derived mirrors and logs; `test/services/data_retention_test.rb`
+pins this). A reversal in the tips ledger is a new negative row, never a delete. Offboarding a worker revokes
+access and clears their PIN but keeps every time and pay record (`docs/time-and-pay/DECISIONS.md`).
+
 ## Storage, access and recovery
 
 Original file bytes are Base64 encoded then Rails-encrypted in `reconciliation_documents`, together with encrypted metadata. Downloads verify SHA-256 and byte size and use attachment disposition, no-store and nosniff headers. Filenames, source, period, checksums and retention timestamps are indexed metadata rather than secrets. Tenant scopes cover files, reviews and all report observations. Reading/exporting requires `reports.read`; uploading, archiving and reviewing additionally require `reports.write`. Existing source-import permissions continue to apply to imports.
