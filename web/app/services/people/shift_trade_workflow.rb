@@ -195,9 +195,9 @@ module People
         shift = trade.scheduled_shift
         url = Rails.application.routes.url_helpers.employee_trades_path
         users = if trade.kind == 'swap'
-                  [trade.to_employee&.user].compact
-                else
-                  People::Employee.active.where.not(id: trade.from_employee_id).select { |e| e.works_at?(shift.location_id) }.filter_map(&:user)
+          [trade.to_employee&.user].compact
+        else
+          People::Employee.active.where.not(id: trade.from_employee_id).select { |e| e.works_at?(shift.location_id) }.filter_map(&:user)
                 end
         TimeNotifier.trade_offer(users, trade: trade, url: url)
       end

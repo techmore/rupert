@@ -70,10 +70,10 @@ class EmployeeWorkspaceController < AuthenticatedController
       .select { |s| @worker.works_at?(s.location_id) && s.starts_at > Time.current }
     @team = params[:team].to_s == '1'
     @team_shifts = if @team
-                     People::ScheduledShift.live.published.assigned.between(@week, @week + 6).where.not(employee_id: @worker.id)
-                       .chronological.includes(:employee, :location).select { |s| @worker.works_at?(s.location_id) }
-                   else
-                     []
+      People::ScheduledShift.live.published.assigned.between(@week, @week + 6).where.not(employee_id: @worker.id)
+        .chronological.includes(:employee, :location).select { |s| @worker.works_at?(s.location_id) }
+    else
+      []
                    end
     @blackouts = People::BlackoutDate.overlapping(@week, @week + 6).to_a.select { |b| b.location_id.nil? || @worker.works_at?(b.location_id) }
     @live_trades = People::ShiftTrade.live.where(scheduled_shift_id: @shifts.map(&:id)).index_by(&:scheduled_shift_id)
