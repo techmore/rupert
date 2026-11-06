@@ -93,7 +93,7 @@ class EmployeeWorkspaceTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select '[role="table"][aria-label="Your calendar"]'
     assert_includes response.body, 'My vacation'
-    assert_includes response.body, '40h remaining'
+    assert_select '[data-balance="vacation"]', '40 h'
     refute_includes response.body, 'PRIVATE OTHER LEAVE'
     get employee_reports_path(format: :csv), params: { from: @from, to: @from + 30, kind: 'time_off', employee_id: @other.id }
     assert_response :success
@@ -117,9 +117,15 @@ class EmployeeWorkspaceTest < ActionDispatch::IntegrationTest
     assert_response :not_found
     post approve_people_leave_request_path(@leave)
     assert @leave.reload.requested?
-    post employee_time_off_path, params: { leave_request: { leave_type: 'vacation', starts_on: '2026-11-02', ends_on: '2026-11-02' } }
+    # Hours default from posted shifts (8 h a weekday when none are posted), so a one-day vacation is one tap.
+    assert_difference -> { @worker.leave_requests.count }, 1 do
+      post employee_time_off_path, params: { leave_request: { leave_type: 'vacation', starts_on: '2026-11-02', ends_on: '2026-11-02' } }
+    end
+    assert_redirected_to employee_time_off_path
+    assert_equal 8, @worker.leave_requests.order(:id).last.hours
+    post employee_time_off_path, params: { leave_request: { leave_type: 'vacation', starts_on: '2026-12-30', ends_on: '2027-01-02' } }
     assert_response :unprocessable_entity
-    assert_includes response.body, 'must be entered for paid time off'
+    assert_includes response.body, 'same calendar year'
     get employee_time_off_path, params: { month: 'not-a-month' }
     assert_redirected_to employee_app_path
   end

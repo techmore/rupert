@@ -1,13 +1,25 @@
 <% content_for :title, "Shifts" %>
-<% can_write = Current.user.can?('schedule.write') || Current.user.can?('hr.write') %>
 <% store = @location_id.present? ? { location_id: @location_id } : {} %>
 <% store_name = @locations.find { |location| location.id == @location_id }&.name %>
-<div class="space-y-6">
-  <%= page_header 'Shifts', subtitle: 'Planned shifts for the week.' do %>
+<% week_total = @schedule.labor_total %>
+<div class="space-y-6" data-controller="schedule-builder" data-schedule-builder-create-url-value="<%= people_scheduled_shifts_path(format: :json) %>" data-schedule-builder-location-value="<%= @location_id %>" data-schedule-builder-week-value="<%= @week.iso8601 %>" data-schedule-builder-can-write-value="<%= @can_write %>">
+  <% menu = [] %>
+  <% if @can_write %>
+    <% menu << ['Copy last week', copy_last_week_people_scheduled_shifts_path(store.merge(week: @week.iso8601)), { method: :post, data: { turbo_confirm: "Copy #{(@week - 7).strftime('%b %-d')} – #{(@week - 1).strftime('%b %-d')} into this week as drafts? Shifts that overlap one already planned are skipped." } }] %>
+    <% @templates.each { |template| menu << ["Apply template: #{template.name}", apply_people_schedule_template_path(template, store.merge(week: @week.iso8601)), { method: :post, data: { turbo_confirm: "Add the shifts of “#{template.name}” to this week as drafts?" } }] } %>
+    <% menu << ['Save week as template', new_people_schedule_template_path(store.merge(week: @week.iso8601))] %>
+    <% menu << ['Availability', people_availabilities_path] %>
+    <% menu << ['Blackout dates', people_blackout_dates_path] %>
+    <% menu << ['Add shift (full form)', new_people_scheduled_shift_path(store.merge(date: [@week, Date.current].max.iso8601))] %>
+  <% end %>
+  <%= page_header 'Shifts', subtitle: "Plan the week, then post it to staff.#{" #{store_name}." if store_name}", menu: menu do %>
     <%= full_window_button %>
-    <% if can_write %>
-      <%= button_to "Copy last week", copy_last_week_people_scheduled_shifts_path(week: @week.iso8601), class: "btn-ghost", form: { data: { turbo_confirm: "Copy #{(@week - 7).strftime('%b %-d')} – #{(@week - 1).strftime('%b %-d')} into this week? Shifts that overlap one already planned are skipped." } } %>
-      <%= link_to "Add shift", new_people_scheduled_shift_path(store.merge(date: [@week, Date.current].max.iso8601)), class: "btn-primary" %>
+    <% if @can_write %>
+      <% if @schedule.draft_count.positive? %>
+        <%= button_to "Post week", publish_people_scheduled_shifts_path(store.merge(week: @week.iso8601)), class: "btn-primary", form: { data: { turbo_confirm: "Post #{pluralize(@schedule.draft_count, 'draft shift')} to staff? Everyone with a shift is told." } } %>
+      <% else %>
+        <button type="button" class="btn-primary" data-action="schedule-builder#addAnywhere">Add shift</button>
+      <% end %>
     <% end %>
   <% end %>
 
@@ -19,60 +31,69 @@
         <%= link_to "›", people_scheduled_shifts_path(store.merge(week: (@week + 7).iso8601)), class: "btn-ghost btn-sm", aria: { label: "Next week" }, title: "Next week" %>
       </div>
       <% unless Date.current.between?(@week, @week + 6) %><%= link_to "This week", people_scheduled_shifts_path(store), class: "btn-ghost btn-sm" %><% end %>
+      <% if @publication %><span class="pill-fern" data-posted>Posted <%= @publication.published_at.strftime('%b %-d') %></span><% elsif @schedule.shifts.any? %><span class="pill-taupe" data-posted>Not posted</span><% end %>
+      <% if @schedule.draft_count.positive? && @publication %><span class="pill-clay"><%= pluralize(@schedule.draft_count, 'draft') %> since</span><% end %>
     </nav>
     <%= render 'people/scheduled_shifts/store_filter', url: people_scheduled_shifts_path, week: @week, locations: @locations, location_id: @location_id %>
   </section>
 
-  <% if @on_leave.any? %>
-    <p role="note" class="rounded-xl border border-warn-edge bg-warn-bg p-3 text-sm text-warn" data-leave-warning><%= pluralize(@on_leave.size, 'shift') %> this week <%= @on_leave.size == 1 ? 'falls' : 'fall' %> on approved leave. They are marked below; the shift is still planned until you change it.</p>
-  <% end %>
+  <div class="grid gap-3 sm:grid-cols-4" data-schedule-builder-target="labor" aria-label="Labor this week">
+    <div class="stat"><div class="stat-label">Planned hours</div><p class="stat-value-sm tabular-nums" data-labor="hours"><%= hours_label(week_total[:hours]) %> h</p></div>
+    <div class="stat"><div class="stat-label">Labor cost</div><p class="stat-value-sm tabular-nums" data-labor="cost"><%= number_to_currency(week_total[:cost_cents] / 100.0) %></p><% if week_total[:salaried].positive? %><p class="text-xs text-mocha">Salaried staff not included</p><% end %></div>
+    <div class="stat"><div class="stat-label">Usual sales<span class="sr-only">, average of the last 4 weeks</span></div><p class="stat-value-sm tabular-nums" data-labor="sales"><%= number_to_currency(week_total[:sales_cents] / 100.0) %></p><p class="text-xs text-mocha">Same days, last 4 weeks</p></div>
+    <div class="stat"><div class="stat-label">Labor % of sales</div><p class="stat-value-sm tabular-nums" data-labor="percent"><%= (pct = People::ScheduleWeek.percent(week_total[:cost_cents], week_total[:sales_cents])) ? "#{pct}%" : '–' %></p></div>
+  </div>
 
-  <% if @over_hours.any? %>
-    <div role="note" class="rounded-xl border border-warn-edge bg-warn-bg p-3 text-sm text-warn" data-hours-warning>
-      <p>Over <%= People::ScheduledShift::PLANNED_HOURS_LIMIT %> planned hours in a pay week (Thursday – Wednesday). These are planned hours, not pay:</p>
-      <ul class="mt-1 list-disc pl-5">
-        <% @over_hours.each do |employee, weeks| %>
-          <% weeks.each do |start, total| %><li><%= employee.full_name %>: <%= hours_label(total) %> hours, <%= pay_week_label(start) %></li><% end %>
-        <% end %>
-      </ul>
-    </div>
-  <% end %>
-
-  <% if @short_rest.any? %>
-    <p role="note" class="rounded-xl border border-warn-edge bg-warn-bg p-3 text-sm text-warn" data-rest-warning><%= pluralize(@short_rest.size, 'shift') %> this week <%= @short_rest.size == 1 ? 'starts' : 'start' %> less than <%= People::ScheduledShift::MIN_REST_HOURS %> hours after the same person's previous shift ends. They are marked below; nothing is changed.</p>
-  <% end %>
-
-  <div class="card">
+  <div class="card schedule-grid-card">
     <div class="table-region" role="region" tabindex="0" aria-label="Planned shifts">
-      <table class="table">
+      <table class="table schedule-grid" data-schedule-builder-target="grid">
         <thead>
           <tr>
-            <th scope="col" class="th">Staff member</th>
-            <% (@week..(@week + 6)).each do |day| %><th scope="col" class="th"><%= day.strftime("%a %-d") %></th><% end %>
-            <th scope="col" class="th num">Hours (Mon – Sun)</th>
+            <th scope="col" class="th schedule-grid-name">Staff member</th>
+            <% @schedule.days.each do |day| %>
+              <% row = @schedule.labor[day] %>
+              <th scope="col" class="th schedule-grid-day<%= ' schedule-grid-today' if day == Date.current %>" data-date="<%= day.iso8601 %>">
+                <span><%= day.strftime("%a %-d") %></span>
+                <span class="schedule-grid-daylabor tabular-nums" data-day-labor="<%= day.iso8601 %>"><%= hours_label(row[:hours]) %> h · <%= (p = People::ScheduleWeek.percent(row[:cost_cents], row[:sales_cents])) ? "#{p}%" : number_to_currency(row[:cost_cents] / 100.0) %></span>
+              </th>
+            <% end %>
+            <th scope="col" class="th num">Hours</th>
           </tr>
         </thead>
         <tbody>
-          <% if @by_employee.empty? %>
-            <tr><td colspan="9" class="empty-row">No shifts planned this week<%= " at #{store_name}" if store_name %>.<%= ' Add the first shift.' if can_write %></td></tr>
+          <tr class="schedule-grid-row schedule-grid-open" data-employee-id="">
+            <th scope="row" class="td schedule-grid-name"><span class="font-medium text-ink">Open shifts</span><span class="block text-xs text-mocha">Anyone can pick up</span></th>
+            <% @schedule.days.each do |day| %>
+              <td class="td schedule-grid-cell" data-employee-id="" data-date="<%= day.iso8601 %>" <% if @can_write %>data-action="dragover->schedule-builder#dragOver dragleave->schedule-builder#dragLeave drop->schedule-builder#drop click->schedule-builder#cellClick"<% end %>>
+                <% @schedule.open_shifts_for(day).each do |shift| %><%= render 'people/scheduled_shifts/shift', shift: shift, warnings: [], can_write: @can_write, location_id: @location_id %><% end %>
+              </td>
+            <% end %>
+            <td class="td num tabular-nums" data-row-hours=""><%= hours_label(@schedule.open_shifts.sum(&:hours)) %></td>
+          </tr>
+          <% if @employees.empty? %>
+            <tr><td colspan="9" class="empty-row">No active staff yet. Add staff members under Team → Staff to plan shifts.</td></tr>
           <% end %>
-          <% @by_employee.each do |employee, shifts| %>
-            <tr class="align-top">
-              <td class="td font-medium text-ink"><%= employee.full_name %></td>
-              <% (@week..(@week + 6)).each do |day| %>
-                <td class="td text-mocha">
-                  <% shifts.select { |shift| shift.starts_at.to_date == day }.each do |shift| %>
-                    <p class="whitespace-nowrap"><%= can_write ? link_to(shift.time_label, edit_people_scheduled_shift_path(shift), class: "text-olive hover:underline") : shift.time_label %><% if shift.location && @location_id.blank? %><span class="block text-xs" data-shift-store="<%= shift.id %>"><%= shift.location.name %></span><% end %><% if shift.role_label.present? %><span class="block text-xs"><%= shift.role_label %></span><% end %><% if @on_leave.include?(shift.id) %><span class="block text-xs font-semibold text-warn" data-on-leave="<%= shift.id %>">On approved leave</span><% end %><% if @short_rest.key?(shift.id) %><span class="block text-xs font-semibold text-warn" data-short-rest="<%= shift.id %>">Short rest: <%= hours_label(@short_rest[shift.id]) %> h since last shift</span><% end %></p>
-                  <% end %>
+          <% @employees.each do |employee| %>
+            <% rows = @schedule.shifts.select { |s| s.employee_id == employee.id } %>
+            <tr class="schedule-grid-row" data-employee-id="<%= employee.id %>">
+              <th scope="row" class="td schedule-grid-name">
+                <span class="font-medium text-ink"><%= employee.full_name %></span>
+                <span class="block text-xs text-mocha"><%= [employee.position&.name, (employee.current_pay_rate&.pay_type == 'hourly' && employee.current_pay_rate.hourly_rate_cents.to_i.positive? ? "#{number_to_currency(employee.current_pay_rate.hourly_rate_cents / 100.0)}/h" : nil), ('Minor' if employee.minor?)].compact.join(' · ') %></span>
+              </th>
+              <% @schedule.days.each do |day| %>
+                <td class="td schedule-grid-cell" data-employee-id="<%= employee.id %>" data-date="<%= day.iso8601 %>" <% if @can_write %>data-action="dragover->schedule-builder#dragOver dragleave->schedule-builder#dragLeave drop->schedule-builder#drop click->schedule-builder#cellClick"<% end %>>
+                  <% @schedule.shifts_for(employee.id, day).each do |shift| %><%= render 'people/scheduled_shifts/shift', shift: shift, warnings: @schedule.warnings[shift], can_write: @can_write, location_id: @location_id %><% end %>
                 </td>
               <% end %>
-              <td class="td num"><%= hours_label(shifts.sum(&:hours)) %><% if @over_hours.key?(employee) %><span class="block text-xs font-semibold text-warn" data-over-hours="<%= employee.id %>">Over <%= People::ScheduledShift::PLANNED_HOURS_LIMIT %> in pay week</span><% end %></td>
+              <td class="td num tabular-nums" data-row-hours="<%= employee.id %>"><%= hours_label(rows.sum(&:hours)) %></td>
             </tr>
           <% end %>
         </tbody>
       </table>
     </div>
+    <p class="row-list-foot text-xs text-mocha"><% if @can_write %>Drag a shift to move it, drag its lower edge to change the end, click an empty day to add. <% end %>Chips on a shift flag time off, availability, hours over <%= People::ScheduledShift::PLANNED_HOURS_LIMIT %>, short rest, minor rules and blackout dates; they warn and never block.</p>
   </div>
+
   <section class="card" aria-labelledby="planned-worked-title" data-planned-worked>
     <div class="card-head"><h2 id="planned-worked-title" class="card-title">Planned and worked</h2></div>
     <div class="table-region" role="region" tabindex="0" aria-label="Planned and worked hours">
@@ -106,9 +127,50 @@
       </table>
     </div>
     <details class="explainer row-list-foot"><summary class="explainer-summary">How these hours are counted</summary>
-      <p class="mt-2 text-sm text-mocha">Hours for <%= @week.strftime('%b %-d') %> – <%= (@week + 6).strftime('%b %-d, %Y') %>, at every store: clock punches do not record a store<%= ', so the store filter only chooses who is listed' if store_name %>. Worked hours come from Rupert clock punches. Someone still clocked in, or with no punches this week, shows Unknown rather than zero. Square and C-Trax hours are on Team schedule.</p>
+      <p class="mt-2 text-sm text-mocha">Hours for <%= @week.strftime('%b %-d') %> – <%= (@week + 6).strftime('%b %-d, %Y') %>. Worked hours come from Rupert clock punches. Someone still clocked in, or with no punches this week, shows Unknown rather than zero. Square and C-Trax hours are on Team schedule.</p>
     </details>
   </section>
 
-  <p class="text-xs text-mocha">Staff see their own shifts on the Schedule tab of their workspace.</p>
+  <p class="text-xs text-mocha">Staff see posted shifts on the Schedule tab of their workspace; drafts stay private until you post the week.</p>
+
+  <% if @can_write %>
+    <dialog class="schedule-dialog" data-schedule-builder-target="dialog" aria-labelledby="shift-dialog-title">
+      <form method="dialog" class="card card-pad space-y-4" data-schedule-builder-target="form" data-action="submit->schedule-builder#submitForm">
+        <h2 id="shift-dialog-title" class="card-title" data-schedule-builder-target="dialogTitle">Add shift</h2>
+        <p role="alert" class="text-sm text-rose hidden" data-schedule-builder-target="error"></p>
+        <input type="hidden" name="id" data-schedule-builder-target="fieldId">
+        <input type="hidden" name="date" data-schedule-builder-target="fieldDate">
+        <div>
+          <label class="field-label" for="shift-employee">Staff member</label>
+          <select id="shift-employee" name="employee_id" class="select w-full" data-schedule-builder-target="fieldEmployee">
+            <option value="open">Open shift (anyone can pick up)</option>
+            <% @employees.each do |employee| %><option value="<%= employee.id %>"><%= employee.full_name %></option><% end %>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="field-label" for="shift-start">Starts</label><input id="shift-start" name="start" type="time" class="input w-full" step="900" required data-schedule-builder-target="fieldStart"></div>
+          <div><label class="field-label" for="shift-end">Ends</label><input id="shift-end" name="end" type="time" class="input w-full" step="900" required data-schedule-builder-target="fieldEnd"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="field-label" for="shift-position">Position</label>
+            <select id="shift-position" name="position_id" class="select w-full" data-schedule-builder-target="fieldPosition"><option value="">Any</option><% @positions.each do |position| %><option value="<%= position.id %>"><%= position.name %></option><% end %></select></div>
+          <div><label class="field-label" for="shift-break">Unpaid break (min)</label><input id="shift-break" name="break_minutes" type="number" min="0" max="240" step="5" class="input w-full" value="<%= TimeRules.for(@location_id).meal_break_minutes %>" data-schedule-builder-target="fieldBreak"></div>
+        </div>
+        <div><label class="field-label" for="shift-role">Role or station</label><input id="shift-role" name="role_label" type="text" maxlength="80" class="input w-full" placeholder="e.g. Front counter" data-schedule-builder-target="fieldRole"></div>
+        <% if @locations.size > 1 || @location_id.blank? %>
+          <div><label class="field-label" for="shift-location">Store</label>
+            <select id="shift-location" name="location_id" class="select w-full" data-schedule-builder-target="fieldLocation"><option value="">No store</option><% @locations.each do |location| %><option value="<%= location.id %>" <%= 'selected' if location.id == @location_id %>><%= location.picker_label %></option><% end %></select></div>
+        <% else %>
+          <input type="hidden" name="location_id" value="<%= @location_id %>" data-schedule-builder-target="fieldLocation">
+        <% end %>
+        <div><label class="field-label" for="shift-notes">Note for the staff member</label><textarea id="shift-notes" name="notes" rows="2" maxlength="2000" class="input w-full" data-schedule-builder-target="fieldNotes"></textarea></div>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary" data-schedule-builder-target="saveButton">Save</button>
+          <button type="button" class="btn-ghost" data-action="schedule-builder#closeDialog">Cancel</button>
+          <button type="button" class="btn-danger hidden ml-auto" data-schedule-builder-target="removeButton" data-action="schedule-builder#removeShift">Remove</button>
+        </div>
+      </form>
+    </dialog>
+    <p class="sr-only" aria-live="polite" data-schedule-builder-target="status"></p>
+  <% end %>
 </div>

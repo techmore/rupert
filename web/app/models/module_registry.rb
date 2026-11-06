@@ -117,6 +117,9 @@ class ModuleRegistry
     Entry.new(key: 'schedule', name: 'Shifts', path: -> { people_scheduled_shifts_path }, permission: 'hr.read', position: 88),
     Entry.new(key: 'team_schedule', name: 'Team schedule', path: -> { people_team_schedule_path }, permission: 'timesheets.read', position: 88.3),
     Entry.new(key: 'leave', name: 'Leave & PTO', path: -> { people_leave_requests_path }, permission: 'leave.read', position: 89),
+    # time & pay: schedule
+    Entry.new(key: 'shift_trades', name: 'Shift trades', path: -> { people_shift_trades_path }, permission: 'schedule.write', position: 88.1),
+    Entry.new(key: 'blackout_dates', name: 'Blackout dates', path: -> { people_blackout_dates_path }, permission: 'leave.write', position: 89.1),
     Entry.new(key: 'payroll', name: 'Payroll', path: -> { people_pay_runs_path }, permission: 'payroll.read', position: 90),
     Entry.new(key: 'incentives', name: 'Incentives model', path: -> { people_incentives_path }, permission: 'payroll.read', position: 90.5),
     Entry.new(key: 'employee_reports', name: 'Staff reports', path: -> { people_work_reports_path }, permission: 'hr.read', position: 86),
@@ -262,11 +265,11 @@ class ModuleRegistry
       { key: 'me', name: 'Me', modules: %w[receipts time_clock learning] },
       { key: 'team', name: 'Team',
         modules: %w[employees team_chat accounts permissions departments positions
-                    time_keeping timesheets punch_history square_timesheets ctrax_timesheets schedule team_schedule leave
+                    time_keeping timesheets punch_history square_timesheets ctrax_timesheets schedule team_schedule leave shift_trades blackout_dates
                     payroll incentives employee_reports training_modules training],
         groups: [
           { name: 'People', modules: %w[employees team_chat accounts permissions departments positions] },
-          { name: 'Time', modules: %w[time_keeping timesheets punch_history square_timesheets ctrax_timesheets schedule team_schedule leave] },
+          { name: 'Time', modules: %w[time_keeping timesheets punch_history square_timesheets ctrax_timesheets schedule team_schedule leave shift_trades blackout_dates] },
           { name: 'Pay & reports', modules: %w[payroll incentives employee_reports training_modules training] }
         ] },
       { key: 'system', name: 'System',
