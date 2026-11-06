@@ -19,7 +19,46 @@ _Draft; updated as each workstream lands. See ARCHITECTURE.md, DECISIONS.md, DES
 
 ## What was built
 
-_(filled in per workstream)_
+Measured on the merged tree with Playwright at 390 px (phone):
+
+| Flow | Result |
+| --- | --- |
+| Clock in at the register with a PIN (trusted device, no sign-in) | 4 taps, **under 1 s** from first digit to "Clocked in · 8:42 AM ✓" |
+| Request two days off from the staff app | 4 taps, 1.3 s, "Request sent. Your manager will answer here." |
+| Approve a week of clean timesheets on a phone | 3 taps (Select all clean → Approve N → Confirm), 2.9 s |
+
+### Staff (web pages, rendered in the iPhone app and the installed web app)
+
+- **Clock** (`/employee`, the POS strip and the `/clock` kiosk): PIN pad with auto-submit, Clock out / Break / Meal / End break,
+  first-use PIN setup, wrong-PIN and lockout messages, forgotten clock-out fix in two taps (planned end / 8 h / custom → a pending
+  correction, new shift starts), offline queue on trusted devices with idempotent replay, break reminders, missed clock-out nudges.
+- **Fix a punch** with reason, proposed times and breaks; original kept; reviewer decision notifies the worker.
+- **Schedule**: posted shifts, Team view, open shifts with Pick up, Give away / Swap with guardrails (double-booking, overtime,
+  position, minors, time off, notice, rest, availability, store), trade status page, availability editor, .ics feed.
+- **Time off**: type chips, hours defaulted from posted shifts, balances with accrual, blackout and notice callouts, cancel.
+- **Pay**: period stepper, hours net of unpaid breaks, estimated gross, card tips (shared with N / yours, Estimated vs Final),
+  cash tips declared in two taps, bonuses, next payday, payslips; English and Spanish; dark mode.
+- **Settings**: language, clock PIN, signed-in devices, notification preferences (iOS stream).
+
+### Managers and owners
+
+- **Timesheets, exceptions first** with inline fixes, bulk approve, full audit trail, store scope.
+- **Approvals inbox**: punch fixes, time off, trades, timesheets; Approve/Deny with note; never your own.
+- **Schedule builder**: drag-and-drop weekly grid, resize, click-to-add, conflict chips, labour cost vs the same weekday's average
+  sales, open shifts, templates, copy last week, Post week with notifications and short-notice warning, blackout dates.
+- **Tips**: terminal vs settled vs unassigned, by employee/day/store, assign unassigned tips, reconciliation vs Authorize.net batches
+  and Dejavoo batch close, CSV.
+- **Pay periods**: lock, provider-agnostic payroll CSV with SHA-256, reopen with reason, adjustments; locks enforced on punches,
+  breaks, corrections, timesheet entries and time-off approvals.
+- **Time rules** per store (preset by state, breaks, daily OT, minors, notice, rounding, PIN policy, trades, accrual, tips, payday),
+  **Clock devices** (trusted registers/tablets), store scope on accounts and staff, leave accrual job, offboarding on terminate.
+
+### Payments → tips path
+
+Dejavoo FEED now keeps `performedBy`/terminal/invoice; `Tips::Attribution` writes the ledger (checkout cashier → clerk id →
+clocked-in staff at that store/time; owner's pool rule, admins excluded, whole cents); `Tips::Reconciliation` settles hourly against
+Authorize.net settled transactions and Dejavoo batch close, mirrors refunds/voids/adjustments as negative rows and carries money that
+settles after a lock into the next open period.
 
 ## Production status
 
