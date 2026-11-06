@@ -19,11 +19,11 @@
   <%= javascript_importmap_tags %>
   <%= yield :head %>
 </head>
-<body data-controller="employee-offline<%= ' help-panel feedback' if Current.user && !@preview %>"<% if Current.user && !@preview %> data-feedback-url-value="<%= feedback_reports_path %>" data-feedback-build-value="<%= BuildInfo.current.short_revision %>" data-feedback-request-id-value="<%= request.request_id %>"<% end %> class="min-h-screen bg-cream text-ink">
+<body data-controller="employee-offline<%= ' help-panel feedback' if Current.user && !@preview %>"<% if Current.user && !@preview %> data-feedback-url-value="<%= feedback_reports_path %>" data-feedback-build-value="<%= BuildInfo.current.short_revision %>" data-feedback-request-id-value="<%= request.request_id %>"<% end %> class="min-h-screen bg-cream text-ink<%= ' native-app' if hotwire_native_app? %>">
   <a href="#main" class="sr-only z-50 rounded-full bg-olive px-4 py-2 text-sm font-semibold text-cream focus:not-sr-only focus:fixed focus:left-4 focus:top-3">Skip to content</a>
   <header class="workspace-header">
     <%= render "layouts/build_version" %>
-    <div class="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
+    <div class="workspace-brand-row mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
       <%= link_to employee_app_path(preview: @preview ? 1 : nil), class: 'app-brand text-lg font-semibold text-olive-deep', aria: { label: 'My time home' } do %>
         <%= render "shared/rupert_face", size: 40 %>
         <span>Rupert</span>
@@ -51,11 +51,12 @@
   <main id="main" class="mx-auto <%= %w[ctrax_pos point_of_sale projects/tasks].include?(controller_path) ? 'max-w-7xl' : 'max-w-3xl' %> space-y-6 px-4 py-6 sm:px-6 sm:py-8" tabindex="-1">
     <%# Next thing to do (NextThingsController): the person's own late and due-today tasks; empty when nothing is waiting. %>
     <% if Current.user && !@preview %><turbo-frame id="next_thing" src="<%= next_thing_path %>" loading="lazy"></turbo-frame><% end %>
-    <%= render 'shared/workspace_help' if Current.user && !@preview %>
     <% if notice %><p role="status" class="flash flash-notice"><%= notice %></p><% end %>
     <% if alert %><p role="alert" class="flash flash-alert"><%= alert %></p><% end %>
     <% if @preview %><p role="status" class="rounded-xl border border-olive/30 bg-olive/10 p-3 text-sm"><strong>Staff preview</strong> · Example data only. Browse freely; saving, clocking and sending are disabled. <%= link_to 'Close preview', employee_app_path, class: 'underline' %></p><% end %>
     <%= yield %>
+    <%# Page help is a quiet line under the content (docs/ui-standards.md §2), never above the clock. %>
+    <%= render 'shared/workspace_help' if Current.user && !@preview %>
   </main>
   <%= render 'shared/help_panel' if Current.user && !@preview %>
   <%= render 'shared/feedback_panel' if Current.user && !@preview %>
