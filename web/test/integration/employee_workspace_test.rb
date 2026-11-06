@@ -91,7 +91,7 @@ class EmployeeWorkspaceTest < ActionDispatch::IntegrationTest
     sign_in
     get employee_time_off_path, params: { month: '2026-10', employee_id: @other.id }
     assert_response :success
-    assert_select '[role="table"][aria-label="Your calendar"]'
+    assert_select '[role="list"][aria-label="Your calendar"]'
     assert_includes response.body, 'My vacation'
     assert_select '[data-balance="vacation"]', '40 h'
     refute_includes response.body, 'PRIVATE OTHER LEAVE'
