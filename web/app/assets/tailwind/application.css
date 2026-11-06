@@ -2610,3 +2610,9 @@ body.tour-active { overflow-x:hidden; }
    four utilities past the edge (the approvals inbox is worked from a phone). They stay one tap away
    in the account menu and on the release page. */
 @media (max-width: 639px) { .header-utilities .header-release, .header-utilities .header-gate { display:none; } }
+
+/* ---- time & pay: staff pages inside the iPhone app ---- */
+/* The app's own navigation bar carries the title, account and tab bar, so the web brand row
+   (brand, bell, help, name, Sign out) and the build strip step aside; the page pills stay. */
+.native-app .workspace-brand-row,
+.native-app .workspace-header .build-version { display:none !important; }

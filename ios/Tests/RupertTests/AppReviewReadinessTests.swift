@@ -1,3 +1,4 @@
+import HotwireNative
 import XCTest
 @testable import Rupert
 
@@ -135,5 +136,51 @@ final class InfoPlistTests: XCTestCase {
         let info = try plist()
         XCTAssertEqual(info["ITSAppUsesNonExemptEncryption"] as? Bool, false)
         XCTAssertEqual(info["RupertControlPlaneURL"] as? String, "https://pos.rupertpos.com")
+    }
+
+    func testVersionIsTheTimeAndPayRelease() throws {
+        let info = try plist()
+        XCTAssertEqual(info["CFBundleShortVersionString"] as? String, "1.1.0")
+    }
+
+    func testQuickActionsMatchTheTabs() throws {
+        let info = try plist()
+        let items = try XCTUnwrap(info["UIApplicationShortcutItems"] as? [[String: Any]])
+        let types = items.compactMap { ($0["UIApplicationShortcutItemType"] as? String)?.components(separatedBy: ".").last }
+        let tabs = HotwireTab.all(on: URL(string: "https://pos.rupertpos.com")!).map(\.id)
+        for type in types {
+            XCTAssertTrue(tabs.contains(type), "quick action \(type) has no tab to open")
+        }
+        XCTAssertTrue(types.contains("time"), "Clock in is a Home Screen quick action")
+    }
+}
+
+/// The Time tab and push notifications (time & pay).
+final class TimeTabTests: XCTestCase {
+    func testTimeIsTheFirstTabAndThereAreFive() {
+        let tabs = HotwireTab.all(on: URL(string: "https://pos.rupertpos.com")!)
+        XCTAssertEqual(tabs.count, 5, "iOS shows at most five tabs without a More tab")
+        XCTAssertEqual(tabs.first?.id, "time")
+        XCTAssertEqual(tabs.first?.url.path, "/employee")
+        XCTAssertEqual(HotwireTab.timeTabIndex, 0)
+        XCTAssertFalse(tabs.contains { $0.id == "search" })
+    }
+
+    func testNotificationPayloadsOnlyOpenRupertPages() {
+        XCTAssertEqual(PushRegistration.url(in: ["url": "/employee/schedule"])?.path, "/employee/schedule")
+        XCTAssertEqual(PushRegistration.url(in: ["url": "/employee/schedule"])?.host, Instance.current.host)
+        XCTAssertNil(PushRegistration.url(in: ["url": "https://evil.example/phish"]))
+        XCTAssertNil(PushRegistration.url(in: ["url": ""]))
+        XCTAssertNil(PushRegistration.url(in: [:]))
+    }
+
+    func testBundledPathConfigurationOpensTimeFormsAsSheets() throws {
+        let url = try XCTUnwrap(Bundle.module.url(forResource: "path-configuration", withExtension: "json"))
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        let rules = try XCTUnwrap(json["rules"] as? [[String: Any]])
+        let modal = rules.filter { ($0["properties"] as? [String: Any])?["context"] as? String == "modal" }
+            .flatMap { $0["patterns"] as? [String] ?? [] }
+        XCTAssertTrue(modal.contains { $0.contains("/employee/time-off/new") })
+        XCTAssertTrue(modal.contains { $0.contains("/time_clock/shifts/") })
     }
 }

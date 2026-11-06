@@ -1,0 +1,88 @@
+# A Mac-side Xcode project for running the Rupert iPhone app in the Simulator and on a device with
+# Xcode (the Linux build uses xtool and Package.swift; both share Sources/Rupert and Info.plist).
+#
+#   brew install xcodegen
+#   cd ios/RupertApp && xcodegen generate
+#   open RupertApp.xcodeproj      # or: xcodebuild -scheme RupertApp -destination 'platform=iOS Simulator,name=iPhone 18 Pro' build
+#
+# The generated RupertApp.xcodeproj is not committed (ios/.gitignore). The "RupertApp (local)"
+# scheme points the app at a Rupert dev server with RUPERT_DEV_ORIGIN (debug builds only, Instance.swift).
+name: RupertApp
+options:
+  bundleIdPrefix: com.rupertpos
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "26.0"
+  createIntermediateGroups: true
+packages:
+  HotwireNative:
+    url: https://github.com/hotwired/hotwire-native-ios
+    exactVersion: 1.3.1
+targets:
+  RupertApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: ../Sources/Rupert
+        excludes:
+          - "Resources/**"
+          - "Assets.xcassets"
+      - path: ../Sources/Rupert/Assets.xcassets
+      - path: ../Sources/Rupert/Resources/path-configuration.json
+      - path: ../Sources/Rupert/Resources/PrivacyInfo.xcprivacy
+      - path: DevSupport
+    dependencies:
+      - package: HotwireNative
+        product: HotwireNative
+    settings:
+      base:
+        PRODUCT_NAME: Rupert
+        PRODUCT_BUNDLE_IDENTIFIER: com.rupertpos.Rupert
+        INFOPLIST_FILE: ../Info.plist
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Rupert
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        MARKETING_VERSION: 1.1.0
+        CURRENT_PROJECT_VERSION: 1
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_ENTITLEMENTS: RupertApp.entitlements
+        CODE_SIGN_STYLE: Automatic
+        OTHER_SWIFT_FLAGS: "-DRUPERT_XCODE_APP"
+  RupertAppUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: RupertApp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rupertpos.RupertUITests
+        SWIFT_VERSION: "5.0"
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  RupertApp:
+    build:
+      targets:
+        RupertApp: all
+        RupertAppUITests: [test]
+    run:
+      config: Debug
+      environmentVariables:
+        RUPERT_DEV_ORIGIN: ""
+    test:
+      targets:
+        - RupertAppUITests
+      environmentVariables:
+        RUPERT_DEV_ORIGIN: "http://127.0.0.1:3005"
+  RupertApp (local):
+    build:
+      targets:
+        RupertApp: all
+    run:
+      config: Debug
+      environmentVariables:
+        RUPERT_DEV_ORIGIN: "http://127.0.0.1:3005"

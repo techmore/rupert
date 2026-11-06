@@ -42,7 +42,9 @@ class ApplicationController < ActionController::Base
       %w[index show badge quiz].include?(action_name)
     when 'sessions', 'oauth', 'employee_app', 'employee_workspace', 'employee_pay', 'employee_training', 'employee_preview', 'customer_displays', 'feedback_reports',
       'employee_trades', 'employee_availability', # time & pay: schedule
-      'next_things' # the Next thing to do bar: an employee sees only their own tasks there (NextThings)
+      'next_things', # the Next thing to do bar: an employee sees only their own tasks there (NextThings)
+      'employee_notifications', 'native/push_devices', # time & pay: ios — own notification choices and push devices
+      'account_deletions' # App Store 5.1.1(v): every account, staff included, can delete itself from the app
       true
     when 'employee_access'
       %w[edit update].include?(action_name)

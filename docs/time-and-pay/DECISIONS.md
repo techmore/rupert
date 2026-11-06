@@ -52,6 +52,7 @@ to Square.
 | Time off | 7 days notice requested (warning); blackout dates flagged, not blocked | Managers decide; the system informs. |
 | Sick accrual | Off (0 per hour) | Most state laws use 1 h per 30 h worked; the state presets set that. |
 | Vacation | 80 h/year grant; sick 40 h/year; carry-over cap 40 h | Matches the existing `LeaveBalance` defaults. The grant lands on **January 1** (the first `LeaveAccrualJob` run of the year), not the hire anniversary, so every balance resets on the same day as the leave year. On that run last year's unused vacation and sick hours carry over up to the cap; the excess is written to the ledger as a `carryover_cap` line so nothing disappears silently. Sick hours earned on hours worked are credited daily from paid clock hours since the last run (`employees.sick_accrued_through`). Every change is a `People::LeaveAccrual` line visible on the staff member's page. |
+
 | Tips | Pool, admins excluded, per store, cash tips declared by the worker at clock-out | Owner rule plus a declared-cash step so the record is complete for tax reporting. |
 
 ## Card tip attribution (`Tips::Attribution`)
@@ -111,3 +112,30 @@ All new screens: 44 px targets, Dynamic Type friendly (rem sizes), VoiceOver lab
 contrast checked with `bin/check-palette-contrast`, dark mode via tokens. Spanish strings for the
 employee-facing clock, time-off and pay screens live in `config/locales/es.yml`; a worker's `locale`
 is set from their profile.
+
+## App Store (iPhone app 1.1.0)
+
+- **Time is the first tab.** Hourly staff open the app to clock in; `/employee` is the tab's root.
+  Search left the tab bar (five is iOS's limit before a "More" tab) and stays in every page's top bar.
+- **Push notifications are opt-in with a soft ask.** After the first signed-in page the app explains
+  the five kinds in its own words, then shows the system prompt. "Not now" is remembered; iOS
+  Settings owns the switch afterwards. Every kind can be muted at `/employee/notifications/settings`
+  (`User#notification_prefs`), which `TimeNotifier` honours for the bell and push alike.
+- **APNs and VAPID keys are platform secrets**, read from `/etc/rupert.env` only (never a
+  workspace's managed settings): one app bundle serves every workspace. Until they are set, the
+  bell carries every message and nothing is enqueued (`PushNotifier.configured?`).
+- **A push payload is data.** The app opens only the `url` field, and only when it resolves to a
+  Rupert host (`PushRegistration.url(in:)`); nothing else in the payload is acted on.
+- **Sign in with Apple is not added.** Guideline 4.8 applies to apps that use a third-party login
+  to *set up or authenticate the primary account*. Rupert accounts are created by the business
+  (email/password, Rupert's own system); Google is an alternative way to sign in to that same
+  account and sign-up is hidden in the app. Apple's stated exceptions ("exclusively uses your
+  company's own account setup and sign-in systems", enterprise accounts) cover this. If App Review
+  disagrees, the fallback is to add Sign in with Apple as a second alternative login rather than
+  argue twice; this is recorded in `ios/AppStore/checklist.md` item 19.
+- **Account deletion covers staff accounts.** The `employee` role could not reach
+  `/account/delete` before (allowlist); it can now, and deletion also removes push tokens and the
+  clock PIN while keeping the worker's hours for the business (FLSA retention).
+- **Session awareness in every layout.** The app watches `<meta name="rupert-session">` to restart
+  its tabs after a sign-in; the employee and POS layouts now carry it, so a sign-in on the Time tab
+  no longer leaves the other tabs on the sign-in page.

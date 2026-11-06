@@ -1,5 +1,7 @@
 <% content_for :title, t('time.clock.settings.title') %>
-<%= page_header t('time.clock.settings.title'), subtitle: t('time.clock.settings.subtitle') %>
+<%= page_header t('time.clock.settings.title'), subtitle: t('time.clock.settings.subtitle') do %>
+  <%= link_to 'Notifications', employee_notification_settings_path, class: 'btn-ghost' %>
+<% end %>
 <% if @worker %>
   <section class="card card-pad space-y-3" aria-labelledby="language-heading">
     <h2 id="language-heading" class="card-title"><%= t('time.clock.settings.language') %></h2>

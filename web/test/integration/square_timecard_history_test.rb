@@ -49,7 +49,7 @@ class SquareTimecardHistoryTest < ActionDispatch::IntegrationTest
     assert_includes response.body, '8h'
     get employee_time_off_path, params: { month: '2026-10' }
     assert_response :success
-    assert_select '[role="cell"][aria-label="2026-10-05"]', text: /8h/
+    assert_select '[role="listitem"][data-date="2026-10-05"]', text: /8h/
     assert_no_difference ['SquareTimecard.count', 'SquareTimecardDay.count', 'People::TimesheetEntry.count'] do
       post people_square_timesheets_path
       assert_response :not_found

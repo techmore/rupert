@@ -8,7 +8,21 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         configureAppearance()
         configureHotwire()
+        PushRegistration.shared.attach()
         return true
+    }
+
+    // MARK: Push notifications (PushRegistration)
+
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        PushRegistration.shared.register(deviceToken: deviceToken)
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        // The Simulator and builds without the push entitlement land here; the bell still works.
+#if DEBUG
+        print("push: registration failed: \(error.localizedDescription)")
+#endif
     }
 
     func application(_ application: UIApplication,
