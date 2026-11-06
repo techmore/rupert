@@ -2453,3 +2453,9 @@ body.tour-active { overflow-x:hidden; }
 /* Pay periods: warnings list and store-override badges on the time rules page. */
 .period-warnings { display:grid;gap:.35rem; }
 .rules-override { margin-left:.35rem; }
+
+/* ---- time & pay: phone shell ---- */
+/* The owner-only release tracker and gate are rare, desk-side controls; on a phone they pushed the
+   four utilities past the edge (the approvals inbox is worked from a phone). They stay one tap away
+   in the account menu and on the release page. */
+@media (max-width: 639px) { .header-utilities .header-release, .header-utilities .header-gate { display:none; } }

@@ -237,9 +237,6 @@ class TimeClockService
         unless auto_closed || (shift.started_at == correction.original_started_at && shift.ended_at == correction.original_ended_at)
           raise Error, 'This shift changed after the request. Reject it and request a fresh correction.'
         end
-        unless PayPeriod.open_for?(correction.proposed_started_at.to_date)
-          raise Error, 'That pay period is locked. Record the change as a payroll adjustment instead.'
-        end
         shift.update!(started_at: correction.proposed_started_at, ended_at: correction.proposed_ended_at)
         apply_breaks(shift, correction.proposed_breaks) if correction.proposed_breaks_json.present?
       end
