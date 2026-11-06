@@ -27,7 +27,36 @@ _(see DEPLOYS.md)_
 
 ## Payroll provider recommendation
 
-_(see below, final section)_
+**Recommendation: Gusto (Simple plan) as the provider, fed by Rupert's payroll export.** Second choice OnPay.
+Do not use Square Payroll.
+
+Why:
+
+- **Fits the stack.** Rupert produces one CSV per pay period (hours by type, card tips, cash tips, commission,
+  bonuses, per employee). Gusto accepts hours and tip amounts per employee per pay run (manual entry or its
+  hours import) and reports tips on W-2s and the FICA tip credit where it applies; its API (Gusto Embedded /
+  partner API) is the cleanest path to a direct push later without changing the export.
+- **Multi-state and tips without surprises.** Tax filing in every state at the base price (OnPay too; Square
+  Payroll charges per additional state), tip reporting, new-hire reporting, PTO policies that match Rupert's
+  accrual settings, employee self-service pay stubs (so Rupert's pay page stays an estimate and never has to be
+  a payslip of record).
+- **Price.** Published 2026 pricing is roughly $49/month base + $6 per person for both Gusto Simple and OnPay;
+  for a shop of 5–15 hourly staff that is $80–140/month. Square Payroll's advertised base is lower but assumes
+  Square POS timecards, which this business no longer runs for payments; its value is the Square timecard sync
+  Rupert replaces.
+- **Why not the others.** Square Payroll: tied to Square timecards/POS. Homebase: a scheduling product with
+  payroll attached, overlapping everything just built. ADP Run / Paychex: fine but priced and sold for larger
+  teams; quotes, not list prices. QuickBooks Payroll: only if the books move to QuickBooks Online.
+
+Onboarding steps (owner): sign up, add employees from the Rupert staff list (employee number, email, pay rate),
+set the pay schedule to match **Settings → Pay rules**, run the first period from Rupert's **Pay periods →
+Download CSV** side by side with a manual check, then switch on direct deposit.
+
+Sources: [Homebase: best payroll providers 2026](https://wf.joinhomebase.com/blog/online-payroll-services),
+[Airwallex: best payroll software](https://www.airwallex.com/en-us/blog/best-payroll-software),
+[G2: Gusto vs Square Payroll](https://www.g2.com/compare/gusto-vs-square-payroll),
+[People Managing People: Gusto vs OnPay 2026](https://peoplemanagingpeople.com/tools/gusto-vs-onpay/),
+[TechRepublic: Square Payroll vs OnPay](https://www.techrepublic.com/pt/article/square-vs-onpay/).
 
 ## What's left
 
