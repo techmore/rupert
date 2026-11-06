@@ -118,6 +118,16 @@
             </div>
           <% end %>
         </div>
+        <% ledger = @employee.leave_accruals.chronological.last(12) %>
+        <% if ledger.any? %>
+          <details class="explainer" data-leave-ledger><summary class="explainer-summary">How these balances were built</summary>
+            <ul class="mt-2 space-y-1 text-sm text-mocha">
+              <% ledger.each do |line| %>
+                <li><%= line.created_at.strftime('%b %-d, %Y') %> · <%= line.leave_type.humanize %> <span class="num"><%= format('%+.2f', line.hours) %> h</span> · <%= line.reason_label %><% if line.period_start %> (<%= period_range(line.period_start, line.period_end) %>)<% end %></li>
+              <% end %>
+            </ul>
+          </details>
+        <% end %>
         <% if Current.user.can?('leave.write') %>
           <details class="explainer"><summary class="explainer-summary">Set leave allowance</summary>
             <%= form_with url: set_leave_allowance_people_employee_path(@employee), scope: :leave_allowance, class: 'mt-3 space-y-3' do |f| %>

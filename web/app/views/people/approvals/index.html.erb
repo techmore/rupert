@@ -1,0 +1,21 @@
+<% content_for :title, 'Approvals' %>
+<% content_for :head do %><meta name="turbo-cache-control" content="no-cache"><% end %>
+<div class="space-y-6 approvals-page">
+  <%= page_header 'Approvals', subtitle: 'Punch fixes, time off, shift trades and timesheets waiting on you.' %>
+  <div id="approvals-flash"></div>
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <%= page_tabs(([[nil, 'All']] + People::ApprovalInbox::KIND_LABELS.to_a).map { |key, label|
+          count = key ? @inbox.by_kind.fetch(key, []).size : @inbox.count
+          ["#{label}#{" (#{count})" if count.positive?}", people_approvals_path(kind: key), @kind == key] }, label: 'Approval kind') %>
+    <%= render 'people/approvals/count', count: @inbox.count %>
+  </div>
+  <% if @items.empty? %>
+    <%= empty_state 'Nothing waiting', hint: @inbox.any_permission? ? 'Every request has been decided. New ones appear here as staff send them.' : 'You do not review anything yet. Ask an administrator for the timesheet, time off or schedule permission.' %>
+  <% else %>
+    <ul class="approval-list" aria-label="Waiting for a decision">
+      <% @items.each do |item| %>
+        <%= render 'people/approvals/item', item: item %>
+      <% end %>
+    </ul>
+  <% end %>
+</div>

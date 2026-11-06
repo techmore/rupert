@@ -80,8 +80,9 @@ class TimesheetExperienceTest < ActionDispatch::IntegrationTest
       get people_timesheets_path
       assert_select '[data-pay-period="2026-10-22"]', text: /This pay week.*Oct 22 – 28, 2026.*1 draft/m
       assert_select '[data-pay-period="2026-10-15"]', text: /Last pay week/
-      assert_select '[data-corrections-waiting]', text: /1 clock correction waiting for review/
-      assert_select '[data-corrections-waiting] a[href=?]', time_clock_path(anchor: 'corrections'), text: 'Review corrections'
+      # Exceptions first (time & pay): the correction leads the page with its decision inline.
+      assert_select '[data-needs-attention] [data-exception="correction"]', text: /Correction waiting.*Opened early/m
+      assert_select '[data-needs-attention] a[href=?]', people_approvals_path, text: 'Approvals inbox'
       get people_timesheet_path(sheet)
       correction = ClockCorrection.find_by!(status: 'pending')
       assert_select '[data-pending-corrections] form[action=?]', approve_correction_time_clock_path(correction, return_to: people_timesheet_path(sheet))

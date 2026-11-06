@@ -42,6 +42,10 @@ production:
     class: BreakReminderJob
     queue: default
     schedule: every 10 minutes
+  leave_accrual:
+    class: LeaveAccrualJob
+    queue: default
+    schedule: "10 4 * * * America/New_York"
   source_directories:
     class: DirectorySyncJob
     queue: default

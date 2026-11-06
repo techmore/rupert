@@ -2431,3 +2431,25 @@ body.tour-active { overflow-x:hidden; }
 @media (max-width:640px) { .fix-punch-break { grid-template-columns:1fr 1fr; } .pin-clock-key { min-height:3.5rem; } }
 @media (prefers-reduced-motion: reduce) { .pin-clock-shake { animation:none; } .pin-clock-key { transition:none; } }
 /* ---- end time & pay: clock ---- */
+/* ---- time & pay: manager ---- */
+/* Approvals inbox: one card per item, big buttons; stacks to one column on phones. */
+.approval-list { display:grid;gap:.75rem;list-style:none;margin:0;padding:0; }
+.approval-item { display:grid;gap:.6rem; }
+.approval-head { display:grid;gap:.15rem; }
+.approval-facts { display:grid;gap:.15rem;font-size:.9rem;color:var(--color-mocha);list-style:none;margin:0;padding:0; }
+.approval-warnings { display:flex;flex-wrap:wrap;gap:.35rem; }
+.approval-actions { display:grid;gap:.5rem; }
+.approval-buttons { display:flex;flex-wrap:wrap;align-items:center;gap:.5rem; }
+.approval-buttons .btn-primary,.approval-buttons .btn-ghost { min-height:44px; }
+@media (min-width: 640px) { .approval-list { grid-template-columns:repeat(auto-fill,minmax(22rem,1fr)); } }
+/* Timesheets: the exceptions list and the bulk approve bar (sticky at the bottom on phones). */
+.exception-item { align-items:flex-start; }
+.exception-actions { display:flex;flex-wrap:wrap;align-items:center;gap:.4rem; }
+.bulk-bar { display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;margin-bottom:.75rem;padding:.6rem .9rem;border:1px solid var(--color-fog);border-radius:var(--radius-card);background:var(--color-paper); }
+.bulk-bar .btn-primary { min-height:44px;margin-left:auto; }
+@media (max-width: 639px) {
+  .bulk-bar { position:sticky;bottom:.5rem;z-index:5;box-shadow:var(--shadow-ink); }
+}
+/* Pay periods: warnings list and store-override badges on the time rules page. */
+.period-warnings { display:grid;gap:.35rem; }
+.rules-override { margin-left:.35rem; }

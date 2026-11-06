@@ -1,0 +1,129 @@
+<% content_for :title, 'Time rules' %>
+<% rules = @rules %>
+<% field = ->(key) { "time_rules[#{key}]" } %>
+<% override = ->(key) { @overrides.include?(key) ? tag.span('Store override', class: 'pill-olive rules-override') : ''.html_safe } %>
+<div class="page-medium space-y-6">
+  <%= page_header 'Time rules', subtitle: 'Breaks, overtime, minors, scheduling, punches, trades, time off and tips, per store.' do %>
+    <%= link_to 'Pay rules', settings_path(anchor: 'pay-rules'), class: 'btn-ghost' %>
+  <% end %>
+  <section class="toolbar-band">
+    <%= form_with url: time_rules_settings_path, method: :get, class: 'toolbar', data: { turbo: false } do %>
+      <div class="toolbar-field">
+        <label class="field-label" for="location_id">Store</label>
+        <%= select_tag :location_id, options_for_select([['Every store (default)', '']] + @locations.map { |l| [l.name, l.id] }, @location&.id), class: 'select', onchange: 'this.form.requestSubmit()' %>
+      </div>
+      <div class="toolbar-actions"><%= submit_tag 'Apply', class: 'btn-ghost', name: nil %></div>
+    <% end %>
+  </section>
+  <p class="text-sm text-mocha"><%= @location ? "Changes here apply to #{@location.name} only; blank fields keep the default." : 'The default for every store. Pick a store above to override a rule for that store only.' %> Legal defaults are listed, with their reasons, in <code>docs/time-and-pay/DECISIONS.md</code>; they are starting points, not legal advice.</p>
+
+  <%= form_with url: time_rules_settings_path(location_id: @location&.id), method: :post, class: 'space-y-6', data: { turbo: false } do |f| %>
+    <fieldset class="section-card" <%= 'disabled' unless @can_write %>>
+      <%= section_heading 'Rule preset', hint: 'A state preset fills the legal defaults below; you can still change any field.' %>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div><label class="field-label" for="tr_preset">State<%= override.call('preset') %></label><%= select_tag field.call('preset'), options_for_select(TimeRules::PRESET_LABELS.invert, rules.preset), id: 'tr_preset', class: 'select w-full' %></div>
+      </div>
+    </fieldset>
+
+    <fieldset class="section-card" <%= 'disabled' unless @can_write %>>
+      <%= section_heading 'Breaks', hint: 'Reminders and the paid/unpaid rule for meals and rest breaks.' %>
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div><label class="field-label" for="tr_meal_after">Meal reminder after (hours)<%= override.call('meal_break_after_hours') %></label><%= number_field_tag field.call('meal_break_after_hours'), rules.meal_break_after_hours&.to_s('F'), id: 'tr_meal_after', min: 0, max: 24, step: 0.5, class: 'input' %></div>
+        <div><label class="field-label" for="tr_meal_minutes">Meal length (minutes)<%= override.call('meal_break_minutes') %></label><%= number_field_tag field.call('meal_break_minutes'), rules.meal_break_minutes, id: 'tr_meal_minutes', min: 0, max: 120, class: 'input' %></div>
+        <label class="flex items-center gap-2 self-end text-sm"><%= check_box_tag field.call('meal_break_paid'), '1', rules.meal_break_paid?, class: 'checkbox' %> Meals are paid<%= override.call('meal_break_paid') %></label>
+        <div><label class="field-label" for="tr_rest_every">Rest break every (hours)<%= override.call('rest_break_every_hours') %></label><%= number_field_tag field.call('rest_break_every_hours'), rules.rest_break_every_hours&.to_s('F'), id: 'tr_rest_every', min: 0, max: 24, step: 0.5, class: 'input' %></div>
+        <div><label class="field-label" for="tr_rest_minutes">Rest length (minutes)<%= override.call('rest_break_minutes') %></label><%= number_field_tag field.call('rest_break_minutes'), rules.rest_break_minutes, id: 'tr_rest_minutes', min: 0, max: 60, class: 'input' %></div>
+        <label class="flex items-center gap-2 self-end text-sm"><%= check_box_tag field.call('rest_break_paid'), '1', rules.rest_break_paid?, class: 'checkbox' %> Rest breaks are paid<%= override.call('rest_break_paid') %></label>
+        <label class="flex items-center gap-2 text-sm sm:col-span-3"><%= check_box_tag field.call('break_reminders'), '1', rules.break_reminders?, class: 'checkbox' %> Remind staff when a break is due (never clocks anyone out)<%= override.call('break_reminders') %></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="section-card" <%= 'disabled' unless @can_write %>>
+      <%= section_heading 'Daily overtime', hint: 'Weekly overtime lives under Pay rules. Daily overtime is a state rule (California, Alaska, Nevada, Colorado).' %>
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div><label class="field-label" for="tr_daily_ot">After hours in a day (blank = off)<%= override.call('daily_overtime_threshold_hours') %></label><%= number_field_tag field.call('daily_overtime_threshold_hours'), rules.daily_overtime_threshold_hours&.to_s('F'), id: 'tr_daily_ot', min: 1, max: 24, step: 0.5, class: 'input' %></div>
+        <div><label class="field-label" for="tr_daily_mult">Rate multiplier<%= override.call('daily_overtime_multiplier') %></label><%= number_field_tag field.call('daily_overtime_multiplier'), rules.daily_overtime_multiplier.to_s('F'), id: 'tr_daily_mult', min: 1, max: 3, step: 0.05, class: 'input' %></div>
+      </div>
+    </fieldset>
+
+    <fieldset class="section-card" <%= 'disabled' unless @can_write %>>
+      <%= section_heading 'Minors', hint: 'The schedule builder and trades warn when a minor’s shift breaks these. Age comes from the date of birth on the staff record.' %>
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div><label class="field-label" for="tr_minor_age">A minor is under<%= override.call('minor_age') %></label><%= number_field_tag field.call('minor_age'), rules.minor_age, id: 'tr_minor_age', min: 14, max: 21, class: 'input' %></div>
+        <div><label class="field-label" for="tr_minor_day">Most hours in a day<%= override.call('minor_max_daily_hours') %></label><%= number_field_tag field.call('minor_max_daily_hours'), rules.minor_max_daily_hours&.to_s('F'), id: 'tr_minor_day', min: 1, max: 24, step: 0.5, class: 'input' %></div>
+        <div><label class="field-label" for="tr_minor_week">Most hours in a week<%= override.call('minor_max_weekly_hours') %></label><%= number_field_tag field.call('minor_max_weekly_hours'), rules.minor_max_weekly_hours&.to_s('F'), id: 'tr_minor_week', min: 1, max: 60, step: 0.5, class: 'input' %></div>
+        <div><label class="field-label" for="tr_minor_start">Earliest start<%= override.call('minor_earliest_start') %></label><%= time_field_tag field.call('minor_earliest_start'), rules.minor_earliest_start, id: 'tr_minor_start', class: 'input' %></div>
+        <div><label class="field-label" for="tr_minor_end">Latest end<%= override.call('minor_latest_end') %></label><%= time_field_tag field.call('minor_latest_end'), rules.minor_latest_end, id: 'tr_minor_end', class: 'input' %></div>
+      </div>
+    </fieldset>
+
+    <fieldset class="section-card" <%= 'disabled' unless @can_write %>>
+      <%= section_heading 'Scheduling', hint: 'Notice before a week starts and rest between shifts; warnings for the builder, never blocks.' %>
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div><label class="field-label" for="tr_notice">Post schedules this many days ahead (0 = off)<%= override.call('schedule_notice_days') %></label><%= number_field_tag field.call('schedule_notice_days'), rules.schedule_notice_days, id: 'tr_notice', min: 0, max: 30, class: 'input' %></div>
+        <div><label class="field-label" for="tr_rest_between">Rest between shifts (hours)<%= override.call('min_rest_between_shifts_hours') %></label><%= number_field_tag field.call('min_rest_between_shifts_hours'), rules.min_rest_between_shifts_hours.to_s('F'), id: 'tr_rest_between', min: 0, max: 24, step: 0.5, class: 'input' %></div>
+      </div>
+    </fieldset>
+
+    <fieldset class="section-card" <%= 'disabled' unless @can_write %>>
+      <%= section_heading 'Punches', hint: 'Rounding (the owner chose none), the clock PIN and buddy-punch protection.' %>
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div><label class="field-label" for="tr_rounding">Round punches to<%= override.call('rounding_minutes') %></label><%= select_tag field.call('rounding_minutes'), options_for_select(TimeRules::ROUNDING_CHOICES.map { |m| [m.zero? ? 'Nothing (as recorded)' : "Nearest #{m} minutes", m] }, rules.rounding_minutes), id: 'tr_rounding', class: 'select w-full' %></div>
+        <div><label class="field-label" for="tr_grace">Grace minutes<%= override.call('grace_minutes') %></label><%= number_field_tag field.call('grace_minutes'), rules.grace_minutes, id: 'tr_grace', min: 0, max: 15, class: 'input' %></div>
+        <div><label class="field-label" for="tr_pin_length">PIN length<%= override.call('pin_length') %></label><%= number_field_tag field.call('pin_length'), rules.pin_length, id: 'tr_pin_length', min: 4, max: 6, class: 'input' %></div>
+        <div><label class="field-label" for="tr_pin_tries">Wrong tries before lockout<%= override.call('pin_lockout_attempts') %></label><%= number_field_tag field.call('pin_lockout_attempts'), rules.pin_lockout_attempts, id: 'tr_pin_tries', min: 3, max: 10, class: 'input' %></div>
+        <div><label class="field-label" for="tr_pin_lock">Lockout (minutes)<%= override.call('pin_lockout_minutes') %></label><%= number_field_tag field.call('pin_lockout_minutes'), rules.pin_lockout_minutes, id: 'tr_pin_lock', min: 1, max: 60, class: 'input' %></div>
+        <label class="flex items-center gap-2 self-end text-sm"><%= check_box_tag field.call('pin_requires_trusted_device'), '1', rules.pin_requires_trusted_device?, class: 'checkbox' %> PIN punches only from a registered store device or a signed-in phone<%= override.call('pin_requires_trusted_device') %></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="section-card" <%= 'disabled' unless @can_write %>>
+      <%= section_heading 'Shift trades', hint: 'Give-aways, swaps and pick-ups between staff.' %>
+      <div class="grid gap-4 sm:grid-cols-3">
+        <label class="flex items-center gap-2 text-sm"><%= check_box_tag field.call('trade_requires_approval'), '1', rules.trade_requires_approval?, class: 'checkbox' %> A manager approves every trade<%= override.call('trade_requires_approval') %></label>
+        <label class="flex items-center gap-2 text-sm"><%= check_box_tag field.call('trade_block_overtime'), '1', rules.trade_block_overtime?, class: 'checkbox' %> Block trades that would create overtime<%= override.call('trade_block_overtime') %></label>
+        <label class="flex items-center gap-2 text-sm"><%= check_box_tag field.call('open_shift_requires_position'), '1', rules.open_shift_requires_position?, class: 'checkbox' %> Open shifts need the matching position<%= override.call('open_shift_requires_position') %></label>
+        <div><label class="field-label" for="tr_trade_notice">Least notice before the shift (hours)<%= override.call('trade_min_notice_hours') %></label><%= number_field_tag field.call('trade_min_notice_hours'), rules.trade_min_notice_hours.to_s('F'), id: 'tr_trade_notice', min: 0, max: 168, step: 0.5, class: 'input' %></div>
+      </div>
+    </fieldset>
+
+    <fieldset class="section-card" <%= 'disabled' unless @can_write %>>
+      <%= section_heading 'Time off', hint: 'Sick time accrues on hours worked (most state laws: 1 hour per 30 worked). Vacation is granted each year.' %>
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div><label class="field-label" for="tr_sick_rate">Sick hours per hour worked<%= override.call('sick_accrual_hours_per_hour_worked') %></label><%= number_field_tag field.call('sick_accrual_hours_per_hour_worked'), rules.sick_accrual_hours_per_hour_worked.to_s('F'), id: 'tr_sick_rate', min: 0, max: 1, step: 0.0001, class: 'input', aria: { describedby: 'tr_sick_hint' } %><p id="tr_sick_hint" class="mt-1 text-xs text-mocha">0.0333 is one hour per thirty.</p></div>
+        <div><label class="field-label" for="tr_sick_cap">Sick accrual cap (hours)<%= override.call('sick_accrual_cap_hours') %></label><%= number_field_tag field.call('sick_accrual_cap_hours'), rules.sick_accrual_cap_hours&.to_s('F'), id: 'tr_sick_cap', min: 0, max: 999, step: 0.5, class: 'input' %></div>
+        <div><label class="field-label" for="tr_sick_year">Sick hours granted each year<%= override.call('sick_annual_hours') %></label><%= number_field_tag field.call('sick_annual_hours'), rules.sick_annual_hours.to_s('F'), id: 'tr_sick_year', min: 0, max: 999, step: 0.5, class: 'input' %></div>
+        <div><label class="field-label" for="tr_vac_year">Vacation hours each year<%= override.call('vacation_annual_hours') %></label><%= number_field_tag field.call('vacation_annual_hours'), rules.vacation_annual_hours.to_s('F'), id: 'tr_vac_year', min: 0, max: 999, step: 0.5, class: 'input' %></div>
+        <div><label class="field-label" for="tr_carry">Carry-over cap (hours)<%= override.call('carryover_max_hours') %></label><%= number_field_tag field.call('carryover_max_hours'), rules.carryover_max_hours&.to_s('F'), id: 'tr_carry', min: 0, max: 999, step: 0.5, class: 'input' %></div>
+        <div><label class="field-label" for="tr_to_notice">Ask for notice (days)<%= override.call('time_off_min_notice_days') %></label><%= number_field_tag field.call('time_off_min_notice_days'), rules.time_off_min_notice_days, id: 'tr_to_notice', min: 0, max: 90, class: 'input' %></div>
+      </div>
+    </fieldset>
+
+    <fieldset class="section-card" <%= 'disabled' unless @can_write %>>
+      <%= section_heading 'Tips', hint: 'Owner decision (2026-10-25): shared evenly among everyone clocked in when the tip was left, administrators excluded.' %>
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div class="sm:col-span-3"><label class="field-label" for="tr_tip_method">Card tips are<%= override.call('tip_method') %></label><%= select_tag field.call('tip_method'), options_for_select(TimeRules::TIP_METHODS.invert, rules.tip_method), id: 'tr_tip_method', class: 'select w-full' %></div>
+        <label class="flex items-center gap-2 text-sm"><%= check_box_tag field.call('tip_pool_excludes_admins'), '1', rules.tip_pool_excludes_admins?, class: 'checkbox' %> Administrators take no share<%= override.call('tip_pool_excludes_admins') %></label>
+        <label class="flex items-center gap-2 text-sm"><%= check_box_tag field.call('tip_pool_by_location'), '1', rules.tip_pool_by_location?, class: 'checkbox' %> Pool per store<%= override.call('tip_pool_by_location') %></label>
+        <label class="flex items-center gap-2 text-sm"><%= check_box_tag field.call('cash_tips_declared'), '1', rules.cash_tips_declared?, class: 'checkbox' %> Staff declare cash tips<%= override.call('cash_tips_declared') %></label>
+      </div>
+    </fieldset>
+
+    <% if TimeRules::DEFAULTS.key?('payday_days_after_period_end') %>
+      <fieldset class="section-card" <%= 'disabled' unless @can_write %>>
+        <%= section_heading 'Payday', hint: 'Shown to staff on their Pay page as “Next payday”.' %>
+        <div class="grid gap-4 sm:grid-cols-3">
+          <div><label class="field-label" for="tr_payday">Days after the period ends<%= override.call('payday_days_after_period_end') %></label><%= number_field_tag field.call('payday_days_after_period_end'), rules.integer('payday_days_after_period_end'), id: 'tr_payday', min: 0, max: 30, class: 'input' %></div>
+        </div>
+      </fieldset>
+    <% end %>
+
+    <% if @can_write %>
+      <div class="form-actions"><%= f.submit "Save time rules#{" for #{@location.name}" if @location}", class: 'btn-primary' %><%= link_to 'Cancel', time_rules_settings_path(location_id: @location&.id), class: 'btn-ghost' %></div>
+    <% end %>
+  <% end %>
+  <details class="explainer text-sm text-mocha">
+    <summary class="explainer-summary">Where these defaults come from</summary>
+    <p class="mt-1">Federal law (FLSA) requires no breaks, pays short rest breaks, limits minors under 16 to 7 AM–7 PM and 8 hours on a non-school day, and keeps weekly overtime at 40 hours. State presets add meal breaks, paid sick accrual (typically 1 hour per 30 worked), daily overtime where it exists and fair-workweek notice. Every default and its reason is recorded in docs/time-and-pay/DECISIONS.md; confirm them with your accountant or counsel for your state.</p>
+  </details>
+</div>

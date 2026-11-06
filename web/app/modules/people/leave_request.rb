@@ -5,8 +5,12 @@ module People
   class LeaveRequest < ApplicationRecord
     include TenantScoped
     include AASM
+    include LockedPayPeriodGuard
 
     self.table_name = 'leave_requests'
+
+    # Approved time off is paid in its period: approval is refused once that period is locked.
+    guards_pay_period { status == 'approved' && status_changed? ? (starts_on..ends_on).to_a : [] }
 
     LEAVE_TYPES = %w[vacation sick personal unpaid].freeze
 

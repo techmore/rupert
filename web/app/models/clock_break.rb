@@ -5,6 +5,9 @@
 # the worker is on right now; a shift has at most one open break (unique partial index).
 class ClockBreak < ApplicationRecord
   include TenantScoped
+  include LockedPayPeriodGuard
+
+  guards_pay_period { [(new_record? || started_at_changed?) ? started_at : nil, ended_at_changed? ? ended_at : nil] }
 
   KINDS = %w[rest meal].freeze
   LABELS = { 'rest' => 'Break', 'meal' => 'Meal' }.freeze
