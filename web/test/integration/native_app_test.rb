@@ -56,6 +56,17 @@ class NativeAppTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, 'class="min-h-full native-app"'
   end
 
+  test 'every layout the Time tab shows tells the app whether the person is signed in' do
+    native = { 'User-Agent' => 'Mozilla/5.0 (iPhone) Hotwire Native iOS; Turbo Native iOS; bridge-components: []' }
+    get employee_app_path, headers: native
+    assert_includes response.body, '<meta name="rupert-session" content="signed-out">'
+    post login_path, params: { email: @admin.email, password: 'password123' }
+    get employee_app_path, headers: native
+    assert_includes response.body, '<meta name="rupert-session" content="signed-in">'
+    get employee_app_path
+    assert_not_includes response.body, 'rupert-session', 'browsers do not get the tag'
+  end
+
   test 'Google in the sheet hands a one-time code to the app, not a session' do
     sign_in_through_sheet
     code = handed_off('code')

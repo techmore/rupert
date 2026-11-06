@@ -30,8 +30,12 @@ module AppReviewDemo
   PEOPLE = [
     { key: :maya, email: 'maya.chen@juniper-pine.example', name: 'Maya Chen', role: 'admin' },
     { key: :theo, email: 'theo.alvarez@juniper-pine.example', name: 'Theo Alvarez', role: 'admin' },
-    { key: :priya, email: 'priya.shah@juniper-pine.example', name: 'Priya Shah', role: 'cashier' }
+    { key: :priya, email: 'priya.shah@juniper-pine.example', name: 'Priya Shah', role: 'cashier' },
+    # The hourly worker the reviewer can also sign in as (Time tab): their password is REVIEW_WORKER_PASSWORD,
+    # or the review password when that is not set. Never printed.
+    { key: :worker, email: 'sam.okafor@juniper-pine.example', name: 'Sam Okafor', role: 'employee' }
   ].freeze
+  WORKER_PIN = '2580'
 
   # handle, product title, variant title, type, price, shop shelf, back stockroom
   CATALOG = [
@@ -61,7 +65,7 @@ module AppReviewDemo
 
   module_function
 
-  def run!(password:, reset: false, now: Time.current)
+  def run!(password:, reset: false, now: Time.current, worker_password: nil)
     raise ArgumentError, "REVIEW_PASSWORD must be at least #{MIN_PASSWORD} characters" if password.to_s.length < MIN_PASSWORD
 
     tenant = ensure_tenant!
@@ -69,6 +73,7 @@ module AppReviewDemo
     Current.set(tenant: tenant, user: user) do
       wipe!(tenant) if reset
       people = ensure_people!(tenant).merge(sam: user)
+      people[:worker].update!(password: worker_password.presence || password)
       locations = ensure_locations!
       variants = ensure_catalog!(locations, now)
       orders = ensure_sales!(variants, locations[:shop], now)
@@ -76,6 +81,7 @@ module AppReviewDemo
       tasks = ensure_tasks!(people, now)
       ensure_notifications!(user, people, tasks, count, now)
       ensure_chat!(people, now)
+      ensure_time!(people, locations[:shop], now)
       DataCache.bump!
       settle_reviewer!(user)
       { tenant: tenant, user: user, orders: orders, count: count }
@@ -296,6 +302,150 @@ module AppReviewDemo
   end
 
   # Deletes the demo workspace's rows, table by table, matching only its tenant id.
+  # ---- Time & pay (the Time tab) -------------------------------------------------------------
+  # Staff records for Maya (manager, admin: no tip share), Priya and the worker, hourly rates, the
+  # worker's clock PIN, two weeks of punches with a meal break, next week's published shifts, time
+  # off (one approved, one waiting), this week's tips and a submitted timesheet. Keyed so a second
+  # run changes nothing it already made.
+  def ensure_time!(people, shop, now)
+    staff = {
+      maya: staff!(people[:maya], 'Maya', 'Chen', 2600, number: '1001'),
+      priya: staff!(people[:priya], 'Priya', 'Shah', 1900, number: '1002'),
+      worker: staff!(people[:worker], 'Sam', 'Okafor', 1850, number: '1003')
+    }
+    staff[:worker].set_pin!(WORKER_PIN) unless staff[:worker].pin_set?
+    staff.each_value { |employee| employee.update!(location_ids: [shop.id]) if employee.location_ids.empty? }
+    ensure_punches!(staff, shop, now)
+    ensure_shifts!(staff, shop, now)
+    ensure_time_off!(staff, people[:maya], now)
+    ensure_tips!(staff, shop, now)
+    ensure_timesheet!(staff[:worker], now)
+  end
+
+  def staff!(user, first, last, rate_cents, number:)
+    employee = People::Employee.find_or_initialize_by(user_id: user.id)
+    if employee.new_record?
+      employee.assign_attributes(first_name: first, last_name: last, email: user.email, employee_number: number,
+        employment_type: 'part_time', hire_date: Date.new(2025, 3, 3))
+      employee.save!
+    end
+    People::PayRate.find_or_create_by!(employee_id: employee.id, pay_type: 'hourly', effective_on: Date.new(2025, 3, 3)) do |rate|
+      rate.hourly_rate_cents = rate_cents
+      rate.pay_frequency = 'weekly'
+    end
+    employee
+  end
+
+  # Weekday shifts over the last two weeks, 9 to 5 with a 30-minute meal; yesterday has a rest break too.
+  def ensure_punches!(staff, shop, now)
+    zone = BusinessClock.zone(tenant: Current.tenant, location: shop)
+    (1..14).each do |days_ago|
+      day = now.in_time_zone(zone).to_date - days_ago
+      next if day.saturday? || day.sunday?
+
+      { worker: [9, 17], priya: [10, 18] }.each do |key, (from, to)|
+        employee = staff[key]
+        token = "demo-#{key}-#{day.iso8601}"
+        next if ClockShift.exists?(request_token: token)
+
+        started = zone.local(day.year, day.month, day.day, from, [2, 0, 4, 1][days_ago % 4])
+        ended = zone.local(day.year, day.month, day.day, to, [1, 6, 0, 3][days_ago % 4])
+        shift = ClockShift.create!(user: employee.user, employee: employee, employee_key: employee.id.to_s, employee_name: employee.name,
+          employment_type: employee.employment_type, request_token: token, started_at: started, ended_at: ended,
+          source: 'pos', location_id: shop.id, register_name: 'Front register', device_label: 'Front register')
+        shift.breaks.create!(kind: 'meal', paid: false, started_at: started + 4.hours, ended_at: started + 4.hours + 30.minutes)
+        shift.breaks.create!(kind: 'rest', paid: true, started_at: started + 2.hours, ended_at: started + 2.hours + 10.minutes) if days_ago == 1
+      end
+    end
+  end
+
+  # Next week's shifts, published, plus one open shift to pick up.
+  def ensure_shifts!(staff, shop, now)
+    zone = BusinessClock.zone(tenant: Current.tenant, location: shop)
+    week = (now.in_time_zone(zone).to_date + 7).beginning_of_week
+    pattern = { worker: [[0, 9, 17], [1, 9, 17], [3, 12, 20], [4, 9, 17]], priya: [[0, 10, 18], [2, 10, 18], [3, 9, 17], [5, 10, 16]], maya: [[1, 8, 16], [2, 8, 16], [4, 8, 16]] }
+    pattern.each do |key, days|
+      days.each do |(offset, from, to)|
+        day = week + offset
+        starts_at = zone.local(day.year, day.month, day.day, from)
+        next if People::ScheduledShift.exists?(employee_id: staff[key].id, starts_at: starts_at)
+
+        People::ScheduledShift.create!(employee: staff[key], starts_at: starts_at, ends_at: zone.local(day.year, day.month, day.day, to),
+          role_label: key == :maya ? 'Manager' : 'Counter', location_id: shop.id, break_minutes: 30, published_at: now - 2.days, created_by: staff[:maya].user)
+      end
+    end
+    saturday = week + 5
+    open_start = zone.local(saturday.year, saturday.month, saturday.day, 12)
+    unless People::ScheduledShift.exists?(employee_id: nil, starts_at: open_start)
+      People::ScheduledShift.create!(employee: nil, starts_at: open_start, ends_at: open_start + 6.hours, role_label: 'Counter',
+        location_id: shop.id, break_minutes: 0, published_at: now - 2.days, created_by: staff[:maya].user, notes: 'Holiday market weekend: extra hands at the counter.')
+    end
+    People::SchedulePublication.find_or_create_by!(location_id: shop.id, week_start: week) do |publication|
+      publication.published_at = now - 2.days
+      publication.published_by = staff[:maya].user
+      publication.shift_count = People::ScheduledShift.between(week, week + 6).count
+    end
+  end
+
+  def ensure_time_off!(staff, maya, now)
+    worker = staff[:worker]
+    approved = People::LeaveRequest.find_or_initialize_by(employee_id: worker.id, request_key: 'demo-worker-approved')
+    if approved.new_record?
+      approved.assign_attributes(leave_type: 'vacation', starts_on: now.to_date + 21, ends_on: now.to_date + 23, hours: 24, reason: 'Long weekend away.')
+      approved.save!
+      approved.approve!
+      approved.update!(reviewed_by: maya.id, reviewed_at: now - 1.day)
+    end
+    pending = People::LeaveRequest.find_or_initialize_by(employee_id: worker.id, request_key: 'demo-worker-pending')
+    if pending.new_record?
+      pending.assign_attributes(leave_type: 'personal', starts_on: now.to_date + 10, ends_on: now.to_date + 10, hours: 8, reason: 'Dentist in the morning.')
+      pending.save!
+    end
+    worker.leave_balance('vacation').tap { |b| b.update!(used_hours: 24) if b.used_hours.zero? }
+  end
+
+  # Card tips shared between the two staff on shift and a cash tip the worker declared, this week.
+  def ensure_tips!(staff, shop, now)
+    zone = BusinessClock.zone(tenant: Current.tenant, location: shop)
+    (1..5).each do |days_ago|
+      day = now.in_time_zone(zone).to_date - days_ago
+      next if day.saturday? || day.sunday?
+
+      ref = "demo-tip-#{day.iso8601}"
+      next if TipAllocation.exists?(source_ref: ref)
+
+      at = zone.local(day.year, day.month, day.day, 13, 15)
+      gross = 1200 + (days_ago * 325)
+      %i[worker priya].each_with_index do |key, index|
+        employee = staff[key]
+        shift = ClockShift.find_by(employee_id: employee.id, request_token: "demo-#{key}-#{day.iso8601}")
+        TipAllocation.create!(employee: employee, clock_shift: shift, location_id: shop.id, source_kind: 'manual', source_ref: ref,
+          tip_method: 'pool', status: days_ago > 2 ? 'settled' : 'estimated', amount_cents: (gross / 2) + (index.zero? ? gross % 2 : 0),
+          gross_tip_cents: gross, share_count: 2, occurred_at: at, business_date: day, evidence: 'time_register',
+          settled_at: days_ago > 2 ? at + 1.day : nil, note: 'Card tips from the front register, shared evenly.')
+      end
+      next unless days_ago == 1
+
+      TipAllocation.create!(employee: staff[:worker], location_id: shop.id, source_kind: 'declared', source_ref: "#{ref}-cash", tip_method: 'cash',
+        status: 'settled', amount_cents: 1400, occurred_at: at + 4.hours, business_date: day, evidence: 'declared', created_by: staff[:worker].user,
+        note: 'Cash tips declared at clock-out.')
+    end
+  end
+
+  # Last week's timesheet, built from the punches and sent for review.
+  def ensure_timesheet!(worker, now)
+    rules = PayRules.current
+    period_start, period_end = rules.period_range(now.to_date - 7)
+    return if People::Timesheet.exists?(employee_id: worker.id, period_start: period_start)
+
+    sheet = People::Timesheet.create!(employee: worker, period_start: period_start, period_end: period_end, notes: 'Covered the Thursday delivery.')
+    ClockShift.where(employee_id: worker.id).where.not(ended_at: nil).where(started_at: period_start.in_time_zone..(period_end + 1).in_time_zone).find_each do |shift|
+      sheet.entries.create!(worked_on: shift.started_at.to_date, hours: shift.paid_hours.round(2), work_type: 'regular', clock_shift_id: shift.id)
+    end
+    sheet.submit! if sheet.entries.any?
+    sheet.update!(submitted_at: now - 1.day) if sheet.submitted?
+  end
+
   def wipe!(tenant)
     connection = ActiveRecord::Base.connection
     tables = connection.tables.reject { |table| KEEP_ON_RESET.include?(table) }
@@ -320,10 +470,11 @@ namespace :rupert do
       abort("Set REVIEW_PASSWORD to the review account's password (at least #{AppReviewDemo::MIN_PASSWORD} characters).")
     end
 
-    result = AppReviewDemo.run!(password: password, reset: ENV['REVIEW_DEMO_RESET'].present?)
+    result = AppReviewDemo.run!(password: password, reset: ENV['REVIEW_DEMO_RESET'].present?, worker_password: ENV.fetch('REVIEW_WORKER_PASSWORD', nil))
     puts "#{AppReviewDemo::NAME} ready (workspace #{AppReviewDemo::SUBDOMAIN})."
     puts "Sign in as #{result[:user].email} (admin of this workspace only) with the password you set."
     puts "Added #{result[:orders]} sample sales; draft count #{result[:count].id}."
+    puts "Worker sign-in for the Time tab: sam.okafor@juniper-pine.example (REVIEW_WORKER_PASSWORD, or the review password); clock PIN #{AppReviewDemo::WORKER_PIN}."
   rescue ArgumentError => e
     abort(e.message)
   end

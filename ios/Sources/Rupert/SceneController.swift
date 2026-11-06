@@ -22,6 +22,13 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         AppSettings.openInApp = { [weak self] url in
             self?.tabBarController.activeNavigator.route(url)
         }
+        // A tapped notification opens its page in the Time tab.
+        PushRegistration.shared.openInApp = { [weak self] url in
+            guard let self else { return }
+            self.select(HotwireTab.timeTabIndex)
+            self.tabBarController.activeNavigator.route(url)
+        }
+        PushRegistration.shared.flushPending()
         if let shortcut = connectionOptions.shortcutItem {
             _ = open(shortcut)
         }
@@ -32,7 +39,9 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         WorkspaceHandoff.shared.onOpened = { [weak self] origin, landing in
             self?.show(instance: origin, landing: landing)
         }
-        SessionWatcher.shared.onChange = { [weak self] _ in
+        SessionWatcher.shared.onChange = { [weak self] state in
+            // Signed out: Rupert must stop pushing to this phone.
+            if state == .signedOut { PushRegistration.shared.forget() }
             // The change is noticed while the old page is still finishing its visit; replacing the
             // tabs from inside that callback left the new Home tab without a visit in release builds.
             DispatchQueue.main.async { self?.restartTabs() }
@@ -73,6 +82,13 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         let index = tabBarController.selectedIndex
         tabBarController.load(HotwireTab.all(on: Instance.current))
         select(index)
+        // Just signed in: offer push notifications from the fresh page once it is on screen.
+        if SessionWatcher.shared.state == .signedIn {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+                guard let self, let top = self.tabBarController.selectedViewController else { return }
+                PushRegistration.shared.askIfNeeded(from: (top as? UINavigationController)?.topViewController ?? top)
+            }
+        }
     }
 
     /// Point every tab at `instance` (after a sign-in or a workspace handoff) and open `landing`

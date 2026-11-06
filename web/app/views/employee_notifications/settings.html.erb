@@ -1,0 +1,33 @@
+<% content_for :title, 'Notifications' %>
+<%= page_header 'Notifications', subtitle: 'Choose what reaches you, on this phone and in the bell.' %>
+<%= form_with url: employee_notification_settings_path, method: :patch, class: 'card card-pad space-y-4' do |f| %>
+  <h2 class="card-title">Tell me when</h2>
+  <ul class="divide-y divide-fog">
+    <% EmployeeNotificationsController::KIND_LABELS.each do |kind, (label, hint)| %>
+      <li class="flex items-start justify-between gap-4 py-3">
+        <label for="prefs_<%= kind %>" class="flex-1 cursor-pointer"><span class="block font-medium"><%= label %></span><span class="block text-sm text-mocha"><%= hint %></span></label>
+        <input type="hidden" name="prefs[<%= kind %>]" value="0">
+        <input type="checkbox" id="prefs_<%= kind %>" name="prefs[<%= kind %>]" value="1" class="checkbox mt-1 h-6 w-6" <%= 'checked' if @prefs[kind] %>>
+      </li>
+    <% end %>
+  </ul>
+  <div class="form-actions"><%= f.submit 'Save', class: 'btn-primary', data: { turbo_submits_with: 'Saving…' } %></div>
+<% end %>
+<section class="card card-pad space-y-3" id="push" aria-labelledby="push-heading">
+  <h2 id="push-heading" class="card-title">Push to this device</h2>
+  <% if hotwire_native_app? %>
+    <p class="text-sm text-mocha">The Rupert app on this iPhone sends these as notifications. Manage them in iPhone Settings → Notifications → Rupert.</p>
+  <% else %>
+    <%= render 'shared/push_subscribe', vapid_public_key: @vapid_public_key %>
+  <% end %>
+  <% if @devices.any? %>
+    <ul class="divide-y divide-fog">
+      <% @devices.each do |device| %>
+        <li class="flex items-center justify-between gap-3 py-2 text-sm">
+          <span><%= device.platform == 'ios' ? 'iPhone app' : 'Web app' %><% if device.last_seen_at %> · last seen <%= l(device.last_seen_at, format: :short) %><% end %></span>
+          <%= button_to 'Turn off', unsubscribe_employee_push_path(device), class: 'btn-ghost btn-sm' %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</section>

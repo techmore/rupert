@@ -2,6 +2,14 @@
 
 Native Expo/React Native client for a Rupert instance. The instance itself supplies the installable web app at `/employee`; there is no separate native-client web deployment.
 
+## Push notifications
+
+This Expo client does not register for push (no `expo-notifications` dependency, by choice: the
+staff API it uses is kill-switched in production). Time & pay notifications (schedule posted or
+changed, approvals, shift offers, forgotten clock-outs, break reminders) reach staff through the
+Rupert iPhone app (`ios/`, APNs) and the installed staff web app at `/employee` (Web Push, turned
+on from Settings → Notifications). The in-app bell shows every message regardless.
+
 ## Development and validation
 
 Use Node 24 and the committed lockfile:

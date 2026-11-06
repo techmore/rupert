@@ -78,14 +78,46 @@ offline and uploads it. It never submits for review.
 
 ## Tests
 
-`Tests/RupertTests` covers the session watcher, the bottom inset, Rupert's own sites and the
-Info.plist privacy keys. On a Mac: `xcodebuild test -scheme Rupert -destination 'platform=iOS Simulator,name=iPhone 17'`.
+`Tests/RupertTests` covers the session watcher, the bottom inset, Rupert's own sites, the Time tab,
+notification deep links and the Info.plist privacy keys. On a Mac:
+`xcodebuild test -scheme Rupert -destination 'platform=iOS Simulator,name=iPhone 18 Pro'`.
 App Review readiness and partner notes: `docs/ios/app-review-readiness.md`.
 
-## Build on a Mac
+## Build and run on a Mac (Simulator, TestFlight)
 
-Open `ios/Package.swift` in Xcode 26 or later, or use any Hotwire Native app template and add
-these sources. Nothing here is Linux-specific.
+`RupertApp/project.yml` describes an Xcode project that compiles the same `Sources/Rupert` into a
+runnable app (the package alone is a library). Generate it with [xcodegen](https://github.com/yonaskolb/XcodeGen);
+the `.xcodeproj` is not committed.
+
+```bash
+brew install xcodegen
+cd ios/RupertApp && xcodegen generate
+xcodebuild build -scheme RupertApp -destination 'platform=iOS Simulator,name=iPhone 18 Pro' CODE_SIGNING_ALLOWED=NO
+xcrun simctl install booted <DerivedData>/Build/Products/Debug-iphonesimulator/Rupert.app
+SIMCTL_CHILD_RUPERT_DEV_ORIGIN=http://127.0.0.1:3000 xcrun simctl launch booted com.rupertpos.Rupert
+```
+
+`RUPERT_DEV_ORIGIN` (debug builds only, `Instance.swift`) points the whole app at a local Rupert;
+the "RupertApp (local)" scheme sets it to `http://127.0.0.1:3005`. `RupertApp/UITests` signs in as
+the demo worker and walks the Time tab, saving a screenshot of each step:
+
+```bash
+TEST_RUNNER_RUPERT_UI_EMAIL=sam.okafor@juniper-pine.example TEST_RUNNER_RUPERT_UI_PASSWORD=… \
+TEST_RUNNER_RUPERT_UI_SHOTS=/abs/dir xcodebuild test -scheme RupertApp -only-testing:RupertAppUITests \
+  -destination 'platform=iOS Simulator,name=iPhone 18 Pro' CODE_SIGNING_ALLOWED=NO
+```
+
+For TestFlight from a Mac: open `RupertApp.xcodeproj`, pick the team, Product → Archive. The
+entitlements file turns on push (`aps-environment`); the App ID needs the Push Notifications
+capability (checklist item 4). `ship.sh` on Linux remains the other path.
+
+## Push notifications
+
+`PushRegistration.swift`: after the first signed-in page the app explains what the notifications
+are for ("Stay in the loop"), then asks iOS; the APNs token goes to `POST /native/push_devices`
+with the session cookie and is forgotten on sign-out. A tapped notification opens its `url` in the
+Time tab. The server side (`PushNotifier`, APNs token auth) needs `APNS_*` keys in `/etc/rupert.env`;
+without them the bell alone carries every message.
 
 ## App Store
 

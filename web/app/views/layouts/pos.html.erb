@@ -8,6 +8,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <title><%= safe_join([content_for(:title), "Rupert"].compact, " · ") %></title>
     <meta name="turbo-cache-control" content="no-cache">
+    <% if hotwire_native_app? %><meta name="rupert-session" content="<%= Current.user ? 'signed-in' : 'signed-out' %>"><% end %>
     <meta name="theme-color" content="#e6efea">
     <meta name="color-scheme" content="dark light">
     <%= render "layouts/theme" %>

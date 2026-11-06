@@ -133,6 +133,16 @@ Rails.application.routes.draw do
     defaults: { format: :json }
   post '/native/session', to: 'native/sessions#create', as: :native_session
 
+  # ---- time & pay: ios ----
+  # The iPhone app's APNs token, the installed web app's Web Push subscription, and a person's own notification choices.
+  post '/native/push_devices', to: 'native/push_devices#create', as: :native_push_devices
+  delete '/native/push_devices/:token_digest', to: 'native/push_devices#destroy', as: :native_push_device
+  get '/employee/notifications/settings', to: 'employee_notifications#settings', as: :employee_notification_settings
+  patch '/employee/notifications/settings', to: 'employee_notifications#update_settings'
+  post '/employee/push_subscriptions', to: 'employee_notifications#subscribe', as: :employee_push_subscriptions
+  post '/employee/push_subscriptions/:id/unsubscribe', to: 'employee_notifications#unsubscribe', as: :unsubscribe_employee_push
+  # ---- end time & pay: ios ----
+
   get '/workspace', to: 'workspaces#show', as: :workspace
   post '/workspace/session', to: 'workspaces#session_start', as: :workspace_session
   get '/instance/health', to: 'instance_health#show'

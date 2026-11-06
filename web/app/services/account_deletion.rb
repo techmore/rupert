@@ -34,6 +34,11 @@ class AccountDeletion
       @user.google_login_identities.destroy_all
       ApiAccessToken.where(user_id: @user.id, revoked_at: nil).update_all(revoked_at: now)
       EmployeeAppSession.where(user_id: @user.id, revoked_at: nil).update_all(revoked_at: now)
+      # Push tokens are delivery addresses for this person's phone: gone with the account.
+      PushDevice.unscoped.where(user_id: @user.id).delete_all
+      # The worker record stays (hours and pay history belong to the business) but can no longer punch.
+      People::Employee.tenant_unscoped(@user.tenant_id).where(user_id: @user.id)
+        .update_all(pin_digest: nil, pin_set_at: nil, pin_failed_count: 0, pin_locked_until: nil, updated_at: now)
       @user.user_permissions.destroy_all
       @user.update!(
         name: 'Deleted user',

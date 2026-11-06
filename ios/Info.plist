@@ -5,7 +5,7 @@
 	<key>CFBundleDisplayName</key>
 	<string>Rupert</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.0</string>
+	<string>1.1.0</string>
 	<key>RupertControlPlaneURL</key>
 	<string>https://pos.rupertpos.com</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
@@ -51,6 +51,14 @@
 	<array>
 		<dict>
 			<key>UIApplicationShortcutItemType</key>
+			<string>com.rupertpos.Rupert.time</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Clock in</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>clock</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
 			<string>com.rupertpos.Rupert.chat</string>
 			<key>UIApplicationShortcutItemTitle</key>
 			<string>Team Chat</string>
@@ -73,15 +81,12 @@
 			<key>UIApplicationShortcutItemIconSymbolName</key>
 			<string>bell</string>
 		</dict>
-		<dict>
-			<key>UIApplicationShortcutItemType</key>
-			<string>com.rupertpos.Rupert.search</string>
-			<key>UIApplicationShortcutItemTitle</key>
-			<string>Search</string>
-			<key>UIApplicationShortcutItemIconSymbolName</key>
-			<string>magnifyingglass</string>
-		</dict>
 	</array>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Rupert uses the microphone when you record a video to attach to a chat message.</string>
 </dict>
