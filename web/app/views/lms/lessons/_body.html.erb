@@ -1,0 +1,18 @@
+<%# Lesson blocks from Lms::Markup: text as safe HTML, diagrams / contacts / steps as partials. %>
+<div class="lesson-prose space-y-4">
+  <% blocks.each do |block| %>
+    <% if block.kind == :html %>
+      <%= block.payload %>
+    <% elsif block.kind == :diagram %>
+      <%= render "lms/diagrams/#{block.payload}" %>
+    <% elsif block.kind == :contacts %>
+      <%= render 'lms/shared/contacts', contacts: Lms::SupportContacts.for_tenant %>
+    <% elsif block.kind == :steps %>
+      <ol class="lms-steps">
+        <% block.payload.each_with_index do |step, index| %>
+          <li class="lms-step"><span class="lms-step-number" aria-hidden="true"><%= index + 1 %></span><p><%= step.html_safe %></p></li>
+        <% end %>
+      </ol>
+    <% end %>
+  <% end %>
+</div>

@@ -1,0 +1,13 @@
+<%# Support contacts from workspace settings (Lms::SupportContacts), never from lesson text. %>
+<ul class="row-list lms-contacts" aria-label="Who to call">
+  <% contacts.each do |contact| %>
+    <li class="row-item">
+      <div class="min-w-0"><p class="font-semibold text-ink"><%= contact.label %></p><p class="text-xs text-mocha"><%= contact.role %></p><% if contact.notes.present? %><p class="text-xs text-taupe"><%= contact.notes %></p><% end %></div>
+      <div class="row-item-end">
+        <% if contact.phone.present? %><a href="tel:<%= contact.phone.gsub(/[^\d+]/, '') %>" class="btn-ghost btn-sm"><%= contact.phone %></a><% else %><span class="pill-taupe">Not set</span><% end %>
+        <% if contact.hours.present? %><span class="text-xs text-mocha"><%= contact.hours %></span><% end %>
+      </div>
+    </li>
+  <% end %>
+</ul>
+<% if Current.user&.can?(Lms::EDIT_PERMISSION) %><p class="text-xs text-taupe"><%= link_to t('lms.admin.edit_contacts'), lms_admin_support_contacts_path, class: 'underline' %></p><% end %>

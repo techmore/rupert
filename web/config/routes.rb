@@ -5,6 +5,29 @@ Rails.application.routes.draw do
   get '/learning/team', to: 'learning#team', as: :learning_team
   get '/welcome', to: 'learning#welcome', as: :welcome
   post '/welcome', to: 'learning#onboard', as: :onboard
+  # Learning center (LMS): courses → lessons → quizzes as data. Learners see their own courses;
+  # team completion needs hr.read; editing and assigning need hr.write. See docs/lms/README.md.
+  scope path: 'learning-center', module: 'lms', as: 'lms' do
+    get '/', to: 'courses#index', as: :root
+    get 'team', to: 'team#index', as: :team
+    resources :courses, only: :show, param: :slug do
+      get 'badge', on: :member
+      resources :lessons, only: :show, param: :slug do
+        post 'quiz', on: :member
+      end
+    end
+    namespace :admin do
+      get 'support-contacts', to: 'support_contacts#edit', as: :support_contacts
+      patch 'support-contacts', to: 'support_contacts#update'
+      resources :courses, only: %i[index edit update], param: :slug do
+        resources :lessons, only: %i[edit update], param: :slug do
+          post 'preview', on: :collection
+        end
+        resources :assignment_rules, only: %i[create destroy]
+        resources :enrollments, only: :create
+      end
+    end
+  end
   resources :learning, only: %i[index show] do
     post :complete, on: :member
   end

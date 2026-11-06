@@ -108,3 +108,10 @@ views. In a browser, check the welcome, choosing a path, the dashboard tour
 (including Escape and keyboard), a `?` definition popover, a calculation
 disclosure, the help panel search, a lesson with a calculator, a wrong answer,
 completion, the team view and a phone-width viewport.
+
+## Learning center (courses)
+
+Separate from Learn Rupert: **Me → Learning center** (`/learning-center`) plays courses that are workspace data
+(lessons → quiz questions, glossary, assignment rules, progress), seeded from `web/db/seeds/lms/*.yml`. The first
+course is *How our card payments work*. Team completion is at `/learning-center/team` (`hr.read`); editing and
+assignment at `/learning-center/admin/courses` (`hr.write`). See `docs/lms/README.md`.

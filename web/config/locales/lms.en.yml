@@ -1,0 +1,131 @@
+en:
+  lms:
+    title: Learning center
+    minutes:
+      one: "%{count} min"
+      other: "%{count} min"
+    status:
+      completed: Done
+      in_progress: In progress
+      assigned: Not started
+      not_assigned: Not assigned
+      overdue: Overdue
+    index:
+      subtitle: Short lessons about how the shop runs. Progress saves as you go.
+      required: Required for you
+      other: More courses
+      empty_title: No courses yet.
+      empty_hint: Courses appear here when the owner publishes one.
+      badges: Your badges
+      continue: Continue
+      start: Start
+      review: Review
+      due: Due %{date}
+      overdue: Overdue since %{date}
+      lessons: "%{count} lessons"
+      team: Team completion
+      manage: Manage courses
+    course:
+      lessons: Lessons
+      about: About this course
+      start: Start the course
+      continue: Continue with lesson %{number}
+      done: You finished this course
+      badge: Open your badge
+      lesson_done: Done
+      lesson_next: Up next
+      lesson_locked: Not yet
+      required_by: Required · due %{date}
+      required: Required
+      glossary: Words you will meet
+    lesson:
+      of: Lesson %{number} of %{total}
+      previous: Previous
+      next: Next lesson
+      back: Course overview
+      quiz_title: Quick check
+      quiz_hint: Every answer must be right to finish the lesson. Wrong answers show why so you can try again.
+      quiz_passed: You passed this lesson.
+      check: Check my answers
+      checking: Checking…
+      no_quiz: No quiz on this one. Reading it counts.
+      mark_read: Mark as read
+      terms: Words in this lesson
+      correct: Correct
+      incorrect: Not quite
+    quiz:
+      passed: "“%{lesson}” done. Nice."
+      try_again:
+        one: One answer to revisit. The explanation is under it.
+        other: "%{count} answers to revisit. The explanations are under them."
+      course_complete: "You completed “%{course}”. Your badge is ready."
+    badge:
+      title: Course badge
+      subtitle: "%{course}"
+      earned_by: Earned by
+      on: Completed on
+      not_yet: Finish every lesson to earn this badge.
+      share_hint: This page prints cleanly if you want a copy for the staff file.
+      print: Print
+    team:
+      title: Team completion
+      subtitle: Who has finished which course, and who is overdue.
+      people: People
+      completed: Completed
+      in_progress: In progress
+      overdue: Overdue
+      not_started: Not started
+      person: Person
+      role: Role
+      course: Course
+      status: Status
+      progress: Progress
+      due: Due
+      completed_on: Completed
+      empty: No one matches these filters.
+      download: Download CSV
+      all_courses: All courses
+      all_roles: All roles
+      all_statuses: All statuses
+    admin:
+      title: Manage courses
+      subtitle: Edit lessons and quizzes, decide who takes each course, and keep the support contacts current.
+      saved: Saved.
+      edit_course: Edit course
+      edit_lesson: Edit lesson
+      lessons: Lessons
+      rules: Who takes it
+      rules_hint: Rules enrol people by role, now and whenever a new account is added. Removing a rule keeps what people already did.
+      add_rule: Add rule
+      rule_added:
+        one: Rule added. One person enrolled.
+        other: Rule added. %{count} people enrolled.
+      rule_removed: Rule removed.
+      people: Assign people
+      people_hint: Pick names for a one-off assignment, with an optional due date.
+      assign: Assign
+      assigned:
+        one: Assigned to one person (%{existing} already had it).
+        other: Assigned to %{count} people (%{existing} already had it).
+      pick_people: Pick at least one person.
+      bad_date: That due date is not a date.
+      enrolled: Enrolled
+      contacts: Support contacts
+      contacts_hint: Shown inside the course lesson “When things break”. Keep these current; nothing here is a password.
+      contacts_saved: Support contacts saved.
+      edit_contacts: Edit support contacts
+      status: Status
+      published: Published
+      draft: Draft
+      required: Required
+      due_days: Due within (days)
+      role: Role
+      body_help: "Plain text with a few marks: ## heading, - bullet, **bold**, [[term]] for a glossary word, > tip: for a callout, {{diagram:name}} for a picture."
+      preview: Preview
+      questions: Quiz questions
+      choices_help: One choice per line. The correct one is the line number you pick below (first line is 1).
+      remove_question: Remove this question
+      add_question: Add a question
+      seeded: Shipped with Rupert
+      edited: Edited by you
+      diagram_none: No diagram

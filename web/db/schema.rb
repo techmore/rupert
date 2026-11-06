@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_06_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_06_120000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -2043,6 +2043,127 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_06_110000) do
     t.index ["tenant_id", "employee_id", "status"], name: "index_leave_requests_on_tenant_id_and_employee_id_and_status"
     t.index ["tenant_id", "request_key"], name: "index_leave_requests_on_tenant_id_and_request_key", unique: true, where: "request_key IS NOT NULL"
     t.index ["tenant_id", "status"], name: "index_leave_requests_on_tenant_id_and_status"
+  end
+
+  create_table "lms_assignment_rules", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "course_id", null: false
+    t.string "role"
+    t.string "location_id"
+    t.boolean "required", default: false, null: false
+    t.integer "due_days"
+    t.bigint "created_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "course_id"], name: "index_lms_assignment_rules_on_tenant_id_and_course_id"
+  end
+
+  create_table "lms_courses", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "slug", null: false
+    t.string "title", null: false
+    t.string "summary"
+    t.text "description"
+    t.string "status", default: "draft", null: false
+    t.string "locale", default: "en", null: false
+    t.string "badge_title"
+    t.integer "position", default: 0, null: false
+    t.string "seed_key"
+    t.integer "seed_version"
+    t.datetime "edited_at"
+    t.bigint "created_by_id"
+    t.bigint "updated_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "seed_key"], name: "index_lms_courses_on_tenant_id_and_seed_key"
+    t.index ["tenant_id", "slug"], name: "index_lms_courses_on_tenant_id_and_slug", unique: true
+  end
+
+  create_table "lms_enrollments", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "course_id", null: false
+    t.bigint "user_id", null: false
+    t.string "source", default: "self", null: false
+    t.bigint "assignment_rule_id"
+    t.bigint "assigned_by_id"
+    t.boolean "required", default: false, null: false
+    t.date "due_on"
+    t.string "status", default: "assigned", null: false
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.bigint "current_lesson_id"
+    t.datetime "badge_awarded_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["course_id", "user_id"], name: "index_lms_enrollments_on_course_id_and_user_id", unique: true
+    t.index ["tenant_id", "user_id", "status"], name: "index_lms_enrollments_on_tenant_id_and_user_id_and_status"
+  end
+
+  create_table "lms_glossary_terms", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "course_id", null: false
+    t.string "key", null: false
+    t.string "term", null: false
+    t.text "definition", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["course_id", "key"], name: "index_lms_glossary_terms_on_course_id_and_key", unique: true
+  end
+
+  create_table "lms_lesson_progresses", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "enrollment_id", null: false
+    t.bigint "lesson_id", null: false
+    t.bigint "user_id", null: false
+    t.datetime "viewed_at"
+    t.datetime "passed_at"
+    t.integer "attempts", default: 0, null: false
+    t.integer "best_score", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["enrollment_id", "lesson_id"], name: "index_lms_lesson_progresses_on_enrollment_id_and_lesson_id", unique: true
+    t.index ["tenant_id", "user_id"], name: "index_lms_lesson_progresses_on_tenant_id_and_user_id"
+  end
+
+  create_table "lms_lessons", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "course_id", null: false
+    t.string "slug", null: false
+    t.string "title", null: false
+    t.string "summary"
+    t.integer "minutes", default: 3, null: false
+    t.integer "position", default: 0, null: false
+    t.text "body"
+    t.string "diagram"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["course_id", "slug"], name: "index_lms_lessons_on_course_id_and_slug", unique: true
+    t.index ["tenant_id", "course_id", "position"], name: "index_lms_lessons_on_tenant_id_and_course_id_and_position"
+  end
+
+  create_table "lms_questions", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "lesson_id", null: false
+    t.integer "position", default: 0, null: false
+    t.text "prompt", null: false
+    t.text "choices_json", null: false
+    t.integer "answer_index", default: 0, null: false
+    t.text "explanation"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["lesson_id", "position"], name: "index_lms_questions_on_lesson_id_and_position"
+  end
+
+  create_table "lms_quiz_attempts", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "lesson_progress_id", null: false
+    t.bigint "user_id", null: false
+    t.text "answers_json", null: false
+    t.integer "correct_count", default: 0, null: false
+    t.integer "total_count", default: 0, null: false
+    t.boolean "passed", default: false, null: false
+    t.datetime "created_at", null: false
+    t.index ["lesson_progress_id", "created_at"], name: "index_lms_quiz_attempts_on_lesson_progress_id_and_created_at"
   end
 
   create_table "marketing_campaigns", force: :cascade do |t|

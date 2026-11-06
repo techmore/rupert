@@ -1,0 +1,26 @@
+<% content_for :title, @lesson.title %>
+<% total = @course.lessons.size %>
+<% terms = lms_terms_used(@course, Lms::Markup.new(@course.glossary).tap { |m| m.render(@lesson.body) }.used_terms) %>
+<article class="page-medium space-y-6 lms-lesson">
+  <nav class="lms-lesson-nav" aria-label="Lesson position">
+    <%= link_to lms_course_path(@course), class: 'lms-lesson-nav-link' do %><span aria-hidden="true">‹</span> <%= @course.title %><% end %>
+    <span class="text-xs text-taupe"><%= t('lms.lesson.of', number: @lesson.number, total: total) %></span>
+  </nav>
+  <div class="lms-lesson-track" aria-hidden="true"><% @course.lessons.each do |lesson| %><span class="lms-lesson-track-step <%= 'is-done' if @enrollment.passed?(lesson) %> <%= 'is-current' if lesson == @lesson %>"></span><% end %></div>
+  <%= page_header @lesson.title, subtitle: @lesson.summary %>
+  <p class="text-sm text-mocha"><span class="pill-taupe"><%= lms_minutes(@lesson.minutes) %></span><% if @progress&.passed? %> <span class="pill-fern"><%= t('lms.status.completed') %></span><% end %></p>
+  <% if @lesson.diagram.present? && @blocks.none? { |block| block.kind == :diagram } %>
+    <%= render "lms/diagrams/#{@lesson.diagram}" %>
+  <% end %>
+  <%= render 'lms/lessons/body', blocks: @blocks, course: @course %>
+  <% if terms.any? %>
+    <details class="explainer card card-pad"><summary class="explainer-summary font-semibold"><%= t('lms.lesson.terms') %></summary>
+      <dl class="mt-3 space-y-3"><% terms.each do |key, term, definition| %><div id="lms-lesson-term-<%= key %>"><dt class="font-semibold"><%= term %></dt><dd class="mt-1 text-sm text-mocha"><%= definition %></dd></div><% end %></dl>
+    </details>
+  <% end %>
+  <%= render 'lms/lessons/quiz', lesson: @lesson, course: @course, result: @result, progress: @progress %>
+  <nav class="lms-lesson-footer" aria-label="Lesson navigation">
+    <% if @previous %><%= link_to lms_course_lesson_path(@course, @previous), class: 'btn-ghost' do %><span aria-hidden="true">‹</span> <%= t('lms.lesson.previous') %><% end %><% else %><span></span><% end %>
+    <% if @next && @progress&.passed? %><%= link_to lms_course_lesson_path(@course, @next), class: 'btn-ghost' do %><%= t('lms.lesson.next') %> <span aria-hidden="true">›</span><% end %><% else %><%= link_to t('lms.lesson.back'), lms_course_path(@course), class: 'btn-ghost' %><% end %>
+  </nav>
+</article>

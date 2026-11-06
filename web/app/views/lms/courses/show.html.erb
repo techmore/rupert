@@ -1,0 +1,48 @@
+<% content_for :title, @course.title %>
+<% done, total = @enrollment.progress %>
+<article class="page-medium space-y-6">
+  <%= page_header @course.title, subtitle: @course.summary, eyebrow: t('lms.title') do %>
+    <% if @enrollment.completed? %>
+      <%= link_to t('lms.course.badge'), badge_lms_course_path(@course), class: 'btn-primary' %>
+    <% elsif @next_lesson %>
+      <%= link_to done.zero? ? t('lms.course.start') : t('lms.course.continue', number: @next_lesson.number), lms_course_lesson_path(@course, @next_lesson), class: 'btn-primary' %>
+    <% end %>
+  <% end %>
+  <div class="lms-course-hero card card-pad">
+    <%= lms_progress_ring @enrollment.percent, label: @course.title, size: :lg %>
+    <div class="min-w-0 flex-1">
+      <p class="font-semibold text-ink"><%= @enrollment.completed? ? t('lms.course.done') : "#{done} / #{total} · #{t('lms.course.lessons').downcase}" %></p>
+      <p class="text-sm text-mocha"><%= t('lms.index.lessons', count: total) %> · <%= lms_minutes(@course.minutes) %><% if @enrollment.required? %> · <% if @enrollment.due_on %><%= t('lms.course.required_by', date: l(@enrollment.due_on, format: :long)) %><% else %><%= t('lms.course.required') %><% end %><% end %></p>
+      <% if @enrollment.overdue? %><p class="mt-1"><%= lms_status_pill 'overdue' %></p><% end %>
+    </div>
+  </div>
+  <% if @course.description.present? %>
+    <section class="section-card" aria-labelledby="lms-about">
+      <%= section_heading t('lms.course.about'), id: 'lms-about' %>
+      <% Lms::Markup.render(@course.description, glossary: @course.glossary).each do |block| %><% if block.kind == :html %><div class="lesson-prose"><%= block.payload %></div><% end %><% end %>
+    </section>
+  <% end %>
+  <section class="section-card" aria-labelledby="lms-lessons">
+    <%= section_heading t('lms.course.lessons'), id: 'lms-lessons' %>
+    <ol class="lms-lesson-list">
+      <% @course.lessons.each_with_index do |lesson, index| %>
+        <% passed = @enrollment.passed?(lesson) %>
+        <% is_next = lesson == @next_lesson %>
+        <li class="lms-lesson-item <%= 'lms-lesson-item-done' if passed %> <%= 'lms-lesson-item-next' if is_next %>">
+          <span class="lms-lesson-number" aria-hidden="true"><%= passed ? '✓' : index + 1 %></span>
+          <div class="min-w-0 flex-1">
+            <p class="font-semibold text-ink"><%= link_to lesson.title, lms_course_lesson_path(@course, lesson), class: 'lms-row-link' %></p>
+            <p class="text-xs text-mocha"><%= lesson.summary %></p>
+            <p class="mt-1 text-xs text-taupe"><%= lms_minutes(lesson.minutes) %><% if passed %> · <%= t('lms.course.lesson_done') %><% elsif is_next %> · <%= t('lms.course.lesson_next') %><% end %></p>
+          </div>
+          <%= link_to passed ? t('lms.index.review') : (is_next ? t('lms.index.start') : t('lms.index.start')), lms_course_lesson_path(@course, lesson), class: is_next ? 'btn-primary btn-sm' : 'btn-ghost btn-sm', aria: { label: "#{lesson.title}" } %>
+        </li>
+      <% end %>
+    </ol>
+  </section>
+  <% if @course.glossary.any? %>
+    <details class="explainer card card-pad"><summary class="explainer-summary font-semibold"><%= t('lms.course.glossary') %></summary>
+      <dl class="mt-3 space-y-3"><% @course.glossary_terms.each do |term| %><div id="lms-term-<%= term.key %>"><dt class="font-semibold"><%= term.term %></dt><dd class="mt-1 text-sm text-mocha"><%= term.definition %></dd></div><% end %></dl>
+    </details>
+  <% end %>
+</article>
