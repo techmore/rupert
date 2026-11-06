@@ -160,15 +160,22 @@ module People
     end
 
     def average_sales_cents(day)
-      @sales ||= {}
-      @sales[day] ||= begin
-        totals = (1..SALES_WEEKS).map do |n|
-          past = day - (7 * n)
-          scope = Core::Order.where(source: SALES_SOURCES).where(occurred_at: past.in_time_zone(@zone).beginning_of_day..past.in_time_zone(@zone).end_of_day)
-          scope = scope.where(location_id: @location_id) if @location_id && Core::Order.where(location_id: @location_id).exists?
-          scope.sum('gross_cents - tax_cents - tip_cents')
+      sales_by_day.fetch(day, 0)
+    end
+
+    # One query for the whole window: net sales per calendar day (store zone) for the SALES_WEEKS weeks
+    # before the grid, then the same-weekday average for each day shown.
+    def sales_by_day
+      @sales_by_day ||= begin
+        from = (week - (7 * SALES_WEEKS)).in_time_zone(@zone).beginning_of_day
+        to = (week - 1).in_time_zone(@zone).end_of_day
+        scope = Core::Order.where(source: SALES_SOURCES).where(occurred_at: from..to)
+        scope = scope.where(location_id: @location_id) if @location_id && Core::Order.where(location_id: @location_id).exists?
+        totals = Hash.new(0)
+        scope.pluck(:occurred_at, Arel.sql('gross_cents - tax_cents - tip_cents')).each do |at, net|
+          totals[at.in_time_zone(@zone).to_date] += net.to_i
         end
-        totals.sum / SALES_WEEKS
+        days.index_with { |day| (1..SALES_WEEKS).sum { |n| totals[day - (7 * n)] } / SALES_WEEKS }
       end
     end
   end

@@ -30,7 +30,7 @@ class TimesheetExperienceTest < ActionDispatch::IntegrationTest
     at('2026-10-26 12:00') do
       sign_in(@staff)
       get employee_app_path
-      assert_select 'h2', 'This pay week'
+      assert_select 'h2', 'This pay period'
       assert_includes response.body, 'Oct 22 – 28, 2026'
       assert_select '[data-clocked-hours]', text: /11\.75/
       post employee_week_path
@@ -167,7 +167,7 @@ class TimesheetExperienceTest < ActionDispatch::IntegrationTest
     sign_in(@staff)
     get employee_app_path
     body = response.body
-    assert_operator body.index('Clock in'), :<, body.index('This pay week')
+    assert_operator body.index('Clock in'), :<, body.index('This pay period')
     welcome = body.index('What will you mostly do here?')
     assert_operator body.index('Clock in'), :<, welcome if welcome
   end
