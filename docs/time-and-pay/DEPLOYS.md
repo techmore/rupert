@@ -44,3 +44,11 @@ Production: Incus container `rupert` on SER8 (`ssh ser8`, then `incus exec ruper
   admin permissions). `rupert-logs errors` empty for the window. The smoke punch and break were deleted, the smoke worker
   terminated and both accounts deactivated (owner may delete them from Accounts).
 - Host disk: 99% used (15 GB free) on SER8's root volume; the deployer keeps five 300 MB backups. Worth a cleanup soon.
+
+## 2026-11-06 15:00 UTC — host note (owner)
+
+The owner's session freed 49 GB on SER8 (root volume now 93%, ~64 GB free) and set a keep-newest-10 retention on
+`rupert-model-audit`. Rules from here on: check `df -h /` before any deploy or backup and do not deploy under ~25 GB free;
+create no large artifacts on SER8; rely on the deployer's own pre-deploy backup (verified after the install with
+`PRAGMA integrity_check`) instead of extra manual copies. The two manual copies taken earlier today were removed. Deploys
+are serialized by the updater's own `flock` on `/run/rupert-autodeploy.lock` and always come from `origin/main`.
