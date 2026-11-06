@@ -31,6 +31,9 @@ class TipAllocation < ApplicationRecord
 
   scope :for_period, ->(starts_on, ends_on) { where(business_date: starts_on..ends_on) }
   scope :counted, -> { where.not(status: 'reversed') }
+  # Rows that still stand on their own: not undone by a later row and not themselves a reversal.
+  # Sums never use this (a reversed original and its mirror add up to zero); existence checks do.
+  scope :live, -> { where(reverses_id: nil).where.not(status: 'reversed') }
   scope :unassigned, -> { where(employee_id: nil) }
   scope :card, -> { where(tip_method: %w[direct pool]) }
   scope :cash, -> { where(tip_method: 'cash') }

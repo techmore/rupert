@@ -33,6 +33,11 @@ production:
     class: OpenClockOutAlertJob
     queue: default
     schedule: every 30 minutes
+  # Tips: match estimated card tips to settled gateway money (docs/time-and-pay/DECISIONS.md).
+  tips_reconciliation:
+    class: Tips::ReconcileJob
+    queue: default
+    schedule: '12 * * * *'
   source_directories:
     class: DirectorySyncJob
     queue: default

@@ -44,6 +44,23 @@ class DejavooFeedTest < ActionDispatch::IntegrationTest
     stored = row.attributes.to_json
     ['424242', 'PAT CARDHOLDER', 'shopper@example.com', '9898989898', 'card-token-secret'].each { |secret| assert_not_includes stored, secret }
     assert_nil row.matched_kind, 'a sale Rupert did not send is flagged as from outside Rupert'
+    # Tip attribution fields (time & pay: tips): the clerk number and terminal, never the card holder.
+    assert_equal ['75091651', nil, nil], [row.terminal_id, row.performed_by, row.invoice_number]
+  end
+
+  test 'the clerk number and invoice on a FEED sale are kept and the tip is attributed off the request' do
+    event = sale_event(id: 'clerk-sale-1')
+    event['data'].merge!('performedBy' => '12', 'invoiceNumber' => 'INV-0042', 'deviceModel' => 'P1')
+    assert_enqueued_with(job: Tips::AttributeFeedEventJob) do
+      deliver(event, 'Authentication' => basic)
+    end
+    assert_response :ok
+    row = DejavooFeedEvent.sole
+    assert_equal ['12', 'INV-0042', 'P1'], [row.performed_by, row.invoice_number, row.device_model]
+    perform_enqueued_jobs
+    assert_equal 1, TipAllocation.count, 'nobody clocked in: one unassigned row for the tip'
+    assert TipAllocation.sole.unassigned?
+    assert_equal 101, TipAllocation.sole.amount_cents
   end
 
   test 'a wrong key, no key or a forged signature is refused and nothing is stored' do
