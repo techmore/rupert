@@ -25,7 +25,6 @@
       <% end %>
     </details>
   </section>
-  <%= render 'shared/push_subscribe' if lookup_context.exists?('shared/push_subscribe', [], true) %>
 <% end %>
 <section class="space-y-3" aria-labelledby="devices-heading">
   <%= section_heading t('time.clock.settings.devices'), id: 'devices-heading', hint: t('time.clock.settings.devices_hint') %>
