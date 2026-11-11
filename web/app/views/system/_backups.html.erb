@@ -9,7 +9,7 @@
     <span class="<%= headline[1] %>"><%= headline[0] %></span>
   <% end %>
   <% unless BackupEncryptionKey.current %>
-    <p class="flash flash-alert text-sm" role="status" data-backup-key-missing>No backup key is active, so new backups are refused rather than written unencrypted. <%= link_to 'Create a backup key', settings_backups_path, class: 'underline' %>.</p>
+    <p class="flash flash-alert text-sm" role="status" data-backup-key-missing>No backup key is active, so new backups are refused rather than written unencrypted. <%= link_to 'Turn on backups', settings_backups_path, class: 'underline' %>.</p>
   <% end %>
   <ul class="divide-y divide-fog">
     <% backups.each do |layer| %>

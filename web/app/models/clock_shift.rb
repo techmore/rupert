@@ -45,9 +45,13 @@ class ClockShift < ApplicationRecord
   end
 
   # Seconds of unpaid break inside the shift (the location's rules decide which kinds are unpaid).
+  # A break of 20 minutes or less is never unpaid (ClockBreak::SHORT_BREAK_PAID). Nothing is deducted automatically:
+  # only breaks the worker actually punched (or a manager-approved correction recorded) come off.
+  # A break is judged by its whole length, also when a window clips it (a meal across midnight).
   def unpaid_break_seconds(at: Time.current, rules: nil)
     rules ||= TimeRules.for(location_id)
-    breaks.sum { |b| rules.break_paid?(b.kind) ? 0 : b.seconds(at: [at, ended_at].compact.min) }
+    limit = [at, ended_at].compact.min
+    breaks.sum { |pause| pause.unpaid?(rules, at: limit) ? pause.seconds(at: limit) : 0 }
   end
 
   # Hours that count for pay: punches minus unpaid breaks.
@@ -67,7 +71,7 @@ class ClockShift < ApplicationRecord
 
     rules ||= TimeRules.for(location_id)
     unpaid = breaks.sum do |pause|
-      next 0 if pause.ended_at.nil? || rules.break_paid?(pause.kind)
+      next 0 if pause.ended_at.nil? || !pause.unpaid?(rules)
 
       [[pause.ended_at, end_at].min - [pause.started_at, start_at].max, 0].max
     end

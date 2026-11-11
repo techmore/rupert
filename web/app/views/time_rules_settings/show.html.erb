@@ -35,6 +35,7 @@
 
     <fieldset class="section-card" <%= 'disabled' unless @can_write %>>
       <%= section_heading 'Breaks', hint: 'Reminders and the paid/unpaid rule for meals and rest breaks.' %>
+      <p class="text-xs text-taupe" data-short-break-rule>A break of <%= ClockBreak::SHORT_BREAK_PAID.in_minutes.to_i %> minutes or less is always paid, whatever it was punched as: federal law counts short breaks as work time. Nothing is ever deducted automatically; only breaks someone actually punched come off.</p>
       <div class="grid gap-4 sm:grid-cols-3">
         <div><label class="field-label" for="tr_meal_after">Meal reminder after (hours)<%= override.call('meal_break_after_hours') %></label><%= number_field_tag field.call('meal_break_after_hours'), rules.meal_break_after_hours&.to_s('F'), id: 'tr_meal_after', min: 0, max: 24, step: 0.5, class: 'input' %></div>
         <div><label class="field-label" for="tr_meal_minutes">Meal length (minutes)<%= override.call('meal_break_minutes') %></label><%= number_field_tag field.call('meal_break_minutes'), rules.meal_break_minutes, id: 'tr_meal_minutes', min: 0, max: 120, class: 'input' %></div>

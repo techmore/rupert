@@ -2,7 +2,7 @@
 
 # Settings → Backups (#421): the key that encrypts backups, and the owner's recovery kit.
 #
-# "Create backup key" makes an age key pair in memory, stores ONLY the public half (BackupEncryptionKey) and answers
+# "Turn on backups" (later "Make a new recovery kit") makes an age key pair in memory, stores ONLY the public half (BackupEncryptionKey) and answers
 # with the recovery kit PDF holding the private half and the Active Record encryption keys. The private key is not
 # saved, logged, cached or shown again: losing the kit means losing access to the backups made with it.
 #
@@ -27,6 +27,13 @@ class BackupKeysController < AuthenticatedController
     @recent_sign_in = recent_sign_in?
     @password_session = session[:auth_method] == 'password'
     @workspace = workspace_name
+    @health = BackupHealth.new(key: @current)
+    @signature = [@current&.id, @pending&.id, @health.state].join(':')
+    respond_to do |format|
+      format.html
+      # Polled by the page while the kit downloads or the first backup is due: ids and a state word, nothing secret.
+      format.json { render(json: { signature: @signature }) }
+    end
   end
 
   # POST /settings/backups/key → the recovery kit PDF (once).
@@ -58,7 +65,7 @@ class BackupKeysController < AuthenticatedController
   def activate
     key = pending_key
     if key.nil?
-      return redirect_to(settings_backups_path, alert: 'No backup key is waiting for its check code. Create a new key.')
+      return redirect_to(settings_backups_path, alert: 'No recovery kit is waiting for its check code (a code works for one hour). Make a new kit below.')
     end
     unless key.code_matches?(params[:check_code])
       ActivityLogger.log('backup_key_activation_failed', subject: key, label: key.fingerprint, details: 'Wrong check code')
@@ -69,7 +76,12 @@ class BackupKeysController < AuthenticatedController
     key.activate!(actor: Current.user)
     ActivityLogger.log('backup_key_activated', subject: key, label: key.fingerprint,
       details: ["Backups now encrypt to #{key.fingerprint}", ("#{previous.fingerprint} retired; its kit still opens older backups" if previous)].compact.join('. '))
-    redirect_to(settings_backups_path, notice: "Backup key #{key.fingerprint} is active. The next backup is encrypted with it.")
+    notice = if previous
+      "Backup key #{key.fingerprint} is active. The next backup is encrypted with it."
+    else
+      'Backups are on. The first encrypted backup is made within five minutes and shows on this page.'
+    end
+    redirect_to(settings_backups_path, notice: notice)
   end
 
   private
