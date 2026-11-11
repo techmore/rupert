@@ -101,7 +101,8 @@ are serialized by the updater's own `flock` on `/run/rupert-autodeploy.lock` and
   protection" on the Backups page and needs that machine switched on after the first encrypted set exists.
 - Cleanup: the temporary account was deleted (not deactivated); the two sign-in lines it left in the access log stay,
   as an audit record. The three smoke accounts from Nov 6 and Nov 11 were already gone.
-- Post-deploy: `rupert-logs errors` shows only the two boot-time notices, both services active, `/up` and `/login`
+- Post-deploy: `rupert-logs errors` shows only warnings that were there before this deploy (the boot-time image-variant notice
+  and "Scoped order is ignored"), no errors; both services active, `/up` and `/login`
   200, 233 GB free.
 - Not verified live: creating a kit, the check code step and the first encrypted backup (owner only; covered by
   `backup_health_alerts_test.rb` and `backup_keys_test.rb`), and the daily notification (the job runs on the hour).
