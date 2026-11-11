@@ -52,3 +52,30 @@ The owner's session freed 49 GB on SER8 (root volume now 93%, ~64 GB free) and s
 create no large artifacts on SER8; rely on the deployer's own pre-deploy backup (verified after the install with
 `PRAGMA integrity_check`) instead of extra manual copies. The two manual copies taken earlier today were removed. Deploys
 are serialized by the updater's own `flock` on `/run/rupert-autodeploy.lock` and always come from `origin/main`.
+
+## 2026-11-11 05:15 UTC — PR #650 multi-workspace audit and switches (`746ccd7f`) — deployed, healthy
+
+- Pre-deploy: `df -h /` 133 GB free (85% used); checkout clean at `0cb2020a`; `rupert-web` and `rupert-jobs` active;
+  `rupert-logs errors` empty. SER8 was reached over Tailscale (`ssh ser8-ts`); the LAN address did not answer.
+- Install: autodeploy after `CI (sqlite3)`, `Product site consistency` and `Dependency and static scan` passed on the
+  merge commit. One additive migration (`tenants.time_zone`, an index on `push_devices.token_digest`). Deployer backup
+  `production-20261111-051522-0cb2020a-fe7f4bbf5ea74ab4.sqlite3` (360 MB), `PRAGMA integrity_check` ok.
+  `autodeploy: deployed 746ccd7f, healthy`; `X-Rupert-Build: 746ccd7f…`; checkout clean afterwards.
+- Smoke (curl with a cookie jar against https://herbalhealers.rupertpos.com, temporary accounts only: the two smoke
+  accounts from Nov 6 reactivated with fresh random passwords, plus a temporary `smoke-admin@rupertpos.com`):
+  - Staff: sign in → `/employee`, `/employee/schedule`, `/employee/time-off`, `/employee/pay`, `/time_clock`,
+    `/people/timesheets`, notification settings and `/clock` all 200; **clock in → break → end break → clock out**
+    each redirected back to `/employee`; `/settings/time_rules` refused (403); a wrong PIN from the signed-in phone
+    answered "That isn't your PIN. On this device only your own PIN works…".
+  - Manager: `/people/approvals`, `/people/timesheets`, `/people/schedule`, `/people/team_schedule`,
+    `/people/punch_history`, `/time_clock` 200; `/settings/time_rules` refused.
+  - Admin (read only, nothing saved): `/settings/time_rules` 200 with the time zone select, **What is turned on**
+    (every switch checked) and **Punch logging** (audit trail unchecked); `/people/pay_periods`, `/people/tips`,
+    `/people/clock_devices`, `/activity` 200.
+- Cleanup: the one smoke punch (shift 4) and its break deleted; smoke worker 37 terminated again; the three smoke
+  accounts deactivated with their passwords replaced by random values (owner may delete them from Accounts). No real
+  employee's hours were submitted, approved or changed. The workspace's settings were not touched: no
+  `tenant_time_rules` row, time zone blank (instance default), no punch audit lines.
+- Post-deploy: `rupert-logs errors` empty, both services active, `/up` and `/login` 200, 132 GB free.
+- Not verified live: a second workspace (production has one), the switches in the off position (they would change the
+  live workspace; covered by `time_features_settings_test.rb`), and push delivery (no APNs key on the server yet).
