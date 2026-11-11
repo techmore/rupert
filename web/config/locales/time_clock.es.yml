@@ -11,6 +11,7 @@ es:
       delete: "Borrar"
       locked: "Demasiados PIN incorrectos. Intenta de nuevo en %{minutes} minutos."
       wrong_pin: "Ese PIN no coincide."
+      own_pin_only: "Ese no es tu PIN. En este dispositivo solo funciona tu propio PIN; usa la caja de la tienda para otra persona."
       offline_saved: "Guardado en este dispositivo · se sincronizará"
       offline_synced: "%{count} marcación sincronizada"
       untrusted: "Usa la caja de la tienda o inicia sesión en tu teléfono."

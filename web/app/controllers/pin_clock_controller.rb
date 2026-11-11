@@ -175,7 +175,7 @@ class PinClockController < ApplicationController
 
   def punch_error(error)
     message = error.is_a?(ActiveRecord::RecordInvalid) ? error.record.errors.full_messages.to_sentence : error.message
-    if action_name == 'punch' && [t('time.clock.wrong_pin'), t('time.clock.untrusted')].include?(message)
+    if action_name == 'punch' && [t('time.clock.wrong_pin'), t('time.clock.untrusted'), t('time.clock.own_pin_only')].include?(message)
       count_wrong_pin!
       PunchAudit.record('pin_refused', device: @device&.name, register: params[:register_name].presence, location_id: params[:location_id].presence || @device&.location_id)
     end

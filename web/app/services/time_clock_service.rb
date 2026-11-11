@@ -145,8 +145,14 @@ class TimeClockService
     # answer for every PIN, so the pad never says whether a PIN exists (and costs no bcrypt work).
     raise Error, I18n.t('time.clock.untrusted') unless device&.active? || user
 
-    worker = worker_by_pin(pin, only: device&.active? ? :anyone : worker_for(user))
-    raise Error, I18n.t('time.clock.wrong_pin') unless worker
+    own = device&.active? ? nil : worker_for(user)
+    # Their own PIN, locked after too many wrong tries: say so (it is their own account).
+    raise Error, I18n.t('time.clock.locked', minutes: TimeRules.for(location_id).pin_lockout_minutes) if own&.pin_locked?
+
+    worker = worker_by_pin(pin, only: device&.active? ? :anyone : own)
+    # Without a store device only the signed-in person's own PIN can match; every other set of digits
+    # (a colleague's real PIN included) gets the same plain answer about what this device accepts.
+    raise Error, I18n.t(device&.active? ? 'time.clock.wrong_pin' : 'time.clock.own_pin_only') unless worker
     vouch_for!(worker, device: device, user: user)
 
     location_id ||= device&.location_id
@@ -292,7 +298,7 @@ class TimeClockService
     return if user && worker.user_id == user.id
 
     if user
-      raise Error, I18n.t('time.clock.wrong_pin')
+      raise Error, I18n.t('time.clock.own_pin_only')
     else
       raise Error, 'Use the store register, or sign in on your phone.'
     end

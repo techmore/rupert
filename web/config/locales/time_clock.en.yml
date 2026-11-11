@@ -11,6 +11,7 @@ en:
       delete: "Delete"
       locked: "Too many wrong PINs. Try again in %{minutes} minutes."
       wrong_pin: "That PIN didn’t match."
+      own_pin_only: "That isn’t your PIN. On this device only your own PIN works; use the store register for anyone else."
       offline_saved: "Saved on this device · will sync"
       offline_synced: "%{count} punch synced"
       untrusted: "Use the store register, or sign in on your phone."
