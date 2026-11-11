@@ -80,7 +80,7 @@ Rupert is for businesses that use Rupert. Sign in with the account your business
 **Keywords [100]**
 
 ```
-retail,inventory,pos,shop,sales,stock count,barcode,small business,time clock,schedule,timesheet,tips
+retail,inventory,pos,sales,stock count,barcode,small business,time clock,schedule,timesheet,tips
 ```
 
 **Support URL:** https://pos.rupertpos.com/support
