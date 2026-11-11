@@ -4,6 +4,7 @@ module People
   # When each person can work, by weekday. Managers edit anyone here; a worker edits their own
   # from the Schedule tab (EmployeeAvailabilityController).
   class AvailabilitiesController < AuthenticatedController
+    before_action -> { require_time_feature(:scheduling) }
     before_action { authorize(:module, :schedule_write?) }
 
     def index

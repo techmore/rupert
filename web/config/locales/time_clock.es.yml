@@ -14,6 +14,11 @@ es:
       offline_saved: "Guardado en este dispositivo · se sincronizará"
       offline_synced: "%{count} marcación sincronizada"
       untrusted: "Usa la caja de la tienda o inicia sesión en tu teléfono."
+      off:
+        channel: "Marcar desde aquí está desactivado. Usa el reloj de la tienda."
+        fixes: "Pide a un gerente que corrija esta marcación."
+      kiosk_off_title: "El quiosco de reloj está desactivado"
+      kiosk_off_hint: "Un administrador desactivó el quiosco en este espacio. Marca en la caja o inicia sesión en tu teléfono."
       pos_button: "Reloj"
       register_device: "Registrar este dispositivo"
       register_hint: "Un gerente registra la caja o la tableta del mostrador una sola vez; después, las marcaciones con PIN desde ahí son confiables."

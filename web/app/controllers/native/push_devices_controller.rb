@@ -7,6 +7,9 @@ module Native
   # with the session cookie, never from a page, so there is no CSRF token to check.
   class PushDevicesController < ApplicationController
     skip_forgery_protection
+    # Forgetting a device needs no session: the app calls it after the sign-out it follows, and the
+    # digest of the phone's own push token (256 bits only that phone and this server know) is the proof.
+    skip_before_action :require_login, only: :destroy
     before_action { response.headers['Cache-Control'] = 'no-store' }
 
     def create
@@ -21,8 +24,7 @@ module Native
     end
 
     def destroy
-      device = PushDevice.find_by(user_id: Current.user.id, token_digest: params[:token_digest].to_s)
-      device&.disable!('signed out')
+      PushDevice.forget_token!(params[:token_digest])
       head :no_content
     end
   end

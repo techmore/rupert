@@ -91,7 +91,7 @@ class PinClockTest < ActionDispatch::IntegrationTest
     # Signed in as Pia, a colleague's PIN is refused on this phone.
     data = punch('1357')
     assert_response :unprocessable_entity
-    assert_match(/someone else/, data['error'])
+    assert_equal 'That PIN didn’t match.', data['error'], 'the answer never says the digits are a colleague’s PIN'
     assert_empty ClockShift.where(employee_id: @other.id)
 
     # Her own PIN works from her own session.

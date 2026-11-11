@@ -31,6 +31,16 @@ class Current < ActiveSupport::CurrentAttributes
     sync_run&.id
   end
 
+  # Runs the block as `tenant`: workspace scope, that workspace's clock (BusinessClock) and fresh
+  # per-request caches, all restored afterwards. Jobs that walk every workspace use this so one
+  # workspace's rules, flags or time zone never carry into the next.
+  def with_tenant(tenant, &)
+    set(tenant: tenant, metadata: {}, pay_rules: nil) do
+      name = tenant.respond_to?(:time_zone) ? tenant.time_zone.presence : nil
+      name ? Time.use_zone(BusinessClock.display_zone(name), &) : BusinessClock.use(tenant: tenant, &)
+    end
+  end
+
   def user=(value)
     super
     self.tenant = value&.tenant

@@ -1,6 +1,12 @@
 # frozen_string_literal: true
 
 module ApplicationHelper
+  # A workspace switch from Settings → Time rules (TimeRules::FEATURES): `time_feature?(:scheduling)`.
+  def time_feature?(name) = TimeRules.feature?(name)
+
+  # Whether the signed-in person may punch from this browser: the iPhone app and the web each have a switch.
+  def clock_channel_on? = TimeRules.feature?(hotwire_native_app? ? :clock_app : :clock_web)
+
   # Ask Rupert, the help chat, is for signed-in staff with the Rupert Chat permission
   # (administrators by default) in their own workspace (not customer-support views,
   # not the employee app) while an administrator keeps it on.

@@ -5,6 +5,7 @@ module Api
     # GET /api/v1/employee/schedule?week=YYYY-MM-DD — the worker's posted shifts and the open shifts
     # they could pick up for one Monday–Sunday week. Drafts are never returned.
     class EmployeeScheduleController < EmployeeBaseController
+      before_action -> { require_time_feature(:scheduling) }
       def index
         week = (params[:week].present? ? Date.iso8601(params[:week].to_s) : Date.current).beginning_of_week
         mine = worker.scheduled_shifts.live.published.between(week, week + 6).chronological.includes(:location, :position)

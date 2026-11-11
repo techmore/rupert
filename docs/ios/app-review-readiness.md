@@ -138,11 +138,12 @@ This branch does not change it, because it changes the AI flow for every user. R
 - **Tokens and storage.** The app stores no API tokens or passwords.
   - The Rails session cookie (encrypted cookie store, 14 days, `valid_browser_session?` checked on every request) lives in the system web data store, in the app's container, under iOS Data Protection.
   - Google sign-in uses PKCE. The verifier is held in memory only, and the one-time code is exchanged over an ephemeral `URLSession`. The workspace handoff also uses an ephemeral session.
-  - `UserDefaults` holds only the instance address and the Face ID setting.
+  - `UserDefaults` holds the instance address, the Face ID setting, whether the notification question was answered, and the digest and host of the push registration (cleared on sign-out and on Switch workspace). No token or password.
   - No Keychain use is needed today. **If the app ever holds a token** (terminal pairing, API keys), use the Keychain with `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`.
 - **Transport.** HTTPS only: there are no App Transport Security exceptions, the app refuses non-HTTPS instances, and the control plane is fixed in `Info.plist`. Other sites open in an in-app Safari view, not the app's web view. There is no certificate pinning, which is normal for a web-content app. Web Inspector is now debug-only.
-- **Hardening to do next (finding 12).**
-  - Only accept `rupert://workspace` when it arrives as the server's redirect from the control plane (a form submission or redirect, not a tapped link), with `control` equal to `RupertControlPlaneURL`.
-  - Or have the server sign the origin.
+- **Workspace handoff (finding 12), partly done 2026-11-10.**
+  - Done: the app accepts `rupert://workspace` only when `control` is its own control plane (`RupertControlPlaneURL`); anything else is refused with a message.
+  - Still to do: accept it only as the server's redirect (not a tapped link), or have the server sign the origin.
   - Test it against a real isolated workspace before shipping.
+- **Shared phones and second workspaces (2026-11-10).** Settings → **Switch workspace** signs out, forgets the push token on the server, clears the web views' data and returns to the control plane. A push token registers to one account across all workspaces, the server forgets it without a session, and a notification opens only a path on the current instance. See `docs/audits/2026-11-10-time-multi-tenant-audit.md`.
 - **AI vendor.** Partners and merchants will ask where business data goes. Ask Rupert's default is a cloud model (DeepSeek via OpenCode). Have the answer ready: the provider, its retention, and the `local_only` mode that keeps questions on the Rupert server.

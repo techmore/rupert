@@ -18,10 +18,18 @@
   <p class="text-sm text-mocha"><%= @location ? "Changes here apply to #{@location.name} only; blank fields keep the default." : 'The default for every store. Pick a store above to override a rule for that store only.' %> Legal defaults are listed, with their reasons, in <code>docs/time-and-pay/DECISIONS.md</code>; they are starting points, not legal advice.</p>
 
   <%= form_with url: time_rules_settings_path(location_id: @location&.id), method: :post, class: 'space-y-6', data: { turbo: false } do |f| %>
+    <%= hidden_field_tag :section, 'rules', id: nil %>
     <fieldset class="section-card" <%= 'disabled' unless @can_write %>>
       <%= section_heading 'Rule preset', hint: 'A state preset fills the legal defaults below; you can still change any field.' %>
       <div class="grid gap-4 sm:grid-cols-2">
         <div><label class="field-label" for="tr_preset">State<%= override.call('preset') %></label><%= select_tag field.call('preset'), options_for_select(TimeRules::PRESET_LABELS.invert, rules.preset), id: 'tr_preset', class: 'select w-full' %></div>
+        <% unless @location %>
+          <div>
+            <label class="field-label" for="tr_time_zone">Workspace time zone</label>
+            <%= select_tag :workspace_time_zone, options_for_select([["Instance default (#{BusinessClock.default_zone.tzinfo.name})", '']] + Tenant::TIME_ZONES.map { |zone| [zone.to_s, zone.tzinfo.name] }, Current.tenant&.time_zone.to_s), id: 'tr_time_zone', class: 'select w-full', aria: { describedby: 'tr_time_zone_hint' } %>
+            <p id="tr_time_zone_hint" class="mt-1 text-xs text-mocha">Decides which midnight ends a day, a work week and a pay period, and the clock times staff see. Now <%= Time.current.in_time_zone(@time_zone).strftime('%-l:%M %p %Z') %>.</p>
+          </div>
+        <% end %>
       </div>
     </fieldset>
 
@@ -121,6 +129,52 @@
     <% if @can_write %>
       <div class="form-actions"><%= f.submit "Save time rules#{" for #{@location.name}" if @location}", class: 'btn-primary' %><%= link_to 'Cancel', time_rules_settings_path(location_id: @location&.id), class: 'btn-ghost' %></div>
     <% end %>
+  <% end %>
+  <% if @location %>
+    <p class="text-sm text-mocha">What is turned on, and punch logging, are set for the whole workspace: <%= link_to 'Every store', time_rules_settings_path(anchor: 'features'), class: 'link' %>.</p>
+  <% else %>
+    <%= form_with url: time_rules_settings_path, method: :post, id: 'features', class: 'space-y-6', data: { turbo: false } do |f| %>
+      <%= hidden_field_tag :section, 'features', id: nil %>
+      <fieldset class="section-card" <%= 'disabled' unless @can_write %>>
+        <%= section_heading 'What is turned on', hint: 'For the whole workspace. A switch that is off is refused by the server (pages, the phone apps and the PIN clock) and leaves the menus. Records already made are kept.' %>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <% TimeRules::FEATURES.each do |key, (label, hint)| %>
+            <label class="flex items-start gap-2 text-sm">
+              <%= check_box_tag field.call(key), '1', rules.feature?(key), id: "tr_#{key}", class: 'checkbox mt-0.5' %>
+              <span><span class="font-medium"><%= label %></span><span class="block text-xs text-mocha"><%= hint %></span></span>
+            </label>
+          <% end %>
+        </div>
+        <p class="mt-3 text-xs text-mocha">Break reminders are under Breaks above, per store.</p>
+        <% if @can_write %>
+          <div class="form-actions mt-4"><%= f.submit 'Save what is turned on', class: 'btn-primary' %></div>
+        <% end %>
+      </fieldset>
+    <% end %>
+
+    <%= form_with url: time_rules_settings_path, method: :post, id: 'logging', class: 'space-y-6', data: { turbo: false } do |f| %>
+      <%= hidden_field_tag :section, 'logging', id: nil %>
+      <fieldset class="section-card" <%= 'disabled' unless @can_write %>>
+        <%= section_heading 'Punch logging', hint: 'What Rupert records about each punch besides the time. Rupert never records GPS position or photos.' %>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <% TimeRules::LOGGING.each do |key, (label, hint)| %>
+            <label class="flex items-start gap-2 text-sm">
+              <%= check_box_tag field.call(key), '1', rules.feature?(key), id: "tr_#{key}", class: 'checkbox mt-0.5' %>
+              <span><span class="font-medium"><%= label %></span><span class="block text-xs text-mocha"><%= hint %></span></span>
+            </label>
+          <% end %>
+          <div>
+            <label class="field-label" for="tr_audit_years">Keep the punch audit trail</label>
+            <%= select_tag field.call('punch_audit_retention_years'), options_for_select(TimeRules::AUDIT_RETENTION_YEARS.map { |years| ["#{years} years", years] }, rules.punch_audit_retention_years), id: 'tr_audit_years', class: 'select w-full', aria: { describedby: 'tr_audit_years_hint' } %>
+            <p id="tr_audit_years_hint" class="mt-1 text-xs text-mocha">Audit lines older than this are removed nightly. Punches, corrections and timesheets themselves are never removed.</p>
+          </div>
+        </div>
+        <% if @can_write %>
+          <div class="form-actions mt-4"><%= f.submit 'Save punch logging', class: 'btn-primary' %></div>
+        <% end %>
+      </fieldset>
+    <% end %>
+    <p class="text-sm text-mocha">Every change on this page is written to the <%= link_to 'activity log', activity_path, class: 'link' %> with who made it, when, and the old and new value.</p>
   <% end %>
   <details class="explainer text-sm text-mocha">
     <summary class="explainer-summary">Where these defaults come from</summary>

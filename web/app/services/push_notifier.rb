@@ -29,6 +29,10 @@ class PushNotifier
     # Sends `notification` to every active device of its user. Returns a Result with counts.
     def deliver(notification)
       result = Result.new(sent: 0, disabled: 0, failed: 0)
+      # A deactivated account, or one in an inactive workspace, gets nothing on its lock screen.
+      user = User.find_by(id: notification.user_id)
+      return result unless user&.active? && user.tenant&.status == 'active'
+
       devices = PushDevice.active.where(user_id: notification.user_id).to_a
       return result if devices.empty?
 

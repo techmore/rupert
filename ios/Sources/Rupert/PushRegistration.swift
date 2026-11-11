@@ -1,5 +1,6 @@
 import UIKit
 import UserNotifications
+import WebKit
 
 /// Push notifications for time & pay: schedule posted or changed, a request decided, a shift offered,
 /// a forgotten clock-out, a break due. Rupert sends them through APNs (`PushNotifier` on the server)
@@ -14,6 +15,7 @@ final class PushRegistration: NSObject, UNUserNotificationCenterDelegate {
 
     private let askedKey = "rupert.push.asked"
     private let tokenKey = "rupert.push.tokenDigest"
+    private let hostKey = "rupert.push.registeredHost"
     private var pendingURL: URL?
 
     /// Called by SceneController: open a URL in the Time tab.
@@ -91,21 +93,54 @@ final class PushRegistration: NSObject, UNUserNotificationCenterDelegate {
             "environment": Self.isSandboxBuild ? "sandbox" : "production",
         ]
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
-        // The web views' session cookie lives in the shared cookie storage; the task shares it.
-        URLSession.shared.dataTask(with: request) { [weak self] data, _, _ in
-            guard let self, let data, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let digest = json["token_digest"] as? String else { return }
-            UserDefaults.standard.set(digest, forKey: self.tokenKey)
-        }.resume()
+        // The session cookie lives in the web views' own store, which URLSession does not read:
+        // copy the cookies for this instance onto the request, so the token is registered to the
+        // person who is signed in here and to nobody else.
+        Self.withWebCookies(request) { [weak self] request in
+            URLSession.shared.dataTask(with: request) { data, _, _ in
+                guard let self, let data, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let digest = json["token_digest"] as? String else { return }
+                UserDefaults.standard.set(digest, forKey: self.tokenKey)
+                UserDefaults.standard.set(request.url?.host, forKey: self.hostKey)
+            }.resume()
+        }
     }
 
-    /// Signed out: tell Rupert to stop sending to this phone.
+    /// Signed out, or moving to another workspace: tell the Rupert this phone registered with to
+    /// stop sending to it. Needs no session (the digest of the phone's own token is the proof), so
+    /// it works after the sign-out it follows. The next person is asked about notifications afresh.
     func forget() {
+        UserDefaults.standard.removeObject(forKey: askedKey)
         guard let digest = UserDefaults.standard.string(forKey: tokenKey) else { return }
-        var request = URLRequest(url: Instance.url("/native/push_devices/\(digest)"))
+        let registeredOn = UserDefaults.standard.string(forKey: hostKey).flatMap { Instance.httpsOrigin("https://\($0)") }
+        var request = URLRequest(url: Instance.url("/native/push_devices/\(digest)", on: registeredOn ?? Instance.current))
         request.httpMethod = "DELETE"
+        request.httpShouldHandleCookies = false
         URLSession.shared.dataTask(with: request).resume()
         UserDefaults.standard.removeObject(forKey: tokenKey)
+        UserDefaults.standard.removeObject(forKey: hostKey)
+    }
+
+    /// Adds the web views' cookies for the request's host to the request.
+    static func withWebCookies(_ request: URLRequest, then send: @escaping (URLRequest) -> Void) {
+        DispatchQueue.main.async {
+            WKWebsiteDataStore.default().httpCookieStore.getAllCookies { cookies in
+                var request = request
+                let fields = HTTPCookie.requestHeaderFields(with: cookies.filter { cookieApplies($0, to: request.url) })
+                fields.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
+                request.httpShouldHandleCookies = false
+                send(request)
+            }
+        }
+    }
+
+    /// Whether a cookie belongs on a request to `url`: same host or a parent domain, and never a
+    /// Secure cookie over plain http.
+    static func cookieApplies(_ cookie: HTTPCookie, to url: URL?) -> Bool {
+        guard let url, let host = url.host?.lowercased() else { return false }
+        if cookie.isSecure && url.scheme != "https" { return false }
+        let domain = cookie.domain.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "."))
+        return !domain.isEmpty && (host == domain || host.hasSuffix("." + domain))
     }
 
     /// Debug and TestFlight-less builds talk to the APNs sandbox; App Store builds to production.
@@ -137,12 +172,13 @@ final class PushRegistration: NSObject, UNUserNotificationCenterDelegate {
         completionHandler()
     }
 
-    /// Where a notification wants to go: Rupert's `url` field on the current instance. Other hosts
-    /// and schemes are ignored (a payload is data, not a command).
+    /// Where a notification wants to go: Rupert's `url` field, a path on the current instance.
+    /// Anything that names a host or a scheme is ignored, another Rupert workspace's address
+    /// included: a payload is data, not a command, and it never moves the app between workspaces.
     static func url(in userInfo: [AnyHashable: Any]) -> URL? {
-        guard let path = userInfo["url"] as? String, !path.isEmpty else { return nil }
+        guard let path = userInfo["url"] as? String, path.hasPrefix("/"), !path.hasPrefix("//"), !path.contains("\\") else { return nil }
         let url = Instance.url(path)
-        return Instance.isRupert(url) || url.host == Instance.current.host ? url : nil
+        return url.host == Instance.current.host ? url : nil
     }
 
     /// A tap that arrived before the window existed.

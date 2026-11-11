@@ -14,6 +14,11 @@ en:
       offline_saved: "Saved on this device · will sync"
       offline_synced: "%{count} punch synced"
       untrusted: "Use the store register, or sign in on your phone."
+      off:
+        channel: "Clocking in from here is turned off. Use the store clock."
+        fixes: "Ask a manager to fix this punch."
+      kiosk_off_title: "The clock kiosk is turned off"
+      kiosk_off_hint: "An administrator turned the kiosk off for this workspace. Clock in on the register or sign in on your phone."
       pos_button: "Clock"
       register_device: "Register this device"
       register_hint: "A manager registers the register or counter tablet once; after that, PIN punches from it are trusted."

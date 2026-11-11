@@ -7,6 +7,9 @@ struct AppSettingsView: View {
     /// Opens a Rupert page in the current tab (the sheet closes first).
     var open: (URL) -> Void
     var close: () -> Void
+    /// Leaves this workspace for the Rupert sign-in page (the sheet closes first).
+    var switchWorkspace: () -> Void = {}
+    @State private var confirmSwitch = false
 
     @State private var lockEnabled = AppLock.shared.isEnabled
     @State private var lockAvailable = AppLock.isAvailable
@@ -26,8 +29,20 @@ struct AppSettingsView: View {
                         : "Set a passcode on this iPhone to lock Rupert.")
                 }
 
-                Section("Workspace") {
+                Section {
                     LabeledContent("Connected to", value: Instance.current.host ?? "")
+                    Button("Switch workspace") { confirmSwitch = true }
+                        .accessibilityIdentifier("switch-workspace")
+                        .confirmationDialog("Switch workspace?", isPresented: $confirmSwitch, titleVisibility: .visible) {
+                            Button("Sign out and switch", role: .destructive, action: switchWorkspace)
+                            Button("Cancel", role: .cancel) {}
+                        } message: {
+                            Text("Signs you out of \(Instance.current.host ?? "this workspace") on this iPhone and stops its notifications. Sign in again to open another workspace.")
+                        }
+                } header: {
+                    Text("Workspace")
+                } footer: {
+                    Text("Use this when another person, or another shop, uses this iPhone.")
                 }
 
                 Section("Help") {
@@ -75,6 +90,9 @@ struct AppSettingsView: View {
 enum AppSettings {
     /// Set by SceneController: open a URL in the selected tab.
     @MainActor static var openInApp: ((URL) -> Void)?
+    /// Set by SceneController: sign out here, forget this phone's push registration, clear the web
+    /// views' Rupert data and start again on the control plane.
+    @MainActor static var switchWorkspace: (() -> Void)?
 
     @MainActor
     static func addButton(to controller: UIViewController) {
@@ -95,7 +113,8 @@ enum AppSettings {
             open: { url in
                 host?.dismiss(animated: true) { openInApp?(url) }
             },
-            close: { host?.dismiss(animated: true) }
+            close: { host?.dismiss(animated: true) },
+            switchWorkspace: { host?.dismiss(animated: true) { switchWorkspace?() } }
         )
         let sheet = UIHostingController(rootView: view)
         host = sheet

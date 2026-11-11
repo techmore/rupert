@@ -46,7 +46,7 @@ to Square.
 | Minors | Under 18; 8 h/day, 40 h/week, 7 AM–7 PM window | FLSA limits for under-16s, applied to all minors as a conservative default. The builder warns; it never blocks a manager. Date of birth is encrypted at rest already. |
 | Predictive scheduling | 14 days notice (warning), 10 h minimum rest between shifts | NY/OR/CA-city style fair-workweek rules are the direction of travel; a warning costs nothing where it does not apply. |
 | Punch rounding | None (owner) | Hours are the recorded seconds. |
-| Buddy-punch prevention | PIN + registered store device (or a signed-in session). No photo, no GPS. | Privacy-respecting and works at a counter: a manager registers the register browser/tablet once (`ClockDevice`), after which a PIN punch from it is trusted. A PIN from an unknown browser is refused with "Use the store register or sign in". Photo capture is listed as a later option, off. |
+| Buddy-punch prevention | PIN + registered store device (or a signed-in session). No photo, no GPS. | Privacy-respecting and works at a counter: a manager registers the register browser/tablet once (`ClockDevice`), after which a PIN punch from it is trusted. A PIN from an unknown browser is refused with "Use the store register or sign in" before the digits are read, so the answer never says whether a PIN exists; a signed-in phone is only compared with its own person's PIN. Photo capture is listed as a later option, off. |
 | PIN | 4 digits, 5 tries then 10 min lockout | Fast at the counter; lockout stops guessing. |
 | Trades | Need manager approval; 2 h minimum notice; blocked when they would create overtime, double-booking, a minor rule breach or an unqualified position | Guardrails run when a taker accepts and again at approval (`checks_json`). |
 | Time off | 7 days notice requested (warning); blackout dates flagged, not blocked | Managers decide; the system informs. |
@@ -94,10 +94,33 @@ rules, devices), `super_admin` (platform). Managers and shift leads can be limit
 
 ## Time zones, DST, overnight
 
-Every store has a `Location#timezone`; punches are stored in UTC and shown in the store's zone
-(`BusinessClock`). Overnight shifts keep one punch pair and split at midnight only when hours are
-imported into a timesheet (existing behaviour). DST: durations are computed from instants, so a shift
-across the fall-back night counts the real hour.
+Punches are stored in UTC. Each workspace has its own clock (`tenants.time_zone`, chosen at **Settings →
+Time rules**; blank keeps the instance default, Eastern): every web request, staff API request, kiosk
+request and time & pay job runs in it (`BusinessClock`, `Current.with_tenant`), so "today", the work week,
+the pay period and every displayed time are the business's. A store-level zone is read when a location
+has one, but no store can record one yet (one zone per workspace; see the 2026-11-10 audit). Overnight
+shifts keep one punch pair and split at the workspace's midnight only when hours are imported into a
+timesheet. DST: durations are computed from instants, so a shift across the fall-back night counts the
+real hour.
+
+## What is turned on (per workspace, 2026-11-10)
+
+**Settings → Time rules** lists a switch for each part of the time system (web clock, phone apps, register
+PIN, kiosk, breaks, scheduling, trades, time-off requests, tips and pay for staff, punch fixes by staff,
+self-submitted timesheets, missed clock-out reminders) and the punch logging options (device and register
+name, a detailed audit trail, the network address, how long the trail is kept). They live in the same
+`tenant_time_rules` setting as the rules (`TimeRules::FEATURES`, `TimeRules::LOGGING`) and apply to the
+whole workspace, never one store. Every default is what Rupert did before the switch existed; the audit
+trail and the network address are new and start off. Off means refused by the server
+(`TimeRules.require_feature!`), not only hidden. The full table is in
+[the multi-workspace audit](../audits/2026-11-10-time-multi-tenant-audit.md).
+
+## Timesheet hours are paid hours (2026-11-10)
+
+Importing clock shifts into a timesheet takes each day's **paid** hours: the punch inside that day less
+unpaid breaks (meals by default, per the store's break rules). Before this the import took gross hours
+while the Pay page, overtime checks and accrual took paid hours, so the payroll export disagreed with what
+the worker saw. Sheets approved before the change are not rewritten.
 
 ## Retention, PII, offboarding
 

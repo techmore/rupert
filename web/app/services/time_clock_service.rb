@@ -10,6 +10,15 @@ class TimeClockService
 
   PUNCH_ACTIONS = %w[punch clock_in clock_out break meal end_break fix_and_clock_in].freeze
 
+  # Which switch (Settings → Time rules) a punch from `source` needs. Manager edits and imports are not punches.
+  CHANNEL_FEATURES = { 'web' => :clock_web, 'ios' => :clock_app, 'api' => :clock_app }.freeze
+
+  # Refuses a punch from a channel the workspace turned off (TimeRules::FeatureDisabled).
+  def self.require_channel!(source)
+    feature = CHANNEL_FEATURES[source.to_s]
+    TimeRules.require_feature!(feature) if feature
+  end
+
   def self.worker_for(user, include_on_leave: false)
     statuses = include_on_leave ? %w[active on_leave] : ['active']
     workers = People::Employee.where(tenant_id: Current.tenant_id, user_id: user.id, status: statuses).limit(2).to_a
@@ -18,11 +27,17 @@ class TimeClockService
 
   # The active worker whose clock PIN matches `pin`, or nil. PINs are unique across a workspace
   # (set_clock_pin! refuses a PIN another worker already has), so the first match is the person.
-  def self.worker_by_pin(pin)
+  #
+  # `only` narrows the search to one worker: a signed-in phone with no store device can only ever
+  # match its own person, so it learns nothing about a colleague's PIN.
+  def self.worker_by_pin(pin, only: :anyone)
     digits = pin.to_s.strip
     return nil unless digits.match?(/\A\d{4,6}\z/)
+    return nil if only.nil?
 
-    People::Employee.where(tenant_id: Current.tenant_id, status: 'active').where.not(pin_digest: nil).order(:id).find do |worker|
+    scope = People::Employee.where(tenant_id: Current.tenant_id, status: 'active').where.not(pin_digest: nil)
+    scope = scope.where(id: only.id) unless only == :anyone
+    scope.order(:id).find do |worker|
       !worker.pin_locked? && BCrypt::Password.new(worker.pin_digest) == digits
     end
   end
@@ -52,11 +67,16 @@ class TimeClockService
       end
       existing = ClockShift.find_by(employee_id: worker.id, request_token: request_token)
       existing ||= ClockShift.open.find_by(employee_id: worker.id)
-      existing || ClockShift.create!(user_id: worker.user_id, employee: worker, employee_key: worker.id.to_s,
+      next existing if existing
+
+      keep_device = TimeRules.for(nil).punch_device_logging?
+      shift = ClockShift.create!(user_id: worker.user_id, employee: worker, employee_key: worker.id.to_s,
         employee_name: worker.name, employment_type: worker.employment_type,
         started_at: punch_time(at, location_id), request_token: request_token, source: source,
-        location_id: location_id.presence, device_label: device_label.presence, register_name: register_name.presence,
+        location_id: location_id.presence, device_label: (device_label.presence if keep_device), register_name: (register_name.presence if keep_device),
         scheduled_shift_id: planned_shift_id(worker, punch_time(at, location_id)))
+      PunchAudit.record('clock_in', shift: shift, worker: worker, queued: at.present? || nil)
+      shift
     end
   rescue ActiveRecord::RecordNotUnique
     ClockShift.find_by(employee_id: worker.id, request_token: request_token) || ClockShift.open.find_by!(employee_id: worker.id)
@@ -77,6 +97,7 @@ class TimeClockService
       ended_at = Time.current if ended_at <= shift.started_at
       shift.breaks.open.each { |b| b.update!(ended_at: [ended_at, b.started_at + 1.second].max) }
       shift.update!(ended_at: ended_at)
+      PunchAudit.record('clock_out', shift: shift, queued: at.present? || nil)
     end
     shift
   end
@@ -85,13 +106,16 @@ class TimeClockService
   def self.start_break(shift:, kind:)
     raise Error, 'Choose a break or a meal.' unless ClockBreak::KINDS.include?(kind.to_s)
 
+    TimeRules.require_feature!(:breaks)
     shift.serialize_change do
       raise Error, 'This shift is already clocked out.' if shift.ended_at
       raise Error, 'This shift was never clocked out. Fix it first.' if shift.stale_open?
 
       rules = TimeRules.for(shift.location_id)
       shift.breaks.open.each { |b| b.update!(ended_at: Time.current) }
-      shift.breaks.create!(kind: kind.to_s, paid: rules.break_paid?(kind), started_at: Time.current)
+      pause = shift.breaks.create!(kind: kind.to_s, paid: rules.break_paid?(kind), started_at: Time.current)
+      PunchAudit.record('break_start', shift: shift, kind: pause.kind)
+      pause
     end
   end
 
@@ -102,6 +126,7 @@ class TimeClockService
       raise Error, 'You are not on a break.' unless open
 
       open.update!(ended_at: [Time.current, open.started_at + 1.second].max)
+      PunchAudit.record('break_end', shift: shift, kind: open.kind)
       ended = open
     end
     ended
@@ -116,8 +141,12 @@ class TimeClockService
     action = action.to_s.presence || 'punch'
     raise Error, 'Unknown clock action.' unless PUNCH_ACTIONS.include?(action)
 
-    worker = worker_by_pin(pin)
-    raise Error, 'That PIN didn’t match.' unless worker
+    # Someone must vouch before the digits are even looked at: an anonymous browser gets the same
+    # answer for every PIN, so the pad never says whether a PIN exists (and costs no bcrypt work).
+    raise Error, I18n.t('time.clock.untrusted') unless device&.active? || user
+
+    worker = worker_by_pin(pin, only: device&.active? ? :anyone : worker_for(user))
+    raise Error, I18n.t('time.clock.wrong_pin') unless worker
     vouch_for!(worker, device: device, user: user)
 
     location_id ||= device&.location_id
@@ -193,6 +222,8 @@ class TimeClockService
   # along as JSON lists of {kind, started_at, ended_at} (original and proposed).
   def self.request_correction(user:, shift_id:, attributes:, worker: nil)
     shift = worker ? ClockShift.find_by!(id: shift_id, employee_id: worker.id) : correctable_shift(user, shift_id)
+    # A fix the worker starts on their own punch can be turned off; a manager can always start one.
+    TimeRules.require_feature!(:staff_corrections) if worker || !OpenClockOuts.manager?(user)
     correction = nil
     shift.serialize_change do
       proposed_breaks = normalize_breaks(attributes[:proposed_breaks])
@@ -201,6 +232,7 @@ class TimeClockService
         original_breaks_json: shift.breaks.chronological.map { |b| { kind: b.kind, started_at: b.started_at.iso8601, ended_at: b.ended_at&.iso8601 } }.to_json,
         proposed_breaks_json: proposed_breaks&.to_json
       ))
+      PunchAudit.record('correction_requested', shift: shift, correction_id: correction.id, requested_by: user&.id)
     end
     correction
   end
@@ -219,6 +251,8 @@ class TimeClockService
       (reviewer.super_admin? || reviewer.tenant_id == Current.tenant_id)
 
     shift = correction.clock_shift
+    # A reviewer limited to stores decides only for staff of those stores (the inbox already hides the rest).
+    raise ActiveRecord::RecordNotFound unless shift.employee.nil? || People::StoreScope.covers?(reviewer, shift.employee)
     # Same rule as timesheets: nobody reviews a change to their own hours.
     if shift.user_id == reviewer.id || correction.requested_by_id == reviewer.id || (shift.employee && shift.employee.user_id == reviewer.id)
       raise Error, 'Another reviewer must review a correction to your own shift.'
@@ -241,6 +275,7 @@ class TimeClockService
         apply_breaks(shift, correction.proposed_breaks) if correction.proposed_breaks_json.present?
       end
       correction.update!(status: approve ? 'approved' : 'rejected', reviewed_by_id: reviewer.id, reviewed_at: Time.current, review_note: note.presence)
+      PunchAudit.record(approve ? 'correction_approved' : 'correction_rejected', shift: shift, correction_id: correction.id, reviewed_by: reviewer.id)
     end
     requester = correction.requester || shift.user
     if requester
@@ -257,7 +292,7 @@ class TimeClockService
     return if user && worker.user_id == user.id
 
     if user
-      raise Error, 'That PIN belongs to someone else. Use the store register for a colleague’s punch.'
+      raise Error, I18n.t('time.clock.wrong_pin')
     else
       raise Error, 'Use the store register, or sign in on your phone.'
     end

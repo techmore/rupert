@@ -45,6 +45,16 @@ enum Instance {
         }
     }
 
+    /// Leave the current workspace for the control plane, where anyone signs in and is handed to
+    /// their own workspace. Used by Settings → Switch workspace, so a second person (or the same
+    /// person with another shop) is never stuck on the previous workspace's sign-in page.
+    static func leaveWorkspace() {
+        UserDefaults.standard.removeObject(forKey: currentKey)
+    }
+
+    /// True when the app is pointed at an isolated workspace rather than the control plane.
+    static var isOnWorkspaceInstance: Bool { current.host != controlPlane.host }
+
     static var appVersion: String {
         let info = Bundle.main.infoDictionary
         let version = info?["CFBundleShortVersionString"] as? String ?? "1.0"
