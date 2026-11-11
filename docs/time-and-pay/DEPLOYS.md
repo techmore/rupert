@@ -79,3 +79,30 @@ are serialized by the updater's own `flock` on `/run/rupert-autodeploy.lock` and
 - Post-deploy: `rupert-logs errors` empty, both services active, `/up` and `/login` 200, 132 GB free.
 - Not verified live: a second workspace (production has one), the switches in the off position (they would change the
   live workspace; covered by `time_features_settings_test.rb`), and push delivery (no APNs key on the server yet).
+
+## 2026-11-11 18:21 UTC — PR #652 simple backups and short paid breaks (`8fefc13c`, served as `0e6b9e1e`) — deployed, healthy
+
+- Pre-deploy: `df -h /` 236 GB free (73% used); checkout clean at `298470a7`; `rupert-web` and `rupert-jobs` active.
+- Install: autodeploy after `CI (sqlite3)`, `Product site consistency` and `Dependency and static scan` passed. #652 and
+  the iPhone-only #653 went out in one move (`298470a7 -> 0e6b9e1e`, 0 migrations). Deployer backup
+  `production-20261111-182106-298470a7-6e818009efac8741.sqlite3`, `PRAGMA integrity_check` ok.
+  `autodeploy: deployed 0e6b9e1e, healthy`; `X-Rupert-Build: 0e6b9e1e…`; checkout clean afterwards.
+- Looked at live (one temporary super admin, GET requests only, nothing saved): **Settings → Backups** shows
+  "Backups are off" with the two-step **Turn on backups** path; the dashboard carries the "Backups are off" banner;
+  the bell shows the alert and Notifications lists it; the status bar reads "Backups off" in red; Time rules shows
+  the "20 minutes or less is always paid" line. `/settings/backups.json` answers `{"signature":"::off"}`.
+- **No backup key was created.** The recovery kit must go straight to the owner, so backups stay off until the owner
+  clicks Settings → Backups → Turn on backups, saves the kit and types its check code. The rolling snapshot then
+  runs within 5 minutes, the full set and the copy outside the container within 6 hours, the weekly check on Sunday.
+- Host (SER8, outside the container), read only: `rupert-offhost-backup.timer` (every 6 h, plus the 07:17 cron line)
+  and `rupert-backup-verify.timer` (Sunday) are installed and firing; both fail only because the container refuses to
+  make a backup without a key ("no active backup key"). Nothing was changed on the host and no key was created there.
+  The mirror on the second machine last reported Oct 29 (old unencrypted-era set); it is listed under "Extra
+  protection" on the Backups page and needs that machine switched on after the first encrypted set exists.
+- Cleanup: the temporary account was deleted (not deactivated); the two sign-in lines it left in the access log stay,
+  as an audit record. The three smoke accounts from Nov 6 and Nov 11 were already gone.
+- Post-deploy: `rupert-logs errors` shows only warnings that were there before this deploy (the boot-time image-variant notice
+  and "Scoped order is ignored"), no errors; both services active, `/up` and `/login`
+  200, 233 GB free.
+- Not verified live: creating a kit, the check code step and the first encrypted backup (owner only; covered by
+  `backup_health_alerts_test.rb` and `backup_keys_test.rb`), and the daily notification (the job runs on the hour).
