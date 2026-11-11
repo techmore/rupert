@@ -7,7 +7,7 @@ class OpenClockOutAlertJob < ApplicationJob
 
   def perform
     Tenant.where(status: 'active').find_each do |tenant|
-      Current.set(tenant: tenant) { BusinessClock.use(tenant: tenant) { OpenClockOuts.new.notify_managers! } }
+      Current.with_tenant(tenant) { OpenClockOuts.new.notify_managers! if TimeRules.feature?(:missed_clock_out_reminders) }
     rescue StandardError => e
       logger.error("#{self.class}: open clock-out alerts failed for tenant #{tenant.id}: #{e.class}")
     end

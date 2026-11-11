@@ -16,6 +16,9 @@ class DirectorySyncJob < ApplicationJob
             kinds.each { |directory| self.class.perform_later(tenant.id, source, directory) }
           end
         end
+      rescue StandardError => e
+        # One workspace's broken connection must not stop the others from being scheduled.
+        logger.error("#{self.class}: scheduling failed for tenant #{tenant.id}: #{e.class}")
       end
       return
     end

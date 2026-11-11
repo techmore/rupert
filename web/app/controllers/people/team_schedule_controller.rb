@@ -11,6 +11,12 @@ module People
       @week = parse_week(params[:week]) || Date.current.beginning_of_week
       @week_days = (@week..@week + 6).to_a
       @employees = People::Employee.where(status: 'active').order(:last_name, :first_name)
+      # Everyone's hours are for reviewers (within their stores); anyone else sees only their own row.
+      if Current.user.can_review_timesheets? || (Current.user.can_manage_accounts? && Current.user.can?('timesheets.read'))
+        @employees = People::StoreScope.employees_for(Current.user, base: @employees)
+      else
+        @employees = @employees.where(id: TimeClockService.worker_for(Current.user, include_on_leave: true)&.id)
+      end
       # Store filter (#469): punches carry no store, so it narrows the list to people
       # planned at that store this week; their hours still cover every store.
       @locations = Location.for_shifts.to_a

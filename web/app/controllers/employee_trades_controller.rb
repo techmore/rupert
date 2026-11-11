@@ -5,6 +5,7 @@ class EmployeeTradesController < AuthenticatedController
   layout 'employee'
   before_action { response.headers['Cache-Control'] = 'no-store' }
   before_action :require_worker
+  before_action -> { require_time_feature(:scheduling, :shift_trades) }
   rescue_from People::ShiftTradeWorkflow::Error, with: :refused
 
   def index

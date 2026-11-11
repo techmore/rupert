@@ -4,6 +4,7 @@ module People
   # Managers see trades waiting for a decision and approve or deny them. The approvals inbox calls
   # the same workflow (`People::ShiftTradeWorkflow.review`).
   class ShiftTradesController < AuthenticatedController
+    before_action -> { require_time_feature(:scheduling, :shift_trades) }
     before_action { authorize(:module, :schedule_read?) }
     before_action :set_trade, only: %i[show approve deny]
     rescue_from People::ShiftTradeWorkflow::Error, with: :refused

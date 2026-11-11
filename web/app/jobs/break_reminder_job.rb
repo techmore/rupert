@@ -8,7 +8,7 @@ class BreakReminderJob < ApplicationJob
 
   def perform
     Tenant.where(status: 'active').find_each do |tenant|
-      Current.set(tenant: tenant) { BusinessClock.use(tenant: tenant) { remind_tenant } }
+      Current.with_tenant(tenant) { remind_tenant }
     rescue StandardError => e
       logger.error("#{self.class}: break reminders failed for tenant #{tenant.id}: #{e.class}")
     end

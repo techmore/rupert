@@ -178,6 +178,9 @@ class BusinessReviewToolsTest < ActiveSupport::TestCase
   end
 
   test 'sync health identifies which figures a source feeds and states the completeness limit' do
+    # Midday: a sync "ten minutes ago" must fall after yesterday ended (this failed for the first
+    # minutes after every midnight).
+    travel_to Time.zone.now.change(hour: 12)
     SyncAttempt.create!(source: 'shopify', operation: 'catalog', status: 'succeeded', queued_at: 10.minutes.ago,
       started_at: 9.minutes.ago, finished_at: 8.minutes.ago)
 

@@ -55,6 +55,25 @@ class ClockShift < ApplicationRecord
     [(hours(at: at) * 3600) - unpaid_break_seconds(at: at, rules: rules), 0].max / 3600.0
   end
 
+  # Paid hours of a finished shift inside the window [from, to): the punch clipped to the window,
+  # minus the unpaid break time that falls in it. This is what a timesheet imports for one day, so the
+  # timesheet, the Pay page and the payroll export all count the same hours.
+  def paid_hours_between(from, to, rules: nil)
+    return 0.0 unless ended_at
+
+    start_at = [started_at, from].max
+    end_at = [ended_at, to].min
+    return 0.0 unless end_at > start_at
+
+    rules ||= TimeRules.for(location_id)
+    unpaid = breaks.sum do |pause|
+      next 0 if pause.ended_at.nil? || rules.break_paid?(pause.kind)
+
+      [[pause.ended_at, end_at].min - [pause.started_at, start_at].max, 0].max
+    end
+    [(end_at - start_at) - unpaid, 0].max / 3600.0
+  end
+
   def open_break = breaks.detect(&:open?)
   def on_break? = open_break.present?
   def open? = ended_at.nil?

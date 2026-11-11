@@ -30,11 +30,18 @@ final class WorkspaceHandoff {
             showProblem("Rupert sent an incomplete workspace link. Try Open my workspace again.")
             return
         }
+        // Only this app's own control plane hands out workspaces; a link naming another one is not trusted.
+        guard control.host?.lowercased() == Instance.controlPlane.host?.lowercased(), control.port == Instance.controlPlane.port else {
+            showProblem("That workspace link did not come from Rupert. Open your workspace from the Rupert sign-in page.")
+            return
+        }
         inFlight = true
         Task {
             defer { inFlight = false }
             do {
                 let landing = try await exchange(handoff: handoff, origin: origin, control: control)
+                // The phone's push registration belongs to the instance it is leaving.
+                if origin.host != Instance.current.host { PushRegistration.shared.forget() }
                 Instance.setCurrent(origin)
                 onOpened?(origin, landing)
             } catch {

@@ -42,6 +42,7 @@ class UnscopedAllowlistTest < ActiveSupport::TestCase
     'app/models/concerns/customer_workspace_associations.rb' => 'includes User (not TenantScoped); tenant_id passed explicitly',
     'app/models/employee_access_grant.rb' => 'grant token lookup by digest before a tenant is known',
     'app/models/employee_app_session.rb' => 'session token lookup by digest before a tenant is known',
+    'app/models/push_device.rb' => 'a push token is one phone: registering or forgetting it reaches its rows in every workspace',
     'app/models/team_chat/run.rb' => 'run claims/leases by id across processes',
     'app/models/training_assignment.rb' => 'overrides unscoped to keep the training kind',
     'app/models/warehouse_share.rb' => 'WarehouseTier uses a tenantId column, passed explicitly',

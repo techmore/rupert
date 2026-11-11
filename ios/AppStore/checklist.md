@@ -78,6 +78,19 @@ own staff). Messaging and chat: **Yes**. Result: **13+**.
 7. **System Google sign-in sheet** (ASWebAuthenticationSession) with a PKCE code handoff.
 8. **Native top bar** that follows the page's colours in all five appearances.
 
+## Multi-workspace changes (2026-11-10)
+
+These Swift changes are in `main` but in no uploaded build yet: **rebuild before submitting** (a build made
+before 2026-11-10 lacks them, and an Xcode archive needs `CURRENT_PROJECT_VERSION` in `RupertApp/project.yml`
+raised for every upload; `ship.sh` stamps its own).
+
+| Item | Status | Where |
+|---|---|---|
+| Settings → **Switch workspace**: signs out, forgets the push token, clears the web views' Rupert data, returns to the control plane | Done; walk it once on a device with two accounts | `Sources/Rupert/AppSettings.swift`, `SceneController.swift` |
+| Push registration sends the web views' session cookie itself; the token is forgotten without a session and when moving to another workspace | Done; confirm one real notification after the APNs key (item 5) is set | `Sources/Rupert/PushRegistration.swift` |
+| A notification opens only a path on the current workspace; the workspace handoff accepts only this app's control plane | Done, unit tested | `PushRegistration.swift`, `WorkspaceHandoff.swift`, `Tests/RupertTests` |
+| Server: a time feature a workspace turned off shows a plain "turned off" message in the app instead of the page | Done | `docs/audits/2026-11-10-time-multi-tenant-audit.md` |
+
 ## After the other time & pay streams merge
 
 - Regenerate `screenshots/` (item 11) and the `docs/time-and-pay/screenshots/ios-*.png` set

@@ -45,6 +45,10 @@ class TimesheetWorkflow
         attrs = { entry_id: entry.id, before: before, after: entry.attributes.slice('worked_on', 'hours', 'work_type', 'notes') }
       when 'submit'
         draft!(sheet)
+        # Settings → Time rules: when staff do not submit their own timesheets, a manager does.
+        if !@user.can?('timesheets.write') && !TimeRules.feature?(:timesheet_self_submit)
+          raise Error, 'Your manager submits timesheets in this workspace. Check your hours and tell them when the week is right.'
+        end
         validate_for_review!(sheet)
         sheet.update!(submitted_at: Time.current, reviewed_by: nil, reviewed_at: nil, review_note: nil)
         sheet.submit!
@@ -118,9 +122,7 @@ class TimesheetWorkflow
     ClockShift.where(id: imported_ids).each do |shift|
       next unless shift.ended_at
       (sheet.period_start..sheet.period_end).each do |day|
-        start_at = [shift.started_at, day.in_time_zone].max
-        end_at = [shift.ended_at, (day + 1).in_time_zone].min
-        next unless end_at > start_at && ((end_at - start_at) / 3600.0).round(2).positive?
+        next unless shift.paid_hours_between(day.in_time_zone, (day + 1).in_time_zone).round(2).positive?
         unless sheet.entries.exists?(clock_shift_id: shift.id, worked_on: day)
           raise Error, 'Clock dates have changed. Re-import your shifts before submitting.'
         end
@@ -131,9 +133,7 @@ class TimesheetWorkflow
       if !shift || !shift.ended_at || shift.corrections.where(status: 'pending').exists?
         raise Error, 'Resolve clock corrections and re-import your shifts before submitting.'
       end
-      start_at = [shift.started_at, entry.worked_on.in_time_zone].max
-      end_at = [shift.ended_at, (entry.worked_on + 1).in_time_zone].min
-      expected = [((end_at - start_at) / 3600.0).round(2), 0].max
+      expected = shift.paid_hours_between(entry.worked_on.in_time_zone, (entry.worked_on + 1).in_time_zone).round(2)
       raise Error, 'Clock times have changed. Re-import your shifts before submitting.' unless expected == entry.hours
     end
   end
@@ -142,7 +142,7 @@ class TimesheetWorkflow
     from = sheet.period_start.in_time_zone
     to = (sheet.period_end + 1).in_time_zone
     shifts = ClockShift.where(employee_id: sheet.employee_id).where.not(ended_at: nil)
-      .where('started_at < ? AND ended_at > ?', to, from).order(:started_at)
+      .where('started_at < ? AND ended_at > ?', to, from).order(:started_at).includes(:breaks)
     shifts = shifts.to_a
     if shifts.any? { |shift| shift.corrections.where(status: 'pending').exists? }
       raise Error, 'Review pending clock corrections before importing these shifts.'
@@ -153,10 +153,8 @@ class TimesheetWorkflow
         raise Error, 'Review pending clock corrections before importing these shifts.'
       end
       (sheet.period_start..sheet.period_end).each do |day|
-        start_at = [shift.started_at, day.in_time_zone].max
-        end_at = [shift.ended_at, (day + 1).in_time_zone].min
-        next unless end_at > start_at
-        hours = ((end_at - start_at) / 3600.0).round(2)
+        # Paid hours for the day: the part of the punch inside it, less unpaid breaks (meals by default).
+        hours = shift.paid_hours_between(day.in_time_zone, (day + 1).in_time_zone).round(2)
         next if hours.zero?
         entry = sheet.entries.find_or_initialize_by(clock_shift_id: shift.id, worked_on: day)
         # Re-import refreshes a corrected shift without creating a duplicate.

@@ -86,12 +86,13 @@ class PinClockTest < ActionDispatch::IntegrationTest
     login(@user)
     data = punch('9999')
     assert_response :unprocessable_entity
-    assert_equal 'That PIN didn’t match.', data['error']
+    not_yours = data['error']
+    assert_match(/isn’t your PIN/, not_yours)
 
     # Signed in as Pia, a colleague's PIN is refused on this phone.
     data = punch('1357')
     assert_response :unprocessable_entity
-    assert_match(/someone else/, data['error'])
+    assert_equal not_yours, data['error'], 'a colleague’s real PIN gets the same answer as any wrong digits'
     assert_empty ClockShift.where(employee_id: @other.id)
 
     # Her own PIN works from her own session.
@@ -109,7 +110,7 @@ class PinClockTest < ActionDispatch::IntegrationTest
     assert @worker.reload.pin_locked?
     data = punch('2580')
     assert_response :unprocessable_entity
-    assert_equal 'That PIN didn’t match.', data['error']
+    assert_match(/Too many wrong PINs/, data['error'])
     travel(rules.pin_lockout_minutes.minutes + 1.second) { assert_equal 'clocked_in', punch('2580')['event'] }
 
     # The pad itself locks too: five wrong PINs aimed at nobody in particular (counted in the cache).

@@ -3,6 +3,7 @@
 module People
   # Reusable weeks for the schedule builder: save the shown week as a template, apply one to a week.
   class ScheduleTemplatesController < AuthenticatedController
+    before_action -> { require_time_feature(:scheduling) }
     before_action { authorize(:module, :schedule_write?) }
     before_action :set_template, only: %i[apply destroy]
     rescue_from Date::Error, with: :invalid_week
