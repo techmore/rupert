@@ -1,54 +1,106 @@
-<%# Settings → Backups: the Settings template (docs/ui-standards.md §4). Backup encryption key and recovery kit (#421). %>
-<div class="page-medium space-y-6">
-  <%= page_header 'Backups', subtitle: 'Backups are encrypted to a key whose private half lives only in your recovery kit.' %>
+<%# Settings → Backups: the Settings template (docs/ui-standards.md §4). One plain status (BackupHealth), one
+    "Turn on backups" path that makes the key and its recovery kit (#421), and the key history. %>
+<% stamp = ->(time) { time.in_time_zone.strftime('%b %-d, %Y %-l:%M %p %Z') } %>
+<% pills = { off: %w[Off pill-rose], attention: ['Needs attention', 'pill-rose'], starting: %w[Starting pill-clay], ok: %w[Working pill-fern] } %>
+<% replacing = @current || @pending %>
+<div class="page-medium space-y-6" data-controller="backup-status"
+     data-backup-status-url-value="<%= settings_backups_path(format: :json) %>"
+     data-backup-status-signature-value="<%= @signature %>"
+     data-backup-status-poll-value="<%= @health.starting? %>">
+  <%= page_header 'Backups', subtitle: 'Encrypted copies of everything in Rupert, made automatically. Only your recovery kit can open them.' %>
 
-  <section class="section-card" id="backup-key" data-backup-key-state="<%= @current ? 'active' : 'missing' %>">
-    <%= section_heading 'Backup encryption', hint: 'The server keeps only the public key; it can lock backups but never open them.' do %>
-      <% if @current %>
-        <span class="pill-fern">Encrypted</span>
-      <% else %>
-        <span class="pill-rose">No key</span>
-      <% end %>
+  <section class="section-card" id="backup-key" data-backup-key-state="<%= @current ? 'active' : 'missing' %>" data-backup-health="<%= @health.state %>">
+    <%= section_heading @health.title do %>
+      <span class="<%= pills.fetch(@health.state)[1] %>"><%= pills.fetch(@health.state)[0] %></span>
     <% end %>
+    <p class="<%= @health.alert? ? 'flash flash-alert' : 'text-mocha' %> text-sm" role="status"><%= @health.summary %></p>
     <% if @current %>
       <dl class="facts">
-        <div><dt>Key fingerprint</dt><dd class="font-mono" data-current-fingerprint><%= @current.fingerprint %></dd></div>
-        <div><dt>Active since</dt><dd><%= @current.activated_at.strftime('%b %-d, %Y %-l:%M %p') %></dd></div>
+        <div>
+          <dt>Last good backup</dt>
+          <dd data-last-good-backup>
+            <% if @health.last_good_at %>
+              <%= stamp.(@health.last_good_at) %> <span class="text-taupe">(<%= time_ago_in_words(@health.last_good_at) %> ago)</span>
+              <br><span class="text-xs text-taupe">Encrypted and integrity-checked</span>
+            <% else %>
+              None yet
+            <% end %>
+          </dd>
+        </div>
+        <div>
+          <dt>Weekly check of the stored copies</dt>
+          <dd data-backup-verified>
+            <% verify = @health.checks.find { |check| check.key == 'verify' } %>
+            <% if @health.verified_at %>
+              Passed <%= stamp.(@health.verified_at) %>
+            <% elsif verify&.waiting? %>
+              First check runs this Sunday
+            <% elsif verify %>
+              Not passing
+            <% else %>
+              Not set up on this server
+            <% end %>
+          </dd>
+        </div>
+        <div><dt>Backup key</dt><dd class="font-mono" data-current-fingerprint><%= @current.fingerprint %></dd></div>
+        <div><dt>On since</dt><dd><%= stamp.(@current.activated_at) %></dd></div>
       </dl>
-      <p class="text-xs text-taupe">Every backup file has a <code>.key</code> file beside it naming this fingerprint. Open a backup with the recovery kit that shows the same fingerprint.</p>
-    <% else %>
-      <p class="flash flash-alert text-sm" role="status">Backups are refused until a key is active: the server will not write unencrypted backups. Create a backup key below.</p>
+      <% if @health.waiting.any? %>
+        <p class="text-xs text-taupe">Still to make their first run with this key: <%= @health.waiting.map { |check| "#{check.label.downcase} (#{check.every})" }.to_sentence %>.</p>
+      <% end %>
+      <% if @health.starting? %>
+        <p class="text-xs text-taupe">This page refreshes by itself when the first backup lands.</p>
+      <% end %>
+      <p class="text-xs text-taupe">A backup is made every 5 minutes and a full set every 6 hours. Your recovery kit shows the same key fingerprint as above; it is the only thing that opens these backups.</p>
+    <% end %>
+    <% if Current.user.can?('system.read') %>
+      <p class="text-xs text-taupe"><%= link_to 'Every backup layer in detail', system_path(anchor: 'backups'), class: 'underline' %></p>
     <% end %>
   </section>
 
   <% if @pending %>
     <section class="section-card" id="backup-key-pending">
-      <%= section_heading 'Confirm the recovery kit', hint: 'Type the check code printed on the kit you just saved.' %>
-      <p class="text-sm text-mocha">Key <span class="font-mono"><%= @pending.fingerprint %></span> is waiting. It starts protecting backups only after you enter its check code, so no backup depends on a kit you did not keep. The code expires an hour after the kit was made.</p>
+      <%= section_heading(@current ? 'Confirm the new recovery kit' : 'Step 2 of 2: confirm you saved the recovery kit', hint: 'Type the check code printed on the kit.') %>
+      <ol class="list-decimal space-y-1 pl-5 text-sm text-mocha">
+        <li>Find the PDF that just downloaded: <span class="font-mono">rupert-backup-recovery-kit-<%= @pending.fingerprint.delete(' ') %>.pdf</span>.</li>
+        <li>Save it in your password manager as a secure note named “Rupert backup recovery kit — <%= @workspace %>”, and print one copy for a safe place.</li>
+        <li>Type the <strong>check code</strong> from the first page of the kit below.</li>
+      </ol>
+      <p class="text-sm text-mocha">Backups <%= @current ? 'switch to this key' : 'start' %> only after the code is entered, so no backup ever depends on a kit you did not keep. The code works for one hour.</p>
       <%= form_with(url: activate_settings_backup_key_path, method: :post, local: true, data: { turbo: false }, class: 'space-y-3') do %>
         <div>
           <%= label_tag :check_code, 'Check code', class: 'field-label' %>
-          <%= text_field_tag :check_code, nil, required: true, autocomplete: 'off', spellcheck: false, placeholder: 'ABCD-EFGH', class: 'input font-mono', data: { lpignore: 'true', '1p-ignore': 'true' } %>
+          <%= text_field_tag :check_code, nil, required: true, autofocus: true, autocomplete: 'off', spellcheck: false, placeholder: 'ABCD-EFGH', class: 'input font-mono', data: { lpignore: 'true', '1p-ignore': 'true' } %>
         </div>
         <div class="form-actions">
-          <%= submit_tag 'Activate key', class: 'btn-primary' %>
+          <%= submit_tag(@current ? 'Activate key' : 'Start backups', class: 'btn-primary') %>
         </div>
       <% end %>
+      <p class="text-xs text-taupe">The PDF did not download, or it is already lost? Nothing depends on it yet: make a new kit below and use its code instead.</p>
     </section>
   <% end %>
 
   <section class="section-card" id="backup-key-create">
-    <%= section_heading(@current ? 'Rotate the backup key' : 'Create backup key', hint: 'Makes a new key pair and downloads its recovery kit PDF once.') %>
-    <details class="explainer text-sm text-mocha" open>
-      <summary class="explainer-summary">What the recovery kit holds and where to keep it</summary>
-      <p class="mt-1">The PDF holds the private key that opens the backups, the database encryption keys a restored copy needs, the fingerprint and the restore steps. Rupert does not keep the private key, and the PDF cannot be downloaded again.</p>
-      <p class="mt-1">Save it in your password manager as a separate <strong>secure note</strong> named “Rupert backup recovery kit — <%= @workspace %>”. It is not a login: sign-in uses Google, so leave the site login entry alone.</p>
+    <%= section_heading((@current ? 'Replace the backup key' : (@pending ? 'Make a new recovery kit' : 'Turn on backups')),
+          hint: (replacing ? 'Makes a new key and downloads its recovery kit PDF once.' : 'Two steps, about two minutes.')) %>
+    <% unless replacing %>
+      <ol class="list-decimal space-y-1 pl-5 text-sm text-mocha">
+        <li><strong>Click “Turn on backups”.</strong> A PDF called the recovery kit downloads. It is the only key that opens your backups.</li>
+        <li><strong>Save the kit, then type its check code here.</strong> Backups start by themselves and this page shows the first one within five minutes.</li>
+      </ol>
+    <% end %>
+    <details class="explainer text-sm text-mocha" <%= 'open' unless @current %>>
+      <summary class="explainer-summary">What the recovery kit is, where to keep it, and what happens if it is lost</summary>
+      <p class="mt-1">Backups are locked so that nobody who copies them, and nothing on this server, can read them. The recovery kit is the key. Rupert does not keep a copy, and the PDF cannot be downloaded again.</p>
+      <p class="mt-1"><strong>Keep two copies:</strong> one in your password manager as a separate <strong>secure note</strong> named “Rupert backup recovery kit — <%= @workspace %>”, and one printed in a safe place. It is not a login, so leave the site login entry alone. Do not email it and do not leave it in Downloads.</p>
+      <p class="mt-1"><strong>If the kit is lost:</strong> day-to-day Rupert keeps working, but backups made with it can never be opened by anyone. Come back here and replace the key straight away; the new kit protects every backup made from then on.</p>
       <% if @current %>
-        <p class="mt-1">Rotating keeps older backups readable with the old kit; keep both until the old backups have aged out.</p>
+        <p class="mt-1">Replacing the key keeps older backups readable with the old kit; keep both until the old backups have aged out (about 35 days).</p>
       <% end %>
     </details>
     <% if @recent_sign_in || @password_session %>
-      <%= form_with(url: settings_backup_key_path, method: :post, local: true, data: { turbo: false }, class: 'space-y-3') do %>
+      <%= form_with(url: settings_backup_key_path, method: :post, local: true, class: 'space-y-3',
+            data: { turbo: false, action: 'submit->backup-status#watch' }) do %>
         <% unless @recent_sign_in %>
           <div>
             <%= label_tag :password, 'Your Rupert password', class: 'field-label' %>
@@ -57,19 +109,35 @@
         <% end %>
         <label class="flex items-start gap-2 text-sm text-ink">
           <%= check_box_tag :acknowledge, '1', false, required: true %>
-          <span>I will store the recovery kit as a secure note now. Without it these backups cannot be opened.</span>
+          <span>I will save the recovery kit now. I understand that without it these backups cannot be opened by anyone.</span>
         </label>
         <div class="form-actions">
-          <%= submit_tag 'Create backup key', class: 'btn-primary' %>
+          <%= submit_tag((replacing ? 'Make a new recovery kit' : 'Turn on backups'), class: (replacing ? 'btn-ghost' : 'btn-primary')) %>
         </div>
+        <p class="text-xs text-taupe" data-backup-status-target="hint" hidden>The recovery kit is downloading. This page moves to the check code step by itself; if it does not, refresh it.</p>
       <% end %>
     <% else %>
-      <p class="text-sm text-mocha">For safety, creating a key needs a sign-in from the last <%= BackupKeysController::REAUTH_WINDOW.in_minutes.to_i %> minutes. Sign out, sign in again with Google, then come back to Settings → Backups.</p>
+      <p class="text-sm text-mocha">For safety, this needs a sign-in from the last <%= BackupKeysController::REAUTH_WINDOW.in_minutes.to_i %> minutes. Sign out, sign in again, then come back to Settings → Backups.</p>
       <div class="form-actions">
         <%= button_to 'Sign out', logout_path, method: :delete, class: 'btn-ghost', form: { data: { turbo: false } } %>
       </div>
     <% end %>
   </section>
+
+  <% if @current %>
+    <section class="section-card" id="backup-extras">
+      <%= section_heading 'Extra protection', hint: 'Optional layers. They never raise an alarm, but each one closes a real gap.' %>
+      <ul class="space-y-2 text-sm">
+        <% @health.extras.each do |check| %>
+          <li class="flex flex-wrap items-start justify-between gap-3" data-backup-extra="<%= check.key %>" data-backup-state="<%= check.state %>">
+            <span class="min-w-0 flex-1"><strong class="text-ink"><%= check.label %>:</strong> <span class="text-mocha"><%= check.key == 'offsite' ? 'a copy on a second computer or cloud bucket. Without it, every backup lives on this one server.' : 'opening a backup with the recovery kit on another computer, to prove the kit works.' %></span></span>
+            <span class="<%= check.ok? ? 'pill-fern' : 'pill-taupe' %> shrink-0"><%= check.ok? ? "Done #{time_ago_in_words(check.report.at)} ago" : (check.state == 'missing' ? 'Not set up' : 'Not current') %></span>
+          </li>
+        <% end %>
+      </ul>
+      <p class="text-xs text-taupe">Ask whoever looks after the server to set these up: <%= link_to 'docs/ops/backups.md', 'https://github.com/techmore/rupert/blob/main/docs/ops/backups.md', class: 'underline' %>.</p>
+    </section>
+  <% end %>
 
   <section class="section-card" id="backup-key-history">
     <%= section_heading 'Key history', hint: 'Fingerprints of every key, newest first. Old kits still open the backups made with them.' %>
@@ -87,7 +155,7 @@
         </tbody>
       </table></div>
     <% else %>
-      <div class="empty-state"><p>No backup keys yet.</p><p class="empty-state-hint">Create a backup key to start encrypted backups.</p></div>
+      <div class="empty-state"><p>No backup keys yet.</p><p class="empty-state-hint">Turn on backups above to make the first one.</p></div>
     <% end %>
     <p class="text-xs text-taupe">Restore steps: <%= link_to 'docs/ops/backups.md', 'https://github.com/techmore/rupert/blob/main/docs/ops/backups.md', class: 'underline' %>.</p>
   </section>

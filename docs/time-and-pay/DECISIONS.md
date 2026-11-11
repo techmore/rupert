@@ -39,7 +39,7 @@ to Square.
 | Rule | Default | Why |
 | --- | --- | --- |
 | Rule preset | Federal (FLSA) | The stores' state is not recorded in the repo; the owner picks the state preset (CT, MA, NY, NJ, CA, OR, CO available) and the defaults below update. |
-| Meal break | Reminder after 6 h, 30 min, unpaid | Common retail practice and the MA/NY/CT rule; federal law requires none. A meal break under 20 min is treated as paid rest. |
+| Meal break | Reminder after 6 h, 30 min, unpaid | Common retail practice and the MA/NY/CT rule; federal law requires none. A punched meal of 20 minutes or less counts as paid time (see "Short breaks are always paid"). |
 | Rest break | Every 4 h, 10 min, paid | FLSA: short breaks are paid time. |
 | Break reminders | On | Push/in-app nudge at the threshold; never auto-clocks anyone out. |
 | Daily overtime | Off | Only CA/AK/NV/CO have it; the CA/CO presets turn it on. |
@@ -121,6 +121,16 @@ Importing clock shifts into a timesheet takes each day's **paid** hours: the pun
 unpaid breaks (meals by default, per the store's break rules). Before this the import took gross hours
 while the Pay page, overtime checks and accrual took paid hours, so the payroll export disagreed with what
 the worker saw. Sheets approved before the change are not rewritten.
+
+## Short breaks are always paid (2026-11-11)
+
+A punched break of 20 minutes or less is paid time even when it was punched as a meal or the store marks that
+kind of break unpaid, because federal law (FLSA, 29 CFR 785.18 and 785.19) counts short breaks as work and only
+lets a real meal period, normally 30 minutes or more, go unpaid. It is a fixed floor, not a setting
+(`ClockBreak::SHORT_BREAK_PAID`), and it applies wherever paid hours are counted: the clock, the Pay page, the
+timesheet import and so the payroll export. Rupert never deducts a break automatically: only breaks someone
+actually punched (or a manager-approved correction recorded) come off. Sheets approved before the change are not
+rewritten, and Square timecards keep the paid or unpaid flag Square recorded for each break.
 
 ## Retention, PII, offboarding
 

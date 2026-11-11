@@ -175,6 +175,9 @@ module ApplicationHelper
   def system_alerts
     @system_alerts ||= begin
       alerts = []
+      if (health = BackupHealth.alert_for(Current.user))
+        alerts << { title: health.title, body: health.summary, path: settings_backups_path, link: health.link_label }
+      end
       if (location = card_processing_down_location)
         alerts << { title: 'Card processing is down', body: "Customers at #{location.name} cannot pay by card until the payment gateway is connected and verified.",
                     path: pos_setting_path(location.id), link: 'Open POS settings' }

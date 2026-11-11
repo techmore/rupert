@@ -145,6 +145,11 @@ production:
     class: BackupJob
     queue: default
     schedule: every 6 hours
+  # Backups off or failing: one notification a day to the instance owner until fixed (BackupHealth).
+  backup_health_alert:
+    class: BackupHealthAlertJob
+    queue: default
+    schedule: every hour
   ai_health_check:
     class: AiHealthCheckJob
     queue: default
