@@ -18,6 +18,7 @@ with Dejavoo or the processor before production. The meeting questions are in
 | "SPIn Proxy" | In the docs this is the portal's connection-troubleshooting tool (POS ↔ terminal), not a separate API. [S2] | Use when testing. |
 | iPOSpays Hosted Payment Page, Freedom to Design.js, iPOS Transact | Online card-not-present checkout and token charges. [S5] | Online store only. Out of scope here. |
 | Terminal app / deep linking (DvPayLite, DVStore) | Rupert would run as an Android app on the terminal. [S6] | Not now. Large effort and an app-store listing. |
+| Tap to Pay on iPhone (iPOSgo! deep linking) | Rupert's iPhone app hands the amount to Dejavoo's iPOSgo! app, which takes the tap. | **Chosen 2026-11-13** as a Take payment button in the existing iPhone app. See [dejavoo-tap-to-pay-iphone.md](dejavoo-tap-to-pay-iphone.md). |
 | Batch Report API, Transaction Status Check API, FEED webhooks (HMAC) | iPOSpays reporting and event push. [S5] | Later, for settlement reconciliation. |
 
 ### Terminals
