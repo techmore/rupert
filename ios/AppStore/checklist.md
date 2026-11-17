@@ -2,7 +2,8 @@
 
 One page: everything App Review needs, who does it, and where it lives. **Done** = in this repo, in
 the build or set in App Store Connect; **Owner** = a click or a secret only the owner has. Status on
-2026-11-11: submitted and waiting for review; the APNs key (item 5) is the one open item.
+2026-11-17: **approved, Pending Developer Release** (App Store Connect API, read-only check): nothing is public
+until the owner presses Release. The APNs key (item 5) is the one open item.
 
 ## Build and ship
 
@@ -34,7 +35,7 @@ the build or set in App Store Connect; **Owner** = a click or a secret only the 
 | 19 | Sign in with Apple (4.8) | Not required: the app only signs in accounts a business already created (Rupert's own email/password system; Google is an alternative sign-in for existing accounts, not account creation). Apple's 4.8 exception for apps that "exclusively use your company's own account setup and sign-in systems" and for enterprise accounts applies. If review disagrees, reply in Resolution Center with this and, only then, add Sign in with Apple (see `docs/time-and-pay/DECISIONS.md`, "App Store") | `sessions/new` |
 | 20 | Minimum functionality (4.2) | Done: native features below | `Sources/Rupert` |
 | 21 | Support mailbox | Default `sdolbec@rupertpos.com`; `RUPERT_SUPPORT_EMAIL` to change | `/etc/rupert.env` |
-| 22 | **Submit for Review** | Done 2026-11-11: 1.1.0 (build 202611111754) submitted, **Waiting for Review**, manual release (nothing goes public until the owner presses Release) | App Store Connect |
+| 22 | **Submit for Review** | Done 2026-11-11: 1.1.0 (build 202611111754) submitted with manual release. **Approved; Pending Developer Release** when checked 2026-11-17: the owner presses Release to publish | App Store Connect |
 
 ## App Privacy answers
 
@@ -89,6 +90,28 @@ These Swift changes are in build **202611111754** (uploaded and submitted 2026-1
 | Push registration sends the web views' session cookie itself; the token is forgotten without a session and when moving to another workspace | Done; confirm one real notification after the APNs key (item 5) is set | `Sources/Rupert/PushRegistration.swift` |
 | A notification opens only a path on the current workspace; the workspace handoff accepts only this app's control plane | Done, unit tested | `PushRegistration.swift`, `WorkspaceHandoff.swift`, `Tests/RupertTests` |
 | Server: a time feature a workspace turned off shows a plain "turned off" message in the app instead of the page | Done | `docs/audits/2026-11-10-time-multi-tenant-audit.md` |
+
+## When Take payment ships (card payments on iPhone through Dejavoo's iPOSgo!)
+
+Not in 1.1.0. Nothing below is applied yet: no payment code, no URL scheme, no App Store Connect change.
+Full reasoning and sources: `docs/compliance/dejavoo-tap-to-pay-compliance.md`.
+
+| # | Item | Who | Where |
+|---|---|---|---|
+| T1 | New version number (for example 1.2.0); payment code ships only in the version whose review notes describe it (guideline 2.5.19, no dormant features) | Developer | `Info.plist`, `RupertApp/project.yml` |
+| T2 | `Info.plist`: `LSApplicationQueriesSchemes` (iPOSgo!'s scheme), `CFBundleURLTypes` (the return scheme), and Dejavoo's case-sensitive keys `invokeApplink` and `ogApplink`, with the values from Dejavoo's library | Developer | `Info.plist`; template in the compliance doc |
+| T3 | The return URL is only a hint: accept it only for a payment attempt the server opened, and mark the sale paid only after the server confirms with Dejavoo | Developer | new handler, server |
+| T4 | Hide the button on iPad, on iPhones older than iPhone XS, on unsupported iOS versions and outside the US. Never show tap payments on iPad | Developer | register page, app |
+| T5 | Button wording follows Apple's Human Interface Guidelines: the contactless choice is labelled "Tap to Pay on iPhone" (symbol `wave.3.right.circle`, no Apple logo); refunds and lookups do not use the name | Developer | register page |
+| T6 | **App Privacy label**: add Financial Info → **Payment Info** and Purchases → **Purchase History**: collected, App Functionality, linked to the user, not used for tracking. Keep Credit Info and Other Financial Info as not collected. Then update the "Everything else" sentence below | **Owner** (no API) | App Store Connect → App Privacy |
+| T7 | `PrivacyInfo.xcprivacy`: list the collected data types to match the label; check whether Dejavoo's library ships its own privacy manifest | Developer | `Sources/Rupert/Resources/PrivacyInfo.xcprivacy` |
+| T8 | Privacy policy and support page: name the feature, say the tap is taken in Dejavoo's iPOSgo! app, update the date, add Apple's credit line for the name | Developer | `web/app/views/public_pages/` |
+| T9 | Review notes: paste the Take payment section from `review-notes.md`; give the reviewer a sandbox demo that moves no money | Developer + **Owner** | App Review Information |
+| T10 | Listing text: use "Tap to Pay on iPhone" in full, only once the feature is live for every user of that version; no Apple logo, no drawings or photos of iPhone; marketing images only from Apple's toolkit (through Dejavoo). Then add `docs/security/evidence/tap-to-pay-on-iphone-live.md` so `bin/release-audit` allows the name | Developer + **Owner** | `listing.md` |
+| T11 | Name Dejavoo or iPOSgo! in the listing only with Dejavoo's written permission (record it in `docs/security/evidence/partner-permission.md`) | **Owner** | `listing.md` |
+| T12 | Press release, blog post or announcement naming the feature: Apple reviews it first, through Dejavoo; allow several weeks | **Owner** | — |
+| T13 | Screenshots: retake any that show the register; no hemp, CBD, vape or THC products in them | Developer | `screenshots/` |
+| T14 | Guideline to cite if asked why this is not in-app purchase: 3.1.3(e), physical goods and services consumed outside the app | — | review notes |
 
 ## After the other time & pay streams merge
 

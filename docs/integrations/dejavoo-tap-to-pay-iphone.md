@@ -1,8 +1,13 @@
 # Tap to Pay on iPhone with Dejavoo (iPOSgo!)
 
 Prepared 2026-11-13 from Dejavoo's public developer docs (read that day). Owner decision recorded the
-same day. Related: [dejavoo-spin.md](dejavoo-spin.md) (counter terminals) and
-[dejavoo-valmar-meeting-brief.md](dejavoo-valmar-meeting-brief.md).
+same day. Status updated 2026-11-17. Related: [dejavoo-spin.md](dejavoo-spin.md) (counter terminals),
+[dejavoo-valmar-meeting-brief.md](dejavoo-valmar-meeting-brief.md) and the
+[compliance checklist](../compliance/dejavoo-tap-to-pay-compliance.md) (Apple naming, Dejavoo brand, PCI,
+privacy, App Store and receipts).
+
+Apple's name for the feature is **Tap to Pay on iPhone**. Write it in full, never "Apple Tap to Pay", and
+do not put it on a public page before it ships (see the checklist).
 
 Keep TPNs, merchant codes, auth keys, device UDIDs, contact details and the store's product approvals
 out of this public repository.
@@ -29,7 +34,8 @@ amount to Dejavoo's own payment app, **iPOSgo!**, which takes the tap and hands 
 6. Rupert's server **confirms the payment with Dejavoo** before marking the sale paid, then prints or
    sends the receipt.
 
-The store's phone needs both apps installed: Rupert and iPOSgo!.
+The store's phone needs both apps installed: Rupert and iPOSgo!. It must be an **iPhone**: Tap to Pay on
+iPhone does not work on iPad, so an iPad register needs a counter terminal ([SPIn](dejavoo-spin.md)).
 
 ## Videos (Dejavoo's own, about 30–40 seconds each)
 
@@ -49,12 +55,12 @@ insert or swipe on the iPhone.
 - A merchant onboarded on iPOSpays (sandbox for testing, production for live) with a **Tap on Phone
   (TOP) TPN**, and the **merchant code** from the portal: Settings → Generate ECOM/TOP Merchant Keys →
   pick the TOP TPN.
-- Accept Apple's Tap to Pay terms on the device (in iPOSgo!).
+- Accept Apple's Tap to Pay on iPhone terms on the device (in iPOSgo!).
 - Dejavoo supplies the library and a demo app through a Diawi install link after receiving the test
   device's UDID. Use a separate test device and don't change its date or time during testing.
 - URL scheme keys `invokeApplink` and `ogApplink` (case sensitive) in the app's configuration.
-- Processors listed for iPhone Tap to Pay: TSYS, Fiserv Omaha, Fiserv North. **Confirm with Valmar in
-  writing** that a Tap to Pay account on one of these is approved for the store's hemp/CBD products.
+- Processors listed for Tap to Pay on iPhone: TSYS, Fiserv Omaha, Fiserv North. **Confirm with Valmar in
+  writing** that an account on one of these is approved for the store's hemp/CBD products.
 
 ## Security: who handles what
 
@@ -84,24 +90,30 @@ self-assessment (Valmar says which form).
 | Tap with Dejavoo's demo app on the owner's iPhone | Library and demo app from Dejavoo | Same day it arrives |
 | Test tap from Rupert's register (sandbox) | Library in hand, TOP TPN and merchant code | 1–2 days |
 | Full version: refunds, voids, batch close, server confirmation, settings, tests | — | About a week more |
-| Live payments at the store | Production TOP TPN boarded by Valmar with hemp/CBD approval; App Store update review | Valmar's timeline; review about 1–2 days |
+| Live payments at the store | Production TOP TPN boarded by Valmar with hemp/CBD approval; App Store update review; the "when Take payment ships" items in the compliance checklist | Valmar's timeline; review about 1–2 days |
 
 Sandbox payments move no money.
 
-## Status (2026-11-13)
+## Status (2026-11-17)
 
+- **Dejavoo approved Rupert's "Native SDK" integration** (the iOS deep-linking library, V2). Keep the
+  written approval with the owner's private records, not in this repository.
+- **The P18 counter terminal is paused until after 2026-12-12** (store decision, 2026-11-16), pending the
+  hemp/CBD processor decision, how many terminals are needed and the cost.
+- **Work continues in Dejavoo's test system (UAT) only.** Dejavoo says UAT is free. No money moves.
+- **iPhone only, not iPad.** The store hopes to use "the existing Rupert app and iPad". Tap to Pay on
+  iPhone does not work on iPad; an iPad register needs a counter terminal (SPIn) instead.
 - iPOSpays sandbox merchant account is set up (from the ISV sandbox request, 2026-11-03).
-- No written confirmation yet of approval for the iOS deep linking SDK; ask Dejavoo's ISV team to
-  confirm and send the library and demo app.
-- Separately, a P18 Android terminal is being ordered in developer mode for terminal deep linking
-  (the Android counter-terminal path). It is not needed for iPhone Tap to Pay.
-- Rupert has no payment code in the iPhone app yet.
+- Rupert has no payment code in the iPhone app yet. Version 1.1.0 (no payments) is approved and
+  waiting for the owner to release it.
+- Compliance work done ahead of the build is in the
+  [compliance checklist](../compliance/dejavoo-tap-to-pay-compliance.md).
 
 ## Open questions for Dejavoo and Valmar
 
-1. Written confirmation that Rupert is approved for iPhone Tap to Pay deep linking (V2).
+1. ~~Written confirmation that Rupert is approved for deep linking (V2).~~ Approved; file the written copy privately.
 2. Does the sandbox account need a separate Tap on Phone TPN? Is one issued per phone?
-3. Does Rupert's app need Apple's Tap to Pay entitlement, or only iPOSgo!? (Docs suggest only iPOSgo!.)
+3. Does Rupert's app need Apple's Tap to Pay on iPhone entitlement, or only iPOSgo!? (Docs suggest only iPOSgo!.)
 4. Which processor will the production TOP TPN use, and is hemp/CBD approved there in writing?
 5. Is PIN debit supported on tap, and what happens above the contactless limit?
 6. Can iPOSgo! return to Rupert automatically after approval (no extra taps for the cashier)?
