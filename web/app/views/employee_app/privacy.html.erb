@@ -9,6 +9,10 @@
     <%= section_heading 'Who can access it' %>
     <p class="text-sm">You can access your own staff member time records. Authorized managers and administrators can review timesheets and use approved hours for payroll. Rupert Staff does not include advertising or analytics SDKs or request access to your location, contacts, photos, camera, or microphone.</p>
   </section>
+  <section class="section-card" id="card-payments">
+    <%= section_heading 'Card payments' %>
+    <p class="text-sm">Rupert Staff takes no card payments and has no card reader. When you ring up a card sale on your organization's register, the card is read by its payment provider; Rupert records the result (amount, card brand, last four digits, approval code and reference) and that you took the payment. Card numbers never reach Rupert. Details: <%= link_to 'privacy policy', privacy_policy_path(anchor: 'card-payments'), class: 'text-olive underline' %>.</p>
+  </section>
   <section class="section-card">
     <%= section_heading 'Devices and retention' %>
     <p class="text-sm">The native app stores its sign-in token using the device's secure credential storage. Web sign-in uses the instance's browser session cookie. The web app does not cache timesheets for offline use. Employment and audit records stay on your organization's instance according to its retention policy.</p>

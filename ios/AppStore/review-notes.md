@@ -61,3 +61,35 @@ Subscriptions: the app sells nothing. Businesses subscribe on our website; the a
 2. Paste the notes above, replacing `<WORKER PASSWORD>`, and type the manager password in the
    User name / Password fields.
 3. Check the two logins once in the TestFlight build before pressing Submit for Review.
+
+## When Take payment ships (draft: do not paste before that version)
+
+Add this block to the notes of the version that first contains the **Take payment** button. Fill in
+the marked places. Background: `docs/compliance/dejavoo-tap-to-pay-compliance.md`.
+
+```
+NEW IN <VERSION>: TAKE PAYMENT (IN-PERSON CARD PAYMENTS FOR PHYSICAL GOODS)
+Shops that use Rupert sell physical goods over the counter. This version lets a shop's staff take a contactless card payment for those goods on an iPhone.
+
+How it works: Rupert does not read the card. On the register page the cashier taps Take payment, and Rupert opens the payment provider's own app (iPOSgo! by Dejavoo, which provides Tap to Pay on iPhone). The customer taps their card or phone there. iPOSgo! returns the result (approved or declined, amount, last four digits, approval code) and Rupert's server confirms it with the provider before the sale is marked paid. Rupert never receives the card number.
+
+In-app purchase is not used because these are physical goods consumed outside the app (guideline 3.1.3(e)). The app still sells no digital goods or subscriptions.
+
+HOW TO SEE IT
+1. Sign in as the manager (the review account). The demo shop is connected to the provider's test system, so no money moves.
+2. Home -> menu -> Register. Add any item, tap Take payment, choose the contactless option.
+3. <IF iPOSgo! CAN BE INSTALLED BY THE REVIEWER: say where to get it and which test card or wallet works. IF NOT: say so plainly, and attach a short screen recording of a full test payment on a real iPhone.>
+4. The receipt shows the card brand, last four digits and approval code.
+
+The button appears only on iPhone (iPhone XS or later, US region). It is not shown on iPad, where Tap to Pay on iPhone is not supported. It is off for a shop until its administrator turns it on.
+
+Data: the app's privacy label now includes Payment Info and Purchase History. Details are in the privacy policy at https://pos.rupertpos.com/privacy#card-payments.
+```
+
+Before pasting:
+
+1. Confirm with Dejavoo how a reviewer can run a test payment (question Q1/Q8 in the compliance doc).
+   If the reviewer cannot install iPOSgo!, attach a screen recording: guideline 2.1 asks for a demo
+   of every feature.
+2. Check the demo shop's catalog still shows no hemp, CBD, vape or THC products.
+3. Update the App Privacy label first (checklist item T6), so the notes and the label agree.

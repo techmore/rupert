@@ -35,7 +35,11 @@
   <% if (card = @checkout.card_receipt) %>
     <section class="section-card" aria-label="Card payment">
       <%= section_heading 'Card payment' %>
+      <%# Card receipt basics (docs/compliance/dejavoo-tap-to-pay-compliance.md): merchant, date, type, masked card, approval. Never more than the last four digits, never an expiry date. %>
       <dl class="space-y-1 text-sm">
+        <div class="flex justify-between gap-3"><dt>Merchant</dt><dd><%= [Current.tenant&.name, @checkout.location.name].compact.uniq.join(' · ') %></dd></div>
+        <% if @checkout.paid_at %><div class="flex justify-between gap-3"><dt>Date</dt><dd><%= l(@checkout.paid_at, format: :long) %></dd></div><% end %>
+        <div class="flex justify-between gap-3"><dt>Transaction</dt><dd>Sale · <%= ctrax_money(@checkout.total_cents) %></dd></div>
         <div class="flex justify-between gap-3"><dt>Card</dt><dd><%= [card[:brand], card[:last_four] && "ending #{card[:last_four]}"].compact.join(' ').presence || 'Card' %></dd></div>
         <% if card[:auth_code] %><div class="flex justify-between gap-3"><dt>Approval code</dt><dd class="num"><%= card[:auth_code] %></dd></div><% end %>
         <div class="flex justify-between gap-3"><dt>Processed by</dt><dd><%= card[:processor] %><%= ' (sandbox)' if @checkout.environment == 'sandbox' %> · <span class="num"><%= card[:transaction_id] %></span></dd></div>

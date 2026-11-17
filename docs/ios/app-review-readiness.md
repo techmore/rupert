@@ -130,7 +130,7 @@ This branch does not change it, because it changes the AI flow for every user. R
 
 ## Partner readiness (Valmar, Dejavoo, merchants)
 
-- **Card data never touches the app.** The app has no card reader, NFC (Tap to Pay) or terminal SDK. Card entry exists only on web pages that use the processor's hosted fields:
+- **Card data never touches the app.** The app has no card reader, NFC, Tap to Pay on iPhone or terminal SDK (true for 1.1.0; the planned Take payment button and what it changes are in [the compliance checklist](../compliance/dejavoo-tap-to-pay-compliance.md)). Card entry exists only on web pages that use the processor's hosted fields:
   - Authorize.net Accept.js hosted fields on the warehouse checkout.
   - NMI Collect.js, which is sandbox-only; `nmi_fields.js` refuses production.
 
