@@ -106,3 +106,22 @@ are serialized by the updater's own `flock` on `/run/rupert-autodeploy.lock` and
   200, 233 GB free.
 - Not verified live: creating a kit, the check code step and the first encrypted backup (owner only; covered by
   `backup_health_alerts_test.rb` and `backup_keys_test.rb`), and the daily notification (the job runs on the hour).
+
+## 2026-11-17 14:36 UTC — PR #659 card payment compliance ahead of Take payment (`7a82617d`) — deployed, healthy
+
+- Pre-deploy: `df -h /` 205 GB free (77% used); checkout clean at `b93f3a66`; `rupert-web` and `rupert-jobs` active.
+  SER8 was reached over the LAN (`ssh ser8`); `ssh ser8-ts` stopped at a Tailscale SSH browser check only the owner can pass.
+- Install: autodeploy after `CI (sqlite3)`, `Product site consistency` and `Dependency and static scan` passed
+  (`b93f3a66 -> 7a82617d`, 0 migrations). The scan had started failing on new Puma 8.0.2 and msgpack advisories, so the
+  same PR carries patch updates (Puma 8.0.4, msgpack 1.8.7). Deployer backup
+  `production-20261117-143612-b93f3a66-3b325a24fbe2dd52.sqlite3`, `PRAGMA integrity_check` ok.
+  `autodeploy: deployed 7a82617d, healthy`; `X-Rupert-Build: 7a82617d…`; checkout clean afterwards; no error-level
+  entries from `rupert-web` or `rupert-jobs` since the restart.
+- Looked at live (signed-out GET requests only, no account created): `/privacy`, `/security`, `/integrations`, `/support`,
+  `/terms` and `/employee/privacy` on herbalhealers.rupertpos.com, and `/privacy`, `/support`, `/security`,
+  `/integrations` on pos.rupertpos.com, all 200 on the new build. The privacy policy shows the **Card payments**
+  section, the policy pages carry Apple's trademark credit line, security, integrations and support say the phone
+  option will not work on iPad, and no page names Apple's feature before it ships. The landing page at rupertpos.com
+  and the product site show the new card FAQ.
+- Nothing was changed in App Store Connect. Version 1.1.0 is approved and Pending Developer Release.
+
