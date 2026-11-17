@@ -124,4 +124,3 @@ are serialized by the updater's own `flock` on `/run/rupert-autodeploy.lock` and
   option will not work on iPad, and no page names Apple's feature before it ships. The landing page at rupertpos.com
   and the product site show the new card FAQ.
 - Nothing was changed in App Store Connect. Version 1.1.0 is approved and Pending Developer Release.
-
