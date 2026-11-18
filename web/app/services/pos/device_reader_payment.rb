@@ -183,15 +183,23 @@ module Pos
         return checkout if attempt.status == 'declined'
 
         # Phone and provider agree nothing was charged: no need to wait.
-        agreed = %w[declined cancelled].include?(attempt.device_report['status'])
+        reported = attempt.reload.device_report['status']
+        agreed = %w[declined cancelled].include?(reported)
         if !agreed && attempt.submitted_at > NOT_FOUND_AFTER.ago
           # The reader may still be waiting for the card.
           return checkout if attempt.status == 'submitting'
 
           raise Error, 'The payment provider has not reported this payment yet. Wait, then check again.'
         end
+        if reported == 'approved'
+          # The phone says a card was approved and the provider still has no
+          # record. That is not proof of no charge: a person must look, and the
+          # sweep keeps asking in case the record appears.
+          hold_for_review!(checkout, attempt, nil)
+          raise Error, 'The phone reported an approval the payment provider has no record of. Do not charge again; a manager must check it.'
+        end
         reason = if agreed
-          attempt.device_report['status'] == 'cancelled' ? CANCELED : DECLINED
+          reported == 'cancelled' ? CANCELED : DECLINED
         else
           NO_RECORD
         end
@@ -292,13 +300,15 @@ module Pos
           checkout.pos_payment_attempts.where(status: %w[submitting unknown]).where.not(id: attempt.id).exists?
       end
 
+      # result: the provider's answer, or nil when it has no record.
       def hold_for_review!(checkout, attempt, result)
         checkout.with_lock do
           attempt.reload
+          reference = result&.processor_reference || attempt.transaction_id
           if blocked?(checkout, attempt)
-            attempt.update!(transaction_id: result.processor_reference, decline_reason: DeclineReason::REVIEW)
+            attempt.update!(transaction_id: reference, decline_reason: DeclineReason::REVIEW)
           else
-            attempt.update!(status: 'unknown', transaction_id: result.processor_reference, decline_reason: DeclineReason::REVIEW)
+            attempt.update!(status: 'unknown', transaction_id: reference, decline_reason: DeclineReason::REVIEW)
             checkout.update!(status: 'unknown')
           end
         end

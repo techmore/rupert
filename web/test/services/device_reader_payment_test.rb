@@ -96,6 +96,30 @@ class DeviceReaderPaymentTest < ActiveSupport::TestCase
     assert_not @checkout.reload.paid?
   end
 
+  test 'an approval the phone reported but the provider never recorded is held for review, never declined or paid' do
+    open_and_start
+    approved = tap
+    report(approved)
+    Pos::DeviceReader::FakeGateway.reset!
+    travel 6.minutes do
+      assert_match(/no record of/, assert_raises(Pos::Error) { Payment.reconcile!(attempt) }.message)
+      assert_equal %w[unknown unknown], [attempt.status, @checkout.reload.status]
+      assert_equal Pos::DeclineReason::REVIEW, attempt.decline_reason
+      assert_equal attempt, Payment.open!(@checkout), 'no new charge can start'
+      PosPaymentReconciliationJob.perform_now
+      assert_includes audit_actions, 'pos_payment_needs_review'
+      assert_not @checkout.reload.paid?
+    end
+    travel 9.minutes do
+      # The provider's record turns up after all: the sweep settles it.
+      Pos::DeviceReader::FakeGateway.update(attempt.invoice, { kind: 'sale', outcome: 'approved', voided: false, settled: false, total_cents: 1166,
+                                                               tip_cents: 101, fee_cents: 0, processor_reference: approved['provider_reference'] })
+      PosPaymentReconciliationJob.perform_now
+    end
+    assert @checkout.reload.paid?
+    assert_nil attempt.decline_reason
+  end
+
   test 'a lookup without a report still resolves the sale' do
     open_and_start
     tap

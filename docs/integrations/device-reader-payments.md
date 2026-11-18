@@ -75,7 +75,8 @@ The attempt and checkout use the statuses that already exist. Nothing new was ad
 | Lookup: no record, and the phone reported declined or cancelled | → `declined` | → `declined` |
 | Lookup: no record, nothing reported, under five minutes old | stays `submitting` | stays `processing` |
 | Lookup: no record, phone said approved or failed, under five minutes old | stays `unknown` | stays `unknown` |
-| Lookup: no record, five minutes or more after open | → `declined` | → `declined` |
+| Lookup: no record, five minutes or more after open, phone said nothing or failed | → `declined` | → `declined` |
+| Lookup: no record, five minutes or more after open, phone said approved | → `unknown`, held for review | → `unknown` |
 | Lookup: approved for another amount, with a fee, or under another reference | → `unknown`, held for review | → `unknown` |
 | Lookup: partial approval, void succeeds | → `declined` | → `declined` |
 | Lookup: partial approval, void fails | → `unknown`, held for review | → `unknown` |
@@ -215,7 +216,7 @@ after `expires_at`; and never send anything from the provider's result beyond th
 | App is killed before the card was presented | The attempt stays `submitting`. No new attempt can start. After five minutes with no record at the provider, the sweep declines it and the cashier can start again. Cancel resolves it sooner. | Neither. |
 | Customer cancels or the card is declined | Reported, confirmed by lookup, declined at once. A fresh attempt is allowed. | Neither. |
 | Reader times out with no answer | Same as the app being killed before a card. | Neither. |
-| Report says approved but the provider has no record | Stays `unknown`. Never paid on the phone's word. Declined after five minutes with no record. | Neither. |
+| Report says approved but the provider has no record | Stays `unknown`. Never paid on the phone's word, and never declined either: after five minutes it is held for review and blocks a new charge, and the sweep keeps asking in case the record appears. | A manager decides. |
 | Approved for a different amount, or with a fee or tip added | The report is refused; the lookup holds the attempt for review and blocks a new charge. | A manager decides. |
 | Partial approval | Voided at once and declined. If the void fails it is held for review. | Neither, unless the void fails: then a manager voids it. |
 | Report sent twice | The first is recorded; repeats change nothing and start no lookup. | Neither. |
@@ -225,9 +226,9 @@ after `expires_at`; and never send anything from the provider's result beyond th
 | Wrong token, device, workspace or permission | Refused; nothing recorded. | Neither. |
 | Card number or track data in a request | Refused; nothing saved; values never logged. | Neither. |
 
-The one case that needs a person is a late approval for a checkout that has moved on. It can only
-happen if a reader finishes after the server gave up, which the expiry time is there to prevent: the
-server waits five minutes and the app must stop at three.
+The case that can leave a customer charged twice is a late approval for a checkout that has moved on.
+It can only happen if a reader finishes after the server gave up, which the expiry time is there to
+prevent: the server waits five minutes and the app must stop at three.
 
 ## Voids and refunds
 
