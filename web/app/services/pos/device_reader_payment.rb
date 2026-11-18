@@ -227,6 +227,17 @@ module Pos
         body
       end
 
+      # What the phone that started an attempt may read back: the confirmed
+      # status and cashier wording, nothing from the receipt and no card
+      # details. "paid" here is only ever the provider-confirmed state. Read
+      # only: no lock, no lookup, no audit entry.
+      def device_state(attempt, device_id:)
+        raise WrongDevice, 'This payment was started on another device.' unless attempt.device_digest && attempt.device_digest == device_digest(device_id)
+
+        { status: attempt.status, reported: attempt.device_reported_at.present?, needs_review: attempt.decline_reason == DeclineReason::REVIEW,
+          message: attempt.status == 'paid' ? nil : attempt.decline_reason, amount_cents: attempt.pos_checkout.total_cents }
+      end
+
       def expires_at(attempt) = attempt.submitted_at + READER_WINDOW
 
       # Keeps only the whitelisted, well-formed fields of a phone report.

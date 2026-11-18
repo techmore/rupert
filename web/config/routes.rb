@@ -163,6 +163,8 @@ Rails.application.routes.draw do
     post '/native/reader_attempts/start', to: 'native/reader_attempts#start', as: :start_native_reader_attempt
     post '/native/reader_attempts/result', to: 'native/reader_attempts#result', as: :result_native_reader_attempt
     post '/native/reader_attempts/cancel', to: 'native/reader_attempts#cancel', as: :cancel_native_reader_attempt
+    # POST, not GET: the token stays out of URLs and log paths. The action cannot be named "status".
+    post '/native/reader_attempts/status', to: 'native/reader_attempts#confirmed_status', as: :status_native_reader_attempt
   end
 
   # ---- time & pay: ios ----

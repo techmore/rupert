@@ -26,7 +26,7 @@ module Pos
     # exactly as before.
     module RequestScreen
       FIELDS = { 'create' => %w[authenticity_token], 'start' => %w[token device_id], 'result' => %w[token device_id result],
-                 'cancel' => %w[token device_id] }.freeze
+                 'cancel' => %w[token device_id], 'confirmed_status' => %w[token device_id] }.freeze
       TOKEN = /\A[0-9a-f]{64}\z/
       DEVICE_ID = /\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/i
       IDENTIFIERS = { 'token' => TOKEN, 'device_id' => DEVICE_ID }.freeze

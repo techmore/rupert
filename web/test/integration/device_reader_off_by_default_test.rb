@@ -30,6 +30,7 @@ class DeviceReaderOffByDefaultTest < ActionDispatch::IntegrationTest
     yield get(native_reader_attempt_path(@checkout.id))
     yield post(start_native_reader_attempt_path, params: { token: token, device_id: DEVICE }, as: :json)
     yield post(result_native_reader_attempt_path, params: { token: token, device_id: DEVICE, result: { status: 'approved', amount_cents: 1166 } }, as: :json)
+    yield post(status_native_reader_attempt_path, params: { token: token, device_id: DEVICE }, as: :json)
     yield post(cancel_native_reader_attempt_path, params: { token: token, device_id: DEVICE }, as: :json)
   end
 

@@ -90,7 +90,7 @@ review cannot: a manager must look first, exactly as with the counter terminal.
 
 ## API
 
-All five routes need a signed-in session, are scoped to the workspace by `TenantScoped`, need
+All six routes need a signed-in session, are scoped to the workspace by `TenantScoped`, need
 `can_use_pos?`, and limit a cashier to their own checkouts (administrators see all), as the register
 does. Responses are JSON with `Cache-Control: no-store`. When the feature is off they answer 404.
 
@@ -101,6 +101,7 @@ does. Responses are JSON with `Cache-Control: no-store`. When the feature is off
 | `POST /native/reader_attempts/start` | app | `{token, device_id}` | `{reference, amount_cents, tip_cents, currency, expires_at, reader}` |
 | `POST /native/reader_attempts/result` | app | `{token, device_id, result}` | `{status, reported}` |
 | `POST /native/reader_attempts/cancel` | app, or page before start | `{token, device_id}` | `{status, reported}` |
+| `POST /native/reader_attempts/status` | app | `{token, device_id}` | `{status, reported, needs_review, message, amount_cents}` |
 
 Errors: 404 for an unknown token, another workspace or another cashier's checkout; 403 for a missing
 POS permission or the wrong device; 422 with `{error}` for anything else.
@@ -150,7 +151,7 @@ payment. `message` is cashier-ready wording for a decline or a hold.
   the server looks the payment up at once.
 - `card_brand` is Visa, Mastercard, Amex, Discover or JCB. `entry_method` is contactless, chip, swipe
   or manual.
-- **Any other field is refused**, in `result` or beside it. So is any request, on any of the five
+- **Any other field is refused**, in `result` or beside it. So is any request, on any of the six
   routes, that contains something shaped like a card number, track data or a security code
   (`CardData`). Nothing from a refused request is saved. The refusal is written to the activity log
   without the values.
@@ -170,6 +171,34 @@ payment. `message` is cashier-ready wording for a decline or a hold.
 - The report is kept in `device_report_json` as an unverified hint. The brand, last four and approval
   code on the receipt come from the provider lookup, never from the report.
 - The same report sent twice changes nothing. A later, different report is ignored.
+
+### Status for the app
+
+The page reads the attempt state by checkout id. The app is never given a checkout id, so it reads the
+confirmed outcome by token:
+
+```json
+POST /native/reader_attempts/status
+{ "token": "64 lowercase hex characters", "device_id": "the app install identifier (UUID)" }
+```
+
+```json
+{ "status": "paid", "reported": true, "needs_review": false, "message": null, "amount_cents": 1166 }
+```
+
+- `status` is the attempt's status: `submitting` (no result yet), `unknown` (awaiting confirmation, or
+  held when `needs_review` is true), `paid` or `declined`. `paid` appears only after the provider
+  lookup confirmed the sale; a phone report never produces it.
+- `reported` says whether the server has a report or cancel from the phone on file.
+- `message` is cashier-ready wording for a decline or a hold, otherwise `null`.
+- `amount_cents` is the checkout total the server fixed.
+- Nothing from the receipt is included: no card brand, last four, approval code, reference or
+  checkout id.
+- It is a POST so the token is never in a URL or a log path. It takes no query string.
+- Only the device that started the attempt may read it. Before `start`, or from another device, it
+  answers 403. An unknown token, another workspace or another cashier's checkout answers 404.
+- It keeps working after the result was reported and after the attempt is resolved.
+- It is read only: no provider lookup, no change to the attempt, no activity-log entry.
 
 ### What is stored about the phone and the token
 
@@ -214,6 +243,24 @@ polling.
 **status** (page to server): `GET /native/pos_checkouts/:checkout_id/reader_attempt`, every second or
 two while `status` is `submitting` or `unknown`, then stop. The page shows paid only when `status` is
 `paid`.
+
+**status for the app** (app to server, optional): the app may call
+`POST /native/reader_attempts/status` with the token and its install identifier to show the confirmed
+outcome itself, and to recover after a relaunch when it still holds a token it started. The page
+remains the main display; the app's copy is a convenience and must say the same thing. Polling rules:
+
+- Start only after `start` succeeded. Before that the route answers 403.
+- While `status` is `submitting` or `unknown` and `needs_review` is false: one request every 2 seconds
+  for the first 30 seconds after reporting, then one every 10 seconds.
+- Stop on `paid` or `declined`; stop when `needs_review` is true (a manager must act, and it can stay
+  that way for a long time); stop on 403 or 404; stop 10 minutes after `start` whatever the answer;
+  stop while the app is in the background.
+- On 422, 5xx or a network error, wait and try again at the slower pace. Never two requests at once
+  for one token.
+- After a relaunch: one request per token the app still holds, then the same rules. Forget the token
+  once the answer is `paid` or `declined`.
+- Show "paid" only when `status` is `paid`. `unknown` is "checking", never "approved", even when the
+  reader itself said approved.
 
 **cancel** (page to app): `{ type: "cancel", token }`. The app closes the reader and calls
 `POST /native/reader_attempts/cancel`. If the reader had already finished, the app reports the result
@@ -284,7 +331,7 @@ Three things must all be true before any of this can be used:
    production. `Pos::DeviceReader.gateway_class` is `nil` there, so the feature is off in production
    whatever the settings say.
 2. **The deployment switch is on.** `RUPERT_DEVICE_READER_ENABLED`, read once at boot. It defaults to
-   off in production and on elsewhere. While off, the five routes do not exist.
+   off in production and on elsewhere. While off, the six routes do not exist.
 3. **The workspace flag is on.** `FeatureFlag` `device_reader`, stored as a setting, absent by default.
    No screen sets it.
 

@@ -9,9 +9,10 @@ module Native
   #   POST /native/reader_attempts/start   {token, device_id}          app: claim it, learn the amount
   #   POST /native/reader_attempts/result  {token, device_id, result}  app: report what the reader said
   #   POST /native/reader_attempts/cancel  {token, device_id}          app or page: give up before a result
+  #   POST /native/reader_attempts/status  {token, device_id}          app: the confirmed outcome (read only)
   #
   # Signed-in session, workspace scope and POS permission as on the register.
-  # The app's own HTTP client sends start, result and cancel with the session
+  # The app's own HTTP client sends start, result, cancel and status with the session
   # cookie and no CSRF token; the attempt token is the proof there, as the push
   # token is for Native::PushDevicesController.
   #
@@ -25,7 +26,7 @@ module Native
     CARD_DATA = 'Card details must never be sent to Rupert. Nothing was saved.'
 
     wrap_parameters false
-    skip_forgery_protection only: %i[start result cancel]
+    skip_forgery_protection only: %i[start result cancel confirmed_status]
     before_action do
       response.headers['Cache-Control'] = 'no-store'
       next head(:not_found) unless Pos::DeviceReader.enabled?
@@ -79,6 +80,13 @@ module Native
       attempt = Pos::DeviceReaderPayment.cancel!(attempt_from_token, device_id: @body['device_id'])
       PosDeviceReaderConfirmJob.perform_later(attempt.id, attempt.tenant_id)
       render json: { status: attempt.status, reported: true }
+    end
+
+    # The app's read of the server-confirmed outcome: for the device that
+    # started the attempt only, a few fields and nothing from the receipt.
+    # It looks nothing up with the provider, writes nothing and logs nothing.
+    def confirmed_status
+      render json: Pos::DeviceReaderPayment.device_state(attempt_from_token, device_id: @body['device_id'])
     end
 
     private
