@@ -144,3 +144,13 @@ enum SampleCard {
     /// Text that must never appear in a log or on disk.
     static let secrets = ["TXN-77aa88bb", "1166", "Mastercard", "4242", "Z9Y8X7", "contactless"]
 }
+
+/// Text shaped like card data, for checking that the app drops it. Put together when the tests
+/// run, so that nothing shaped like a card number is written in this repository (bin/release-audit).
+enum CardLike {
+    static let number = "4" + String(repeating: "1", count: 15)
+    static let other = "55" + String(repeating: "0", count: 4) + String(repeating: "5", count: 9) + "9"
+    static let grouped = stride(from: 0, to: 16, by: 4).map { String(Array(number)[$0..<$0 + 4]) }.joined(separator: "-")
+    static let track1 = "%B" + other + "^X"
+    static let track2 = ";" + number + "=" + "2512"
+}

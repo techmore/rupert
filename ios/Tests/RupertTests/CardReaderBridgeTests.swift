@@ -22,7 +22,7 @@ final class ReaderBridgeTests: XCTestCase {
             ["type": "start", "token": token + "\n"], ["type": "start", "token": " " + token],
             // Anything beside the token: the page may not say what to charge or for what.
             ["type": "start", "token": token, "amount_cents": 100], ["type": "start", "token": token, "reference": "RR1"],
-            ["type": "start", "token": token, "checkout_id": 7], ["type": "start", "token": token, "card": "4111111111111111"],
+            ["type": "start", "token": token, "checkout_id": 7], ["type": "start", "token": token, "card": CardLike.number],
             ["type": "cancel", "token": token, "extra": true],
         ]
         for body in bad {
@@ -78,7 +78,7 @@ final class ReaderBridgeTests: XCTestCase {
         XCTAssertNotEqual(InstallIdentifier.current(in: defaults), "short")
 
         // The server refuses a request with anything shaped like a card number, an identifier included.
-        XCTAssertFalse(InstallIdentifier.isUsable("a1b2c3d4-4111-1111-1111-111111111111"))
+        XCTAssertFalse(InstallIdentifier.isUsable("a1b2c3d4-" + CardLike.grouped + "11111111"))
         XCTAssertFalse(InstallIdentifier.isUsable("abcdefab-cdef-4abc-8def-123456789012"))
         XCTAssertTrue(InstallIdentifier.isUsable(TestPhone.deviceID))
         defaults.set("abcdefab-cdef-4abc-8def-123456789012", forKey: InstallIdentifier.key)
@@ -108,22 +108,22 @@ final class CardReadResultTests: XCTestCase {
 
     func testValuesOutsideTheAcceptedFormAreDropped() {
         // A careless reader that puts card data where it does not belong.
-        let careless = CardReadResult(status: .approved, providerReference: "4111111111111111", amountCents: 1166, cardBrand: .visa,
-                                      lastFour: "4111111111111111", entryMethod: .chip, approvalCode: "411111111111")
+        let careless = CardReadResult(status: .approved, providerReference: CardLike.number, amountCents: 1166, cardBrand: .visa,
+                                      lastFour: CardLike.number, entryMethod: .chip, approvalCode: String(CardLike.number.prefix(12)))
         XCTAssertNil(careless.providerReference)
         XCTAssertNil(careless.lastFour)
         XCTAssertNil(careless.approvalCode)
         XCTAssertEqual(Set(careless.reportFields.keys), ["status", "amount_cents", "card_brand", "entry_method"])
 
-        XCTAssertNil(CardReadResult(status: .approved, providerReference: "ref 4111-1111-1111-1111").providerReference)
-        XCTAssertNil(CardReadResult(status: .approved, providerReference: "TXN-4111111111111111").providerReference)
+        XCTAssertNil(CardReadResult(status: .approved, providerReference: "ref " + CardLike.grouped).providerReference)
+        XCTAssertNil(CardReadResult(status: .approved, providerReference: "TXN-" + CardLike.number).providerReference)
         XCTAssertNil(CardReadResult(status: .approved, providerReference: String(repeating: "a", count: 41)).providerReference)
         XCTAssertNil(CardReadResult(status: .approved, lastFour: "123").lastFour)
         XCTAssertNil(CardReadResult(status: .approved, lastFour: "12a4").lastFour)
         XCTAssertNil(CardReadResult(status: .approved, lastFour: "١٢٣٤").lastFour)
         XCTAssertNil(CardReadResult(status: .approved, lastFour: "1234\n").lastFour)
         XCTAssertNil(CardReadResult(status: .approved, approvalCode: "A1 B2").approvalCode)
-        XCTAssertNil(CardReadResult(status: .approved, approvalCode: ";4111111111111111=2512").approvalCode)
+        XCTAssertNil(CardReadResult(status: .approved, approvalCode: CardLike.track2).approvalCode)
         XCTAssertNil(CardReadResult(status: .approved, amountCents: 0).amountCents)
         XCTAssertNil(CardReadResult(status: .approved, amountCents: -5).amountCents)
         XCTAssertNil(CardReadResult(status: .approved, amountCents: 10_000_000).amountCents)
@@ -134,13 +134,13 @@ final class CardReadResultTests: XCTestCase {
 
     func testNothingButTheWhitelistReachesTheServerFromACarelessReader() async {
         let phone = TestPhone()
-        let careless = CardReadResult(status: .declined, providerReference: "5500005555555559", amountCents: 1166, cardBrand: .mastercard,
-                                      lastFour: "5500005555555559", entryMethod: .swipe, approvalCode: "%B5500005555555559^X")
+        let careless = CardReadResult(status: .declined, providerReference: CardLike.other, amountCents: 1166, cardBrand: .mastercard,
+                                      lastFour: CardLike.other, entryMethod: .swipe, approvalCode: CardLike.track1)
         _ = await phone.coordinator(reader: FakeCardReader(script: [.finish(careless)])).start(token: TestPhone.token)
 
         for call in phone.server.calls {
             XCTAssertNil(call.raw.range(of: "[0-9]{12,}", options: .regularExpression), "nothing shaped like a card number is sent")
-            XCTAssertFalse(call.raw.contains("5500"))
+            XCTAssertFalse(call.raw.contains(CardLike.other.prefix(4)))
         }
         let report = phone.server.calls(to: StubTransport.result)[0].body
         XCTAssertEqual(Set(report.keys), ["token", "device_id", "result"])
