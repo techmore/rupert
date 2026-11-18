@@ -31,7 +31,9 @@ enum ReaderMessage: Equatable {
 /// The page posts an attempt token to the `rupertReader` message handler. The app asks Rupert's
 /// server what to charge, runs the card reader, reports what the reader said, and answers the page
 /// with a `rupert:reader-result` event that carries the token and one word: `reported`,
-/// `unreported` or `unavailable`. The page then reads the confirmed outcome from the server.
+/// `unreported` or `unavailable`. The page then reads the confirmed outcome from the server and
+/// shows it. The app reads it too (ReaderStatusWatcher), and says so itself only for a payment it
+/// found unfinished when it was launched, when the page that started it is gone.
 ///
 /// No build of this repository has a real reader, so a shipped app answers `unavailable`.
 final class ReaderBridge: NSObject, WKScriptMessageHandler {
@@ -39,16 +41,22 @@ final class ReaderBridge: NSObject, WKScriptMessageHandler {
     static let handlerName = "rupertReader"
     static let eventName = "rupert:reader-result"
 
-    private lazy var coordinator = ReaderPaymentCoordinator(
-        client: ReaderAttemptClient(baseURL: { Instance.current }, transport: WebSessionTransport(),
-                                    userAgent: "Rupert iOS/\(Instance.appVersion)"),
-        reader: CardReaders.make(),
-        store: UserDefaultsReaderAttemptStore(),
-        deviceID: InstallIdentifier.current(),
-        isPad: UIDevice.current.userInterfaceIdiom == .pad)
+    private lazy var coordinator: ReaderPaymentCoordinator = {
+        let client = ReaderAttemptClient(baseURL: { Instance.current }, transport: WebSessionTransport(),
+                                         userAgent: "Rupert iOS/\(Instance.appVersion)")
+        let store = UserDefaultsReaderAttemptStore()
+        let deviceID = InstallIdentifier.current()
+        let watcher = ReaderStatusWatcher(client: client, store: store, deviceID: deviceID) { [weak self] _, confirmation, afterRelaunch in
+            guard afterRelaunch, let notice = confirmation.notice else { return }
+            Task { @MainActor in self?.show(title: notice.title, message: notice.message) }
+        }
+        return ReaderPaymentCoordinator(client: client, reader: CardReaders.make(), store: store, deviceID: deviceID,
+                                        isPad: UIDevice.current.userInterfaceIdiom == .pad, watcher: watcher)
+    }()
     private let log = ReaderConsoleLog()
     private weak var page: WKWebView?
     private var observing = false
+    private var recoveredSinceLaunch = false
 
     static func install(in controller: WKUserContentController) {
         controller.add(shared, name: handlerName)
@@ -65,6 +73,7 @@ final class ReaderBridge: NSObject, WKScriptMessageHandler {
             return
         }
         page = webView
+        used = true
         let coordinator = self.coordinator
         Task { @MainActor in
             let state: ReaderPageState?
@@ -105,22 +114,46 @@ final class ReaderBridge: NSObject, WKScriptMessageHandler {
         webView.evaluateJavaScript(eventScript(token: token, state: state))
     }
 
+    /// A plain alert, like the app's other native messages, for an outcome confirmed after a relaunch.
+    @MainActor
+    private func show(title: String, message: String) {
+        let window = page?.window ?? UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first
+        guard let presenter = window?.rootViewController?.topmostPresented else { return }
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .cancel))
+        presenter.present(alert, animated: true)
+    }
+
     /// When the app comes back (and at its first activation after a launch), settle any attempt
-    /// that was left unfinished. With nothing saved this does nothing at all.
+    /// that was left unfinished and read the status of any token still held. In the background
+    /// nothing is read. With nothing saved, and so in every shipped build, none of this happens.
     private func observeReturns() {
         guard !observing else { return }
         observing = true
-        NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+        let center = NotificationCenter.default
+        center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
             self?.recover()
+        }
+        center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+            guard let self, self.used else { return }
+            let coordinator = self.coordinator
+            Task { await coordinator.pause() }
         }
         recover()
     }
 
+    /// Whether this launch has had anything to do with a card payment.
+    private var used = false
+
     private func recover() {
-        guard !UserDefaultsReaderAttemptStore().all().allSatisfy(\.phase.isFinished) else { return }
+        // Only what was already saved when the app was launched counts as "after a relaunch".
+        let afterLaunch = !recoveredSinceLaunch
+        recoveredSinceLaunch = true
+        guard used || !UserDefaultsReaderAttemptStore().all().isEmpty else { return }
+        used = true
         let coordinator = self.coordinator
         Task { @MainActor [weak self] in
-            for settled in await coordinator.recover() {
+            for settled in await coordinator.recover(afterLaunch: afterLaunch) {
                 Self.post(settled.state, token: settled.token, to: self?.page)
             }
         }

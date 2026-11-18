@@ -15,9 +15,10 @@ on that branch). This page says what the app does with it.
 | --- | --- | --- |
 | `CardReader` | `Sources/Rupert/CardReader.swift` | The protocol a reader implements: `availability()`, `read(_:)`, `cancel()`. Also `CardReadRequest`, `CardReadResult` and `UnavailableCardReader`. |
 | `FakeCardReader` | `Sources/Rupert/FakeCardReader.swift` | A scripted reader for tests and debug builds. The whole file is inside `#if DEBUG`. |
-| `ReaderAttemptClient` | `Sources/Rupert/ReaderAttemptClient.swift` | The three server calls: start, result, cancel. The transport is injected; tests use a stub. |
+| `ReaderAttemptClient` | `Sources/Rupert/ReaderAttemptClient.swift` | The four server calls: start, result, cancel, status. The transport is injected; tests use a stub. |
 | `ReaderAttemptStore` | `Sources/Rupert/ReaderAttemptStore.swift` | What survives a kill: the token and how far it got. |
 | `ReaderPaymentCoordinator` | `Sources/Rupert/ReaderPaymentCoordinator.swift` | Runs one attempt from token to report. |
+| `ReaderStatusWatcher` | `Sources/Rupert/ReaderStatusWatcher.swift` | Reads the server-confirmed outcome by token, at the contract's pace. |
 | `ReaderBridge` | `Sources/Rupert/ReaderBridge.swift` | The `rupertReader` message handler, installed beside the scanner in `WebViewSupport`. |
 
 ## What happens
@@ -34,9 +35,9 @@ on that branch). This page says what the app does with it.
 5. The app dispatches `rupert:reader-result` on `window` with `{ token, state }`. `state` is
    `reported`, `unreported` or `unavailable`. The event carries no payment facts.
 6. The page reads the confirmed outcome from the server
-   (`GET /native/pos_checkouts/:id/reader_attempt`). The app does not: that route needs a checkout
-   id, which the app is never given. What the app learns from the server is the attempt's status
-   in the answer to its own report.
+   (`GET /native/pos_checkouts/:id/reader_attempt`) and shows it. The page is the main display.
+7. The app reads it too, by token (`POST /native/reader_attempts/status`), so it can recover after
+   a relaunch. See [The confirmed outcome](#the-confirmed-outcome).
 
 `{ type: "cancel", token }` closes the reader and calls `POST /native/reader_attempts/cancel`. If
 the reader had already read the card, the app reports the result instead.
@@ -47,17 +48,23 @@ the reader had already read the card, the app reports the result instead.
   for another token while one is in flight is answered `unavailable`, and that attempt is cancelled
   on the server so the checkout is not left waiting.
 - **The reader opens at most once for a token.** The token is saved before the reader opens and
-  kept for a day. A repeated start, a relaunch or a return to the app never opens it again.
-- **Killed or sent to the background.** When the app next becomes active it settles what was left,
-  with server calls only:
+  kept (later as a digest) for a day. A repeated start, a relaunch or a return to the app never opens it again.
+- **Killed mid-payment.** When the app next becomes active it settles what was left, with server
+  calls only. For a token whose reader was opened it first reads the status, once:
 
-  | Saved as | Meaning | What the app does |
+  | The server says | What the app does |
+  | --- | --- |
+  | It has a report, or the payment is already paid or declined | Sends nothing. |
+  | 403 or 404 | Sends nothing and forgets the token. |
+  | Nothing on file yet, or no answer | Tells the server what it knows (below). |
+
+  | Saved as | Meaning | What the app tells the server |
   | --- | --- | --- |
-  | `claiming` | The reader never opened. | Calls cancel. |
-  | `reading` | The app stopped while the reader was open. | Reports `failed`: the app does not know, and the server looks the payment up. |
-  | `reporting`, not approved | The reader answered; the report did not arrive. | Reports the outcome word alone. |
-  | `reporting`, approved | As above, for an approval. | Nothing. An approval needs its amount, which is not kept on disk. The server's sweep finds it. |
-  | older than 15 minutes | The server settled it long ago. | Nothing. |
+  | `claiming` | The reader never opened. | Cancel (no status read: nothing can have been charged). |
+  | `reading` | The app stopped while the reader was open. | `failed`: the app does not know, and the server looks the payment up at once. |
+  | `reporting`, not approved | The reader answered; the report did not arrive. | The outcome word alone. |
+  | `reporting`, approved | As above, for an approval. | Nothing. An approval needs its amount, which is not kept on disk. The server's sweep finds it, and the app watches the status. |
+  | older than 15 minutes | The server settled it long ago. | Nothing; the status is read once. |
 
 - **Network loss.** A report or cancel the server did not acknowledge is sent again after 1, 2, 4
   and 8 seconds, and again when the app next becomes active. The server keeps the first report and
@@ -69,6 +76,34 @@ the reader had already read the card, the app reports the result instead.
   the app calls cancel and answers `unavailable`, without asking what to charge. A 404 or 403 from
   start (feature off, unknown token, another device) is also `unavailable`, and no reader opens.
 
+## The confirmed outcome
+
+`ReaderStatusWatcher` follows the contract's polling rules:
+
+- Only for a token whose start succeeded, and only once the app is done sending for it.
+- One request every 2 seconds for the first 30 seconds after the report, then one every 10 seconds.
+- Stop on `paid` or `declined` and forget the token. Stop on 403 or 404 and forget the token; these
+  are never retried. Stop when `needs_review` is true. Stop ten minutes after start. Stop while
+  the app is in the background.
+- On 422, a server error, an unreadable answer or no network, ask again at the slower pace.
+- Never two requests at once for one token.
+- When the app is launched or comes back: one read for each token still held, then the same rules.
+  A token is held for at most a day.
+
+What the app may say comes from the status answer alone. `paid` is said only for a `paid` status.
+`submitting` and `unknown` are "checking", whatever the reader said. `needs_review` is "needs a
+manager", with the server's message.
+
+The contract defines no event or field for telling the page the confirmed outcome, so the app does
+not send one: `rupert:reader-result` is unchanged. The app shows the outcome itself in one case
+only: a payment it found unfinished when it was launched, when the page that started it is gone.
+Then it shows a plain alert, like its other native messages, once the server says paid, declined
+or held. In every other case the page shows it.
+
+"Forgetting" a token means the token is erased and only its SHA-256 digest is kept for a day, with
+the word the page was last told. That is what keeps the reader shut if the same token is posted
+again; the digest cannot be used to ask the server anything.
+
 ## Card data
 
 A reader returns a `CardReadResult` and nothing else: the outcome and six optional facts (provider
@@ -76,8 +111,15 @@ reference, amount, brand, last four, entry method, approval code). These are the
 accepts. A value that is not in the server's accepted form, or that contains twelve or more digits
 in a row, is dropped when the result is made.
 
-- **On disk:** the token, a phase word, an outcome word and a time. No amount, no reference,
-  nothing about a card. The install identifier is a random UUID kept in the app's preferences.
+- **On disk:** the token, a phase word, an outcome word, three times (first seen, started,
+  reported) and whether its status is still being read. No amount, no reference, nothing from a
+  status answer, nothing about a card. The install identifier is a random UUID kept in the app's
+  preferences; the server takes a UUID and nothing else.
+- **From a status answer:** five fields are read (`status`, `reported`, `needs_review`, `message`,
+  `amount_cents`). None is saved or logged.
+- **Dropped fields:** when the server leaves a card-shaped provider reference or approval code out
+  of a report it says so (`dropped`). The app treats the report as accepted and logs only that it
+  happened.
 - **In logs:** the coordinator can only log a fixed set of event names and an HTTP status. Debug
   builds print them; release builds log nothing.
 - **In memory:** a result the server has not acknowledged is held until it is sent or the app ends.
@@ -93,7 +135,8 @@ in a row, is dropped when the result is made.
   `CardReaderBuildTests` reads the sources and fails if `FakeCardReader` is named outside
   `#if DEBUG`, if anything imports a card reader framework, or if the entitlement appears.
 - The server routes answer 404 while the feature is off, and production has no provider at all.
-- With nothing saved, the return-to-app check reads one preference and stops.
+- With nothing saved, the return-to-app check reads one preference and stops. No status is ever
+  read for a token whose start did not succeed, so a build with no reader never calls that route.
 
 ## How a real reader plugs in
 
@@ -127,11 +170,12 @@ that take cards are made from the private repository, with this one checked out 
 - Any screen. The system reader sheet is the provider's; the register page shows the waiting state.
 - A way for the page to ask whether the phone can take cards before it opens an attempt. The
   contract has no such message. `ReaderPaymentCoordinator.availability()` is ready for one.
-- Reading the confirmed outcome in the app (see step 6).
+- A native screen for the confirmed outcome beyond the one alert after a relaunch.
+- The amount in that alert: the status answer has an amount but no currency.
 - Refunds on the phone.
 
 ## Tests
 
-`Tests/RupertTests`: `ReaderPaymentCoordinatorTests`, `ReaderBridgeTests`, `CardReadResultTests`
-and `CardReaderBuildTests`. They use the fake reader and a stub transport, so nothing touches the
-network. Run them with the rest of the package's tests (README, "Tests").
+`Tests/RupertTests`: `ReaderPaymentCoordinatorTests`, `ReaderStatusWatcherTests`, `ReaderBridgeTests`,
+`CardReadResultTests` and `CardReaderBuildTests`. They use the fake reader and a stub transport, so
+nothing touches the network, and the status tests run on a test clock, so they wait for nothing. Run them with the rest of the package's tests (README, "Tests").

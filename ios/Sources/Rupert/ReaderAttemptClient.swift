@@ -43,18 +43,46 @@ struct ReaderAttemptStart: Equatable, Sendable {
 }
 
 /// The server's answer to a report or a cancel: the attempt's status at that moment. `unknown`
-/// means reported and awaiting the server's own lookup; only the page shows the confirmed outcome.
+/// means reported and awaiting the server's own lookup. Nothing is shown from this answer: the
+/// confirmed outcome is read with `status`.
 struct ReaderAttemptAck: Equatable, Sendable {
     let status: String
     let reported: Bool
+    /// Report fields the server left out because they looked like card data. Not an error: the
+    /// report was accepted without them.
+    var dropped: [String] = []
 }
 
-/// The three calls the app makes for a phone card reader payment. The register page opens the
-/// attempt and reads its status itself; the app is never given a checkout id.
+/// The server's confirmed view of an attempt (`POST /native/reader_attempts/status`): five fields
+/// and nothing from the receipt. `paid` is only ever the provider-confirmed state.
+struct ReaderAttemptStatus: Equatable, Sendable {
+    enum Status: String, Sendable {
+        /// No result yet.
+        case submitting
+        /// Awaiting the server's lookup, or held for a manager when `needsReview` is true.
+        case unknown
+        case paid, declined
+    }
+
+    let status: Status
+    /// Whether the server has a report or a cancel from the phone on file.
+    let reported: Bool
+    let needsReview: Bool
+    /// Cashier wording for a decline or a hold.
+    let message: String?
+    let amountCents: Int
+
+    /// No more answers will differ in a way the app waits for.
+    var isSettled: Bool { status == .paid || status == .declined }
+}
+
+/// The four calls the app makes for a phone card reader payment. The register page opens the
+/// attempt and reads it by checkout id; the app is never given a checkout id and reads by token.
 ///
 ///     POST /native/reader_attempts/start   {token, device_id}
 ///     POST /native/reader_attempts/result  {token, device_id, result}
 ///     POST /native/reader_attempts/cancel  {token, device_id}
+///     POST /native/reader_attempts/status  {token, device_id}
 struct ReaderAttemptClient: Sendable {
     let baseURL: @Sendable () -> URL
     let transport: any ReaderHTTPTransport
@@ -85,6 +113,19 @@ struct ReaderAttemptClient: Sendable {
         await post("/native/reader_attempts/cancel", ["token": token, "device_id": deviceID]).flatMap(Self.ack)
     }
 
+    /// The confirmed outcome, for the install that started the attempt. Read only on the server.
+    /// 403 and 404 mean stop asking; they are never retried.
+    func status(token: String, deviceID: String) async -> Result<ReaderAttemptStatus, ReaderAPIFailure> {
+        await post("/native/reader_attempts/status", ["token": token, "device_id": deviceID]).flatMap { json in
+            guard let status = (json["status"] as? String).flatMap(ReaderAttemptStatus.Status.init(rawValue:)),
+                  let reported = Self.boolean(json["reported"]), let needsReview = Self.boolean(json["needs_review"]),
+                  let amount = Self.integer(json["amount_cents"]), amount >= 0,
+                  let message = json["message"], message is NSNull || message is String else { return .failure(.malformed) }
+            return .success(ReaderAttemptStatus(status: status, reported: reported, needsReview: needsReview,
+                                                message: message as? String, amountCents: amount))
+        }
+    }
+
     private func post(_ path: String, _ body: [String: Any]) async -> Result<[String: Any], ReaderAPIFailure> {
         guard let url = URL(string: path, relativeTo: baseURL())?.absoluteURL,
               let data = try? JSONSerialization.data(withJSONObject: body) else { return .failure(.malformed) }
@@ -104,8 +145,15 @@ struct ReaderAttemptClient: Sendable {
 
     private static func ack(_ json: [String: Any]) -> Result<ReaderAttemptAck, ReaderAPIFailure> {
         guard let status = json["status"] as? String, ["submitting", "unknown", "paid", "declined"].contains(status),
-              let reported = json["reported"] as? Bool else { return .failure(.malformed) }
-        return .success(ReaderAttemptAck(status: status, reported: reported))
+              let reported = boolean(json["reported"]) else { return .failure(.malformed) }
+        let dropped = (json["dropped"] as? [Any] ?? []).compactMap { $0 as? String }.filter { ["provider_reference", "auth_code"].contains($0) }
+        return .success(ReaderAttemptAck(status: status, reported: reported, dropped: dropped))
+    }
+
+    /// A JSON true or false, and not a number.
+    static func boolean(_ value: Any?) -> Bool? {
+        guard let number = value as? NSNumber, CFGetTypeID(number) == CFBooleanGetTypeID() else { return nil }
+        return number.boolValue
     }
 
     /// A whole number, and not a JSON true or false (which Foundation would also hand over as 1 or 0).
@@ -145,24 +193,20 @@ struct WebSessionTransport: ReaderHTTPTransport {
     }
 }
 
-/// The app install identifier the server ties an attempt to. Made once and kept, so it is the
-/// same after a relaunch; a reinstall makes a new one. It identifies nothing but this install.
+/// The app install identifier the server ties an attempt to: a UUID, made once and kept, so it
+/// is the same after a relaunch. A reinstall makes a new one. It identifies nothing but this install.
 enum InstallIdentifier {
     static let key = "rupert.reader.installIdentifier"
 
     static func current(in defaults: UserDefaults = .standard) -> String {
         if let saved = defaults.string(forKey: key), isUsable(saved) { return saved }
-        var made = UUID().uuidString.lowercased()
-        while !isUsable(made) { made = UUID().uuidString.lowercased() }
+        let made = UUID().uuidString.lowercased()
         defaults.set(made, forKey: key)
         return made
     }
 
-    /// The server's form (16 to 64 letters, digits or dashes), and no long run of digits: the
-    /// server refuses any request with something shaped like a card number in it, and about one
-    /// random UUID in a thousand has such a run. An install must never be the unlucky one.
+    /// The server takes a UUID and nothing else.
     static func isUsable(_ value: String) -> Bool {
-        value.range(of: "\\A[A-Za-z0-9-]{16,64}\\z", options: .regularExpression) != nil
-            && value.range(of: "[0-9](-?[0-9]){9,}", options: .regularExpression) == nil
+        value.range(of: "\\A[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\\z", options: .regularExpression) != nil
     }
 }

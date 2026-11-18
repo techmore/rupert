@@ -77,12 +77,16 @@ final class ReaderBridgeTests: XCTestCase {
         defaults.set("short", forKey: InstallIdentifier.key)
         XCTAssertNotEqual(InstallIdentifier.current(in: defaults), "short")
 
-        // The server refuses a request with anything shaped like a card number, an identifier included.
-        XCTAssertFalse(InstallIdentifier.isUsable("a1b2c3d4-" + CardLike.grouped + "11111111"))
-        XCTAssertFalse(InstallIdentifier.isUsable("abcdefab-cdef-4abc-8def-123456789012"))
+        // The server takes a UUID, in either case, and nothing else.
+        XCTAssertNotNil(UUID(uuidString: first))
         XCTAssertTrue(InstallIdentifier.isUsable(TestPhone.deviceID))
-        defaults.set("abcdefab-cdef-4abc-8def-123456789012", forKey: InstallIdentifier.key)
-        XCTAssertTrue(InstallIdentifier.isUsable(InstallIdentifier.current(in: defaults)))
+        XCTAssertTrue(InstallIdentifier.isUsable(TestPhone.deviceID.uppercased()))
+        for bad in ["", "0123456789abcdef0123", "0f1e2d3c4b5a497887 96a5b4c3d2e1f0", TestPhone.deviceID + "0", TestPhone.deviceID + "\n",
+                    "g" + TestPhone.deviceID.dropFirst(), TestPhone.deviceID.replacingOccurrences(of: "-", with: "")] {
+            XCTAssertFalse(InstallIdentifier.isUsable(bad), bad)
+        }
+        defaults.set("0123456789abcdef0123", forKey: InstallIdentifier.key)
+        XCTAssertTrue(InstallIdentifier.isUsable(InstallIdentifier.current(in: defaults)), "an identifier from before the UUID rule is replaced")
     }
 }
 

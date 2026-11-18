@@ -13,6 +13,7 @@ final class StubTransport: ReaderHTTPTransport, @unchecked Sendable {
 
     struct Call {
         let path: String
+        let query: String?
         let method: String
         let headers: [String: String]
         let body: [String: Any]
@@ -22,16 +23,46 @@ final class StubTransport: ReaderHTTPTransport, @unchecked Sendable {
     static let start = "/native/reader_attempts/start"
     static let result = "/native/reader_attempts/result"
     static let cancel = "/native/reader_attempts/cancel"
+    static let status = "/native/reader_attempts/status"
 
     private let lock = NSLock()
     private var answers: [String: [Answer]] = [:]
     private var recorded: [Call] = []
+    private var held: Set<String> = []
+    private var waiting: [String: [UnsafeContinuation<Void, Never>]] = [:]
+    private var inFlight: [String: Int] = [:]
+    private var most: [String: Int] = [:]
 
     /// A server with the feature on: start answers with `amountCents`, report and cancel are accepted.
     init(amountCents: Int = 1166, expiresIn: TimeInterval = 180) {
         answers[Self.start] = [.json(200, Self.startAnswer(amountCents: amountCents, expiresIn: expiresIn))]
         answers[Self.result] = [.json(200, ["status": "unknown", "reported": true])]
         answers[Self.cancel] = [.json(200, ["status": "unknown", "reported": true])]
+        answers[Self.status] = [.json(200, Self.statusAnswer("submitting", reported: false))]
+    }
+
+    static func statusAnswer(_ status: String, reported: Bool = true, needsReview: Bool = false, message: String? = nil,
+                             amountCents: Int = 1166) -> [String: Any] {
+        ["status": status, "reported": reported, "needs_review": needsReview, "message": message ?? NSNull(), "amount_cents": amountCents]
+    }
+
+    /// Calls to `path` do not get their answer until `release(path)`.
+    func hold(_ path: String) {
+        lock.withLock { _ = held.insert(path) }
+    }
+
+    func release(_ path: String) {
+        let resumed: [UnsafeContinuation<Void, Never>] = lock.withLock {
+            held.remove(path)
+            defer { waiting[path] = nil }
+            return waiting[path] ?? []
+        }
+        resumed.forEach { $0.resume() }
+    }
+
+    /// The most requests to `path` that were ever waiting for an answer at the same moment.
+    func mostAtOnce(_ path: String) -> Int {
+        lock.withLock { most[path] ?? 0 }
     }
 
     static func startAnswer(amountCents: Int = 1166, expiresIn: TimeInterval = 180) -> [String: Any] {
@@ -51,9 +82,23 @@ final class StubTransport: ReaderHTTPTransport, @unchecked Sendable {
         let path = request.url?.path ?? ""
         let data = request.httpBody ?? Data()
         let body = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+        // Recorded when it is sent, so a held request counts as out.
+        lock.withLock {
+            inFlight[path, default: 0] += 1
+            most[path] = max(most[path] ?? 0, inFlight[path] ?? 0)
+            recorded.append(Call(path: path, query: request.url?.query, method: request.httpMethod ?? "", headers: request.allHTTPHeaderFields ?? [:],
+                                 body: body, raw: String(data: data, encoding: .utf8) ?? ""))
+        }
+        await withUnsafeContinuation { (continuation: UnsafeContinuation<Void, Never>) in
+            let wait: Bool = lock.withLock {
+                guard held.contains(path) else { return false }
+                waiting[path, default: []].append(continuation)
+                return true
+            }
+            if !wait { continuation.resume() }
+        }
         let answer: Answer = lock.withLock {
-            recorded.append(Call(path: path, method: request.httpMethod ?? "", headers: request.allHTTPHeaderFields ?? [:], body: body,
-                                 raw: String(data: data, encoding: .utf8) ?? ""))
+            inFlight[path, default: 1] -= 1
             var queue = answers[path] ?? [.json(404, [:])]
             let next = queue.count > 1 ? queue.removeFirst() : queue[0]
             answers[path] = queue
@@ -87,7 +132,7 @@ final class RecordingLog: ReaderLogSink, @unchecked Sendable {
 final class TestPhone {
     static let token = String(repeating: "ab", count: 32)
     static let otherToken = String(repeating: "cd", count: 32)
-    static let deviceID = "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0"
+    static let deviceID = "0f1e2d3c-4b5a-4978-8796-a5b4c3d2e1f0"
 
     let server: StubTransport
     let log = RecordingLog()
@@ -106,10 +151,36 @@ final class TestPhone {
         defaults.removePersistentDomain(forName: suite)
     }
 
-    func coordinator(reader: any CardReader, isPad: Bool = false) -> ReaderPaymentCoordinator {
-        ReaderPaymentCoordinator(
-            client: ReaderAttemptClient(baseURL: { URL(string: "https://rupert.test")! }, transport: server),
-            reader: reader, store: store, deviceID: Self.deviceID, isPad: isPad, policy: policy, log: log)
+    let clock = TestClock()
+    let said = SaidLog()
+
+    var client: ReaderAttemptClient {
+        ReaderAttemptClient(baseURL: { URL(string: "https://rupert.test")! }, transport: server)
+    }
+
+    func coordinator(reader: any CardReader, isPad: Bool = false, watcher: ReaderStatusWatcher? = nil) -> ReaderPaymentCoordinator {
+        guard let watcher else {
+            return ReaderPaymentCoordinator(client: client, reader: reader, store: store, deviceID: Self.deviceID, isPad: isPad, policy: policy, log: log)
+        }
+        // With a watcher, the coordinator reads the same test clock, so "after reporting" lines up.
+        let clock = self.clock
+        return ReaderPaymentCoordinator(client: client, reader: reader, store: store, deviceID: Self.deviceID, isPad: isPad, policy: policy, log: log,
+                                        watcher: watcher, now: { clock.now })
+    }
+
+    /// A status watcher on the test clock: it waits only when the test moves time.
+    func watcher() -> ReaderStatusWatcher {
+        let clock = self.clock
+        let said = self.said
+        return ReaderStatusWatcher(client: client, store: store, deviceID: Self.deviceID, log: log, now: { clock.now },
+                                   sleep: { await clock.sleep($0) }, onChange: { said.record($0, $1, $2) })
+    }
+
+    /// A token as the app holds it after start succeeded and the report was acknowledged.
+    func hold(_ token: String = TestPhone.token, phase: ReaderAttemptRecord.Phase = .reported, startedAgo: TimeInterval = 5,
+              reportedAgo: TimeInterval? = 0) {
+        store.save(ReaderAttemptRecord(token: token, phase: phase, firstSeen: Date(), startedAt: clock.now.addingTimeInterval(-startedAgo),
+                                       reportedAt: reportedAgo.map { clock.now.addingTimeInterval(-$0) }, watching: true))
     }
 
     func phase(_ token: String = TestPhone.token) -> ReaderAttemptRecord.Phase? {
@@ -153,4 +224,65 @@ enum CardLike {
     static let grouped = stride(from: 0, to: 16, by: 4).map { String(Array(number)[$0..<$0 + 4]) }.joined(separator: "-")
     static let track1 = "%B" + other + "^X"
     static let track2 = ";" + number + "=" + "2512"
+}
+
+/// Time that moves only when a test moves it. A sleeper wakes when the clock passes its time.
+final class TestClock: @unchecked Sendable {
+    private let lock = NSLock()
+    private var current = Date()
+    private var sleepers: [(wake: Date, continuation: UnsafeContinuation<Void, Never>)] = []
+    private var asked: [TimeInterval] = []
+    private var counters: [(count: Int, continuation: UnsafeContinuation<Void, Never>)] = []
+
+    var now: Date { lock.withLock { current } }
+    /// Every wait that was asked for, in order.
+    var sleeps: [TimeInterval] { lock.withLock { asked } }
+
+    func sleep(_ seconds: TimeInterval) async {
+        await withUnsafeContinuation { (continuation: UnsafeContinuation<Void, Never>) in
+            let ready: [UnsafeContinuation<Void, Never>] = lock.withLock {
+                asked.append(seconds)
+                sleepers.append((current.addingTimeInterval(seconds), continuation))
+                let due = counters.filter { $0.count <= asked.count }.map(\.continuation)
+                counters.removeAll { $0.count <= asked.count }
+                return due
+            }
+            ready.forEach { $0.resume() }
+        }
+    }
+
+    /// Returns once `count` waits have been asked for in all.
+    func waitForSleeps(_ count: Int) async {
+        await withUnsafeContinuation { (continuation: UnsafeContinuation<Void, Never>) in
+            let already: Bool = lock.withLock {
+                if asked.count >= count { return true }
+                counters.append((count, continuation))
+                return false
+            }
+            if already { continuation.resume() }
+        }
+    }
+
+    func advance(by seconds: TimeInterval) {
+        let due: [UnsafeContinuation<Void, Never>] = lock.withLock {
+            current = current.addingTimeInterval(seconds)
+            let woken = sleepers.filter { $0.wake <= current }.map(\.continuation)
+            sleepers.removeAll { $0.wake <= current }
+            return woken
+        }
+        due.forEach { $0.resume() }
+    }
+}
+
+/// What the watcher said may be shown, in order.
+final class SaidLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var entries: [(token: String, confirmation: ReaderConfirmation, afterRelaunch: Bool)] = []
+
+    var all: [ReaderConfirmation] { lock.withLock { entries.map(\.confirmation) } }
+    var afterRelaunch: [Bool] { lock.withLock { entries.map(\.afterRelaunch) } }
+
+    func record(_ token: String, _ confirmation: ReaderConfirmation, _ afterRelaunch: Bool) {
+        lock.withLock { entries.append((token, confirmation, afterRelaunch)) }
+    }
 }

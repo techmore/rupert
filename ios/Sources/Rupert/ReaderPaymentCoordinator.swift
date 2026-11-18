@@ -17,6 +17,8 @@ enum ReaderLogEvent: String, Sendable {
     case messageRejected, joined, busy, readerUnavailable, serverUnavailable, claimFailed, expired
     case readerOpened, readerFinished, readerTimedOut, readerAbandoned, cancelRequested, lateResult
     case reportSent, reportUnsent, reportRefused, cancelSent, cancelUnsent, retry, recovering, leftToServer
+    case fieldsDropped, serverAlreadyKnows
+    case statusSettled, statusHeld, statusRefused, statusForgotten, statusUnread, statusTimeLimit
 }
 
 protocol ReaderLogSink: Sendable {
@@ -53,8 +55,9 @@ struct ReaderPolicy: Sendable {
 /// - The page gives a token and nothing else. The amount comes from the server.
 /// - One attempt at a time. The same token again joins the attempt in flight.
 /// - The reader is opened at most once for a token, ever. The token is saved as `reading` before
-///   the reader opens, so after a kill the app reports that it does not know what happened and
-///   never opens the reader again.
+///   the reader opens, so after a kill the app reads the attempt's status, reports that it does
+///   not know what happened if the server has heard nothing, and never opens the reader again.
+/// - What the server has confirmed is read by `ReaderStatusWatcher`, once the app is done sending.
 /// - A report or a cancel the server did not acknowledge is sent again (the server keeps the
 ///   first and ignores repeats). The sale itself is never run again.
 /// - A reader that does not answer is closed at the time limit and reported as failed. If it
@@ -67,6 +70,7 @@ actor ReaderPaymentCoordinator {
     private let isPad: Bool
     private let policy: ReaderPolicy
     private let log: any ReaderLogSink
+    private let watcher: ReaderStatusWatcher?
     private let now: @Sendable () -> Date
     private let sleep: @Sendable (TimeInterval) async -> Void
 
@@ -83,9 +87,11 @@ actor ReaderPaymentCoordinator {
     private var abandoned: Set<Int> = []
     /// Results the server has not acknowledged, in memory only, so a later try can send them whole.
     private var unsent: [String: CardReadResult] = [:]
+    /// A status answer read while settling a token, handed to the watcher so it is not read twice.
+    private var justRead: [String: ReaderStatusWatcher.Answer] = [:]
 
     init(client: ReaderAttemptClient, reader: any CardReader, store: any ReaderAttemptStore, deviceID: String, isPad: Bool,
-         policy: ReaderPolicy = ReaderPolicy(), log: any ReaderLogSink = ReaderConsoleLog(),
+         policy: ReaderPolicy = ReaderPolicy(), log: any ReaderLogSink = ReaderConsoleLog(), watcher: ReaderStatusWatcher? = nil,
          now: @escaping @Sendable () -> Date = { Date() },
          sleep: @escaping @Sendable (TimeInterval) async -> Void = { try? await Task.sleep(nanoseconds: UInt64(max(0, $0) * 1_000_000_000)) }) {
         self.client = client
@@ -95,6 +101,7 @@ actor ReaderPaymentCoordinator {
         self.isPad = isPad
         self.policy = policy
         self.log = log
+        self.watcher = watcher
         self.now = now
         self.sleep = sleep
     }
@@ -114,6 +121,7 @@ actor ReaderPaymentCoordinator {
             note(.busy)
             return await refuse(token)
         }
+        if let told = store.forgottenState(for: token) { return told }
         return await fly(token, known: store.record(for: token) != nil)
     }
 
@@ -128,6 +136,7 @@ actor ReaderPaymentCoordinator {
             _ = await flightTask.value
             return nil
         }
+        if let told = store.forgottenState(for: token) { return told }
         if store.record(for: token) != nil {
             return flightToken == nil ? await fly(token, known: true) : .unreported
         }
@@ -136,24 +145,38 @@ actor ReaderPaymentCoordinator {
     }
 
     /// At launch and when the app comes back: settle every attempt that was left unfinished, by
-    /// telling the server what the app knows. The reader is not involved.
-    func recover() async -> [(token: String, state: ReaderPageState)] {
+    /// asking the server what it knows and telling it what the app knows, then read the status of
+    /// every token still held. The reader is not involved.
+    func recover(afterLaunch: Bool = false) async -> [(token: String, state: ReaderPageState)] {
         var settled: [(token: String, state: ReaderPageState)] = []
+        var handled: Set<String> = []
         for record in store.all() where !record.phase.isFinished {
             guard flightToken == nil else { break }
-            settled.append((record.token, await fly(record.token, known: true)))
+            handled.insert(record.token)
+            settled.append((record.token, await fly(record.token, known: true, afterRelaunch: afterLaunch)))
         }
+        // A payment in flight is read when it is done, not while the reader is open.
+        if let flightToken { handled.insert(flightToken) }
+        await watcher?.resume(except: handled, afterRelaunch: afterLaunch)
         return settled
+    }
+
+    /// The app went to the background: status is not read there.
+    func pause() async {
+        await watcher?.pause()
     }
 
     // MARK: One attempt
 
-    private func fly(_ token: String, known: Bool) async -> ReaderPageState {
+    private func fly(_ token: String, known: Bool, afterRelaunch: Bool = false) async -> ReaderPageState {
         cancelRequested = false
         let task = Task { () -> ReaderPageState in
             let state = known ? await self.resolve(token) : await self.run(token)
             self.flightToken = nil
             self.flightTask = nil
+            // Done sending. From here the server's confirmed outcome is read, if start succeeded.
+            let read = self.justRead.removeValue(forKey: token)
+            await self.watcher?.watch(token: token, knowing: read, afterRelaunch: afterRelaunch)
             return state
         }
         flightToken = token
@@ -190,6 +213,8 @@ actor ReaderPaymentCoordinator {
             return .unreported
         }
 
+        // Start succeeded: from now the token's status may be read, for ten minutes.
+        save(token, .claiming) { $0.startedAt = self.now(); $0.watching = true }
         if cancelRequested { return await cancelOnServer(token, readerRan: false) }
         let remaining = start.expiresAt.timeIntervalSince(now()) - policy.expiryMargin
         guard remaining > 0 else {
@@ -220,12 +245,36 @@ actor ReaderPaymentCoordinator {
         if now().timeIntervalSince(record.firstSeen) > policy.staleAfter {
             return close(token)
         }
+        if record.phase == .claiming {
+            return await cancelOnServer(token, readerRan: false)
+        }
+
+        // The reader was opened. Ask the server what it knows before telling it anything.
+        let read = await client.status(token: token, deviceID: deviceID)
+        justRead[token] = read
+        switch read {
+        case let .success(status) where status.reported || status.isSettled:
+            // It has a report, or has settled the payment by its own lookup. Nothing to send.
+            note(.serverAlreadyKnows)
+            unsent[token] = nil
+            save(token, status.reported ? .reported : .closed)
+            return status.reported ? .reported : .unreported
+        case let .failure(failure) where failure == .status(403) || failure == .status(404):
+            // Not this install's attempt any more, or the feature is off. Stop and forget.
+            note(.statusRefused, failure.httpStatus)
+            store.stopWatching(token)
+            return close(token)
+        case .success, .failure:
+            break // Nothing on file yet, or no answer: tell the server what the app knows.
+        }
+
         switch record.phase {
         case .claiming:
             return await cancelOnServer(token, readerRan: false)
         case .reading:
-            // The app stopped while the reader was open. Whether a card was charged is not known,
-            // and "failed" says exactly that: the server looks the payment up and decides.
+            // The app stopped while the reader was open, and the server has heard nothing.
+            // Whether a card was charged is not known, and "failed" says exactly that: the server
+            // looks the payment up at once and decides.
             return await report(token, .failed)
         case .reporting:
             if let whole = unsent[token] { return await report(token, whole) }
@@ -242,7 +291,7 @@ actor ReaderPaymentCoordinator {
 
     /// Another attempt is in flight. This phone cannot run the reader for `token`.
     private func refuse(_ token: String) async -> ReaderPageState {
-        guard store.record(for: token) == nil else { return .unreported }
+        guard store.record(for: token) == nil, store.forgottenState(for: token) == nil else { return .unreported }
         _ = await client.cancel(token: token, deviceID: deviceID)
         return .unavailable
     }
@@ -324,10 +373,12 @@ actor ReaderPaymentCoordinator {
         save(token, .reporting, outcome: result.status.rawValue)
         unsent[token] = result
         switch await retrying({ await self.client.report(token: token, deviceID: self.deviceID, result: result) }) {
-        case .success:
+        case let .success(ack):
             unsent[token] = nil
-            save(token, .reported)
+            save(token, .reported) { $0.reportedAt = $0.reportedAt ?? self.now() }
             note(.reportSent)
+            // The server left out a field that looked like card data. The report still counts.
+            if !ack.dropped.isEmpty { note(.fieldsDropped) }
             return .reported
         case let .failure(failure) where failure.isRetryable:
             // Kept as `reporting`: the next return to the app sends it again.
@@ -347,7 +398,7 @@ actor ReaderPaymentCoordinator {
         }
         switch await retrying({ await self.client.cancel(token: token, deviceID: self.deviceID) }) {
         case .success:
-            save(token, .reported)
+            save(token, .reported) { $0.reportedAt = $0.reportedAt ?? self.now() }
             note(.cancelSent)
             return .reported
         case let .failure(failure) where failure.isRetryable:
@@ -380,9 +431,13 @@ actor ReaderPaymentCoordinator {
         return answer
     }
 
-    private func save(_ token: String, _ phase: ReaderAttemptRecord.Phase, outcome: String? = nil) {
-        let firstSeen = store.record(for: token)?.firstSeen ?? now()
-        store.save(ReaderAttemptRecord(token: token, phase: phase, outcome: outcome, firstSeen: firstSeen))
+    private func save(_ token: String, _ phase: ReaderAttemptRecord.Phase, outcome: String? = nil,
+                      _ change: ((inout ReaderAttemptRecord) -> Void)? = nil) {
+        var record = store.record(for: token) ?? ReaderAttemptRecord(token: token, phase: phase, firstSeen: now())
+        record.phase = phase
+        record.outcome = outcome
+        change?(&record)
+        store.save(record)
     }
 
     private func note(_ event: ReaderLogEvent, _ httpStatus: Int? = nil) {

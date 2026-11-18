@@ -140,8 +140,11 @@ final class ReaderPaymentCoordinatorTests: XCTestCase {
         XCTAssertEqual(settled.map(\.token), [token])
         XCTAssertEqual(settled.map(\.state), [.reported])
         XCTAssertEqual(after.requests.count, 0, "recovery never runs the reader")
-        XCTAssertEqual(phone.server.paths, [StubTransport.start, StubTransport.result], "and never asks to start again")
-        XCTAssertEqual(phone.server.calls[1].body["result"] as? NSDictionary, ["status": "failed"])
+        // It asks what the server knows first. The server has heard nothing, so the app says what
+        // it knows: the read did not finish.
+        XCTAssertEqual(phone.server.paths, [StubTransport.start, StubTransport.status, StubTransport.result], "and never asks to start again")
+        XCTAssertEqual(phone.server.calls[1].body as NSDictionary, ["token": token, "device_id": TestPhone.deviceID])
+        XCTAssertEqual(phone.server.calls[2].body["result"] as? NSDictionary, ["status": "failed"])
         XCTAssertEqual(phone.phase(), .reported)
 
         // The page, reloaded, posts the same token again.
@@ -167,14 +170,14 @@ final class ReaderPaymentCoordinatorTests: XCTestCase {
     func testKilledBeforeTheReportArrivedSendsTheOutcomeWordOnly() async {
         for word in ["declined", "cancelled", "failed", "timedOut"] {
             let phone = TestPhone()
-            phone.store.save(ReaderAttemptRecord(token: token, phase: .reporting, outcome: word, firstSeen: Date()))
+            phone.store.save(ReaderAttemptRecord(token: token, phase: .reporting, outcome: word, firstSeen: Date(), startedAt: Date(), watching: true))
             let reader = FakeCardReader(script: [.approve()])
 
             let settled = await phone.coordinator(reader: reader).recover()
 
             XCTAssertEqual(settled.map(\.state), [.reported], word)
-            XCTAssertEqual(phone.server.paths, [StubTransport.result])
-            XCTAssertEqual(phone.server.calls[0].body["result"] as? NSDictionary, ["status": word == "timedOut" ? "failed" : word])
+            XCTAssertEqual(phone.server.paths, [StubTransport.status, StubTransport.result])
+            XCTAssertEqual(phone.server.calls[1].body["result"] as? NSDictionary, ["status": word == "timedOut" ? "failed" : word])
             XCTAssertEqual(reader.requests.count, 0)
         }
     }
@@ -182,20 +185,21 @@ final class ReaderPaymentCoordinatorTests: XCTestCase {
     func testAnApprovalLostToAKillIsLeftToTheServersLookup() async {
         // The amount is not kept on disk, and an approval cannot be reported without it.
         let phone = TestPhone()
-        phone.store.save(ReaderAttemptRecord(token: token, phase: .reporting, outcome: "approved", firstSeen: Date()))
+        phone.store.save(ReaderAttemptRecord(token: token, phase: .reporting, outcome: "approved", firstSeen: Date(), startedAt: Date(), watching: true))
         let reader = FakeCardReader(script: [.approve()])
 
         let settled = await phone.coordinator(reader: reader).recover()
 
         XCTAssertEqual(settled.map(\.state), [.unreported])
-        XCTAssertEqual(phone.server.paths, [])
+        XCTAssertEqual(phone.server.paths, [StubTransport.status], "it asks what the server knows, and sends nothing")
         XCTAssertEqual(reader.requests.count, 0)
         XCTAssertEqual(phone.phase(), .closed)
     }
 
     func testAnOldUnfinishedAttemptIsLeftToTheServer() async {
         let phone = TestPhone()
-        phone.store.save(ReaderAttemptRecord(token: token, phase: .reading, outcome: nil, firstSeen: Date().addingTimeInterval(-3600)))
+        phone.store.save(ReaderAttemptRecord(token: token, phase: .reading, outcome: nil, firstSeen: Date().addingTimeInterval(-3600),
+                                             startedAt: Date().addingTimeInterval(-3590), watching: true))
         let reader = FakeCardReader(script: [.approve()])
 
         let settled = await phone.coordinator(reader: reader).recover()
@@ -567,16 +571,24 @@ final class ReaderPaymentCoordinatorTests: XCTestCase {
             XCTAssertNil(line.range(of: "[0-9]{4,}", options: .regularExpression), "no run of digits: \(line)")
         }
 
-        // On disk: the token, the phase, the outcome word and a time. Nothing else.
+        // On disk: the token, the phase, the outcome word, three times and one flag. For a token
+        // that was let go, a digest of it and the word the page was told. Nothing else.
         for text in saved {
-            let records = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: [String: Any]]
-            XCTAssertNotNil(records)
-            for (key, record) in records ?? [:] {
+            let contents = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: [String: [String: Any]]]
+            XCTAssertNotNil(contents)
+            XCTAssertTrue(Set((contents ?? [:]).keys).isSubset(of: ["records", "forgotten"]))
+            for (key, record) in contents?["records"] ?? [:] {
                 XCTAssertEqual(key, record["token"] as? String)
-                XCTAssertTrue(Set(record.keys).isSubset(of: ["token", "phase", "outcome", "firstSeen"]), "\(record.keys)")
+                XCTAssertTrue(Set(record.keys).isSubset(of: ["token", "phase", "outcome", "firstSeen", "startedAt", "reportedAt", "watching"]), "\(record.keys)")
                 XCTAssertTrue(["claiming", "reading", "reporting", "reported", "closed"].contains(record["phase"] as? String ?? ""))
                 if let outcome = record["outcome"] { XCTAssertTrue(["approved", "declined", "cancelled", "failed", "timedOut"].contains(outcome as? String ?? "")) }
-                XCTAssertTrue(record["firstSeen"] is NSNumber)
+                for time in ["firstSeen", "startedAt", "reportedAt"] where record[time] != nil { XCTAssertTrue(record[time] is NSNumber) }
+            }
+            for (key, entry) in contents?["forgotten"] ?? [:] {
+                XCTAssertNotNil(key.range(of: "\\A[0-9a-f]{64}\\z", options: .regularExpression))
+                XCTAssertNotEqual(key, token)
+                XCTAssertEqual(Set(entry.keys), ["state", "at"])
+                XCTAssertTrue(["reported", "unreported"].contains(entry["state"] as? String ?? ""))
             }
             for secret in ["TXN-77aa88bb", "Mastercard", "Z9Y8X7", "contactless", "RR0123456789abcdef01234567"] {
                 XCTAssertFalse(text.contains(secret))
