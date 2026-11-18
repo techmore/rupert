@@ -7,8 +7,9 @@
 #   prepare_device_reader_fixture            # @location, @setting, @register, @display, @checkout
 #   tap(:approved)                           # the phone's reader finishes; returns the report it would send
 module DeviceReaderFixture
-  DEVICE = 'install-0000-fixture-phone-a'
-  OTHER_DEVICE = 'install-0000-fixture-phone-b'
+  # Made-up install identifiers (the app sends a UUID).
+  DEVICE = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+  OTHER_DEVICE = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
 
   def device_reader_credentials = { merchant_id: 'FIXTURE-MERCHANT', reader_profile_id: 'FIXTURE-PROFILE' }.to_json
 

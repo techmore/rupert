@@ -30,8 +30,10 @@ module Pos
     NOT_FOUND_AFTER = READER_WINDOW + 2.minutes
     REPORT_STATUSES = %w[approved declined cancelled failed].freeze
     REPORT_KEYS = %w[status provider_reference amount_cents card_brand last_four entry_method auth_code].freeze
-    DEVICE_ID = /\A[A-Za-z0-9-]{16,64}\z/
-    TOKEN = /\A[0-9a-f]{64}\z/
+    DEVICE_ID = DeviceReader::RequestScreen::DEVICE_ID
+    TOKEN = DeviceReader::RequestScreen::TOKEN
+    # How many references open! may draw to avoid a card-shaped reference or token.
+    REDRAWS = 20
 
     DECLINED = 'The card was declined on the phone. Try another card or another way to pay.'
     CANCELED = 'The payment was cancelled on the phone. Nothing was charged.'
@@ -57,7 +59,7 @@ module Pos
       def device_digest(device_id)
         raise Error, 'Send the app install identifier.' unless device_id.is_a?(String) && device_id.match?(DEVICE_ID)
 
-        Digest::SHA256.hexdigest("#{PROVIDER}:device:#{device_id}")
+        Digest::SHA256.hexdigest("#{PROVIDER}:device:#{device_id.downcase}")
       end
 
       # The attempt for a token, in the current workspace only.
@@ -90,8 +92,15 @@ module Pos
             raise Error, 'This register is closed.' unless checkout.pos_session.status == 'open'
           end
           created = true
-          row = checkout.pos_payment_attempts.new(provider: PROVIDER, invoice: DeviceReader.reference, submitted_at: Time.current)
+          row = checkout.pos_payment_attempts.new(provider: PROVIDER, submitted_at: Time.current)
           row.tenant_id = checkout.tenant_id
+          # Defence in depth: a reference or token that happens to look like a
+          # card number works here (RequestScreen), but a log redactor or
+          # another system on its way might not agree. Draw again, a few times.
+          REDRAWS.times do
+            row.invoice = DeviceReader.reference
+            break unless CardData.contains?(row.invoice) || CardData.contains?(token_for(row))
+          end
           row.nonce_digest = token_digest(token_for(row))
           row.save!
           checkout.update!(status: 'processing')

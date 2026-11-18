@@ -33,6 +33,7 @@ by lookup only, a different amount is held for review, and a partial approval is
 | Gateway interface, result fields, on/off rules | `web/app/services/pos/device_reader.rb` |
 | Fake provider (tests and development) | `web/app/services/pos/device_reader/fake_gateway.rb` |
 | Approved-products guard | `web/app/services/pos/device_reader/approved_list_guard.rb` |
+| Card-data screen for requests | `web/app/services/pos/device_reader/request_screen.rb` |
 | Open, start, report, cancel, confirm | `web/app/services/pos/device_reader_payment.rb` |
 | API for the page and the app | `web/app/controllers/native/reader_attempts_controller.rb` |
 | Lookup right after a report | `web/app/jobs/pos_device_reader_confirm_job.rb` |
@@ -130,7 +131,7 @@ payment. `message` is cashier-ready wording for a decline or a hold.
 ```json
 {
   "token": "64 lowercase hex characters",
-  "device_id": "the app install identifier, 16 to 64 letters, digits or dashes",
+  "device_id": "the app install identifier: a UUID, for example 123e4567-e89b-42d3-a456-426614174000",
   "result": {
     "status": "approved",
     "provider_reference": "up to 40 letters, digits or dashes",
@@ -153,6 +154,19 @@ payment. `message` is cashier-ready wording for a decline or a hold.
   routes, that contains something shaped like a card number, track data or a security code
   (`CardData`). Nothing from a refused request is saved. The refusal is written to the activity log
   without the values.
+- **`token` and `device_id` are checked by format, not scanned.** Both are random, and about 1 random
+  token in 160 and 1 UUID in 800 contains a run of digits that looks like a card number. A `token`
+  must be exactly 64 lowercase hex characters and a `device_id` must be a UUID (either case). A value
+  in that exact form, in its own field, on a route that takes it, is not scanned. A value that fails
+  its format is scanned like anything else, so a card number sent as a token or identifier is still
+  refused. Neither value is stored or logged: the server keeps a SHA-256 digest of each.
+- **A card-shaped `provider_reference` or `auth_code` is dropped, not refused.** The provider chooses
+  these values, and a numeric id can pass the card-number check. When one is well formed (up to 40
+  letters, digits or dashes; up to 12 letters or digits) but looks like card data, the server leaves
+  it out of the report, answers `{status, reported, dropped: ["provider_reference"]}`, and notes it in
+  the activity log without the value. Nothing is lost: both are only hints, and the confirmed values
+  come from the provider lookup, which is not scanned. With spaces, separators or track markers the
+  value is not well formed and the whole request is refused as before.
 - The report is kept in `device_report_json` as an unverified hint. The brand, last four and approval
   code on the receipt come from the provider lookup, never from the report.
 - The same report sent twice changes nothing. A later, different report is ignored.
@@ -162,7 +176,10 @@ payment. `message` is cashier-ready wording for a decline or a hold.
 - The token is derived from the reference with a server key and is never stored. Only its SHA-256
   digest is kept, in the existing `nonce_digest` column, so a copy of the database cannot report a
   result.
-- The install identifier is stored as a digest (`device_digest`).
+- The install identifier is stored as a digest (`device_digest`), compared without regard to case.
+- When it opens an attempt the server draws a new reference (up to 20 times) if the reference or its
+  token would look like a card number, so other systems that redact card numbers leave them alone.
+  The API does not depend on this.
 
 ## Bridge contract for the iPhone app
 
@@ -202,7 +219,7 @@ two while `status` is `submitting` or `unknown`, then stop. The page shows paid 
 `POST /native/reader_attempts/cancel`. If the reader had already finished, the app reports the result
 instead.
 
-The app must: keep the install identifier stable across launches; report every reader outcome,
+The app must: use a UUID as its install identifier and keep it stable across launches; report every reader outcome,
 including after a relaunch if it can; never open the reader twice for one token; never start a reader
 after `expires_at`; and never send anything from the provider's result beyond the fields above.
 
@@ -246,6 +263,7 @@ provider.
 | `pos_device_reader_result_reported` | A report was recorded, with its status and whether it was late |
 | `pos_device_reader_cancel_requested` | A cancel was recorded |
 | `pos_device_reader_card_data_refused` | A request carried card data and was refused |
+| `pos_device_reader_field_dropped` | A card-shaped provider reference or approval code was left out of a report |
 | `pos_checkout_paid`, `pos_sandbox_checkout_completed` | Existing: the sale was finalized |
 | `pos_payment_needs_review` | Existing: a lookup could not settle the attempt, or held it |
 | `pos_card_void`, `pos_card_refund`, `pos_card_reversal_needs_review` | Existing: reversals |

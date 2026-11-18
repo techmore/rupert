@@ -219,7 +219,8 @@ class NativeReaderAttemptsTest < ActionDispatch::IntegrationTest
     before = in_workspace { attempt.attributes }
     lines = capture_ops_log do
       [
-        { result: approved.merge('provider_reference' => VISA) },
+        { result: approved.merge('provider_reference' => '4111 1111 1111 1111') },
+        { result: approved.merge('provider_reference' => TRACK2) },
         { result: approved.merge('auth_code' => '4111 1111 1111 1111') },
         { result: approved.merge('amount_cents' => VISA.to_i) },
         { result: approved.merge('last_four' => VISA) },
@@ -228,7 +229,12 @@ class NativeReaderAttemptsTest < ActionDispatch::IntegrationTest
         { result: approved, card_number: VISA },
         { result: approved, notes: ["swiped #{TRACK1}"] },
         { result: approved, VISA => 'x' },
-        { result: approved, device_id: "install-#{VISA}" }
+        { result: approved, device_id: "install-#{VISA}" },
+        { result: approved, device_id: VISA },
+        { result: approved, token: VISA },
+        { result: approved, token: [VISA] },
+        { result: approved.merge('token' => VISA) },
+        { result: approved.merge('device_id' => DEVICE, 'note' => VISA) }
       ].each do |body|
         post result_native_reader_attempt_path, params: { token: token, device_id: DEVICE }.merge(body), as: :json
         assert_response :unprocessable_entity, body.inspect

@@ -16,11 +16,12 @@ module Native
   # token is for Native::PushDevicesController.
   #
   # Card data never belongs here. A request is refused when it carries any
-  # field outside the short lists below, or anything shaped like a card number,
-  # track data or a security code (CardData). Nothing from a refused request is
-  # saved. A report is a hint: only the provider lookup marks a sale paid.
+  # field outside a short list, or anything shaped like a card number, track
+  # data or a security code (CardData). Nothing from a refused request is
+  # saved. The token and install identifier are checked by their own strict
+  # formats instead: see Pos::DeviceReader::RequestScreen. A report is a hint:
+  # only the provider lookup marks a sale paid.
   class ReaderAttemptsController < ApplicationController
-    BODY_KEYS = { 'create' => %w[authenticity_token], 'start' => %w[token device_id], 'result' => %w[token device_id result], 'cancel' => %w[token device_id] }.freeze
     CARD_DATA = 'Card details must never be sent to Rupert. Nothing was saved.'
 
     wrap_parameters false
@@ -64,7 +65,10 @@ module Native
       outcome = Pos::DeviceReaderPayment.report!(attempt, device_id: @body['device_id'], report: @body['result'])
       # The provider's own record decides. A repeat of a report enqueues nothing.
       PosDeviceReaderConfirmJob.perform_later(attempt.id, attempt.tenant_id) unless outcome == :duplicate
-      render json: { status: attempt.reload.status, reported: true }
+      if @dropped.any? && outcome != :duplicate
+        ActivityLogger.log('pos_device_reader_field_dropped', subject: attempt.pos_checkout, details: "#{@dropped.join(', ')} looked like card data and was not kept")
+      end
+      render json: { status: attempt.reload.status, reported: true }.merge(@dropped.any? ? { dropped: @dropped } : {})
     rescue Pos::DeviceReaderPayment::AmountMismatch => e
       # Refused and not recorded, but something was approved: look it up now.
       PosDeviceReaderConfirmJob.perform_later(attempt.id, attempt.tenant_id)
@@ -79,27 +83,19 @@ module Native
 
     private
 
-    # The body and query string exactly as sent. Refuses card data first, then
-    # any field this action does not take. No action takes a query string.
+    # The body and query string exactly as sent, through
+    # Pos::DeviceReader::RequestScreen: card data is refused first, then any
+    # field this action does not take. No action takes a query string.
     def screen_body
-      @body = request.request_parameters.to_h
-      query = request.query_parameters.to_h
-      if card_data?(@body) || card_data?(query)
+      verdict = Pos::DeviceReader::RequestScreen.call(action_name, request.request_parameters, request.query_parameters)
+      @body = verdict.body
+      @dropped = verdict.dropped
+      case verdict.status
+      when :card_data
         ActivityLogger.log('pos_device_reader_card_data_refused', details: "#{action_name}: a request carried card data and was refused")
-        return render(json: { error: CARD_DATA }, status: :unprocessable_entity)
-      end
-      return if query.empty? && (@body.keys - BODY_KEYS.fetch(action_name, [])).empty?
-
-      render json: { error: 'The request has a field Rupert does not accept.' }, status: :unprocessable_entity
-    end
-
-    def card_data?(value)
-      case value
-      when Hash then value.any? { |key, item| card_data?(key) || card_data?(item) }
-      when Array then value.any? { |item| card_data?(item) }
-      when String then CardData.contains?(value)
-      when Numeric then CardData.contains?(value.to_s)
-      else false
+        render json: { error: CARD_DATA }, status: :unprocessable_entity
+      when :unknown_field
+        render json: { error: 'The request has a field Rupert does not accept.' }, status: :unprocessable_entity
       end
     end
 
