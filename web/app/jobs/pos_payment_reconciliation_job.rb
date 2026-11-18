@@ -32,10 +32,7 @@ class PosPaymentReconciliationJob < ApplicationJob
       Current.set(tenant: attempt.tenant) do
         # Record the check before network I/O so unresolved or failed checks
         # rotate behind attempts that have not been checked yet.
-        claimed = PosPaymentAttempt.where(id: attempt.id, status: %w[submitting unknown])
-          .where('reconciliation_checked_at IS NULL OR reconciliation_checked_at < ?', 2.minutes.ago)
-          .update_all(reconciliation_checked_at: Time.current)
-        next unless claimed == 1
+        next unless PosPaymentAttempt.claim_reconciliation(attempt.id)
 
         Pos::CardPayment.reconcile!(attempt)
       rescue Pos::Error => e

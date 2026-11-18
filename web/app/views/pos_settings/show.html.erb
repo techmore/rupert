@@ -1,6 +1,7 @@
 <% content_for :title, 'Checkout setup' %>
 <% nmi = @setting.gateway_provider == 'nmi' %>
 <% dejavoo = @setting.gateway_provider == 'dejavoo_spin' %>
+<% device_reader = @setting.gateway_provider == 'device_reader' && Pos::DeviceReader.enabled? %>
 <% menu = [] %>
 <% menu << ['Check gateway', verify_pos_setting_path(@location.id), { method: :post, data: { turbo: false } }] if @setting.persisted? %>
 <% menu << ['Close terminal batch', close_batch_pos_setting_path(@location.id), { method: :post, data: { turbo: false, turbo_confirm: 'Close the Dejavoo terminal batch now? The terminal settles everything in it.' } }] if @setting.persisted? && @setting.gateway_provider == 'dejavoo_spin' && @setting.verified_at %>
@@ -18,16 +19,21 @@
     </fieldset>
     <fieldset class="space-y-3">
       <legend class="card-title">Card checkout</legend>
-      <div><%= form.label :gateway_provider, 'Payment gateway', class: 'field-label' %><%= form.select :gateway_provider, [['Authorize.net', 'authorize_net'], ['NMI', 'nmi'], ['Dejavoo terminal (SPIn)', 'dejavoo_spin']], {}, class: 'select w-full' %></div>
+      <div><%= form.label :gateway_provider, 'Payment gateway', class: 'field-label' %><%= form.select :gateway_provider, [['Authorize.net', 'authorize_net'], ['NMI', 'nmi'], ['Dejavoo terminal (SPIn)', 'dejavoo_spin']] + (Pos::DeviceReader.enabled? ? [['Phone card reader', 'device_reader']] : []), {}, class: 'select w-full' %></div>
       <%= fold_explainer('Save the gateway choice first to display its credential fields. NMI and Dejavoo production need owner sign-off below. Use the merchant account your processor approved for this store, and list its approved products under Processor-approved products. Card details are collected inside the selected gateway’s hosted fields; Rupert receives a one-use token. This is a browser card checkout. Terminal support requires a separate integration.', class: 'text-sm text-mocha') %>
       <% environments = [['Sandbox · test payments', 'sandbox'], ['Production · real charges', 'production']] %>
       <div><%= form.label :environment, 'Gateway environment', class: 'field-label' %><%= form.select :environment, environments, {}, class: 'select w-full' %></div>
-      <% unless dejavoo %><div><%= form.label :gateway_id, 'Existing Gateway ID', class: 'field-label' %><%= form.text_field :gateway_id, class: 'input', autocomplete: 'off' %></div><% end %>
+      <% unless dejavoo || device_reader %><div><%= form.label :gateway_id, 'Existing Gateway ID', class: 'field-label' %><%= form.text_field :gateway_id, class: 'input', autocomplete: 'off' %></div><% end %>
       <% if dejavoo %>
         <p class="text-sm text-mocha">The card is read on the Dejavoo terminal; Rupert never sees the card number. Use the UAT terminal and TPN in Sandbox; Production needs the live TPN and the sign-off below. Sandbox receipts never create live sales, register revenue or stock deductions.</p>
         <div><label for="dejavoo_tpn" class="field-label">Terminal TPN</label><%= password_field_tag 'credentials[tpn]', nil, id: 'dejavoo_tpn', autocomplete: 'new-password', class: 'input', placeholder: 'Leave blank to keep saved value' %></div>
         <div><label for="dejavoo_auth_key" class="field-label">SPIn auth key</label><%= password_field_tag 'credentials[auth_key]', nil, id: 'dejavoo_auth_key', autocomplete: 'new-password', class: 'input', placeholder: 'Leave blank to keep saved value' %></div>
       <%= render 'production_signoff', label: 'Dejavoo', account: 'TPN' %>
+      <% elsif device_reader %>
+        <p class="text-sm text-mocha">The card is read on the phone; Rupert never sees the card number. Sandbox receipts never create live sales, register revenue or stock deductions. Production needs the sign-off below.</p>
+        <div><label for="device_reader_merchant" class="field-label">Merchant identifier</label><%= password_field_tag 'credentials[merchant_id]', nil, id: 'device_reader_merchant', autocomplete: 'new-password', class: 'input', placeholder: 'Leave blank to keep saved value' %></div>
+        <div><label for="device_reader_profile" class="field-label">Reader profile identifier</label><%= password_field_tag 'credentials[reader_profile_id]', nil, id: 'device_reader_profile', autocomplete: 'new-password', class: 'input', placeholder: 'Leave blank to keep saved value' %></div>
+        <%= render 'production_signoff', label: 'Phone card reader', account: 'merchant identifiers' %>
       <% elsif nmi %>
         <p class="text-sm text-mocha">Sandbox receipts never create live sales, register revenue or stock deductions. The company check compares the profile name, not the operator-entered Gateway ID. Card payment permissions and the public key are proven by the first test payment.</p>
         <div><label for="nmi_company" class="field-label">Expected merchant company</label><%= password_field_tag 'credentials[merchant_company]', nil, id: 'nmi_company', autocomplete: 'new-password', class: 'input', placeholder: 'Exact company shown in the NMI merchant profile' %></div>

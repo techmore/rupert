@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_10_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_18_143000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -2921,8 +2921,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_100000) do
     t.string "decline_reason"
     t.string "batch_number"
     t.string "payment_type"
+    t.string "provider"
+    t.string "device_digest"
+    t.text "device_report_json"
+    t.datetime "device_reported_at"
     t.index ["invoice"], name: "index_pos_payment_attempts_on_invoice", unique: true
     t.index ["pos_checkout_id"], name: "index_pos_payment_attempts_on_pos_checkout_id"
+    t.index ["pos_checkout_id"], name: "index_pos_payment_attempts_one_open_device_reader", unique: true, where: "provider = 'device_reader' AND status IN ('submitting', 'unknown')"
     t.index ["tenant_id", "nonce_digest"], name: "index_pos_payment_attempts_on_tenant_id_and_nonce_digest", unique: true
   end
 

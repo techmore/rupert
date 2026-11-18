@@ -15,7 +15,7 @@ class ProcessorCatalogsController < AuthenticatedController
 
   def index
     existing = ProcessorCatalog.includes(:entries, :approved_by).index_by(&:processor)
-    @catalogs = ProcessorCatalog::PROCESSORS.keys.map { |key| existing[key] || ProcessorCatalog.new(processor: key) }
+    @catalogs = ProcessorCatalog.visible_processors.map { |key| existing[key] || ProcessorCatalog.new(processor: key) }
     @items = catalog_items
     @coverage = @catalogs.select(&:enforced).to_h do |catalog|
       result = Payments::ItemEligibility.check(processor: catalog.processor, items: @items)
@@ -84,7 +84,7 @@ class ProcessorCatalogsController < AuthenticatedController
 
   def load_catalog
     processor = params[:processor].to_s
-    raise ActiveRecord::RecordNotFound unless ProcessorCatalog::PROCESSORS.key?(processor)
+    raise ActiveRecord::RecordNotFound unless ProcessorCatalog.visible_processors.include?(processor)
 
     @catalog = ProcessorCatalog.find_or_initialize_by(processor: processor)
   end

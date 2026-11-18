@@ -23,6 +23,9 @@ module Pos
       if tender == 'card' && setting&.gateway_provider == 'dejavoo_spin' && !setting.dejavoo_ready_environment?
         raise Error, 'Dejavoo production needs owner sign-off in checkout setup first.'
       end
+      if tender == 'card' && setting&.gateway_provider == 'device_reader' && !(DeviceReader.enabled? && setting.device_reader_ready_environment?)
+        raise Error, 'Phone card reader payments are not enabled for this store.'
+      end
       unless display.demo?
         raise Error, 'Enable this store’s checkout in POS setup first.' unless setting && (tender == 'card' ? setting.card_enabled && setting.verified_at : setting.cash_enabled)
         setting_version = setting.lock_version

@@ -5,7 +5,9 @@
 class FeatureFlag
   FLAGS = {
     fulfillment_workflow: 'fulfillment_workflow_enabled',
-    marketing: 'marketing_enabled'
+    marketing: 'marketing_enabled',
+    # Phone card reader payments (Pos::DeviceReader). No settings screen sets this.
+    device_reader: 'pos_device_reader_enabled'
   }.freeze
 
   class << self

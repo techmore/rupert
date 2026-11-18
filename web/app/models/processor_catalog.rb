@@ -14,8 +14,15 @@ class ProcessorCatalog < ApplicationRecord
     'authorize_net' => 'Authorize.net',
     'nmi' => 'NMI',
     'card_terminal' => 'Card terminal (standalone)',
-    'dejavoo_spin' => 'Dejavoo terminal'
+    'dejavoo_spin' => 'Dejavoo terminal',
+    # A name for eligibility checks and messages only. It has no list yet: the
+    # table's check constraint does not accept it, and until it does
+    # Pos::DeviceReader::ApprovedListGuard refuses restricted workspaces.
+    'device_reader' => 'Phone card reader'
   }.freeze
+
+  # The processors a person may see and edit lists for.
+  def self.visible_processors = PROCESSORS.keys - ['device_reader']
 
   belongs_to :approved_by, class_name: 'User', optional: true
   has_many :entries, class_name: 'ProcessorCatalogEntry', dependent: :delete_all

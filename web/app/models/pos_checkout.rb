@@ -35,13 +35,14 @@ class PosCheckout < ApplicationRecord
   def compliance_issues = compliance_issues_json || []
   def compliance_override? = compliance_override_by_id.present?
   validates :gateway_provider, inclusion: { in: PosSetting::CREDENTIAL_KEYS.keys }
-  def sandbox_payment? = tender == 'card' && %w[nmi dejavoo_spin].include?(gateway_provider) && environment == 'sandbox'
+  def sandbox_payment? = tender == 'card' && %w[nmi dejavoo_spin device_reader].include?(gateway_provider) && environment == 'sandbox'
   def terminal_card? = tender == TERMINAL_CARD
   def payment_method = tender == 'cash' ? 'cash' : 'card'
   def tender_label = TENDER_LABELS.fetch(tender, tender.to_s.humanize)
   def paid? = status == 'paid'
   def unresolved? = %w[processing unknown].include?(status)
   def dejavoo_terminal? = tender == 'card' && gateway_provider == 'dejavoo_spin' && !demo?
+  def device_reader? = tender == 'card' && gateway_provider == 'device_reader' && !demo?
 
   def receipt
     { id: id, reference: reference, status: status, demo: demo?, sandbox: sandbox_payment?, tender: tender, tender_label: tender_label, subtotal_cents: subtotal_cents,
@@ -51,7 +52,7 @@ class PosCheckout < ApplicationRecord
       terminal: dejavoo_terminal?, card: card_receipt, decline_reason: status == 'declined' ? latest_attempt&.decline_reason : nil }
   end
 
-  def gateway_label = { 'nmi' => 'NMI', 'authorize_net' => 'Authorize.net', 'dejavoo_spin' => 'Dejavoo terminal' }.fetch(gateway_provider, gateway_provider.to_s)
+  def gateway_label = { 'nmi' => 'NMI', 'authorize_net' => 'Authorize.net', 'dejavoo_spin' => 'Dejavoo terminal', 'device_reader' => 'Phone card reader' }.fetch(gateway_provider, gateway_provider.to_s)
 
   def paid_attempt = pos_payment_attempts.find_by(status: 'paid')
 
