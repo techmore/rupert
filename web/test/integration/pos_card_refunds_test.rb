@@ -23,6 +23,9 @@ class PosCardRefundsIntegrationTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select 'section[aria-label="Card payment"]', /Visa ending 4242/
     assert_select 'section[aria-label="Card payment"]', /AB12CD/
+    # Card receipt basics: merchant, date and transaction type sit with the masked card and approval code.
+    assert_select 'section[aria-label="Card payment"] dt', 'Merchant'
+    assert_select 'section[aria-label="Card payment"] dt', 'Transaction'
     assert_select "form[action='#{reverse_pos_checkout_path(@checkout)}'] input[name=amount][value='20.00']"
 
     reversal = PosCardReversal.new(kind: 'refund', status: 'succeeded', amount_cents: 500)
