@@ -5,7 +5,7 @@ import Foundation
 /// A scripted card reader for tests and debug builds. It talks to nothing and charges nothing.
 ///
 /// Each `read` plays the next step of the script; the last step repeats. In a debug build,
-/// `RUPERT_FAKE_CARD_READER=approved` (or `declined`, `cancelled`, `failed`, `timeout`, `hang`)
+/// `IOS_FAKE_CARD_READER=approved` (or `declined`, `cancelled`, `failed`, `timeout`, `hang`)
 /// in the scheme's environment makes the app use it (`CardReaders.make`).
 final class FakeCardReader: CardReader, @unchecked Sendable {
     enum Step {
@@ -21,7 +21,7 @@ final class FakeCardReader: CardReader, @unchecked Sendable {
         case appKilled
     }
 
-    static let environmentKey = "RUPERT_FAKE_CARD_READER"
+    static let environmentKey = "IOS_FAKE_CARD_READER"
 
     private let lock = NSLock()
     private var script: [Step]

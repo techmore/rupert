@@ -87,7 +87,9 @@ in a row, is dropped when the result is made.
 - `CardReaders.make()` returns `UnavailableCardReader` unless a reader is built in. No build of
   this repository has one, so every start is answered `unavailable`.
 - The fake is compiled only when `DEBUG` is set, and chosen only when the scheme's environment has
-  `RUPERT_FAKE_CARD_READER` (`approved`, `declined`, `cancelled`, `failed`, `timeout` or `hang`).
+  `IOS_FAKE_CARD_READER` (`approved`, `declined`, `cancelled`, `failed`, `timeout` or `hang`).
+  It is a debug switch for the iPhone app, not a server setting, so it is described here and not
+  in `docs/ops/environment-reference.md`.
   `CardReaderBuildTests` reads the sources and fails if `FakeCardReader` is named outside
   `#if DEBUG`, if anything imports a card reader framework, or if the entitlement appears.
 - The server routes answer 404 while the feature is off, and production has no provider at all.
@@ -104,7 +106,7 @@ The private repository holds:
    its answer to `CardReadResult`. It attaches `CardReadRequest.reference` to the sale and turns
    tips and fees off in the reader.
 2. A build overlay for `RupertApp/project.yml` (xcodegen `include`) that adds those sources and
-   the SDK to the app target, sets the `RUPERT_CARD_READER_PROVIDER` compilation condition, and
+   the SDK to the app target, sets the `IOS_CARD_READER_PROVIDER` compilation condition, and
    points at its own entitlements file.
 
 `CardReaders.make()` returns `ProvidedCardReader()` when that condition is set. Release builds

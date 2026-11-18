@@ -143,18 +143,18 @@ struct UnavailableCardReader: CardReader {
 /// The reader this build takes payments with.
 enum CardReaders {
     /// Release builds: the provided reader, or none. Debug builds may ask for the fake with
-    /// `RUPERT_FAKE_CARD_READER` in the scheme's environment, as `RUPERT_DEV_ORIGIN` picks a
+    /// `IOS_FAKE_CARD_READER` in the scheme's environment, as `RUPERT_DEV_ORIGIN` picks a
     /// local server; the fake is not compiled into a release build at all.
     ///
     /// A reader backed by a provider's SDK comes from outside this repository: a private build
     /// adds its own sources with a type named `ProvidedCardReader` and sets the
-    /// `RUPERT_CARD_READER_PROVIDER` compilation condition (docs/card-reader.md). Nothing in this
+    /// `IOS_CARD_READER_PROVIDER` compilation condition (docs/card-reader.md). Nothing in this
     /// repository sets it.
     static func make(environment: [String: String] = ProcessInfo.processInfo.environment) -> any CardReader {
 #if DEBUG
         if let fake = FakeCardReader(environment: environment) { return fake }
 #endif
-#if RUPERT_CARD_READER_PROVIDER
+#if IOS_CARD_READER_PROVIDER
         return ProvidedCardReader()
 #else
         return UnavailableCardReader()

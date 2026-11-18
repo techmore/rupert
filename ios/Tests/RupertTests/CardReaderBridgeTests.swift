@@ -167,14 +167,14 @@ final class CardReaderBuildTests: XCTestCase {
         XCTAssertTrue(reader is UnavailableCardReader)
         let availability = await reader.availability()
         XCTAssertEqual(availability, .unavailable(.notConfigured))
-        let unrelated = CardReaders.make(environment: ["RUPERT_FAKE_CARD_READER": "yes", "RUPERT_DEV_ORIGIN": "http://127.0.0.1:3005"])
+        let unrelated = CardReaders.make(environment: ["IOS_FAKE_CARD_READER": "yes", "RUPERT_DEV_ORIGIN": "http://127.0.0.1:3005"])
         XCTAssertTrue(unrelated is UnavailableCardReader)
     }
 
     func testADebugBuildGetsTheFakeOnlyWhenItsEnvironmentAsks() {
         // Tests are a debug build. A release build has no FakeCardReader to return (next test).
         for word in ["approved", "declined", "cancelled", "failed", "timeout", "hang"] {
-            XCTAssertTrue(CardReaders.make(environment: ["RUPERT_FAKE_CARD_READER": word]) is FakeCardReader, word)
+            XCTAssertTrue(CardReaders.make(environment: ["IOS_FAKE_CARD_READER": word]) is FakeCardReader, word)
         }
     }
 
@@ -214,8 +214,8 @@ final class CardReaderBuildTests: XCTestCase {
         for name in ["RupertApp/RupertApp.entitlements", "RupertApp/project.yml", "Info.plist", "xtool.yml"] {
             let text = try String(contentsOf: ios.appendingPathComponent(name), encoding: .utf8)
             XCTAssertFalse(text.contains("proximity-reader"), "\(name) must not ask for the card reader entitlement")
-            XCTAssertFalse(text.contains("RUPERT_CARD_READER_PROVIDER"), "\(name): no reader is built into this repository's app")
-            XCTAssertFalse(text.contains("RUPERT_FAKE_CARD_READER"), "\(name): no scheme turns the fake on by default")
+            XCTAssertFalse(text.contains("IOS_CARD_READER_PROVIDER"), "\(name): no reader is built into this repository's app")
+            XCTAssertFalse(text.contains("IOS_FAKE_CARD_READER"), "\(name): no scheme turns the fake on by default")
         }
     }
 }
