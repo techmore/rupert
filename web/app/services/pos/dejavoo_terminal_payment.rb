@@ -130,10 +130,10 @@ module Pos
         checkout.with_lock do
           return if checkout.paid?
 
-          Checkout.finalize!(checkout, transaction_id: response.processor_reference || attempt.invoice)
+          Checkout.finalize!(checkout, transaction_id: response.processor_reference || attempt.invoice, entry_method: response.entry_method)
           attempt.update!(status: 'paid', transaction_id: response.processor_reference, resolved_at: Time.current,
             card_brand: response.card_brand, card_last_four: response.card_last_four, auth_code: response.auth_code,
-            batch_number: response.batch_number, payment_type: response.payment_type)
+            batch_number: response.batch_number, payment_type: response.payment_type, entry_method: response.entry_method)
         end
       elsif response.approved?
         # Approved, but not for this checkout's exact amount (for example the

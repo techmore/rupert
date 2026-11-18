@@ -64,7 +64,9 @@ class PosCheckout < ApplicationRecord
     attempt = paid_attempt
     return nil unless attempt
 
-    { processor: gateway_label, brand: attempt.card_brand, last_four: attempt.card_last_four, auth_code: attempt.auth_code,
+    card = { processor: gateway_label, brand: attempt.card_brand, last_four: attempt.card_last_four, auth_code: attempt.auth_code,
       transaction_id: attempt.transaction_id, refunded_cents: pos_card_reversals.succeeded.sum(:amount_cents) }
+    # How the card was presented (PaymentEntryMethod), only when it was recorded.
+    attempt.entry_method ? card.merge(entry_method: attempt.entry_method) : card
   end
 end
