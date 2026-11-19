@@ -64,6 +64,20 @@
             <div><label for="refund_amount" class="field-label">Amount (USD)</label><%= text_field_tag :amount, format('%.2f', remaining / 100.0), id: 'refund_amount', class: 'input', inputmode: 'decimal' %></div>
             <div><label for="refund_reason" class="field-label">Reason</label><%= text_field_tag :reason, nil, id: 'refund_reason', class: 'input', maxlength: 500, required: true %></div>
           </div>
+          <% if @refund_approvers %>
+            <fieldset class="space-y-3" data-refund-approval>
+              <legend class="field-label">Manager approval</legend>
+              <% if @refund_approvers.empty? %>
+                <p class="text-sm text-mocha">A manager must approve a refund, and no manager has an override PIN yet. A manager sets one under Compliance → Override PIN.</p>
+              <% else %>
+                <p class="text-sm text-mocha">A manager approves this refund with their own PIN. The approval and the reason above go in the compliance audit log, so give a reason of at least 8 characters.</p>
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <div><%= label_tag :override_user_id, 'Manager', class: 'field-label' %><%= select_tag :override_user_id, options_for_select(@refund_approvers.map { |user| [user.display_name || user.email, user.id] }), include_blank: 'Choose manager', class: 'select', required: true %></div>
+                  <div><%= label_tag :override_pin, 'Manager PIN', class: 'field-label' %><%= password_field_tag :override_pin, nil, inputmode: 'numeric', autocomplete: 'off', pattern: '[0-9]{4,8}', maxlength: 8, class: 'input', required: true %></div>
+                </div>
+              <% end %>
+            </fieldset>
+          <% end %>
           <%= submit_tag 'Void or refund', class: 'btn-ghost', data: { confirm: 'Send this refund to the card gateway?' } %>
         <% end %>
       <% end %>
