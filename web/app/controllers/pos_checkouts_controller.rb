@@ -52,6 +52,7 @@ class PosCheckoutsController < AuthenticatedController
 
   def show
     @checkout = checkout_scope.find(params[:id])
+    @refund_approvers = Compliance::SaleGate.approvers unless Current.user.can_approve_pos_override?
     @coa_badges = Compliance::Catalog.register_badges(@checkout.location)
   end
 
@@ -74,11 +75,18 @@ class PosCheckoutsController < AuthenticatedController
 
   # Void or refund a gateway card payment. Money leaves the merchant account, so
   # this needs sales.write, a reason and an amount; the gateway decides void vs refund.
+  # Anyone who cannot approve register overrides themselves (a cashier) also needs a
+  # manager's override PIN.
   def reverse
     checkout = checkout_scope.find(params[:id])
     raise Pundit::NotAuthorizedError unless Current.user.can?('sales.write')
 
-    reversal = Pos::CardReversal.call(checkout: checkout, amount_cents: Pos::Checkout.money(params[:amount]), reason: params[:reason], user: Current.user)
+    amount_cents = Pos::Checkout.money(params[:amount])
+    unless Current.user.can_approve_pos_override?
+      Compliance::SaleGate.approve_refund!(checkout, amount_cents: amount_cents,
+        override: Compliance::SaleGate::Override.from(params.permit(:override_user_id, :override_pin).merge(override_reason: params[:reason])))
+    end
+    reversal = Pos::CardReversal.call(checkout: checkout, amount_cents: amount_cents, reason: params[:reason], user: Current.user)
     message = case reversal.status
     when 'succeeded' then "#{reversal.kind == 'void' ? 'Voided' : 'Refunded'} #{format('%.2f', reversal.amount_cents / 100.0)} USD on the original card."
     when 'failed' then "Not reversed: #{reversal.failure_message}"
