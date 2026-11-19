@@ -3,10 +3,9 @@
 require 'test_helper'
 require_relative '../../support/compliance_fixtures'
 
-# Characterization: pins behaviour pending owner decision (docs/decisions/staff-controls-2026-11.md, item c).
-# An event sale sent with `offline: true` and a time the device supplies is recorded and flagged
-# even when the item was already blocked at that time. Rupert does not check that the block came
-# after the sale; it trusts the device's word for when the sale happened.
+# Owner decision (docs/decisions/staff-controls-2026-11.md, item c): an event sale marked
+# `offline: true` escapes an item block only when the block came after the time the device gives
+# for the sale. An item that was already blocked at that time is refused, as it is online.
 class StaffControlsEventOfflineFlagTest < ActiveSupport::TestCase
   include ComplianceFixtures
 
@@ -33,13 +32,31 @@ class StaffControlsEventOfflineFlagTest < ActiveSupport::TestCase
     assert_empty PosEventSale.all
   end
 
-  test 'the same sale marked offline and timed after the suspension is recorded and flagged' do
-    sale = record(offline: 'true', occurred_at: 5.minutes.ago.iso8601)
+  test 'the same sale marked offline and timed after the suspension is refused and logged, not recorded' do
+    assert_raises(Compliance::Blocked) { record(offline: 'true', occurred_at: 5.minutes.ago.iso8601) }
+
+    assert_empty PosEventSale.all
+    assert_equal 'sale_blocked', ComplianceEvent.last.action
+  end
+
+  test 'an offline sale made before the suspension is still recorded and flagged' do
+    sale = record(offline: 'true', occurred_at: 90.minutes.ago.iso8601)
 
     assert_equal ['suspended'], sale.flags
     assert_equal 3710, sale.total_cents
     assert_equal 'event_sale_flagged', ComplianceEvent.last.action
     assert sale.order.paid?
+  end
+
+  test 'a lab report withdrawn after an offline card sale does not lose the sale; one that had already lapsed refuses it' do
+    travel_to(30.minutes.ago) { @tincture.update!(status: 'approved') }
+    @tincture.certificates_of_analysis.sole.update!(tested_on: 3.years.ago.to_date)
+    sale = record(offline: 'true', occurred_at: 5.minutes.ago.iso8601, tender: 'card_terminal', cash_received: nil)
+    assert_equal ['coa_expired'], sale.flags
+
+    travel_to 10.minutes.from_now do
+      assert_raises(Compliance::Blocked) { record(offline: 'true', occurred_at: 2.minutes.ago.iso8601, tender: 'card_terminal', cash_received: nil) }
+    end
   end
 
   private
