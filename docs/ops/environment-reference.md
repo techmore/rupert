@@ -90,6 +90,10 @@ See [the subscriptions plan](../plans/customer-subscriptions-and-trust.md) and [
 | Variable | Where | Purpose |
 | --- | --- | --- |
 | `RUPERT_BILLING_ENABLED` | control plane | `true` turns on Rupert subscriptions (also needs every `CSP_STRIPE_*` key); keep `false` until test-mode acceptance |
+| `RUPERT_SELF_SERVICE` | control plane (new workspace nodes receive it from the host worker) | `1` turns on self-service subscriptions: terms and a trial at sign-up, read-only mode for a lapsed billable workspace, the operator billing page. Default off; see [self-service-billing.md](self-service-billing.md) |
+| `RUPERT_TRIAL_DAYS` | control plane | Days of full use a self-service sign-up gets before it must subscribe (default `14`, 0 to 365) |
+| `RUPERT_BILLING_GRACE_DAYS` | control plane | Days of full use after a failed payment before the workspace becomes read-only (default `7`, 0 to 90) |
+| `RUPERT_STRIPE_AUTOMATIC_TAX` | control plane | `1` adds Stripe Tax to subscription checkout (default off; needs a tax registration in Stripe) |
 | `RUPERT_PUBLIC_ORIGIN` | control plane | Public origin for billing return URLs and feedback links (default `https://rupertpos.com`) |
 | `RUPERT_SUPPORT_EMAIL` | `sdolbec@rupertpos.com` | Contact address on the public Support and Privacy policy pages (`/support`, `/privacy`), which the App Store listing links to |
 | `RUPERT_LEGAL_NAME`, `RUPERT_BUSINESS_ADDRESS`, `RUPERT_SUPPORT_PHONE`, `RUPERT_SUPPORT_HOURS`, `RUPERT_HOSTING_LOCATION`, `RUPERT_SECURITY_EMAIL` | any public node | Company facts on `/terms`, `/refunds`, `/security` and `/support`. A blank value shows an "Owner to add" placeholder instead of an invented fact; `RUPERT_SECURITY_EMAIL` falls back to `RUPERT_SUPPORT_EMAIL` |

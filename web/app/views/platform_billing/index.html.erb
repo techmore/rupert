@@ -1,0 +1,62 @@
+<%# Workspace billing: a List page (docs/ui-standards.md §4) for platform administrators. %>
+<% content_for :title, 'Workspace billing' %>
+<% content_for :head do %><meta name="turbo-cache-control" content="no-cache"><meta name="referrer" content="no-referrer"><meta name="robots" content="noindex,nofollow,noarchive"><% end %>
+<% pills = { 'exempt' => 'pill-taupe', 'comped' => 'pill-olive', 'trialing' => 'pill-clay', 'active' => 'pill-fern', 'past_due' => 'pill-rose', 'canceled' => 'pill-rose', 'trial_expired' => 'pill-rose' } %>
+<div class="space-y-6">
+  <%= page_header 'Workspace billing', subtitle: 'Every workspace with its plan and what its subscription allows.', eyebrow: 'Platform',
+                  menu: [['Instance overview', platform_path]] %>
+  <%= fold_explainer("Exempt workspaces are never checked against a subscription. A billable workspace has full use while it is in trial, paid, complimentary, or inside the #{pluralize(SelfService.grace_days, 'day')} grace period after a failed payment; otherwise it is read-only and its records stay visible and exportable. Changes here are local and do not create, change or cancel anything in Stripe.", class: 'text-sm text-mocha') %>
+
+  <div class="table-region" role="region" tabindex="0" aria-label="Workspace billing">
+    <table class="table">
+      <thead><tr><th scope="col" class="th">Workspace</th><th scope="col" class="th">Plan</th><th scope="col" class="th">State</th><th scope="col" class="th">Access</th><th scope="col" class="th">Change</th></tr></thead>
+      <tbody>
+        <% @tenants.each do |tenant| %>
+          <% row = @subscriptions[tenant.id]; entitlement = @entitlements.fetch(tenant.id) %>
+          <tr data-workspace="<%= tenant.subdomain %>">
+            <td class="td"><strong><%= tenant.name %></strong><br><span class="text-xs text-taupe"><%= tenant.subdomain %></span></td>
+            <td class="td"><%= (row&.plan || 'free').humanize %><br><span class="text-xs text-taupe"><%= row&.stripe_subscription_id.present? ? "Stripe: #{row.status}" : 'No Stripe subscription' %></span></td>
+            <td class="td"><span class="<%= pills.fetch(entitlement.state) %>"><%= entitlement.state.humanize %></span><br><span class="text-xs text-taupe"><%= entitlement.summary %></span><% if row&.comp_note.present? %><br><span class="text-xs text-taupe">Note: <%= row.comp_note %></span><% end %></td>
+            <td class="td"><%= entitlement.full? ? 'Full' : 'Read-only' %></td>
+            <td class="td">
+              <% if tenant.billing_exempt %>
+                <% if tenant.id == Current.user.tenant_id %>
+                  <span class="text-xs text-taupe">Your home workspace stays exempt.</span>
+                <% else %>
+                  <details>
+                    <summary class="btn-ghost btn-sm">Make billable</summary>
+                    <%= form_with url: platform_billing_workspace_path(tenant.id), method: :patch, class: 'mt-2 space-y-2' do |f| %>
+                      <%= hidden_field_tag :change, 'billable' %>
+                      <%= f.label :confirm_subdomain, "Type #{tenant.subdomain} to confirm", class: 'field-label', for: "confirm_#{tenant.id}" %>
+                      <%= f.text_field :confirm_subdomain, id: "confirm_#{tenant.id}", required: true, autocomplete: 'off', class: 'input' %>
+                      <%= f.submit 'Make billable', class: 'btn-danger btn-sm' %>
+                    <% end %>
+                  </details>
+                <% end %>
+              <% else %>
+                <div class="space-y-2">
+                  <%= button_to 'Mark exempt', platform_billing_workspace_path(tenant.id), method: :patch, params: { change: 'exempt' }, class: 'btn-ghost btn-sm' %>
+                  <% if entitlement.state == 'comped' %>
+                    <%= button_to 'End complimentary plan', platform_billing_workspace_path(tenant.id), method: :patch, params: { change: 'end_comp' }, class: 'btn-ghost btn-sm' %>
+                  <% else %>
+                    <details>
+                      <summary class="btn-ghost btn-sm">Comp a plan</summary>
+                      <%= form_with url: platform_billing_workspace_path(tenant.id), method: :patch, class: 'mt-2 space-y-2' do |f| %>
+                        <%= hidden_field_tag :change, 'comp' %>
+                        <%= f.label :comp_until, 'Complimentary until', class: 'field-label', for: "comp_until_#{tenant.id}" %>
+                        <%= f.date_field :comp_until, id: "comp_until_#{tenant.id}", required: true, min: Time.zone.tomorrow, class: 'input' %>
+                        <%= f.label :comp_note, 'Note (optional)', class: 'field-label', for: "comp_note_#{tenant.id}" %>
+                        <%= f.text_field :comp_note, id: "comp_note_#{tenant.id}", maxlength: 200, class: 'input' %>
+                        <%= f.submit 'Comp this plan', class: 'btn-primary btn-sm' %>
+                      <% end %>
+                    </details>
+                  <% end %>
+                </div>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

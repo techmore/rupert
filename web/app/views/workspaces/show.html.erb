@@ -20,4 +20,5 @@
       <p class="text-sm text-mocha">We are preparing your separate workspace on SER8. Reload this page to check progress.</p>
     <% end %>
   </section>
+  <%= render 'workspaces/setup_checklist', deployment: @deployment if SelfService.enabled? %>
 </div>

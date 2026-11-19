@@ -19,6 +19,11 @@
         <p id="requested-subdomain-hint" class="mt-1 text-xs text-mocha">2–63 lowercase letters, numbers or hyphens. It can't start or end with a hyphen.</p>
       </div>
     </fieldset>
+    <% if SelfService.enabled? %>
+      <%# Self-service sign-up: the terms are accepted before the account exists. %>
+      <label class="flex items-start gap-2 text-sm text-mocha"><%= f.check_box :accepted_terms, { required: true, class: 'checkbox mt-0.5', checked: false }, '1', '' %><span>I agree to the <%= link_to 'terms of service', terms_of_service_path, class: 'underline', target: '_blank', rel: 'noopener' %> and the <%= link_to 'privacy policy', privacy_policy_path, class: 'underline', target: '_blank', rel: 'noopener' %>, and I have read <%= link_to 'cancellation and refunds', refund_policy_path, class: 'underline', target: '_blank', rel: 'noopener' %>.</span></label>
+      <p class="text-xs text-taupe">Your <%= pluralize(SelfService.trial_days, 'day') %> trial starts when the account is created. No card is needed until you subscribe.</p>
+    <% end %>
     <div class="form-actions">
       <%= f.submit 'Continue with Google', class: 'btn-primary' %>
       <%= link_to 'Already a customer? Sign in', login_path, class: 'btn-ghost' %>

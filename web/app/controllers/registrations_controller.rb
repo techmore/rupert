@@ -11,6 +11,15 @@ class RegistrationsController < ApplicationController
   def create
     return head :not_found if WorkspaceNode.isolated?
     fields = params.expect(registration: %i[workspace_name requested_subdomain]).to_h.transform_values { |value| value.to_s.strip }
+    # Self-service (off by default): the terms are accepted here, before Google is asked anything.
+    if SelfService.enabled?
+      unless params.dig(:registration, :accepted_terms).to_s == '1'
+        flash.now[:alert] = 'Accept the terms of service and privacy policy to create an account.'
+        @typed = fields
+        return render(:new, status: :unprocessable_entity)
+      end
+      fields['terms_version'] = RupertBilling::TERMS_VERSION
+    end
     tenant = Tenant.new(name: fields['workspace_name'], subdomain: fields['requested_subdomain'])
     unless tenant.valid? && !WorkspaceSignup::RESERVED_SUBDOMAINS.include?(tenant.subdomain)
       flash.now[:alert] = 'Choose a company name and an available workspace address (2–63 lowercase letters, numbers or hyphens).'

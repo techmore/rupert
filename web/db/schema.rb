@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_10_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_18_200000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -672,6 +672,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_100000) do
     t.index ["tenant_id", "document_id", "status"], name: "idx_bank_lines_document"
     t.index ["tenant_id", "fingerprint"], name: "idx_bank_lines_fingerprint", unique: true
     t.index ["tenant_id"], name: "index_bank_statement_lines_on_tenant_id"
+  end
+
+  create_table "billing_webhook_events", force: :cascade do |t|
+    t.string "stripe_event_id", null: false
+    t.string "event_type", null: false
+    t.datetime "event_created_at"
+    t.datetime "processed_at"
+    t.integer "deliveries", default: 1, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["stripe_event_id"], name: "index_billing_webhook_events_on_stripe_event_id", unique: true
   end
 
   create_table "blackout_dates", force: :cascade do |t|
@@ -1434,6 +1445,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_100000) do
     t.datetime "last_synced_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "cancel_at_period_end", default: false, null: false
+    t.datetime "trial_ends_at"
+    t.datetime "past_due_since"
+    t.datetime "current_period_end"
+    t.datetime "comp_until"
+    t.string "comp_note"
+    t.string "signup_terms_version"
+    t.datetime "signup_terms_accepted_at"
     t.index ["stripe_subscription_id"], name: "index_customer_subscriptions_on_stripe_subscription_id", unique: true
     t.index ["tenant_id"], name: "index_customer_subscriptions_on_tenant_id", unique: true
   end
@@ -4159,6 +4178,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_100000) do
     t.datetime "updated_at", null: false
     t.string "referral_domain"
     t.string "time_zone"
+    t.boolean "billing_exempt", default: true, null: false
     t.index ["referral_domain"], name: "index_tenants_on_referral_domain"
     t.index ["subdomain"], name: "index_tenants_on_subdomain", unique: true
   end

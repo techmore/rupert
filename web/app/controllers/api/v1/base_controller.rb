@@ -5,8 +5,11 @@ module Api
     # Independent bearer authentication: browser sessions and host subdomains
     # never select an API tenant, and no API action can mutate platform data.
     class BaseController < ActionController::API
+      include SubscriptionGate
+
       around_action :isolated_context
       before_action :authenticate_token
+      before_action :enforce_subscription_entitlement
 
       rescue_from ActiveRecord::RecordNotFound, with: :not_found
 

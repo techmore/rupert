@@ -44,6 +44,10 @@ def main():
             'HOST': 'https://' + payload['hostname'], 'RAILS_MAX_THREADS': '3', 'JOB_THREADS': '1', 'JOB_CONCURRENCY': '1',
             'PATH': RUBY_BIN + ':/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
         }
+        # Self-service subscriptions (docs/ops/self-service-billing.md): sent only while the control
+        # plane has the switch on. The instance then asks the control plane what its subscription allows.
+        if payload.get('self_service') is True:
+            settings['RUPERT_SELF_SERVICE'] = '1'
         descriptor = os.open(env_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(descriptor, 'w') as stream:
             stream.write(''.join(key + '=' + value + '\n' for key, value in settings.items()))

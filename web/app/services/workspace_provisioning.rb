@@ -14,10 +14,14 @@ class WorkspaceProvisioning
     return unless updated == 1
     row.reload
     identity = row.owner.google_login_identities.find_by!(email: row.owner.email)
-    { 'id' => row.id, 'instance_id' => row.instance_id, 'instance_name' => row.instance_name,
+    job = { 'id' => row.id, 'instance_id' => row.instance_id, 'instance_name' => row.instance_name,
       'hostname' => row.hostname, 'port' => row.port, 'tenant_id' => row.tenant_id,
       'workspace_name' => row.tenant.name, 'subdomain' => row.tenant.subdomain, 'owner_email' => row.owner.email, 'owner_name' => row.owner.display_name,
       'google_subject' => identity.google_subject, 'instance_secret' => row.instance_secret, 'lease' => secret }
+    # Self-service (off by default): the new instance is told to ask the control plane what its
+    # subscription allows (customer_bootstrap.py writes RUPERT_SELF_SERVICE=1 into its environment).
+    job['self_service'] = true if SelfService.enabled?
+    job
   end
 
   def self.update!(id:, lease:, phase:, failure_code: nil)
