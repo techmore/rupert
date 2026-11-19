@@ -4,6 +4,7 @@ module People
   # The schedule builder: managers plan a Monday–Sunday week on a drag-and-drop grid, post it to
   # staff, and keep templates. Employees read their own posted shifts in the personal workspace.
   class ScheduledShiftsController < AuthenticatedController
+    before_action -> { require_time_feature(:scheduling) }
     before_action :set_shift, only: %i[edit update destroy cancel]
     rescue_from Date::Error, with: :invalid_week
 

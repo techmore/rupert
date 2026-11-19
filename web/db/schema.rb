@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_06_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_10_100000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -3185,6 +3185,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_06_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["tenant_id", "token_digest"], name: "index_push_devices_on_tenant_id_and_token_digest", unique: true
+    t.index ["token_digest"], name: "idx_push_devices_token_digest"
     t.index ["user_id", "platform"], name: "index_push_devices_on_user_id_and_platform"
   end
 
@@ -4157,6 +4158,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_06_120000) do
     t.string "subdomain", null: false
     t.datetime "updated_at", null: false
     t.string "referral_domain"
+    t.string "time_zone"
     t.index ["referral_domain"], name: "index_tenants_on_referral_domain"
     t.index ["subdomain"], name: "index_tenants_on_subdomain", unique: true
   end

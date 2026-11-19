@@ -4,6 +4,7 @@ module Api
   module V1
     # The worker's own time-off requests and balances.
     class EmployeeLeaveRequestsController < EmployeeBaseController
+      before_action -> { require_time_feature(:time_off) }
       def index
         requests = worker.leave_requests.order(starts_on: :desc).limit(100)
         balances = People::LeaveRequest::LEAVE_TYPES.reject { |t| t == 'unpaid' }.map { |type| worker.leave_balance(type, Date.current.year) }

@@ -4,6 +4,8 @@ class TimeClockController < AuthenticatedController
   before_action -> { response.headers['Cache-Control'] = 'no-store' }
   before_action :active_context
   before_action :authorize_reviewer, only: %i[approve_correction reject_correction]
+  before_action :require_punch_channel, only: %i[clock_in clock_out start_break end_break]
+  before_action { Current.metadata[:punch_ip] = request.remote_ip }
   # Self-service punches: gated by active_context and scoped to Current.user's own shifts (TimeClockService
   # checks the shift owner). Correction reviews are gated by authorize_reviewer (ClockCorrection.reviewer?);
   # commissions still authorize against the module policy.
@@ -34,7 +36,7 @@ class TimeClockController < AuthenticatedController
   end
 
   def clock_in
-    shift = TimeClockService.clock_in(user: Current.user, request_token: params[:request_token].to_s, source: params[:source].presence || 'web',
+    shift = TimeClockService.clock_in(user: Current.user, request_token: params[:request_token].to_s, source: punch_source,
       location_id: params[:location_id].presence)
     redirect_to return_path, notice: t('time.clock.confirm.clocked_in', time: shift.started_at.in_time_zone.strftime('%-l:%M %p'))
   end
@@ -97,6 +99,12 @@ class TimeClockController < AuthenticatedController
   def return_path
     params[:return_to].to_s == 'home' ? employee_app_path : time_clock_path
   end
+
+  # Where this punch comes from is decided by the server, never the form: the iPhone app's own
+  # browser is 'ios', everything else 'web'. Each has its own switch at Settings → Time rules.
+  def punch_source = hotwire_native_app? ? 'ios' : 'web'
+
+  def require_punch_channel = TimeClockService.require_channel!(punch_source)
 
   def active_context
     return if Current.user.active? && Current.tenant&.status == 'active'

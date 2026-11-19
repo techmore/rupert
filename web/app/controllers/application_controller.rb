@@ -2,9 +2,11 @@
 
 class ApplicationController < ActionController::Base
   layout :workspace_layout
+  rescue_from TimeRules::FeatureDisabled, with: :time_feature_disabled
   before_action :reject_preview_mutation
   before_action :enforce_workspace_hostname
   before_action :set_current_context
+  around_action :use_business_zone
   around_action :switch_locale
   before_action :require_login
   before_action :identify_trace_session
@@ -175,6 +177,27 @@ class ApplicationController < ActionController::Base
     else
       email.present? && email == user.email
     end
+  end
+
+  # Every request runs on the workspace's clock (Tenant#time_zone, else the instance default), so
+  # "today", week and pay-period boundaries and displayed times are the business's, not the server's.
+  def use_business_zone(&)
+    name = Current.tenant&.time_zone.presence
+    return yield unless name
+
+    Time.use_zone(BusinessClock.display_zone(name), &)
+  end
+
+  # A time feature an administrator turned off (Settings → Time rules).
+  def time_feature_disabled(error)
+    respond_to do |format|
+      format.html { redirect_to(Current.user&.employee? || controller_path.start_with?('employee_') ? employee_app_path : root_path, alert: error.message) }
+      format.any { render json: { ok: false, error: 'feature_disabled', feature: error.feature, message: error.message }, status: :forbidden }
+    end
+  end
+
+  def require_time_feature(*names)
+    names.each { |name| TimeRules.require_feature!(name) }
   end
 
   # Staff-facing pages render in the worker's language (People::Employee#locale, 'en' or 'es');

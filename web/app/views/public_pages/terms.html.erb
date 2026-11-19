@@ -6,7 +6,7 @@
     liability sections, governing law, and whether these terms replace any signed agreements. %>
 <% content_for :title, 'Terms of service' %>
 <div class="page-medium space-y-6">
-  <%= page_header 'Terms of service', subtitle: 'The rules for using Rupert. Draft, updated Nov 2, 2026.' %>
+  <%= page_header 'Terms of service', subtitle: 'The rules for using Rupert. Draft, updated Nov 17, 2026.' %>
   <%= render 'public_pages/draft_notice', legal: true %>
 
   <section class="section-card" id="who">
@@ -61,6 +61,7 @@
   <section class="section-card" id="other-services">
     <%= section_heading 'Other companies’ services' %>
     <p class="text-sm">Rupert connects to services you choose, such as Shopify, Square, payment gateways and processors. Those services are provided under their own terms. We are not a bank, payment processor or money transmitter: we never hold or move your funds, and refunds, chargebacks and settlements are between you, your customer and your processor.</p>
+    <p class="text-sm"><strong>Card payments.</strong> When you take card payments through Rupert, you are the merchant. You need your own merchant account, and your processor decides whether to accept your business and your products. You are responsible for your yearly PCI DSS self-assessment, for the receipts, refund policy and any surcharge or cash-discount notices that card network rules and your state’s law require, and for keeping staff from typing card numbers into notes, chat or any other field. Rupert never receives card numbers; what it does keep about a payment is listed in the <%= link_to 'privacy policy', privacy_policy_path(anchor: 'card-payments'), class: 'text-olive underline' %>.</p>
   </section>
 
   <section class="section-card" id="service">

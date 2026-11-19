@@ -8,7 +8,7 @@
     - Fill the hosting location and the off-site copy status, and confirm the "not certified" paragraph is still accurate. %>
 <% content_for :title, 'Security and data handling' %>
 <div class="page-medium space-y-6">
-  <%= page_header 'Security and data handling', subtitle: 'How Rupert handles card payments, business records and access. Updated Nov 2, 2026.' %>
+  <%= page_header 'Security and data handling', subtitle: 'How Rupert handles card payments, business records and access. Updated Nov 17, 2026.' %>
   <%= render 'public_pages/draft_notice' %>
 
   <section class="section-card">
@@ -26,10 +26,13 @@
     <p class="text-sm">Rupert is business software, not a payment processor or gateway. Card payments are approved and settled by the merchant’s own payment provider under the merchant’s agreement with that provider.</p>
     <ul class="list-disc space-y-1 pl-5 text-sm">
       <li><strong>Online and keyed cards.</strong> Card details are typed into fields hosted by the payment gateway (Authorize.net Accept.js hosted fields; NMI Collect.js, test accounts only for now). The gateway returns a one-time token, and Rupert sends only that token to complete the sale.</li>
-      <li><strong>In-store card terminals.</strong> Rupert does not control card terminals today. Planned terminal connections are semi-integrated: the card is read on the terminal, and Rupert sends the amount and receives only the result, such as approved or declined, the card brand and last four digits.</li>
-      <li><strong>What Rupert keeps.</strong> The sale, amount, tender, approval result, gateway transaction reference and masked card details such as the last four digits.</li>
+      <li><strong>In-store card terminals.</strong> Terminal connections are semi-integrated: the card is read on the terminal, and Rupert sends the amount and receives only the result. A connection to Dejavoo counter terminals works on Dejavoo’s test system only; live terminal payments are switched off until the merchant’s processor approves the account and the owner signs off.</li>
+      <li><strong>Payments on a phone.</strong> The iPhone and iPad app has no card reader and takes no card payments today. A planned option hands the amount to the payment provider’s own app on an iPhone, which reads the contactless card and returns only the result. It is not available yet, and it will not work on iPad.</li>
+      <li><strong>What Rupert keeps.</strong> The sale, amount, tip and any fee, tender, approval result and approval code, the provider’s transaction and batch references, the card brand, the last four digits and how the card was presented. Nothing else from a payment result is stored: no first digits of the card, cardholder name, expiry date, card token or chip data.</li>
+      <li><strong>Confirmed with the provider.</strong> A terminal or payment-page sale is marked paid only after Rupert’s server confirms the payment with the provider. A result that arrives through a browser or an app by itself is never trusted.</li>
+      <li><strong>Logs.</strong> Card numbers, security codes and payment result fields outside that list are removed from request logs, error reports and chat before they are written.</li>
     </ul>
-    <p class="text-sm">Because the page that shows the hosted card fields is served by Rupert, it still matters for the merchant’s PCI DSS assessment. The PCI Security Standards Council expects merchants that embed a provider’s payment fields to protect the scripts on that page (PCI DSS requirements 6.4.3 and 11.6.1) and to run external vulnerability scans. Your payment provider tells you which self-assessment applies to your business.</p>
+    <p class="text-sm">Because the page that shows the hosted card fields is served by Rupert, it still matters for the merchant’s PCI DSS assessment. The PCI Security Standards Council expects merchants that embed a provider’s payment fields to protect the scripts on that page (PCI DSS requirements 6.4.3 and 11.6.1) and to run external vulnerability scans. Each merchant completes its own PCI DSS self-assessment every year. Using Rupert does not do that for you. Your payment provider tells you which self-assessment applies to your business.</p>
     <p class="text-sm text-mocha">Rupert does not currently hold a PCI DSS attestation of compliance, a SOC 2 report or a third-party penetration test report. We will say so here when that changes.</p>
   </section>
 

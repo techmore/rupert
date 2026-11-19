@@ -80,6 +80,22 @@ CLAIMS = {
     'iso27001': (re.compile(r'\bISO[ /-]?(?:IEC\s*)?27001\b', re.I), 'iso27001-certificate'),
     'pentest': (re.compile(r'\b(?:pen(?:etration)?[- ]tested|independently (?:audited|tested))\b', re.I), 'penetration-test'),
 }
+# Brand and availability wording on public pages, in-app copy and the App Store listing
+# (docs/compliance/dejavoo-tap-to-pay-compliance.md). Apple: always "Tap to Pay on iPhone", never
+# shortened, never with "Apple" in the name, never on iPad, and no marketing before the feature is
+# generally available in the app (evidence file). No partner or approval claims without the
+# written permission recorded as evidence.
+BRAND_CLAIMS = {
+    'tap-to-pay-availability': (re.compile(r'\bTap to Pay on iPhone\b', re.I), 'tap-to-pay-on-iphone-live'),
+    'tap-to-pay-name': (re.compile(r"\bApple(?:'s|\u2019s)? Tap to Pay\b|\bTapToPay\b|\bTap to Pay\b(?! on iPhone\b)", re.I), None),
+    'tap-to-pay-ipad': (re.compile(r'\b(?:Tap to Pay|tap (?:payments?|to pay)|contactless (?:payments?|cards?))\b[^.\n]{0,40}\bon (?:an |the |your )?iPad\b', re.I), None),
+    'partner-claim': (re.compile(r'\b(?:certified|authori[sz]ed|official|approved|preferred|trusted)\s+(?:Dejavoo|iPOSpays|Apple|Valmar)\s+'
+                                 r'(?:partner|reseller|integration|integrator|ISV|developer|solution)\b|'
+                                 r'\b(?:Dejavoo|iPOSpays|Apple|Valmar)[- ](?:certified|endorsed|approved|recommended)\b|'
+                                 r'\b(?:certified|endorsed|approved|recommended) by (?:Dejavoo|iPOSpays|Apple|Valmar)\b', re.I),
+                      'partner-permission'),
+}
+BRAND_GLOBS = PUBLIC_GLOBS + ('web/app/views/**/*.erb', 'ios/AppStore/listing.md', 'mobile/App.tsx')
 NEGATION = re.compile(r"\b(?:not|no|never|without|none|n't|isn't|hasn't|have not|has not|is not|does not|nor|planned|pending|"
                       r"if|unless|placeholder|CONFIRM)\b", re.I)
 EVIDENCE_DIR = 'docs/security/evidence'
@@ -276,6 +292,35 @@ def check_claims(audit):
                         audit.add('claims', rel, number, f'{name} claim without {EVIDENCE_DIR}/{proof}.* evidence')
 
 
+def brand_hits(line, evidence=None):
+    """(rule, proof) for each brand or availability problem in one line of public text."""
+    hits = []
+    for name, (pattern, proof) in BRAND_CLAIMS.items():
+        for match in pattern.finditer(line):
+            sentence = re.split(r'(?<=[.!?|])\s', line[max(0, match.start() - 160):match.end() + 80])
+            context = next((s for s in sentence if match.group(0) in s), line)
+            # Saying a feature is planned, or that Rupert is not a partner, is truthful and allowed.
+            # The wrong name is wrong either way.
+            if name != 'tap-to-pay-name' and NEGATION.search(context):
+                continue
+            if proof and evidence is not None and any(evidence.glob(f'{proof}*')):
+                continue
+            hits.append((name, proof))
+    return hits
+
+
+def check_brand(audit):
+    evidence = ROOT / EVIDENCE_DIR
+    for rel in glob_files(BRAND_GLOBS, CLAIM_EXEMPT):
+        text = read_text(rel)
+        if not text:
+            continue
+        for number, line in enumerate(text.splitlines(), 1):
+            for name, proof in brand_hits(line, evidence):
+                detail = f'{name} wording without {EVIDENCE_DIR}/{proof}.* evidence' if proof else f'{name} wording (see docs/compliance/dejavoo-tap-to-pay-compliance.md)'
+                audit.add('claims', rel, number, detail)
+
+
 def check_legal(audit, final):
     for rel in LEGAL_PAGES:
         text = read_text(rel)
@@ -339,6 +384,7 @@ def main(argv=None):
         check_privacy(audit, args.strict_docs, args.require_denylist or args.final)
     if 'claims' in only:
         check_claims(audit)
+        check_brand(audit)
     if 'legal' in only:
         check_legal(audit, args.final)
     if args.write_baseline:

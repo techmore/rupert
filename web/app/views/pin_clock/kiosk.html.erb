@@ -8,7 +8,12 @@
   <% if notice %><p role="status" class="flash flash-notice"><%= notice %></p><% end %>
   <% if alert %><p role="alert" class="flash flash-alert"><%= alert %></p><% end %>
   <section class="clock-kiosk-card">
-    <% if @trusted || @own_worker %>
+    <% if @kiosk_off %>
+      <div class="pin-clock-body">
+        <h1 class="pos-sheet-title"><%= t('time.clock.kiosk_off_title') %></h1>
+        <p class="text-sm text-mocha"><%= t('time.clock.kiosk_off_hint') %></p>
+      </div>
+    <% elsif @trusted || @own_worker %>
       <%= render 'shared/pin_clock', kiosk: true, trusted: @trusted, location_id: @device&.location_id, register_name: @device&.name %>
     <% else %>
       <div class="pin-clock-body">

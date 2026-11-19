@@ -43,6 +43,58 @@ class TimeAndPayFoundationTest < ActiveSupport::TestCase
     assert_raises(ActiveRecord::RecordInvalid) { shift.breaks.create!(kind: 'rest', started_at: 9.hours.ago) }
   end
 
+  # FLSA, 29 CFR 785.18-785.19: short breaks are hours worked; only a real meal period may be unpaid.
+  test 'a punched meal of 20 minutes or less is paid time; a longer one is unpaid' do
+    at = Time.zone.parse('2026-11-05 09:00')
+    shift = ClockShift.create!(user: @user, employee: @worker, employee_key: @worker.id.to_s, employee_name: @worker.name,
+      employment_type: 'part_time', started_at: at, ended_at: at + 8.hours, request_token: SecureRandom.uuid, source: 'pos')
+    short = shift.breaks.create!(kind: 'meal', paid: false, started_at: at + 2.hours, ended_at: at + 2.hours + 12.minutes)
+    edge = shift.breaks.create!(kind: 'meal', paid: false, started_at: at + 3.hours, ended_at: at + 3.hours + 20.minutes)
+    rules = TimeRules.for
+    assert_not rules.meal_break_paid?, 'meals are unpaid by default'
+    assert_not short.unpaid?(rules)
+    assert_not edge.unpaid?(rules), 'exactly 20 minutes is still a short break'
+    assert_equal 0, shift.reload.unpaid_break_seconds
+    assert_in_delta 8.0, shift.paid_hours, 0.001
+    assert_in_delta 8.0, shift.paid_hours_between(at.beginning_of_day, at.beginning_of_day + 1.day), 0.001
+
+    long = shift.breaks.create!(kind: 'meal', paid: false, started_at: at + 5.hours, ended_at: at + 5.hours + 20.minutes + 1.second)
+    assert long.unpaid?(rules)
+    real = shift.breaks.create!(kind: 'meal', paid: false, started_at: at + 6.hours, ended_at: at + 6.5.hours)
+    assert real.unpaid?(rules)
+    assert_equal (20.minutes + 1.second + 30.minutes).to_i, shift.reload.unpaid_break_seconds.to_i
+    assert_in_delta 8.0 - (50.minutes + 1.second) / 3600.0, shift.paid_hours, 0.001
+    assert_in_delta shift.paid_hours, shift.paid_hours_between(at.beginning_of_day, at.beginning_of_day + 1.day), 0.001
+  end
+
+  test 'the short-break floor also covers rest breaks a store marked unpaid, and a paid-meal store is unchanged' do
+    at = Time.zone.parse('2026-11-05 09:00')
+    shift = ClockShift.create!(user: @user, employee: @worker, employee_key: @worker.id.to_s, employee_name: @worker.name,
+      employment_type: 'part_time', started_at: at, ended_at: at + 8.hours, request_token: SecureRandom.uuid, source: 'pos')
+    shift.breaks.create!(kind: 'rest', started_at: at + 1.hour, ended_at: at + 1.hour + 10.minutes)
+    shift.breaks.create!(kind: 'rest', started_at: at + 4.hours, ended_at: at + 4.hours + 25.minutes)
+    shift.breaks.create!(kind: 'meal', started_at: at + 6.hours, ended_at: at + 6.hours + 45.minutes)
+    TimeRules.save!({ 'rest_break_paid' => '0', 'meal_break_paid' => '1' })
+    assert_equal 25.minutes.to_i, shift.reload.unpaid_break_seconds.to_i, 'only the 25-minute unpaid rest break comes off'
+    assert_in_delta 8.0 - 25 / 60.0, shift.paid_hours, 0.001
+  end
+
+  test 'a short meal is judged by its whole length when a day boundary clips it, and an open meal turns unpaid after 20 minutes' do
+    start = Time.zone.parse('2026-11-05 20:00')
+    midnight = Time.zone.parse('2026-11-06 00:00')
+    shift = ClockShift.create!(user: @user, employee: @worker, employee_key: @worker.id.to_s, employee_name: @worker.name,
+      employment_type: 'part_time', started_at: start, ended_at: start + 8.hours, request_token: SecureRandom.uuid, source: 'pos')
+    shift.breaks.create!(kind: 'meal', paid: false, started_at: midnight - 15.minutes, ended_at: midnight + 15.minutes)
+    assert_in_delta 3.75, shift.paid_hours_between(midnight - 1.day, midnight), 0.001, '30-minute meal: its 15 minutes before midnight are unpaid'
+    assert_in_delta 3.75, shift.paid_hours_between(midnight, midnight + 1.day), 0.001
+
+    open_shift = ClockShift.create!(user: @user, employee: @worker, employee_key: @worker.id.to_s, employee_name: @worker.name,
+      employment_type: 'part_time', started_at: start + 1.day, request_token: SecureRandom.uuid, source: 'pos')
+    open_shift.breaks.create!(kind: 'meal', paid: false, started_at: start + 1.day + 2.hours)
+    assert_equal 0, open_shift.unpaid_break_seconds(at: start + 1.day + 2.hours + 10.minutes)
+    assert_equal 35.minutes.to_i, open_shift.unpaid_break_seconds(at: start + 1.day + 2.hours + 35.minutes).to_i
+  end
+
   test 'trusted clock devices authenticate by digest and can be revoked' do
     device, secret = ClockDevice.register!(name: 'Front register', registered_by: Current.user)
     assert secret.start_with?(ClockDevice::TOKEN_PREFIX)

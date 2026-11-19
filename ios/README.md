@@ -13,11 +13,19 @@ A native iPhone and iPad app for Rupert, built on [Hotwire Native](https://nativ
 
 | Tab | Page |
 |---|---|
+| Time | `/employee`: the clock, today's shift, schedule, time off and pay |
 | Home | `/login`, which sends a signed-in person to their start page |
 | Team Chat | `/chat` |
 | Ask Rupert | `/ask_rupert` |
 | Notifications | `/notifications` |
-| Search | `/search` |
+
+Search stays in every page's top bar (five tabs is iOS's limit before a "More" tab).
+
+**More than one workspace, or more than one person, on a phone.** The person button → **Switch workspace**
+signs out, tells Rupert to stop sending this phone's notifications, clears the web views' Rupert cookies and
+cached pages, and returns to the control plane's sign-in page. A push token belongs to one account at a time:
+registering it for another account (in any workspace) stops the previous registration on the server. A
+notification only ever opens a path on the workspace the app is pointed at.
 
 Each tab keeps its own back stack. Forms (`…/new`, `…/edit`) open as sheets. Every
 `*.rupertpos.com` page stays in the app (including links Rupert marks `data-turbo="false"`);
@@ -50,7 +58,7 @@ This is separate from `mobile/`, the Expo staff timesheet app.
 |---|---|---|
 | Bundle ID | `xtool.yml` | `com.rupertpos.Rupert` |
 | Control plane | `Info.plist` `RupertControlPlaneURL` | `https://pos.rupertpos.com` |
-| Version | `Info.plist` `CFBundleShortVersionString` | `1.0.0` (the build number is stamped at build time) |
+| Version | `Info.plist` `CFBundleShortVersionString` | `1.1.0` (the build number is stamped at build time by `ship.sh`; an Xcode archive uses `CURRENT_PROJECT_VERSION` in `RupertApp/project.yml`, which must go up for every upload) |
 | Minimum iOS | `Package.swift` | 17 |
 
 ## Build on Linux (no Mac)

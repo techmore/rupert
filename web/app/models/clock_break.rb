@@ -11,6 +11,10 @@ class ClockBreak < ApplicationRecord
 
   KINDS = %w[rest meal].freeze
   LABELS = { 'rest' => 'Break', 'meal' => 'Meal' }.freeze
+  # Federal floor (FLSA, 29 CFR 785.18-785.19): breaks of about 5 to 20 minutes are hours worked; only a real meal
+  # period, normally 30 minutes or more, may be unpaid. So a punched "meal" (or any break a store marked unpaid) of 20
+  # minutes or less still counts as paid time. Not a setting: a store can be more generous, never less.
+  SHORT_BREAK_PAID = 20.minutes
 
   belongs_to :clock_shift
 
@@ -31,6 +35,12 @@ class ClockBreak < ApplicationRecord
   def seconds(at: Time.current)
     [(ended_at || at) - started_at, 0].max
   end
+
+  # A short break is paid time whatever it is called and whatever the store's rules say (see SHORT_BREAK_PAID).
+  def short?(at: Time.current) = seconds(at: at) <= SHORT_BREAK_PAID
+
+  # Does this break come off paid hours? Only when the rules make its kind unpaid AND it ran longer than a short break.
+  def unpaid?(rules, at: Time.current) = !rules.break_paid?(kind) && !short?(at: at)
 
   private
 

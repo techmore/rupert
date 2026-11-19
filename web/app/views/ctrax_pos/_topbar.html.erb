@@ -71,9 +71,11 @@
       <span class="sr-only" data-signin-method><%= navigation_signin_method %></span>
     </span>
     <%# time & pay: clock — the PIN pad, always one tap away and never in the way of a sale. %>
-    <% own_shift = ClockShift.open.find_by(user_id: Current.user.id) %>
-    <%= render 'shared/pin_clock', location_id: @snapshot&.location_id, register_name: @registers&.first&.name, trusted: ClockDevice.authenticate(cookies.signed[ClockDevice::COOKIE]).present?,
-          state: own_shift.nil? ? 'clocked_out' : own_shift.stale_open? ? 'stale' : TimeClockService.state_of(own_shift) %>
+    <% if TimeRules.feature?(:clock_pin) %>
+      <% own_shift = ClockShift.open.find_by(user_id: Current.user.id) %>
+      <%= render 'shared/pin_clock', location_id: @snapshot&.location_id, register_name: @registers&.first&.name, trusted: ClockDevice.authenticate(cookies.signed[ClockDevice::COOKIE]).present?,
+            state: own_shift.nil? ? 'clocked_out' : own_shift.stale_open? ? 'stale' : TimeClockService.state_of(own_shift) %>
+    <% end %>
     <% if pos_only %>
       <%= link_to 'My time', employee_app_path, class: 'btn-ghost btn-sm' %>
       <%= button_to 'Sign out', logout_path, method: :delete, class: 'btn-ghost btn-sm', form_class: 'contents' %>

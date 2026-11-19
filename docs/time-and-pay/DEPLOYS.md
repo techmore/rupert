@@ -52,3 +52,75 @@ The owner's session freed 49 GB on SER8 (root volume now 93%, ~64 GB free) and s
 create no large artifacts on SER8; rely on the deployer's own pre-deploy backup (verified after the install with
 `PRAGMA integrity_check`) instead of extra manual copies. The two manual copies taken earlier today were removed. Deploys
 are serialized by the updater's own `flock` on `/run/rupert-autodeploy.lock` and always come from `origin/main`.
+
+## 2026-11-11 05:15 UTC — PR #650 multi-workspace audit and switches (`746ccd7f`) — deployed, healthy
+
+- Pre-deploy: `df -h /` 133 GB free (85% used); checkout clean at `0cb2020a`; `rupert-web` and `rupert-jobs` active;
+  `rupert-logs errors` empty. SER8 was reached over Tailscale (`ssh ser8-ts`); the LAN address did not answer.
+- Install: autodeploy after `CI (sqlite3)`, `Product site consistency` and `Dependency and static scan` passed on the
+  merge commit. One additive migration (`tenants.time_zone`, an index on `push_devices.token_digest`). Deployer backup
+  `production-20261111-051522-0cb2020a-fe7f4bbf5ea74ab4.sqlite3` (360 MB), `PRAGMA integrity_check` ok.
+  `autodeploy: deployed 746ccd7f, healthy`; `X-Rupert-Build: 746ccd7f…`; checkout clean afterwards.
+- Smoke (curl with a cookie jar against https://herbalhealers.rupertpos.com, temporary accounts only: the two smoke
+  accounts from Nov 6 reactivated with fresh random passwords, plus a temporary `smoke-admin@rupertpos.com`):
+  - Staff: sign in → `/employee`, `/employee/schedule`, `/employee/time-off`, `/employee/pay`, `/time_clock`,
+    `/people/timesheets`, notification settings and `/clock` all 200; **clock in → break → end break → clock out**
+    each redirected back to `/employee`; `/settings/time_rules` refused (403); a wrong PIN from the signed-in phone
+    answered "That isn't your PIN. On this device only your own PIN works…".
+  - Manager: `/people/approvals`, `/people/timesheets`, `/people/schedule`, `/people/team_schedule`,
+    `/people/punch_history`, `/time_clock` 200; `/settings/time_rules` refused.
+  - Admin (read only, nothing saved): `/settings/time_rules` 200 with the time zone select, **What is turned on**
+    (every switch checked) and **Punch logging** (audit trail unchecked); `/people/pay_periods`, `/people/tips`,
+    `/people/clock_devices`, `/activity` 200.
+- Cleanup: the one smoke punch (shift 4) and its break deleted; smoke worker 37 terminated again; the three smoke
+  accounts deactivated with their passwords replaced by random values (owner may delete them from Accounts). No real
+  employee's hours were submitted, approved or changed. The workspace's settings were not touched: no
+  `tenant_time_rules` row, time zone blank (instance default), no punch audit lines.
+- Post-deploy: `rupert-logs errors` empty, both services active, `/up` and `/login` 200, 132 GB free.
+- Not verified live: a second workspace (production has one), the switches in the off position (they would change the
+  live workspace; covered by `time_features_settings_test.rb`), and push delivery (no APNs key on the server yet).
+
+## 2026-11-11 18:21 UTC — PR #652 simple backups and short paid breaks (`8fefc13c`, served as `0e6b9e1e`) — deployed, healthy
+
+- Pre-deploy: `df -h /` 236 GB free (73% used); checkout clean at `298470a7`; `rupert-web` and `rupert-jobs` active.
+- Install: autodeploy after `CI (sqlite3)`, `Product site consistency` and `Dependency and static scan` passed. #652 and
+  the iPhone-only #653 went out in one move (`298470a7 -> 0e6b9e1e`, 0 migrations). Deployer backup
+  `production-20261111-182106-298470a7-6e818009efac8741.sqlite3`, `PRAGMA integrity_check` ok.
+  `autodeploy: deployed 0e6b9e1e, healthy`; `X-Rupert-Build: 0e6b9e1e…`; checkout clean afterwards.
+- Looked at live (one temporary super admin, GET requests only, nothing saved): **Settings → Backups** shows
+  "Backups are off" with the two-step **Turn on backups** path; the dashboard carries the "Backups are off" banner;
+  the bell shows the alert and Notifications lists it; the status bar reads "Backups off" in red; Time rules shows
+  the "20 minutes or less is always paid" line. `/settings/backups.json` answers `{"signature":"::off"}`.
+- **No backup key was created.** The recovery kit must go straight to the owner, so backups stay off until the owner
+  clicks Settings → Backups → Turn on backups, saves the kit and types its check code. The rolling snapshot then
+  runs within 5 minutes, the full set and the copy outside the container within 6 hours, the weekly check on Sunday.
+- Host (SER8, outside the container), read only: `rupert-offhost-backup.timer` (every 6 h, plus the 07:17 cron line)
+  and `rupert-backup-verify.timer` (Sunday) are installed and firing; both fail only because the container refuses to
+  make a backup without a key ("no active backup key"). Nothing was changed on the host and no key was created there.
+  The mirror on the second machine last reported Oct 29 (old unencrypted-era set); it is listed under "Extra
+  protection" on the Backups page and needs that machine switched on after the first encrypted set exists.
+- Cleanup: the temporary account was deleted (not deactivated); the two sign-in lines it left in the access log stay,
+  as an audit record. The three smoke accounts from Nov 6 and Nov 11 were already gone.
+- Post-deploy: `rupert-logs errors` shows only warnings that were there before this deploy (the boot-time image-variant notice
+  and "Scoped order is ignored"), no errors; both services active, `/up` and `/login`
+  200, 233 GB free.
+- Not verified live: creating a kit, the check code step and the first encrypted backup (owner only; covered by
+  `backup_health_alerts_test.rb` and `backup_keys_test.rb`), and the daily notification (the job runs on the hour).
+
+## 2026-11-17 14:36 UTC — PR #659 card payment compliance ahead of Take payment (`7a82617d`) — deployed, healthy
+
+- Pre-deploy: `df -h /` 205 GB free (77% used); checkout clean at `b93f3a66`; `rupert-web` and `rupert-jobs` active.
+  SER8 was reached over the LAN (`ssh ser8`); `ssh ser8-ts` stopped at a Tailscale SSH browser check only the owner can pass.
+- Install: autodeploy after `CI (sqlite3)`, `Product site consistency` and `Dependency and static scan` passed
+  (`b93f3a66 -> 7a82617d`, 0 migrations). The scan had started failing on new Puma 8.0.2 and msgpack advisories, so the
+  same PR carries patch updates (Puma 8.0.4, msgpack 1.8.7). Deployer backup
+  `production-20261117-143612-b93f3a66-3b325a24fbe2dd52.sqlite3`, `PRAGMA integrity_check` ok.
+  `autodeploy: deployed 7a82617d, healthy`; `X-Rupert-Build: 7a82617d…`; checkout clean afterwards; no error-level
+  entries from `rupert-web` or `rupert-jobs` since the restart.
+- Looked at live (signed-out GET requests only, no account created): `/privacy`, `/security`, `/integrations`, `/support`,
+  `/terms` and `/employee/privacy` on herbalhealers.rupertpos.com, and `/privacy`, `/support`, `/security`,
+  `/integrations` on pos.rupertpos.com, all 200 on the new build. The privacy policy shows the **Card payments**
+  section, the policy pages carry Apple's trademark credit line, security, integrations and support say the phone
+  option will not work on iPad, and no page names Apple's feature before it ships. The landing page at rupertpos.com
+  and the product site show the new card FAQ.
+- Nothing was changed in App Store Connect. Version 1.1.0 is approved and Pending Developer Release.

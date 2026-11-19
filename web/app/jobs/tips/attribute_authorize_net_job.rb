@@ -10,7 +10,7 @@ module Tips
       tenant = Tenant.find_by(id: tenant_id, status: 'active')
       return unless tenant
 
-      Current.set(tenant: tenant) do
+      Current.with_tenant(tenant) do
         scope = AuthorizeNetTransaction.all
         scope = scope.where(id: transaction_ids) if transaction_ids
         scope.find_each { |txn| Tips::Reconciliation.new.authorize_net_transaction(txn) }

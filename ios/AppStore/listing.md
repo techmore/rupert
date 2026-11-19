@@ -80,7 +80,7 @@ Rupert is for businesses that use Rupert. Sign in with the account your business
 **Keywords [100]**
 
 ```
-retail,inventory,pos,shop,sales,stock count,barcode,small business,time clock,schedule,timesheet,tips
+retail,inventory,pos,sales,stock count,barcode,small business,time clock,schedule,timesheet,tips
 ```
 
 **Support URL:** https://pos.rupertpos.com/support
@@ -92,3 +92,12 @@ retail,inventory,pos,shop,sales,stock count,barcode,small business,time clock,sc
 
 `screenshots/iphone-6.9/*.png` (1320 × 2868) and `screenshots/ipad-13/*.png` (2064 × 2752), in
 file-name order. App Store Connect scales them down for the smaller sizes.
+
+## Wording rules for card payments (not in 1.1.0)
+
+The listing says nothing about card payments today, and must not until **Take payment** is live for
+every user of that version. When it is: write **Tap to Pay on iPhone** in full (never with "Apple" in front,
+never shortened in marketing text), never mention iPad for it, use no Apple logo or drawings of
+iPhone, do not call Rupert a certified or approved partner of anyone, and name Dejavoo or iPOSgo!
+only with Dejavoo's written permission. `bin/release-audit` checks this file. See
+`docs/compliance/dejavoo-tap-to-pay-compliance.md` and checklist items T10–T12.

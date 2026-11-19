@@ -161,7 +161,7 @@ export default class extends Controller {
     if (this.pending) return
     this.pending = true
     const body = { pin: this.pin, clock_action: action, request_token: this.token, location_id: this.locationValue || undefined,
-      register_name: this.registerValue || undefined, ...extra }
+      register_name: this.registerValue || undefined, kiosk: this.kioskValue || undefined, ...extra }
     try {
       const response = await this.post(this.urlValue, body)
       const data = await response.json().catch(() => ({}))
@@ -272,7 +272,8 @@ export default class extends Controller {
   async saveSetup(event) {
     event.preventDefault()
     const body = { pin: this.setupPinTarget.value, pin_confirmation: this.setupConfirmTarget.value,
-      employee_id: this.setupWorkerTarget.value || undefined, employee_number: this.setupNumberTarget.value || undefined }
+      employee_id: this.setupWorkerTarget.value || undefined, employee_number: this.setupNumberTarget.value || undefined,
+      kiosk: this.kioskValue || undefined }
     try {
       const response = await this.post(this.setupUrlValue, body)
       const data = await response.json().catch(() => ({}))

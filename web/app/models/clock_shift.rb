@@ -45,14 +45,37 @@ class ClockShift < ApplicationRecord
   end
 
   # Seconds of unpaid break inside the shift (the location's rules decide which kinds are unpaid).
+  # A break of 20 minutes or less is never unpaid (ClockBreak::SHORT_BREAK_PAID). Nothing is deducted automatically:
+  # only breaks the worker actually punched (or a manager-approved correction recorded) come off.
+  # A break is judged by its whole length, also when a window clips it (a meal across midnight).
   def unpaid_break_seconds(at: Time.current, rules: nil)
     rules ||= TimeRules.for(location_id)
-    breaks.sum { |b| rules.break_paid?(b.kind) ? 0 : b.seconds(at: [at, ended_at].compact.min) }
+    limit = [at, ended_at].compact.min
+    breaks.sum { |pause| pause.unpaid?(rules, at: limit) ? pause.seconds(at: limit) : 0 }
   end
 
   # Hours that count for pay: punches minus unpaid breaks.
   def paid_hours(at: Time.current, rules: nil)
     [(hours(at: at) * 3600) - unpaid_break_seconds(at: at, rules: rules), 0].max / 3600.0
+  end
+
+  # Paid hours of a finished shift inside the window [from, to): the punch clipped to the window,
+  # minus the unpaid break time that falls in it. This is what a timesheet imports for one day, so the
+  # timesheet, the Pay page and the payroll export all count the same hours.
+  def paid_hours_between(from, to, rules: nil)
+    return 0.0 unless ended_at
+
+    start_at = [started_at, from].max
+    end_at = [ended_at, to].min
+    return 0.0 unless end_at > start_at
+
+    rules ||= TimeRules.for(location_id)
+    unpaid = breaks.sum do |pause|
+      next 0 if pause.ended_at.nil? || !pause.unpaid?(rules)
+
+      [[pause.ended_at, end_at].min - [pause.started_at, start_at].max, 0].max
+    end
+    [(end_at - start_at) - unpaid, 0].max / 3600.0
   end
 
   def open_break = breaks.detect(&:open?)

@@ -18,6 +18,10 @@
   <% end %>
   <%= render 'shared/clock_card', worker: @worker, open_shift: @open_shift, preview: @preview, return_to: 'home' %>
 
+  <% scheduling_on = @preview || time_feature?(:scheduling) %>
+  <% time_off_on = @preview || time_feature?(:time_off) %>
+  <% pay_on = @preview || time_feature?(:pay_view) %>
+  <% if scheduling_on %>
   <section class="card card-pad space-y-2" aria-labelledby="today-heading">
     <div class="flex flex-wrap items-baseline justify-between gap-2">
       <h2 id="today-heading" class="card-title"><%= t('time.clock.home.next_shift') %></h2>
@@ -31,6 +35,7 @@
       <p class="text-sm text-mocha"><%= @preview ? 'Your next planned shift shows here.' : t('time.clock.home.no_next_shift') %></p>
     <% end %>
   </section>
+  <% end %>
 
   <section class="card card-pad space-y-5" <%= tour_anchor('week') %> aria-labelledby="week-heading">
     <div class="flex flex-wrap items-baseline justify-between gap-2">
@@ -42,7 +47,7 @@
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
       <div class="stat"><div class="stat-label"><%= t('time.clock.home.clocked') %></div><p class="stat-value mt-2 tabular-nums" data-clocked-hours><%= format_hours(clocked) %><span class="text-lg"> h</span></p><% if @open_shift && !@open_shift.stale_open? %><p class="text-xs text-mocha"><%= t('time.clock.home.including_open') %></p><% end %></div>
       <div class="stat"><div class="stat-label"><%= t('time.clock.home.on_timesheet') %><%= define('timesheet') %></div><p class="stat-value mt-2 tabular-nums"><%= format_hours(@summary.hours) %><span class="text-lg"> h</span></p><% if @timesheet %><p class="mt-1"><%= timesheet_status_pill(@timesheet) %></p><% end %></div>
-      <div class="stat col-span-2 sm:col-span-1"><div class="stat-label"><%= t('time.clock.home.estimated_gross') %><%= define('estimated_pay') %></div><% waiting_for_sheet = @summary.hours.zero? && clocked.positive? %><p class="stat-value mt-2 tabular-nums"><%= @summary.gross_cents.nil? || waiting_for_sheet ? '–' : number_to_currency(@summary.gross_cents / 100.0) %></p><% if waiting_for_sheet %><p class="text-xs text-mocha">Appears when your clocked hours are on your timesheet.</p><% end %></div>
+      <% if pay_on %><div class="stat col-span-2 sm:col-span-1"><div class="stat-label"><%= t('time.clock.home.estimated_gross') %><%= define('estimated_pay') %></div><% waiting_for_sheet = @summary.hours.zero? && clocked.positive? %><p class="stat-value mt-2 tabular-nums"><%= @summary.gross_cents.nil? || waiting_for_sheet ? '–' : number_to_currency(@summary.gross_cents / 100.0) %></p><% if waiting_for_sheet %><p class="text-xs text-mocha">Appears when your clocked hours are on your timesheet.</p><% end %></div><% end %>
     </div>
     <ol class="grid grid-cols-7 gap-1 text-center" aria-label="Hours by day">
       <% (@summary.from..@summary.to).each do |day| %>
@@ -61,14 +66,14 @@
         <%= button_to week_label, employee_week_path, class: 'btn-primary', data: { turbo: false } %>
         <%= link_to t('time.clock.home.all_timesheets'), people_timesheets_path, class: 'text-sm text-olive underline' %>
       </div>
-      <p class="text-xs text-mocha"><%= t('time.clock.home.pay_hint') %></p>
+      <% if pay_on %><p class="text-xs text-mocha"><%= t('time.clock.home.pay_hint') %></p><% end %>
     <% else %><div class="flex flex-wrap items-center gap-3"><%= link_to t('time.clock.home.week_timesheet_open'), employee_preview_timesheet_path('current'), class: 'btn-primary' %><%= link_to t('time.clock.home.all_timesheets'), employee_preview_timesheets_path, class: 'text-sm text-olive underline' %></div><% end %>
   </section>
 
   <section class="grid gap-3 sm:grid-cols-3">
-    <div class="card card-pad space-y-2"><h2 class="card-title"><%= t('time.clock.home.schedule') %></h2><p class="text-sm text-mocha">My shifts, the team’s week, open shifts and trades.</p><%= link_to t('time.clock.home.open_schedule'), personal_schedule_path, class: 'btn-ghost btn-sm' %></div>
-    <div class="card card-pad space-y-2"><h2 class="card-title"><%= t('time.clock.home.time_off') %></h2><p class="text-sm text-mocha"><%= @next_leave ? "#{@next_leave.leave_type.titleize} · #{@next_leave.starts_on.strftime('%b %-d')} – #{@next_leave.ends_on.strftime('%b %-d')} · #{@next_leave.status.humanize}" : 'Plan a vacation, request a day off or check your calendar.' %></p><%= link_to t('time.clock.home.open_time_off'), personal_time_off_path, class: 'btn-ghost btn-sm' %></div>
-    <div class="card card-pad space-y-2"><h2 class="card-title"><%= t('time.clock.home.pay') %></h2><p class="text-sm text-mocha"><%= @summary.gross_cents && !@preview ? "#{number_to_currency(@summary.gross_cents / 100.0)} #{t('time.clock.home.estimated_gross').downcase}" : 'Hours, tips, bonuses and payslips.' %></p><div class="flex flex-wrap gap-2"><%= link_to t('time.clock.home.open_pay'), @preview ? employee_preview_pay_path : employee_pay_path, class: 'btn-ghost btn-sm' %><%= link_to 'My reports', personal_reports_path, class: 'btn-ghost btn-sm' %></div></div>
+    <% if scheduling_on %><div class="card card-pad space-y-2"><h2 class="card-title"><%= t('time.clock.home.schedule') %></h2><p class="text-sm text-mocha">My shifts, the team’s week, open shifts and trades.</p><%= link_to t('time.clock.home.open_schedule'), personal_schedule_path, class: 'btn-ghost btn-sm' %></div><% end %>
+    <% if time_off_on %><div class="card card-pad space-y-2"><h2 class="card-title"><%= t('time.clock.home.time_off') %></h2><p class="text-sm text-mocha"><%= @next_leave ? "#{@next_leave.leave_type.titleize} · #{@next_leave.starts_on.strftime('%b %-d')} – #{@next_leave.ends_on.strftime('%b %-d')} · #{@next_leave.status.humanize}" : 'Plan a vacation, request a day off or check your calendar.' %></p><%= link_to t('time.clock.home.open_time_off'), personal_time_off_path, class: 'btn-ghost btn-sm' %></div><% end %>
+    <% if pay_on %><div class="card card-pad space-y-2"><h2 class="card-title"><%= t('time.clock.home.pay') %></h2><p class="text-sm text-mocha"><%= @summary.gross_cents && !@preview ? "#{number_to_currency(@summary.gross_cents / 100.0)} #{t('time.clock.home.estimated_gross').downcase}" : 'Hours, tips, bonuses and payslips.' %></p><div class="flex flex-wrap gap-2"><%= link_to t('time.clock.home.open_pay'), @preview ? employee_preview_pay_path : employee_pay_path, class: 'btn-ghost btn-sm' %><%= link_to 'My reports', personal_reports_path, class: 'btn-ghost btn-sm' %></div></div><% end %>
   </section>
 
   <% unless @preview %>

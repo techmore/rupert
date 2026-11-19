@@ -4,6 +4,7 @@ module Api
   module V1
     # Offer, accept and cancel shift trades from the staff app (same workflow as the web pages).
     class EmployeeTradesController < EmployeeBaseController
+      before_action -> { require_time_feature(:scheduling, :shift_trades) }
       rescue_from People::ShiftTradeWorkflow::Error, with: :invalid
 
       # POST { kind: give|swap|pickup, shift_id, counter_shift_id?, note? }

@@ -187,6 +187,9 @@ class ModuleRegistry
       end
     end
 
+    # Menu entries that belong to a switchable time feature (TimeRules::FEATURES).
+    TIME_FEATURE_ENTRIES = { 'schedule' => :scheduling, 'shift_trades' => :shift_trades }.freeze
+
     # Nav entries visible to a user, sorted by position.
     def nav_for(user)
       return [] unless user&.active?
@@ -196,6 +199,10 @@ class ModuleRegistry
       end
 
       all.select do |entry|
+        # A time feature the workspace turned off (Settings → Time rules) leaves the menu for everyone.
+        feature = TIME_FEATURE_ENTRIES[entry.key]
+        next false if feature && !TimeRules.feature?(feature)
+
         next user.can_use_pos? if %w[ctrax_pos point_of_sale].include?(entry.key)
         next false if %w[platform system].include?(entry.key) && !user.super_admin?
         next false if entry.key == 'employee_reports' && !user.can_manage_accounts?

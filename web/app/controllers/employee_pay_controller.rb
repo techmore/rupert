@@ -7,6 +7,8 @@ class EmployeePayController < AuthenticatedController
   layout 'employee'
   before_action -> { response.headers['Cache-Control'] = 'no-store' }
   before_action :require_worker
+  before_action -> { require_time_feature(:pay_view) }, only: :show
+  before_action -> { require_time_feature(:pay_view, :tips_view) }, only: :declare_tips
 
   # GET /employee/pay?period=YYYY-MM-DD (any date in the pay period; today by default)
   def show
@@ -29,6 +31,7 @@ class EmployeePayController < AuthenticatedController
     @payslips = @worker.payslips.joins(:pay_run).where(pay_runs: { tenant_id: Current.tenant_id, status: %w[finalized paid] })
       .where('pay_runs.period_end >= ? AND pay_runs.period_start <= ?', @pay.start_date, @pay.end_date).includes(:pay_run).order('pay_runs.period_start DESC')
     @declarable_shifts = @shifts.select(&:closed?).last(7).reverse
+    @tips_on = TimeRules.feature?(:tips_view)
   end
 
   # POST /employee/tips/declare — cash tips for one of my shifts (or a day).

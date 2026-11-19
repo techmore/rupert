@@ -12,9 +12,10 @@
 class LeaveAccrualJob < ApplicationJob
   queue_as :default
 
-  def perform(today: Date.current)
+  # `today` is each workspace's own date unless a caller pins it (tests, backfills).
+  def perform(today: nil)
     Tenant.where(status: 'active').find_each do |tenant|
-      Current.set(tenant: tenant) { BusinessClock.use(tenant: tenant) { LeaveAccrual.run!(today: today) } }
+      Current.with_tenant(tenant) { LeaveAccrual.run!(today: today || Date.current) }
     rescue StandardError => e
       logger.error("#{self.class}: leave accrual failed for tenant #{tenant.id}: #{e.class}")
     end

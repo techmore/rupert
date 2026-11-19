@@ -7,7 +7,7 @@ module Tips
 
     def perform
       Tenant.where(status: 'active').find_each do |tenant|
-        Current.set(tenant: tenant) { Tips::Reconciliation.new.run }
+        Current.with_tenant(tenant) { Tips::Reconciliation.new.run }
       rescue StandardError => e
         Rails.logger.warn("[tips] reconciliation failed for #{tenant.id}: #{e.class}: #{e.message}")
       end

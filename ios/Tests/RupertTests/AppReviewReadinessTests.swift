@@ -170,8 +170,31 @@ final class TimeTabTests: XCTestCase {
         XCTAssertEqual(PushRegistration.url(in: ["url": "/employee/schedule"])?.path, "/employee/schedule")
         XCTAssertEqual(PushRegistration.url(in: ["url": "/employee/schedule"])?.host, Instance.current.host)
         XCTAssertNil(PushRegistration.url(in: ["url": "https://evil.example/phish"]))
+        XCTAssertNil(PushRegistration.url(in: ["url": "https://other-shop.rupertpos.com/employee"]), "never another workspace's address")
+        XCTAssertNil(PushRegistration.url(in: ["url": "//evil.example/phish"]))
+        XCTAssertNil(PushRegistration.url(in: ["url": "employee/schedule"]))
         XCTAssertNil(PushRegistration.url(in: ["url": ""]))
         XCTAssertNil(PushRegistration.url(in: [:]))
+    }
+
+    func testSessionCookiesGoOnlyToTheirOwnHost() {
+        func cookie(_ domain: String, secure: Bool = true) -> HTTPCookie {
+            HTTPCookie(properties: [.name: "_rupert_session", .value: "x", .domain: domain, .path: "/", .secure: secure ? "TRUE" : "FALSE"])!
+        }
+        let shop = URL(string: "https://north.rupertpos.com/native/push_devices")
+        XCTAssertTrue(PushRegistration.cookieApplies(cookie("north.rupertpos.com"), to: shop))
+        XCTAssertTrue(PushRegistration.cookieApplies(cookie(".rupertpos.com"), to: shop))
+        XCTAssertFalse(PushRegistration.cookieApplies(cookie("south.rupertpos.com"), to: shop), "another workspace's session is never sent")
+        XCTAssertFalse(PushRegistration.cookieApplies(cookie("evilrupertpos.com"), to: URL(string: "https://rupertpos.com/")))
+        XCTAssertFalse(PushRegistration.cookieApplies(cookie("north.rupertpos.com"), to: URL(string: "http://north.rupertpos.com/")))
+    }
+
+    func testLeavingAWorkspaceReturnsToTheControlPlane() {
+        Instance.setCurrent(URL(string: "https://north.example.org")!)
+        XCTAssertTrue(Instance.isOnWorkspaceInstance)
+        Instance.leaveWorkspace()
+        XCTAssertFalse(Instance.isOnWorkspaceInstance)
+        XCTAssertEqual(Instance.current.host, Instance.controlPlane.host)
     }
 
     func testBundledPathConfigurationOpensTimeFormsAsSheets() throws {

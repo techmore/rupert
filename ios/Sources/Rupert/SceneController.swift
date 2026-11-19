@@ -1,3 +1,4 @@
+import WebKit
 import HotwireNative
 import UIKit
 
@@ -39,6 +40,7 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         WorkspaceHandoff.shared.onOpened = { [weak self] origin, landing in
             self?.show(instance: origin, landing: landing)
         }
+        AppSettings.switchWorkspace = { [weak self] in self?.switchWorkspace() }
         SessionWatcher.shared.onChange = { [weak self] state in
             // Signed out: Rupert must stop pushing to this phone.
             if state == .signedOut { PushRegistration.shared.forget() }
@@ -87,6 +89,23 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
                 guard let self, let top = self.tabBarController.selectedViewController else { return }
                 PushRegistration.shared.askIfNeeded(from: (top as? UINavigationController)?.topViewController ?? top)
+            }
+        }
+    }
+
+    /// Settings → Switch workspace: stop this phone's notifications, drop every Rupert cookie and
+    /// cached page the web views hold (the session on the workspace and on the control plane), and
+    /// start again on the control plane's sign-in page. Nothing of the last person is left on screen.
+    private func switchWorkspace() {
+        PushRegistration.shared.forget()
+        let store = WKWebsiteDataStore.default()
+        store.fetchDataRecords(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes()) { [weak self] records in
+            store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), for: records) {
+                Instance.leaveWorkspace()
+                SessionWatcher.shared.set(.signedOut)
+                guard let self else { return }
+                self.tabBarController.load(HotwireTab.all(on: Instance.current))
+                self.select(0)
             }
         }
     }

@@ -9,13 +9,17 @@ class PinClockController < ApplicationController
   skip_before_action :enforce_workspace_location, raise: false
   before_action -> { response.headers['Cache-Control'] = 'no-store' }
   before_action :load_device
+  around_action :use_business_zone # again: load_device may have just named the workspace
   before_action :require_store
+  before_action :require_pin_clock, only: %i[punch setup workers]
+  before_action { Current.metadata[:punch_ip] = request.remote_ip }
 
   rescue_from TimeClockService::Error, ActiveRecord::RecordInvalid, with: :punch_error
   rescue_from ActiveRecord::StatementInvalid, with: :database_error
 
   # Full-screen pad for a counter tablet.
   def kiosk
+    @kiosk_off = Current.tenant.present? && !TimeRules.feature?(:clock_kiosk)
     @trusted = @device.present?
     @can_register = Current.user&.can?('hr.write')
     @locations = Location.for_shifts.order(:name) if @can_register
@@ -64,7 +68,7 @@ class PinClockController < ApplicationController
   # Names for the first-use picker (trusted device or signed-in manager only; employees see just themselves).
   def workers
     scope = People::Employee.active.where(pin_digest: nil).ordered
-    scope = scope.where(user_id: Current.user.id) unless @device || Current.user&.can?('hr.read')
+    scope = Current.user ? scope.where(user_id: Current.user.id) : scope.none unless @device || Current.user&.can?('hr.read')
     render json: { data: scope.map { |w| { id: w.id, name: w.name, number: w.employee_number } } }
   end
 
@@ -91,6 +95,15 @@ class PinClockController < ApplicationController
       format.json { render json: { ok: false, error: t('time.clock.untrusted') }, status: :unauthorized }
       format.html { redirect_to login_path }
     end
+  end
+
+  # The pad on the register and the kiosk are separate switches (Settings → Time rules); the pad says
+  # which it is. With both off no PIN punch is accepted anywhere.
+  def require_pin_clock
+    # The first-use name picker serves both pads.
+    return if action_name == 'workers' && (TimeRules.feature?(:clock_kiosk) || TimeRules.feature?(:clock_pin))
+
+    TimeRules.require_feature!(ActiveModel::Type::Boolean.new.cast(params[:kiosk]) ? :clock_kiosk : :clock_pin)
   end
 
   def worker_for_setup
@@ -146,7 +159,9 @@ class PinClockController < ApplicationController
     options
   end
 
-  def pad_key = "pin_pad:#{Current.tenant_id}:#{@device&.id || session.id&.to_s || request.remote_ip}"
+  # Wrong tries are counted per store device, else per network address: a session id would reset
+  # with every new cookie jar.
+  def pad_key = "pin_pad:#{Current.tenant_id}:#{@device ? "device:#{@device.id}" : "ip:#{request.remote_ip}"}"
 
   def pad_locked?(rules)
     Rails.cache.read(pad_key).to_i >= rules.pin_lockout_attempts
@@ -160,7 +175,10 @@ class PinClockController < ApplicationController
 
   def punch_error(error)
     message = error.is_a?(ActiveRecord::RecordInvalid) ? error.record.errors.full_messages.to_sentence : error.message
-    count_wrong_pin! if action_name == 'punch' && message == t('time.clock.wrong_pin')
+    if action_name == 'punch' && [t('time.clock.wrong_pin'), t('time.clock.untrusted'), t('time.clock.own_pin_only')].include?(message)
+      count_wrong_pin!
+      PunchAudit.record('pin_refused', device: @device&.name, register: params[:register_name].presence, location_id: params[:location_id].presence || @device&.location_id)
+    end
     respond_to do |format|
       format.json { render json: { ok: false, error: message }, status: :unprocessable_entity }
       format.html { redirect_to clock_kiosk_path, alert: message }

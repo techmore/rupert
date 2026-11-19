@@ -22,6 +22,7 @@ module People
       People::Employee.transaction do
         result.sessions_revoked = EmployeeAppSession.where(employee_id: @employee.id, revoked_at: nil).update_all(revoked_at: Time.current)
         result.links_revoked = EmployeeAccessGrant.where(employee_id: @employee.id, used_at: nil).where('expires_at > ?', Time.current).update_all(expires_at: Time.current)
+        PushDevice.disable_all_for(@employee.user, 'staff member left') if @employee.user_id
         @employee.update_columns(pin_digest: nil, pin_set_at: nil, pin_failed_count: 0, pin_locked_until: nil, updated_at: Time.current)
         People::ScheduledShift.live.where(employee_id: @employee.id).where('starts_at > ?', Time.current).find_each do |shift|
           shift.update_columns(employee_id: nil, notes: [shift.notes.presence, "Opened when #{@employee.name} left"].compact.join("\n"), last_changed_at: Time.current, updated_at: Time.current)

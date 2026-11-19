@@ -68,6 +68,38 @@ class PublicPolicyPagesTest < ActionDispatch::IntegrationTest
     assert_includes response.body, 'does not currently hold a PCI DSS attestation'
   end
 
+  # docs/compliance/dejavoo-tap-to-pay-compliance.md: the App Store privacy URL must say who
+  # processes card payments and what Rupert keeps, and no page may sell a feature that has not shipped.
+  test 'the privacy policy says who processes card payments and exactly what Rupert keeps' do
+    get privacy_policy_path, headers: APP
+    assert_response :success
+    assert_select '#card-payments' do
+      assert_select 'li', /Dejavoo and its iPOSpays service/
+      assert_select 'li', /card brand, the last four digits, the approval code/
+      assert_select 'li', /full card number, the first digits of the card/
+      assert_select 'p', /takes no card payments.*planned and is not available yet/m
+      assert_select "a[href^='mailto:']"
+    end
+    get employee_privacy_path
+    assert_select "#card-payments a[href='#{privacy_policy_path(anchor: 'card-payments')}']"
+  end
+
+  test 'public pages use Apple names correctly, credit its trademarks and promise nothing early' do
+    [privacy_policy_path, security_statement_path, public_integrations_path, support_path, terms_of_service_path, root_path].each do |path|
+      get path
+      assert_response :success, path
+      text = Nokogiri::HTML(response.body).text
+      assert_no_match(/Tap to Pay|official partner|(?:approved|certified) by (?:Apple|Dejavoo|Valmar)/i, text, "#{path}: not marketed before it ships")
+      assert_no_match(/(?:Dejavoo|Apple|Valmar)[- ](?:certified|approved)|certified (?:Dejavoo|Apple) partner/i, text, path)
+      assert_select '[data-trademark-credit]', /trademarks of Apple Inc\./ unless path == root_path
+    end
+    get support_path
+    assert_select 'details', /will not work on iPad/
+    get security_statement_path
+    assert_select '#card-payments li', /will not work on iPad/
+    assert_select '#card-payments', /Each merchant completes its own PCI DSS self-assessment/
+  end
+
   test 'the marketing page links every policy page' do
     get root_path
     assert_response :success

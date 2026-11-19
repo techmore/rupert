@@ -4,13 +4,15 @@ module Api
   module V1
     class EmployeeClockController < EmployeeBaseController
       rescue_from TimeClockService::Error, with: :invalid
+      before_action -> { TimeClockService.require_channel!('api') }, only: %i[create update start_break end_break]
+      before_action { Current.metadata[:punch_ip] = request.remote_ip }
       def index
         shifts = ClockShift.where(employee_id: worker.id, user_id: Current.user.id).recent.includes(:breaks).limit(100)
         render json: { data: shifts.map { |s| s.as_json(only: %i[id started_at ended_at source location_id]).merge('breaks' => s.breaks.as_json(only: %i[id kind paid started_at ended_at])) } }
       end
 
       def create
-        shift = TimeClockService.clock_in(user: Current.user, request_token: params[:request_token].to_s)
+        shift = TimeClockService.clock_in(user: Current.user, request_token: params[:request_token].to_s, source: 'api')
         render json: { data: shift.as_json(only: %i[id started_at ended_at]) }, status: :created
       end
 

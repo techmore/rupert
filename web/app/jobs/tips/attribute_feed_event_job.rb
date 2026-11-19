@@ -9,7 +9,10 @@ module Tips
       event = DejavooFeedEvent.unscoped.find_by(id: event_id)
       return unless event
 
-      Current.set(tenant: Tenant.find_by(id: event.tenant_id)) do
+      tenant = Tenant.find_by(id: event.tenant_id)
+      return unless tenant
+
+      Current.with_tenant(tenant) do
         if event.event_type == 'Settlement'
           Tips::Reconciliation.new.settle_dejavoo_batch(event)
         else

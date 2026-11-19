@@ -6,6 +6,8 @@ class EmployeeWorkspaceController < AuthenticatedController
   layout 'employee'
   before_action :private_response
   before_action :require_worker
+  before_action -> { require_time_feature(:scheduling) }, only: :schedule
+  before_action -> { require_time_feature(:time_off) }, only: %i[time_off request_time_off]
   rescue_from Date::Error, ArgumentError, with: :invalid_range
 
   # GET /employee/reports?range=…&from=YYYY-MM-DD&to=YYYY-MM-DD — the signed-in worker's own

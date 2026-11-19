@@ -1,6 +1,7 @@
 <% content_for :title, t('time.clock.page.title') %>
 <% content_for :head do %><meta name="turbo-cache-control" content="no-cache"><% end %>
 <% correction_pill = { 'pending' => [t('time.clock.page.waiting'), 'pill-clay'], 'approved' => [t('time.clock.page.approved'), 'pill-fern'], 'rejected' => [t('time.clock.page.denied'), 'pill-rose'] } %>
+<% fixes_on = time_feature?(:staff_corrections) || OpenClockOuts.manager?(Current.user) %>
 <div class="space-y-6">
   <%= page_header t('time.clock.page.title'), subtitle: t('time.clock.page.subtitle', zone: Time.zone.name.sub(/ \(US & Canada\)/, '')),
         menu: (Current.user.can?('payroll.read') ? [['Commission preview', commission_preview_time_clock_path]] : nil) %>
@@ -10,7 +11,7 @@
   <% else %>
     <section class="section-card" aria-label="Clock in or out">
       <%= section_heading 'Link your worker record', hint: 'Ask an administrator to connect exactly one active Staff record to your sign-in account. Contractors can use the same time clock. Your existing shift history stays below.' %>
-      <% if @open_shift && @open_shift.started_at >= ClockShift::MAX_SHIFT_HOURS.hours.ago %>
+      <% if @open_shift && @open_shift.started_at >= ClockShift::MAX_SHIFT_HOURS.hours.ago && clock_channel_on? %>
         <%= button_to t('time.clock.actions.clock_out'), clock_out_time_clock_path, params: { shift_id: @open_shift.id }, method: :post, class: 'btn-primary btn-lg', data: { turbo: false } %>
       <% end %>
     </section>
@@ -43,7 +44,8 @@
                 </div>
                 <div class="row-item-end">
                   <span class="num font-semibold text-ink"><%= shift.stale_open? ? '–' : format_hours(shift.paid_hours, unit: true) %></span>
-                  <% if shift.stale_open? && shift.corrections.none? { |c| c.status == 'pending' } %>
+                  <% if !fixes_on %>
+                  <% elsif shift.stale_open? && shift.corrections.none? { |c| c.status == 'pending' } %>
                     <%= link_to t('time.clock.home.fix_clock_out'), fix_clock_out_time_clock_path(shift), class: 'btn-ghost btn-sm' %>
                   <% elsif shift.ended_at && shift.corrections.none? { |c| c.status == 'pending' } %>
                     <details class="entry-edit">
