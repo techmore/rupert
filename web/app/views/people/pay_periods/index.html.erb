@@ -1,0 +1,26 @@
+<% content_for :title, 'Pay periods' %>
+<div class="space-y-6">
+  <%= page_header 'Pay periods', subtitle: "#{PayRules.current.summary}. Lock a period when its hours are approved, then download the payroll file." %>
+  <div class="card">
+    <div class="table-region" role="region" tabindex="0" aria-label="Pay periods">
+      <table class="table">
+        <thead>
+          <tr><th scope="col" class="th">Period</th><th scope="col" class="th">Status</th><th scope="col" class="th">Locked</th><th scope="col" class="th">Exported</th><th scope="col" class="th"><span class="sr-only">Open</span></th></tr>
+        </thead>
+        <tbody>
+          <% if @periods.empty? %><tr><td colspan="5" class="empty-row">No pay periods yet. Choose the pay period under Settings → Pay rules.</td></tr><% end %>
+          <% @periods.each do |period| %>
+            <tr data-pay-period="<%= period.starts_on.iso8601 %>">
+              <td class="td font-medium text-ink"><%= link_to period.label, people_pay_period_path(period), class: 'hover:underline' %><% if period.starts_on == @current_start %> <span class="pill-olive">Current</span><% end %></td>
+              <td class="td"><%= pay_period_status_pill(period) %></td>
+              <td class="td text-mocha"><%= period.locked_at ? "#{period.locked_at.strftime('%b %-d, %Y')} · #{period.locked_by&.display_name}" : '–' %></td>
+              <td class="td text-mocha"><%= period.exported_at ? period.exported_at.strftime('%b %-d, %Y') : '–' %></td>
+              <td class="td text-right"><%= link_to 'Open', people_pay_period_path(period), class: 'btn-ghost btn-sm', aria: { label: "Open #{period.label}" } %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <%= fold_explainer 'A locked period refuses new or changed punches, timesheet hours, approved time off and tips inside its dates. Anything that arrives later goes on the next open period as an adjustment, so the file you sent to payroll never changes under you. Reopening is logged and keeps the earlier file’s digest.' %>
+</div>

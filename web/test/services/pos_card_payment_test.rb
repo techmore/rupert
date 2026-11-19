@@ -138,6 +138,16 @@ class PosCardPaymentTest < ActiveSupport::TestCase
     assert_empty Core::Order.where(source: 'rupert_pos')
   end
 
+  test 'items removed from the processor approved list after checkout are never charged' do
+    @checkout.update!(lines_json: [@checkout.lines.first.merge('sku' => 'HH-THCA-1', 'category' => 'THCA Flower')])
+    ProcessorCatalog.create!(processor: 'authorize_net', enforced: true, approval_reference: 'ISO approval').entries.create!(kind: 'sku', value: 'HH-CBD-1')
+    error = assert_raises(Pos::Error) { Pos::CardPayment.call(@checkout, nonce: 'blocked-token') }
+    assert_match(/not on the Authorize.net approved list/, error.message)
+    assert_equal 0, @charge_count
+    assert_empty PosPaymentAttempt.all
+    assert_equal 'ready', @checkout.reload.status
+  end
+
   test 'foreign merchant account is rejected before a charge is sent' do
     stub_request(:post, @uri).with { |r| JSON.parse(r.body).key?('getMerchantDetailsRequest') }
       .to_return(status: 200, body: { messages: { resultCode: 'Ok' }, gatewayId: '999', currencies: ['USD'], publicClientKey: 'fixture-public', isTestMode: false }.to_json)

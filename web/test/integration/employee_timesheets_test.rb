@@ -282,6 +282,29 @@ class EmployeeTimesheetsTest < ActionDispatch::IntegrationTest
     assert_equal 12000, run.payslips.first.gross_cents
   end
 
+  test 'a short punched meal stays paid through the timesheet import and the pay run; a real meal comes off' do
+    Current.user = @user
+    day = Time.zone.parse('2026-07-27 09:00')
+    quick = ClockShift.create!(employee: @employee, user: @user, employee_key: @employee.id.to_s, employee_name: @employee.name,
+      employment_type: 'full_time', started_at: day, ended_at: day + 8.hours, request_token: 'short_meal_token_123456')
+    quick.breaks.create!(kind: 'meal', paid: false, started_at: day + 4.hours, ended_at: day + 4.hours + 15.minutes)
+    proper = ClockShift.create!(employee: @employee, user: @user, employee_key: @employee.id.to_s, employee_name: @employee.name,
+      employment_type: 'full_time', started_at: day + 1.day, ended_at: day + 1.day + 8.hours, request_token: 'real_meal_token_1234567')
+    proper.breaks.create!(kind: 'meal', paid: false, started_at: day + 1.day + 4.hours, ended_at: day + 1.day + 4.5.hours)
+    workflow = TimesheetWorkflow.new
+    workflow.change(@sheet, :import_shifts)
+    hours = @sheet.entries.reload.to_h { |entry| [entry.worked_on.iso8601, entry.hours] }
+    assert_equal BigDecimal('8'), hours['2026-07-27'], 'a 15-minute meal is paid time'
+    assert_equal BigDecimal('7.5'), hours['2026-07-28'], 'a 30-minute meal is unpaid'
+    workflow.change(@sheet, :submit)
+    @sheet.reload.approve!
+    People::PayRate.create!(employee: @employee, pay_type: 'hourly', hourly_rate_cents: 2000, effective_on: '2026-07-01')
+    run = People::PayRun.create!(name: 'Meal week', period_start: '2026-07-27', period_end: '2026-08-02')
+    People::PayrollCalculator.generate!(run)
+    assert_equal BigDecimal('15.5'), run.payslips.first.hours
+    assert_equal 31_000, run.payslips.first.gross_cents
+  end
+
   test 'clock changes cannot silently leave stale imported hours and removed dates' do
     Current.user = @user
     shift = ClockShift.create!(employee: @employee, user: @user, employee_key: @employee.id.to_s, employee_name: @employee.name,

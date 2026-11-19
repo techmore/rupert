@@ -1,0 +1,9 @@
+<%# Web Push for the installed staff web app. Shown only when VAPID keys are configured; the button asks the browser once. %>
+<% if vapid_public_key.present? %>
+  <div data-controller="push-subscribe" data-push-subscribe-key-value="<%= vapid_public_key %>" data-push-subscribe-url-value="<%= employee_push_subscriptions_path %>" data-push-subscribe-worker-value="/employee/service-worker.js">
+    <p class="text-sm text-mocha" data-push-subscribe-target="status">Get schedule, approval and clock-out notifications on this device.</p>
+    <button type="button" class="btn-ghost mt-2" data-action="push-subscribe#subscribe" data-push-subscribe-target="button">Turn on push notifications</button>
+  </div>
+<% else %>
+  <p class="text-sm text-mocha">Push notifications for the web app are not set up yet. The bell at the top still shows everything.</p>
+<% end %>

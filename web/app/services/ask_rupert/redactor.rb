@@ -13,9 +13,10 @@ module AskRupert
 
     module_function
 
-    # Typed text: control characters, keys, tokens and card-like numbers.
+    # Typed text: control characters, keys, tokens, card track data and card-like numbers.
     def clean(text)
-      text.to_s.scrub('').gsub(CONTROL, '').gsub(SECRET, '[secret removed]').gsub(CARD, '[number removed]').strip
+      text = CardData.redact(text.to_s.scrub('').gsub(CONTROL, ''))
+      text.gsub(SECRET, '[secret removed]').gsub(CARD, '[number removed]').strip
     end
 
     # Tool results: the above plus emails and phone numbers of customers and staff.

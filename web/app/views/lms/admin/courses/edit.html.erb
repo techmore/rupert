@@ -1,0 +1,54 @@
+<% content_for :title, t('lms.admin.edit_course') %>
+<div class="page-medium space-y-6">
+  <%= page_header t('lms.admin.edit_course'), subtitle: @course.title, eyebrow: t('lms.admin.title'), menu: [['Open as a learner', lms_course_path(@course)]] %>
+  <%= form_with model: @course, url: lms_admin_course_path(@course), method: :patch, class: 'section-card', data: { busy: false } do |form| %>
+    <% if @course.errors.any? %><div class="flash flash-alert" role="alert"><%= @course.errors.full_messages.to_sentence %></div><% end %>
+    <div><%= form.label :title, 'Title', class: 'field-label' %><%= form.text_field :title, class: 'input', maxlength: 160, required: true %></div>
+    <div><%= form.label :summary, 'One-sentence summary', class: 'field-label' %><%= form.text_field :summary, class: 'input', maxlength: 300 %></div>
+    <div><%= form.label :description, 'About this course', class: 'field-label' %><%= form.text_area :description, class: 'input', rows: 4 %><p class="mt-1 text-xs text-taupe"><%= t('lms.admin.body_help') %></p></div>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div><%= form.label :badge_title, 'Badge title', class: 'field-label' %><%= form.text_field :badge_title, class: 'input', maxlength: 160 %></div>
+      <div><%= form.label :status, t('lms.admin.status'), class: 'field-label' %><%= form.select :status, [[t('lms.admin.published'), 'published'], [t('lms.admin.draft'), 'draft']], {}, class: 'select' %></div>
+    </div>
+    <div class="form-actions"><%= form.submit 'Save', class: 'btn-primary', data: { turbo_submits_with: 'Saving…' } %><%= link_to 'Cancel', lms_admin_courses_path, class: 'btn-ghost' %></div>
+  <% end %>
+  <section class="section-card" aria-labelledby="lms-admin-lessons">
+    <%= section_heading t('lms.admin.lessons'), id: 'lms-admin-lessons' %>
+    <ol class="row-list">
+      <% @course.lessons.each_with_index do |lesson, index| %>
+        <li class="row-item"><div class="min-w-0"><p class="font-semibold text-ink"><%= index + 1 %>. <%= lesson.title %></p><p class="text-xs text-mocha"><%= lms_minutes(lesson.minutes) %> · <%= pluralize(lesson.questions.size, 'question') %><% if lesson.diagram %> · <%= lesson.diagram.humanize %><% end %></p></div><div class="row-item-end"><%= link_to 'Edit', edit_lms_admin_course_lesson_path(@course, lesson), class: 'btn-ghost btn-sm' %></div></li>
+      <% end %>
+    </ol>
+  </section>
+  <section class="section-card" aria-labelledby="lms-admin-rules">
+    <%= section_heading t('lms.admin.rules'), hint: t('lms.admin.rules_hint'), id: 'lms-admin-rules' %>
+    <ul class="row-list">
+      <% @rules.each do |rule| %>
+        <li class="row-item"><div class="min-w-0"><p class="font-semibold text-ink"><%= rule.role_label %></p><p class="text-xs text-mocha"><%= rule.required? ? t('lms.admin.required') : 'Optional' %><% if rule.due_days %> · due within <%= pluralize(rule.due_days, 'day') %><% end %></p></div><div class="row-item-end"><%= button_to 'Remove', lms_admin_course_assignment_rule_path(@course, rule), method: :delete, class: 'btn-ghost btn-sm', form: { data: { turbo_confirm: 'Remove this rule? People keep their progress.' } } %></div></li>
+      <% end %>
+      <% if @rules.empty? %><li class="row-item"><p class="text-sm text-mocha">No rules yet. Add one so the right roles get this course automatically.</p></li><% end %>
+    </ul>
+    <%= form_with url: lms_admin_course_assignment_rules_path(@course), method: :post, scope: :lms_assignment_rule, class: 'mt-4 grid gap-3 sm:grid-cols-4 sm:items-end', data: { busy: false } do |form| %>
+      <div><%= form.label :role, t('lms.admin.role'), class: 'field-label' %><%= form.select :role, Lms::Audience.role_options, {}, class: 'select' %></div>
+      <div><%= form.label :due_days, t('lms.admin.due_days'), class: 'field-label' %><%= form.number_field :due_days, class: 'input', min: 1, max: 365 %></div>
+      <label class="flex min-h-11 items-center gap-2 text-sm"><%= form.check_box :required, class: 'checkbox' %><%= t('lms.admin.required') %></label>
+      <div><%= form.submit t('lms.admin.add_rule'), class: 'btn-ghost' %></div>
+    <% end %>
+  </section>
+  <section class="section-card" aria-labelledby="lms-admin-people">
+    <%= section_heading t('lms.admin.people'), hint: t('lms.admin.people_hint'), id: 'lms-admin-people' %>
+    <%= form_with url: lms_admin_course_enrollments_path(@course), method: :post, class: 'space-y-3', data: { busy: false } do |form| %>
+      <div class="lms-people-grid">
+        <% @people.each do |person| %>
+          <% enrollment = @enrollments.find { |candidate| candidate.user_id == person.id } %>
+          <label class="lms-person"><%= check_box_tag 'user_ids[]', person.id, false, id: "user_ids_#{person.id}", class: 'checkbox' %><span class="min-w-0"><span class="block truncate text-sm"><%= person.display_name %></span><span class="block text-xs text-mocha"><%= person.role.to_s.humanize %><% if enrollment %> · <%= lms_status_pill(enrollment.overdue? ? 'overdue' : enrollment.status) %><% end %></span></span></label>
+        <% end %>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3 sm:items-end">
+        <div><%= form.label :due_on, 'Due on', class: 'field-label' %><%= form.date_field :due_on, class: 'input' %></div>
+        <label class="flex min-h-11 items-center gap-2 text-sm"><%= form.check_box :required, { class: 'checkbox' }, '1', '0' %><%= t('lms.admin.required') %></label>
+        <div><%= form.submit t('lms.admin.assign'), class: 'btn-ghost' %></div>
+      </div>
+    <% end %>
+  </section>
+</div>
