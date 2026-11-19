@@ -135,6 +135,37 @@ class User < ActiveRecord::Base
     'reporting' => %w[dashboard.read sales.read inventory.read reports.read ledger.read]
   }.freeze
 
+  # ---- Store scope and notification preferences (time & pay) ---------------------------------
+  # Managers and shift leads may be limited to some stores; empty means every store.
+
+  def location_ids
+    location_ids_json.present? ? Array(JSON.parse(location_ids_json)).map(&:to_s) : []
+  rescue JSON::ParserError
+    []
+  end
+
+  def location_ids=(ids)
+    self.location_ids_json = Array(ids).map(&:to_s).reject(&:blank?).uniq.to_json
+  end
+
+  def scoped_to_locations? = location_ids.any?
+  def manages_location?(location_id) = location_ids.empty? || location_id.blank? || location_ids.include?(location_id.to_s)
+
+  NOTIFICATION_KINDS = %w[schedule_posted schedule_changed approvals trade_offers missed_clock_out break_due timesheet].freeze
+
+  def notification_prefs
+    prefs = notification_prefs_json.present? ? JSON.parse(notification_prefs_json) : {}
+    NOTIFICATION_KINDS.index_with { |kind| prefs.key?(kind) ? prefs[kind] != false : true }
+  rescue JSON::ParserError
+    NOTIFICATION_KINDS.index_with { true }
+  end
+
+  def notification_prefs=(hash)
+    self.notification_prefs_json = NOTIFICATION_KINDS.index_with { |kind| ActiveModel::Type::Boolean.new.cast(hash.to_h.stringify_keys[kind]) != false }.to_json
+  end
+
+  def wants_notification?(kind) = notification_prefs.fetch(kind.to_s, true)
+
   def can?(permission)
     return true if permission.to_s == 'timesheets.self' && (effective_permissions.include?('timesheets.read') || TimeClockService.worker_for(self))
     perms = effective_permissions

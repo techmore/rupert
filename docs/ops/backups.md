@@ -11,6 +11,14 @@ file to `storage/backups/<layer>.json` after every run (`state` ok/failed, `at`,
 that has never reported shows **Not reporting**, which means it is not installed on this server. The MCP tool
 `backup_freshness` reports the same layers to connected assistants.
 
+**Settings → Backups** is the owner's page: one plain status (`BackupHealth`: off, starting, working, needs
+attention), the last good backup, the weekly check, and the two-step **Turn on backups** path below. While backups
+are off or a layer has failed or gone quiet past its schedule, every super admin sees a red alert on the bell, a
+banner on the dashboard and a red entry in the status bar, and `BackupHealthAlertJob` leaves one notification a day.
+The rolling snapshot and local set always count; the off-host copy and weekly check count once they have reported;
+the mirror and the recovery-kit drill are listed as extra protection and never alarm. After a key is turned on each
+layer gets one interval of its schedule to make its first encrypted backup before an older refusal counts.
+
 ## Encryption and the recovery kit (#421)
 
 Every backup file is encrypted with [age](https://age-encryption.org) (X25519, ChaCha20-Poly1305: authenticated, so
@@ -20,7 +28,7 @@ SER8 (container or host) can decrypt a backup, which is the point: a copy of the
 mirror is useless without the kit.
 
 - **Install age** in the container (and on any computer that will restore): `apt-get install age`.
-- **Create the key**: Settings → Backups → *Create backup key* (super admin with `settings.write`, signed in within the
+- **Turn backups on**: Settings → Backups → *Turn on backups* (later: *Replace the backup key*) (super admin with `settings.write`, signed in within the
   last 15 minutes, or a password re-entry for password accounts). The server makes the key pair in memory, stores the
   public key in `backup_encryption_keys`, and answers with the kit PDF. The private key is never stored, logged or
   shown again (`test/integration/backup_keys_test.rb` checks every table and the log after creating one).

@@ -8,9 +8,27 @@ import Foundation
 /// served by the control plane itself stay on it.
 enum Instance {
     static let controlPlane: URL = {
+        if let dev = developmentOrigin { return dev }
         let configured = Bundle.main.object(forInfoDictionaryKey: "RupertControlPlaneURL") as? String
         return configured.flatMap(httpsOrigin) ?? URL(string: "https://pos.rupertpos.com")!
     }()
+
+    /// Debug builds only: `RUPERT_DEV_ORIGIN=http://127.0.0.1:3005` in the Xcode scheme's
+    /// environment points the whole app at a local Rupert (plain http is allowed only here).
+    /// Release builds ignore it, so it can never ship on.
+    static var developmentOrigin: URL? {
+#if DEBUG
+        guard let value = ProcessInfo.processInfo.environment["RUPERT_DEV_ORIGIN"], let url = URL(string: value),
+              let scheme = url.scheme, ["http", "https"].contains(scheme), let host = url.host, !host.isEmpty else { return nil }
+        var components = URLComponents()
+        components.scheme = scheme
+        components.host = host
+        components.port = url.port
+        return components.url
+#else
+        return nil
+#endif
+    }
 
     private static let currentKey = "rupert.currentInstanceOrigin"
 
@@ -27,6 +45,16 @@ enum Instance {
         }
     }
 
+    /// Leave the current workspace for the control plane, where anyone signs in and is handed to
+    /// their own workspace. Used by Settings → Switch workspace, so a second person (or the same
+    /// person with another shop) is never stuck on the previous workspace's sign-in page.
+    static func leaveWorkspace() {
+        UserDefaults.standard.removeObject(forKey: currentKey)
+    }
+
+    /// True when the app is pointed at an isolated workspace rather than the control plane.
+    static var isOnWorkspaceInstance: Bool { current.host != controlPlane.host }
+
     static var appVersion: String {
         let info = Bundle.main.infoDictionary
         let version = info?["CFBundleShortVersionString"] as? String ?? "1.0"
@@ -42,7 +70,9 @@ enum Instance {
     /// Rupert's own sites stay inside the app: rupertpos.com, its subdomains, the control plane and
     /// the current instance (an isolated workspace may live on its own domain).
     static func isRupert(_ url: URL?) -> Bool {
-        guard let url, url.scheme == "https", let host = url.host?.lowercased() else { return false }
+        guard let url, let host = url.host?.lowercased() else { return false }
+        if let dev = developmentOrigin, url.scheme == dev.scheme, host == dev.host?.lowercased(), url.port == dev.port { return true }
+        guard url.scheme == "https" else { return false }
         return host == "rupertpos.com" || host.hasSuffix(".rupertpos.com")
             || host == controlPlane.host?.lowercased() || host == current.host?.lowercased()
     }

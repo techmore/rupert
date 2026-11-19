@@ -1,0 +1,5 @@
+<% content_for :title, t('time.schedule.availability.mine') %>
+<%= page_header t('time.schedule.availability.mine'), subtitle: t('time.schedule.availability.subtitle') do %>
+  <%= link_to t('time.schedule.back_to_schedule'), employee_schedule_path, class: 'btn-ghost' %>
+<% end %>
+<%= render 'people/availabilities/editor', blocks: @blocks, create_url: employee_availability_index_path, destroy_url: ->(block) { employee_availability_path(block) }, self_service: true %>

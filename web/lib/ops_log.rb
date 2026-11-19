@@ -120,7 +120,8 @@ module OpsLog
 
     def clean_value(value)
       case value
-      when String then value.scrub('').first(300)
+      # A field names things, but a careless caller can still pass a card number: remove it.
+      when String then CardData.redact(value.scrub('')).first(300)
       when Symbol then value.to_s
       when Numeric, true, false then value
       when Time, ActiveSupport::TimeWithZone then value.utc.iso8601(3)
@@ -140,9 +141,10 @@ module OpsLog
     end
 
     # Free text that may echo a value (an exception message, a flash). Best effort: it
-    # removes tokens, key=value pairs the request log filters, emails, long digit runs and
-    # object dumps, then bounds the length. `strict` (the default, for exception messages)
-    # also hides every double-quoted string; plain log lines from libraries keep theirs.
+    # removes card data and tokens (FeedbackSanitizer), key=value pairs the request log
+    # filters, emails, long digit runs and object dumps, then bounds the length. `strict`
+    # (the default, for exception messages) also hides every double-quoted string; plain log
+    # lines from libraries keep theirs.
     def safe_text(text, max = 200, strict: true)
       out = FeedbackSanitizer.scrub_text(text.to_s.scrub('').gsub(ANSI, ''))
       out = out.gsub(EMAIL, '[email]').gsub(INSPECT_DUMP, '#<object>').gsub(LONG_NUMBER, '[number]')

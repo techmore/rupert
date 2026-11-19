@@ -9,6 +9,7 @@ class DataRetentionJob < ApplicationJob
     Tenant.find_each do |tenant|
       Current.tenant = tenant
       DataRetention.prune_all!
+      PunchAudit.prune!
     rescue StandardError => e
       logger.error("#{self.class}: retention prune failed for tenant #{tenant.id}: #{e.class}: #{e.message}")
     ensure

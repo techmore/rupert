@@ -25,7 +25,8 @@ module People
     alias remove_entry? update?
     alias import_shifts? update?
     def approve?
-      tenant? && user&.active? && (user.can_review_timesheets? || assigned_demo?) && record.employee.user_id != user.id
+      tenant? && user&.active? && (user.can_review_timesheets? || assigned_demo?) && record.employee.user_id != user.id &&
+        People::StoreScope.covers?(user, record.employee)
     end
     alias reject? approve?
     def reopen?

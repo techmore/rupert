@@ -14,6 +14,21 @@
     <% end %>
   <% end %>
 
+  <% if can_write && @leave_request.requested? %>
+    <section class="section-card" aria-label="Decide">
+      <%= form_with url: approve_people_leave_request_path(@leave_request), method: :post, class: 'space-y-3' do |f| %>
+        <div><%= f.label :note, 'Note to the staff member (optional)', class: 'field-label' %><%= f.text_field :note, maxlength: 1000, class: 'input' %></div>
+        <div class="form-actions">
+          <%= f.submit 'Approve', class: 'btn-primary', data: { turbo_submits_with: 'Approving…' } %>
+          <%= f.submit 'Deny', formaction: deny_people_leave_request_path(@leave_request), class: 'btn-ghost' %>
+        </div>
+      <% end %>
+    </section>
+  <% end %>
+  <% if @leave_request.review_note.present? %>
+    <section class="callout" aria-label="Review note"><p class="callout-title">Note from <%= @leave_request.reviewer&.display_name || 'the reviewer' %></p><p class="text-sm"><%= @leave_request.review_note %></p></section>
+  <% end %>
+
   <dl class="facts">
     <div><dt>Staff member</dt><dd><%= link_to @leave_request.employee.name, people_employee_path(@leave_request.employee), class: "text-olive hover:underline" %></dd></div>
     <div><dt>Status</dt><dd><span class="<%= @leave_request.approved? ? "pill-fern" : @leave_request.denied? ? "pill-rose" : @leave_request.cancelled? ? "pill-taupe" : "pill-olive" %>"><%= @leave_request.status.humanize %></span></dd></div>

@@ -199,6 +199,7 @@ Rules that apply to all templates:
 | `.gate-menu`, `.gate-list`, `.gate-item`, `.gate-links` | The top-bar release gate dropdown (owners only): each blocker's title, what is needed and its GitHub issue links; `Done` pill once ticked off in `config/release_blockers.yml` |
 | `.app-statusbar`, `.statusbar-item` | The bottom status bar (sync, Team chat, help, build) |
 | `.toast-stack`, `.toast` | Attention-only popups raised with the `rupert:toast` event; three at most |
+| Learning center (`.lms-*`, `.lesson-*`) | Courses as a `.row-list` with a progress ring (`lms_progress_ring`); lesson text from `Lms::Markup` (`.lesson-prose`, `.lesson-callout-{tip,why,never,example,note}`, `.lms-steps`); diagrams as HTML `figure.lms-figure` (flow, players, fee bar, timeline, fork, fixes) so they reflow, read aloud and print; quiz choices `.lms-choice` with `.lms-explanation`; the badge `.lms-badge`. Status pills: Done (fern), In progress (clay), Overdue (rose), Not started / Not assigned (taupe) |
 
 Add a component by adding it here, to the stylesheet and to the Style guide, in that order.
 

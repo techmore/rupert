@@ -162,7 +162,7 @@ module TeamChat
 
     # Changes the text of one's own message; mentions no longer in the text are dropped.
     def edit_body!(text)
-      text = text.to_s.scrub('').gsub(AskRupert::Redactor::CONTROL, '').strip
+      text = CardData.redact(text.to_s.scrub('').gsub(AskRupert::Redactor::CONTROL, '')).strip
       raise ActiveRecord::RecordInvalid, self if text.blank? && attachment_infos.empty?
       if text.length > BODY_MAX
         errors.add(:body, :too_long, count: BODY_MAX)

@@ -184,10 +184,19 @@ class PunchHistory
     end
   end
 
+  # Pay rates are payroll data: a reviewer without payroll access sees everyone's punches but
+  # only their own rate (the same boundary as the staff and pay-run pages).
   def pay_rate_for(employee_id, started_at)
     return nil unless employee_id && started_at
+    return nil unless Current.user.nil? || Current.user.can?('payroll.read') || employee_id == own_worker_id
 
     People::PayRate.where(employee_id: employee_id).where('effective_on <= ?', started_at.to_date)
       .order(effective_on: :desc, id: :desc).first&.hourly_rate_cents
+  end
+
+  def own_worker_id
+    return @own_worker_id if defined?(@own_worker_id)
+
+    @own_worker_id = Current.user && TimeClockService.worker_for(Current.user, include_on_leave: true)&.id
   end
 end
