@@ -52,7 +52,7 @@ class ComplianceSaleGateTest < ActiveSupport::TestCase
     assert ComplianceEvent.all.all? { |e| e.action == 'override_refused' }
   end
 
-  test 'five wrong PINs lock the manager out for fifteen minutes, even with the right PIN' do
+  test 'five wrong PINs lock the person who typed them out for fifteen minutes, even with the right PIN' do
     5.times { assert_raises(Compliance::OverrideRefused) { enforce(evaluate('card'), override(@manager, '0000', 'A good long reason here')) } }
     error = assert_raises(Compliance::OverrideRefused) { enforce(evaluate('card'), override(@manager, '4321', 'A good long reason here')) }
     assert_match(/Too many wrong PINs/, error.message)
@@ -75,12 +75,14 @@ class ComplianceSaleGateTest < ActiveSupport::TestCase
     assert_raises(ActiveRecord::ReadOnlyRecord) { ComplianceEvent.sole.update!(reason: 'edited') }
   end
 
-  test 'PINs are stored only as a digest and must be 4 to 8 digits' do
+  test 'PINs are stored only as a digest; a new one must be 6 to 8 digits' do
     assert_not_includes @manager.pos_override_pin_digest, '4321'
     assert @manager.valid_pos_override_pin?('4321')
     assert_not @manager.valid_pos_override_pin?('43210')
     assert_raises(ArgumentError) { @manager.pos_override_pin = '12ab' }
-    assert_raises(ArgumentError) { @manager.pos_override_pin = '123' }
+    assert_raises(ArgumentError) { @manager.pos_override_pin = '12345' }
+    @manager.pos_override_pin = '123456'
+    assert @manager.valid_pos_override_pin?('123456')
   end
 
   private
