@@ -60,6 +60,14 @@ export default class extends Controller {
     this.submitTarget.focus()
   }
 
+  // What to tell the cashier when the server's answer could not be read. It never says whether
+  // money moved: the Unfinished list and the receipt are where that is checked.
+  static unreadableAnswer(response) {
+    const signedOut = response.status === 401 || (response.redirected && /\/login(\?|$)/.test(response.url || ""))
+    if (signedOut) return "You have been signed out. Sign in again, then check Unfinished before taking payment again."
+    return `Rupert could not complete this checkout (the server answered ${response.status}). Do not take payment again yet: reload the register, check Unfinished, and ask a manager if it happens again.`
+  }
+
   async submit(event) {
     event.preventDefault()
     if (!event.target.reportValidity() || this.submitting) return
@@ -68,7 +76,10 @@ export default class extends Controller {
     try {
       const body = { display_id: this.displayIdValue, tender: form.get("tender"), register_id: form.get("register_id"), cash_received: form.get("cash_received"), ...this.complianceFields() }
       const response = await fetch(this.urlValue, { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "" }, body: JSON.stringify(body) })
-      const result = await response.json()
+      // An answer that is not JSON (a sign-in page after the session ran out, an error page
+      // during a restart) used to show the browser's own parse error to the cashier.
+      const result = await response.json().catch(() => null)
+      if (!result) throw new Error(this.constructor.unreadableAnswer(response))
       if (this.hasOverridePinTarget) this.overridePinTarget.value = ""
       if (!response.ok) { this.renderCompliance(result.compliance); throw new Error(result.error || "Checkout could not be verified. Check the receipt before retrying.") }
       this.renderCompliance(null)

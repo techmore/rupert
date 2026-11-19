@@ -8,6 +8,13 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
 
     private lazy var tabBarController = HotwireTabBarController(navigatorDelegate: self, lazyLoadTabs: true)
+    /// The tabs in the bar now, in order.
+    private var shownTabs: [HotwireTab] = []
+
+    private func load(_ tabs: [HotwireTab]) {
+        shownTabs = tabs
+        tabBarController.load(tabs)
+    }
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = scene as? UIWindowScene else { return }
@@ -18,7 +25,7 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         window.makeKeyAndVisible()
         self.window = window
 
-        tabBarController.load(HotwireTab.all(on: Instance.current))
+        load(HotwireTab.all(on: Instance.current))
         AppLock.shared.attach(to: window)
         AppSettings.openInApp = { [weak self] url in
             self?.tabBarController.activeNavigator.route(url)
@@ -40,10 +47,18 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         WorkspaceHandoff.shared.onOpened = { [weak self] origin, landing in
             self?.show(instance: origin, landing: landing)
         }
-        AppSettings.switchWorkspace = { [weak self] in self?.switchWorkspace() }
+        AppSettings.switchWorkspace = { [weak self] in self?.signOut(leavingWorkspace: true) }
+        AppSettings.signOut = { [weak self] in self?.signOut(leavingWorkspace: false) }
+        // A page listed different tabs for this account (TabAccess): show those.
+        TabAccess.onChange = { [weak self] in
+            DispatchQueue.main.async { self?.restartTabs() }
+        }
         SessionWatcher.shared.onChange = { [weak self] state in
-            // Signed out: Rupert must stop pushing to this phone.
-            if state == .signedOut { PushRegistration.shared.forget() }
+            // Signed out: Rupert must stop pushing to this phone, and the next person starts with every tab.
+            if state == .signedOut {
+                PushRegistration.shared.forget()
+                TabAccess.reset()
+            }
             // The change is noticed while the old page is still finishing its visit; replacing the
             // tabs from inside that callback left the new Home tab without a visit in release builds.
             DispatchQueue.main.async { self?.restartTabs() }
@@ -66,8 +81,8 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
 
     private func open(_ shortcut: UIApplicationShortcutItem) -> Bool {
         let tab = shortcut.type.components(separatedBy: ".").last ?? ""
-        guard let index = HotwireTab.all(on: Instance.current).firstIndex(where: { $0.id == tab }) else { return false }
-        select(index)
+        // A quick action for a tab this account does not have (Team Chat for staff) opens the first tab.
+        select(HotwireTab.all(on: Instance.current).firstIndex(where: { $0.id == tab }) ?? 0)
         return true
     }
 
@@ -81,9 +96,10 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
     /// A page showed that the person signed in or out: start every tab over on its first page,
     /// staying on the selected tab. Old pages (and their back stacks) are dropped with their web views.
     private func restartTabs() {
-        let index = tabBarController.selectedIndex
-        tabBarController.load(HotwireTab.all(on: Instance.current))
-        select(index)
+        // Stay on the same tab by name: the bar may have gained or lost tabs (TabAccess).
+        let selected = shownTabs.indices.contains(tabBarController.selectedIndex) ? shownTabs[tabBarController.selectedIndex].id : nil
+        load(HotwireTab.all(on: Instance.current))
+        select(shownTabs.firstIndex(where: { $0.id == selected }) ?? 0)
         // Just signed in: offer push notifications from the fresh page once it is on screen.
         if SessionWatcher.shared.state == .signedIn {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
@@ -93,18 +109,34 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         }
     }
 
-    /// Settings → Switch workspace: stop this phone's notifications, drop every Rupert cookie and
-    /// cached page the web views hold (the session on the workspace and on the control plane), and
-    /// start again on the control plane's sign-in page. Nothing of the last person is left on screen.
-    private func switchWorkspace() {
+    /// Settings → Sign out, and Settings → Switch workspace: stop this phone's notifications, drop
+    /// every Rupert cookie and cached page the web views hold (the session on the workspace and on
+    /// the control plane), and start again on the sign-in page: this workspace's for Sign out, the
+    /// control plane's for Switch workspace. Nothing of the last person is left on screen. Rupert
+    /// keeps its session in the cookie, so dropping the cookie ends the session.
+    private func signOut(leavingWorkspace: Bool) {
         PushRegistration.shared.forget()
         let store = WKWebsiteDataStore.default()
-        store.fetchDataRecords(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes()) { [weak self] records in
-            store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), for: records) {
-                Instance.leaveWorkspace()
+        // The cookies are the session: delete them one by one and wait only for that. Clearing
+        // everything in one call did not finish while a page's service worker was alive (the staff
+        // pages register one), which left the person signed in.
+        store.httpCookieStore.getAllCookies { [weak self] cookies in
+            let deleted = DispatchGroup()
+            for cookie in cookies {
+                deleted.enter()
+                store.httpCookieStore.delete(cookie) { deleted.leave() }
+            }
+            deleted.notify(queue: .main) {
+                // Cached pages and page storage go too, without waiting. Cookies are left out of
+                // this pass so that, finishing late, it can never remove the next person's session.
+                var rest = WKWebsiteDataStore.allWebsiteDataTypes()
+                rest.remove(WKWebsiteDataTypeCookies)
+                store.removeData(ofTypes: rest, modifiedSince: .distantPast) {}
+                if leavingWorkspace { Instance.leaveWorkspace() }
                 SessionWatcher.shared.set(.signedOut)
+                TabAccess.reset()
                 guard let self else { return }
-                self.tabBarController.load(HotwireTab.all(on: Instance.current))
+                self.load(HotwireTab.all(on: Instance.current))
                 self.select(0)
             }
         }
@@ -116,7 +148,7 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         Instance.setCurrent(instance)
         SessionWatcher.shared.set(.signedIn)
         let tabs = HotwireTab.all(on: instance)
-        tabBarController.load(tabs)
+        load(tabs)
         select(0)
         if landing.path != "/" || landing.query != nil, let home = tabs.first,
            let navigator = tabBarController.navigator(for: home) {

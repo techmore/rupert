@@ -34,7 +34,6 @@ final class TimeFlowsUITests: XCTestCase {
         let tabBar = app.tabBars.firstMatch
         XCTAssertTrue(tabBar.waitForExistence(timeout: 20))
         XCTAssertTrue(tabBar.buttons["Time"].exists, "Time is a tab")
-        XCTAssertTrue(tabBar.buttons["Home"].exists)
         XCTAssertFalse(tabBar.buttons["Search"].exists, "Search left the bar to make room for Time")
 
         // A previous run may have left the person signed in: sign out through the page first, which
@@ -50,6 +49,8 @@ final class TimeFlowsUITests: XCTestCase {
         // Signed out: the Time tab shows My time with a Sign in button.
         let signIn = app.webViews.links["Sign in"].firstMatch
         XCTAssertTrue(signIn.waitForExistence(timeout: 30), "the signed-out Time page offers Sign in\n\(app.webViews.firstMatch.debugDescription.prefix(3000))")
+        // Signed out, every tab shows; signed in, only the ones the account can open (TabAccess).
+        XCTAssertTrue(tabBar.buttons["Home"].waitForExistence(timeout: 10))
         shoot("time-signed-out")
 
         guard let email = env["RUPERT_UI_EMAIL"], let password = env["RUPERT_UI_PASSWORD"] else { return }

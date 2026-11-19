@@ -14,6 +14,8 @@
     <%= csrf_meta_tags %>
     <%# The iPhone app restarts its tabs when this changes, so a sign-in or sign-out in one tab reaches them all (ios/Sources/Rupert/SessionWatcher.swift). %>
     <% if hotwire_native_app? %><meta name="rupert-session" content="<%= Current.user ? 'signed-in' : 'signed-out' %>"><% end %>
+    <%# The tabs this account can open; the iPhone app hides the others (Tabs.swift). %>
+    <% if hotwire_native_app? && (tabs = native_app_tabs) %><meta name="rupert-tabs" content="<%= tabs %>"><% end %>
     <%= csp_meta_tag %>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

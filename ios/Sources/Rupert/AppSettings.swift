@@ -9,7 +9,11 @@ struct AppSettingsView: View {
     var close: () -> Void
     /// Leaves this workspace for the Rupert sign-in page (the sheet closes first).
     var switchWorkspace: () -> Void = {}
+    /// Signs out on this iPhone and shows this workspace's sign-in page (the sheet closes first).
+    var signOut: () -> Void = {}
     @State private var confirmSwitch = false
+    @State private var confirmSignOut = false
+    private let signedIn = SessionWatcher.shared.state == .signedIn
 
     @State private var lockEnabled = AppLock.shared.isEnabled
     @State private var lockAvailable = AppLock.isAvailable
@@ -31,6 +35,18 @@ struct AppSettingsView: View {
 
                 Section {
                     LabeledContent("Connected to", value: Instance.current.host ?? "")
+                    if signedIn {
+                        // The page's own Sign out is at the very bottom of each page; this one is
+                        // where people look for it, and it works when a page will not load.
+                        Button("Sign out") { confirmSignOut = true }
+                            .accessibilityIdentifier("sign-out")
+                            .alert("Sign out?", isPresented: $confirmSignOut) {
+                                Button("Sign out", role: .destructive, action: signOut)
+                                Button("Cancel", role: .cancel) {}
+                            } message: {
+                                Text("Signs you out of Rupert on this iPhone and stops its notifications. If you are clocked in, you stay clocked in.")
+                            }
+                    }
                     Button("Switch workspace") { confirmSwitch = true }
                         .accessibilityIdentifier("switch-workspace")
                         .confirmationDialog("Switch workspace?", isPresented: $confirmSwitch, titleVisibility: .visible) {
@@ -93,6 +109,8 @@ enum AppSettings {
     /// Set by SceneController: sign out here, forget this phone's push registration, clear the web
     /// views' Rupert data and start again on the control plane.
     @MainActor static var switchWorkspace: (() -> Void)?
+    /// Set by SceneController: the same, staying on this workspace's sign-in page.
+    @MainActor static var signOut: (() -> Void)?
 
     @MainActor
     static func addButton(to controller: UIViewController) {
@@ -114,7 +132,14 @@ enum AppSettings {
                 host?.dismiss(animated: true) { openInApp?(url) }
             },
             close: { host?.dismiss(animated: true) },
-            switchWorkspace: { host?.dismiss(animated: true) { switchWorkspace?() } }
+            switchWorkspace: { host?.dismiss(animated: true) { switchWorkspace?() } },
+            // Asked from an alert, which is still closing when its button's action runs: UIKit
+            // drops a dismissal (and its completion) started then. Sign out at once, and close the
+            // sheet from the page under it when the alert has gone.
+            signOut: { [weak controller] in
+                signOut?()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { controller?.dismiss(animated: true) }
+            }
         )
         let sheet = UIHostingController(rootView: view)
         host = sheet

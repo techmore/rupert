@@ -114,10 +114,17 @@ final class BannerWebViewController: HotwireWebViewController {
         publishBottomInset()
         // A sign-in or sign-out in this page restarts every tab (SessionWatcher).
         if Instance.isRupert(webView.url) {
-            webView.evaluateJavaScript(SessionWatcher.readScript) { [weak self] value, _ in
-                SessionWatcher.shared.observe(value)
-                // Signed in: offer push notifications once (PushRegistration explains why first).
-                if let self, SessionWatcher.shared.state == .signedIn { PushRegistration.shared.askIfNeeded(from: self) }
+            // The tabs this account can open are read first, so a sign-in restarts the tabs once,
+            // already with the right bar (TabAccess).
+            webView.evaluateJavaScript(TabAccess.readScript) { [weak self] tabs, _ in
+                let tabsChanged = TabAccess.observe(tabs)
+                webView.evaluateJavaScript(SessionWatcher.readScript) { [weak self] value, _ in
+                    let sessionChanged = SessionWatcher.shared.observe(value)
+                    let forgotten = TabAccess.forgetIfSignedOut(value)
+                    if (tabsChanged || forgotten) && !sessionChanged { TabAccess.onChange?() }
+                    // Signed in: offer push notifications once (PushRegistration explains why first).
+                    if let self, SessionWatcher.shared.state == .signedIn { PushRegistration.shared.askIfNeeded(from: self) }
+                }
             }
         }
     }
