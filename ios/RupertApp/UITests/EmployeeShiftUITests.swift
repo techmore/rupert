@@ -71,6 +71,7 @@ final class EmployeeShiftUITests: XCTestCase {
         // Only the tabs a staff account can open: no Home (it is My time again), Team Chat or Ask Rupert.
         XCTAssertEqual(tabLabels(), ["Time", "Notifications"], "a staff account sees only the tabs it can open")
         shoot("staff-home-two-tabs")
+        checkQuickActions()
 
         tabBar.buttons["Notifications"].tap()
         XCTAssertTrue(web.firstMatch.waitForExistence(timeout: 10))
@@ -189,6 +190,29 @@ final class EmployeeShiftUITests: XCTestCase {
 
     private func tabLabels() -> [String] {
         app.tabBars.firstMatch.buttons.allElementsBoundByIndex.map(\.label)
+    }
+
+    /// Press and hold the app icon: a staff account is offered Clock in and Notifications, and not
+    /// Team Chat or Ask Rupert, which it cannot open.
+    private func checkQuickActions() {
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        XCUIDevice.shared.press(.home)
+        let icon = springboard.icons["Rupert"].firstMatch
+        guard icon.waitForExistence(timeout: 10) else {
+            app.activate()
+            return XCTFail("the Rupert icon is not on the Home Screen page that opens")
+        }
+        icon.press(forDuration: 1.5)
+        let clockIn = springboard.buttons["Clock in"].firstMatch
+        XCTAssertTrue(clockIn.waitForExistence(timeout: 8), "the icon's menu offers Clock in")
+        XCTAssertTrue(springboard.buttons["Notifications"].firstMatch.exists, "and Notifications")
+        XCTAssertFalse(springboard.buttons["Team Chat"].firstMatch.exists, "no Team Chat for a staff account")
+        XCTAssertFalse(springboard.buttons["Ask Rupert"].firstMatch.exists, "no Ask Rupert for a staff account")
+        shoot("quick-actions-staff")
+        // Clock in opens the Time tab.
+        clockIn.tap()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
+        XCTAssertTrue(web.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Hi,'")).firstMatch.waitForExistence(timeout: 20), "Clock in opens My time")
     }
 
     private func scrollTo(_ element: XCUIElement, down: Bool) {

@@ -153,6 +153,15 @@ final class InfoPlistTests: XCTestCase {
         }
         XCTAssertTrue(types.contains("time"), "Clock in is a Home Screen quick action")
     }
+
+    func testOnlyQuickActionsEveryAccountCanUseAreBuiltIn() throws {
+        // Info.plist items show for everyone, signed in or not, so none may be a role-limited tab.
+        let info = try plist()
+        let items = try XCTUnwrap(info["UIApplicationShortcutItems"] as? [[String: Any]])
+        let types = items.compactMap { ($0["UIApplicationShortcutItemType"] as? String)?.components(separatedBy: ".").last }
+        XCTAssertEqual(types, ["time", "inbox"])
+        XCTAssertTrue(Set(types).isDisjoint(with: QuickActions.roleLimited))
+    }
 }
 
 /// The Time tab and push notifications (time & pay).

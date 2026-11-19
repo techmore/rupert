@@ -56,6 +56,7 @@ What the server allows each role is tested in `web/test/integration/` (`employee
 | Sign in as the staff account | Lands on **My time** ("Hi, …"). |
 | Look at the tab bar | **Time** and **Notifications** only. No Home, Team Chat or Ask Rupert. |
 | "Stay in the loop" appears | **Not now** closes it and it does not come back on the next page. |
+| Go to the Home Screen, press and hold the Rupert icon | **Clock in** and **Notifications**. No Team Chat or Ask Rupert (they appear for an owner after the owner signs in, and go again when staff sign in). |
 
 ## 2. Clock and shift (Time tab)
 
