@@ -1,6 +1,12 @@
 # frozen_string_literal: true
 
 module ApplicationHelper
+  # A workspace switch from Settings → Time rules (TimeRules::FEATURES): `time_feature?(:scheduling)`.
+  def time_feature?(name) = TimeRules.feature?(name)
+
+  # Whether the signed-in person may punch from this browser: the iPhone app and the web each have a switch.
+  def clock_channel_on? = TimeRules.feature?(hotwire_native_app? ? :clock_app : :clock_web)
+
   # Ask Rupert, the help chat, is for signed-in staff with the Rupert Chat permission
   # (administrators by default) in their own workspace (not customer-support views,
   # not the employee app) while an administrator keeps it on.
@@ -169,6 +175,9 @@ module ApplicationHelper
   def system_alerts
     @system_alerts ||= begin
       alerts = []
+      if (health = BackupHealth.alert_for(Current.user))
+        alerts << { title: health.title, body: health.summary, path: settings_backups_path, link: health.link_label }
+      end
       if (location = card_processing_down_location)
         alerts << { title: 'Card processing is down', body: "Customers at #{location.name} cannot pay by card until the payment gateway is connected and verified.",
                     path: pos_setting_path(location.id), link: 'Open POS settings' }

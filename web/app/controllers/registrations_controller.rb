@@ -10,10 +10,11 @@ class RegistrationsController < ApplicationController
 
   def create
     return head :not_found if WorkspaceNode.isolated?
-    fields = params.require(:registration).permit(:workspace_name, :requested_subdomain).to_h.transform_values { |value| value.to_s.strip }
+    fields = params.expect(registration: %i[workspace_name requested_subdomain]).to_h.transform_values { |value| value.to_s.strip }
     tenant = Tenant.new(name: fields['workspace_name'], subdomain: fields['requested_subdomain'])
     unless tenant.valid? && !WorkspaceSignup::RESERVED_SUBDOMAINS.include?(tenant.subdomain)
       flash.now[:alert] = 'Choose a company name and an available workspace address (2–63 lowercase letters, numbers or hyphens).'
+      @typed = fields # the form comes back with what was typed
       return render(:new, status: :unprocessable_entity)
     end
     # The iPhone app runs Google in the system sheet, and a sign-up on a host other than

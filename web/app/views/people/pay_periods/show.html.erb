@@ -1,0 +1,124 @@
+<% content_for :title, "Pay period · #{@period.label}" %>
+<% can_write = Current.user.can?('payroll.write') %>
+<% blocking = @warnings.select(&:blocking?) %>
+<% menu = [] %>
+<% menu << ['Download CSV', people_pay_period_path(@period, format: :csv), { data: { turbo: false } }] if can_write %>
+<% menu << ['All pay periods', people_pay_periods_path] %>
+<div class="space-y-6">
+  <%= page_header @period.label, eyebrow: 'Pay period', subtitle: "#{@rows.size} #{'employee'.pluralize(@rows.size)} · #{PayRules.current.summary}", menu: menu do %>
+    <% if can_write && @period.open? %>
+      <%= button_to 'Lock period', lock_people_pay_period_path(@period), class: 'btn-primary', form: { data: { turbo_confirm: "Lock #{@period.label}? Hours, tips and time off inside it can no longer change." } }, data: { turbo_submits_with: 'Locking…' } %>
+    <% elsif can_write && @period.locked? %>
+      <%= link_to(@period.status == 'exported' ? 'Download CSV again' : 'Download CSV', people_pay_period_path(@period, format: :csv), class: 'btn-primary', data: { turbo: false }) %>
+    <% end %>
+  <% end %>
+
+  <section class="timesheet-state" aria-label="Period status">
+    <%= pay_period_status_pill(@period) %>
+    <p class="text-sm text-mocha">
+      <% if @period.open? %>Open: figures below are estimates until the period is locked.
+      <% elsif @period.status == 'exported' %>Exported <%= @period.exported_at.strftime('%b %-d, %Y, %-l:%M %p') %> by <%= @period.exported_by&.display_name %> · file digest <code class="text-xs"><%= @period.export_sha256.to_s.first(16) %>…</code>
+      <% else %>Locked <%= @period.locked_at.strftime('%b %-d, %Y, %-l:%M %p') %> by <%= @period.locked_by&.display_name %>. Download the file to mark it exported.<% end %>
+    </p>
+    <% if @period.note.present? %><p class="basis-full whitespace-pre-wrap text-xs text-mocha"><%= @period.note %></p><% end %>
+  </section>
+
+  <% if @warnings.any? %>
+    <section class="callout <%= blocking.any? ? 'callout-attention' : '' %>" aria-label="Before locking" data-period-warnings>
+      <p class="callout-title"><%= blocking.any? ? "#{blocking.size} #{'thing'.pluralize(blocking.size)} to fix before locking" : 'Worth a look' %></p>
+      <ul class="period-warnings mt-2 text-sm">
+        <% @warnings.each do |warning| %>
+          <li><span class="<%= warning.blocking? ? 'pill-rose' : 'pill-clay' %>"><%= warning.blocking? ? 'Fix' : 'Check' %></span> <%= warning.path ? link_to(warning.message, warning.path, class: 'underline') : warning.message %></li>
+        <% end %>
+      </ul>
+      <% if can_write && @period.open? && blocking.any? %>
+        <details class="explainer mt-3"><summary class="explainer-summary">Lock anyway</summary>
+          <%= form_with url: lock_people_pay_period_path(@period), method: :post, class: 'mt-2 flex flex-wrap items-end gap-3' do |f| %>
+            <%= hidden_field_tag :lock_anyway, '1' %>
+            <div class="grow"><%= f.label :reason, 'Why lock with open items?', class: 'field-label' %><%= f.text_field :reason, required: true, maxlength: 500, class: 'input' %></div>
+            <%= f.submit 'Lock anyway', class: 'btn-ghost', data: { turbo_submits_with: 'Locking…' } %>
+          <% end %>
+        </details>
+      <% end %>
+    </section>
+  <% end %>
+
+  <% totals = @summary.totals %>
+  <section class="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Period totals">
+    <div class="stat"><p class="stat-label">Hours</p><p class="stat-value mt-1 tabular-nums"><%= format('%.2f', totals[:hours].to_d) %></p></div>
+    <div class="stat"><p class="stat-label">Overtime</p><p class="stat-value mt-1 tabular-nums"><%= format('%.2f', totals[:overtime_hours].to_d) %></p></div>
+    <div class="stat"><p class="stat-label">Tips (card + cash)</p><p class="stat-value mt-1 tabular-nums"><%= cents(totals[:card_tips_cents] + totals[:cash_tips_cents]) %></p></div>
+    <div class="stat"><p class="stat-label"><%= @period.open? ? 'Estimated gross' : 'Gross' %></p><p class="stat-value mt-1 tabular-nums"><%= cents(totals[:gross_cents]) %></p></div>
+  </section>
+
+  <div class="card">
+    <div class="table-region" role="region" tabindex="0" aria-label="Pay by employee">
+      <table class="table" data-pay-rows>
+        <thead>
+          <tr>
+            <th scope="col" class="th">Employee</th>
+            <th scope="col" class="th num">Regular</th>
+            <th scope="col" class="th num">Overtime</th>
+            <th scope="col" class="th num">Time off</th>
+            <th scope="col" class="th num">Rate</th>
+            <th scope="col" class="th num">Card tips</th>
+            <th scope="col" class="th num">Cash tips</th>
+            <th scope="col" class="th num">Commission + bonus</th>
+            <th scope="col" class="th num"><%= @period.open? ? 'Est. gross' : 'Gross' %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @rows.empty? %><tr><td colspan="9" class="empty-row">No approved hours, time off or tips in this period yet.</td></tr><% end %>
+          <% @rows.each do |row| %>
+            <tr data-pay-row="<%= row.employee.id %>">
+              <td class="td font-medium text-ink"><%= link_to row.employee.name, people_employee_path(row.employee), class: 'hover:underline' %><% row.notes.each do |note| %><p class="text-xs text-mocha"><%= note %></p><% end %></td>
+              <td class="td num"><%= hours_cell(row.regular_hours) %></td>
+              <td class="td num"><%= hours_cell(row.overtime_hours + row.daily_overtime_hours) %></td>
+              <td class="td num"><%= hours_cell(row.pto_hours + row.sick_hours + row.personal_hours + row.holiday_hours) %><% if row.unpaid_hours.positive? %><p class="text-xs text-mocha"><%= format('%.2f', row.unpaid_hours) %> unpaid</p><% end %></td>
+              <td class="td num"><%= row.hourly_rate_cents ? "#{cents(row.hourly_rate_cents)}/h" : row.salary_cents ? "#{cents(row.salary_cents)}/yr" : '–' %></td>
+              <td class="td num"><%= row.card_tips_cents.zero? ? '–' : cents(row.card_tips_cents) %></td>
+              <td class="td num"><%= row.cash_tips_cents.zero? ? '–' : cents(row.cash_tips_cents) %></td>
+              <td class="td num"><%= (row.commission_cents + row.bonus_cents).zero? ? '–' : cents(row.commission_cents + row.bonus_cents) %></td>
+              <td class="td num font-semibold text-ink"><%= cents(row.estimated_gross_cents) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <%= fold_explainer 'Hours come from approved timesheets; overtime follows the pay rules and each store’s time rules. Time off is approved requests prorated to the days inside the period. Tips come from the tips ledger (card from the terminal and settlement, cash as declared). Estimated gross adds wages, commission, bonuses and tips before any deductions; it is not a payslip.' %>
+
+  <section class="section-card" id="adjustments" aria-labelledby="adjustments-heading">
+    <%= section_heading 'Adjustments', id: 'adjustments-heading', hint: 'Hours or money that belong to an earlier, locked period. They ride on this period’s file with their note.' %>
+    <% adjustments = @period.adjustments.includes(:employee, :created_by).order(:created_at) %>
+    <% if adjustments.empty? %><p class="text-sm text-mocha">No adjustments in this period.</p><% else %>
+      <ul class="row-list">
+        <% adjustments.each do |adjustment| %>
+          <li class="row-item"><div class="min-w-0"><p class="font-medium"><%= adjustment.employee.name %> · <%= adjustment.kind_label %> <%= adjustment.label %></p><p class="text-sm text-mocha"><%= adjustment.note %> · <%= adjustment.created_by&.display_name %> · <%= adjustment.created_at.strftime('%b %-d, %Y') %></p></div></li>
+        <% end %>
+      </ul>
+    <% end %>
+    <% if can_write && @period.open? %>
+      <details class="explainer" <%= 'open' if params[:adjust] %>><summary class="explainer-summary">Add an adjustment</summary>
+        <%= form_with url: adjustments_people_pay_period_path(@period), method: :post, scope: :adjustment, class: 'mt-3 grid gap-3 sm:grid-cols-5 sm:items-end' do |f| %>
+          <div><%= f.label :employee_id, 'Employee', class: 'field-label' %><%= f.select :employee_id, @employees.map { |e| [e.name, e.id] }, {}, class: 'select w-full', required: true %></div>
+          <div><%= f.label :kind, 'Kind', class: 'field-label' %><%= f.select :kind, PayPeriodAdjustment::KINDS.map { |k, l| [l, k] }, {}, class: 'select w-full' %></div>
+          <div><%= f.label :hours, 'Hours (for hour kinds)', class: 'field-label' %><%= f.number_field :hours, step: 0.01, class: 'input', inputmode: 'decimal' %></div>
+          <div><%= f.label :amount, 'Amount $ (for money kinds)', class: 'field-label' %><%= f.number_field :amount, step: 0.01, class: 'input', inputmode: 'decimal' %></div>
+          <div class="sm:col-span-5"><%= f.label :note, 'Why', class: 'field-label' %><%= f.text_field :note, required: true, maxlength: 500, class: 'input', placeholder: 'e.g. Approved punch fix for Nov 2 after that period was locked' %></div>
+          <div class="form-actions sm:col-span-5"><%= f.submit 'Add adjustment', class: 'btn-primary btn-sm' %></div>
+        <% end %>
+      </details>
+    <% end %>
+  </section>
+
+  <% if can_write && @period.locked? %>
+    <section class="section-card" aria-labelledby="reopen-heading">
+      <%= section_heading 'Reopen', id: 'reopen-heading', hint: 'Only when the payroll file has not been sent, or the provider agrees to a resend. Logged.' %>
+      <%= form_with url: reopen_people_pay_period_path(@period), method: :post, class: 'flex flex-wrap items-end gap-3', data: { turbo_confirm: 'Reopen this period? Hours and tips inside it can change again.' } do |f| %>
+        <div class="grow"><%= f.label :reason, 'Why', class: 'field-label' %><%= f.text_field :reason, required: true, maxlength: 500, class: 'input' %></div>
+        <%= f.submit 'Reopen period', class: 'btn-ghost' %>
+      <% end %>
+    </section>
+  <% end %>
+</div>

@@ -1,0 +1,52 @@
+<%# Exceptions first: what needs a decision before hours are safe to approve. Local: exceptions (People::TimesheetExceptions). %>
+<% items = exceptions.items %>
+<section class="section-card" aria-labelledby="needs-attention-heading" data-needs-attention>
+  <%= section_heading "Needs attention#{" (#{items.size})" if items.any?}", id: 'needs-attention-heading',
+        hint: "#{period_range(exceptions.from, exceptions.to)} · #{exceptions.blocking_count} #{'blocks'.pluralize(exceptions.blocking_count)} approval" do %>
+    <%= link_to 'Approvals inbox', people_approvals_path, class: 'btn-ghost btn-sm' %>
+  <% end %>
+  <% if items.empty? %>
+    <p class="text-sm text-mocha" data-needs-attention-empty>Nothing to fix. Every punch is closed, no corrections are waiting, and the sheets in review are clean.</p>
+  <% else %>
+    <ul class="row-list exception-list">
+      <% items.each do |item| %>
+        <li class="row-item exception-item" data-exception="<%= item.kind %>" data-exception-level="<%= item.level %>"<% stale_shift = item.kind == 'missed_punch' ? item.record : (item.kind == 'correction' && item.record.clock_shift.stale_open? ? item.record.clock_shift : nil) %><% if stale_shift %> data-open-clock-out="rupert-<%= stale_shift.id %>"<% end %>>
+          <div class="min-w-0">
+            <p class="font-medium text-ink">
+              <span class="<%= item.blocking? ? 'pill-rose' : item.level == 'warn' ? 'pill-clay' : 'pill-olive' %>"><%= item.title %></span>
+              <%= item.employee&.name || 'Unknown staff member' %>
+            </p>
+            <p class="mt-1 text-sm text-mocha"><% if item.kind == 'missed_punch' %><%= open_clock_out_label(item.record.started_at) %>. <% elsif stale_shift %>Never clocked out · Correction waiting for review. <% end %><%= item.detail %></p>
+          </div>
+          <div class="row-item-end exception-actions">
+            <% case item.kind %>
+            <% when 'missed_punch' %>
+              <% if item.record.user_id == Current.user.id || OpenClockOuts.manager?(Current.user) %>
+                <%= link_to 'Fix clock-out', fix_clock_out_time_clock_path(item.record), class: 'btn-primary btn-sm' %>
+              <% end %>
+            <% when 'correction' %>
+              <% correction = item.record %>
+              <% if @correction_reviewer && correction.clock_shift.user_id != Current.user.id && correction.requested_by_id != Current.user.id %>
+                <span class="text-xs text-mocha"><%= shift_span(correction.original_started_at, correction.original_ended_at) %> → <%= shift_span(correction.proposed_started_at, correction.proposed_ended_at) %></span>
+                <%= button_to 'Approve', approve_correction_time_clock_path(correction, return_to: people_timesheets_path), class: 'btn-primary btn-sm', form: { data: { turbo_confirm: 'Apply the corrected clock times?' } } %>
+                <%= button_to 'Deny', reject_correction_time_clock_path(correction, return_to: people_timesheets_path), class: 'btn-ghost btn-sm' %>
+              <% else %>
+                <span class="text-sm text-mocha">Another reviewer must decide</span>
+              <% end %>
+            <% when 'unimported' %>
+              <% if policy(item.timesheet).update? %>
+                <%= button_to 'Import clock shifts', import_shifts_people_timesheet_path(item.timesheet), class: 'btn-primary btn-sm', data: { turbo_submits_with: 'Importing…' } %>
+              <% else %>
+                <%= link_to 'Open', people_timesheet_path(item.timesheet), class: 'btn-ghost btn-sm' %>
+              <% end %>
+            <% when 'submitted' %>
+              <%= link_to 'Review', people_timesheet_path(item.timesheet), class: 'btn-primary btn-sm' %>
+            <% else %>
+              <% if item.timesheet %><%= link_to 'Open timesheet', people_timesheet_path(item.timesheet), class: 'btn-ghost btn-sm' %><% end %>
+            <% end %>
+          </div>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</section>

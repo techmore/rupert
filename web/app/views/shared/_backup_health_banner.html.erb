@@ -1,0 +1,8 @@
+<%# Dashboard: backups off or failing, for the instance owner (BackupHealth). Silent failure is the thing to prevent,
+    so this stays until backups are healthy; it cannot be dismissed. The bell shows the same alert on every page. %>
+<% if (health = BackupHealth.alert_for(Current.user)) %>
+  <div role="alert" class="flash flash-alert flex flex-wrap items-center justify-between gap-3" data-backup-health-banner="<%= health.state %>">
+    <span><strong><%= health.title %>.</strong> <%= health.summary %></span>
+    <%= link_to health.link_label, settings_backups_path, class: 'font-semibold underline' %>
+  </div>
+<% end %>

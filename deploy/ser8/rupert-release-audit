@@ -1,0 +1,185 @@
+#!/usr/bin/env python3
+"""Runtime release audit for a Rupert host (docs/ops/release-audit.md).
+
+Run inside the `rupert` container as root (it reads /etc/rupert.env names and the
+backup reports the app shows on System -> Backups). Checks:
+
+  backups   the scheduled backup layers ("local" every 6 h, "frequent" every 5 min) report
+            state ok, encrypted, within 26 hours;
+  health    the public origin answers /up with 200;
+  tls       the public certificate verifies and has 14+ days left;
+  dmarc     _dmarc.<mail domain> publishes a v=DMARC1 record;
+  company   the public company facts in the env file are set and are not placeholders.
+
+Prints a pass/fail report. Never prints an env value, a token or a file's contents.
+Exit 0 = pass, 1 = fail.
+
+  rupert-release-audit [--origin https://pos.rupertpos.com] [--report out.md] [--json out.json]
+"""
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import json
+import os
+import re
+import socket
+import ssl
+import subprocess
+import sys
+import urllib.parse
+import urllib.request
+from pathlib import Path
+
+APP = Path(os.environ.get('RUPERT_AUTODEPLOY_APP', '/opt/rupert'))
+ENV_FILE = Path(os.environ.get('RUPERT_ENV_FILE', '/etc/rupert.env'))
+BACKUP_LAYERS = ('local', 'frequent')
+MAX_BACKUP_AGE = dt.timedelta(hours=26)
+MIN_CERT_DAYS = 14
+COMPANY_KEYS = ('RUPERT_LEGAL_NAME', 'RUPERT_BUSINESS_ADDRESS', 'RUPERT_SUPPORT_PHONE', 'RUPERT_SECURITY_EMAIL')
+PLACEHOLDER = re.compile(r'\[|\]|owner to add|todo|tbd|changeme|example|placeholder|xxx|confirm', re.I)
+
+
+def env_values(path):
+    """KEY=value lines; values stay in memory and are only tested, never printed."""
+    values = {}
+    for line in path.read_text(errors='replace').splitlines():
+        match = re.match(r'\s*(?:export\s+)?([A-Z][A-Z0-9_]*)=(.*)', line)
+        if match:
+            values[match.group(1)] = match.group(2).strip().strip('"').strip("'")
+    return values
+
+
+def check_backups(now):
+    results = []
+    for layer in BACKUP_LAYERS:
+        path = APP / 'web/storage/backups' / f'{layer}.json'
+        try:
+            data = json.loads(path.read_text())
+        except (OSError, ValueError):
+            results.append((f'backup:{layer}', False, 'no report: the layer is not installed or has never run'))
+            continue
+        at = data.get('at') or ''
+        try:
+            when = dt.datetime.fromisoformat(at.replace('Z', '+00:00'))
+        except ValueError:
+            when = None
+        age = now - when if when else None
+        ok = data.get('state') == 'ok' and data.get('encrypted') is True and age is not None and age <= MAX_BACKUP_AGE
+        detail = f"state {data.get('state', 'unknown')}, encrypted {bool(data.get('encrypted'))}, " + \
+                 (f'last run {age.total_seconds() / 3600:.1f} h ago' if age is not None else 'no run time')
+        if data.get('state') != 'ok' and 'backup key' in str(data.get('message', '')):
+            detail += ' (no active backup key: Settings -> Backups)'
+        results.append((f'backup:{layer}', ok, detail))
+    return results
+
+
+def check_health(origin):
+    try:
+        with urllib.request.urlopen(origin.rstrip('/') + '/up', timeout=15) as response:
+            return [('health', response.status == 200, f'/up answered {response.status}')]
+    except Exception as error:  # noqa: BLE001 - any failure is a failed check
+        return [('health', False, f'/up failed ({type(error).__name__})')]
+
+
+def check_tls(origin, now):
+    host = urllib.parse.urlsplit(origin).hostname
+    try:
+        context = ssl.create_default_context()
+        with socket.create_connection((host, 443), timeout=15) as sock, context.wrap_socket(sock, server_hostname=host) as tls:
+            cert = tls.getpeercert()
+            version = tls.version()
+        expires = dt.datetime.fromtimestamp(ssl.cert_time_to_seconds(cert['notAfter']), dt.timezone.utc)
+        days = (expires - now).days
+        return [('tls', days >= MIN_CERT_DAYS, f'{version}, certificate verifies for {host}, {days} days left')]
+    except Exception as error:  # noqa: BLE001
+        return [('tls', False, f'{host}: {type(error).__name__}')]
+
+
+def txt_records(name):
+    """TXT records via dig, or DNS over HTTPS when dig is missing."""
+    try:
+        out = subprocess.run(['dig', '+short', 'TXT', name], capture_output=True, text=True, timeout=15)
+        if out.returncode == 0:
+            return [line.replace('" "', '').strip('"') for line in out.stdout.splitlines() if line.strip()]
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    url = 'https://dns.google/resolve?' + urllib.parse.urlencode({'name': name, 'type': 'TXT'})
+    with urllib.request.urlopen(url, timeout=15) as response:
+        body = json.load(response)
+    return [answer.get('data', '').replace('" "', '').strip('"') for answer in body.get('Answer', []) if answer.get('type') == 16]
+
+
+def check_dmarc(domain):
+    try:
+        records = [r for r in txt_records(f'_dmarc.{domain}') if r.lower().startswith('v=dmarc1')]
+    except Exception as error:  # noqa: BLE001
+        return [('dmarc', False, f'lookup failed ({type(error).__name__})')]
+    if not records:
+        return [('dmarc', False, f'no v=DMARC1 record at _dmarc.{domain}')]
+    policy = re.search(r'\bp=(\w+)', records[0])
+    return [('dmarc', True, f'present, policy {policy.group(1) if policy else "unset"}')]
+
+
+def check_company():
+    try:
+        values = env_values(ENV_FILE)
+    except OSError as error:
+        return [('company', False, f'cannot read the env file ({type(error).__name__}); run as root inside the container')]
+    results = []
+    for key in COMPANY_KEYS:
+        value = values.get(key, '')
+        state = 'missing' if not value else ('placeholder' if PLACEHOLDER.search(value) else 'set')
+        results.append((f'company:{key}', state == 'set', state))
+    return results
+
+
+def run(args, now=None):
+    now = now or dt.datetime.now(dt.timezone.utc)
+    skip = set(filter(None, (args.skip or '').split(',')))
+    checks = []
+    if 'backups' not in skip:
+        checks += check_backups(now)
+    if 'health' not in skip:
+        checks += check_health(args.origin)
+    if 'tls' not in skip:
+        checks += check_tls(args.origin, now)
+    if 'dmarc' not in skip:
+        checks += check_dmarc(args.mail_domain)
+    if 'company' not in skip:
+        checks += check_company()
+    return checks
+
+
+def render(checks, args, sha):
+    passed = all(ok for _, ok, _ in checks)
+    lines = ['# Rupert release audit (runtime)', '', f'- Result: **{"PASS" if passed else "FAIL"}**',
+             f'- Target: {args.origin} · build `{sha or "unknown"}` · {dt.datetime.now(dt.timezone.utc):%Y-%m-%d %H:%M} UTC', '',
+             '| Check | Result | Detail |', '| --- | --- | --- |']
+    lines += [f'| {name} | {"pass" if ok else "FAIL"} | {detail} |' for name, ok, detail in checks]
+    return passed, '\n'.join(lines) + '\n'
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('--origin', default=os.environ.get('RUPERT_PUBLIC_ORIGIN') or 'https://pos.rupertpos.com')
+    parser.add_argument('--mail-domain', default='rupertpos.com')
+    parser.add_argument('--skip', help='comma-separated checks to skip: backups,health,tls,dmarc,company')
+    parser.add_argument('--sha', help='the build being audited (default: the checkout HEAD)')
+    parser.add_argument('--report', help='write the Markdown report here')
+    parser.add_argument('--json', help='write the results as JSON here')
+    args = parser.parse_args(argv)
+    sha = args.sha or subprocess.run(['git', '-C', str(APP), 'rev-parse', 'HEAD'], capture_output=True, text=True).stdout.strip()
+    checks = run(args)
+    passed, report = render(checks, args, sha)
+    if args.report:
+        Path(args.report).write_text(report)
+    if args.json:
+        Path(args.json).write_text(json.dumps({'pass': passed, 'sha': sha, 'checks': [
+            {'name': name, 'pass': ok, 'detail': detail} for name, ok, detail in checks]}, indent=2) + '\n')
+    sys.stdout.write(report)
+    return 0 if passed else 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())
