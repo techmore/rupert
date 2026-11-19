@@ -16,6 +16,10 @@ NAME = re.compile(r'(?<![A-Za-z0-9_])RUPERT_[A-Z0-9_]*[A-Z0-9](_\*)?')
 # RUPERT_* identifiers that are not environment variables.
 NOT_ENV = {
     'RUPERT_SOURCES': 'Ruby constant in web/app/services/swipesimple_tender_match.rb',
+    # xcodebuild test-runner inputs for the iPhone UI tests (ios/RupertApp/UITests), never server settings.
+    'RUPERT_UI_EMAIL': 'ios/RupertApp/UITests/TimeFlowsUITests.swift',
+    'RUPERT_UI_PASSWORD': 'ios/RupertApp/UITests/TimeFlowsUITests.swift',
+    'RUPERT_UI_SHOTS': 'ios/RupertApp/UITests/TimeFlowsUITests.swift',
 }
 SKIP_SUFFIXES = ('.md', '.html', '.png', '.jpg', '.svg', '.ico', '.lock', '.pdf')
 

@@ -63,6 +63,72 @@ test('RSA verification accepts valid signatures and rejects hidden DigestAlgorit
   }
 });
 
+const atLeast = (version, minimum) => {
+  const [a, b] = [version, minimum].map(v => v.split('.').map(Number));
+  for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] > b[i];
+  return true;
+};
+const resolvedFrom = (consumer, name) => createRequire(consumer)(`${name}/package.json`).version;
+const consumers = {
+  'node-forge': [require.resolve('@expo/code-signing-certificates/package.json'), join(expoCliRoot, 'package.json')],
+  glob: [require.resolve('@expo/config/package.json'), require.resolve('@expo/fingerprint/package.json'), join(expoCliRoot, 'package.json'),
+    expoCliRequire.resolve('@expo/metro-config/package.json')],
+  minimatch: [require.resolve('@expo/fingerprint/package.json'), require.resolve('glob/package.json')]
+};
+
+test('Expo build tooling resolves fixed node-forge, glob and minimatch releases', () => {
+  // node-forge 1.4.1+ fixes GHSA-5x38/hqq3/8hrf/jc66/7wch/5cwg/525v/6wvx/4487/h6cr/4642; 1.4.2 adds the
+  // canonical DigestInfo check that supersedes the local GHSA-86w9 backport. glob 14.0.2 fixes
+  // GHSA-3g3m-2fjr-6pw4 and minimatch 11.0.1 fixes GHSA-g3hv-75wg-m249 (both forced by overrides).
+  for (const [name, minimum] of [['node-forge', '1.4.2'], ['glob', '14.0.2'], ['minimatch', '11.0.1']]) {
+    for (const consumer of consumers[name]) {
+      const version = resolvedFrom(consumer, name);
+      assert.ok(atLeast(version, minimum), `${consumer} resolves ${name} ${version}, below ${minimum}`);
+    }
+  }
+});
+
+test('deepmerge never lets an own __proto__ key replace the merged prototype', () => {
+  const deepmerge = require('deepmerge');
+  const poisonedTarget = JSON.parse('{"__proto__":{"injected":true},"a":1,"nested":{"x":1}}');
+  const poisonedSource = JSON.parse('{"__proto__":{"injected":true},"b":2,"nested":{"__proto__":{"injected":true},"y":2}}');
+  for (const result of [deepmerge(poisonedTarget, {}), deepmerge({}, poisonedSource), deepmerge(poisonedTarget, poisonedSource),
+    deepmerge.all([poisonedTarget, poisonedSource, {}])]) {
+    assert.equal(Object.getPrototypeOf(result), Object.prototype);
+    assert.equal(result.injected, undefined);
+    assert.equal(Object.getPrototypeOf(result.nested), Object.prototype);
+    assert.equal(result.nested.injected, undefined);
+  }
+  assert.equal(({}).injected, undefined);
+  const symbol = Symbol('kept');
+  assert.deepEqual(deepmerge({ name: 'app', plugins: ['a'], ios: { bundleIdentifier: 'x' } }, { plugins: ['b'], ios: { buildNumber: '2' } }),
+    { name: 'app', plugins: ['a', 'b'], ios: { bundleIdentifier: 'x', buildNumber: '2' } });
+  assert.equal(deepmerge({}, { [symbol]: 1 })[symbol], 1);
+});
+
+test('Expo glob and fingerprint matching still behave under glob 14 and minimatch 11', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'rupert-glob-'));
+  try {
+    for (const file of ['App.tsx', 'src/a.ts', 'src/types.d.ts', 'node_modules/x/index.ts', 'ios/Pods/p.ts', 'android/build/out.ts']) {
+      mkdirSync(dirname(join(root, file)), { recursive: true });
+      writeFileSync(join(root, file), '');
+    }
+    const { everyMatchAsync } = require(join(expoCliRoot, 'build/src/utils/glob.js'));
+    const found = await everyMatchAsync('**/*.@(ts|tsx)', { cwd: root, signal: AbortSignal.timeout(5000),
+      ignore: ['**/@(Carthage|Pods|node_modules)/**', '**/*.d.ts', '@(ios|android|web|web-build|dist)/**'] });
+    assert.deepEqual([...found].sort(), ['App.tsx', 'src/a.ts']);
+    const { glob } = require('glob');
+    const controller = new AbortController();
+    controller.abort();
+    await assert.rejects(glob('**/*', { cwd: root, signal: controller.signal }));
+    const { isIgnoredPath } = require('@expo/fingerprint/build/utils/Path.js');
+    assert.equal(isIgnoredPath('android/build/out.ts', ['**/android/build/**/*']), true);
+    assert.equal(isIgnoredPath('src/a.ts', ['**/android/build/**/*']), false);
+    assert.equal(isIgnoredPath('ios/keep.txt', ['ios/**/*', '!ios/keep.txt']), false);
+    assert.equal(isIgnoredPath('.env', ['**/.env']), true);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('Expo CLI resolves the patched zod release, not the vulnerable 3.x line', () => {
   const version = createRequire(join(expoCliRoot, 'package.json'))('zod/package.json').version;
   assert.match(version, /^4\./);

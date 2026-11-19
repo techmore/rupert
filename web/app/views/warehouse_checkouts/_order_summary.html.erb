@@ -1,0 +1,16 @@
+<section class="section-card" aria-label="Order summary">
+<%= section_heading 'Order summary' %>
+<ul class="divide-y divide-fog text-sm">
+  <% @cart.items.each do |item| %>
+    <li class="flex items-center justify-between gap-3 py-2">
+      <span class="min-w-0 truncate text-mocha"><%= item.quantity %> × <%= item.title %></span>
+      <span class="num shrink-0 font-medium text-ink"><%= number_to_currency(item.line_price) %></span>
+    </li>
+  <% end %>
+</ul>
+<div class="flex items-center justify-between border-t border-fog pt-3">
+  <span class="text-sm text-mocha">Total</span>
+  <span class="num text-lg font-semibold text-ink"><%= number_to_currency(@cart.total_cents / 100.0) %></span>
+</div>
+<%= submit_tag button, data: (local_assigns[:accept] ? { accept_payment_target: 'submit' } : {}), class: 'btn-primary btn-lg w-full' %>
+          </section>

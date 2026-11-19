@@ -1,0 +1,39 @@
+<% content_for :title, t('lms.team.title') %>
+<% summary = @report.summary %>
+<div class="space-y-6">
+  <%= page_header t('lms.team.title'), subtitle: t('lms.team.subtitle'), menu: [[t('lms.team.download'), lms_team_path(format: :csv, **@report.filters.compact)]] %>
+  <section class="grid grid-cols-2 gap-3 lg:grid-cols-5" aria-label="Completion summary">
+    <div class="stat"><p class="stat-label"><%= t('lms.team.people') %></p><p class="stat-value mt-1"><%= summary[:people] %></p></div>
+    <div class="stat"><p class="stat-label"><%= t('lms.team.completed') %></p><p class="stat-value mt-1"><%= summary[:completed] %></p></div>
+    <div class="stat"><p class="stat-label"><%= t('lms.team.in_progress') %></p><p class="stat-value mt-1"><%= summary[:in_progress] %></p></div>
+    <div class="stat"><p class="stat-label"><%= t('lms.team.overdue') %></p><p class="stat-value mt-1 <%= 'text-rose' if summary[:overdue].positive? %>"><%= summary[:overdue] %></p></div>
+    <div class="stat"><p class="stat-label"><%= t('lms.team.not_started') %></p><p class="stat-value mt-1"><%= summary[:not_started] %></p></div>
+  </section>
+  <%= form_with url: lms_team_path, method: :get, class: 'toolbar', data: { busy: false } do |form| %>
+    <div class="toolbar-field"><%= form.label :course, t('lms.team.course'), class: 'field-label' %><%= form.select :course, [[t('lms.team.all_courses'), '']] + Lms::Course.published.ordered.map { |course| [course.title, course.slug] }, { selected: @report.filters[:course] }, class: 'select' %></div>
+    <div class="toolbar-field"><%= form.label :role, t('lms.team.role'), class: 'field-label' %><%= form.select :role, [[t('lms.team.all_roles'), '']] + User.roles.keys.map { |role| [role.humanize, role] }, { selected: @report.filters[:role] }, class: 'select' %></div>
+    <div class="toolbar-field"><%= form.label :status, t('lms.team.status'), class: 'field-label' %><%= form.select :status, [[t('lms.team.all_statuses'), '']] + %w[completed in_progress assigned overdue not_assigned].map { |status| [t("lms.status.#{status}"), status] }, { selected: @report.filters[:status] }, class: 'select' %></div>
+    <div class="toolbar-actions"><%= form.submit 'Apply', class: 'btn-primary' %></div>
+  <% end %>
+  <div class="card">
+    <div class="table-region" role="region" tabindex="0" aria-label="<%= t('lms.team.title') %>">
+      <table class="table">
+        <thead><tr><th scope="col" class="th"><%= t('lms.team.person') %></th><th scope="col" class="th"><%= t('lms.team.role') %></th><th scope="col" class="th"><%= t('lms.team.course') %></th><th scope="col" class="th"><%= t('lms.team.status') %></th><th scope="col" class="th"><%= t('lms.team.progress') %></th><th scope="col" class="th"><%= t('lms.team.due') %></th><th scope="col" class="th"><%= t('lms.team.completed_on') %></th></tr></thead>
+        <tbody>
+          <% @report.rows.each do |row| %>
+            <tr>
+              <td class="td"><p class="font-medium text-ink"><%= row.user.display_name %><% if row.user == Current.user %> <span class="text-xs text-taupe">(you)</span><% end %></p><p class="text-xs text-mocha"><%= row.user.email %></p></td>
+              <td class="td"><span class="pill-taupe"><%= row.user.role.to_s.humanize %></span></td>
+              <td class="td"><%= row.course.title %><% if row.enrollment&.required? %><span class="block text-xs text-taupe"><%= t('lms.course.required') %></span><% end %></td>
+              <td class="td"><%= lms_status_pill row.status %></td>
+              <td class="td"><div class="flex items-center gap-2"><progress class="learning-progress w-24" value="<%= row.percent %>" max="100" aria-label="<%= row.user.display_name %> · <%= row.course.title %>"></progress><span class="tabular-nums text-xs text-mocha"><%= row.percent %>%</span></div></td>
+              <td class="td text-mocha"><%= row.enrollment&.due_on ? l(row.enrollment.due_on, format: :long) : '—' %></td>
+              <td class="td text-mocha"><%= row.enrollment&.completed_at ? l(row.enrollment.completed_at, format: :short) : '—' %></td>
+            </tr>
+          <% end %>
+          <% if @report.rows.empty? %><tr><td colspan="7" class="empty-row"><%= t('lms.team.empty') %></td></tr><% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

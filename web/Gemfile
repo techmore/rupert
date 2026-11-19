@@ -134,3 +134,7 @@ gem "ruby_llm", "~> 2.1"
 
 # QR codes linking receipts to lab certificates (COAs), drawn as inline SVG.
 gem "rqrcode", "~> 3.1"
+
+# Push notifications for the iPhone app (APNs, token auth over HTTP/2) and installed web apps (Web Push, VAPID).
+gem "apnotic", "~> 1.8"
+gem "web-push", "~> 3.0"

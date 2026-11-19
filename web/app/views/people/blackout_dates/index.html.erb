@@ -1,0 +1,32 @@
+<% content_for :title, 'Blackout dates' %>
+<div class="page-medium space-y-6">
+  <%= page_header 'Blackout dates', subtitle: 'Days when time off is not granted. Staff see them before they ask; a request on these days is flagged, not blocked.' %>
+  <section class="section-card">
+    <div class="card-head"><h2 class="card-title">Add blackout dates</h2></div>
+    <%= form_with model: @blackout, scope: :blackout_date, url: people_blackout_dates_path, class: 'space-y-4' do |f| %>
+      <% if @blackout.errors.any? %><div role="alert" class="flash flash-alert"><%= @blackout.errors.full_messages.to_sentence %></div><% end %>
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div><%= f.label :starts_on, 'First day', class: 'field-label' %><%= f.date_field :starts_on, class: 'input', required: true %></div>
+        <div><%= f.label :ends_on, 'Last day', class: 'field-label' %><%= f.date_field :ends_on, class: 'input', required: true %></div>
+        <div><%= f.label :location_id, 'Store', class: 'field-label' %><%= f.select :location_id, @locations.map { |l| [l.picker_label, l.id] }, { include_blank: 'Every store' }, class: 'select w-full' %></div>
+      </div>
+      <div><%= f.label :reason, 'Reason staff will see', class: 'field-label' %><%= f.text_field :reason, class: 'input', maxlength: 120, required: true, placeholder: 'e.g. Holiday rush' %></div>
+      <div class="form-actions"><%= f.submit 'Save', class: 'btn-primary' %></div>
+    <% end %>
+  </section>
+  <section class="section-card">
+    <div class="card-head"><h2 class="card-title">Upcoming and past</h2></div>
+    <% if @blackouts.empty? %>
+      <%= empty_state 'No blackout dates yet', hint: 'Add the first one above.' %>
+    <% else %>
+      <ul class="row-list">
+        <% @blackouts.each do |blackout| %>
+          <li class="row-item">
+            <div><p class="font-medium text-ink"><%= blackout.label %><%= ", #{blackout.ends_on.year}" %></p><p class="text-xs text-mocha"><%= blackout.reason %> · <%= blackout.location&.name || 'Every store' %></p></div>
+            <div class="row-item-end"><% if blackout.ends_on < Date.current %><span class="pill-taupe">Past</span><% end %><%= button_to 'Remove', people_blackout_date_path(blackout), method: :delete, class: 'btn-ghost btn-sm', form: { data: { turbo_confirm: 'Remove these blackout dates?' } } %></div>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </section>
+</div>

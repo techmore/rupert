@@ -29,6 +29,8 @@ module People
       own = TimeClockService.worker_for(Current.user, include_on_leave: true)
       @open_items = @open_clock_outs.items(employee_ids: @all_employees_for_punches ? nil : [own&.id].compact)
       visible = People::TimesheetPolicy.visible_to(Current.user)
+      # A manager limited to some stores reviews only the staff of those stores.
+      visible = visible.where(employee_id: People::StoreScope.employees_for(Current.user).select(:id)) if Current.user.scoped_to_locations?
       @has_demo_timesheets = visible.demo_records.exists?
       @awaiting = visible.awaiting_review.count
       scoped = visible
@@ -61,6 +63,7 @@ module People
       end
       @view_hours = People::TimesheetEntry.where(timesheet_id: scope.reorder(nil).select(:id)).sum(:hours)
       load_admin_overview(visible) if @reviewer
+      load_exceptions if @reviewer && Current.user.can?('timesheets.read') && @view == 'list'
       # Calendar view: bucket timesheets (and punches) by every day they cover.
       if @view == 'calendar'
         @month = parse_month(params[:month]) || Date.current.beginning_of_month
@@ -110,9 +113,21 @@ module People
 
       approved = 0
       failures = []
-      People::TimesheetPolicy.visible_to(Current.user).where(id: ids).includes(:employee).each do |sheet|
-        unless People::TimesheetPolicy.new(Current.user, sheet).approve? && sheet.submitted?
+      sheets = People::TimesheetPolicy.visible_to(Current.user).where(id: ids).includes(:employee).to_a
+      # A sheet with a blocking exception (missed punch, correction waiting) is never approved in bulk.
+      blocked = if sheets.any?
+        People::TimesheetExceptions.new(from: sheets.map(&:period_start).min, to: sheets.map(&:period_end).max,
+          employees: People::Employee.where(id: sheets.map(&:employee_id))).blocked_employee_ids
+      else
+        Set.new
+      end
+      sheets.each do |sheet|
+        unless People::TimesheetPolicy.new(Current.user, sheet).approve? && sheet.submitted? && People::StoreScope.covers?(Current.user, sheet.employee)
           failures << "#{sheet.employee&.name}: not available for your approval"
+          next
+        end
+        if blocked.include?(sheet.employee_id)
+          failures << "#{sheet.employee&.name}: needs attention first (missed punch or correction waiting)"
           next
         end
         workflow.change(sheet, :approve, review_note: params[:review_note])
@@ -144,6 +159,7 @@ module People
       # Square edits in this period that a manager has not settled (flagged, never applied silently).
       @square_changes = SquareTimecard.awaiting_review.where(employee_id: @timesheet.employee_id)
         .where(id: SquareTimecardDay.where(worked_on: @timesheet.period_start..@timesheet.period_end).select(:square_timecard_id)).count
+      @audit_trail = People::TimesheetAuditTrail.for(@timesheet)
       respond_to do |format|
         format.html
         format.csv do
@@ -291,6 +307,20 @@ module People
       Date.iso8601(value.to_s + '-01').beginning_of_month
     rescue Date::Error
       nil
+    end
+
+    # Exceptions first (time & pay): what needs a decision before the period's hours are safe to approve.
+    # Range: the dates on screen, or the current and previous pay period.
+    def load_exceptions
+      rules = PayRules.current
+      from = @from || rules.period_range(Date.current).first - rules.period_days
+      to = @to || rules.period_range(Date.current).last
+      employees = People::StoreScope.employees_for(Current.user, base: People::Employee.active)
+      employees = employees.merge(search_employees(@query)) if @query
+      @exceptions = People::TimesheetExceptions.new(from: from, to: to, employees: employees.to_a.then { |list| People::Employee.where(id: list.map(&:id)) })
+      @exception_items = @exceptions.items
+      @blocked_employee_ids = @exceptions.blocked_employee_ids
+      @correction_reviewer = ClockCorrection.reviewer?(Current.user)
     end
 
     def load_admin_overview(visible)

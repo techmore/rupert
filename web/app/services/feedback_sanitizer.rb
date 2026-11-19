@@ -21,9 +21,9 @@ module FeedbackSanitizer
   end
 
   # key=value, "key":"value" and key: value pairs whose key the log filter hides,
-  # plus bearer tokens and Rupert API tokens wherever they appear.
+  # plus card data (CardData), bearer tokens and Rupert API tokens wherever they appear.
   def scrub_text(text, max: nil)
-    out = scrub_pairs(text.to_s.scrub('').gsub(SECRET_TOKEN, FILTERED), parameter_filter)
+    out = scrub_pairs(CardData.redact(text.to_s.scrub('')).gsub(SECRET_TOKEN, FILTERED), parameter_filter)
     max ? out.first(max) : out
   end
 

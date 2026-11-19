@@ -1,0 +1,55 @@
+<% content_for :title, t('lms.title') %>
+<% menu = [] %>
+<% menu << [t('lms.index.team'), lms_team_path] if Current.user.can?(Lms::TEAM_PERMISSION) %>
+<% menu << [t('lms.index.manage'), lms_admin_courses_path] if Current.user.can?(Lms::EDIT_PERMISSION) %>
+<div class="page-medium space-y-6">
+  <%= page_header t('lms.title'), subtitle: t('lms.index.subtitle'), menu: menu.presence %>
+  <% if @courses.empty? %>
+    <div class="empty-state"><p class="empty-state-title"><%= t('lms.index.empty_title') %></p><p class="empty-state-hint"><%= t('lms.index.empty_hint') %></p></div>
+  <% end %>
+  <% { required: @required, other: @other }.each do |group, courses| %>
+    <% next if courses.empty? %>
+    <section class="section-card" aria-labelledby="lms-<%= group %>-title">
+      <%= section_heading t("lms.index.#{group}"), id: "lms-#{group}-title" %>
+      <ul class="row-list lms-course-list">
+        <% courses.each do |course| %>
+          <% enrollment = @enrollments[course.id] %>
+          <% percent = enrollment&.percent || 0 %>
+          <% next_lesson = enrollment&.next_lesson || course.lessons.first %>
+          <li class="row-item lms-course-row">
+            <%= lms_progress_ring percent, label: course.title %>
+            <div class="min-w-0 flex-1">
+              <p class="font-semibold text-ink"><%= link_to course.title, lms_course_path(course), class: 'lms-row-link' %></p>
+              <p class="text-xs text-mocha"><%= course.summary %></p>
+              <p class="mt-1 text-xs text-taupe">
+                <%= t('lms.index.lessons', count: course.lessons.size) %> · <%= lms_minutes(course.minutes) %>
+                <% if enrollment&.overdue? %> · <span class="pill-rose"><%= t('lms.index.overdue', date: l(enrollment.due_on, format: :long)) %></span>
+                <% elsif enrollment&.due_on && !enrollment.completed? %> · <%= t('lms.index.due', date: l(enrollment.due_on, format: :long)) %><% end %>
+              </p>
+            </div>
+            <div class="row-item-end">
+              <% if enrollment&.completed? %>
+                <%= lms_status_pill 'completed' %>
+                <%= link_to t('lms.index.review'), lms_course_path(course), class: 'btn-ghost btn-sm' %>
+              <% elsif enrollment && enrollment.status == 'in_progress' && next_lesson %>
+                <%= link_to t('lms.index.continue'), lms_course_lesson_path(course, next_lesson), class: 'btn-primary btn-sm' %>
+              <% else %>
+                <%= link_to t('lms.index.start'), lms_course_path(course), class: 'btn-primary btn-sm' %>
+              <% end %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    </section>
+  <% end %>
+  <% if @badges.any? %>
+    <section class="section-card" aria-labelledby="lms-badges-title">
+      <%= section_heading t('lms.index.badges'), id: 'lms-badges-title' %>
+      <ul class="lms-badge-list">
+        <% @badges.each do |enrollment| %>
+          <li><%= link_to badge_lms_course_path(enrollment.course), class: 'lms-badge-chip' do %><%= render 'lms/shared/badge_mark', small: true %><span><span class="block font-semibold text-ink"><%= enrollment.course.badge_title.presence || enrollment.course.title %></span><span class="block text-xs text-mocha"><%= l(enrollment.completed_at.to_date, format: :long) %></span></span><% end %></li>
+        <% end %>
+      </ul>
+    </section>
+  <% end %>
+</div>

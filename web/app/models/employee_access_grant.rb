@@ -22,7 +22,10 @@ class EmployeeAccessGrant < ApplicationRecord
       if user
         raise TimesheetWorkflow::Error, 'Manage this existing account through Accounts; setup links are only for the staff role.' unless user.employee? && user.active? && user.tenant_id == Current.tenant_id
       else
-        raise TimesheetWorkflow::Error, 'An account already uses this email. Link the verified existing account through the staff record.' if User.where('LOWER(TRIM(email)) = ?', email).exists?
+        if User.where('LOWER(TRIM(email)) = ?', email).exists?
+          # Says the same thing whether the account is here or in another workspace, so it reveals nothing more.
+          raise TimesheetWorkflow::Error, 'An account already uses this email. One email signs in to one workspace: link the existing account on this staff record if it belongs here, or use a different email.'
+        end
         user = User.create!(tenant: Current.tenant, email: email, name: employee.name,
           role: 'employee', password: SecureRandom.urlsafe_base64(48))
         employee.update!(user: user)

@@ -19,6 +19,19 @@
       <% end %>
       <p class="mt-1 text-xs text-taupe">Roles are tuned on the <%= link_to 'Permissions', permissions_path, class: 'text-olive hover:underline' %> page.</p>
     </div>
+    <% stores = Location.for_shifts.order(:name).to_a %>
+    <% if stores.many? %>
+      <fieldset data-user-stores>
+        <legend class="field-label">Stores (managers and shift leads)</legend>
+        <p class="mb-2 text-xs text-taupe">Tick stores to limit which staff this person reviews, schedules and approves. Nothing ticked means every store.</p>
+        <%= hidden_field_tag 'user[location_ids][]', '' %>
+        <div class="grid gap-2 sm:grid-cols-2">
+          <% stores.each do |store| %>
+            <label class="flex items-center gap-2 text-sm"><%= check_box_tag 'user[location_ids][]', store.id, user.location_ids.include?(store.id.to_s), class: 'checkbox', id: "user_location_#{store.id}" %> <%= store.name %></label>
+          <% end %>
+        </div>
+      </fieldset>
+    <% end %>
     <div>
       <%= f.label :password, user.persisted? ? "New password (leave blank to keep current)" : "Password", class: "field-label" %>
       <%= f.password_field :password, class: "input", autocomplete: "new-password" %>

@@ -41,6 +41,17 @@ class AuthorizeNetClientTest < ActiveSupport::TestCase
     assert_equal 'OK', result.auth_code
   end
 
+  # The live API prefixes JSON with a UTF-8 byte-order mark.
+  test 'charge reads a response that starts with a byte-order mark' do
+    stub_request(:post, 'https://apitest.authorize.net/xml/v1/request.api')
+      .to_return(status: 200, body: "\xEF\xBB\xBF".b + gateway_body(response_code: '1'), headers: { 'Content-Type' => 'application/json' })
+
+    result = AuthorizeNetClient.charge!(amount_cents: 1000, payment_nonce: 'nonce-bom', ref_id: 'r2', invoice_number: 'WH-2')
+
+    assert result.approved?
+    assert_equal '4000', result.transaction_id
+  end
+
   test 'charge is declined for other response codes' do
     stub_request(:post, 'https://apitest.authorize.net/xml/v1/request.api')
       .to_return(status: 200,

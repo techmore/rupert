@@ -9,12 +9,17 @@ class ComplianceItemEligibilityTest < ActiveSupport::TestCase
   include ComplianceFixtures
 
   setup do
+    # Relative ages (`400.days.ago`) are read against the fixed `on:` date of the checks below.
+    travel_to Time.zone.parse('2026-11-02 12:00')
     Current.tenant = tenants(:default_tenant)
     @location = compliance_store
     @tincture = approve!(@location, '11', name: 'Broad Spectrum Hemp Extract 1000mg', category: card_category, thc_mg_per_container: 0)
     @flower = approve!(@location, '22', name: 'Hemp Flower 3.5g', category: cash_category, card: false, thc_mg_per_container: 87.5)
   end
-  teardown { Current.reset }
+  teardown do
+    travel_back
+    Current.reset
+  end
 
   test 'approved card item with a current COA passes for card and cash' do
     %w[card card_a920 card_terminal cash].each do |tender|

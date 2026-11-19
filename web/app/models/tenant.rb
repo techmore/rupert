@@ -22,6 +22,12 @@ class Tenant < ApplicationRecord
     allow_blank: true,
     format: { with: /\A[a-z0-9-]+\.myshopify\.com\z/, message: 'must look like your-store.myshopify.com' }
 
+  # Zones a workspace can choose at Settings → Time rules: the United States first, then the rest.
+  TIME_ZONES = (ActiveSupport::TimeZone.us_zones + (ActiveSupport::TimeZone.all - ActiveSupport::TimeZone.us_zones)).uniq { |zone| zone.tzinfo.name }.freeze
+  # Blank means the instance default (config.time_zone); BusinessClock reads this for every day boundary.
+  validates :time_zone, inclusion: { in: ->(_) { TZInfo::Timezone.all_identifiers }, message: 'is not a known time zone' }, allow_blank: true
+  normalizes :time_zone, with: ->(value) { value.to_s.strip.presence }
+
   def to_param
     subdomain
   end

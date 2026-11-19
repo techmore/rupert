@@ -69,6 +69,20 @@ class WarehouseCheckoutServiceTest < ActiveSupport::TestCase
     assert_equal 1, Core::Payment.count
   end
 
+  test 'items not approved for the online processor are refused before any charge' do
+    AuthorizeNetClient.stubs(:configured?).returns(true)
+    AuthorizeNetClient.expects(:charge!).never
+    ProcessorCatalog.create!(processor: 'authorize_net', enforced: true, approval_reference: 'ISO approval').entries.create!(kind: 'sku', value: 'CBD-ONLY')
+    result = WarehouseCheckoutService.call(share: @share, cart: @cart, quote_token: WarehouseCheckoutQuote.issue(@cart), shipping: {}, payment_nonce: 'nonce')
+    refute_predicate result, :success?
+    assert_match(/Widget \(SKU WDG-1\) can't be paid for by card online/, result.error)
+    assert_equal 0, WarehousePaymentAttempt.count
+    ProcessorCatalog.find_by!(processor: 'authorize_net').entries.create!(kind: 'sku', value: 'wdg-1')
+    AuthorizeNetClient.unstub(:charge!)
+    AuthorizeNetClient.stubs(:charge!).returns(approved_charge)
+    assert_predicate WarehouseCheckoutService.call(share: @share, cart: @cart, quote_token: WarehouseCheckoutQuote.issue(@cart), shipping: {}, payment_nonce: 'nonce'), :success?
+  end
+
   test 'a declined payment leaves the cart open and creates no order' do
     AuthorizeNetClient.stubs(:configured?).returns(true)
     AuthorizeNetClient.stubs(:charge!).returns(
