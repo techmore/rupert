@@ -2,7 +2,7 @@
 <% content_for :head do %><meta name="turbo-cache-control" content="no-cache"><% end %>
 <div class="space-y-6" data-controller="live-sync">
   <div <%= tour_anchor('run') %>>
-    <%= page_header 'Sync', subtitle: 'Every scheduled and manual pull from Shopify and Square.',
+    <%= page_header 'Sync', subtitle: 'How fresh each platform’s stock is, and every scheduled and manual pull.',
                     menu: [['Sync Square only', source_syncs_path(source: 'square'), { method: :post }], ['Sync Shopify only', source_syncs_path(source: 'shopify'), { method: :post }]] do %>
       <%= form_tag syncs_path, method: :post, class: "inline" do %>
         <%= submit_tag "Sync now", class: "btn-primary", data: { turbo_submits_with: 'Syncing…' } %>
@@ -11,6 +11,7 @@
   </div>
 
   <%= render "syncs/banner" %>
+  <%= render "syncs/stock_sources" if Current.user.can?('inventory.read') %>
 
   <section class="grid gap-4 lg:grid-cols-2">
     <%= render "syncs/runs" %>

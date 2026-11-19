@@ -44,7 +44,7 @@
     <p class="text-sm text-mocha"><span data-inventory-count-scanner-target="itemCount"><%= @items.size %></span> SKUs · <span data-inventory-count-scanner-target="total"><%= @count.total_quantity %></span> units</p>
     <ul class="divide-y divide-fog" data-inventory-count-scanner-target="items">
       <% @items.each do |item| %>
-        <li class="flex justify-between gap-4 py-2" data-sku="<%= item.sku %>"><span class="font-mono text-sm"><%= item.sku %></span><strong data-quantity><%= item.quantity %></strong></li>
+        <li class="flex justify-between gap-4 py-2" data-sku="<%= item.sku %>"><span class="min-w-0"><span class="block truncate text-sm text-ink" data-title><%= item.inventory_title %></span><span class="font-mono text-xs text-taupe"><%= item.sku %></span></span><strong data-quantity><%= item.quantity %></strong></li>
       <% end %>
     </ul>
   </section>

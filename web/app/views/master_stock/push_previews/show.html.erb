@@ -5,58 +5,69 @@
   <% if @site.nil? %>
     <%= render 'master_stock/no_sites' %>
   <% else %>
+    <% label = MasterStock.platform_label(@platform) %>
     <%= render 'master_stock/site_picker', sites: @sites, site: @site, path: :master_stock_push_preview_path, extra: { platform: @platform } %>
-    <%= page_tabs(StockSite::PLATFORMS.map { |p| [MasterStock.platform_label(p), master_stock_push_preview_path(site_id: @site.id, platform: p), p == @platform] }, label: 'Platform') %>
+    <%= page_tabs(StockSite::PLATFORMS.map { |p| ["#{MasterStock.platform_label(p)}#{' (not mapped)' unless @site.mapped_platforms.include?(p)}", master_stock_push_preview_path(site_id: @site.id, platform: p), p == @platform] }, label: 'Platform') %>
 
-    <div class="flash flash-alert" role="note">
-      <strong>Preview only. Live pushing is off and needs owner approval.</strong>
-      Sales made on <%= MasterStock.platform_label(@platform) %> or another channel after Rupert’s last count are not yet applied to Rupert’s number, so a push long after a count would undo them.
+    <div class="callout callout-attention" role="note">
+      <p class="callout-title">Preview only. Live pushing is off until the owner approves it.</p>
+      <p class="mt-1 text-sm text-mocha">Sales made on <%= label %> or another channel after Rupert’s last count are not in Rupert’s number yet, so a push long after a count would undo them. Push right after counting.</p>
     </div>
 
     <% blocker = @preview.platform_blocker %>
     <% summary = @preview.summary %>
+    <% all_rows = @preview.rows %>
+    <% large = all_rows.count { |row| row.status == 'change' && MasterStock::PushPreview.large_change?(row) } %>
+    <% read_at = @preview.snapshot_at %>
+    <% stale = read_at.nil? || read_at < MasterStock::PushPreview::FRESH_FOR.ago %>
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <div class="card card-pad"><p class="stat-label">Would change</p><p class="stat-value"><%= summary[:change] %></p><p class="text-xs text-taupe">−<%= summary[:units_down] %> / +<%= summary[:units_up] %> units</p></div>
-      <div class="card card-pad"><p class="stat-label">Blocked</p><p class="stat-value"><%= summary[:blocked] %></p></div>
+      <div class="card card-pad"><p class="stat-label">Would change</p><p class="stat-value"><%= summary[:change] %></p><p class="text-xs text-taupe">−<%= summary[:units_down] %> / +<%= summary[:units_up] %> units<%= " · #{large} large" if large.positive? %></p></div>
+      <div class="card card-pad"><p class="stat-label">Blocked</p><p class="stat-value"><%= summary[:blocked] %></p><p class="text-xs text-taupe">Need a count, a fresh read or a link</p></div>
       <div class="card card-pad"><p class="stat-label">Already match</p><p class="stat-value"><%= summary[:in_sync] %></p></div>
-      <div class="card card-pad"><p class="stat-label"><%= MasterStock.platform_label(@platform) %> read</p><p class="text-sm font-semibold text-ink"><%= @preview.snapshot_at ? "#{time_ago_in_words(@preview.snapshot_at)} ago" : 'Never' %></p><p class="text-xs text-taupe"><%= @preview.location&.name || 'No location mapped' %></p></div>
+      <div class="card card-pad"><p class="stat-label"><%= label %> read</p><p class="text-sm font-semibold <%= stale ? 'text-clay' : 'text-ink' %>"><%= read_at ? "#{short_age(read_at)} ago" : 'Never' %><%= ' · too old to push' if stale && read_at %></p><p class="text-xs text-taupe"><%= @preview.location&.name || 'No location mapped' %></p></div>
     </div>
-    <% if blocker %><p class="flash flash-alert" role="status"><%= blocker %></p><% end %>
+    <% if blocker %>
+      <p class="flash flash-alert" role="status"><%= blocker %> <% if Current.user.can?('settings.write') %><%= link_to 'Map it in Setup', master_stock_setup_path, class: 'font-semibold underline' %><% end %></p>
+    <% end %>
     <p class="text-sm text-mocha"><%= MasterStock::PushPreview::PLATFORM_WRITES.fetch(@platform) %></p>
 
-    <div class="toolbar-band">
-      <%= form_with url: master_stock_push_preview_path, method: :get, class: 'toolbar' do %>
-        <%= hidden_field_tag :site_id, @site.id %><%= hidden_field_tag :platform, @platform %>
-        <div class="toolbar-field"><%= label_tag :status, 'Show', class: 'field-label' %><%= select_tag :status, options_for_select([['Would change', 'change'], ['Blocked', 'blocked'], ['Already match', 'in_sync']], @status), include_blank: 'Everything', class: 'input' %></div>
-        <div class="toolbar-actions"><%= submit_tag 'Apply', class: 'btn-primary', name: nil %></div>
-      <% end %>
-    </div>
+    <% counts = { nil => all_rows.size, 'change' => summary[:change], 'blocked' => summary[:blocked], 'in_sync' => summary[:in_sync] } %>
+    <%= page_tabs([[nil, 'All'], ['change', 'Change'], ['blocked', 'Blocked'], ['in_sync', 'Match']].map { |status, text| ["#{text} #{counts[status]}", master_stock_push_preview_path(site_id: @site.id, platform: @platform, status: status), @status == status] }, label: 'Show') %>
 
-    <ul class="space-y-3" aria-label="Proposed platform writes">
-      <% @rows.each do |row| %>
-        <li class="card card-pad space-y-2">
-          <div class="flex flex-wrap items-start justify-between gap-3">
-            <div class="min-w-0">
-              <%= link_to row.item.name, master_stock_item_path(row.item), class: 'font-semibold text-ink hover:underline' %>
-              <p class="font-mono text-xs text-taupe break-all"><%= row.link.native_item_id %></p>
-            </div>
-            <span class="<%= { 'change' => 'pill-clay', 'blocked' => 'pill-taupe', 'in_sync' => 'pill-fern' }.fetch(row.status) %>"><%= { 'change' => 'Would change', 'blocked' => 'Blocked', 'in_sync' => 'Matches' }.fetch(row.status) %></span>
-          </div>
-          <dl class="grid grid-cols-3 gap-2 text-sm">
-            <div><dt class="text-xs text-taupe"><%= MasterStock.platform_label(@platform) %> now</dt><dd class="font-semibold tabular-nums"><%= row.observed.nil? ? 'Unknown' : row.observed %></dd></div>
-            <div><dt class="text-xs text-taupe">Rupert</dt><dd class="font-semibold tabular-nums"><%= row.target.nil? ? 'Not counted' : row.target %></dd></div>
-            <div><dt class="text-xs text-taupe">Change</dt><dd class="font-semibold tabular-nums"><%= row.change.nil? ? '—' : (row.change.positive? ? "+#{row.change}" : row.change) %></dd></div>
-          </dl>
-          <p class="text-sm text-ink"><%= row.action %></p>
-          <% row.reasons.each do |reason| %><p class="text-xs text-clay"><%= reason %></p><% end %>
-          <% if row.payload %>
-            <details class="explainer"><summary class="explainer-summary">Exact request Rupert would send</summary><pre class="mt-2 overflow-x-auto whitespace-pre-wrap break-all rounded bg-haze p-2 font-mono text-xs"><%= JSON.pretty_generate(row.payload) %></pre><p class="mt-1 text-xs text-taupe">Credentials and the idempotency key are added only when a live push is queued.</p></details>
-          <% end %>
-        </li>
-      <% end %>
-      <% if @rows.empty? %>
-        <li class="card card-pad text-sm text-mocha">No items at <%= @site.name %> are linked to <%= MasterStock.platform_label(@platform) %><%= ' with this status' if @status %>. Link items in Setup or on an item’s page.</li>
-      <% end %>
-    </ul>
+    <% if @rows.any? %>
+      <div class="card overflow-hidden">
+        <table class="table preview-table stack-table" aria-label="Proposed <%= label %> writes at <%= @site.name %>">
+          <thead><tr><th scope="col" class="th">Item</th><th scope="col" class="th num"><%= label %> now</th><th scope="col" class="th num">Rupert</th><th scope="col" class="th num">Change</th><th scope="col" class="th">What would happen</th></tr></thead>
+          <tbody>
+            <% @rows.each do |row| %>
+              <% big = row.status == 'change' && MasterStock::PushPreview.large_change?(row) %>
+              <tr class="<%= 'preview-row-large' if big %>">
+                <td class="td" data-label="Item">
+                  <%= link_to row.item.name, master_stock_item_path(row.item, site_id: @site.id), class: 'font-medium text-ink hover:underline' %>
+                  <p class="font-mono text-xs text-taupe break-all"><%= row.item.sku.presence || row.link.native_item_id.sub('gid://shopify/ProductVariant/', 'Variant ') %></p>
+                </td>
+                <td class="td num" data-label="<%= label %> now"><%= row.observed.nil? ? tag.span('Unknown', class: 'text-taupe') : row.observed %></td>
+                <td class="td num" data-label="Rupert"><%= row.target.nil? ? tag.span('Not counted', class: 'text-taupe') : row.target %></td>
+                <td class="td num font-semibold" data-label="Change"><%= signed_units(row.change) %></td>
+                <td class="td" data-label="What would happen">
+                  <span class="<%= { 'change' => 'pill-clay', 'blocked' => 'pill-rose', 'in_sync' => 'pill-fern' }.fetch(row.status) %>"><%= { 'change' => 'Would change', 'blocked' => 'Blocked', 'in_sync' => 'Matches' }.fetch(row.status) %></span>
+                  <% if big %><span class="pill-rose">Large change: recount first</span><% end %>
+                  <p class="mt-1 text-sm text-ink"><%= row.action %></p>
+                  <% row.reasons.each do |reason| %><p class="text-xs text-mocha"><%= reason %></p><% end %>
+                  <% if row.payload %>
+                    <details class="explainer mt-1"><summary class="explainer-summary">Exact request</summary><pre class="mt-2 overflow-x-auto whitespace-pre-wrap break-all rounded bg-haze p-2 font-mono text-xs"><%= JSON.pretty_generate(row.payload) %></pre><p class="mt-1 text-xs text-taupe">Credentials and the idempotency key are added only when a live push is queued.</p></details>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="card card-pad text-sm text-mocha">
+        <% if @status %>Nothing at <%= @site.name %> is in “<%= { 'change' => 'Would change', 'blocked' => 'Blocked', 'in_sync' => 'Match' }.fetch(@status) %>” for <%= label %>.
+        <% else %>No items at <%= @site.name %> are linked to <%= label %>. Link items in <%= link_to 'Setup', master_stock_setup_path, class: 'underline' %> or on an item’s page.<% end %>
+      </div>
+    <% end %>
   <% end %>
 </div>

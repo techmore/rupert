@@ -21,10 +21,17 @@ class SquareVariation < ApplicationRecord
   has_many :movements, class_name: 'InventoryMovement', foreign_key: 'squareVariationId'
   has_many :alerts, class_name: 'StockAlert', foreign_key: 'squareVariationId'
 
+  # Every word in the item name, variation name or SKU, or an exact SKU (as ShopifyVariant.search).
   scope :search, lambda { |q|
-    return all if q.blank?
+    text = q.to_s.strip
+    return all if text.blank?
 
-    where(sku: q).or(where('sku LIKE ?', "%#{q}%")).or(where('name LIKE ?', "%#{q}%"))
+    words = text.split(/\s+/).first(6).reduce(all) do |scope, word|
+      pattern = "%#{sanitize_sql_like(word)}%"
+      items = SquareItem.where("name LIKE ? ESCAPE '\\'", pattern).select(:id)
+      scope.where("sku LIKE :p ESCAPE '\\' OR name LIKE :p ESCAPE '\\'", p: pattern).or(scope.where(itemId: items))
+    end
+    words.or(where(sku: text))
   }
 
   def name_with_sku

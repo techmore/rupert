@@ -18,22 +18,37 @@ module MasterStock
 
     attr_reader :site, :platform
 
-    def initialize(site:, platform:, at: Time.current)
+    # item_ids: limit the preview to these Rupert items (the stock list and an
+    # item page show platform numbers for a few items without building them all).
+    def initialize(site:, platform:, at: Time.current, item_ids: nil)
       raise ArgumentError, 'unknown platform' unless StockSite::PLATFORMS.include?(platform)
 
       @site = site
       @platform = platform
       @at = at
+      @item_ids = item_ids
       @location = site.platform_location(platform)
     end
 
+    # Would-change rows first, largest change first, then blocked, then matching.
     def rows
       @rows ||= begin
-        links = site.links.where(platform: platform).includes(:stock_item).order(:id).to_a
+        links = site.links.where(platform: platform).includes(:stock_item).order(:id)
+        links = links.where(stock_item_id: @item_ids) if @item_ids
+        links = links.to_a
         balances = StockBalance.where(stock_site: site, stock_item_id: links.map(&:stock_item_id)).index_by(&:stock_item_id)
         links.map { |link| build(link, balances[link.stock_item_id]) }
-          .sort_by { |row| [{ 'change' => 0, 'blocked' => 1, 'in_sync' => 2 }.fetch(row.status), row.item.name.downcase] }
+          .sort_by { |row| [{ 'change' => 0, 'blocked' => 1, 'in_sync' => 2 }.fetch(row.status), -row.change.to_i.abs, row.item.name.downcase] }
       end
+    end
+
+    def rows_by_item = rows.index_by { |row| row.item.id }
+
+    # A change this large is more likely a miscount or a missing sale than real stock.
+    def self.large_change?(row)
+      return false unless row.change && row.observed
+
+      row.change.abs >= 10 && row.change.abs * 2 >= [row.observed.abs, row.target.to_i].max
     end
 
     def summary
@@ -88,7 +103,7 @@ module MasterStock
       case platform
       when 'shopify'
         snapshot = shopify_snapshot
-        record = snapshot&.records&.find { |row| row['id'] == link.native_item_id }
+        record = records_by_id(snapshot)[link.native_item_id]
         return missing(reasons, snapshot) unless record
 
         quantity = record['on_hand']
@@ -97,7 +112,7 @@ module MasterStock
         [quantity.is_a?(Integer) ? quantity : nil, snapshot.captured_at, record]
       when 'ctrax'
         snapshot = ctrax_snapshot
-        record = snapshot&.records&.find { |row| row['id'].to_s == link.native_item_id }
+        record = records_by_id(snapshot)[link.native_item_id]
         return missing(reasons, snapshot) unless record
 
         raw = record['quantity']
@@ -164,6 +179,11 @@ module MasterStock
             'location_id' => @location.externalId, 'catalog_object_id' => link.native_item_id, 'quantity' => change.abs.to_s
           } }] } }
       end
+    end
+
+    def records_by_id(snapshot)
+      @records_by_id ||= {}
+      @records_by_id[snapshot&.id] ||= snapshot ? snapshot.records.index_by { |row| row['id'].to_s } : {}
     end
 
     def shopify_snapshot

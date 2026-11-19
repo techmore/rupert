@@ -34,9 +34,18 @@ class ShopifyVariant < ApplicationRecord
       .where(arel_table[:price].gt(0))
   end
 
+  # Staff search the way they talk: every word must appear in the product name,
+  # the variant title or the SKU ("field guide m"), or the whole text is an exact
+  # SKU or barcode (a scan).
   scope :search, lambda { |q|
-    return all if q.blank?
+    text = q.to_s.strip
+    return all if text.blank?
 
-    where(sku: q).or(where('sku LIKE ?', "%#{q}%")).or(where('title LIKE ?', "%#{q}%"))
+    words = text.split(/\s+/).first(6).reduce(all) do |scope, word|
+      pattern = "%#{sanitize_sql_like(word)}%"
+      products = ShopifyProduct.where("title LIKE ? ESCAPE '\\'", pattern).select(:id)
+      scope.where("sku LIKE :p ESCAPE '\\' OR title LIKE :p ESCAPE '\\'", p: pattern).or(scope.where(productId: products))
+    end
+    words.or(where(sku: text)).or(where(barcode: text))
   }
 end

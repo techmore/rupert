@@ -76,12 +76,19 @@ export default class extends Controller {
       row = document.createElement("li")
       row.className = "flex justify-between gap-4 py-2"
       row.dataset.sku = result.sku
+      const label = document.createElement("span")
+      label.className = "min-w-0"
+      const title = document.createElement("span")
+      title.className = "block truncate text-sm text-ink"
+      title.dataset.title = ""
+      title.textContent = result.title || ""
       const sku = document.createElement("span")
-      sku.className = "font-mono text-sm"
+      sku.className = "font-mono text-xs text-taupe"
       sku.textContent = result.sku
+      label.append(title, sku)
       const quantity = document.createElement("strong")
       quantity.dataset.quantity = ""
-      row.append(sku, quantity)
+      row.append(label, quantity)
       this.itemsTarget.append(row)
     }
     row.querySelector("[data-quantity]").textContent = result.quantity

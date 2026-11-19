@@ -22,12 +22,12 @@
         <% @runs.each do |run| %>
           <tr>
             <td class="td whitespace-nowrap text-mocha"><%= l(run.startedAt, format: :short) %></td>
-            <td class="td text-mocha"><%= run.mode %></td>
-            <td class="td text-mocha"><%= run.source.presence || "—" %></td>
+            <td class="td text-mocha"><%= run.mode.to_s.humanize %></td>
+            <td class="td text-mocha"><%= { 'all' => 'All sources', 'shopify' => 'Shopify', 'square' => 'Square' }.fetch(run.source.to_s, run.source.presence || '—') %></td>
             <td class="td">
-              <span class="<%= run.success? ? "pill-fern" : run.failed? ? "pill-rose" : "pill-taupe" %>"><%= run.status %></span>
+              <span class="<%= run.success? ? "pill-fern" : run.failed? ? "pill-rose" : "pill-taupe" %>"><%= { 'success' => 'Done', 'failed' => 'Failed', 'running' => 'Running' }.fetch(run.status.to_s, run.status.to_s.humanize) %></span>
               <% if run.error.present? %>
-                <p class="mt-1 max-w-xs text-xs text-rose"><%= run.error.truncate(120) %></p>
+                <p class="mt-1 max-w-xs text-xs text-mocha"><%= run.error.truncate(160) %></p>
               <% end %>
             </td>
           </tr>

@@ -1,7 +1,8 @@
 // Global form busy state, applied to every <form> on every page without
 // needing per-view data attributes. Capturing submit listener disables the
-// submit button(s) and swaps their label to "Saving…" so slow saves never
-// look like nothing happened. Turbo restores buttons on submit-end.
+// submit button(s) and swaps their label to "Saving…" (or "Loading…" for a
+// search or filter form, which saves nothing) so slow submits never look like
+// nothing happened. Turbo restores buttons on submit-end.
 //
 // Forms can opt out with data-busy="false" (e.g. search-as-you-type forms).
 
@@ -12,11 +13,12 @@ function armForm(form) {
   form.addEventListener("submit", () => {
     if (form.dataset.busyActive === "true") return
     form.dataset.busyActive = "true"
+    const label = (form.getAttribute("method") || "get").toLowerCase() === "get" ? "Loading…" : "Saving…"
     form.querySelectorAll("button[type=submit], input[type=submit]").forEach((btn) => {
       btn.dataset.busyLabel = btn.tagName === "INPUT" ? btn.value : btn.textContent
       btn.disabled = true
-      if (btn.tagName === "INPUT") btn.value = "Saving…"
-      else btn.textContent = "Saving…"
+      if (btn.tagName === "INPUT") btn.value = label
+      else btn.textContent = label
     })
   })
   form.addEventListener("turbo:submit-end", () => {

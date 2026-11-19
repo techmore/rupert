@@ -13,7 +13,7 @@
     <% end %>
   </div>
 
-  <% if @queue.summary[:limited] %><p role="status" class="flash flash-alert">Results limited: additional matching records or identity members were not checked or displayed. Narrow the platform or location filter and review the coverage notes below.</p><% end %>
+  <% if @queue.summary[:limited] %><div role="status" class="callout callout-attention"><p class="callout-title">Showing the first results only</p><p class="mt-1 text-sm text-mocha">More matching records were not checked or shown. Pick one platform or location above to see them all, and read the coverage notes below.</p></div><% end %>
 
   <section class="card" aria-label="Exceptions by work type">
     <ul class="row-list">

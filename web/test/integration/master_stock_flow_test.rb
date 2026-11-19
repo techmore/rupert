@@ -28,8 +28,10 @@ class MasterStockFlowTest < ActionDispatch::IntegrationTest
     token = css_select('input[name="request_token"]').first['value']
     params = { request_token: token, movement: { kind: 'count', item_id: @item.id, site_id: @site.id, quantity: '7' } }
     post master_stock_movements_path, params: params
-    assert_redirected_to master_stock_items_path(site_id: @site.id)
-    assert_equal 'Count: Gummies 10 pack at Main store is now 7.', flash[:notice]
+    assert_redirected_to master_stock_items_path(site_id: @site.id, recorded: StockLedgerEntry.last.id)
+    assert_equal 'Count: Gummies 10 pack at Main store is now 7. First count here.', flash[:notice]
+    follow_redirect!
+    assert_select '[data-just-recorded] a', text: 'Count again'
     post master_stock_movements_path, params: params
     assert_match 'nothing was added twice', flash[:notice]
 
