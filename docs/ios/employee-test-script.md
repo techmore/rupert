@@ -51,7 +51,7 @@ What the server allows each role is tested in `web/test/integration/` (`employee
 
 | Step | Expect |
 |---|---|
-| Open the app signed out | Five tabs. Time shows "My time" with **Sign in**. |
+| Open the app signed out | The sign-in page ("Sign in to continue."), with no tab bar. The person button (App settings) is at the top. |
 | Sign in with a wrong password | "Invalid email or password". Still signed out. |
 | Sign in as the staff account | Lands on **My time** ("Hi, …"). |
 | Look at the tab bar | **Time** and **Notifications** only. No Home, Team Chat or Ask Rupert. |
@@ -65,7 +65,8 @@ What the server allows each role is tested in `web/test/integration/` (`employee
 | Start and end a break (if the shop has breaks on) | The break shows on today's shift. |
 | **Clock out** | Clocked out; today's hours update. |
 | Schedule, Time off, Pay, Timesheets pills | Each opens. Only this person's own shifts, requests, pay and timesheets. |
-| Time off → new request | Opens as a sheet; the request appears as *Requested*. |
+| Time off → new request | The request appears as *Requested*. |
+| Schedule → **More** → **My availability** | Opens as a sheet with **Cancel** (shown as ✕). Untouched, Cancel closes it. After typing, Cancel or a swipe down asks **Discard Changes**. |
 | Timesheets → open a draft → **Submit** | Submitted. There is no Approve button on one's own sheet. |
 
 ## 3. Notifications tab
@@ -130,7 +131,7 @@ in as the staff account, or use the web app; the app itself offers no link to th
 
 | Step | Expect |
 |---|---|
-| Person button → **Sign out** → confirm | The sign-in page. All five tabs are back for the next person. |
+| Person button → **Sign out** → confirm | The sign-in page with no tab bar, ready for the next person. Signing in again straight away works. |
 | Sign in as the owner on the same phone | All five tabs; Team Chat and Ask Rupert open. |
 | Sign in as staff again, then change that account's password on the web | The next page in the app shows the sign-in page ("Please sign in"), and the tabs return to five. |
 | Person button → **Switch workspace** | Signed out and back on the Rupert sign-in page. |
