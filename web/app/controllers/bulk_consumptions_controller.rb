@@ -4,7 +4,8 @@ require 'csv'
 
 class BulkConsumptionsController < BulkInventoryController
   CONTRACT = 'bulk-sale-consumption-v1'
-  before_action :authorize_inventory_write, only: :preview
+  # Redeclaring the parent's callback replaces it, so this list must repeat the parent's new/create.
+  before_action :authorize_inventory_write, only: %i[new preview create]
   before_action :prevent_caching
 
   def index

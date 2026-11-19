@@ -62,6 +62,7 @@ module People
     def create
       authorize(:module, :schedule_write?)
       @shift = People::ScheduledShift.new(shift_params.merge(created_by: Current.user))
+      require_store_scope!(@shift)
       if @shift.save
         ActivityLogger.log('scheduled_shift_created', subject: @shift, details: shift_details)
         respond_to do |format|
@@ -87,9 +88,12 @@ module People
     # HTML: the form. JSON (drag, resize, reassign): { shift: { starts_at, ends_at, employee_id } }.
     def update
       authorize(:module, :schedule_write?)
+      require_store_scope!(@shift)
       previous_employee = @shift.employee
       was_published = @shift.published?
-      if @shift.update(shift_params.merge(last_changed_at: Time.current))
+      @shift.assign_attributes(shift_params.merge(last_changed_at: Time.current))
+      require_store_scope!(@shift)
+      if @shift.save
         ActivityLogger.log('scheduled_shift_updated', subject: @shift, details: shift_details)
         People::SchedulePublisher.notify_change(@shift, change: 'changed', previous_employee: previous_employee) if was_published
         respond_to do |format|
@@ -110,6 +114,7 @@ module People
     # A posted shift is cancelled (kept, marked, worker told); a draft is simply removed.
     def destroy
       authorize(:module, :schedule_write?)
+      require_store_scope!(@shift)
       if @shift.published?
         @shift.update!(cancelled_at: Time.current, last_changed_at: Time.current)
         People::SchedulePublisher.notify_change(@shift, change: 'cancelled')
@@ -128,6 +133,14 @@ module People
     alias cancel destroy
 
     private
+
+    # A manager limited to some stores plans only those stores and their staff. Checked on the
+    # shift as it is and as it would be saved, so a shift cannot be moved into or out of scope.
+    def require_store_scope!(shift)
+      return if Current.user.manages_location?(shift.location_id) && (shift.employee.nil? || People::StoreScope.covers?(Current.user, shift.employee))
+
+      raise Pundit::NotAuthorizedError
+    end
 
     def set_shift
       @shift = People::ScheduledShift.live.find_by!(tenant_id: Current.tenant_id, id: params[:id])

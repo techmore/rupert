@@ -52,6 +52,11 @@ module People
     %i[approve deny cancel].each do |event|
       define_method(event) do
         authorize(:module, :leave_write?)
+        # A manager limited to some stores decides only for staff of those stores (LeaveRequestPolicy).
+        unless People::StoreScope.covers?(Current.user, @leave_request.employee)
+          return redirect_to(people_leave_requests_path, alert: 'This request is for staff at a store you do not manage.')
+        end
+
         changed = LeaveRequestWorkflow.change(@leave_request, event, note: params[:note])
         redirect_to people_leave_request_path(@leave_request), notice: changed ? 'Leave request updated.' : 'This request was already decided.'
       rescue ActiveRecord::RecordInvalid => e
