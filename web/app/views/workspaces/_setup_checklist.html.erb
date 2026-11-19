@@ -1,0 +1,25 @@
+<%# First-run checklist for a self-service sign-up (SelfService, off by default). Each step shows
+    what is done and what to do next; nothing here changes anything. %>
+<% subscription = CustomerSubscription.find_by(tenant_id: Current.user.tenant_id) %>
+<% entitlement = WorkspaceEntitlement.for(Current.user.tenant) %>
+<% subscribed = subscription&.stripe_subscription_id.present? && %w[active trialing].include?(subscription.status) %>
+<% steps = [
+  ['Create your account', true, "Signed in as #{Current.user.email}, verified by Google."],
+  ['Accept the terms', subscription&.signup_terms_accepted_at.present?, subscription&.signup_terms_accepted_at ? "Accepted on #{subscription.signup_terms_accepted_at.to_date.to_fs(:long)} (version #{subscription.signup_terms_version})." : 'Recorded when the account is created.'],
+  ['Your private workspace is prepared', deployment.status == 'ready', deployment.status == 'ready' ? 'Ready to open.' : (deployment.status == 'failed' ? 'Setup needs our attention. We have been told; you do not need to do anything.' : 'Being prepared. Reload this page to check progress.')],
+  ['Choose your subscription', subscribed || entitlement.exempt? || entitlement.state == 'comped', entitlement.summary],
+  ['Open your workspace and connect your store', false, 'In your workspace, connect Shopify or Square, or start with the built-in register. Connecting a provider never starts a sync by itself.'],
+  ['Add your staff', false, 'In your workspace, open Staff to invite the people who will ring up sales and clock in.']
+] %>
+<section class="section-card" id="setup-checklist" aria-labelledby="setup-checklist-heading">
+  <%= section_heading 'Getting set up', id: 'setup-checklist-heading', hint: 'Six steps from a new account to your first sale.' %>
+  <ol class="space-y-3 text-sm">
+    <% steps.each_with_index do |(title, done, detail), index| %>
+      <li class="flex items-start gap-3" data-step="<%= index + 1 %>" data-done="<%= done %>">
+        <span class="<%= done ? 'pill-fern' : 'pill-clay' %>"><%= done ? 'Done' : "Step #{index + 1}" %></span>
+        <span><strong><%= title %></strong><br><span class="text-mocha"><%= detail %></span></span>
+      </li>
+    <% end %>
+  </ol>
+  <% unless hotwire_native_app? || subscribed %><p><%= link_to 'Open Subscription', billing_path, class: 'btn-ghost btn-sm' %></p><% end %>
+</section>

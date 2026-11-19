@@ -12,11 +12,25 @@ class VerifiedWorkspaceRegistration
     if PlatformOwnerIdentities.emails.include?(email)
       raise GoogleOauthService::ExchangeError, 'Use your existing administrator sign-in or ask an operator to link this identity.'
     end
+    # Self-service (off by default): the sign-up form recorded the accepted terms version; the new
+    # workspace is billable (not exempt) and starts its trial now. With the switch off the workspace
+    # keeps the column default (exempt) and a plain free record, exactly as before.
+    self_service = SelfService.enabled?
+    if self_service && attributes['terms_version'].blank?
+      raise GoogleOauthService::ExchangeError, 'Accept the terms of service to create an account.'
+    end
     Tenant.transaction do
-      tenant = Tenant.create!(name: attributes.fetch('workspace_name'), subdomain: attributes.fetch('requested_subdomain'))
+      tenant = Tenant.new(name: attributes.fetch('workspace_name'), subdomain: attributes.fetch('requested_subdomain'))
+      tenant.billing_exempt = false if self_service
+      tenant.save!
       user = User.create!(tenant: tenant, email: email, name: info['name'].presence || email, role: 'admin', active: true, password: SecureRandom.hex(32))
       GoogleLoginIdentity.create!(user: user, email: email, google_subject: info['sub'])
-      CustomerSubscription.create!(tenant: tenant)
+      if self_service
+        CustomerSubscription.create!(tenant: tenant, trial_ends_at: SelfService.trial_days.days.from_now,
+          signup_terms_version: attributes['terms_version'].to_s.first(40), signup_terms_accepted_at: Time.current)
+      else
+        CustomerSubscription.create!(tenant: tenant)
+      end
       WorkspaceDeployment.request!(tenant: tenant, owner: user)
       user
     end

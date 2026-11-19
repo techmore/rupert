@@ -5,7 +5,7 @@
 <div class="space-y-6">
   <div>
     <%= page_header 'Instance overview', subtitle: 'Workspaces, accounts and service activity across this installation.',
-                    menu: [['Manage workspaces', tenants_path, { data: { turbo: false } }], ['Backup and restore settings', settings_path, { data: { turbo: false } }]] %>
+                    menu: [['Manage workspaces', tenants_path, { data: { turbo: false } }], (['Workspace billing', platform_billing_path] if SelfService.enabled?), ['Backup and restore settings', settings_path, { data: { turbo: false } }]].compact %>
     <p class="mt-2 text-xs text-taupe">Snapshot at <%= @overview.fetch(:generated_at).utc.iso8601 %>; counts can change while this page is open. Only active platform administrators can open this page.</p>
   </div>
 

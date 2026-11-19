@@ -1,13 +1,24 @@
 <%# Subscription: a Settings page (docs/ui-standards.md §4), one card per topic. %>
 <% content_for :title, 'Subscription' %>
 <div class="page-medium space-y-6">
-  <%= page_header 'Subscription', subtitle: "Account access is free; your current subscription is #{@subscription&.status || 'free'}.", eyebrow: 'Your workspace',
+  <%= page_header 'Subscription', subtitle: (SelfService.enabled? ? "Your current subscription is #{@subscription&.status || 'free'}." : "Account access is free; your current subscription is #{@subscription&.status || 'free'}."), eyebrow: 'Your workspace',
                   menu: [['Support access', support_access_path], ['Open workspace', root_path]] %>
 
   <% if params[:checkout] %><p class="flash flash-notice" role="status">We are waiting for Stripe to confirm your subscription. Returning here does not confirm a payment. Reload to see the latest status.</p><% end %>
   <% unless RupertBilling.configured? %><p class="flash flash-notice" role="status">Paid checkout is being configured. You can continue using your free account.</p><% end %>
 
-  <% unless @subscription&.stripe_subscription_id.present? %>
+  <% if SelfService.enabled? %>
+    <%# Self-service (off by default): what this workspace's subscription allows right now. %>
+    <% entitlement = WorkspaceEntitlement.for(Current.tenant) %>
+    <section class="section-card" id="subscription-state" data-state="<%= entitlement.state %>" data-access="<%= entitlement.access %>">
+      <%= section_heading 'Where your subscription stands' %>
+      <p class="text-sm"><%= entitlement.summary %></p>
+      <% if entitlement.read_only? %><p class="text-sm text-mocha">Nothing has been deleted. Subscribe below to return to full use straight away.</p><% end %>
+      <% if @subscription&.cancel_at_period_end && @subscription.current_period_end %><p class="text-sm text-mocha">You asked to cancel. The subscription ends on <%= @subscription.current_period_end.to_date.to_fs(:long) %>.</p><% end %>
+    </section>
+  <% end %>
+
+  <% unless @subscription&.stripe_subscription_id.present? && !(SelfService.enabled? && %w[canceled incomplete_expired].include?(@subscription.status)) %>
     <section class="grid gap-4 md:grid-cols-2" aria-label="Plans">
       <% [['monthly', 'Monthly', '$499', 'Billed monthly.'], ['referral_year', 'Referred by a customer', '$249.50', '50% off for 12 months with an eligible customer code. A 12-month commitment, billed monthly: $2,994 total before tax. Then $499/month.']].each do |plan, title, price, description| %>
         <article class="section-card">
@@ -47,5 +58,5 @@
     <% end %>
   </section>
 
-  <%= fold_explainer('Payments are processed by Stripe using the CSP Cyber Security Pilot billing account. Taxes may apply. You review the amount before confirming payment, and account access stays free without a subscription.', class: 'text-xs text-taupe') %>
+  <%= fold_explainer("Payments are processed by Stripe using the CSP Cyber Security Pilot billing account. Taxes may apply. You review the amount before confirming payment#{SelfService.enabled? ? '. If a subscription lapses the workspace becomes read-only; nothing is deleted.' : ', and account access stays free without a subscription.'}", class: 'text-xs text-taupe') %>
 </div>

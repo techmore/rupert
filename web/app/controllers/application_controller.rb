@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class ApplicationController < ActionController::Base
+  include SubscriptionGate
+
   layout :workspace_layout
   rescue_from TimeRules::FeatureDisabled, with: :time_feature_disabled
   before_action :reject_preview_mutation
@@ -13,6 +15,7 @@ class ApplicationController < ActionController::Base
   before_action :enforce_instance_support_access
   before_action :enforce_workspace_location
   before_action :enforce_customer_support_access
+  before_action :enforce_subscription_entitlement
   before_action :load_last_sync
   before_action :restrict_employee_workspace
 

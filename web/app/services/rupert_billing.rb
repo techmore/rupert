@@ -49,6 +49,7 @@ class RupertBilling
     referral = CustomerReferral.eligible(referral_code, tenant: tenant) if plan == 'referral_year'
     raise Error, 'Enter a referral code from an active Rupert customer.' if plan == 'referral_year' && !referral
     subscription.with_lock do
+      release_ended_subscription(subscription) if SelfService.enabled?
       raise Error, 'This workspace already has a subscription. Manage it through billing.' if subscription.stripe_subscription_id.present?
       if subscription.checkout_expires_at && subscription.checkout_expires_at > Time.current
         raise Error, 'A checkout is already open for a different plan. Finish it or wait one hour.' unless subscription.plan == plan && subscription.referral_code == referral&.code
@@ -80,10 +81,36 @@ class RupertBilling
       fields['discounts[0][coupon]'] = ENV.fetch('CSP_STRIPE_REFERRAL_COUPON_ID')
       fields['subscription_data[metadata][referral_code]'] = referral.code
     end
+    apply_self_service_checkout(fields, subscription) if SelfService.enabled?
     result = api(:post, 'checkout/sessions', fields, idempotency: "rupert-#{tenant.id}-#{subscription.checkout_token}")
     url = trusted_url!(result['url'], 'checkout.stripe.com')
     subscription.update!(checkout_session_id: result.fetch('id'), checkout_url: url)
     url
+  end
+
+  # A workspace whose subscription has ended may subscribe again: the ended subscription and its
+  # finished checkout are released, the Stripe customer is kept. Late events for the old
+  # subscription then match no row and are ignored.
+  def self.release_ended_subscription(subscription)
+    return unless subscription.stripe_subscription_id.present? && %w[canceled incomplete_expired].include?(subscription.status)
+
+    subscription.update!(stripe_subscription_id: nil, checkout_token: nil, checkout_session_id: nil, checkout_url: nil,
+      checkout_expires_at: nil, past_due_since: nil, current_period_end: nil, cancel_at_period_end: false)
+  end
+
+  # The rest of the sign-up trial carries into Stripe, so subscribing early never shortens it
+  # (Stripe needs a trial end at least two days ahead). A returning customer keeps one Stripe customer.
+  def self.apply_self_service_checkout(fields, subscription)
+    if subscription.trial_ends_at && subscription.trial_ends_at > 49.hours.from_now
+      fields['subscription_data[trial_end]'] = subscription.trial_ends_at.to_i.to_s
+    end
+    # Stripe Tax works out sales tax at checkout; it needs the customer's billing address.
+    fields['automatic_tax[enabled]'] = 'true' if SelfService.automatic_tax?
+    return if subscription.stripe_customer_id.blank?
+
+    fields.delete('customer_email')
+    fields['customer'] = subscription.stripe_customer_id
+    fields['customer_update[address]'] = 'auto' if SelfService.automatic_tax?
   end
 
   def self.trusted_url!(url, host)
@@ -117,10 +144,12 @@ class RupertBilling
       session = api(:get, "checkout/sessions/#{row.checkout_session_id}")
       raise Error, 'Checkout workspace mismatch.' unless session['client_reference_id'] == row.tenant_id && session['mode'] == 'subscription' && session['status'] == 'complete'
       subscription_id = session.fetch('subscription')
-    elsif %w[customer.subscription.updated customer.subscription.deleted invoice.paid invoice.payment_failed].include?(event['type'])
+    elsif %w[customer.subscription.updated customer.subscription.deleted invoice.paid invoice.payment_failed].include?(event['type']) ||
+        (SelfService.enabled? && event['type'] == 'customer.subscription.created')
       subscription_id = event['type'].start_with?('customer.subscription.') ? object['id'] : object.dig('parent', 'subscription_details', 'subscription')
       return if subscription_id.blank?
       row = CustomerSubscription.find_by(stripe_subscription_id: subscription_id)
+      row ||= unbound_checkout_row(object) if SelfService.enabled? && event['type'].start_with?('customer.subscription.')
       return unless row
     else
       return
@@ -133,9 +162,35 @@ class RupertBilling
       raise Error, 'Unexpected subscription price.' unless items.one? && items.first.dig('price', 'id') == ENV.fetch('CSP_STRIPE_MONTHLY_PRICE_ID') && items.first['quantity'] == 1
       raise Error, 'Subscription customer mismatch.' if row.stripe_customer_id.present? && fresh['customer'] != row.stripe_customer_id
       raise Error, 'Subscription identity mismatch.' if row.stripe_subscription_id.present? && row.stripe_subscription_id != subscription_id
-      row.update!(stripe_customer_id: fresh.fetch('customer'), stripe_subscription_id: subscription_id,
+      row.assign_attributes(stripe_customer_id: fresh.fetch('customer'), stripe_subscription_id: subscription_id,
         status: fresh.fetch('status'), last_synced_at: Time.current,
         commitment_ends_at: row.plan == 'referral_year' ? Time.at(fresh.fetch('start_date')).utc.advance(months: 12) : nil)
+      record_billing_period(row, fresh, items.first) if SelfService.enabled?
+      row.save!
+    end
+  end
+
+  # A subscription event can arrive before checkout.session.completed has bound the subscription
+  # to its workspace. The workspace named in the subscription's own metadata (set by our checkout,
+  # and checked again against Stripe under the row lock) is used, only while a checkout is open
+  # and no subscription is bound yet.
+  def self.unbound_checkout_row(object)
+    tenant_id = object.dig('metadata', 'rupert_tenant_id')
+    return if tenant_id.blank?
+
+    CustomerSubscription.where(stripe_subscription_id: nil).where.not(checkout_session_id: nil).find_by(tenant_id: tenant_id)
+  end
+
+  # Local facts the entitlement check reads (WorkspaceEntitlement): when the grace period started,
+  # when the paid period ends, and whether the customer has asked to cancel at that point.
+  def self.record_billing_period(row, fresh, item)
+    period_end = item['current_period_end'] || fresh['current_period_end'] || fresh['trial_end']
+    row.current_period_end = period_end ? Time.zone.at(period_end) : nil
+    row.cancel_at_period_end = fresh['cancel_at_period_end'] == true
+    if %w[past_due unpaid].include?(fresh['status'])
+      row.past_due_since ||= Time.current
+    else
+      row.past_due_since = nil
     end
   end
 end

@@ -26,6 +26,31 @@ class WorkspaceNode
     control_request('support', { 'grant_id' => grant_id, 'user_id' => user_id, 'resource' => resource })
   end
 
+  ENTITLEMENT_CACHE_KEY = 'rupert:workspace-entitlement'
+  ENTITLEMENT_OPEN = { 'state' => 'exempt', 'access' => 'full' }.freeze
+
+  # What the control plane says this workspace's subscription allows (SelfService, off by default).
+  # Asked at most once every five minutes. It fails open: when the control plane cannot be reached,
+  # has the switch off, or has never answered, the last answer inside a week is used, and with no
+  # answer at all the workspace has full access. An outage never locks a workspace.
+  def self.entitlement
+    fresh = Rails.cache.read("#{ENTITLEMENT_CACHE_KEY}:fresh")
+    return fresh if fresh
+
+    answer = begin
+      control_request('entitlement', {})
+    rescue RupertBilling::Error
+      nil
+    end
+    if answer.is_a?(Hash) && answer['access'].present?
+      Rails.cache.write("#{ENTITLEMENT_CACHE_KEY}:last", answer, expires_in: 7.days)
+    else
+      answer = Rails.cache.read("#{ENTITLEMENT_CACHE_KEY}:last") || ENTITLEMENT_OPEN
+    end
+    Rails.cache.write("#{ENTITLEMENT_CACHE_KEY}:fresh", answer, expires_in: 5.minutes)
+    answer
+  end
+
   def self.control_request(action, fields)
     uri = URI("#{control_origin}/internal/workspaces/#{ENV.fetch('RUPERT_WORKSPACE_ID')}/#{action}")
     request = Net::HTTP::Post.new(uri)

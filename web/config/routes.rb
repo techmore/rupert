@@ -182,6 +182,12 @@ Rails.application.routes.draw do
   post '/billing/referral', to: 'billing#referral', as: :billing_referral
   post '/billing/portal', to: 'billing#portal', as: :billing_portal
   post '/webhooks/stripe', to: 'stripe_webhooks#create'
+  # Self-service subscriptions (RUPERT_SELF_SERVICE, off by default): these routes do not exist while it is off.
+  constraints(->(_request) { SelfService.enabled? }) do
+    get '/platform/billing', to: 'platform_billing#index', as: :platform_billing
+    patch '/platform/billing/:id', to: 'platform_billing#update', as: :platform_billing_workspace
+    post '/internal/workspaces/:id/entitlement', to: 'internal/workspace_entitlements#show'
+  end
   get '/support-access', to: 'support_access#index', as: :support_access
   post '/support-access', to: 'support_access#create'
   delete '/support-access/:id', to: 'support_access#destroy', as: :revoke_support_access
