@@ -8,11 +8,13 @@ class SitemapTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_equal 'application/xml', response.media_type
     assert_includes response.headers['Cache-Control'], 'public'
+    assert_nil response.headers['Set-Cookie'], 'a publicly cached answer carries no session'
     locs = Nokogiri::XML(response.body).remove_namespaces!.xpath('//loc').map(&:text)
     assert_equal "#{request.base_url}/", locs.first
     assert_includes locs, "#{request.base_url}/privacy"
     assert_includes locs, "#{request.base_url}/support"
     assert_equal SitemapsController.routed_paths.size, locs.size
+    assert_empty locs.map { |loc| URI(loc).path } - SitemapsController::PATHS, 'only the listed public pages'
   end
 
   test 'leaves out pages this build does not route' do
