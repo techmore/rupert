@@ -93,6 +93,8 @@ final class EmployeeShiftUITests: XCTestCase {
         signOutFromAppSettings()
         XCTAssertTrue(signInPage.waitForExistence(timeout: 30), "signed out: the sign-in page")
         XCTAssertFalse(tabBar.exists && tabBar.isHittable, "the next person starts on the sign-in page with no tab bar")
+        sleep(2)
+        XCTAssertFalse(app.alerts["You've been signed out"].exists, "a sign-out the person asked for is not explained to them")
         XCTAssertTrue(app.buttons["app-settings"].firstMatch.waitForExistence(timeout: 10), "App settings stays reachable on the sign-in page")
         shoot("signed-out")
     }

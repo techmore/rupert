@@ -26,7 +26,20 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         self.window = window
 
         signedIn = UserDefaults.standard.bool(forKey: Self.signedInKey)
+#if DEBUG
+        if SessionEnd.dropsSessionAtLaunch {
+            // UI test: the session ran out while the app was closed.
+            SessionEnd.dropSession { [weak self] in
+                guard let self else { return }
+                self.load(self.currentTabs())
+                self.select(0)
+            }
+        } else {
+            load(currentTabs())
+        }
+#else
         load(currentTabs())
+#endif
         showTabs(signedIn, animated: false)
         AppLock.shared.attach(to: window)
         AppSettings.openInApp = { [weak self] url in
@@ -111,6 +124,13 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         signedIn = visible
         UserDefaults.standard.set(visible, forKey: Self.signedInKey)
         if changed, restart { scheduleRestart() }
+        // Signed out without asking (the session ran out, the password changed): say so, once
+        // the sign-in page is up.
+        if changed, !visible, SessionEnd.unexpected(wasSignedIn: true, askedAt: SessionEnd.askedAt) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+                SessionEnd.present(from: self?.tabBarController)
+            }
+        }
         if #available(iOS 18.0, *) {
             if tabBarController.isTabBarHidden == visible {
                 tabBarController.setTabBarHidden(!visible, animated: animated)
@@ -160,6 +180,7 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
     /// control plane's for Switch workspace. Nothing of the last person is left on screen. Rupert
     /// keeps its session in the cookie, so dropping the cookie ends the session.
     private func signOut(leavingWorkspace: Bool) {
+        SessionEnd.personAskedToSignOut()
         PushRegistration.shared.forget()
         let store = WKWebsiteDataStore.default()
         // The cookies are the session: delete them one by one and wait only for that. Clearing

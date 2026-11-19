@@ -84,8 +84,10 @@ struct ErrorText: Equatable {
             self.init(symbol: "wifi.exclamationmark", title: "Can't reach Rupert",
                       message: "Check the shop's Wi-Fi or your cellular connection, then try again.", isConnection: true)
         case .web:
+            // The system's own wording here is technical ("Not allowed to use restricted network
+            // port"); it stays out of the page.
             self.init(symbol: "exclamationmark.triangle", title: "This page did not load",
-                      message: error.localizedDescription, isConnection: true)
+                      message: "Something got in the way. Try again; if it keeps happening, use Report a problem in App settings.", isConnection: true)
         case .http where error.statusCode == 401 || error.statusCode == 403:
             self.init(symbol: "lock", title: "You don't have access to this page",
                       message: "Ask an owner or manager to give you access, or go back.")
@@ -97,7 +99,7 @@ struct ErrorText: Equatable {
                       message: "Try again in a moment. If it keeps happening, use Report a problem in App settings.")
         case .http:
             self.init(symbol: "exclamationmark.triangle", title: "This page did not load",
-                      message: error.localizedDescription)
+                      message: "Rupert answered in a way the app did not expect. Try again; if it keeps happening, use Report a problem in App settings.")
         case .load:
             self.init(symbol: "exclamationmark.triangle", title: "This page did not finish loading",
                       message: "Try again. If it keeps happening, copy the details and send them to support.")

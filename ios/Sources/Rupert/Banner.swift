@@ -250,13 +250,21 @@ final class BannerBridge: NSObject, WKScriptMessageHandler {
     static func install(in controller: WKUserContentController) {
         controller.add(shared, name: "rupertBanner")
         controller.add(shared, name: "rupertForm")
+        controller.add(shared, name: "rupertSession")
         controller.addUserScript(WKUserScript(source: BannerColors.watchScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         controller.addUserScript(WKUserScript(source: formEditScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+        controller.addUserScript(WKUserScript(source: SessionEnd.watchScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard message.frameInfo.isMainFrame, let webView = message.webView,
-              let page = pages.object(forKey: webView) else { return }
+        guard message.frameInfo.isMainFrame else { return }
+        // The person pressed Sign out (or a delete button) in a page: the sign-in page that
+        // follows is expected (SessionEnd).
+        if message.name == "rupertSession" {
+            SessionEnd.personAskedToSignOut()
+            return
+        }
+        guard let webView = message.webView, let page = pages.object(forKey: webView) else { return }
         if message.name == "rupertForm" {
             page.formEdited()
         } else if let colors = BannerColors(json: message.body) {
