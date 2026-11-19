@@ -33,7 +33,7 @@ export default class extends Controller {
     if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable)) return
     if (event.key === "/") {
       event.preventDefault()
-      this.focusSearch(true)
+      this.focusSearch(true, true)
     } else if (event.key.length === 1 && /[\p{L}\p{N}]/u.test(event.key)) {
       // A scanner or a cashier typing with focus elsewhere: the keys belong in search.
       this.searchTarget.focus({ preventScroll: true })
@@ -54,8 +54,15 @@ export default class extends Controller {
     }
   }
 
-  focusSearch(select) {
+  // On a phone or tablet, putting the cursor in Search raises the on-screen keyboard over the
+  // products, so only a key press (a scanner, a hardware keyboard) or a tap focuses it there.
+  touchScreen() {
+    return typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches
+  }
+
+  focusSearch(select, typed = false) {
     if (!this.hasSearchTarget || this.openDialog()) return
+    if (!typed && this.touchScreen()) return
     this.searchTarget.focus({ preventScroll: true })
     if (select) this.searchTarget.select()
   }
@@ -278,12 +285,23 @@ export default class extends Controller {
   checkout() {
     if (!this.hasCartTarget) return
     this.cartTarget.dataset.step = "checkout"
+    if (this.touchScreen()) { this.cartTarget.scrollIntoView({ block: "start" }); return }
     const first = this.cartTarget.querySelector(".pos-checkout select:not([disabled]), .pos-checkout .pos-tender:not([disabled]), .pos-checkout .btn-primary")
     first?.focus()
   }
 
   backToCart() {
     if (this.hasCartTarget) this.cartTarget.dataset.step = "cart"
+  }
+
+  // The register opened on a cart whose payment is waiting, declined or unresolved (a reload,
+  // back from another page): show the payment step, where the outcome and the next action
+  // are. A paid cart is not shown again; pos-cart starts the next sale.
+  showOutcome(event) {
+    const status = event.detail?.checkout?.status
+    if (!status || status === "cancelled" || status === "paid" || !this.hasCartTarget || this.outcomeShown === event.detail.checkout.reference) return
+    this.outcomeShown = event.detail.checkout.reference
+    this.cartTarget.dataset.step = "checkout"
   }
 
   newSale() {

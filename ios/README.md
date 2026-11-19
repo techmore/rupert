@@ -127,8 +127,10 @@ TEST_RUNNER_RUPERT_UI_SHOTS=/abs/dir xcodebuild test -scheme RupertApp -only-tes
 ```
 
 `EmployeeShiftUITests` (same variables, `-only-testing:RupertAppUITests/EmployeeShiftUITests`) signs in
-as a staff account and checks its two tabs, the register up to payment, and Sign out. The script a
-person follows for the whole shift is `docs/ios/employee-test-script.md`.
+as a staff account and checks its two tabs, a cash sale on the register through to "Paid", and
+Sign out. It needs Rupert started with the made-up test register
+(`bin/rails server -c test/support/sim_register.ru -b 127.0.0.1 -p 3005`, development only). The
+script a person follows for the whole shift is `docs/ios/employee-test-script.md`.
 
 For TestFlight from a Mac: open `RupertApp.xcodeproj`, pick the team, Product → Archive. The
 entitlements file turns on push (`aps-environment`); the App ID needs the Push Notifications
@@ -153,7 +155,8 @@ description, keywords, URLs), `review-notes.md` (notes and demo login for App Re
 Native parts beyond the web pages: camera barcode scanning on inventory counts
 (`BarcodeScanner.swift`, VisionKit), an optional Face ID lock (`AppLock.swift`), the App settings
 sheet behind the person button on each tab's first page (`AppSettings.swift`, SwiftUI) and Home
-Screen quick actions (`Info.plist`, `SceneController.swift`).
+Screen quick actions (Clock in and Notifications in `Info.plist`; Team Chat and Ask Rupert added
+by `QuickActions.swift` only for accounts that have those tabs).
 
 Inside the app Rupert offers no sign-up and no subscription purchase (App Store guideline 3.1.1):
 `hotwire_native_app?` hides them in `sessions/new` and the account menu, and `BillingController`
