@@ -34,4 +34,13 @@ class SimRegisterTest < ActionDispatch::IntegrationTest
     assert_equal 108, quote[:tax_cents]
     assert_equal 1908, quote[:total_before_tip_cents]
   end
+
+  test 'the made-up stock read is kept current, so a long session does not lock the register' do
+    SimRegister.seed!
+    CtraxStockSnapshot.unscoped.update_all(captured_at: 3.hours.ago)
+    SimRegister.instance_variable_set(:@fresh_at, nil)
+    status, = SimRegister::KeepFresh.new(->(_env) { [200, {}, []] }).call({})
+    assert_equal 200, status
+    assert_operator CtraxStockSnapshot.unscoped.find_by!(api_origin: SimRegister::ORIGIN).captured_at, :>, 1.minute.ago
+  end
 end

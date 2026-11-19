@@ -55,6 +55,27 @@ module SimRegister
     end
   end
 
+  # The register refuses to add items once its stock read is an hour old. A test session or a
+  # person following the script can run longer than that, so the made-up read is kept current.
+  def keep_fresh!
+    return if @fresh_at && @fresh_at > 10.minutes.ago
+
+    @fresh_at = Time.current
+    CtraxStockSnapshot.unscoped.where(api_origin: ORIGIN).update_all(captured_at: Time.current)
+  end
+
+  # Rack middleware for sim_register.ru.
+  class KeepFresh
+    def initialize(app)
+      @app = app
+    end
+
+    def call(env)
+      SimRegister.keep_fresh!
+      @app.call(env)
+    end
+  end
+
   def records
     ITEMS.map do |id, name, cents|
       { 'id' => id, 'name' => name, 'product_name' => name, 'category' => 'Gifts', 'sku' => "SIM-#{id}", 'price_cents' => cents,

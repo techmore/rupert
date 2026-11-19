@@ -8,5 +8,6 @@ require_relative '../../config/environment'
 require_relative 'sim_register'
 
 SimRegister.install!
+use SimRegister::KeepFresh
 run Rails.application
 Rails.application.load_server
