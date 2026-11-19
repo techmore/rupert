@@ -43,10 +43,11 @@ class EmployeePayWeek
     @tip_cents = 0
     @pay_rate = employee.pay_rate_for(start_date, [end_date, Date.current].min)
     load_shifts
-    @hours = own_shifts.sum { |shift| clipped_seconds(shift, window) } / 3600.0
+    @hours = own_shifts.sum { |shift| paid_seconds(shift, window) } / 3600.0
     @overtime_hours = rules.overtime_enabled? ? count_overtime_hours : 0.0
     add_order_sources
     add_ctrax_days
+    add_tip_ledger
     if own_shifts.any? { |shift| shift.stale_open?(@now) }
       @notes << "A punch has been open more than #{ClockShift.stale_open_hours} hours (a forgotten clock-out); it counts no hours until it is corrected."
     end
@@ -56,6 +57,25 @@ class EmployeePayWeek
 
   def admin? = @admin
   def weeks = ((end_date - start_date).to_i + 1) / 7.0
+
+  # Tips from the ledger (TipAllocation: terminal and gateway card tips, declared cash tips, manager
+  # adjustments) for this person in the period. Card tips from Shopify/Square/SwipeSimple orders and
+  # C-Trax days keep their older order-based split; the ledger never holds those sources, so nothing
+  # is counted twice.
+  def tip_allocations
+    @tip_allocations ||= TipAllocation.where(employee_id: employee.id)
+      .where(pay_period_start: start_date).or(TipAllocation.where(employee_id: employee.id, business_date: start_date..end_date, pay_period_start: nil))
+      .order(:occurred_at, :id).to_a
+  end
+
+  def card_tip_cents = @card_tip_cents.to_i
+  def cash_tip_cents = @cash_tip_cents.to_i
+  def adjustment_tip_cents = @adjustment_tip_cents.to_i
+  def final_tip_cents = tip_allocations.reject { |a| a.status == 'estimated' }.sum(&:amount_cents)
+  def estimated_tip_cents = tip_allocations.select { |a| a.status == 'estimated' }.sum(&:amount_cents)
+
+  # `hours` are paid hours: punches minus unpaid breaks (ClockShift#paid_hours), finished shifts and the open one.
+  alias paid_hours hours
 
   def hourly_rate_cents
     pay_rate&.pay_type == 'hourly' ? pay_rate.hourly_rate_cents : nil
@@ -102,12 +122,24 @@ class EmployeePayWeek
     [finish - [shift.started_at, range.begin].max, 0].max
   end
 
+  def paid_seconds(shift, range)
+    seconds = clipped_seconds(shift, range)
+    seconds.positive? ? [seconds - shift.unpaid_break_seconds(at: @now), 0].max : 0
+  end
+
+  def add_tip_ledger
+    @card_tip_cents = tip_allocations.select(&:card?).sum(&:amount_cents)
+    @cash_tip_cents = tip_allocations.select { |a| a.tip_method == 'cash' }.sum(&:amount_cents)
+    @adjustment_tip_cents = tip_allocations.select { |a| a.tip_method == 'adjustment' }.sum(&:amount_cents)
+    @tip_cents += @card_tip_cents + @cash_tip_cents + @adjustment_tip_cents
+  end
+
   # Hours over the threshold in each seven-day work week of the period.
   def count_overtime_hours
     starts = (start_date..end_date).map { |day| rules.week_start(day) }.uniq
     starts.sum do |week|
       range = week.beginning_of_day...(week + 7).beginning_of_day
-      worked = own_shifts.sum { |shift| clipped_seconds(shift, range) } / 3600.0
+      worked = own_shifts.sum { |shift| paid_seconds(shift, range) } / 3600.0
       rules.hours_over_threshold(worked)
     end
   end

@@ -1,0 +1,18 @@
+<% content_for :title, 'Schedule templates' %>
+<div class="page-medium space-y-6">
+  <%= page_header 'Schedule templates', subtitle: 'Saved weeks you can apply from the schedule builder.' %>
+  <div class="card">
+    <% if @templates.empty? %>
+      <%= empty_state 'No templates yet', hint: 'Open Shifts, plan a week, then choose More → Save week as template.' %>
+    <% else %>
+      <ul class="row-list">
+        <% @templates.each do |template| %>
+          <li class="row-item">
+            <div><p class="font-medium text-ink"><%= template.name %></p><p class="text-xs text-mocha"><%= pluralize(template.shifts.size, 'shift') %><%= " · #{template.location.name}" if template.location %></p></div>
+            <div class="row-item-end"><%= button_to 'Remove', people_schedule_template_path(template), method: :delete, class: 'btn-ghost btn-sm', form: { data: { turbo_confirm: "Remove “#{template.name}”?" } } %></div>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </div>
+</div>

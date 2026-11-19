@@ -34,6 +34,9 @@ module ShopifyAppTemplateRuby
     # ERP modules live in app/modules/<name>. The directory is the autoload
     # root, so app/modules/core/order.rb -> Core::Order. New modules are
     # picked up automatically.
+    config.i18n.available_locales = %i[en es]
+    config.i18n.default_locale = :en
+    config.i18n.fallbacks = [:en]
     config.autoload_paths << Rails.root.join('app/modules')
 
     # Please, add to the `ignore` list any other `lib` subdirectories that do

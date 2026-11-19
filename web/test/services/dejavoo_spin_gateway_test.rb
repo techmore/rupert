@@ -15,16 +15,24 @@ class DejavooSpinGatewayTest < ActiveSupport::TestCase
   end
   teardown { Current.reset }
 
-  test 'settings accept only a sandbox Dejavoo setup with well-formed TPN and auth key' do
+  test 'Dejavoo production needs owner sign-off, and a new TPN clears it' do
     production = PosSetting.new(location: Location.create!(source: 'ctrax', externalId: 'dejavoo-fixture/2', name: 'Second'),
       gateway_provider: 'dejavoo_spin', environment: 'production', credentials_json: dejavoo_credentials)
     assert_not production.valid?
-    assert_includes production.errors[:environment].join, 'sandbox'
+    assert_includes production.errors[:base].join, 'Dejavoo production needs owner sign-off'
+    production.assign_attributes(production_approved_at: Time.current, production_approved_by: users(:regular_user),
+      production_approval_note: 'Valmar boarding email for live TPN, 2026-11-20')
+    assert production.save
+    gateway = Pos::DejavooSpinGateway.new(production)
+    stub_request(:post, 'https://api.spinpos.net/v2/Payment/Status').to_return(status: 400,
+      body: { GeneralResponse: { StatusCode: '2009', Message: 'Not found' } }.to_json)
+    assert gateway.verify!, 'the live host is checked with a lookup that cannot charge'
+    assert_not production.update(credentials_json: { tpn: 'LIVETPN0002', auth_key: AUTH_KEY }.to_json), 'a new live TPN needs a new sign-off'
+    assert_includes production.errors[:base].join, 'sign-off'
     @setting.credentials_json = { tpn: 'short', auth_key: AUTH_KEY }.to_json
     assert_not @setting.valid?
     @setting.credentials_json = { tpn: TPN, auth_key: AUTH_KEY, security_key: 'x' * 20 }.to_json
     assert_not @setting.valid?
-    assert_raises(Pos::Error) { Pos::DejavooSpinGateway.url('production', 'v2/Payment/Sale') }
   end
 
   test 'a sale sends credentials in the body and asks the terminal not to print or return receipts' do

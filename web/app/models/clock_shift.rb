@@ -2,10 +2,21 @@
 
 class ClockShift < ApplicationRecord
   include TenantScoped
+  include LockedPayPeriodGuard
+
+  # A punch cannot be added to, or moved within, a locked pay period (only the dates that change are checked).
+  guards_pay_period { [(new_record? || started_at_changed?) ? started_at : nil, ended_at_changed? ? ended_at : nil] }
 
   belongs_to :user, optional: true
   belongs_to :employee, class_name: 'People::Employee', optional: true
   has_many :corrections, class_name: 'ClockCorrection', dependent: :restrict_with_exception
+  has_many :breaks, class_name: 'ClockBreak', dependent: :destroy
+  has_many :tip_allocations, dependent: :nullify
+  belongs_to :location, optional: true
+  belongs_to :scheduled_shift, class_name: 'People::ScheduledShift', optional: true
+
+  SOURCES = %w[web pos ios api manager import].freeze
+  validates :source, inclusion: { in: SOURCES }
 
   attr_readonly :tenant_id, :user_id, :employee_id, :employee_key, :employee_name, :employment_type, :request_token
   validates :tenant_id, :employee_key, :employee_name, :employment_type, :started_at, :request_token, presence: true
@@ -28,8 +39,52 @@ class ClockShift < ApplicationRecord
   end
   scope :recent, -> { order(started_at: :desc, id: :desc) }
 
+  # Gross hours between the punches (breaks included), as before.
   def hours(at: Time.current)
     [(ended_at || at) - started_at, 0].max / 3600.0
+  end
+
+  # Seconds of unpaid break inside the shift (the location's rules decide which kinds are unpaid).
+  # A break of 20 minutes or less is never unpaid (ClockBreak::SHORT_BREAK_PAID). Nothing is deducted automatically:
+  # only breaks the worker actually punched (or a manager-approved correction recorded) come off.
+  # A break is judged by its whole length, also when a window clips it (a meal across midnight).
+  def unpaid_break_seconds(at: Time.current, rules: nil)
+    rules ||= TimeRules.for(location_id)
+    limit = [at, ended_at].compact.min
+    breaks.sum { |pause| pause.unpaid?(rules, at: limit) ? pause.seconds(at: limit) : 0 }
+  end
+
+  # Hours that count for pay: punches minus unpaid breaks.
+  def paid_hours(at: Time.current, rules: nil)
+    [(hours(at: at) * 3600) - unpaid_break_seconds(at: at, rules: rules), 0].max / 3600.0
+  end
+
+  # Paid hours of a finished shift inside the window [from, to): the punch clipped to the window,
+  # minus the unpaid break time that falls in it. This is what a timesheet imports for one day, so the
+  # timesheet, the Pay page and the payroll export all count the same hours.
+  def paid_hours_between(from, to, rules: nil)
+    return 0.0 unless ended_at
+
+    start_at = [started_at, from].max
+    end_at = [ended_at, to].min
+    return 0.0 unless end_at > start_at
+
+    rules ||= TimeRules.for(location_id)
+    unpaid = breaks.sum do |pause|
+      next 0 if pause.ended_at.nil? || !pause.unpaid?(rules)
+
+      [[pause.ended_at, end_at].min - [pause.started_at, start_at].max, 0].max
+    end
+    [(end_at - start_at) - unpaid, 0].max / 3600.0
+  end
+
+  def open_break = breaks.detect(&:open?)
+  def on_break? = open_break.present?
+  def open? = ended_at.nil?
+  def closed? = ended_at.present?
+
+  def break_minutes(kind = nil)
+    (kind ? breaks.select { |b| b.kind == kind.to_s } : breaks).sum(&:minutes)
   end
 
   # Where an estimate stops counting this shift: the clock-out, or for a punch that is still open
@@ -97,6 +152,8 @@ class ClockShift < ApplicationRecord
   def linked_worker
     return if user&.active? && employee&.active? && employee.user_id == user_id &&
       employee.tenant_id == tenant_id && employee_key == employee.id.to_s
+    # A PIN punch for a worker who has no sign-in account yet (source pos): the HR record vouches.
+    return if user_id.nil? && employee&.active? && employee.user_id.nil? && employee.tenant_id == tenant_id && employee_key == employee.id.to_s
 
     errors.add(:employee, 'must be an active worker linked to this sign-in account and store')
   end

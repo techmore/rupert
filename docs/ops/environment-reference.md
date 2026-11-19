@@ -43,6 +43,9 @@ Two kinds of configuration exist. **Boot-time variables** live in `/etc/rupert.e
 | --- | --- | --- |
 | `RUPERT_BUZZ_ENABLED` | off | `1` turns on the optional Buzz module ([web/engines/buzz/README.md](../../web/engines/buzz/README.md)) |
 | `RUPERT_EMPLOYEE_APP_ENABLED` | `0` in production, `1` elsewhere | `1` allows employee-app (staff mobile) sign-in; see [staff-app.md](../module-guides/staff-app.md) |
+| `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_KEY_P8`, `APNS_TOPIC`, `APNS_ENVIRONMENT` | unset (push off) | Push notifications to the Rupert iPhone app (`PushNotifier`, token-based APNs auth). `APNS_KEY_P8` is the contents of the App Store Connect `.p8` key (Keys → Apple Push Notifications service), `APNS_TOPIC` the bundle id `com.rupertpos.Rupert`, `APNS_ENVIRONMENT` `sandbox` for TestFlight/dev builds or `production`. All four of the first keys must be set for APNs to be used; the bell works without them. Platform-level: boot-time only, never a workspace setting |
+| `RUPERT_DEV_ORIGIN` | unset | Development only, read by the iPhone app's DEBUG builds (`ios/Sources/Rupert/Instance.swift`): points the whole app at a local Rupert (`http://127.0.0.1:3005` in the `RupertApp (local)` Xcode scheme and the Simulator UI tests). Never set on a server; release builds ignore it |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | unset (push off) | Web Push for the installed staff web app (`/employee`). Generate once with `bin/rails runner 'k = WebPush.generate_key; puts k.public_key, k.private_key'`; `VAPID_SUBJECT` is `mailto:` the support mailbox. Platform-level, boot-time only |
 | `RUPERT_GOOGLE_OAUTH_HOST` | `HOST` in production; any host elsewhere | The one host whose Google callback is registered. Every Google sign-in and sign-up is sent there, so other hostnames and the iPhone app need no callback of their own. A bare hostname or a URL |
 | `RUPERT_SWIPESIMPLE_INBOX` | unset (off) | Absolute directory that `SwipesimpleInboxJob` imports reports from; only for an explicit trusted producer, not for webpage sync. See [swipesimple-reporting.md](swipesimple-reporting.md) |
 | `RUPERT_BACKUP_STATUS_DIR` | `web/storage/backups` | Where System → Backups reads the status JSON written by the backup scripts; must match their `STATUS_DIR` / `STATUS_PATH`. See [backups.md](backups.md) |
@@ -78,6 +81,7 @@ Full detail in [team-chat.md](team-chat.md).
 | `RUPERT_VERIFY` | `1` (every local bot) or a comma list of bot handles: check and fix each local answer against its tool data |
 | `RUPERT_VOICE_URL` | Local speech worker for Team chat voice (`http://127.0.0.1:<port>` only); voice controls appear only when this and the token are set |
 | `RUPERT_VOICE_TOKEN` | Bearer token for the speech worker (at least 32 bytes) |
+| `RUPERT_ALLOW_BENCHMARK_FIXTURE` | Required (`1`) to run `TeamChat::BenchmarkFixture` in production; it invents data and refuses otherwise |
 
 ### Subscriptions, owner identities and private workspaces
 
@@ -87,7 +91,8 @@ See [the subscriptions plan](../plans/customer-subscriptions-and-trust.md) and [
 | --- | --- | --- |
 | `RUPERT_BILLING_ENABLED` | control plane | `true` turns on Rupert subscriptions (also needs every `CSP_STRIPE_*` key); keep `false` until test-mode acceptance |
 | `RUPERT_PUBLIC_ORIGIN` | control plane | Public origin for billing return URLs and feedback links (default `https://rupertpos.com`) |
-| `RUPERT_SUPPORT_EMAIL` | `support@rupertpos.com` | Contact address on the public Support and Privacy policy pages (`/support`, `/privacy`), which the App Store listing links to |
+| `RUPERT_SUPPORT_EMAIL` | `sdolbec@rupertpos.com` | Contact address on the public Support and Privacy policy pages (`/support`, `/privacy`), which the App Store listing links to |
+| `RUPERT_LEGAL_NAME`, `RUPERT_BUSINESS_ADDRESS`, `RUPERT_SUPPORT_PHONE`, `RUPERT_SUPPORT_HOURS`, `RUPERT_HOSTING_LOCATION`, `RUPERT_SECURITY_EMAIL` | any public node | Company facts on `/terms`, `/refunds`, `/security` and `/support`. A blank value shows an "Owner to add" placeholder instead of an invented fact; `RUPERT_SECURITY_EMAIL` falls back to `RUPERT_SUPPORT_EMAIL` |
 | `RUPERT_APPROVED_REFERRAL_CODES` | control plane | Comma-separated owner-approved referral codes; when set, only these are eligible |
 | `RUPERT_OWNER_GOOGLE_EMAILS` | control plane | Comma-separated owner Google mailboxes for `platform:link_owner_identities` |
 | `RUPERT_PROVISION_WORKSPACES` | control plane | `true` lets the control plane hand workspaces to the host provisioner |

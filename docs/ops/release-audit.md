@@ -11,6 +11,7 @@ Every Rupert release passes a security, privacy and partner-readiness audit. Mos
 | Customer names on public pages (hashed deny-list) | **Blocks** new findings (needs the secret, below) | **Blocks**, and a missing deny-list blocks a final release | Same check |
 | Email addresses / forwarded-email evidence on public pages | **Blocks** new findings | **Blocks** | Same check |
 | "PCI certified", "SOC 2", "ISO 27001", "pen-tested" without evidence | **Blocks** | **Blocks** | Same check |
+| Brand wording: a wrong name for Tap to Pay on iPhone, tap payments on iPad, the feature named before it ships, "certified/approved partner" of Apple, Dejavoo or Valmar | **Blocks** | **Blocks** | Same check |
 | Draft notice or owner placeholders on `/terms`, `/refunds` | Warning | **Blocks a final release** (`vX.Y.Z`); a pre-release (`vX.Y.Z-rc.N`) only warns | Warning |
 | Secrets (gitleaks) | **Blocks**: `Dependency and static scan` scans the new commits | **Blocks**: whole tree | Needs a green `Dependency and static scan` |
 | Vulnerable gems, Brakeman | **Blocks** (unchanged) | Required check | Same check |
@@ -80,6 +81,18 @@ Public wording like "PCI certified", "SOC 2", "ISO 27001" or "pen-tested" is all
 | `penetration-test.md` | Test date, tester, scope and remediation status |
 
 Negated or planned wording ("Rupert has no SOC 2 report", "a penetration test is planned") passes without evidence.
+
+## Brand and availability wording
+
+Checked on public pages, every view, `ios/AppStore/listing.md` and `mobile/App.tsx`. Background and sources:
+[docs/compliance/dejavoo-tap-to-pay-compliance.md](../compliance/dejavoo-tap-to-pay-compliance.md).
+
+| Rule | Blocks | Allowed when |
+| --- | --- | --- |
+| `tap-to-pay-name` | Apple's feature name written any other way than in full (for example with "Apple" in front, or shortened) | Never: use the full name |
+| `tap-to-pay-availability` | The full name on a public page | The sentence says it is planned or not available, or `docs/security/evidence/tap-to-pay-on-iphone-live.md` records the release it shipped in |
+| `tap-to-pay-ipad` | Tap or contactless payments "on iPad" | The sentence says it does not work there |
+| `partner-claim` | "Certified", "approved", "official" or "preferred" partner of Apple, Dejavoo, iPOSpays or Valmar | The sentence denies it, or `docs/security/evidence/partner-permission.md` records the written permission |
 
 ## Runtime audit on the server
 

@@ -1,0 +1,95 @@
+<%# The PIN clock pad (docs/time-and-pay/DESIGN.md): one dialog used by the POS strip and the /clock
+    kiosk. Type 4 digits and you are clocked in; already in, and the pad offers Clock out / Break /
+    Meal. Driven by pin_clock_controller.js; the server (PinClockController) decides everything.
+    Locals: kiosk (boolean, renders inline instead of as a dialog), location_id, register_name, trusted,
+    state (the signed-in person's own clock state for the strip's dot). %>
+<% kiosk = local_assigns.fetch(:kiosk, false) %>
+<% trusted = local_assigns.fetch(:trusted, false) %>
+<% pin_length = TimeRules.for(local_assigns[:location_id]).pin_length %>
+<% data = { controller: 'pin-clock', pin_clock_url_value: clock_pin_path, pin_clock_setup_url_value: clock_pin_setup_path, pin_clock_workers_url_value: clock_workers_path,
+            pin_clock_length_value: pin_length, pin_clock_location_value: local_assigns[:location_id], pin_clock_register_value: local_assigns[:register_name],
+            pin_clock_trusted_value: trusted, pin_clock_kiosk_value: kiosk,
+            pin_clock_strings_value: { wrong: t('time.clock.wrong_pin'), offline: t('time.clock.offline_saved'), synced: t('time.clock.offline_synced', count: 1),
+                                       busy: t('time.clock.busy'), untrusted: t('time.clock.untrusted'), since: t('time.clock.state.since', time: '%{time}'),
+                                       on_break: t('time.clock.state.on_break_minutes', minutes: '%{minutes}'), on_meal: t('time.clock.state.on_meal_minutes', minutes: '%{minutes}'),
+                                       already_in: t('time.clock.state.already_in', name: '%{name}'), setup_title: t('time.clock.setup.title') }.to_json } %>
+<% if kiosk %>
+<section id="pin-clock" class="pin-clock pin-clock-kiosk" aria-labelledby="pin-clock-title" data-pin-clock-target="root" <%= tag.attributes(data: data) %>>
+<% else %>
+<span class="pos-clock" <%= tag.attributes(data: data) %>>
+  <button type="button" class="btn-ghost btn-sm pos-clock-button" data-action="pin-clock#open" aria-haspopup="dialog" aria-controls="pin-clock" title="<%= t('time.clock.open_pad') %>">
+    <%= navigation_icon('clock') %><span><%= t('time.clock.pos_button') %></span><span class="pos-clock-dot" data-state="<%= local_assigns[:state] %>" data-pin-clock-target="dot" aria-hidden="true"></span>
+  </button>
+<dialog id="pin-clock" class="pos-sheet pos-sheet-narrow pin-clock" aria-labelledby="pin-clock-title" data-pin-clock-target="root" data-action="close->pin-clock#closed click->pin-clock#backdropClose keydown->pin-clock#keydown">
+<% end %>
+  <div class="pin-clock-body">
+    <header class="pin-clock-head">
+      <h2 id="pin-clock-title" class="pos-sheet-title" data-pin-clock-target="title"><%= t('time.clock.enter_pin') %></h2>
+      <% unless kiosk %><button type="button" class="btn-ghost btn-sm" data-action="pin-clock#close" aria-label="<%= t('time.clock.cancel') %>">✕</button><% end %>
+    </header>
+    <p class="pin-clock-message" role="status" aria-live="assertive" data-pin-clock-target="message"><%= t('time.clock.enter_pin_hint') %></p>
+
+    <%# Step 1: the pad %>
+    <div data-pin-clock-target="pad">
+      <div class="pin-clock-dots" aria-hidden="true" data-pin-clock-target="dots"><% pin_length.times do %><span class="pin-clock-dot"></span><% end %></div>
+      <label class="sr-only" for="pin-clock-input"><%= t('time.clock.enter_pin') %></label>
+      <input id="pin-clock-input" class="pin-clock-input" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="<%= pin_length %>" data-pin-clock-target="input" data-action="input->pin-clock#typed" aria-describedby="pin-clock-title">
+      <div class="pin-clock-keys" role="group" aria-label="<%= t('time.clock.enter_pin') %>">
+        <% %w[1 2 3 4 5 6 7 8 9].each do |d| %><button type="button" class="pin-clock-key" data-action="pin-clock#key" data-digit="<%= d %>"><%= d %></button><% end %>
+        <button type="button" class="pin-clock-key pin-clock-key-soft" data-action="pin-clock#backspace" aria-label="<%= t('time.clock.delete') %>">⌫</button>
+        <button type="button" class="pin-clock-key" data-action="pin-clock#key" data-digit="0">0</button>
+        <button type="button" class="pin-clock-key pin-clock-key-soft" data-action="pin-clock#finish"><%= t('time.clock.cancel') %></button>
+      </div>
+      <p class="pin-clock-foot"><button type="button" class="text-sm text-olive underline" data-action="pin-clock#startSetup"><%= t('time.clock.new_here') %></button></p>
+    </div>
+
+    <%# Step 2 (already in): the choices %>
+    <div class="pin-clock-options" hidden data-pin-clock-target="options">
+      <p class="pin-clock-since" data-pin-clock-target="since"></p>
+      <button type="button" class="btn-primary btn-lg pin-clock-option" data-action="pin-clock#act" data-clock-action="clock_out"><%= t('time.clock.actions.clock_out') %></button>
+      <div class="pin-clock-option-row">
+        <button type="button" class="btn-ghost btn-lg pin-clock-option" data-action="pin-clock#act" data-clock-action="break" data-pin-clock-target="breakButton"><%= t('time.clock.actions.break') %></button>
+        <button type="button" class="btn-ghost btn-lg pin-clock-option" data-action="pin-clock#act" data-clock-action="meal" data-pin-clock-target="mealButton"><%= t('time.clock.actions.meal') %></button>
+        <button type="button" class="btn-ghost btn-lg pin-clock-option" data-action="pin-clock#act" data-clock-action="end_break" data-pin-clock-target="endBreakButton" hidden><%= t('time.clock.actions.end_break') %></button>
+      </div>
+    </div>
+
+    <%# Step 2 (forgot to clock out): pick the real time, then clock in %>
+    <div class="pin-clock-fix" hidden data-pin-clock-target="fix">
+      <p class="text-sm text-mocha"><%= t('time.clock.fix.hint') %></p>
+      <div class="pin-clock-fix-options" data-pin-clock-target="fixOptions"></div>
+      <label class="field-label" for="pin-clock-custom-end"><%= t('time.clock.fix.custom') %></label>
+      <div class="pin-clock-option-row">
+        <input id="pin-clock-custom-end" type="datetime-local" class="input" data-pin-clock-target="customEnd">
+        <button type="button" class="btn-primary" data-action="pin-clock#fixCustom"><%= t('time.clock.fix.send') %></button>
+      </div>
+    </div>
+
+    <%# First use: choose a PIN %>
+    <form class="pin-clock-setup" hidden data-pin-clock-target="setup" data-action="submit->pin-clock#saveSetup">
+      <p class="text-sm text-mocha"><%= t('time.clock.setup.hint') %></p>
+      <div data-pin-clock-target="setupWho">
+        <label class="field-label" for="pin-clock-number"><%= t('time.clock.setup.number') %></label>
+        <input id="pin-clock-number" class="input" inputmode="numeric" autocomplete="off" data-pin-clock-target="setupNumber">
+        <label class="field-label mt-2" for="pin-clock-who"><%= t('time.clock.setup.pick_name') %></label>
+        <select id="pin-clock-who" class="select" data-pin-clock-target="setupWorker"><option value=""></option></select>
+      </div>
+      <label class="field-label" for="pin-clock-new"><%= t('time.clock.setup.pin') %></label>
+      <input id="pin-clock-new" class="input pin-clock-setup-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="<%= pin_length %>" minlength="<%= pin_length %>" autocomplete="new-password" required data-pin-clock-target="setupPin">
+      <label class="field-label" for="pin-clock-confirm"><%= t('time.clock.setup.confirm') %></label>
+      <input id="pin-clock-confirm" class="input pin-clock-setup-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="<%= pin_length %>" minlength="<%= pin_length %>" autocomplete="new-password" required data-pin-clock-target="setupConfirm">
+      <div class="form-actions">
+        <button type="submit" class="btn-primary"><%= t('time.clock.setup.save') %></button>
+        <button type="button" class="btn-ghost" data-action="pin-clock#reset"><%= t('time.clock.cancel') %></button>
+      </div>
+    </form>
+
+    <%# Done: the one big line %>
+    <div class="pin-clock-confirm" hidden data-pin-clock-target="confirm">
+      <p class="pin-clock-confirm-name" data-pin-clock-target="confirmName"></p>
+      <p class="pin-clock-confirm-line" data-pin-clock-target="confirmLine"></p>
+      <button type="button" class="btn-ghost btn-sm" data-action="pin-clock#finish"><%= t('time.clock.actions.done') %></button>
+    </div>
+    <p class="pin-clock-queue" hidden data-pin-clock-target="queue"></p>
+  </div>
+<% if kiosk %></section><% else %></dialog></span><% end %>

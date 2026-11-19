@@ -2,6 +2,14 @@
 
 Native Expo/React Native client for a Rupert instance. The instance itself supplies the installable web app at `/employee`; there is no separate native-client web deployment.
 
+## Push notifications
+
+This Expo client does not register for push (no `expo-notifications` dependency, by choice: the
+staff API it uses is kill-switched in production). Time & pay notifications (schedule posted or
+changed, approvals, shift offers, forgotten clock-outs, break reminders) reach staff through the
+Rupert iPhone app (`ios/`, APNs) and the installed staff web app at `/employee` (Web Push, turned
+on from Settings → Notifications). The in-app bell shows every message regardless.
+
 ## Development and validation
 
 Use Node 24 and the committed lockfile:
@@ -58,7 +66,7 @@ See [staff timesheets](../docs/employee-timesheets.md) for account provisioning,
 
 The supported SDK 58 patch and lockfile now use Expo **58.0.17**, with SDK-compatible TypeScript **6.0.3**. `npm run check` runs the online Expo compatibility check, TypeScript validation, staff boundaries, exploit regression tests, verified security backports and the fail-closed advisory gate. CI additionally runs Expo Doctor and exports **iOS and Android with Hermes bytecode** on x86-64 Ubuntu. Its `employee-native-js-exports-<commit>` artifact contains JavaScript/assets for verification; it is not an installable or signed app. Dependency checks remain enabled.
 
-All EAS profiles prefill the staff app with `https://herbalhealers.rupertpos.com`. The instance field stays editable, and this public URL contains no staff identity or credentials. For a separate staging build, change the selected profile's `EXPO_PUBLIC_RUPERT_URL` before building. The development profile uses the EAS `development` environment, preview uses `preview`, and store builds use `production`.
+No EAS profile prefills a workspace: one build serves every workspace, and staff type their own workspace's address once (it is remembered with the sign-in). A sign-in on another workspace's address is refused with a message that says to check the address. To build for a single workspace, set `EXPO_PUBLIC_RUPERT_URL` in the selected profile's `env`; the field stays editable and the public URL contains no staff identity or credentials. The development profile uses the EAS `development` environment, preview uses `preview`, and store builds use `production`.
 
 | Profile | iPhone / iPad | Android | Intended handoff |
 | --- | --- | --- | --- |

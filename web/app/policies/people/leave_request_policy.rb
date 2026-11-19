@@ -23,15 +23,22 @@ module People
     end
 
     def approve?
-      module?('leave.write') && tenant?
+      module?('leave.write') && tenant? && in_store_scope?
     end
 
     def deny?
-      module?('leave.write') && tenant?
+      module?('leave.write') && tenant? && in_store_scope?
     end
 
     def cancel?
-      module?('leave.write') && tenant?
+      module?('leave.write') && tenant? && in_store_scope?
+    end
+
+    private
+
+    # A manager limited to stores decides only for staff of those stores.
+    def in_store_scope?
+      People::StoreScope.covers?(user, record.employee)
     end
   end
 end
