@@ -15,8 +15,11 @@ class PosEventRegistersController < AuthenticatedController
   def show
     @event = PosEvent.includes(:location, :pos_event_items).find(params[:pos_event_id])
     @seller = @event.seller?(Current.user)
-    @items = @event.sellable_items
-    @approvers = Compliance::SaleGate.approvers
+    # Someone not on the event's staff list gets the "not on staff list" page, without the
+    # event's items, prices or the list of managers who approve overrides.
+    listed = @event.staff?(Current.user) || Current.user.can_approve_pos_override?
+    @items = listed ? @event.sellable_items : []
+    @approvers = listed ? Compliance::SaleGate.approvers : []
     respond_to do |format|
       format.html
       format.json { render json: register_state }

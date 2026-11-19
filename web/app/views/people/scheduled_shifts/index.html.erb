@@ -79,7 +79,7 @@
             <tr class="schedule-grid-row" data-employee-id="<%= employee.id %>">
               <th scope="row" class="td schedule-grid-name">
                 <span class="font-medium text-ink"><%= employee.full_name %></span>
-                <span class="block text-xs text-mocha"><%= [employee.position&.name, (employee.current_pay_rate&.pay_type == 'hourly' && employee.current_pay_rate.hourly_rate_cents.to_i.positive? ? "#{number_to_currency(employee.current_pay_rate.hourly_rate_cents / 100.0)}/h" : nil), ('Minor' if employee.minor?)].compact.join(' · ') %></span>
+                <span class="block text-xs text-mocha"><%= [employee.position&.name, (Current.user.can?('payroll.read') && employee.current_pay_rate&.pay_type == 'hourly' && employee.current_pay_rate.hourly_rate_cents.to_i.positive? ? "#{number_to_currency(employee.current_pay_rate.hourly_rate_cents / 100.0)}/h" : nil), ('Minor' if employee.minor?)].compact.join(' · ') %></span>
               </th>
               <% @schedule.days.each do |day| %>
                 <td class="td schedule-grid-cell" data-employee-id="<%= employee.id %>" data-date="<%= day.iso8601 %>" <% if @can_write %>data-action="dragover->schedule-builder#dragOver dragleave->schedule-builder#dragLeave drop->schedule-builder#drop click->schedule-builder#cellClick"<% end %>>

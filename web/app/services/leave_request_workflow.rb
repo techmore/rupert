@@ -17,6 +17,8 @@ class LeaveRequestWorkflow
         next false unless request.requested?
       else
         raise Pundit::NotAuthorizedError unless Current.user&.active? && Current.user.can?('leave.write')
+        # Store limits hold however the decision arrives (direct route, approvals inbox).
+        raise Pundit::NotAuthorizedError unless People::StoreScope.covers?(Current.user, request.employee)
         raise Pundit::NotAuthorizedError if event.in?(%i[approve deny]) && request.employee&.user_id == Current.user.id
       end
       next false unless request.public_send("may_#{event}?")

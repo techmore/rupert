@@ -7,7 +7,7 @@ module People
     end
 
     def show?
-      tenant? && (user.can?('timesheets.read') || own? || assigned_demo?)
+      tenant? && ((user.can?('timesheets.read') && in_store_scope?) || own? || assigned_demo?)
     end
 
     def create?
@@ -15,7 +15,7 @@ module People
     end
     alias new? create?
     def update?
-      tenant? && (user.can?('timesheets.write') || own?)
+      tenant? && ((user.can?('timesheets.write') && in_store_scope?) || own?)
     end
     alias edit? update?
     alias destroy? update?
@@ -30,7 +30,13 @@ module People
     end
     alias reject? approve?
     def reopen?
-      tenant? && (user.can?('timesheets.write') || (own? && record.rejected?))
+      tenant? && ((user.can?('timesheets.write') && in_store_scope?) || (own? && record.rejected?))
+    end
+
+    # A manager or shift lead limited to some stores reads and edits only those stores' staff,
+    # the same rule approve? and the approvals inbox already apply.
+    def in_store_scope?
+      People::StoreScope.covers?(user, record.employee)
     end
 
     def worker
