@@ -79,7 +79,8 @@ class ApplicationController < ActionController::Base
       true
     when 'point_of_sale', 'ctrax_pos'
       %w[index quote].include?(action_name)
-    when 'pos_displays', 'pos_checkouts', 'pos_event_registers' # event register: the recorder checks the event's staff list
+    when 'pos_displays', 'pos_checkouts', 'pos_event_registers', # event register: the recorder checks the event's staff list
+      'native/reader_attempts' # phone card reader payments: gated again by the feature flag and can_use_pos?
       true
     when 'pos_event_sales'
       %w[create receipt].include?(action_name)

@@ -12,15 +12,22 @@ class PosSetting < ApplicationRecord
   CREDENTIAL_KEYS = {
     'authorize_net' => %w[api_login_id transaction_key],
     'nmi' => %w[security_key tokenization_key merchant_company],
-    'dejavoo_spin' => %w[tpn auth_key]
+    'dejavoo_spin' => %w[tpn auth_key],
+    # A card reader the phone app runs (Pos::DeviceReader). The values are the
+    # provider's merchant-side identifiers. Only while the feature is enabled.
+    'device_reader' => %w[merchant_id reader_profile_id]
   }.freeze
-  SIGNOFF_PROVIDERS = %w[nmi dejavoo_spin].freeze
+  SIGNOFF_PROVIDERS = %w[nmi dejavoo_spin device_reader].freeze
+  SIGNOFF_LABELS = { 'nmi' => 'NMI', 'dejavoo_spin' => 'Dejavoo', 'device_reader' => 'Phone card reader' }.freeze
   validates :gateway_provider, inclusion: { in: CREDENTIAL_KEYS.keys }
   validates :environment, inclusion: { in: %w[sandbox production] }
   validate do
     errors.add(:location, 'must be a C-Trax store in this workspace') unless location&.tenant_id == tenant_id && location.source == 'ctrax'
     if SIGNOFF_PROVIDERS.include?(gateway_provider) && environment == 'production' && !production_approved_at
-      errors.add(:base, "#{gateway_provider == 'nmi' ? 'NMI' : 'Dejavoo'} production needs owner sign-off: confirm the processor approved this merchant account and record the approval.")
+      errors.add(:base, "#{SIGNOFF_LABELS.fetch(gateway_provider)} production needs owner sign-off: confirm the processor approved this merchant account and record the approval.")
+    end
+    if gateway_provider == 'device_reader' && !Pos::DeviceReader.enabled?
+      errors.add(:gateway_provider, 'is not available: phone card reader payments are not enabled')
     end
     if production_approved_at && (production_approval_note.to_s.squish.length < 10 || production_approval_note.to_s.length > 1000)
       errors.add(:production_approval_note, 'must say who approved the account and when (10 to 1000 characters)')
@@ -52,8 +59,9 @@ class PosSetting < ApplicationRecord
       self.card_enabled = false
     end
     # Sign-off covers one account: a new provider, environment or account ID needs it again.
-    # For Dejavoo the account is the TPN, which lives in the credentials.
-    account_changed = will_save_change_to_gateway_id? || (gateway_provider == 'dejavoo_spin' && will_save_change_to_credentials_json?)
+    # For Dejavoo the account is the TPN, which lives in the credentials; a
+    # phone card reader's merchant identifiers live there too.
+    account_changed = will_save_change_to_gateway_id? || (%w[dejavoo_spin device_reader].include?(gateway_provider) && will_save_change_to_credentials_json?)
     if persisted? && (account_changed || will_save_change_to_environment? || will_save_change_to_gateway_provider?) && !will_save_change_to_production_approved_at?
       self.production_approved_at = nil
       self.production_approved_by = nil
@@ -65,6 +73,7 @@ class PosSetting < ApplicationRecord
   def nmi_ready_environment? = gateway_provider == 'nmi' && (environment == 'sandbox' || production_approved_at.present?)
   def dejavoo_sandbox? = gateway_provider == 'dejavoo_spin' && environment == 'sandbox'
   def dejavoo_ready_environment? = gateway_provider == 'dejavoo_spin' && (environment == 'sandbox' || production_approved_at.present?)
+  def device_reader_ready_environment? = gateway_provider == 'device_reader' && (environment == 'sandbox' || production_approved_at.present?)
 
   def payment_fingerprint
     Digest::SHA256.hexdigest([gateway_provider, environment, gateway_id, credentials.sort].to_json)

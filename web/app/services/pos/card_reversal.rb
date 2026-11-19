@@ -36,6 +36,7 @@ module Pos
       raise Error, 'Only paid card checkouts charged through Rupert can be refunded here.' unless @checkout.tender == 'card' && @checkout.paid? && !@checkout.demo?
       raise Error, 'Enter a reason of at least 3 characters.' unless reason.to_s.squish.length.between?(3, 500)
       return call_dejavoo(amount: amount, reason: reason, user: user) if dejavoo?
+      return call_device_reader(amount: amount, reason: reason, user: user) if device_reader?
 
       attempt = @checkout.pos_payment_attempts.find_by(status: 'paid')
       raise Error, 'No verified gateway payment is recorded for this checkout.' unless attempt&.transaction_id.to_s.match?(ANET_ID)
@@ -71,6 +72,8 @@ module Pos
       attempt = reversal.pos_payment_attempt
       result = if dejavoo?
         reconcile_dejavoo(reversal, attempt)
+      elsif device_reader?
+        reconcile_device_reader(reversal, attempt)
       elsif nmi?
         reconcile_nmi(reversal, attempt)
       else
@@ -97,6 +100,76 @@ module Pos
 
     def nmi? = @checkout.gateway_provider == 'nmi'
     def dejavoo? = @checkout.gateway_provider == 'dejavoo_spin'
+    def device_reader? = @checkout.gateway_provider == 'device_reader'
+
+    # Phone card reader (Pos::DeviceReader). The whole sale is voided while the
+    # provider still allows it; a partial amount, or a sale the provider says
+    # can no longer be voided, is refunded under the reversal's own reference.
+    # Both are server-side calls to the provider; no card is presented.
+    def call_device_reader(amount:, reason:, user:)
+      attempt = @checkout.pos_payment_attempts.find_by(status: 'paid')
+      raise Error, 'No verified card reader payment is recorded for this checkout.' unless attempt
+      raise Error, 'This payment was voided already.' if device_reader_sale(attempt).voided
+
+      reversal = create_reversal!(attempt, amount, reason, user) do |refunded|
+        amount == @checkout.total_cents && refunded.zero? ? 'void' : 'refund'
+      end
+      if reversal.kind == 'void'
+        voided = device_reader.void(reference: attempt.invoice, amount_cents: reversal.amount_cents)
+        if voided.charged? && voided.voided && voided.reference_id == attempt.invoice
+          apply(reversal, { status: 'succeeded', transaction_id: voided.processor_reference })
+          return reversal.reload
+        end
+        unless voided.outcome == 'declined'
+          apply(reversal, { status: 'unknown' })
+          return reversal.reload
+        end
+        apply(reversal, { status: 'failed', message: 'This sale can no longer be voided. A refund was started instead.' })
+        reversal = create_reversal!(attempt, amount, reason, user) { 'refund' }
+      end
+      refunded = device_reader.refund(reference: reversal.reference, original_reference: attempt.invoice, amount_cents: reversal.amount_cents)
+      apply(reversal, device_reader_refund_result(reversal, refunded))
+      reversal.reload
+    rescue Error
+      reversal.update!(status: 'unknown') if reversal&.reload&.status == 'submitting'
+      raise
+    end
+
+    def device_reader
+      @device_reader ||= DeviceReader.gateway(setting).tap { |gateway| gateway.assert_checkout!(@checkout) }
+    end
+
+    # The provider's record of the original sale.
+    def device_reader_sale(attempt)
+      result = device_reader.lookup(attempt.invoice)
+      raise Error, 'The payment provider has no record of this payment.' unless result.charged? && result.reference_id == attempt.invoice
+
+      result
+    end
+
+    def device_reader_refund_result(reversal, result)
+      if result.approved? && result.kind == 'refund' && result.reference_id == reversal.reference && result.total_cents == reversal.amount_cents
+        { status: 'succeeded', transaction_id: result.processor_reference }
+      elsif result.no_charge?
+        { status: 'failed', message: 'The payment provider declined the refund. Nothing was refunded.' }
+      else
+        { status: 'unknown' }
+      end
+    end
+
+    # Read-only: a void shows on the original sale; a refund is looked up by
+    # its own reference.
+    def reconcile_device_reader(reversal, attempt)
+      if reversal.kind == 'void'
+        return { status: 'succeeded', transaction_id: nil } if device_reader_sale(attempt).voided
+
+        return reversal.submitted_at < 10.minutes.ago ? { status: 'failed', message: 'The void did not apply. Nothing was reversed.' } : nil
+      end
+      result = device_reader.lookup(reversal.reference)
+      return device_reader_refund_result(reversal, result) unless result.outcome == 'not_found'
+
+      reversal.submitted_at < 10.minutes.ago ? { status: 'failed', message: 'The payment provider has no record of this refund. Nothing was refunded.' } : nil
+    end
 
     # Dejavoo (SPIn). The whole sale is voided while its batch is open (no card
     # needed). A partial amount, or a sale whose void the terminal refuses

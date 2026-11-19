@@ -157,6 +157,17 @@ Rails.application.routes.draw do
   get '/native/ios/path-configuration.json', to: 'native/configurations#ios', as: :native_ios_path_configuration,
     defaults: { format: :json }
   post '/native/session', to: 'native/sessions#create', as: :native_session
+  # Phone card reader payments (Pos::DeviceReader). The routes exist only where the deployment
+  # switch is on (off in production); the controller also needs the workspace's own flag.
+  constraints(->(_request) { Pos::DeviceReader.available? }) do
+    post '/native/pos_checkouts/:checkout_id/reader_attempt', to: 'native/reader_attempts#create', as: :native_reader_attempt
+    get '/native/pos_checkouts/:checkout_id/reader_attempt', to: 'native/reader_attempts#show'
+    post '/native/reader_attempts/start', to: 'native/reader_attempts#start', as: :start_native_reader_attempt
+    post '/native/reader_attempts/result', to: 'native/reader_attempts#result', as: :result_native_reader_attempt
+    post '/native/reader_attempts/cancel', to: 'native/reader_attempts#cancel', as: :cancel_native_reader_attempt
+    # POST, not GET: the token stays out of URLs and log paths. The action cannot be named "status".
+    post '/native/reader_attempts/status', to: 'native/reader_attempts#confirmed_status', as: :status_native_reader_attempt
+  end
 
   # ---- time & pay: ios ----
   # The iPhone app's APNs token, the installed web app's Web Push subscription, and a person's own notification choices.

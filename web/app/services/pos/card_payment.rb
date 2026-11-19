@@ -8,6 +8,7 @@ module Pos
       Checkout.assert_eligible!(checkout.gateway_provider, checkout.lines) unless checkout.paid? || checkout.unresolved?
       return NmiCardPayment.call(checkout, nonce: nonce) if checkout.gateway_provider == 'nmi'
       raise Error, 'This store runs cards on its Dejavoo terminal. Send the sale to the terminal from the register.' if checkout.gateway_provider == 'dejavoo_spin'
+      raise Error, 'This store takes cards on the phone card reader. Start the payment from the phone.' if checkout.gateway_provider == 'device_reader'
       raise Error, 'Demo card checkout does not accept real card tokens.' if checkout.demo?
       raise Error, 'Invalid payment token.' unless nonce.is_a?(String) && nonce.bytesize.between?(1, 4096) && !nonce.match?(/[\x00-\x20\x7f]/)
       setting = PosSetting.find_by!(location: checkout.location)
@@ -55,6 +56,7 @@ module Pos
     def self.reconcile!(attempt)
       return NmiCardPayment.reconcile!(attempt) if attempt.pos_checkout.gateway_provider == 'nmi'
       return DejavooTerminalPayment.reconcile!(attempt) if attempt.pos_checkout.gateway_provider == 'dejavoo_spin'
+      return DeviceReaderPayment.reconcile!(attempt) if attempt.pos_checkout.gateway_provider == 'device_reader'
       checkout = attempt.pos_checkout
       return if checkout.paid?
       setting = PosSetting.find_by!(location: checkout.location)

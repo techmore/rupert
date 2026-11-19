@@ -13,7 +13,7 @@ class PosSettingsController < AuthenticatedController
 
   def update
     fields = params.require(:pos_setting).permit(:cash_enabled, :card_enabled, :stock_writes_enabled, :environment, :gateway_id, :gateway_provider, :lock_version)
-    submitted = (params[:credentials].is_a?(ActionController::Parameters) ? params[:credentials].permit(:api_login_id, :transaction_key, :security_key, :tokenization_key, :merchant_company, :tpn, :auth_key).to_h : {}).reject { |_key, value| value.blank? }
+    submitted = (params[:credentials].is_a?(ActionController::Parameters) ? params[:credentials].permit(:api_login_id, :transaction_key, :security_key, :tokenization_key, :merchant_company, :tpn, :auth_key, :merchant_id, :reader_profile_id).to_h : {}).reject { |_key, value| value.blank? }
     saved = PosSetting.transaction do
       @setting.lock! if @setting.persisted?
       @setting.assign_attributes(fields)
@@ -41,13 +41,16 @@ class PosSettingsController < AuthenticatedController
     gateway = case @setting.gateway_provider
               when 'nmi' then Pos::NmiGateway.new(@setting)
               when 'dejavoo_spin' then Pos::DejavooSpinGateway.new(@setting)
+              when 'device_reader' then Pos::DeviceReader.gateway(@setting)
               else Pos::Gateway.new(@setting)
               end
     # A Dejavoo check proves the TPN, auth key and terminal connection; there is no browser key.
-    client_key = @setting.gateway_provider == 'dejavoo_spin' ? (gateway.verify! && nil) : gateway.merchant.fetch('publicClientKey')
+    client_key = %w[dejavoo_spin device_reader].include?(@setting.gateway_provider) ? (gateway.verify! && nil) : gateway.merchant.fetch('publicClientKey')
     count = PosSetting.where(id: @setting.id, lock_version: gateway.version).update_all(public_client_key: client_key, verified_at: Time.current, updated_at: Time.current, lock_version: gateway.version + 1)
     raise Pos::Error, 'Setup changed during the check.' if count.zero?
-    notice = if @setting.gateway_provider == 'dejavoo_spin'
+    notice = if @setting.gateway_provider == 'device_reader'
+      "Phone card reader #{@setting.environment} identifiers checked. Enable card charges when ready."
+    elsif @setting.gateway_provider == 'dejavoo_spin'
       "Dejavoo #{@setting.environment} terminal reached through SPIn with this TPN and auth key. Enable card charges, then run a #{@setting.environment == 'sandbox' ? 'test ' : ''}sale on the terminal."
     elsif @setting.gateway_provider == 'nmi'
       "NMI #{@setting.environment} company/profile read verified. Enable card checkout, then run a test sale; payment permissions are proven by the first approved payment."
@@ -118,7 +121,7 @@ class PosSettingsController < AuthenticatedController
   def apply_production_signoff!
     return unless PosSetting::SIGNOFF_PROVIDERS.include?(@setting.gateway_provider) && @setting.environment == 'production'
     return if @setting.production_approved_at && !@setting.environment_changed? && !@setting.gateway_provider_changed? && !@setting.gateway_id_changed? &&
-              !(@setting.gateway_provider == 'dejavoo_spin' && @setting.credentials_json_changed?)
+              !(%w[dejavoo_spin device_reader].include?(@setting.gateway_provider) && @setting.credentials_json_changed?)
     return unless params[:nmi_production_signoff] == '1'
 
     raise Pundit::NotAuthorizedError unless Current.user.admin? || Current.user.super_admin?

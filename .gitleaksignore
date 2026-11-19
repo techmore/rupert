@@ -5,3 +5,7 @@ web/test/integration/pos_webhooks_test.rb:generic-api-key:9
 web/test/integration/pos_webhooks_test.rb:generic-api-key:10
 # Made-up iPOS Transact sandbox token used only in stubbed tests.
 web/test/services/ipos_transact_gateway_test.rb:generic-api-key:11
+# A made-up 64-hex attempt token (drawn from a seeded random generator, derived from no key) that
+# the card-number detector misreads: the phone card reader identifier tests need exactly that.
+web/test/integration/native_reader_identifiers_test.rb:generic-api-key:18
+web/test/services/device_reader_request_screen_test.rb:generic-api-key:10
