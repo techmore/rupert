@@ -7,6 +7,8 @@ class PosDisplaySession < ApplicationRecord
   belongs_to :user
   belongs_to :location
   encrypts :display_token
+  # The largest custom tip, whatever the sale: $500.00 (owner decision, November 2026).
+  CUSTOM_TIP_MAX_CENTS = 50_000
   serialize :draft_json, coder: JSON
   before_validation :create_token, on: :create
   validate do
@@ -58,6 +60,7 @@ class PosDisplaySession < ApplicationRecord
       when '10', '15', '20' then (BigDecimal(subtotal_cents.to_s) * choice.to_i / 100).round(0, BigDecimal::ROUND_HALF_UP).to_i
       when 'custom'
         return :invalid unless amount.to_s.match?(/\A\d{1,6}(?:\.\d{1,2})?\z/)
+        return :too_large if (BigDecimal(amount) * 100).to_i > max_custom_tip_cents
 
         (BigDecimal(amount) * 100).to_i
       else return :invalid
@@ -67,6 +70,10 @@ class PosDisplaySession < ApplicationRecord
       update!(chosen_tip_cents: cents, confirmed_revision: cart_revision)
       :confirmed
     end
+  end
+
+  def max_custom_tip_cents
+    CUSTOM_TIP_MAX_CENTS
   end
 
   def current_checkout
