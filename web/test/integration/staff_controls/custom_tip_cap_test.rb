@@ -2,10 +2,8 @@
 
 require 'test_helper'
 
-# Characterization: pins behaviour pending owner decision (docs/decisions/staff-controls-2026-11.md, item b).
-# The tip is chosen on the customer screen, which the cashier can open on the same phone. A custom
-# tip is accepted up to $999,999.99 whatever the cart is worth, and on a Card (A920) sale (recorded,
-# never charged by Rupert) it is later shared out to whoever was clocked in: the cashier, if alone.
+# Owner decision (docs/decisions/staff-controls-2026-11.md, item b): a custom tip is at most $20.00
+# or half the cart before tax, whichever is more. The percentage buttons and "No tip" are unchanged.
 class StaffControlsCustomTipCapTest < ActionDispatch::IntegrationTest
   setup do
     Current.tenant = tenants(:default_tenant)
@@ -27,30 +25,45 @@ class StaffControlsCustomTipCapTest < ActionDispatch::IntegrationTest
   end
   teardown { Current.reset }
 
-  test 'a custom tip of 999,999.99 is accepted on a 10.05 cart; one cent more is refused' do
-    post customer_display_tip_path, params: tip_params('1000000'), as: :json
-    assert_response :unprocessable_entity
-
+  test 'a custom tip above 20.00 on a 10.05 cart is refused with the limit; 20.00 is accepted' do
     post customer_display_tip_path, params: tip_params('999999.99'), as: :json
+    assert_response :unprocessable_entity
+    assert_equal 'The largest custom tip on this sale is $20.00. Enter a smaller amount, or ask the cashier.', response.parsed_body['error']
+    post customer_display_tip_path, params: tip_params('20.01'), as: :json
+    assert_response :unprocessable_entity
+    assert_nil @display.reload.chosen_tip_cents
+
+    post customer_display_tip_path, params: tip_params('20'), as: :json
     assert_response :success
-    assert_equal 99_999_999, response.parsed_body['tip_cents']
+    assert_equal 2000, response.parsed_body['tip_cents']
   end
 
-  test 'a 500.00 custom tip on a 10.05 Card (A920) sale is recorded and shared to the cashier who rang it' do
-    ClockShift.create!(user: @cashier, employee: @worker, employee_key: @worker.id.to_s, employee_name: @worker.name, employment_type: 'part_time',
-      started_at: 1.hour.ago, request_token: SecureRandom.uuid, location_id: @location.id, source: 'pos')
-    post customer_display_tip_path, params: tip_params('500'), as: :json
+  test 'on a larger cart the limit is half the cart before tax' do
+    post quote_ctrax_pos_path(@location.id, display_id: @display.id), params: { items: [{ variant_id: '3', quantity: 4 }] }, as: :json
     assert_response :success
+    @display.reload
+    assert_equal 4020, @display.subtotal_cents
+
+    post customer_display_tip_path, params: tip_params('20.11'), as: :json
+    assert_response :unprocessable_entity
+    assert_match(/\$20\.10/, response.parsed_body['error'])
+    post customer_display_tip_path, params: tip_params('20.10'), as: :json
+    assert_response :success
+  end
+
+  test 'a 500.00 custom tip cannot be put on a 10.05 Card (A920) sale' do
+    post customer_display_tip_path, params: tip_params('500'), as: :json
+    assert_response :unprocessable_entity
 
     post pos_checkouts_path, params: { display_id: @display.id, tender: 'card_a920', register_id: @register.id }, as: :json
-    assert_response :success
-    assert_equal ['paid', 50_000, 51_065], response.parsed_body.values_at('status', 'tip_cents', 'total_cents')
-    checkout = PosCheckout.sole
-    assert_equal [@cashier.id, 50_000], [checkout.user_id, checkout.order.tip_cents]
-    assert_empty PosPaymentAttempt.all
+    assert_response :unprocessable_entity
+    assert_empty PosCheckout.all
+  end
 
-    rows = Tips::Attribution.call(checkout.order)
-    assert_equal [[@worker.id, 50_000]], rows.map { |row| [row.employee_id, row.amount_cents] }
+  test 'percentage tips and no tip are unchanged' do
+    post customer_display_tip_path, params: tip_params(nil).merge(choice: '20'), as: :json
+    assert_response :success
+    assert_equal 201, response.parsed_body['tip_cents']
   end
 
   private
