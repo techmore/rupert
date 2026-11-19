@@ -193,9 +193,10 @@ class User < ActiveRecord::Base
 
   def pos_override_pin_set? = pos_override_pin_digest.present?
 
-  # Four to eight digits, stored only as a BCrypt digest.
+  # A new PIN is six to eight digits, stored only as a BCrypt digest. A four or five digit
+  # PIN set before that rule still verifies below until its owner next changes it.
   def pos_override_pin=(pin)
-    raise ArgumentError, 'Use a PIN of 4 to 8 digits.' unless pin.to_s.match?(/\A\d{4,8}\z/)
+    raise ArgumentError, 'Use a PIN of 6 to 8 digits.' unless pin.to_s.match?(/\A\d{6,8}\z/)
 
     self.pos_override_pin_digest = BCrypt::Password.create(pin.to_s)
     self.pos_override_pin_set_at = Time.current

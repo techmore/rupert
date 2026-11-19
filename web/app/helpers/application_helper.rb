@@ -17,6 +17,22 @@ module ApplicationHelper
     @ask_rupert_available = !!(user&.active? && !user.employee? && user.can?('chat.use') && Current.tenant_id == user.tenant_id && AskRupert::Config.current.enabled?)
   end
 
+  # The iPhone app's tabs this account can open ("time home chat ask inbox"). The app hides the
+  # rest (ios/Sources/Rupert/Tabs.swift), so nobody lands on a tab that only refuses them. These
+  # are the same checks the pages make; this only saves the dead end. Staff accounts (employee)
+  # get no Home: /login sends them to My time, which is the Time tab.
+  def native_app_tabs
+    user = Current.user
+    return unless user
+
+    tabs = ['time']
+    tabs << 'home' unless user.employee?
+    tabs << 'chat' if team_chat_badge_available? && user.can?('dashboard.read')
+    tabs << 'ask' if ask_rupert_available?
+    tabs << 'inbox'
+    tabs.join(' ')
+  end
+
   # The Team chat unread badge polls the chat; same people who may open it.
   def team_chat_badge_available?
     Current.user.present? && TeamChat.allowed?(Current.user)

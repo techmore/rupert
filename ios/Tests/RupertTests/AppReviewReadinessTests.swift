@@ -74,6 +74,30 @@ final class SessionWatcherTests: XCTestCase {
     }
 }
 
+final class SessionStateTests: XCTestCase {
+    func testEveryReportedStateReachesOnStateIncludingTheFirst() {
+        // The tab bar hides while signed out, so the first page's state matters too.
+        let watcher = SessionWatcher()
+        var states: [SessionWatcher.State] = []
+        watcher.onState = { states.append($0) }
+
+        watcher.observe("signed-out")
+        watcher.observe(nil)
+        watcher.observe("signed-in")
+        watcher.set(.signedOut)
+        XCTAssertEqual(states, [.signedOut, .signedIn, .signedOut])
+    }
+}
+
+final class SignedOutTabsTests: XCTestCase {
+    func testSignedOutThereIsOnePageAndItIsTheSignInPage() throws {
+        // One page means one request starts the session the sign-in form posts to.
+        let tabs = SignedOut.tabs(on: try XCTUnwrap(URL(string: "https://shop.rupertpos.com")))
+        XCTAssertEqual(tabs.map(\.id), ["home"])
+        XCTAssertEqual(tabs.first?.url.path, "/login")
+    }
+}
+
 final class BottomInsetTests: XCTestCase {
     func testScriptSetsTheCSSVariableInWholePoints() {
         XCTAssertEqual(BannerWebViewController.bottomInsetScript(83.4),
@@ -147,18 +171,27 @@ final class InfoPlistTests: XCTestCase {
         let info = try plist()
         let items = try XCTUnwrap(info["UIApplicationShortcutItems"] as? [[String: Any]])
         let types = items.compactMap { ($0["UIApplicationShortcutItemType"] as? String)?.components(separatedBy: ".").last }
-        let tabs = HotwireTab.all(on: URL(string: "https://pos.rupertpos.com")!).map(\.id)
+        let tabs = HotwireTab.every(on: URL(string: "https://pos.rupertpos.com")!).map(\.id)
         for type in types {
             XCTAssertTrue(tabs.contains(type), "quick action \(type) has no tab to open")
         }
         XCTAssertTrue(types.contains("time"), "Clock in is a Home Screen quick action")
+    }
+
+    func testOnlyQuickActionsEveryAccountCanUseAreBuiltIn() throws {
+        // Info.plist items show for everyone, signed in or not, so none may be a role-limited tab.
+        let info = try plist()
+        let items = try XCTUnwrap(info["UIApplicationShortcutItems"] as? [[String: Any]])
+        let types = items.compactMap { ($0["UIApplicationShortcutItemType"] as? String)?.components(separatedBy: ".").last }
+        XCTAssertEqual(types, ["time", "inbox"])
+        XCTAssertTrue(Set(types).isDisjoint(with: QuickActions.roleLimited))
     }
 }
 
 /// The Time tab and push notifications (time & pay).
 final class TimeTabTests: XCTestCase {
     func testTimeIsTheFirstTabAndThereAreFive() {
-        let tabs = HotwireTab.all(on: URL(string: "https://pos.rupertpos.com")!)
+        let tabs = HotwireTab.all(on: URL(string: "https://pos.rupertpos.com")!, allowed: nil)
         XCTAssertEqual(tabs.count, 5, "iOS shows at most five tabs without a More tab")
         XCTAssertEqual(tabs.first?.id, "time")
         XCTAssertEqual(tabs.first?.url.path, "/employee")

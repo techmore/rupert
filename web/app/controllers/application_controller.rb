@@ -46,7 +46,8 @@ class ApplicationController < ActionController::Base
       'employee_trades', 'employee_availability', # time & pay: schedule
       'next_things', # the Next thing to do bar: an employee sees only their own tasks there (NextThings)
       'employee_notifications', 'native/push_devices', # time & pay: ios — own notification choices and push devices
-      'account_deletions' # App Store 5.1.1(v): every account, staff included, can delete itself from the app
+      'account_deletions', # App Store 5.1.1(v): every account, staff included, can delete itself from the app
+      'native/configurations' # the app's navigation rules: public JSON, served signed out too
       true
     when 'employee_access'
       %w[edit update].include?(action_name)

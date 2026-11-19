@@ -4,8 +4,8 @@ import { Controller } from "@hotwired/stimulus"
 // lookup path). Quantities live here; prices, tax and totals always come from the server
 // quote. Optional targets (tax, total, checkout) belong to the full-screen cart panel.
 export default class extends Controller {
-  static targets = ["form", "items", "status", "subtotal", "tip", "previewTotal", "tipType", "tipPercentage", "tipAmount", "percentageFields", "amountFields", "count", "barcode", "lookupForm", "searchInput", "tax", "total", "checkout"]
-  static values = { cartKey: String, initialQuote: Object, clearUrl: String, lookupUrl: String }
+  static targets = ["form", "items", "status", "subtotal", "tip", "previewTotal", "tipType", "tipPercentage", "tipAmount", "percentageFields", "amountFields", "count", "barcode", "lookupForm", "searchInput", "tax", "total", "checkout", "unit", "jumpTotal", "jumpTotalPart"]
+  static values = { cartKey: String, initialQuote: Object, clearUrl: String, lookupUrl: String, paid: Boolean }
 
   connect() {
     this.cart = new Map()
@@ -42,7 +42,13 @@ export default class extends Controller {
       } catch (_) { /* Storage is optional; the preview still works in memory. */ }
       this.updateTipInputs()
       this.render([])
-      if (this.cart.size) this.refresh()
+      // The register was reloaded (back from the receipt, a refresh) after this cart was paid.
+      // The sale is finished: start the next one, as New sale does, instead of showing the sold
+      // items again as an open cart.
+      if (this.paidValue && this.cart.size) {
+        this.clear()
+        this.statusTarget.textContent = "The last sale is paid. Ready for the next one."
+      } else if (this.cart.size) this.refresh()
     }
   }
 
@@ -296,7 +302,8 @@ export default class extends Controller {
       }
       this.dispatch("checked", { detail: { revision: null } })
       this.render([])
-      this.statusTarget.textContent = "Choose products to build a preview."
+      if (sequence === this.sequence && !this.paidValue) this.statusTarget.textContent = "Choose products to build a preview."
+      this.paidValue = false
       return
     }
     this.render(this.lines || [])
@@ -349,6 +356,10 @@ export default class extends Controller {
       else show(this.taxTarget, cents(totals?.tax_cents))
     }
     if (this.hasTotalTarget) show(this.totalTarget, cents(totals?.total_before_tip_cents))
+    if (this.hasJumpTotalTarget) {
+      show(this.jumpTotalTarget, cents(totals?.total_before_tip_cents))
+      if (this.hasJumpTotalPartTarget) this.jumpTotalPartTarget.hidden = !known(cents(totals?.total_before_tip_cents))
+    }
   }
 
   rememberPrices(lines) {
@@ -376,6 +387,7 @@ export default class extends Controller {
   render(lines) {
     const units = Array.from(this.cart.values()).reduce((total, quantity) => total + quantity, 0)
     if (this.hasCountTarget) this.countTargets.forEach(target => { target.textContent = units })
+    if (this.hasUnitTarget) this.unitTargets.forEach(target => { target.textContent = units === 1 ? "item" : "items" })
     if (this.hasCheckoutTarget) this.checkoutTargets.forEach(button => { button.disabled = !this.cart.size })
     const byId = new Map(lines.map(line => [line.variant_id, line]))
     const previousPrices = this.lastPrices || new Map()

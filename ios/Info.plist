@@ -59,22 +59,6 @@
 		</dict>
 		<dict>
 			<key>UIApplicationShortcutItemType</key>
-			<string>com.rupertpos.Rupert.chat</string>
-			<key>UIApplicationShortcutItemTitle</key>
-			<string>Team Chat</string>
-			<key>UIApplicationShortcutItemIconSymbolName</key>
-			<string>bubble.left.and.bubble.right</string>
-		</dict>
-		<dict>
-			<key>UIApplicationShortcutItemType</key>
-			<string>com.rupertpos.Rupert.ask</string>
-			<key>UIApplicationShortcutItemTitle</key>
-			<string>Ask Rupert</string>
-			<key>UIApplicationShortcutItemIconSymbolName</key>
-			<string>sparkles</string>
-		</dict>
-		<dict>
-			<key>UIApplicationShortcutItemType</key>
 			<string>com.rupertpos.Rupert.inbox</string>
 			<key>UIApplicationShortcutItemTitle</key>
 			<string>Notifications</string>

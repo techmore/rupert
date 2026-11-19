@@ -12,13 +12,17 @@ module Pos
   #   PIN override. Card means a card run on the event's own terminal; Rupert
   #   never charges a card here.
   # - Offline tolerant: a sale the device queued while offline was already paid.
-  #   If the catalog changed before it synced (item suspended, COA lapsed) it is
-  #   still recorded, flagged for review, rather than lost. A sale the frozen
-  #   event list itself would refuse is never accepted, offline or not.
+  #   If the catalog changed after it was made and before it synced (item
+  #   suspended, COA withdrawn) it is still recorded, flagged for review, rather
+  #   than lost. An item that was already blocked at the time the device gives is
+  #   refused as it would be online. A sale the frozen event list itself would
+  #   refuse is never accepted, offline or not.
   class EventSaleRecorder
     MAX_LINES = 40
     MAX_QUANTITY = 99
     OFFLINE_GRACE = 72.hours
+    CATEGORY_BLOCKS = %i[category_prohibited card_ineligible].freeze
+    COA_BLOCKS = %i[coa_expired coa_missing].freeze
 
     def self.record!(event:, user:, params:) = new(event, user, params).record!
 
@@ -50,7 +54,7 @@ module Pos
       flags = []
       approver = nil
       override = Compliance::SaleGate::Override.from(@params)
-      if !result.allowed? && offline && override.nil? && result.blocking.none? { |issue| issue.code == :id_not_checked }
+      if !result.allowed? && offline && override.nil? && result.blocking.none? { |issue| issue.code == :id_not_checked } && blocked_after?(lines, result, occurred_at)
         flags = result.blocking.map { |issue| issue.code.to_s }.uniq
       else
         approver = Compliance::SaleGate.enforce!(result, override: override, location_id: @event.location_id, pos_event_id: @event.id,
@@ -75,6 +79,24 @@ module Pos
       at
     rescue ArgumentError
       raise Error, 'An offline sale is missing the time it happened.'
+    end
+
+    # True when every block on the cart appeared after the sale: the record the block
+    # comes from (the catalog item; also its category for a category rule, its certificates
+    # for a COA rule) changed later than the time the device gives. A block with no later
+    # change (already suspended, a COA that had lapsed by date) was in force when the item
+    # was sold, so the offline allowance does not apply.
+    def blocked_after?(lines, result, occurred_at)
+      catalog = lines.to_h { |item, _| [item.id.to_s, item.compliance_catalog_item] }
+      result.blocking.all? do |issue|
+        item = catalog[issue.item_key]
+        next false unless item
+
+        changes = [item.updated_at]
+        changes << item.compliance_category.updated_at if CATEGORY_BLOCKS.include?(issue.code)
+        changes.concat(item.certificates_of_analysis.map(&:updated_at)) if COA_BLOCKS.include?(issue.code)
+        changes.max > occurred_at
+      end
     end
 
     def event_lines

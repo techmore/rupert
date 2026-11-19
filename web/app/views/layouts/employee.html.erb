@@ -8,6 +8,8 @@
   <meta name="turbo-cache-control" content="no-cache">
   <%# The iPhone app watches this to restart its tabs after a sign-in or sign-out (SessionWatcher). %>
   <% if hotwire_native_app? %><meta name="rupert-session" content="<%= Current.user ? 'signed-in' : 'signed-out' %>"><% end %>
+  <%# The tabs this account can open; the iPhone app hides the others (Tabs.swift). %>
+  <% if hotwire_native_app? && !@preview && (tabs = native_app_tabs) %><meta name="rupert-tabs" content="<%= tabs %>"><% end %>
   <meta name="theme-color" content="#e6efea">
   <%= render 'layouts/theme' %>
   <link rel="manifest" href="/employee/manifest.webmanifest">

@@ -25,8 +25,27 @@ export default class extends Controller {
     if (event.currentTarget.disabled) return
     this.tenderTarget.value = event.currentTarget.dataset.tender
     this.tenderChanged()
-    if (this.tenderTarget.value === "cash") this.cashTarget.focus()
-    else this.submitTarget.focus()
+    // On a touch screen the cursor in Cash received would raise the keyboard over Exact and the
+    // bill buttons; the cashier taps one of those, or the field.
+    if (this.tenderTarget.value !== "cash") this.submitTarget.focus()
+    else if (!(typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches)) this.cashTarget.focus()
+  }
+
+  // How the outcome line looks: "ok" (paid), "error" (refused, declined, could not be read),
+  // "warn" (unresolved: do not charge again) or plain. Wording is unchanged; on a phone the
+  // line is below the fold, so anything that needs the cashier is scrolled into view.
+  static tone(status) {
+    if (status === "paid") return "ok"
+    if (status === "declined") return "error"
+    if (status === "processing" || status === "unknown") return "warn"
+    return ""
+  }
+
+  say(message, tone = "") {
+    this.statusTarget.textContent = message
+    if (tone) this.statusTarget.dataset.tone = tone
+    else delete this.statusTarget.dataset.tone
+    if (tone && message) this.statusTarget.scrollIntoView?.({ block: "nearest" })
   }
 
   tenderChanged() {
@@ -60,20 +79,31 @@ export default class extends Controller {
     this.submitTarget.focus()
   }
 
+  // What to tell the cashier when the server's answer could not be read. It never says whether
+  // money moved: the Unfinished list and the receipt are where that is checked.
+  static unreadableAnswer(response) {
+    const signedOut = response.status === 401 || (response.redirected && /\/login(\?|$)/.test(response.url || ""))
+    if (signedOut) return "You have been signed out. Sign in again, then check Unfinished before taking payment again."
+    return `Rupert could not complete this checkout (the server answered ${response.status}). Do not take payment again yet: reload the register, check Unfinished, and ask a manager if it happens again.`
+  }
+
   async submit(event) {
     event.preventDefault()
     if (!event.target.reportValidity() || this.submitting) return
-    this.submitting = true; this.submitTarget.disabled = true; this.statusTarget.textContent = "Checking source totals and payment…"
+    this.submitting = true; this.submitTarget.disabled = true; this.say("Checking source totals and payment…")
     const form = new FormData(event.target)
     try {
       const body = { display_id: this.displayIdValue, tender: form.get("tender"), register_id: form.get("register_id"), cash_received: form.get("cash_received"), ...this.complianceFields() }
       const response = await fetch(this.urlValue, { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "" }, body: JSON.stringify(body) })
-      const result = await response.json()
+      // An answer that is not JSON (a sign-in page after the session ran out, an error page
+      // during a restart) used to show the browser's own parse error to the cashier.
+      const result = await response.json().catch(() => null)
+      if (!result) throw new Error(this.constructor.unreadableAnswer(response))
       if (this.hasOverridePinTarget) this.overridePinTarget.value = ""
       if (!response.ok) { this.renderCompliance(result.compliance); throw new Error(result.error || "Checkout could not be verified. Check the receipt before retrying.") }
       this.renderCompliance(null)
       this.renderCheckout(result)
-    } catch (error) { this.statusTarget.textContent = error.message }
+    } catch (error) { this.say(error.message, "error") }
     finally { this.submitting = false; this.tenderChanged() }
   }
 
@@ -97,12 +127,12 @@ export default class extends Controller {
   }
 
   renderCheckout(result) {
-    if (!result) { if (this.lastReceipt) { this.resultTarget.replaceChildren(); this.statusTarget.textContent = ""; this.lastReceipt = null }; return }
+    if (!result) { if (this.lastReceipt) { this.resultTarget.replaceChildren(); this.say(""); this.lastReceipt = null }; return }
     const signature = JSON.stringify(result)
     if (signature === this.lastReceipt) return
     this.lastReceipt = signature
     if (result.terminal && result.status !== "paid") { this.renderTerminal(result); return }
-    this.statusTarget.textContent = result.status === "paid" ? `${result.sandbox ? "Sandbox completed" : (result.demo ? "Demo completed" : "Paid")} · ${this.money(result.total_cents)}${result.tender === A920 ? " · Card (A920), no gateway charge" : ""}${result.tender === "cash" ? ` · Change ${this.money(result.change_cents)}` : ""}${result.inventory_pending ? " · Stock update pending verification" : ""}` : ["processing", "unknown"].includes(result.status) ? "Payment is unresolved. Check the receipt/gateway; do not submit another charge." : "Customer can now pay privately on their screen."
+    this.say(result.status === "paid" ? `${result.sandbox ? "Sandbox completed" : (result.demo ? "Demo completed" : "Paid")} · ${this.money(result.total_cents)}${result.tender === A920 ? " · Card (A920), no gateway charge" : ""}${result.tender === "cash" ? ` · Change ${this.money(result.change_cents)}` : ""}${result.inventory_pending ? " · Stock update pending verification" : ""}` : ["processing", "unknown"].includes(result.status) ? "Payment is unresolved. Check the receipt/gateway; do not submit another charge." : "Customer can now pay privately on their screen.", this.constructor.tone(result.status))
     this.resultTarget.replaceChildren()
     if (result.status === "paid") {
       const text = document.createElement("p"); text.className = "pos-checkout-hint"; text.textContent = `Receipt ${result.reference}.`; this.resultTarget.append(text)
@@ -114,7 +144,7 @@ export default class extends Controller {
       const link = document.createElement("a"); link.href = `${this.urlValue}/${result.id}`; link.textContent = "Open receipt"; link.target = "_blank"; link.rel = "noopener"; link.className = "btn-ghost btn-lg"
       actions.append(next, link); this.resultTarget.append(actions)
     }
-    else if (["ready", "declined"].includes(result.status)) { const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "btn-ghost"; cancel.textContent = "Cancel unpaid checkout"; cancel.addEventListener("click", async () => { const response = await fetch(`${this.urlValue}/${result.id}/cancel`, { method: "POST", headers: { "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content } }); if (response.ok) window.location.reload(); else this.statusTarget.textContent = "Payment cannot be cancelled. Check the gateway status." }); this.resultTarget.append(cancel) }
+    else if (["ready", "declined"].includes(result.status)) { const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "btn-ghost"; cancel.textContent = "Cancel unpaid checkout"; cancel.addEventListener("click", async () => { const response = await fetch(`${this.urlValue}/${result.id}/cancel`, { method: "POST", headers: { "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content } }); if (response.ok) window.location.reload(); else this.say("Payment cannot be cancelled. Check the gateway status.", "error") }); this.resultTarget.append(cancel) }
   }
 
   // Dejavoo terminal: the customer pays on the terminal; the register sends,
@@ -122,9 +152,9 @@ export default class extends Controller {
   // second sale while one is waiting or unknown.
   renderTerminal(result) {
     const waiting = result.status === "processing"
-    this.statusTarget.textContent = waiting ? "Waiting for the customer to tap, insert or swipe on the terminal…"
+    this.say(waiting ? "Waiting for the customer to tap, insert or swipe on the terminal…"
       : result.status === "unknown" ? "The terminal did not confirm this payment. Do not charge again; open the receipt to check status."
-      : result.status === "declined" ? (result.decline_reason || "Not paid. Nothing was charged.") : "Ready to send to the terminal."
+      : result.status === "declined" ? (result.decline_reason || "Not paid. Nothing was charged.") : "Ready to send to the terminal.", waiting ? "" : this.constructor.tone(result.status))
     this.resultTarget.replaceChildren()
     const actions = document.createElement("div"); actions.className = "pos-checkout-actions"
     if (waiting) actions.append(this.button("Cancel on terminal", "btn-ghost btn-lg", `${result.id}/terminal_cancel`))
@@ -147,7 +177,7 @@ export default class extends Controller {
         if (!response.ok) throw new Error(result.error || "The terminal request could not be verified. Do not charge again; check the receipt.")
         if (reload) { window.location.reload(); return }
         this.lastReceipt = null; this.renderCheckout(result)
-      } catch (error) { this.statusTarget.textContent = error.message; button.disabled = false }
+      } catch (error) { this.say(error.message, "error"); button.disabled = false }
     })
     return button
   }
