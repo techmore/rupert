@@ -60,8 +60,11 @@ like CI, run on pull requests and `main` pushes only. PR runs of CI, Security
 and Employee mobile cancel when the PR gets a newer head; `main` runs never
 cancel each other, so every integrated SHA gets its own result. The
 security workflow runs for pull requests, `main` pushes and its scheduled
-scans. Cancellation should supersede older runs for the same PR, not serialize
-unrelated work. Keep required check names stable and do not let path filters
+scans. The `iPhone app` workflow (`.github/workflows/ios.yml`) builds `ios/`
+for the iOS Simulator on a macOS runner, unsigned, and runs the Swift package's
+unit tests when `ios/**` or the workflow changes; it is advisory: not a required
+check and not read by the updater. Cancellation should supersede older runs for
+the same PR, not serialize unrelated work. Keep required check names stable and do not let path filters
 silently skip a required check.
 
 After a merge, verify the checks for the exact integrated `main` SHA. Preserve

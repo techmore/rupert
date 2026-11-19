@@ -1,0 +1,104 @@
+name: iPhone app
+on:
+  # Feature-branch pushes are covered by the pull_request run for the same head.
+  push:
+    branches: [main]
+    paths: ['ios/**', '.github/workflows/ios.yml']
+  pull_request:
+    paths: ['ios/**', '.github/workflows/ios.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  # main runs are keyed by commit so a queued main run is never replaced.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  # Only superseded PR runs are cancelled.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  # Advisory: not a required check and not read by deploy/ser8/rupert-autodeploy.sh.
+  # It proves the app in ios/ still compiles and its unit tests pass; it signs nothing
+  # and uploads nothing.
+  simulator_build:
+    name: iPhone app build (simulator)
+    # Pinned image, not macos-latest, so the Xcode below stays available.
+    runs-on: macos-26
+    # Typically 5-10 minutes; a cold package cache or simulator boot adds a few.
+    timeout-minutes: 30
+    env:
+      # One Xcode from the macos-26 image (actions/runner-images, macos-26-arm64-Readme.md).
+      # ios/RupertApp/project.yml asks for Xcode 26.0 or later and iOS 17.0 as the minimum.
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      PACKAGES_DIR: ${{ github.workspace }}/.spm-packages
+      DERIVED_DATA: ${{ github.workspace }}/.derived-data
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Show the toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      # Pinned release with a checksum, like gitleaks in security.yml.
+      - name: Install xcodegen
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/xcodegen.zip" https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
+          echo "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c -
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
+
+      - name: Generate the Xcode project
+        working-directory: ios/RupertApp
+        run: xcodegen generate
+
+      # Both builds below fetch into the same directory; the pinned versions are in
+      # ios/Package.resolved and ios/RupertApp/project.yml.
+      - name: Cache Swift packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .spm-packages
+          key: spm-${{ runner.os }}-${{ hashFiles('ios/Package.resolved', 'ios/Package.swift', 'ios/RupertApp/project.yml') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      - name: Resolve Swift packages
+        working-directory: ios/RupertApp
+        run: |
+          xcodebuild -resolvePackageDependencies -project RupertApp.xcodeproj -scheme RupertApp \
+            -clonedSourcePackagesDirPath "$PACKAGES_DIR"
+
+      - name: Build the app for the iOS Simulator (unsigned)
+        working-directory: ios/RupertApp
+        run: |
+          xcodebuild build -project RupertApp.xcodeproj -scheme RupertApp -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -clonedSourcePackagesDirPath "$PACKAGES_DIR" -derivedDataPath "$DERIVED_DATA/app" \
+            CODE_SIGNING_ALLOWED=NO
+
+      # The unit tests live in the Swift package (ios/Tests/RupertTests) and need UIKit, so they
+      # run on a simulator rather than with `swift test`. The UI tests in RupertApp/UITests need
+      # a running Rupert server and are not run here.
+      - name: Pick an installed iPhone simulator
+        run: |
+          udid=$(xcrun simctl list devices available --json | python3 -c '
+          import json, re, sys
+          runtimes = json.load(sys.stdin)["devices"]
+          ios = {}
+          for key in runtimes:
+              match = re.search(r"SimRuntime\.iOS-(\d+)-(\d+)", key)
+              if match:
+                  ios[key] = (int(match[1]), int(match[2]))
+          for key in sorted(ios, key=ios.get, reverse=True):
+              phones = [device for device in runtimes[key] if device["name"].startswith("iPhone")]
+              if phones:
+                  print(phones[0]["udid"])
+                  break
+          ')
+          test -n "$udid" || { echo "No iPhone simulator is installed on this image."; exit 1; }
+          xcrun simctl list devices available | grep "$udid"
+          echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
+
+      - name: Run the Swift package's unit tests on the simulator
+        working-directory: ios
+        run: |
+          xcodebuild test -scheme Rupert -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
+            -clonedSourcePackagesDirPath "$PACKAGES_DIR" -derivedDataPath "$DERIVED_DATA/package" \
+            CODE_SIGNING_ALLOWED=NO
