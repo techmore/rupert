@@ -9,7 +9,8 @@ real payment credentials.** Card steps marked *hardware* need a real reader and 
 the simulator run.
 
 The automated version of sections 1, 2, 4, 5 (exact cash) and 8 is `ios/RupertApp/UITests/EmployeeShiftUITests.swift`.
-What the server allows each role is tested in `web/test/integration/` (`employee_*`,
+The pages for an unreachable Rupert and a session that ended (sections 8 and 9) are in
+`ios/RupertApp/UITests/OfflineAndSessionUITests.swift`. What the server allows each role is tested in `web/test/integration/` (`employee_*`,
 `navigation_access_boundaries_test.rb`, `native_app_tabs_test.rb`).
 
 ## Set up
@@ -124,7 +125,8 @@ in as the staff account, or use the web app; the app itself offers no link to th
 |---|---|
 | Person button → **Sign out** → confirm | The sign-in page with no tab bar, ready for the next person. Signing in again straight away works. |
 | Sign in as the owner on the same phone | All five tabs; Team Chat and Ask Rupert open. |
-| Sign in as staff again, then change that account's password on the web | The next page in the app shows the sign-in page ("Please sign in"), and the tabs return to five. |
+| Sign in as staff again, then change that account's password on the web | On the next page the app says **You've been signed out**, with what to do. **Sign In** leaves the sign-in page, with no tab bar. The same after the app has been closed for longer than Rupert keeps a session. |
+| Sign out with the page's own **Sign out** button | The sign-in page, and no "You've been signed out" message. |
 | Person button → **Switch workspace** | Signed out and back on the Rupert sign-in page. |
 | Sign out while clocked in | Still clocked in after signing back in. |
 
@@ -132,8 +134,8 @@ in as the staff account, or use the web app; the app itself offers no link to th
 
 | Step | Expect |
 |---|---|
-| Airplane mode, then open a tab | An error page with a retry; no blank screen. |
-| Airplane mode off → retry | The page loads; still signed in. |
+| Airplane mode, then open a tab | "You're offline", with **Try Again**; no blank screen and no "Error loading page". With the shop's Wi-Fi up but Rupert unreachable: "Can't reach Rupert". |
+| Airplane mode off | The page loads by itself within a few seconds (or with **Try Again**); still signed in. |
 | Airplane mode on My time → **Clock in** | The page says it is offline and keeps the punch to send later (if the shop allows offline punches), or says to try again. |
 
 ## Record
