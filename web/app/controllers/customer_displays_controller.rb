@@ -57,7 +57,7 @@ class CustomerDisplaysController < ApplicationController
     when :changed then render json: { error: 'Your cart changed. Review it and choose again.' }, status: :conflict
     when :expired then render json: { error: 'This customer screen has closed.' }, status: :gone
     when :too_large
-      render json: { error: "The largest custom tip on this sale is #{format('$%.2f', @display.max_custom_tip_cents / 100.0)}. Enter a smaller amount, or ask the cashier." }, status: :unprocessable_entity
+      render json: { error: "The largest custom tip is #{format('$%.2f', @display.max_custom_tip_cents / 100.0)}. Enter a smaller amount, or ask the cashier." }, status: :unprocessable_entity
     else render json: { error: 'Choose no tip, a suggested tip, or a valid custom amount.' }, status: :unprocessable_entity
     end
   end

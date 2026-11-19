@@ -2,8 +2,8 @@
 
 require 'test_helper'
 
-# Owner decision (docs/decisions/staff-controls-2026-11.md, item b): a custom tip is at most $20.00
-# or half the cart before tax, whichever is more. The percentage buttons and "No tip" are unchanged.
+# Owner decision (docs/decisions/staff-controls-2026-11.md, item b): a custom tip is at most
+# $500.00, whatever the sale. The percentage buttons and "No tip" are unchanged.
 class StaffControlsCustomTipCapTest < ActionDispatch::IntegrationTest
   setup do
     Current.tenant = tenants(:default_tenant)
@@ -25,34 +25,40 @@ class StaffControlsCustomTipCapTest < ActionDispatch::IntegrationTest
   end
   teardown { Current.reset }
 
-  test 'a custom tip above 20.00 on a 10.05 cart is refused with the limit; 20.00 is accepted' do
+  test 'a custom tip above 500.00 is refused with the limit; 500.00 is accepted' do
     post customer_display_tip_path, params: tip_params('999999.99'), as: :json
     assert_response :unprocessable_entity
-    assert_equal 'The largest custom tip on this sale is $20.00. Enter a smaller amount, or ask the cashier.', response.parsed_body['error']
-    post customer_display_tip_path, params: tip_params('20.01'), as: :json
+    assert_equal 'The largest custom tip is $500.00. Enter a smaller amount, or ask the cashier.', response.parsed_body['error']
+    post customer_display_tip_path, params: tip_params('500.01'), as: :json
     assert_response :unprocessable_entity
     assert_nil @display.reload.chosen_tip_cents
 
-    post customer_display_tip_path, params: tip_params('20'), as: :json
+    post customer_display_tip_path, params: tip_params('500'), as: :json
     assert_response :success
-    assert_equal 2000, response.parsed_body['tip_cents']
+    assert_equal 50_000, response.parsed_body['tip_cents']
   end
 
-  test 'on a larger cart the limit is half the cart before tax' do
+  test 'a generous tip on a small sale is allowed: 300.00 on a 10.05 cart' do
+    post customer_display_tip_path, params: tip_params('300'), as: :json
+    assert_response :success
+    assert_equal 30_000, response.parsed_body['tip_cents']
+  end
+
+  test 'the limit is the same on a larger cart' do
     post quote_ctrax_pos_path(@location.id, display_id: @display.id), params: { items: [{ variant_id: '3', quantity: 4 }] }, as: :json
     assert_response :success
     @display.reload
     assert_equal 4020, @display.subtotal_cents
+    assert_equal 50_000, @display.max_custom_tip_cents
 
-    post customer_display_tip_path, params: tip_params('20.11'), as: :json
+    post customer_display_tip_path, params: tip_params('500.01'), as: :json
     assert_response :unprocessable_entity
-    assert_match(/\$20\.10/, response.parsed_body['error'])
-    post customer_display_tip_path, params: tip_params('20.10'), as: :json
+    post customer_display_tip_path, params: tip_params('500.00'), as: :json
     assert_response :success
   end
 
-  test 'a 500.00 custom tip cannot be put on a 10.05 Card (A920) sale' do
-    post customer_display_tip_path, params: tip_params('500'), as: :json
+  test 'a 999,999.99 custom tip cannot be put on a Card (A920) sale' do
+    post customer_display_tip_path, params: tip_params('999999.99'), as: :json
     assert_response :unprocessable_entity
 
     post pos_checkouts_path, params: { display_id: @display.id, tender: 'card_a920', register_id: @register.id }, as: :json

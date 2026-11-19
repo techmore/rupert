@@ -7,9 +7,8 @@ class PosDisplaySession < ApplicationRecord
   belongs_to :user
   belongs_to :location
   encrypts :display_token
-  # The largest custom tip: this share of the cart before tax, and never less than the floor.
-  CUSTOM_TIP_MAX_PERCENT = 50
-  CUSTOM_TIP_FLOOR_CENTS = 2000
+  # The largest custom tip, whatever the sale: $500.00 (owner decision, November 2026).
+  CUSTOM_TIP_MAX_CENTS = 50_000
   serialize :draft_json, coder: JSON
   before_validation :create_token, on: :create
   validate do
@@ -74,7 +73,7 @@ class PosDisplaySession < ApplicationRecord
   end
 
   def max_custom_tip_cents
-    [CUSTOM_TIP_FLOOR_CENTS, subtotal_cents * CUSTOM_TIP_MAX_PERCENT / 100].max
+    CUSTOM_TIP_MAX_CENTS
   end
 
   def current_checkout
