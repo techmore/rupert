@@ -8,41 +8,31 @@ Use a local Rupert or a demo workspace. **Never run it against a real shop's dat
 real payment credentials.** Card steps marked *hardware* need a real reader and are not part of
 the simulator run.
 
-The automated version of sections 1, 2, 4 and 8 is `ios/RupertApp/UITests/EmployeeShiftUITests.swift`.
+The automated version of sections 1, 2, 4, 5 (exact cash) and 8 is `ios/RupertApp/UITests/EmployeeShiftUITests.swift`.
 What the server allows each role is tested in `web/test/integration/` (`employee_*`,
 `navigation_access_boundaries_test.rb`, `native_app_tabs_test.rb`).
 
 ## Set up
 
-1. Start a local Rupert with the fictional demo shop:
+1. Start a local Rupert with the fictional demo shop and its made-up test register:
 
    ```bash
    cd web
    bin/rails db:prepare
    REVIEW_PASSWORD='<a password of 12+ characters>' bin/rails rupert:app_review_demo
-   bin/rails server -b 127.0.0.1 -p 3005
+   bin/rails server -c test/support/sim_register.ru -b 127.0.0.1 -p 3005
    ```
 
    The staff account is `sam.okafor@juniper-pine.example` (the review password, clock PIN 2580).
    The owner account is `appreview@rupertpos.com`.
 
-2. The demo shop has no register. To test sections 4 to 6, add one with made-up products in
-   `bin/rails console` (development only):
-
-   ```ruby
-   Current.tenant = Tenant.find_by!(subdomain: 'app-review-demo')
-   store = Location.find_or_create_by!(source: 'ctrax', externalId: 'sim/1') { |l| l.name = 'Test register' }
-   items = [['1', 'Cedar Candle', 1800], ['2', 'Pine Soap', 650]]
-   items.each { |id, name, _| ShopifyProduct.find_or_create_by!(id: "sim-#{id}") { |p| p.title = name; p.status = 'ACTIVE'; p.featuredImageUrl = 'https://cdn.shopify.com/s/files/sim/placeholder.png' } }
-   CtraxStockSnapshot.find_or_initialize_by(location: store).update!(api_origin: 'https://fixture.api.cannatrax.net', store_id: '1', captured_at: Time.current,
-     records_json: items.map { |id, name, cents| { 'id' => id, 'name' => name, 'product_name' => name, 'category' => 'Gifts', 'sku' => "SIM-#{id}", 'price_cents' => cents, 'quantity' => '12', 'manage_stock' => true, 'listed' => true } })
-   PosSetting.find_or_create_by!(location: store) { |s| s.cash_enabled = true }
-   Sales::PosSession.find_or_create_by!(location: store, name: 'Front counter') { |r| r.user = User.find_by!(email: 'appreview@rupertpos.com'); r.opened_at = Time.current }
-   ```
-
-   This register has no stock connection and no tax data, so a real sale stops before payment
-   with a message (section 6 uses that). **More → Demo both screens** completes a practice sale
-   that records nothing.
+2. `test/support/sim_register.ru` is what gives the demo shop a register (the plain
+   `bin/rails server` has none). It adds a store called "Test register" with four made-up
+   products at 6% tax, cash turned on and an open register "Front counter", and it answers the
+   stock check that checkout makes before payment from that made-up stock, the same way the Rails
+   checkout tests do. Nothing is sent anywhere, so a cash sale completes with a receipt. It
+   refuses to load outside development. Card is not set up on it. **More → Demo both screens**
+   still runs a practice sale that records nothing.
 
 3. Build and run the app pointed at it (see `ios/README.md`, "Build and run on a Mac"):
    `SIMCTL_CHILD_RUPERT_DEV_ORIGIN=http://127.0.0.1:3005 xcrun simctl launch booted com.rupertpos.Rupert`.
@@ -105,7 +95,7 @@ What the server allows each role is tested in `web/test/integration/` (`employee
 
 | Step | Expect |
 |---|---|
-| Complete a sale on the test register from "Set up" (no stock connection) | A sentence saying the checkout could not be completed and to check **Unfinished** before taking payment again. Never a browser error such as "The string did not match the expected pattern." |
+| Change the staff account's password on the web while the register is open on the phone, then **Complete cash sale** | "You have been signed out. Sign in again, then check Unfinished before taking payment again." Never a browser error such as "The string did not match the expected pattern." |
 | Stop the server, then **Complete cash sale** | A message, the button comes back, nothing is recorded twice when the server returns. |
 | A checkout left *ready* or *declined* → **Cancel unpaid checkout** | "Unpaid checkout cancelled." The cart can be rung up again. |
 | **Unfinished (n)** in the register's top bar | Lists this cashier's own unfinished checkouts only. |

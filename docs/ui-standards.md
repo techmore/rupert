@@ -213,12 +213,15 @@ end of `application.css`.
 | Class | Purpose |
 | --- | --- |
 | `.pos-topbar` | The slim strip: store (switcher when several), stock read, register, customer screen, `Unfinished (n)`, `More`, cashier, then `Exit POS` (back-office users) or `Sign out` (POS-only staff) |
-| `.pos-search-input` | The large search-or-scan field; focused on load, after each add and on `/` |
+| `.pos-search-input` | The large search-or-scan field; focused on load, after each add and on `/`. On a touch screen (`pointer: coarse`) only a tap or a key press focuses it, so the on-screen keyboard never covers the products |
 | `.pos-chip` | Category chips in one scrolling row under search; also sibling sizes and quick cash amounts |
 | `.pos-tile`, `.pos-tile-out`, `.pos-stock` | Product tile: square photo, two-line name, size, price, stock word pill (In stock / Low / Out / Unknown / Not tracked); out of stock is muted, never hidden |
 | `.pos-sheet` | Confirm sheet (`<dialog>`): big photo, name, size, SKU, price, stock, sibling sizes, quantity stepper, one `Add to cart` |
 | `.pos-cart`, `.pos-line`, `.pos-stepper`, `.pos-totals`, `.pos-total` | Cart panel always beside the grid: lines with − / + and Remove, Subtotal, Tax, Tip (customer-confirmed), large Total, one `Checkout` |
 | `.pos-checkout`, `.pos-tender` | Checkout step inside the cart panel: register, `Cash` / `Card` as two big buttons, a disabled tender says why in one line |
+| `.pos-checkout-status[data-tone]` | The outcome of a payment attempt, set by `pos-checkout#say`: `ok` (paid), `error` (refused, declined, unreadable answer), `warn` (unresolved: do not charge again) |
+| `.pos-wide-only`, `.pos-phone-only`, `.pos-pill-quiet` | Phone strip (760px and under): two short rows, the store with `Clock` and `More`, then the register and customer-screen pills. `pos-wide-only` controls (Open/Close customer screen, My time, Sign out, Exit POS) have a `pos-phone-only` twin in `More`; the "Stock read current" pill hides (a stale read still shows as an alert) |
+| `.pos-cart-jump`, `.pos-handover` | Phone only: the cart bar (count and total) above the home indicator and the app's tab bar, hidden during checkout; and `Hand to customer for tip` in the cart, which opens the customer screen on the same phone until the customer confirms |
 
 ## 6. Colour, type, spacing
 

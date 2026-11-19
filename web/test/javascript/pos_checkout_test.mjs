@@ -35,3 +35,26 @@ test('a redirect somewhere other than sign-in is not called a sign-out', () => {
   const message = PosCheckout.unreadableAnswer({ status: 200, redirected: true, url: 'https://shop.example/employee' });
   assert.doesNotMatch(message, /signed out/);
 });
+
+// The outcome line under the pay button: its look follows what happened, and anything the
+// cashier must act on is brought into view (on a phone it sits below the fold).
+test('the outcome tone follows the checkout status', () => {
+  assert.equal(PosCheckout.tone('paid'), 'ok');
+  assert.equal(PosCheckout.tone('declined'), 'error');
+  assert.equal(PosCheckout.tone('processing'), 'warn');
+  assert.equal(PosCheckout.tone('unknown'), 'warn');
+  assert.equal(PosCheckout.tone('ready'), '');
+});
+
+test('say sets the words and the tone, scrolls a toned message into view and clears the tone after', () => {
+  let scrolled = 0;
+  const controller = new PosCheckout();
+  controller.statusTarget = { textContent: '', dataset: {}, scrollIntoView: () => { scrolled += 1; } };
+  controller.say('Cash received is less than the total.', 'error');
+  assert.equal(controller.statusTarget.textContent, 'Cash received is less than the total.');
+  assert.equal(controller.statusTarget.dataset.tone, 'error');
+  assert.equal(scrolled, 1);
+  controller.say('Checking source totals and payment…');
+  assert.equal(controller.statusTarget.dataset.tone, undefined);
+  assert.equal(scrolled, 1);
+});

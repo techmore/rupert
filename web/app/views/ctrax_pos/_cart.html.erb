@@ -7,7 +7,7 @@
 <% a920_blocker = pos_tender_blocker(PosCheckout::TERMINAL_CARD) %>
 <section id="retail-cart" class="pos-cart" tabindex="-1" aria-label="Cart" data-step="cart" data-pos-screen-target="cart" <%= tour_anchor('cart') %>>
   <header class="pos-cart-head">
-    <h2 class="pos-cart-title">Cart <span class="pos-cart-count"><span data-pos-cart-target="count">0</span> items</span></h2>
+    <h2 class="pos-cart-title">Cart <span class="pos-cart-count"><span data-pos-cart-target="count">0</span> <span data-pos-cart-target="unit">items</span></span></h2>
     <button type="button" class="btn-ghost btn-sm pos-cart-clear" data-action="pos-screen#confirmClear">Clear cart</button>
   </header>
   <p role="status" aria-live="polite" class="pos-cart-status" data-pos-cart-target="status"><%= @quote_error %></p>
@@ -84,6 +84,8 @@
         <p data-pos-display-target="status" role="status" aria-live="polite">Customer screen paired. Waiting for the customer’s private confirmation.</p>
         <p class="retail-money" data-pos-display-target="total"></p>
       </div>
+      <%# One phone for both sides: the cashier hands it over for the tip choice and takes it back. %>
+      <%= link_to 'Hand to customer for tip', customer_display_path(display_token: @display.display_token, handover: 1), class: 'btn-ghost btn-lg pos-handover', data: { pos_display_target: 'handover' } unless demo %>
     <% end %>
     <div class="pos-cart-actions">
       <button type="button" class="btn-primary btn-lg pos-checkout-button" data-pos-cart-target="checkout" data-action="pos-screen#checkout" disabled>Checkout</button>
