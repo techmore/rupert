@@ -27,7 +27,7 @@ class AppStoreReadinessTest < ActionDispatch::IntegrationTest
     get support_path, headers: APP
     assert_response :success
     assert_select 'h1', 'Support'
-    assert_select "a[href='mailto:support@rupertpos.com']"
+    assert_select "a[href='mailto:sdolbec@rupertpos.com']"
     assert_select 'script[type=importmap]'
   end
 

@@ -6,8 +6,9 @@ module TeamChat
   # separate on purpose: fast-but-wrong and slow-but-right must look different.
   #
   #   quality      the grader's 1–5 mean mapped to 0–9 (1 = 0, 5 = 9)
-  #   speed        each answer scores 9 up to FREE_SECONDS, then loses points evenly to 0 at the limit (SLOW_SECONDS);
-  #                the score is the mean. Answers past the limit are ignored here and counted separately.
+  #   speed        each answer scores 9 at FAST_SECONDS or less and falls on a log scale to 0 at the limit (SLOW_SECONDS), so
+  #                2 s to 4 s costs as much as 30 s to 60 s; the score is the mean. Answers past the limit are ignored here
+  #                and counted separately. FREE_SECONDS (20) is no longer a free zone, only where the "over" count starts.
   #   reliability  answered questions out of attempted
   #   tool use     answers that called a Rupert tool
   #   grounding    answers with no figure the checker could not find in tool output
@@ -20,12 +21,13 @@ module TeamChat
   module Scorecard
     AXES = { 'quality' => 'Quality', 'speed' => 'Speed', 'first_token' => 'First token', 'reliability' => 'Reliability',
              'tool_use' => 'Tool use', 'grounding' => 'Grounding' }.freeze
+    FAST_SECONDS = 2.0
     FREE_SECONDS = 20.0
     SLOW_SECONDS = ModelScores::SLOW_SECONDS.to_f
     FIRST_TOKEN_FAST = 1.0
     FIRST_TOKEN_SLOW = 20.0
     # Hash the scale so a table is only compared with another produced by the same rules.
-    SCALE = "quality=(grade-1)/4*9;speed=mean(9 to #{FREE_SECONDS}s then linear to 0 at #{SLOW_SECONDS}s; ignore beyond);first_token=log-scale median ttft(9 at <=#{FIRST_TOKEN_FAST}s to 0 at >=#{FIRST_TOKEN_SLOW}s);reliability=answered/attempted;tool_use;grounding".freeze
+    SCALE = "quality=(grade-1)/4*9;speed=mean(9 at <=#{FAST_SECONDS}s, log scale to 0 at #{SLOW_SECONDS}s; ignore beyond);first_token=log-scale median ttft(9 at <=#{FIRST_TOKEN_FAST}s to 0 at >=#{FIRST_TOKEN_SLOW}s);reliability=answered/attempted;tool_use;grounding".freeze
 
     Card = Struct.new(:model, :handle, :where, :overall, :modules, :graded, :change, :tested_at, :timing, keyword_init: true)
     # Real seconds behind the speed score: the median and slow tail of answers, how many ran past the limit, and model load time.
@@ -96,8 +98,8 @@ module TeamChat
 
     def scale(fraction) = (fraction.clamp(0.0, 1.0) * 9).round
 
-    # 1.0 up to FREE_SECONDS, then falling evenly to 0.0 at SLOW_SECONDS.
-    def speed_fraction(seconds) = 1 - ((seconds - FREE_SECONDS) / (SLOW_SECONDS - FREE_SECONDS)).clamp(0.0, 1.0)
+    # 1.0 at FAST_SECONDS or less, falling evenly in log time to 0.0 at SLOW_SECONDS.
+    def speed_fraction(seconds) = 1 - (Math.log(seconds.clamp(FAST_SECONDS, SLOW_SECONDS) / FAST_SECONDS) / Math.log(SLOW_SECONDS / FAST_SECONDS))
 
     # The second-newest run of every model and question set, to show movement.
     def previous_runs(latest)

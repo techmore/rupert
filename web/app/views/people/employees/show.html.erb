@@ -67,6 +67,21 @@
     <% if Current.user.can_manage_accounts? && Current.user.can?('hr.write') && @employee.active? %>
       <%= button_to 'Generate setup / reset link', employee_access_path(employee_id: @employee.id), method: :post, class: 'btn-ghost btn-sm' if @employee.email.present? && (!@employee.user || @employee.user.employee?) %>
     <% end %>
+    <%# time & pay: clock — the PIN typed on the register. Digits are never shown; only a digest is stored. %>
+    <% if Current.user.can?('hr.write') %>
+      <div class="flex flex-wrap items-center gap-3 border-t border-fog pt-3" id="clock-pin">
+        <p class="text-sm"><strong>Clock PIN</strong> · <% if @employee.pin_locked? %><span class="pill-rose">Locked</span> too many wrong tries<% elsif @employee.pin_set? %><span class="pill-fern">Set</span> <%= l(@employee.pin_set_at.to_date, format: '%b %-d, %Y') %><% else %><span class="pill-taupe">Not set</span> chooses one at the register<% end %></p>
+        <% if @employee.pin_set? %><%= button_to 'Reset clock PIN', reset_people_employee_clock_pin_path(@employee), method: :post, class: 'btn-ghost btn-sm', form: { data: { turbo_confirm: "Clear #{@employee.first_name}’s PIN? They choose a new one at the register." } } %><% end %>
+        <details class="entry-edit">
+          <summary class="btn-ghost btn-sm"><%= @employee.pin_set? ? 'Set a new PIN' : 'Set PIN' %></summary>
+          <%= form_with url: people_employee_clock_pin_path(@employee), method: :post, class: 'entry-edit-form', data: { turbo: false } do |f| %>
+            <div><%= f.label :pin, 'PIN', class: 'field-label' %><%= f.password_field :pin, class: 'input', inputmode: 'numeric', pattern: '[0-9]*', minlength: 4, maxlength: 6, autocomplete: 'off', required: true %></div>
+            <div><%= f.label :pin_confirmation, 'Type it again', class: 'field-label' %><%= f.password_field :pin_confirmation, class: 'input', inputmode: 'numeric', pattern: '[0-9]*', minlength: 4, maxlength: 6, autocomplete: 'off', required: true %></div>
+            <div class="form-actions sm:col-span-2"><%= f.submit 'Save PIN', class: 'btn-primary btn-sm' %></div>
+          <% end %>
+        </details>
+      </div>
+    <% end %>
   </section>
 
   <div class="grid gap-6 lg:grid-cols-2">
@@ -103,6 +118,16 @@
             </div>
           <% end %>
         </div>
+        <% ledger = @employee.leave_accruals.chronological.last(12) %>
+        <% if ledger.any? %>
+          <details class="explainer" data-leave-ledger><summary class="explainer-summary">How these balances were built</summary>
+            <ul class="mt-2 space-y-1 text-sm text-mocha">
+              <% ledger.each do |line| %>
+                <li><%= line.created_at.strftime('%b %-d, %Y') %> · <%= line.leave_type.humanize %> <span class="num"><%= format('%+.2f', line.hours) %> h</span> · <%= line.reason_label %><% if line.period_start %> (<%= period_range(line.period_start, line.period_end) %>)<% end %></li>
+              <% end %>
+            </ul>
+          </details>
+        <% end %>
         <% if Current.user.can?('leave.write') %>
           <details class="explainer"><summary class="explainer-summary">Set leave allowance</summary>
             <%= form_with url: set_leave_allowance_people_employee_path(@employee), scope: :leave_allowance, class: 'mt-3 space-y-3' do |f| %>

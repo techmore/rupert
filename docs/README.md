@@ -9,7 +9,7 @@ In-app onboarding, lessons and definitions: [how learning works and how to maint
 NAB / IRIS deposits, transactions and Health Center summaries: [integration, access and ongoing operation](ops/iris-reporting.md).
 Expanded NAB / IRIS evidence, endpoint inventory, native exports and remaining access questions: [integration investigation](ops/iris-integration-investigation.md).
 
-Start here to resume operator rollout: [Derrick's day-to-day readiness and pickup plan](ops/day-to-day-readiness.md). It separates usable daily review workflows from the payment and inventory gates that still block replacing the current systems.
+Start here to resume operator rollout: [the day-to-day readiness and pickup plan](ops/day-to-day-readiness.md). It separates usable daily review workflows from the payment and inventory gates that still block replacing the current systems.
 
 Marketing operators: [Community thread and reply review](ops/community-marketing.md) explains topic search, manual intake, group-code evidence, reply approval and manual publication.
 
@@ -25,6 +25,8 @@ Release-gate standards: [Human Interface Guideline for the release scope](human-
 | `audits/production-readiness.md` | 2026-10-20 production readiness audit: findings, fix status, what the owner must do |
 | `audits/maintenance/security/` | Dated maintenance security reviews, source findings, checks, and follow-up limits |
 | `ops/security-scanning.md` | Security CI (bundler-audit, Brakeman baseline) and the triage of accepted warnings |
+| `ops/release-audit.md` | The release audit: automatic gates (card data, privacy deny-list, secrets, claims, legal) and the release sign-off |
+| `security/partner-security-overview.md` | Shareable security and card-data overview for payment partners (PCI scope, controls, sub-processors) |
 | `modules.md` | How to add an ERP module under `web/app/modules/` |
 | `plans/` | Design and migration plans (drift migration, phase plan, staffing model) |
 | `audits/` | Dated inventory/SKU audits with their findings. Raw CSV/JSON output sits in `audits/data/` |

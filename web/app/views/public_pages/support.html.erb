@@ -9,6 +9,20 @@
     <p class="text-sm text-mocha">Signed in? Use <strong>Report a problem</strong> in the account menu: it sends us the page you were on, so we can see what went wrong.</p>
   </section>
 
+  <%# OWNER REVIEW: set RUPERT_BUSINESS_ADDRESS, RUPERT_SUPPORT_PHONE, RUPERT_SUPPORT_HOURS and
+      RUPERT_LEGAL_NAME in the deployment environment; until then this card shows placeholders. %>
+  <section class="section-card" id="company">
+    <%= section_heading 'Who runs Rupert' %>
+    <dl class="facts">
+      <div><dt>Company</dt><dd><%= company_operator_name %></dd></div>
+      <div><dt>Legal entity</dt><dd><%= company_legal_name %></dd></div>
+      <div><dt>Business address</dt><dd><%= company_fact(:address, 'principal business address (not a PO box)') %></dd></div>
+      <div><dt>Phone</dt><dd><% if (phone = PublicPagesController.company[:phone]) %><%= link_to phone, "tel:#{phone.gsub(/[^\d+]/, '')}", class: 'text-olive underline' %><% else %><%= owner_placeholder('support phone number') %><% end %></dd></div>
+      <div><dt>Email</dt><dd><%= mail_to @support_email, nil, class: 'text-olive underline' %></dd></div>
+      <div><dt>Support hours</dt><dd><%= company_fact(:hours, 'support hours and time zone') %></dd></div>
+    </dl>
+  </section>
+
   <section class="section-card">
     <%= section_heading 'Common questions' %>
     <details class="explainer">
@@ -28,13 +42,23 @@
       <p class="mt-1 text-sm text-ink">In the iPhone app, tap the person icon on the Home tab, then turn on Require Face ID.</p>
     </details>
     <details class="explainer">
+      <summary class="explainer-summary">I have a question about a card payment.</summary>
+      <p class="mt-1 text-sm text-ink">If you paid by card at a shop that uses Rupert, contact the shop: it is the merchant on your statement, and refunds come from it. If you run the shop, questions about declines, deposits, chargebacks and fees go to your payment processor; questions about what Rupert recorded for a sale come to us. Rupert never has your card number. See <%= link_to 'card payments in the privacy policy', privacy_policy_path(anchor: 'card-payments'), class: 'text-olive underline' %>.</p>
+    </details>
+    <details class="explainer">
+      <summary class="explainer-summary">Can I take card payments in the iPhone or iPad app?</summary>
+      <p class="mt-1 text-sm text-ink">Not today. Card payments run on the register pages on the web and on the shop’s card terminal. Taking a contactless payment on an iPhone is planned and is not available yet. It will need an iPhone, and it will not work on iPad.</p>
+    </details>
+    <details class="explainer">
       <summary class="explainer-summary">How do I delete my account?</summary>
       <p class="mt-1 text-sm text-ink">Account menu → Delete my account (in the app: person icon on the Home tab → Delete account). See the <%= link_to 'privacy policy', privacy_policy_path, class: 'text-olive underline' %> for what is erased.</p>
     </details>
   </section>
 
   <section class="section-card">
-    <%= section_heading 'More' %>
-    <p class="text-sm"><%= link_to 'Privacy policy', privacy_policy_path, class: 'text-olive underline' %> · <%= link_to 'Product guides', 'https://techmore.github.io/rupert/overview.html', class: 'text-olive underline' %></p>
+    <%= section_heading 'Product guides' %>
+    <p class="text-sm"><%= link_to 'How Rupert works, feature by feature', 'https://techmore.github.io/rupert/overview.html', class: 'text-olive underline' %></p>
   </section>
+
+  <%= render 'public_pages/policy_links' %>
 </div>

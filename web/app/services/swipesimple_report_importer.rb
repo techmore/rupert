@@ -133,6 +133,11 @@ class SwipesimpleReportImporter
         if row.key?('Merchant Account') && row['Merchant Account'] != context['merchant_account']
           fail_row!(position, 'Merchant Account differs from the confirmed account; export one account at a time')
         end
+        # Rupert never stores full card numbers: a file whose card columns hold one is refused whole.
+        if row['Last 4'].to_s.count('0-9') > 4 || CardData.contains?(row['Cardholder Name'].to_s)
+          fail_row!(position, 'Card columns hold more than the last four digits. Rupert does not accept full card numbers; ' \
+            'export again with masked cards')
+        end
         number = identifier!(row['Transaction #'], position)
         type = row['Type']
         status = row['Result']

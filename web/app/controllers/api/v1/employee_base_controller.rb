@@ -7,6 +7,8 @@ module Api
       around_action :isolated_context
       before_action :require_employee_app_enabled
       before_action :authenticate_employee
+      around_action :use_business_zone
+      rescue_from TimeRules::FeatureDisabled, with: :feature_disabled
       rescue_from ActiveRecord::RecordNotFound, with: :not_found
       rescue_from Pundit::NotAuthorizedError, with: :forbidden
       rescue_from TimesheetWorkflow::Error, ActiveRecord::RecordInvalid, AASM::InvalidTransition, ActiveRecord::StaleObjectError, with: :invalid
@@ -40,6 +42,23 @@ module Api
         end
         Current.user = @employee_session.user
         Current.tenant = @employee_session.tenant
+      end
+
+      # The workspace's clock for day, week and pay-period boundaries (set after the token names the workspace).
+      def use_business_zone(&)
+        name = Current.tenant&.time_zone.presence
+        return yield unless name
+
+        Time.use_zone(BusinessClock.display_zone(name), &)
+      end
+
+      def require_time_feature(*names)
+        names.each { |name| TimeRules.require_feature!(name) }
+      end
+
+      # A time feature an administrator turned off (Settings → Time rules).
+      def feature_disabled(error)
+        render json: { error: 'feature_disabled', feature: error.feature, message: error.message }, status: :forbidden
       end
 
       def not_found

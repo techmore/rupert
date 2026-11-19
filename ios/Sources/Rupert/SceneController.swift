@@ -1,3 +1,4 @@
+import WebKit
 import HotwireNative
 import UIKit
 
@@ -22,6 +23,13 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         AppSettings.openInApp = { [weak self] url in
             self?.tabBarController.activeNavigator.route(url)
         }
+        // A tapped notification opens its page in the Time tab.
+        PushRegistration.shared.openInApp = { [weak self] url in
+            guard let self else { return }
+            self.select(HotwireTab.timeTabIndex)
+            self.tabBarController.activeNavigator.route(url)
+        }
+        PushRegistration.shared.flushPending()
         if let shortcut = connectionOptions.shortcutItem {
             _ = open(shortcut)
         }
@@ -31,6 +39,14 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         }
         WorkspaceHandoff.shared.onOpened = { [weak self] origin, landing in
             self?.show(instance: origin, landing: landing)
+        }
+        AppSettings.switchWorkspace = { [weak self] in self?.switchWorkspace() }
+        SessionWatcher.shared.onChange = { [weak self] state in
+            // Signed out: Rupert must stop pushing to this phone.
+            if state == .signedOut { PushRegistration.shared.forget() }
+            // The change is noticed while the old page is still finishing its visit; replacing the
+            // tabs from inside that callback left the new Home tab without a visit in release builds.
+            DispatchQueue.main.async { self?.restartTabs() }
         }
     }
 
@@ -51,17 +67,57 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
     private func open(_ shortcut: UIApplicationShortcutItem) -> Bool {
         let tab = shortcut.type.components(separatedBy: ".").last ?? ""
         guard let index = HotwireTab.all(on: Instance.current).firstIndex(where: { $0.id == tab }) else { return false }
-        tabBarController.selectedIndex = index
+        select(index)
         return true
+    }
+
+    /// Selecting a tab in code skips the tab bar's delegate, which is where lazily loaded tabs
+    /// start. Without the start, a quick action to a tab not opened yet showed an endless spinner.
+    private func select(_ index: Int) {
+        tabBarController.selectedIndex = index
+        tabBarController.activeNavigator.start()
+    }
+
+    /// A page showed that the person signed in or out: start every tab over on its first page,
+    /// staying on the selected tab. Old pages (and their back stacks) are dropped with their web views.
+    private func restartTabs() {
+        let index = tabBarController.selectedIndex
+        tabBarController.load(HotwireTab.all(on: Instance.current))
+        select(index)
+        // Just signed in: offer push notifications from the fresh page once it is on screen.
+        if SessionWatcher.shared.state == .signedIn {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+                guard let self, let top = self.tabBarController.selectedViewController else { return }
+                PushRegistration.shared.askIfNeeded(from: (top as? UINavigationController)?.topViewController ?? top)
+            }
+        }
+    }
+
+    /// Settings → Switch workspace: stop this phone's notifications, drop every Rupert cookie and
+    /// cached page the web views hold (the session on the workspace and on the control plane), and
+    /// start again on the control plane's sign-in page. Nothing of the last person is left on screen.
+    private func switchWorkspace() {
+        PushRegistration.shared.forget()
+        let store = WKWebsiteDataStore.default()
+        store.fetchDataRecords(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes()) { [weak self] records in
+            store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), for: records) {
+                Instance.leaveWorkspace()
+                SessionWatcher.shared.set(.signedOut)
+                guard let self else { return }
+                self.tabBarController.load(HotwireTab.all(on: Instance.current))
+                self.select(0)
+            }
+        }
     }
 
     /// Point every tab at `instance` (after a sign-in or a workspace handoff) and open `landing`
     /// on Home. Each tab starts over, since they all showed the sign-in page or the control plane.
     private func show(instance: URL, landing: URL) {
         Instance.setCurrent(instance)
+        SessionWatcher.shared.set(.signedIn)
         let tabs = HotwireTab.all(on: instance)
         tabBarController.load(tabs)
-        tabBarController.selectedIndex = 0
+        select(0)
         if landing.path != "/" || landing.query != nil, let home = tabs.first,
            let navigator = tabBarController.navigator(for: home) {
             navigator.route(landing, options: VisitOptions(action: .replace))

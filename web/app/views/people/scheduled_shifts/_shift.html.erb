@@ -1,0 +1,14 @@
+<%# One shift chip in the builder grid. Locals: shift, warnings (ScheduleWeek::Warning list), can_write, location_id. %>
+<article class="shift-chip<%= ' shift-chip-draft' unless shift.published? %><%= ' shift-chip-open' if shift.open? %>"
+  data-shift-id="<%= shift.id %>" data-employee-id="<%= shift.employee_id %>" data-date="<%= shift.starts_at.to_date.iso8601 %>"
+  data-starts-at="<%= shift.starts_at.iso8601 %>" data-ends-at="<%= shift.ends_at.iso8601 %>" data-role="<%= shift.role_label %>"
+  data-position-id="<%= shift.position_id %>" data-break-minutes="<%= shift.break_minutes %>" data-location-id="<%= shift.location_id %>"
+  data-notes="<%= shift.notes %>" data-published="<%= shift.published? %>"
+  <% if can_write %>draggable="true" data-action="dragstart->schedule-builder#dragStart dragend->schedule-builder#dragEnd click->schedule-builder#openShift keydown->schedule-builder#keyShift" tabindex="0" role="button" aria-label="<%= shift.employee&.full_name || 'Open shift' %>, <%= shift.starts_at.strftime('%A %b %-d') %>, <%= shift.time_label %>. Press Enter to edit."<% end %>>
+  <p class="shift-chip-time"><%= shift.time_label %></p>
+  <p class="shift-chip-meta"><%= [shift.label, (shift.location.name if shift.location && location_id.blank?)].compact.join(' · ') %><%= " · #{shift.break_minutes} min break" if shift.break_minutes.to_i.positive? %></p>
+  <% unless shift.published? %><span class="pill-taupe shift-chip-pill">Draft</span><% end %>
+  <% if shift.open? %><span class="pill-clay shift-chip-pill">Open</span><% end %>
+  <% Array(warnings).each do |warning| %><span class="pill-<%= warning.level %> shift-chip-pill" data-warning="<%= warning.code %>"><%= warning.label %></span><% end %>
+  <% if can_write %><span class="shift-chip-resize" data-action="pointerdown->schedule-builder#resizeStart" aria-hidden="true" title="Drag to change the end time"></span><% end %>
+</article>

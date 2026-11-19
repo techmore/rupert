@@ -1,11 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<%= I18n.locale %>">
 <head>
   <%= render "layouts/favicon" %>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title><%= safe_join([content_for(:title), 'Rupert'].compact, " · ") %></title>
   <meta name="turbo-cache-control" content="no-cache">
+  <%# The iPhone app watches this to restart its tabs after a sign-in or sign-out (SessionWatcher). %>
+  <% if hotwire_native_app? %><meta name="rupert-session" content="<%= Current.user ? 'signed-in' : 'signed-out' %>"><% end %>
   <meta name="theme-color" content="#e6efea">
   <%= render 'layouts/theme' %>
   <link rel="manifest" href="/employee/manifest.webmanifest">
@@ -17,11 +19,11 @@
   <%= javascript_importmap_tags %>
   <%= yield :head %>
 </head>
-<body data-controller="employee-offline<%= ' help-panel feedback' if Current.user && !@preview %>"<% if Current.user && !@preview %> data-feedback-url-value="<%= feedback_reports_path %>" data-feedback-build-value="<%= BuildInfo.current.short_revision %>" data-feedback-request-id-value="<%= request.request_id %>"<% end %> class="min-h-screen bg-cream text-ink">
+<body data-controller="employee-offline<%= ' help-panel feedback' if Current.user && !@preview %>"<% if Current.user && !@preview %> data-feedback-url-value="<%= feedback_reports_path %>" data-feedback-build-value="<%= BuildInfo.current.short_revision %>" data-feedback-request-id-value="<%= request.request_id %>"<% end %> class="min-h-screen bg-cream text-ink<%= ' native-app' if hotwire_native_app? %>">
   <a href="#main" class="sr-only z-50 rounded-full bg-olive px-4 py-2 text-sm font-semibold text-cream focus:not-sr-only focus:fixed focus:left-4 focus:top-3">Skip to content</a>
   <header class="workspace-header">
     <%= render "layouts/build_version" %>
-    <div class="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
+    <div class="workspace-brand-row mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
       <%= link_to employee_app_path(preview: @preview ? 1 : nil), class: 'app-brand text-lg font-semibold text-olive-deep', aria: { label: 'My time home' } do %>
         <%= render "shared/rupert_face", size: 40 %>
         <span>Rupert</span>
@@ -32,12 +34,21 @@
     </div>
     <% if Current.user %>
       <nav aria-label="My workspace" class="workspace-navigation mx-auto max-w-3xl px-4 pb-3 sm:px-6" <%= tour_anchor('nav') %>>
-        <% links = @preview ? [['Today', employee_app_path(preview: 1)], ['Timesheets', employee_preview_timesheets_path], ['Schedule', employee_preview_schedule_path], ['Pay', employee_preview_pay_path], ['Time off', employee_preview_time_off_path], ['Reports', employee_preview_reports_path]] : [['Today', employee_app_path], ['Receipts', receipts_path], ['Timesheets', people_timesheets_path], ['Pay', employee_pay_path], ['Schedule', employee_schedule_path], ['Time off', employee_time_off_path], ['Reports', employee_reports_path]] %>
+        <%# time & pay: Today · Schedule · Time off · Pay · Timesheets, then the rest. Reports lives under Pay. %>
+        <% links = @preview ? [['Today', employee_app_path(preview: 1)], ['Schedule', employee_preview_schedule_path], ['Time off', employee_preview_time_off_path], ['Pay', employee_preview_pay_path], ['Timesheets', employee_preview_timesheets_path]] : [['Today', employee_app_path], ['Schedule', employee_schedule_path], ['Time off', employee_time_off_path], ['Pay', employee_pay_path], ['Timesheets', people_timesheets_path], ['Receipts', receipts_path]] %>
+        <% unless @preview %>
+          <% hidden = { employee_schedule_path => :scheduling, employee_time_off_path => :time_off, employee_pay_path => :pay_view }.reject { |_path, feature| time_feature?(feature) }.keys %>
+          <% links = links.reject { |_label, path| hidden.include?(path) } %>
+        <% end %>
         <% links << ['My tasks', projects_tasks_path] if !@preview && Current.user.employee? && Current.user.can?('tasks.self') %>
         <% links << ['Training', employee_training_index_path] unless @preview %>
+        <% links << ['Learning center', lms_root_path] unless @preview %>
         <% links.unshift(['POS', ctrax_pos_path]) if !@preview && Current.user.can_use_pos? %>
+        <%# One pill is current: the longest matching path (so /employee/pay lights Pay, not Today). %>
+        <% active_link = links.select { |_l, p| module_match_strength(p.split('?').first).positive? }.max_by { |_l, p| module_match_strength(p.split('?').first) } %>
         <% links.each do |label, path| %>
-          <%= link_to label, path, class: "nav-pill workspace-nav-link #{module_match_strength(path.split('?').first).positive? ? 'nav-pill-active' : 'nav-pill-idle'}", aria: { current: module_match_strength(path.split('?').first).positive? ? 'page' : nil } %>
+          <% current = active_link && active_link[1] == path %>
+          <%= link_to label, path, class: "nav-pill workspace-nav-link #{current ? 'nav-pill-active' : 'nav-pill-idle'}", aria: { current: current ? 'page' : nil } %>
         <% end %>
       </nav>
     <% end %>
@@ -45,19 +56,22 @@
   <main id="main" class="mx-auto <%= %w[ctrax_pos point_of_sale projects/tasks].include?(controller_path) ? 'max-w-7xl' : 'max-w-3xl' %> space-y-6 px-4 py-6 sm:px-6 sm:py-8" tabindex="-1">
     <%# Next thing to do (NextThingsController): the person's own late and due-today tasks; empty when nothing is waiting. %>
     <% if Current.user && !@preview %><turbo-frame id="next_thing" src="<%= next_thing_path %>" loading="lazy"></turbo-frame><% end %>
-    <%= render 'shared/workspace_help' if Current.user && !@preview %>
     <% if notice %><p role="status" class="flash flash-notice"><%= notice %></p><% end %>
     <% if alert %><p role="alert" class="flash flash-alert"><%= alert %></p><% end %>
     <% if @preview %><p role="status" class="rounded-xl border border-olive/30 bg-olive/10 p-3 text-sm"><strong>Staff preview</strong> · Example data only. Browse freely; saving, clocking and sending are disabled. <%= link_to 'Close preview', employee_app_path, class: 'underline' %></p><% end %>
     <%= yield %>
+    <%# Page help is a quiet line under the content (docs/ui-standards.md §2), never above the clock. %>
+    <%= render 'shared/workspace_help' if Current.user && !@preview %>
   </main>
   <%= render 'shared/help_panel' if Current.user && !@preview %>
   <%= render 'shared/feedback_panel' if Current.user && !@preview %>
   <footer class="mx-auto flex max-w-3xl flex-wrap gap-4 px-4 pb-8 text-xs text-mocha sm:px-6">
     <%= link_to 'Learn Rupert & definitions', learning_index_path, class: 'underline' if Current.user && !@preview %>
     <%= link_to 'Privacy & support', employee_privacy_path(preview: @preview ? 1 : nil), class: 'underline' %>
-    <%= link_to 'Signed-in devices', employee_devices_path, class: 'underline' if Current.user && !@preview %>
+    <%= link_to t('time.clock.settings.title'), employee_devices_path, class: 'underline' if Current.user && !@preview %>
     <% if Current.user&.can_manage_accounts? %><%= link_to 'Back to management', root_path, class: 'underline' %><% end %>
+    <%# Sign out also lives here because the brand row (with its Sign out) is hidden inside the iPhone app. %>
+    <% if Current.user && !@preview %><%= button_to 'Sign out', logout_path, method: :delete, class: 'underline', form_class: 'contents' %><% end %>
   </footer>
 </body>
 </html>

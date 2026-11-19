@@ -8,10 +8,29 @@ class WarehouseCheckoutsController < ApplicationController
   layout 'warehouse_sale'
   include WarehousePortal
 
+  # PCI DSS 4.0 (6.4.3, 11.6.1): the payment page may only load scripts from
+  # Rupert and the named payment providers, may not be framed (clickjacking),
+  # and may only submit forms back to Rupert. The app-wide policy allows any
+  # https script host, which is the opening card-skimming attacks rely on.
+  PAYMENT_SCRIPT_HOSTS = %w[https://js.authorize.net https://jstest.authorize.net https://pay.google.com
+    https://www.gstatic.com https://payment.ipospays.tech].freeze
+  PAYMENT_CONNECT_HOSTS = %w[https://api2.authorize.net https://apitest.authorize.net https://pay.google.com
+    https://payment.ipospays.tech].freeze
+  content_security_policy(prepend: true) do |policy|
+    policy.script_src :self, :unsafe_inline, *PAYMENT_SCRIPT_HOSTS
+    policy.connect_src :self, *PAYMENT_CONNECT_HOSTS
+    policy.frame_ancestors :none
+    # A Dejavoo checkout submits here and is redirected to Dejavoo's page.
+    policy.form_action :self, *DejavooHostedPage::PAY_ORIGINS
+  end
+
   skip_before_action :require_login
   skip_before_action :load_last_sync
+  # Dejavoo posts the shopper's browser back here from its own site; the post
+  # is only a signal, answered with a redirect, and carries nothing trusted.
+  skip_forgery_protection only: :dejavoo_return
   before_action :load_share
-  before_action :require_cart
+  before_action :require_cart, except: :dejavoo_return
 
   def show
     load_payment_config
@@ -36,10 +55,37 @@ class WarehouseCheckoutsController < ApplicationController
       shipping: order_params,
       payment_nonce: params[:payment_nonce],
       data_descriptor: params[:data_descriptor],
-      quote_token: params[:checkout_quote]
+      quote_token: params[:checkout_quote],
+      provider: DejavooHostedPage.configured? ? 'dejavoo_hpp' : 'authorize_net',
+      urls: { return: ->(invoice) { warehouse_checkout_dejavoo_url(@share.token, invoice) } }
     )
+    finish(result)
+  end
 
-    if result.success?
+  # The shopper comes back from Dejavoo's payment page (paid, declined or
+  # cancelled). A cross-site POST does not carry the cart cookie, so it is
+  # turned into a GET first; the GET resolves the payment from Dejavoo's own
+  # status for this cart, never from what the browser sent.
+  def dejavoo_return
+    return redirect_to(warehouse_checkout_dejavoo_path(@share.token, params[:invoice].to_s[/\A[A-Za-z0-9]{1,42}\z/] || 'none'), status: :see_other) if request.post?
+
+    require_cart
+    return if performed?
+
+    attempt = current_cart.warehouse_payment_attempts.unresolved.order(:id).first
+    return redirect_to(warehouse_checkout_path(@share.token)) unless attempt&.provider == 'dejavoo_hpp'
+
+    finish(WarehouseCheckoutService.call(share: @share, cart: current_cart, provider: 'dejavoo_hpp', urls: {}), follow_redirect: false)
+  end
+
+  private
+
+  def finish(result, follow_redirect: true)
+    if result.redirect_url && follow_redirect
+      redirect_to result.redirect_url, allow_other_host: true, status: :see_other
+    elsif result.redirect_url
+      redirect_to warehouse_checkout_path(@share.token), notice: 'Your payment is not finished yet. Use Continue to payment to complete it.'
+    elsif result.success?
       write_order_confirmation(result.order)
       clear_cart_token!
       redirect_to(warehouse_order_path(@share.token, result.order.order_number), notice: 'Order confirmed.')
@@ -51,8 +97,6 @@ class WarehouseCheckoutsController < ApplicationController
     end
   end
 
-  private
-
   def load_payment_config
     @cart = current_cart
     @payment_attempt = @cart.warehouse_payment_attempts.unresolved.order(:id).first
@@ -61,6 +105,7 @@ class WarehouseCheckoutsController < ApplicationController
     @login_id = AuthorizeNetClient.login_id
     @accept_js_url = AuthorizeNetClient.accept_js_url
     @apple_pay = ApplePayMerchantSession.configured? && AuthorizeNetClient.configured?
+    @dejavoo_hpp = DejavooHostedPage.configured?
     @google_pay = AuthorizeNetClient.configured? &&
                   (AuthorizeNetClient.sandbox? || EnvStore.fetch('GOOGLE_PAY_MERCHANT_ID', '').present?)
   end

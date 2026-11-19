@@ -5,7 +5,17 @@
       <legend class="card-title">Shift</legend>
       <div>
         <%= f.label :employee_id, "Staff member", class: "field-label" %>
-        <%= f.select :employee_id, @employees.map { |e| [e.full_name, e.id] }, { include_blank: "Choose…" }, class: "select w-full", required: true %>
+        <%= f.select :employee_id, [['Open shift (anyone can pick up)', 'open']] + @employees.map { |e| [e.full_name, e.id] }, { selected: (shift.employee_id || 'open') }, class: "select w-full" %>
+      </div>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <%= f.label :position_id, "Position (optional)", class: "field-label" %>
+          <%= f.select :position_id, @positions.map { |p| [p.name, p.id] }, { include_blank: "Any" }, class: "select w-full" %>
+        </div>
+        <div>
+          <%= f.label :break_minutes, "Unpaid break (minutes)", class: "field-label" %>
+          <%= f.number_field :break_minutes, class: "input", min: 0, max: 240, step: 5 %>
+        </div>
       </div>
       <div class="grid gap-4 sm:grid-cols-2">
         <div>
@@ -35,5 +45,5 @@
       <%= link_to "Cancel", people_scheduled_shifts_path(week: shift.starts_at&.to_date&.iso8601), class: "btn-ghost" %>
     </div>
   <% end %>
-  <% if shift.persisted? %><div class="mt-4 flex justify-end"><%= button_to "Delete shift", people_scheduled_shift_path(shift), method: :delete, class: "btn-danger", form: { data: { turbo_confirm: "Delete this shift?" } } %></div><% end %>
+  <% if shift.persisted? %><div class="mt-4 flex justify-end"><%= button_to (shift.published? ? "Cancel shift" : "Remove draft"), people_scheduled_shift_path(shift), method: :delete, class: "btn-danger", form: { data: { turbo_confirm: (shift.published? ? "Cancel this posted shift? The person is told." : "Remove this draft shift?") } } %></div><% end %>
 </div>

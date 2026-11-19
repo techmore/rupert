@@ -1,0 +1,47 @@
+<% content_for :title, t('lms.admin.edit_lesson') %>
+<div class="page-medium space-y-6" data-controller="lms-editor" data-lms-editor-preview-url-value="<%= preview_lms_admin_course_lessons_path(@course) %>">
+  <%= page_header t('lms.admin.edit_lesson'), subtitle: "#{@course.title} · #{@lesson.title}", eyebrow: t('lms.admin.title'), menu: [['Open as a learner', lms_course_lesson_path(@course, @lesson)]] %>
+  <%= form_with model: @lesson, url: lms_admin_course_lesson_path(@course, @lesson), method: :patch, class: 'space-y-6', data: { busy: false } do |form| %>
+    <div class="section-card">
+      <% if @lesson.errors.any? %><div class="flash flash-alert" role="alert"><%= @lesson.errors.full_messages.to_sentence %></div><% end %>
+      <div><%= form.label :title, 'Title', class: 'field-label' %><%= form.text_field :title, class: 'input', maxlength: 160, required: true %></div>
+      <div><%= form.label :summary, 'One-sentence summary', class: 'field-label' %><%= form.text_field :summary, class: 'input', maxlength: 300 %></div>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div><%= form.label :minutes, 'Minutes to read', class: 'field-label' %><%= form.number_field :minutes, class: 'input', min: 1, max: 60 %></div>
+        <div><%= form.label :diagram, 'Diagram at the top', class: 'field-label' %><%= form.select :diagram, [[t('lms.admin.diagram_none'), '']] + Lms::Markup::DIAGRAMS.map { |key| [key.humanize, key] }, {}, class: 'select' %></div>
+      </div>
+      <div><%= form.label :body, 'Lesson text', class: 'field-label' %><%= form.text_area :body, class: 'input font-mono text-sm', rows: 22, data: { lms_editor_target: 'body' } %><p class="mt-1 text-xs text-taupe"><%= t('lms.admin.body_help') %></p></div>
+      <div class="flex flex-wrap gap-3"><button type="button" class="btn-ghost btn-sm" data-action="lms-editor#preview"><%= t('lms.admin.preview') %></button></div>
+      <div class="lms-preview" data-lms-editor-target="preview" hidden></div>
+    </div>
+    <div class="section-card" data-lms-editor-target="questions">
+      <%= section_heading t('lms.admin.questions'), hint: t('lms.admin.choices_help') %>
+      <%= form.fields_for :questions do |question_form| %>
+        <fieldset class="lms-question-edit">
+          <legend class="font-semibold">Question <%= question_form.index.to_i + 1 %></legend>
+          <%= question_form.hidden_field :position, value: question_form.index.to_i + 1 %>
+          <div><%= question_form.label :prompt, 'Question', class: 'field-label' %><%= question_form.text_area :prompt, class: 'input', rows: 2, maxlength: 500 %></div>
+          <div><%= question_form.label :choices_text, 'Choices (one per line)', class: 'field-label' %><%= question_form.text_area :choices_text, class: 'input', rows: 4 %></div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div><%= question_form.label :answer_index, 'Correct choice (line number)', class: 'field-label' %><%= question_form.select :answer_index, (1..Lms::Question::MAX_CHOICES).map { |n| [n, n - 1] }, {}, class: 'select' %></div>
+            <label class="flex min-h-11 items-center gap-2 text-sm"><%= question_form.check_box :_destroy, class: 'checkbox' %><%= t('lms.admin.remove_question') %></label>
+          </div>
+          <div><%= question_form.label :explanation, 'Explanation shown after answering', class: 'field-label' %><%= question_form.text_area :explanation, class: 'input', rows: 2, maxlength: 1000 %></div>
+        </fieldset>
+      <% end %>
+      <template data-lms-editor-target="template">
+        <%= form.fields_for :questions, Lms::Question.new, child_index: 'NEW_INDEX' do |question_form| %>
+          <fieldset class="lms-question-edit">
+            <legend class="font-semibold">New question</legend>
+            <div><%= question_form.label :prompt, 'Question', class: 'field-label' %><%= question_form.text_area :prompt, class: 'input', rows: 2, maxlength: 500 %></div>
+            <div><%= question_form.label :choices_text, 'Choices (one per line)', class: 'field-label' %><%= question_form.text_area :choices_text, class: 'input', rows: 4 %></div>
+            <div><%= question_form.label :answer_index, 'Correct choice (line number)', class: 'field-label' %><%= question_form.select :answer_index, (1..Lms::Question::MAX_CHOICES).map { |n| [n, n - 1] }, {}, class: 'select' %></div>
+            <div><%= question_form.label :explanation, 'Explanation shown after answering', class: 'field-label' %><%= question_form.text_area :explanation, class: 'input', rows: 2, maxlength: 1000 %></div>
+          </fieldset>
+        <% end %>
+      </template>
+      <button type="button" class="btn-ghost btn-sm" data-action="lms-editor#addQuestion"><%= t('lms.admin.add_question') %></button>
+    </div>
+    <div class="form-actions"><%= form.submit 'Save', class: 'btn-primary', data: { turbo_submits_with: 'Saving…' } %><%= link_to 'Cancel', edit_lms_admin_course_path(@course), class: 'btn-ghost' %></div>
+  <% end %>
+</div>
