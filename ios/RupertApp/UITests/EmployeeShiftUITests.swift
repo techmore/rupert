@@ -1,8 +1,8 @@
 import XCTest
 
 /// A staff account's shift in the real app, against a local Rupert (RUPERT_DEV_ORIGIN): sign in,
-/// only the tabs a staff account can open, the register up to payment, then Sign out from App
-/// settings. Saves a screenshot of each step. The script a person follows for the same flow, with
+/// only the tabs a staff account can open, a cash sale on the register from the first item to the
+/// receipt, then Sign out from App settings. Saves a screenshot of each step. The script a person follows for the same flow, with
 /// the parts a simulator cannot do, is docs/ios/employee-test-script.md.
 ///
 ///   TEST_RUNNER_RUPERT_UI_EMAIL=sam.okafor@juniper-pine.example TEST_RUNNER_RUPERT_UI_PASSWORD=… \
@@ -10,8 +10,9 @@ import XCTest
 ///     -only-testing:RupertAppUITests/EmployeeShiftUITests -destination 'platform=iOS Simulator,name=…'
 ///
 /// The account must have the staff role (employee). The register steps run when that account's
-/// workspace has a register with products (docs/ios/employee-test-script.md says how to seed one);
-/// without one the test still checks the tabs and Sign out. Skipped without RUPERT_UI_EMAIL.
+/// workspace has a register with products: start Rupert with web/test/support/sim_register.ru
+/// (docs/ios/employee-test-script.md). Without a register the test still checks the tabs and
+/// Sign out. Skipped without RUPERT_UI_EMAIL.
 final class EmployeeShiftUITests: XCTestCase {
     private var app: XCUIApplication!
     private var shotDir: String?
@@ -93,8 +94,8 @@ final class EmployeeShiftUITests: XCTestCase {
     }
 
     /// The register on one phone: pair the customer screen, add an item, hand the phone over for
-    /// the tip choice, take it back and open payment. What happens after a tender is tapped depends
-    /// on the store's setup, so the test records it and requires only that the app says something.
+    /// the tip choice, take it back, take exact cash and open the receipt. The register is the
+    /// made-up one in web/test/support/sim_register.rb; nothing leaves the machine.
     private func ringUpASale() throws {
         let openPOS = web.links["Open POS"].firstMatch
         guard openPOS.waitForExistence(timeout: 5) else { return }
@@ -168,9 +169,30 @@ final class EmployeeShiftUITests: XCTestCase {
         shoot("register-cash")
         guard complete.isHittable, complete.isEnabled else { return }
         complete.tap()
-        sleep(6)
-        // Paid, or refused with the reason: either way the register says so.
-        shoot("register-cash-outcome")
+        // The test register (web/test/support/sim_register.rb) takes cash, so the sale completes:
+        // paid, change due (none, the cash was exact), a receipt, and the next sale one tap away.
+        let paid = web.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Paid'")).firstMatch
+        let said = web.staticTexts.matching(NSPredicate(format: "label CONTAINS 'could not' OR label CONTAINS 'signed out' OR label CONTAINS 'Insufficient' OR label CONTAINS 'incomplete'")).firstMatch
+        if !paid.waitForExistence(timeout: 20) {
+            shoot("register-cash-refused")
+            XCTFail("the cash sale did not complete: \(said.exists ? said.label : "the register said nothing"). Start Rupert with test/support/sim_register.ru (docs/ios/employee-test-script.md).")
+            return
+        }
+        XCTAssertTrue(paid.label.contains("Change $0.00"), "exact cash leaves no change: \(paid.label)")
+        XCTAssertTrue(web.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Receipt '")).firstMatch.waitForExistence(timeout: 5), "the receipt number")
+        let receipt = web.links["Open receipt"].firstMatch
+        XCTAssertTrue(receipt.exists, "a link to the receipt")
+        let newSale = web.buttons["New sale"].firstMatch
+        XCTAssertTrue(newSale.exists, "New sale")
+        scrollTo(newSale, down: false)
+        shoot("register-cash-paid")
+
+        // New sale empties the cart for the next customer.
+        newSale.tap()
+        XCTAssertTrue(web.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Cart 0 items'")).firstMatch.waitForExistence(timeout: 10), "the cart is empty again")
+        shoot("register-new-sale")
+        // New sale puts the cursor back in Search; put the keyboard away so the tab bar is reachable.
+        if keyboardDone.waitForExistence(timeout: 3) { keyboardDone.tap() }
     }
 
     private func signOutFromAppSettings() {
