@@ -5,6 +5,29 @@ Rails.application.routes.draw do
   get '/learning/team', to: 'learning#team', as: :learning_team
   get '/welcome', to: 'learning#welcome', as: :welcome
   post '/welcome', to: 'learning#onboard', as: :onboard
+  # Learning center (LMS): courses → lessons → quizzes as data. Learners see their own courses;
+  # team completion needs hr.read; editing and assigning need hr.write. See docs/lms/README.md.
+  scope path: 'learning-center', module: 'lms', as: 'lms' do
+    get '/', to: 'courses#index', as: :root
+    get 'team', to: 'team#index', as: :team
+    resources :courses, only: :show, param: :slug do
+      get 'badge', on: :member
+      resources :lessons, only: :show, param: :slug do
+        post 'quiz', on: :member
+      end
+    end
+    namespace :admin do
+      get 'support-contacts', to: 'support_contacts#edit', as: :support_contacts
+      patch 'support-contacts', to: 'support_contacts#update'
+      resources :courses, only: %i[index edit update], param: :slug do
+        resources :lessons, only: %i[edit update], param: :slug do
+          post 'preview', on: :collection
+        end
+        resources :assignment_rules, only: %i[create destroy]
+        resources :enrollments, only: :create
+      end
+    end
+  end
   resources :learning, only: %i[index show] do
     post :complete, on: :member
   end
@@ -78,8 +101,24 @@ Rails.application.routes.draw do
   end
   post '/training/assignments/:id/cancel', to: 'training_assignments#cancel', as: :cancel_training_assignment
   get '/employee/reports', to: 'employee_workspace#reports', as: :employee_reports
-  get '/employee/pay', to: 'employee_workspace#pay', as: :employee_pay
+  # ---- time & pay: tips ----
+  # The worker's own pay period (EmployeePayController) and declared cash tips; the manager Tips report.
+  get '/employee/pay', to: 'employee_pay#show', as: :employee_pay
+  post '/employee/tips/declare', to: 'employee_pay#declare_tips', as: :declare_employee_tips
+  post '/api/v1/employee/tips', to: 'api/v1/employee_tips#create'
+  get '/api/v1/employee/pay', to: 'api/v1/employee_tips#show'
+  get '/people/tips', to: 'people/tips#index', as: :people_tips
+  post '/people/tips/assign', to: 'people/tips#assign', as: :assign_people_tips
+  # ---- end time & pay: tips ----
   get '/employee/schedule', to: 'employee_workspace#schedule', as: :employee_schedule
+  # ---- time & pay: schedule ----
+  resources :employee_trades, path: 'employee/trades', only: %i[index create] do
+    member do
+      post :accept
+      post :cancel
+    end
+  end
+  resources :employee_availability, path: 'employee/availability', only: %i[index create destroy]
   get '/employee/time-off', to: 'employee_workspace#time_off', as: :employee_time_off
   post '/employee/time-off', to: 'employee_workspace#request_time_off'
   post '/employee/time-off/:id/cancel', to: 'employee_workspace#cancel_time_off', as: :cancel_employee_time_off
@@ -97,6 +136,11 @@ Rails.application.routes.draw do
   # Public pages the App Store listing links to, and deleting your own account (guideline 5.1.1(v)).
   get '/privacy', to: 'public_pages#privacy', as: :privacy_policy
   get '/support', to: 'public_pages#support', as: :support
+  # Pages payment partners and card-brand website rules look for. Drafts until the owner signs off.
+  get '/terms', to: 'public_pages#terms', as: :terms_of_service
+  get '/refunds', to: 'public_pages#refunds', as: :refund_policy
+  get '/security', to: 'public_pages#security', as: :security_statement
+  get '/integrations', to: 'public_pages#integrations', as: :public_integrations
   get '/account/delete', to: 'account_deletions#show', as: :delete_account
   delete '/account', to: 'account_deletions#destroy', as: :own_account
 
@@ -111,6 +155,16 @@ Rails.application.routes.draw do
   get '/native/ios/path-configuration.json', to: 'native/configurations#ios', as: :native_ios_path_configuration,
     defaults: { format: :json }
   post '/native/session', to: 'native/sessions#create', as: :native_session
+
+  # ---- time & pay: ios ----
+  # The iPhone app's APNs token, the installed web app's Web Push subscription, and a person's own notification choices.
+  post '/native/push_devices', to: 'native/push_devices#create', as: :native_push_devices
+  delete '/native/push_devices/:token_digest', to: 'native/push_devices#destroy', as: :native_push_device
+  get '/employee/notifications/settings', to: 'employee_notifications#settings', as: :employee_notification_settings
+  patch '/employee/notifications/settings', to: 'employee_notifications#update_settings'
+  post '/employee/push_subscriptions', to: 'employee_notifications#subscribe', as: :employee_push_subscriptions
+  post '/employee/push_subscriptions/:id/unsubscribe', to: 'employee_notifications#unsubscribe', as: :unsubscribe_employee_push
+  # ---- end time & pay: ios ----
 
   get '/workspace', to: 'workspaces#show', as: :workspace
   post '/workspace/session', to: 'workspaces#session_start', as: :workspace_session
@@ -189,6 +243,15 @@ Rails.application.routes.draw do
       post 'employee/clock', to: 'employee_clock#create'
       patch 'employee/clock/:id', to: 'employee_clock#update'
       post 'employee/clock/:id/corrections', to: 'employee_clock#correction'
+      # ---- time & pay: schedule ----
+      get 'employee/schedule', to: 'employee_schedule#index'
+      get 'employee/leave_requests', to: 'employee_leave_requests#index'
+      post 'employee/leave_requests', to: 'employee_leave_requests#create'
+      post 'employee/trades', to: 'employee_trades#create'
+      post 'employee/trades/:id/accept', to: 'employee_trades#accept'
+      post 'employee/trades/:id/cancel', to: 'employee_trades#cancel'
+      post 'employee/clock/:id/breaks', to: 'employee_clock#start_break' # time & pay: clock
+      patch 'employee/clock/:id/breaks/:break_id', to: 'employee_clock#end_break' # time & pay: clock
       get :catalog, to: 'catalog#index'
       get :inventory, to: 'inventory#index'
       get :roadmap, to: 'roadmap#index'
@@ -455,6 +518,21 @@ Rails.application.routes.draw do
     resources :positions, only: %i[index new create edit update]
     resources :scheduled_shifts, path: 'schedule', only: %i[index new create edit update destroy] do
       post :copy_last_week, on: :collection
+      # ---- time & pay: schedule ----
+      post :publish, on: :collection
+      post :cancel, on: :member
+    end
+    # ---- time & pay: schedule ----
+    resources :schedule_templates, only: %i[index new create destroy] do
+      post :apply, on: :member
+    end
+    resources :blackout_dates, only: %i[index create destroy]
+    resources :availabilities, only: %i[index create destroy]
+    resources :shift_trades, only: %i[index show] do
+      member do
+        post :approve
+        post :deny
+      end
     end
     resources :timesheets, only: %i[index show new create edit update destroy] do
       collection { post :bulk_approve }
@@ -521,6 +599,21 @@ Rails.application.routes.draw do
   get '/point_of_sale', to: 'point_of_sale#index', as: :point_of_sale
   post '/point_of_sale/quote', to: 'point_of_sale#quote', as: :quote_point_of_sale
   post '/point_of_sale/lookup', to: 'point_of_sale#lookup', as: :lookup_point_of_sale
+  # ---- time & pay: clock ----
+  # The PIN clock: kiosk page, punches, first-use PIN setup, and the pad's name picker.
+  get '/clock', to: 'pin_clock#kiosk', as: :clock_kiosk
+  post '/clock/pin', to: 'pin_clock#punch', as: :clock_pin
+  post '/clock/pin/setup', to: 'pin_clock#setup', as: :clock_pin_setup
+  get '/clock/workers', to: 'pin_clock#workers', as: :clock_workers
+  post '/time_clock/break', to: 'time_clock#start_break', as: :start_break_time_clock
+  post '/time_clock/end_break', to: 'time_clock#end_break', as: :end_break_time_clock
+  patch '/employee/settings', to: 'employee_app#update_settings', as: :employee_settings
+  post '/people/employees/:employee_id/clock_pin/reset', to: 'people/clock_pins#reset', as: :reset_people_employee_clock_pin
+  post '/people/employees/:employee_id/clock_pin', to: 'people/clock_pins#create', as: :people_employee_clock_pin
+  namespace :people do
+    resources :clock_devices, only: %i[index create destroy]
+  end
+  # ---- end time & pay: clock ----
   get '/time_clock', to: 'time_clock#index', as: :time_clock
   post '/time_clock/clock_in', to: 'time_clock#clock_in', as: :clock_in_time_clock
   post '/time_clock/clock_out', to: 'time_clock#clock_out', as: :clock_out_time_clock
@@ -629,10 +722,24 @@ Rails.application.routes.draw do
   get '/pos_settings/:location_id', to: 'pos_settings#show', as: :pos_setting
   patch '/pos_settings/:location_id', to: 'pos_settings#update'
   post '/pos_settings/:location_id/verify', to: 'pos_settings#verify', as: :verify_pos_setting
+  post '/pos_settings/:location_id/close_batch', to: 'pos_settings#close_batch', as: :close_batch_pos_setting
+  post '/pos_settings/:location_id/terminals', to: 'pos_settings#add_terminal', as: :pos_setting_terminals
+  post '/pos_settings/:location_id/terminals/:id/check', to: 'pos_settings#check_terminal', as: :check_pos_setting_terminal
+  post '/pos_settings/:location_id/terminals/:id/retire', to: 'pos_settings#retire_terminal', as: :retire_pos_setting_terminal
+  get '/pos_settlements/:location_id', to: 'pos_settlements#show', as: :pos_settlement
+  get '/processor_catalogs', to: 'processor_catalogs#index', as: :processor_catalogs
+  patch '/processor_catalogs/:processor', to: 'processor_catalogs#update', as: :processor_catalog
+  post '/processor_catalogs/:processor/entries', to: 'processor_catalogs#add_entries', as: :processor_catalog_entries
+  delete '/processor_catalogs/:processor/entries/:id', to: 'processor_catalogs#remove_entry', as: :processor_catalog_entry
   resources :pos_checkouts, only: %i[create show] do
     post :cancel, on: :member
     post :reconcile, on: :member
+    post :reverse, on: :member
+    post :recheck_reversal, on: :member
+    post :terminal, on: :member
+    post :terminal_cancel, on: :member
   end
+  post '/webhooks/pos/:setting_id', to: 'pos_webhooks#create', as: :pos_webhook
   get '/customer_display/payment_config', to: 'customer_displays#payment_config', as: :customer_payment_config
   post '/customer_display/pay', to: 'customer_displays#pay', as: :customer_pay
   resources :ctrax_days, only: %i[index show create] do
@@ -764,6 +871,7 @@ Rails.application.routes.draw do
 
   get '/w/:token/checkout', to: 'warehouse_checkouts#show', as: :warehouse_checkout
   post '/w/:token/checkout', to: 'warehouse_checkouts#create', as: :warehouse_checkout_submit
+  match '/w/:token/checkout/dejavoo/:invoice', to: 'warehouse_checkouts#dejavoo_return', as: :warehouse_checkout_dejavoo, via: %i[get post]
   get '/.well-known/apple-developer-merchantid-domain-association', to: 'apple_pay_domain#show', as: :apple_pay_domain_association
   post '/w/:token/apple_pay/session', to: 'warehouse_checkouts#apple_pay_session', as: :warehouse_apple_pay_session
 
@@ -826,6 +934,22 @@ Rails.application.routes.draw do
       post :transition, on: :member
     end
   end
+
+  # ---- time & pay: manager ----
+  namespace :people do
+    get 'approvals', to: 'approvals#index', as: :approvals
+    post 'approvals/:kind/:id/:decision', to: 'approvals#decide', as: :approval_decision, constraints: { decision: /approve|deny/ }
+    resources :pay_periods, only: %i[index show] do
+      member do
+        post :lock
+        post :reopen
+        post :adjustments, to: 'pay_periods#add_adjustment'
+      end
+    end
+  end
+  get '/settings/time_rules', to: 'time_rules_settings#show', as: :time_rules_settings
+  post '/settings/time_rules', to: 'time_rules_settings#update'
+  # ---- end time & pay: manager ----
 
   get '/up', to: HealthCheck
   get '/up/ready', to: ReadinessCheck

@@ -18,6 +18,7 @@
             <%= hidden_field_tag :plan, plan %>
             <% if plan == 'referral_year' %><div><%= label_tag :referral_code, 'Customer referral code', class: 'field-label' %><%= text_field_tag :referral_code, nil, required: true, maxlength: 40, class: 'input' %></div><% end %>
             <label class="flex items-start gap-2 text-sm text-mocha"><%= check_box_tag :accepted, '1', false, required: true, class: 'checkbox mt-0.5' %><span>I agree to <%= description %> Billing terms version <%= RupertBilling::TERMS_VERSION %>.</span></label>
+        <p class="text-xs text-taupe">Read the <%= link_to 'terms of service', terms_of_service_path, class: 'underline' %> and <%= link_to 'cancellation and refunds', refund_policy_path, class: 'underline' %> before you continue.</p>
             <%= f.submit 'Continue to secure checkout', class: 'btn-primary', disabled: !RupertBilling.configured? %>
           <% end %>
         </article>

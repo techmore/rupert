@@ -3,3 +3,4 @@ xtool/
 *.ipa
 .bsp/
 .swiftpm/
+RupertApp/RupertApp.xcodeproj/

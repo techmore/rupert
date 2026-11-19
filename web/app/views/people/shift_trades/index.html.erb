@@ -1,0 +1,35 @@
+<% content_for :title, 'Shift trades' %>
+<div class="space-y-6">
+  <%= page_header 'Shift trades', subtitle: 'Give-aways, swaps and pick-ups waiting for a decision.' %>
+  <section class="toolbar-band">
+    <%= form_with url: people_shift_trades_path, method: :get, class: 'toolbar', aria: { label: 'Status' } do %>
+      <div class="toolbar-field"><%= label_tag :status, 'Status', class: 'field-label' %><%= select_tag :status, options_for_select([['Waiting for you', 'accepted'], ['Open to staff', 'open'], %w[Approved approved], %w[Denied denied], %w[Cancelled cancelled], %w[Expired expired], %w[All all]], @status), class: 'select' %></div>
+      <div class="toolbar-actions"><%= submit_tag 'Apply', class: 'btn-ghost', name: nil %></div>
+    <% end %>
+  </section>
+  <div class="card">
+    <% if @trades.empty? %>
+      <%= empty_state(@status == 'accepted' ? 'Nothing waiting' : 'No trades here', hint: 'Staff offer and pick up shifts from their Schedule tab.') %>
+    <% else %>
+      <ul class="row-list">
+        <% @trades.each do |trade| %>
+          <li class="row-item">
+            <div class="min-w-0">
+              <p class="font-medium text-ink"><%= trade.kind_label %> · <%= trade_shift_label(trade.scheduled_shift) %></p>
+              <p class="text-xs text-mocha"><%= trade.from_employee&.name || 'Open shift' %> → <%= trade.to_employee&.name || 'anyone' %><% if trade.kind == 'swap' && trade.counter_shift %> · for <%= trade_shift_label(trade.counter_shift) %><% end %></p>
+              <% if trade.warning_checks.any? %><p class="mt-1 flex flex-wrap gap-1"><% trade.warning_checks.each do |c| %><span class="pill-clay"><%= c['message'] %></span><% end %></p><% end %>
+            </div>
+            <div class="row-item-end">
+              <%= trade_status_pill(trade) %>
+              <% if trade.status == 'accepted' && Current.user.can?('schedule.write') %>
+                <%= button_to 'Approve', approve_people_shift_trade_path(trade), class: 'btn-primary btn-sm' %>
+                <%= button_to 'Deny', deny_people_shift_trade_path(trade), class: 'btn-ghost btn-sm' %>
+              <% end %>
+              <%= link_to 'Open', people_shift_trade_path(trade), class: 'btn-ghost btn-sm' %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </div>
+</div>

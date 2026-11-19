@@ -163,7 +163,13 @@ module People
         @employee.update!(termination_date: event == 'terminate' ? Date.current : nil) if %w[terminate
                                                                                            rehire].include?(event)
         ActivityLogger.log("employee_#{event}", subject: @employee)
-        redirect_to(people_employee_path(@employee), notice: "#{@employee.name} #{event.tr('_', ' ')}d.")
+        notice = "#{@employee.name} #{event.tr('_', ' ')}d."
+        if event == 'terminate'
+          result = People::Offboarding.call(@employee)
+          notice += " Access revoked, PIN cleared, #{result.shifts_opened} future #{'shift'.pluralize(result.shifts_opened)} opened."
+          notice += ' An open punch is waiting for a clock-out fix.' if result.open_shift
+        end
+        redirect_to(people_employee_path(@employee), notice: notice)
       else
         redirect_to(people_employee_path(@employee),
           alert: "Cannot #{event.tr('_', ' ')} a #{@employee.status} staff member.")
@@ -220,7 +226,9 @@ module People
         :training_ends_on,
         :emergency_contact_name,
         :emergency_contact_phone,
-        :notes
+        :notes,
+        :tip_eligible,
+        location_ids: []
       )
     end
   end

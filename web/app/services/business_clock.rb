@@ -51,6 +51,10 @@ module BusinessClock
 
   def find(name) = name.present? ? Time.find_zone(name.to_s) : nil
 
+  # The zone for an IANA name under the name people read ("Pacific Time (US & Canada)") when Rails
+  # has one, so pages say the same thing they say for the instance default.
+  def display_zone(name) = Time.find_zone(ActiveSupport::TimeZone::MAPPING.key(name.to_s) || name.to_s) || default_zone
+
   def location_zone_name(location) = location.respond_to?(:timezone) ? location.timezone : nil
 
   def tenant_zone_name(tenant) = tenant.respond_to?(:time_zone) ? tenant.time_zone : nil

@@ -13,17 +13,21 @@ class PosSettingsController < AuthenticatedController
 
   def update
     fields = params.require(:pos_setting).permit(:cash_enabled, :card_enabled, :stock_writes_enabled, :environment, :gateway_id, :gateway_provider, :lock_version)
-    submitted = (params[:credentials].is_a?(ActionController::Parameters) ? params[:credentials].permit(:api_login_id, :transaction_key, :security_key, :tokenization_key, :merchant_company).to_h : {}).reject { |_key, value| value.blank? }
+    submitted = (params[:credentials].is_a?(ActionController::Parameters) ? params[:credentials].permit(:api_login_id, :transaction_key, :security_key, :tokenization_key, :merchant_company, :tpn, :auth_key).to_h : {}).reject { |_key, value| value.blank? }
     saved = PosSetting.transaction do
       @setting.lock! if @setting.persisted?
       @setting.assign_attributes(fields)
       previous = @setting.gateway_provider_changed? || @setting.environment_changed? ? {} : @setting.credentials
-      allowed = @setting.gateway_provider == 'nmi' ? %w[security_key tokenization_key merchant_company] : %w[api_login_id transaction_key]
+      allowed = PosSetting::CREDENTIAL_KEYS.fetch(@setting.gateway_provider, [])
       @setting.credentials_json = JSON.generate(previous.merge(submitted.slice(*allowed)))
+      # Blank keeps the saved key; "clear" removes it. Never redisplayed.
+      key = params[:webhook_signing_key].to_s.strip
+      @setting.webhook_signing_key = key == 'clear' ? nil : key if key.present?
+      apply_production_signoff!
       @setting.save
     end
     if saved
-      ActivityLogger.log('pos_setup_saved', subject: @setting, details: 'POS store configuration')
+      ActivityLogger.log('pos_setup_saved', subject: @setting, details: "POS store configuration#{'; production signed off' if @setting.saved_change_to_production_approved_at? && @setting.production_approved_at}")
       redirect_to pos_setting_path(@location.id), notice: 'POS setup saved.'
     else
       render :show, status: :unprocessable_entity
@@ -34,12 +38,93 @@ class PosSettingsController < AuthenticatedController
 
   def verify
     raise Pos::Error, 'Save the settings first.' unless @setting.persisted?
-    gateway = @setting.gateway_provider == 'nmi' ? Pos::NmiGateway.new(@setting) : Pos::Gateway.new(@setting)
-    merchant = gateway.merchant
-    count = PosSetting.where(id: @setting.id, lock_version: gateway.version).update_all(public_client_key: merchant.fetch('publicClientKey'), verified_at: Time.current, updated_at: Time.current, lock_version: gateway.version + 1)
+    gateway = case @setting.gateway_provider
+              when 'nmi' then Pos::NmiGateway.new(@setting)
+              when 'dejavoo_spin' then Pos::DejavooSpinGateway.new(@setting)
+              else Pos::Gateway.new(@setting)
+              end
+    # A Dejavoo check proves the TPN, auth key and terminal connection; there is no browser key.
+    client_key = @setting.gateway_provider == 'dejavoo_spin' ? (gateway.verify! && nil) : gateway.merchant.fetch('publicClientKey')
+    count = PosSetting.where(id: @setting.id, lock_version: gateway.version).update_all(public_client_key: client_key, verified_at: Time.current, updated_at: Time.current, lock_version: gateway.version + 1)
     raise Pos::Error, 'Setup changed during the check.' if count.zero?
-    redirect_to pos_setting_path(@location.id), notice: @setting.nmi_sandbox? ? 'NMI sandbox company/profile read verified. Enable sandbox checkout to test tokenization and payments; payment permissions remain unverified.' : 'Gateway identity, USD and hosted-card key verified. Enable card payments when ready.'
+    notice = if @setting.gateway_provider == 'dejavoo_spin'
+      "Dejavoo #{@setting.environment} terminal reached through SPIn with this TPN and auth key. Enable card charges, then run a #{@setting.environment == 'sandbox' ? 'test ' : ''}sale on the terminal."
+    elsif @setting.gateway_provider == 'nmi'
+      "NMI #{@setting.environment} company/profile read verified. Enable card checkout, then run a test sale; payment permissions are proven by the first approved payment."
+    else
+      'Gateway identity, USD and hosted-card key verified. Enable card payments when ready.'
+    end
+    redirect_to pos_setting_path(@location.id), notice: notice
   rescue Pos::Error => e
     redirect_to pos_setting_path(@location.id), alert: e.message
+  end
+
+  # Extra Dejavoo terminals, one per register (or event). A new one must pass
+  # a check (a status lookup that cannot charge) before any register uses it.
+  def add_terminal
+    raise Pos::Error, 'Extra terminals are for Dejavoo stores.' unless @setting.persisted? && @setting.gateway_provider == 'dejavoo_spin'
+
+    terminal = PosTerminal.new(location: @location, name: params[:terminal_name].to_s.squish, register_name: params[:register_name].to_s,
+      credentials_json: { tpn: params[:terminal_tpn].to_s.strip, auth_key: params[:terminal_auth_key].to_s.strip }.to_json)
+    raise Pos::Error, terminal.errors.full_messages.to_sentence unless terminal.save
+
+    ActivityLogger.log('pos_terminal_added', subject: @setting, details: "#{terminal.name} for register #{terminal.register_name}")
+    redirect_to pos_setting_path(@location.id), notice: "#{terminal.name} added. Check it before register #{terminal.register_name} can use it."
+  rescue Pos::Error => e
+    redirect_to pos_setting_path(@location.id), alert: e.message
+  end
+
+  def check_terminal
+    terminal = PosTerminal.active.find_by!(id: params[:id], location_id: @location.id)
+    Pos::DejavooSpinGateway.new(@setting, terminal: terminal).verify!
+    terminal.update!(verified_at: Time.current)
+    redirect_to pos_setting_path(@location.id), notice: "#{terminal.name} reached through SPIn. Register #{terminal.register_name} now sends card sales to it."
+  rescue Pos::Error => e
+    redirect_to pos_setting_path(@location.id), alert: e.message
+  end
+
+  # Retired terminals keep their keys so past sales can still be refunded.
+  def retire_terminal
+    terminal = PosTerminal.active.find_by!(id: params[:id], location_id: @location.id)
+    if PosCheckout.where(pos_terminal_id: terminal.id, status: %w[processing unknown]).exists?
+      raise Pos::Error, 'Resolve this terminal’s unfinished card payments first.'
+    end
+
+    terminal.update!(retired_at: Time.current)
+    ActivityLogger.log('pos_terminal_retired', subject: @setting, details: terminal.name)
+    redirect_to pos_setting_path(@location.id), notice: "#{terminal.name} retired. Register #{terminal.register_name} uses the main terminal again."
+  rescue Pos::Error => e
+    redirect_to pos_setting_path(@location.id), alert: e.message
+  end
+
+  # Closes the Dejavoo terminal's open batch and compares its totals with the
+  # terminal sales and refunds Rupert recorded in that batch. Closing is what
+  # the terminal does at end of day; nothing in Rupert's books changes.
+  def close_batch
+    raise Pos::Error, 'Batch close is for Dejavoo terminals.' unless @setting.persisted? && @setting.gateway_provider == 'dejavoo_spin'
+
+    results = Pos::DejavooBatchClose.call(@setting)
+    ActivityLogger.log('pos_dejavoo_batch_closed', subject: @setting, details: results.map(&:summary).join('; '))
+    message = results.map(&:summary).join(' ')
+    redirect_to pos_setting_path(@location.id), (results.all?(&:balanced?) ? :notice : :alert) => message
+  rescue Pos::Error => e
+    redirect_to pos_setting_path(@location.id), alert: e.message
+  end
+
+  private
+
+  # NMI production is allowed only after an owner (admin) confirms the processor
+  # approved this merchant account, and says who approved it and when.
+  def apply_production_signoff!
+    return unless PosSetting::SIGNOFF_PROVIDERS.include?(@setting.gateway_provider) && @setting.environment == 'production'
+    return if @setting.production_approved_at && !@setting.environment_changed? && !@setting.gateway_provider_changed? && !@setting.gateway_id_changed? &&
+              !(@setting.gateway_provider == 'dejavoo_spin' && @setting.credentials_json_changed?)
+    return unless params[:nmi_production_signoff] == '1'
+
+    raise Pundit::NotAuthorizedError unless Current.user.admin? || Current.user.super_admin?
+
+    @setting.production_approved_at = Time.current
+    @setting.production_approved_by = Current.user
+    @setting.production_approval_note = params[:production_approval_note].to_s.strip
   end
 end
