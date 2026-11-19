@@ -1,0 +1,7 @@
+<%# Two views of the same role permissions. Only people who assign roles see the summary. %>
+<% if Current.user.can_manage_accounts? %>
+  <nav class="tabs" aria-label="Permission views">
+    <%= link_to 'Summary', roles_permissions_path, class: 'tab', aria: { current: current_page?(roles_permissions_path) ? 'page' : nil } %>
+    <%= link_to 'Edit roles', permissions_path, class: 'tab', aria: { current: current_page?(permissions_path) ? 'page' : nil } %>
+  </nav>
+<% end %>

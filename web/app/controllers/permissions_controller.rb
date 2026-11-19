@@ -5,6 +5,7 @@
 # clears the overrides so a role falls back to the defaults.
 class PermissionsController < AuthenticatedController
   before_action :authorize_read, only: :show
+  before_action :authorize_account_manager, only: :roles
   before_action :authorize_write, only: %i[save reset]
 
   def show
@@ -16,6 +17,11 @@ class PermissionsController < AuthenticatedController
        rp.permission]
     end
     @builtin = User::ROLE_PERMISSIONS
+  end
+
+  # Read-only summary: what each role allows, in plain words.
+  def roles
+    @grid = RoleAccessGrid.new(tenant_id: Current.tenant_id)
   end
 
   def save
@@ -45,6 +51,13 @@ class PermissionsController < AuthenticatedController
   private
 
   def authorize_read
+    authorize(:module, :users_read?)
+  end
+
+  # Only people who can assign roles need the summary of what each one allows.
+  def authorize_account_manager
+    raise Pundit::NotAuthorizedError unless Current.user&.can_manage_accounts?
+
     authorize(:module, :users_read?)
   end
 

@@ -167,7 +167,8 @@ class User < ActiveRecord::Base
   def wants_notification?(kind) = notification_prefs.fetch(kind.to_s, true)
 
   def can?(permission)
-    return true if permission.to_s == 'timesheets.self' && (effective_permissions.include?('timesheets.read') || TimeClockService.worker_for(self))
+    # A saved account linked to one active worker always has its own time records.
+    return true if permission.to_s == 'timesheets.self' && (effective_permissions.include?('timesheets.read') || (persisted? && TimeClockService.worker_for(self)))
     perms = effective_permissions
     perms.include?('*') || perms.include?(permission.to_s)
   end
@@ -217,7 +218,13 @@ class User < ActiveRecord::Base
     return @can_manage_accounts if defined?(@can_manage_accounts)
 
     actor = User.find_by(id: id, active: true)
-    @can_manage_accounts = !!(actor && (actor.admin? || actor.super_admin?) && actor.can?('users.write'))
+    @can_manage_accounts = !!actor&.role_allows_account_management?
+  end
+
+  # The role half of can_manage_accounts?, without re-reading the account.
+  # The Permissions summary asks it of each role.
+  def role_allows_account_management?
+    (admin? || super_admin?) && can?('users.write')
   end
 
   def active?
