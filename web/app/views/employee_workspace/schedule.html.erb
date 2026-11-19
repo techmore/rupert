@@ -1,30 +1,74 @@
-<% content_for :title, 'My schedule' %>
+<% content_for :title, t('time.schedule.title') %>
 <% week_hours = @shifts.sum(&:hours) %>
-<%= page_header 'Schedule', subtitle: 'The shifts your manager has planned for you.' do %>
-  <%= link_to 'Request time off', personal_time_off_path(anchor: 'time-off-request'), class: 'btn-ghost' %>
+<% open_shifts = @open_shifts || [] %>
+<% team_shifts = @team_shifts || [] %>
+<% blackouts = @blackouts || [] %>
+<% live_trades = @live_trades || {} %>
+<% swap_candidates = @swap_candidates || [] %>
+<% this_week = @week == Date.current.beginning_of_week %>
+<%= page_header t('time.schedule.title'), subtitle: t('time.schedule.subtitle'), menu: (@preview ? nil : [[t('time.schedule.my_trades'), employee_trades_path], [t('time.schedule.availability.mine'), employee_availability_index_path], [t('time.schedule.subscribe'), @feed_url]]) do %>
+  <%= link_to t('time.schedule.request_time_off'), personal_time_off_path(anchor: 'time-off-request'), class: 'btn-ghost' %>
 <% end %>
+
 <section class="card card-pad space-y-4">
-  <div class="flex items-center justify-between gap-2">
-    <%= link_to '←', personal_schedule_path(week: (@week - 7).iso8601), class: 'btn-ghost btn-sm', aria: { label: 'Previous week' } %>
-    <div class="text-center"><h2 class="card-title"><%= @week.strftime('%b %-d') %> – <%= (@week + 6).strftime('%b %-d, %Y') %></h2><p class="text-xs text-mocha"><%= number_with_precision(week_hours, precision: 2, strip_insignificant_zeros: true) %> planned hours<% if @week == Date.current.beginning_of_week %> · This week<% else %> · <%= link_to 'Back to this week', personal_schedule_path, class: 'underline' %><% end %></p></div>
-    <%= link_to '→', personal_schedule_path(week: (@week + 7).iso8601), class: 'btn-ghost btn-sm', aria: { label: 'Next week' } %>
+  <div class="date-stepper">
+    <%= link_to '‹', personal_schedule_path(week: (@week - 7).iso8601, team: (@team ? 1 : nil)), class: 'btn-ghost btn-sm', aria: { label: t('time.schedule.previous_week') } %>
+    <div class="flex-1 text-center"><h2 class="card-title"><%= @week.strftime('%b %-d') %> – <%= (@week + 6).strftime('%b %-d, %Y') %></h2><p class="text-xs text-mocha"><%= t('time.schedule.planned_hours', hours: number_with_precision(week_hours, precision: 2, strip_insignificant_zeros: true)) %><% if this_week %> · <%= t('time.schedule.this_week') %><% else %> · <%= link_to t('time.schedule.back_to_this_week'), personal_schedule_path, class: 'underline' %><% end %></p></div>
+    <%= link_to '›', personal_schedule_path(week: (@week + 7).iso8601, team: (@team ? 1 : nil)), class: 'btn-ghost btn-sm', aria: { label: t('time.schedule.next_week') } %>
   </div>
-  <ol class="divide-y divide-fog" aria-label="Shifts this week">
+  <% unless @preview %>
+    <nav class="tabs" aria-label="<%= t('time.schedule.view') %>">
+      <%= link_to t('time.schedule.mine'), personal_schedule_path(week: @week.iso8601), class: "tab#{' tab-active' unless @team}", aria: { current: (@team ? nil : 'page') } %>
+      <%= link_to t('time.schedule.team'), personal_schedule_path(week: @week.iso8601, team: 1), class: "tab#{' tab-active' if @team}", aria: { current: (@team ? 'page' : nil) } %>
+    </nav>
+  <% end %>
+  <ol class="divide-y divide-fog" aria-label="<%= t('time.schedule.shifts_this_week') %>">
     <% (@week..(@week + 6)).each do |day| %>
       <% day_shifts = @shifts.select { |shift| shift.starts_at.to_date == day } %>
       <% day_leave = @requests.select { |leave| leave.starts_on <= day && leave.ends_on >= day } %>
+      <% day_open = open_shifts.select { |shift| shift.starts_at.to_date == day } %>
+      <% day_team = team_shifts.select { |shift| shift.starts_at.to_date == day } %>
+      <% day_blackouts = blackouts.select { |b| b.starts_on <= day && b.ends_on >= day } %>
       <li class="flex gap-3 py-3 <%= day == Date.current ? 'bg-haze/40 -mx-2 px-2 rounded-control' : '' %>">
-        <div class="w-14 shrink-0 text-center"><p class="text-xs uppercase text-mocha"><%= day.strftime('%a') %></p><p class="text-lg font-semibold <%= day == Date.current ? 'text-olive' : '' %>"><%= day.day %></p></div>
-        <div class="min-w-0 flex-1 space-y-1">
+        <div class="w-14 shrink-0 text-center"><p class="text-xs uppercase text-mocha"><%= l(day, format: '%a') %></p><p class="text-lg font-semibold <%= day == Date.current ? 'text-olive' : '' %>"><%= day.day %></p></div>
+        <div class="min-w-0 flex-1 space-y-2">
           <% day_shifts.each do |shift| %>
-            <p class="font-semibold"><%= shift.time_label %><span class="font-normal text-mocha"> · <%= number_with_precision(shift.hours, precision: 2, strip_insignificant_zeros: true) %>h<% if shift.role_label.present? %> · <%= shift.role_label %><% end %></span></p>
-            <% if shift.notes.present? %><p class="text-sm text-mocha whitespace-pre-wrap"><%= shift.notes %></p><% end %>
+            <div class="space-y-1" data-my-shift="<%= shift.id %>">
+              <p class="font-semibold"><%= shift.time_label %><span class="font-normal text-mocha"> · <%= number_with_precision(shift.paid_hours, precision: 2, strip_insignificant_zeros: true) %> h<% if shift.label.present? %> · <%= shift.label %><% end %><% if shift.location %> · <%= shift.location.name %><% end %></span></p>
+              <% if shift.notes.present? %><p class="text-sm text-mocha whitespace-pre-wrap"><%= shift.notes %></p><% end %>
+              <% if (trade = live_trades[shift.id]) %>
+                <p class="text-sm"><span class="pill-clay"><%= trade.status == 'open' ? t('time.schedule.trades.status.open') : t('time.schedule.trades.status.accepted') %></span> <span class="text-mocha"><%= trade_kind_label(trade) %></span></p>
+              <% elsif !@preview && shift.starts_at > Time.current %>
+                <details class="text-sm">
+                  <summary class="cursor-pointer text-olive underline"><%= t('time.schedule.trades.change_this_shift') %></summary>
+                  <div class="mt-2 space-y-2 rounded-control bg-haze/50 p-3">
+                    <%= button_to t('time.schedule.trades.kinds.give'), employee_trades_path, params: { kind: 'give', shift_id: shift.id }, class: 'btn-ghost btn-sm', form: { data: { turbo_confirm: t('time.schedule.trades.confirm_give') } } %>
+                    <% candidates = swap_candidates.reject { |c| c.starts_at.to_date == day && c.employee_id.nil? } %>
+                    <% if candidates.any? %>
+                      <%= form_with url: employee_trades_path, class: 'flex flex-wrap items-center gap-2', data: { turbo: false } do |f| %>
+                        <%= f.hidden_field :kind, value: 'swap' %><%= f.hidden_field :shift_id, value: shift.id %>
+                        <%= f.select :counter_shift_id, candidates.map { |c| ["#{c.employee.name} · #{c.starts_at.strftime('%a %b %-d')} · #{c.time_label}", c.id] }, { prompt: t('time.schedule.trades.pick_shift') }, class: 'select', required: true, aria: { label: t('time.schedule.trades.kinds.swap') } %>
+                        <%= f.submit t('time.schedule.trades.kinds.swap'), class: 'btn-ghost btn-sm' %>
+                      <% end %>
+                    <% end %>
+                  </div>
+                </details>
+              <% end %>
+            </div>
           <% end %>
-          <% day_leave.each do |leave| %><p class="text-sm text-olive"><%= leave.leave_type.humanize %> · <%= leave.requested? ? 'Pending approval' : 'Approved time off' %></p><% end %>
-          <% if day_shifts.empty? && day_leave.empty? %><p class="text-sm text-taupe">No shift planned</p><% end %>
+          <% day_leave.each do |leave| %><p class="text-sm text-olive"><%= t("time.time_off.types.#{leave.leave_type}") %> · <%= leave.requested? ? t('time.time_off.status.requested') : t('time.time_off.status.approved') %></p><% end %>
+          <% day_open.each do |shift| %>
+            <div class="flex flex-wrap items-center justify-between gap-2 rounded-control border border-dashed border-clay/60 p-2" data-open-shift="<%= shift.id %>">
+              <p class="text-sm"><span class="pill-clay"><%= t('time.schedule.open_shift') %></span> <%= shift.time_label %><% if shift.label.present? %> · <%= shift.label %><% end %><% if shift.location %> · <%= shift.location.name %><% end %></p>
+              <% unless @preview %><%= button_to t('time.schedule.trades.kinds.pickup'), employee_trades_path, params: { kind: 'pickup', shift_id: shift.id }, class: 'btn-primary btn-sm' %><% end %>
+            </div>
+          <% end %>
+          <% day_team.each do |shift| %><p class="text-sm text-mocha" data-team-shift="<%= shift.id %>"><%= shift.employee.first_name %> · <%= shift.time_label %><% if shift.location %> · <%= shift.location.name %><% end %></p><% end %>
+          <% day_blackouts.each do |b| %><p class="text-xs text-mocha"><span class="pill-olive"><%= t('time.schedule.blackout') %></span> <%= b.reason %></p><% end %>
+          <% if day_shifts.empty? && day_leave.empty? && day_open.empty? && day_team.empty? %><p class="text-sm text-taupe"><%= t('time.schedule.no_shift') %></p><% end %>
         </div>
       </li>
     <% end %>
   </ol>
-  <p class="text-xs text-mocha">Planned shifts can change; hours you actually work come from your time clock. Times use <%= Time.zone.tzinfo.identifier %>.</p>
+  <p class="text-xs text-mocha"><%= t('time.schedule.footnote', zone: Time.zone.tzinfo.identifier) %></p>
 </section>

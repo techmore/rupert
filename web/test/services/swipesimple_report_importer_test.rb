@@ -30,6 +30,18 @@ class SwipesimpleReportImporterTest < ActiveSupport::TestCase
     end
   end
 
+  test 'an export whose card columns hold a full card number is refused without echoing it' do
+    csv = fixture('transactions').sub(',Visa,0000,', ',Visa,4111111111111111,')
+    error = assert_raises(SwipesimpleReportImporter::Error) { SwipesimpleReportImporter.preview(csv, @options) }
+    assert_includes error.message, 'does not accept full card numbers'
+    refute_includes error.message, '4111'
+    named = fixture('transactions').sub(',Fictional Customer,', ',4111 1111 1111 1111,')
+    assert_raises(SwipesimpleReportImporter::Error) { SwipesimpleReportImporter.preview(named, @options) }
+    assert_no_difference('SwipesimpleExport.count') do
+      assert_raises(SwipesimpleReportImporter::Error) { SwipesimpleReportImporter.import!(csv, @options, expected_fingerprint: 'x') }
+    end
+  end
+
   test 'exact replay is unchanged and preserves exact encrypted document provenance' do
     csv = fixture('transactions')
     receipt = import(csv)

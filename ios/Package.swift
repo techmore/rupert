@@ -25,5 +25,11 @@ let package = Package(
             ],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
+        // Run on an iOS simulator: xcodebuild test -scheme Rupert -destination 'platform=iOS Simulator,name=…'
+        .testTarget(
+            name: "RupertTests",
+            dependencies: ["Rupert"],
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
     ]
 )

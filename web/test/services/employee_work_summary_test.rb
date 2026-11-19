@@ -4,6 +4,8 @@ require 'test_helper'
 
 class EmployeeWorkSummaryTest < ActiveSupport::TestCase
   setup do
+    # The rates below are effective-dated around October 2026; freeze "today" so a future rate stays future.
+    travel_to Time.zone.parse('2026-10-10 12:00')
     Current.tenant = tenants(:default_tenant)
     @user = users(:regular_user)
     @worker = People::Employee.create!(first_name: 'Pay', last_name: 'Worker', user: @user)
@@ -15,7 +17,10 @@ class EmployeeWorkSummaryTest < ActiveSupport::TestCase
     @sheet.entries.create!(worked_on: @from, hours: 8, work_type: 'regular')
     @sheet.entries.create!(worked_on: @from + 2, hours: 2, work_type: 'overtime')
   end
-  teardown { Current.reset }
+  teardown do
+    travel_back
+    Current.reset
+  end
 
   def summary
     EmployeeWorkSummary.new(employee: @worker, from: @from, to: @from + 6)

@@ -1,0 +1,130 @@
+en:
+  date:
+    abbr_day_names: [Sun, Mon, Tue, Wed, Thu, Fri, Sat]
+    day_names: [Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday]
+  time:
+    schedule:
+      title: Schedule
+      subtitle: Your posted shifts, open shifts you can pick up, and your team.
+      request_time_off: Request time off
+      my_trades: My trades
+      subscribe: Add to my calendar
+      previous_week: Previous week
+      next_week: Next week
+      planned_hours: "%{hours} planned hours"
+      this_week: This week
+      back_to_this_week: Back to this week
+      back_to_schedule: Back to schedule
+      view: View
+      mine: My shifts
+      team: Team
+      shifts_this_week: Shifts this week
+      open_shift: Open shift
+      blackout: Blackout
+      no_shift: No shift planned
+      footnote: "Posted shifts can still change; your manager tells you when they do. Hours you actually work come from the clock. Times use %{zone}."
+      availability:
+        title: Availability
+        mine: My availability
+        subtitle: Tell your manager when you cannot work. The schedule builder sees it before a shift is planned.
+        empty: No blocks yet. Add a weekday and time this person cannot work.
+        empty_self: Nothing marked yet. Add the days or hours you cannot work.
+        all_day: All day
+        day: Day
+        kind: Kind
+        from: From
+        to: To
+        note: Note (optional)
+        add: Add
+        remove: Remove
+        saved: Availability saved.
+        removed: Availability removed.
+        kinds:
+          unavailable: Unavailable
+          available: Available
+          preferred: Preferred
+      trades:
+        subtitle: Give a shift away, swap with a colleague or pick up an open one. A manager confirms most changes.
+        offers: Up for grabs
+        no_offers: Nothing up for grabs
+        no_offers_hint: When a colleague gives a shift away or offers you a swap, it shows here.
+        mine: My requests
+        none_yet: No trades yet
+        none_yet_hint: Open your schedule and choose Change this shift, or pick up an open shift.
+        change_this_shift: Change this shift
+        confirm_give: Offer this shift to your colleagues? You keep it until someone takes it and a manager confirms.
+        pick_shift: Choose a colleague's shift…
+        take_it: Take this shift
+        agree_swap: Agree to swap
+        cancel: Cancel
+        you_picked_up: You picked this up.
+        taken_by: "%{name} is taking it."
+        waiting_for_taker: Waiting for someone to take it.
+        from_name: "From %{name}."
+        for_shift: "for %{shift}"
+        swap_from: "%{name} offers to swap for your %{shift}."
+        give_from: "%{name} is giving this shift away."
+        accepted_done: "Done. The shift is yours."
+        accepted_waiting: "Sent to your manager to confirm."
+        cancelled: Trade cancelled.
+        sent:
+          give: Your shift is up for grabs. We'll tell you when someone takes it.
+          swap: Swap offered. We'll tell you when your colleague answers.
+          pickup: Sent. We'll tell you when it's confirmed.
+        kinds:
+          give: Give away
+          swap: Swap
+          pickup: Pick up
+        status:
+          open: Open
+          accepted: Waiting
+          approved: Approved
+          denied: Denied
+          cancelled: Cancelled
+          expired: Expired
+    time_off:
+      title: Time off
+      subtitle: Request days off and see what's left.
+      request: Request time off
+      balances: Balances
+      remaining_of: "left of %{total} h"
+      accrual_note: "Sick time grows by about %{hours} h for every 30 hours you work."
+      type: Type
+      first_day: First day
+      last_day: Last day
+      more_options: Hours and note
+      hours: Hours off
+      hours_help: Leave empty to use your posted shifts for those days (8 h a weekday when none are posted).
+      note: Note for your manager (optional)
+      send: Request time off
+      sending: Sending…
+      sent: Request sent. Your manager will answer here.
+      already_sent: That request was already sent.
+      cancelled: Request cancelled.
+      reviewed_already: Ask your manager to change time off that has already been reviewed.
+      my_requests: My requests
+      none_yet: No time-off requests yet
+      none_yet_hint: Pick a type and your days above.
+      cancel_request: Cancel request
+      ask_manager: Ask your manager if these approved dates need to change.
+      notice_days: "Please ask at least %{days} days ahead when you can."
+      blackouts: Busy dates
+      previous_month: Previous month
+      next_month: Next month
+      calendar: Your calendar
+      calendar_note: "Hours and time off by day. Empty days have no records; this is not a work schedule. Times use %{zone}."
+      types:
+        vacation: Vacation
+        sick: Sick
+        personal: Personal
+        unpaid: Unpaid
+      short:
+        vacation: Vac
+        sick: Sick
+        personal: Off
+        unpaid: Off
+      status:
+        requested: Waiting
+        approved: Approved
+        denied: Denied
+        cancelled: Cancelled

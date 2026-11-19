@@ -91,14 +91,16 @@ class NmiSandboxCheckoutTest < ActiveSupport::TestCase
     assert_equal 'unknown', @checkout.reload.status
   end
 
-  test 'production is rejected by settings and by the gateway even after bypassing validations' do
+  test 'production without owner sign-off is rejected by settings and by the gateway even after bypassing validations' do
     assert_not @setting.update(environment: 'production', card_enabled: true)
+    assert_match(/owner sign-off/, @setting.errors.full_messages.to_sentence)
     @setting.reload.update_columns(environment: 'production', card_enabled: true, verified_at: Time.current)
     assert_raises(Pos::Error) { Pos::CardPayment.call(@checkout, nonce: 'test-token-production') }
+    assert_raises(Pos::Error) { Pos::NmiGateway.new(@setting.reload) }
     assert_equal 0, @nmi_sales
     assert_empty PosPaymentAttempt.all
-    assert_not_requested :post, Pos::NmiGateway::SALE_URL
-    assert_not_requested :post, Pos::NmiGateway::QUERY_URL
+    assert_not_requested :post, Pos::NmiGateway.transact_url('production')
+    assert_not_requested :post, Pos::NmiGateway.query_url('production')
   end
 
   test 'changed company or credential fingerprint fails before sending a payment' do

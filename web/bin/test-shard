@@ -1,0 +1,58 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Prints the test files for one CI shard, so the suite can run on several
+# runners at once:
+#
+#   bin/rails test $(bin/test-shard 2 3)    # shard 2 of 3
+#   bin/test-shard --check 3                # every file lands in exactly one shard
+#
+# Uses the same files as a plain `bin/rails test` (Rails' default glob and
+# exclusions). Files are balanced greedily by estimated cost: test count, with
+# integration and non-transactional tests weighted heavier, plus the measured
+# slow classes below.
+ROOT = File.expand_path('..', __dir__)
+GLOB = 'test/**/*_test.rb'
+EXCLUDE = 'test/{system,dummy,fixtures}/**/*_test.rb'
+# Measured serially on 2026-11-03 (seconds). Keeps the heaviest files apart.
+SLOW = {
+  'test/services/team_chat/benchmark_fixture_test.rb' => 31,
+  'test/integration/team_chat_test.rb' => 35
+}.freeze
+
+def files
+  Dir.chdir(ROOT) { (Dir[GLOB] - Dir[EXCLUDE]).sort }
+end
+
+def cost(file)
+  return SLOW[file] if SLOW.key?(file)
+
+  text = File.read(File.join(ROOT, file), encoding: 'UTF-8')
+  tests = text.scan(/^\s*(?:test\s+['"]|def test_)/).size
+  weight = file.start_with?('test/integration/', 'test/controllers/') ? 0.12 : 0.05
+  weight *= 3 if text.include?('use_transactional_tests = false')
+  0.3 + (tests * weight)
+end
+
+def shards(count)
+  bins = Array.new(count) { { cost: 0.0, files: [] } }
+  files.map { |file| [file, cost(file)] }.sort_by { |file, c| [-c, file] }.each do |file, c|
+    target = bins.min_by { |bin| bin[:cost] }
+    target[:cost] += c
+    target[:files] << file
+  end
+  bins
+end
+
+if ARGV.first == '--check'
+  count = Integer(ARGV.fetch(1))
+  assigned = shards(count).flat_map { |bin| bin[:files] }
+  abort('test-shard: a file is missing or repeated') unless assigned.sort == files
+  shards(count).each_with_index { |bin, i| puts format('shard %d: %d files, est %.0fs', i + 1, bin[:files].size, bin[:cost]) }
+  exit
+end
+
+index = Integer(ARGV.fetch(0))
+count = Integer(ARGV.fetch(1))
+abort('usage: bin/test-shard INDEX COUNT (1-based)') unless count.positive? && index.between?(1, count)
+puts shards(count)[index - 1][:files]

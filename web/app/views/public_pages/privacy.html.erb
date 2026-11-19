@@ -1,8 +1,9 @@
-<%# Privacy policy: public, linked from the App Store listing and the sign-in page. A Settings-style
+<%# Privacy policy: public, linked from the App Store listing and the sign-in page. The card-payments section must match
+    Pos::DejavooSpinGateway, Pos::DejavooFeed, DejavooHostedPage and docs/compliance/dejavoo-tap-to-pay-compliance.md. A Settings-style
     page (docs/ui-standards.md §4), one section card per topic. Keep it true to what the code does. %>
 <% content_for :title, 'Privacy policy' %>
 <div class="page-medium space-y-6">
-  <%= page_header 'Privacy policy', subtitle: 'What Rupert keeps about you and your business, and what you can do about it. Updated Oct 29, 2026.' %>
+  <%= page_header 'Privacy policy', subtitle: 'What Rupert keeps about you and your business, and what you can do about it. Updated Nov 17, 2026.' %>
 
   <section class="section-card">
     <%= section_heading 'Who we are' %>
@@ -20,6 +21,20 @@
     <p class="text-sm text-mocha">The iPhone and iPad app adds no advertising, analytics or tracking code. It uses the camera only when you scan a barcode or take a photo to attach, and it keeps your sign-in in the app’s own storage.</p>
   </section>
 
+  <section class="section-card" id="card-payments">
+    <%= section_heading 'Card payments' %>
+    <p class="text-sm">When a shop takes a card payment through Rupert, the card is read and the payment is approved by the shop’s own payment provider, not by Rupert. Card numbers, expiry dates, security codes and PINs never reach Rupert.</p>
+    <ul class="list-disc space-y-1 pl-5 text-sm">
+      <li><strong>Who processes the payment:</strong> the payment gateway or terminal provider the shop chose (Authorize.net, NMI, or Dejavoo and its iPOSpays service), under the shop’s agreement with its payment processor. Those companies handle card details under their own privacy policies.</li>
+      <li><strong>What Rupert receives and keeps:</strong> the result of the payment: approved or declined, the amount, tip and any fee, the date and time, the card brand, the last four digits, the approval code, the provider’s transaction and batch references, and how the card was presented (for example chip or contactless).</li>
+      <li><strong>What Rupert does not keep:</strong> the full card number, the first digits of the card, the cardholder’s name, expiry date, security code, PIN, card tokens and chip data. If a provider sends any of these with a result, Rupert drops them and does not store them.</li>
+      <li><strong>Why:</strong> to mark the sale paid, show the receipt, make refunds, match the shop’s sales to its deposits and answer disputes. Never for advertising.</li>
+      <li><strong>How long:</strong> with the sale, for as long as the shop’s workspace exists, because businesses must keep sales records.</li>
+    </ul>
+    <p class="text-sm text-mocha">Today card payments run on the website and the shop’s register pages. Dejavoo connections work on Dejavoo’s test system only for now. The iPhone and iPad app has no card reader and takes no card payments; a way to take an in-person payment on an iPhone through the payment provider’s own app is planned and is not available yet. This section will be updated before it is.</p>
+    <p class="text-sm">Paid by card at a shop that uses Rupert and have a question about the charge? Contact the shop first: it is the merchant on your statement, and it can refund you. For what Rupert holds about a payment, email <%= mail_to PublicPagesController.support_email, nil, class: 'text-olive underline' %>.</p>
+  </section>
+
   <section class="section-card">
     <%= section_heading 'How we use it' %>
     <ul class="list-disc space-y-1 pl-5 text-sm">
@@ -34,7 +49,7 @@
     <%= section_heading 'Who else sees it' %>
     <ul class="list-disc space-y-1 pl-5 text-sm">
       <li>People in your workspace, according to the roles your administrators give them.</li>
-      <li>Providers your business connects, only for that connection.</li>
+      <li>Providers your business connects, only for that connection. For card payments, that is the payment provider your business chose: Rupert sends it the amount and a reference, never a card number.</li>
       <li>Google, when you choose to sign in with Google. Stripe, when a workspace owner pays for a subscription on the website.</li>
       <li>Our support staff, only when your workspace grants temporary support access (Support permissions), or when the law requires it.</li>
     </ul>
@@ -42,7 +57,7 @@
 
   <section class="section-card">
     <%= section_heading 'How long we keep it' %>
-    <p class="text-sm">Business records stay as long as the workspace exists, because businesses must keep sales, payroll and tax records. Backups are kept for a limited time so the service can be restored after a failure. Saved provider credentials are encrypted on the server.</p>
+    <p class="text-sm">Business records, including the card payment results described above, stay as long as the workspace exists, because businesses must keep sales, payroll and tax records. Backups are kept for a limited time so the service can be restored after a failure. Saved provider credentials are encrypted on the server.</p>
   </section>
 
   <section class="section-card">
@@ -63,4 +78,6 @@
     <%= section_heading 'Changes' %>
     <p class="text-sm">When this policy changes, the date at the top changes too. Questions: <%= link_to 'Support', support_path, class: 'text-olive underline' %>.</p>
   </section>
+
+  <%= render 'public_pages/policy_links' %>
 </div>

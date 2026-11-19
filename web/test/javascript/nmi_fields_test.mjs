@@ -9,6 +9,8 @@ const good={sandbox:true,script_url:'https://sandbox.nmi.com/token/Collect.js',t
 const callbacks={onReady(){ready++},onToken(token){tokens.push(token)},onError(error){errors.push(error)}};
 await assert.rejects(context.mountNmiFields({...good,sandbox:false},callbacks));
 await assert.rejects(context.mountNmiFields({...good,script_url:'https://secure.nmi.com/token/Collect.js'},callbacks));
+await assert.rejects(context.mountNmiFields({...good,sandbox:undefined},callbacks));
+await assert.rejects(context.mountNmiFields({...good,sandbox:false,script_url:'https://evil.example/token/Collect.js'},callbacks));
 assert.equal(scripts.length,0);
 const fields=await context.mountNmiFields(good,callbacks);
 assert.equal(scripts.length,1);assert.equal(scripts[0]['data-tokenization-key'],'public-test-key');
@@ -25,4 +27,4 @@ const abort = new AbortController();
 const next = await context.mountNmiFields(good,{...callbacks,signal:abort.signal});
 abort.abort();options.callback({token:'aborted-token-789'});options.fieldsAvailableCallback();next.pay();
 assert.equal(tokens.length,1);assert.equal(ready,1);assert.equal(paymentRequests,1);
-console.log('NMI hosted-fields tests passed: sandbox host/key checks, token-only callback, stale callbacks, account changes.');
+console.log('NMI hosted-fields tests passed: environment host/key checks, token-only callback, stale callbacks, account changes.');
