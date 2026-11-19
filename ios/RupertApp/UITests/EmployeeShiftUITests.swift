@@ -1,6 +1,7 @@
 import XCTest
 
-/// A staff account's shift in the real app, against a local Rupert (RUPERT_DEV_ORIGIN): sign in,
+/// A staff account's shift in the real app, against a local Rupert (RUPERT_DEV_ORIGIN): the
+/// sign-in page with no tab bar while signed out, sign in,
 /// only the tabs a staff account can open, a cash sale on the register from the first item to the
 /// receipt, then Sign out from App settings. Saves a screenshot of each step. The script a person follows for the same flow, with
 /// the parts a simulator cannot do, is docs/ios/employee-test-script.md.
@@ -40,17 +41,17 @@ final class EmployeeShiftUITests: XCTestCase {
             return true
         }
         let tabBar = app.tabBars.firstMatch
-        XCTAssertTrue(tabBar.waitForExistence(timeout: 20))
+        let signInPage = web.staticTexts["Sign in to continue."].firstMatch
 
         // Start signed out, whatever an earlier run left behind.
-        if !web.links["Sign in"].firstMatch.waitForExistence(timeout: 8) {
+        if !signInPage.waitForExistence(timeout: 12) {
             signOutFromAppSettings()
         }
-        XCTAssertTrue(web.links["Sign in"].firstMatch.waitForExistence(timeout: 30), "the signed-out Time page offers Sign in")
-        XCTAssertEqual(tabLabels(), ["Time", "Home", "Team Chat", "Ask Rupert", "Notifications"], "signed out, every tab is there")
+        XCTAssertTrue(signInPage.waitForExistence(timeout: 30), "signed out, the app shows the sign-in page")
+        XCTAssertFalse(tabBar.exists && tabBar.isHittable, "signed out, there is no tab bar")
+        shoot("signed-out-sign-in-page")
 
         // Sign in with email and password.
-        web.links["Sign in"].firstMatch.tap()
         let emailField = web.textFields.firstMatch
         if !emailField.waitForExistence(timeout: 5) {
             let toggle = web.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'mail and password'")).firstMatch
@@ -80,6 +81,9 @@ final class EmployeeShiftUITests: XCTestCase {
         XCTAssertFalse(web.staticTexts.matching(NSPredicate(format: "label CONTAINS 'can use POS'")).firstMatch.exists, "Notifications opens, it does not refuse")
         shoot("staff-notifications")
         tabBar.buttons["Time"].tap()
+        checkFormSheet()
+        tabBar.buttons["Time"].tap() // the selected tab again: back to its first page
+        sleep(2)
 
         try ringUpASale()
 
@@ -89,8 +93,9 @@ final class EmployeeShiftUITests: XCTestCase {
         tabBar.buttons["Time"].tap() // the selected tab again: back to its first page
         sleep(3)
         signOutFromAppSettings()
-        XCTAssertTrue(web.links["Sign in"].firstMatch.waitForExistence(timeout: 30), "signed out: the sign-in page")
-        XCTAssertEqual(tabLabels(), ["Time", "Home", "Team Chat", "Ask Rupert", "Notifications"], "the next person starts with every tab")
+        XCTAssertTrue(signInPage.waitForExistence(timeout: 30), "signed out: the sign-in page")
+        XCTAssertFalse(tabBar.exists && tabBar.isHittable, "the next person starts on the sign-in page with no tab bar")
+        XCTAssertTrue(app.buttons["app-settings"].firstMatch.waitForExistence(timeout: 10), "App settings stays reachable on the sign-in page")
         shoot("signed-out")
     }
 
@@ -223,6 +228,60 @@ final class EmployeeShiftUITests: XCTestCase {
         XCTAssertTrue(web.staticTexts["The last sale is paid. Ready for the next one."].firstMatch.waitForExistence(timeout: 5), "the register says the last sale is paid")
         XCTAssertFalse(app.keyboards.firstMatch.exists, "no keyboard over the tab bar")
         shoot("register-next-sale")
+    }
+
+    /// A form opens as a sheet with Cancel, not a Done tick that throws the form away; once
+    /// something is typed, Cancel asks before discarding it. My availability (Schedule → More)
+    /// is a sheet every staff account has.
+    private func checkFormSheet() {
+        let schedule = web.links["Schedule"].firstMatch
+        guard schedule.waitForExistence(timeout: 10) else { return XCTFail("the Schedule pill") }
+        schedule.tap()
+        let cancel = app.navigationBars.buttons["Cancel"].firstMatch
+        func openAvailability() {
+            let availability = web.descendants(matching: .any).matching(NSPredicate(format: "label == 'My availability'")).firstMatch
+            if !availability.waitForExistence(timeout: 3) {
+                let more = web.descendants(matching: .any).matching(NSPredicate(format: "label == 'More'")).firstMatch
+                XCTAssertTrue(more.waitForExistence(timeout: 10), "the Schedule page's More menu")
+                more.tap()
+            }
+            XCTAssertTrue(availability.waitForExistence(timeout: 5), "My availability")
+            // On a phone this menu opens partly off the left edge, so tap the part that shows.
+            if availability.isHittable { availability.tap() } else { availability.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap() }
+            XCTAssertTrue(cancel.waitForExistence(timeout: 15), "the form sheet has Cancel")
+        }
+        openAvailability()
+        XCTAssertFalse(app.navigationBars.buttons["Done"].exists, "and no Done that reads as save")
+        sleep(2)
+        shoot("form-sheet")
+
+        // Nothing typed yet: Cancel just closes.
+        cancel.tap()
+        sleep(2)
+        XCTAssertFalse(cancel.exists, "Cancel closes an untouched form without asking")
+        XCTAssertFalse(app.buttons["Discard Changes"].exists)
+
+        // Type something: Cancel asks first.
+        openAvailability()
+        let note = web.textFields.firstMatch
+        XCTAssertTrue(note.waitForExistence(timeout: 10), "the note field")
+        note.tap()
+        note.typeText("School run")
+        cancel.tap()
+        let discard = app.buttons["Discard Changes"].firstMatch
+        XCTAssertTrue(discard.waitForExistence(timeout: 5), "Cancel asks before discarding a changed form")
+        shoot("form-sheet-discard")
+        // Keep Editing is a button on older iOS; where the question is a popover, a tap outside it.
+        let keep = app.buttons["Keep Editing"].firstMatch
+        if keep.exists { keep.tap() } else { app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45)).tap() }
+        sleep(1)
+        XCTAssertFalse(discard.exists, "the question went away")
+        XCTAssertTrue(cancel.exists, "and the form is still open")
+        cancel.tap()
+        XCTAssertTrue(discard.waitForExistence(timeout: 5))
+        discard.tap()
+        sleep(2)
+        XCTAssertFalse(cancel.exists, "Discard Changes closes the sheet")
     }
 
     private func signOutFromAppSettings() {

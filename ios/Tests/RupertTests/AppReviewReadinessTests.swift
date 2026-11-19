@@ -74,6 +74,30 @@ final class SessionWatcherTests: XCTestCase {
     }
 }
 
+final class SessionStateTests: XCTestCase {
+    func testEveryReportedStateReachesOnStateIncludingTheFirst() {
+        // The tab bar hides while signed out, so the first page's state matters too.
+        let watcher = SessionWatcher()
+        var states: [SessionWatcher.State] = []
+        watcher.onState = { states.append($0) }
+
+        watcher.observe("signed-out")
+        watcher.observe(nil)
+        watcher.observe("signed-in")
+        watcher.set(.signedOut)
+        XCTAssertEqual(states, [.signedOut, .signedIn, .signedOut])
+    }
+}
+
+final class SignedOutTabsTests: XCTestCase {
+    func testSignedOutThereIsOnePageAndItIsTheSignInPage() throws {
+        // One page means one request starts the session the sign-in form posts to.
+        let tabs = SignedOut.tabs(on: try XCTUnwrap(URL(string: "https://shop.rupertpos.com")))
+        XCTAssertEqual(tabs.map(\.id), ["home"])
+        XCTAssertEqual(tabs.first?.url.path, "/login")
+    }
+}
+
 final class BottomInsetTests: XCTestCase {
     func testScriptSetsTheCSSVariableInWholePoints() {
         XCTAssertEqual(BannerWebViewController.bottomInsetScript(83.4),

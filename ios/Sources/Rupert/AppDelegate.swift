@@ -57,11 +57,14 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         // hotwire_native_app?) and drops the web chrome the native tab bar replaces.
         Hotwire.config.applicationUserAgentPrefix = "Rupert iOS/\(Instance.appVersion);"
         Hotwire.config.backButtonDisplayMode = .minimal
-        Hotwire.config.showDoneButtonOnModals = true
+        // Sheets get Cancel (and a question before edits are lost) from BannerWebViewController.
+        Hotwire.config.showDoneButtonOnModals = false
         Hotwire.config.animateReplaceActions = true
         // Pages paint the top bar in their banner colour and pick the status bar text to match.
         Hotwire.config.defaultViewController = { url in BannerWebViewController(url: url) }
         Hotwire.config.defaultNavigationController = { BannerNavigationController() }
+        // Plain-words error pages that reload when the phone is back online (ErrorView.swift).
+        Hotwire.config.makeCustomErrorView = { error, handler in RupertErrorView(error: error, handler: handler) }
         // Page diagnostics and a late-Turbo connection (WebViewSupport), then Hotwire's defaults.
         Hotwire.config.makeCustomWebView = { configuration in
             WebViewSupport.install(in: configuration)

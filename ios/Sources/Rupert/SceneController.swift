@@ -27,7 +27,9 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         window.makeKeyAndVisible()
         self.window = window
 
-        load(HotwireTab.all(on: Instance.current))
+        signedIn = UserDefaults.standard.bool(forKey: Self.signedInKey)
+        load(currentTabs())
+        showTabs(signedIn, animated: false)
         AppLock.shared.attach(to: window)
         AppSettings.openInApp = { [weak self] url in
             self?.tabBarController.activeNavigator.route(url)
@@ -52,8 +54,9 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         AppSettings.switchWorkspace = { [weak self] in self?.signOut(leavingWorkspace: true) }
         AppSettings.signOut = { [weak self] in self?.signOut(leavingWorkspace: false) }
         // A page listed different tabs for this account (TabAccess): show those.
-        TabAccess.onChange = { [weak self] in
-            DispatchQueue.main.async { self?.restartTabs() }
+        TabAccess.onChange = { [weak self] in self?.scheduleRestart() }
+        SessionWatcher.shared.onState = { [weak self] state in
+            self?.showTabs(state == .signedIn, animated: true)
         }
         SessionWatcher.shared.onChange = { [weak self] state in
             // Signed out: Rupert must stop pushing to this phone, and the next person starts with every tab.
@@ -61,9 +64,7 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
                 PushRegistration.shared.forget()
                 TabAccess.reset()
             }
-            // The change is noticed while the old page is still finishing its visit; replacing the
-            // tabs from inside that callback left the new Home tab without a visit in release builds.
-            DispatchQueue.main.async { self?.restartTabs() }
+            self?.scheduleRestart()
         }
     }
 
@@ -82,10 +83,43 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
     }
 
     private func open(_ shortcut: UIApplicationShortcutItem) -> Bool {
+        // Signed out there is only the sign-in page; the app opens on it.
+        guard signedIn else { return true }
         let tab = QuickActions.tabID(of: shortcut)
         // A quick action for a tab this account does not have (one left from another account) opens the first tab.
         select(HotwireTab.all(on: Instance.current).firstIndex(where: { $0.id == tab }) ?? 0)
         return true
+    }
+
+    private static let signedInKey = "rupert.signedIn"
+    private var signedIn = false
+
+    private var restartScheduled = false
+
+    /// Signed in: the tabs this account can open. Signed out: Home alone, which is the sign-in
+    /// page (/login). One page, so one request starts the new session; with several tabs loading
+    /// at once, each began a session of its own and the sign-in form could be left holding a
+    /// token for a session that had been replaced ("Can't verify CSRF token").
+    private func currentTabs() -> [HotwireTab] {
+        signedIn ? HotwireTab.all(on: Instance.current) : SignedOut.tabs(on: Instance.current)
+    }
+
+    /// Signed out, every tab showed a sign-in page of its own, most of them under a "Please sign
+    /// in" error. Now only Home's shows, without the tab bar; the tabs come back with the
+    /// sign-in. Remembered across launches, so a signed-out start does not flash the tabs.
+    /// `restart: false` when the caller loads the tabs itself.
+    private func showTabs(_ visible: Bool, animated: Bool, restart: Bool = true) {
+        let changed = signedIn != visible
+        signedIn = visible
+        UserDefaults.standard.set(visible, forKey: Self.signedInKey)
+        if changed, restart { scheduleRestart() }
+        if #available(iOS 18.0, *) {
+            if tabBarController.isTabBarHidden == visible {
+                tabBarController.setTabBarHidden(!visible, animated: animated)
+            }
+        } else {
+            tabBarController.tabBar.isHidden = !visible
+        }
     }
 
     /// Selecting a tab in code skips the tab bar's delegate, which is where lazily loaded tabs
@@ -95,12 +129,23 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         tabBarController.activeNavigator.start()
     }
 
+    /// Restart the tabs once, on the next turn of the main queue. A sign-in or sign-out is noticed
+    /// while the old page is still finishing its visit; replacing the tabs from inside that
+    /// callback left the new first tab without a visit in release builds. Several things can ask
+    /// in the same turn (the session, the tab list, the tab bar); the tabs load once.
+    private func scheduleRestart() {
+        guard !restartScheduled else { return }
+        restartScheduled = true
+        DispatchQueue.main.async { [weak self] in self?.restartTabs() }
+    }
+
     /// A page showed that the person signed in or out: start every tab over on its first page,
     /// staying on the selected tab. Old pages (and their back stacks) are dropped with their web views.
     private func restartTabs() {
+        restartScheduled = false
         // Stay on the same tab by name: the bar may have gained or lost tabs (TabAccess).
         let selected = shownTabs.indices.contains(tabBarController.selectedIndex) ? shownTabs[tabBarController.selectedIndex].id : nil
-        load(HotwireTab.all(on: Instance.current))
+        load(currentTabs())
         select(shownTabs.firstIndex(where: { $0.id == selected }) ?? 0)
         // Just signed in: offer push notifications from the fresh page once it is on screen.
         if SessionWatcher.shared.state == .signedIn {
@@ -135,11 +180,11 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
                 rest.remove(WKWebsiteDataTypeCookies)
                 store.removeData(ofTypes: rest, modifiedSince: .distantPast) {}
                 if leavingWorkspace { Instance.leaveWorkspace() }
-                SessionWatcher.shared.set(.signedOut)
                 TabAccess.reset()
-                guard let self else { return }
-                self.load(HotwireTab.all(on: Instance.current))
-                self.select(0)
+                // Marking signed out hides the tab bar; the restart then loads the sign-in page,
+                // on the control plane after Switch workspace.
+                SessionWatcher.shared.set(.signedOut)
+                self?.scheduleRestart()
             }
         }
     }
@@ -148,6 +193,8 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
     /// on Home. Each tab starts over, since they all showed the sign-in page or the control plane.
     private func show(instance: URL, landing: URL) {
         Instance.setCurrent(instance)
+        // The tabs are loaded here, with the landing page; no restart on top of that.
+        showTabs(true, animated: true, restart: false)
         SessionWatcher.shared.set(.signedIn)
         let tabs = HotwireTab.all(on: instance)
         load(tabs)
@@ -161,20 +208,14 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
 
 extension SceneController: NavigatorDelegate {
     func visitableDidFailRequest(_ visitable: any Visitable, error: HotwireNativeError, retryHandler: RetryBlock?) {
-        // Rupert's JavaScript did not start: say why, with the page's own diagnostics.
-        if case .load = error {
+        // Rupert's JavaScript did not start: the error page (RupertErrorView) offers the page's own
+        // diagnostics as "Copy Details for Support". They used to arrive in an alert on top of the
+        // error page, user agent and import map included.
+        if case .load = error, let presenter = visitable as? ErrorPresenter {
             let webView = tabBarController.activeNavigator.activeWebView
             Task { @MainActor in
                 let details = await WebViewSupport.report(from: webView)
-                let alert = UIAlertController(title: "Rupert's page did not start",
-                                              message: "\(error.localizedDescription)\n\n\(details)", preferredStyle: .alert)
-                alert.addAction(UIAlertAction(title: "Copy Details", style: .default) { _ in
-                    UIPasteboard.general.string = details
-                })
-                alert.addAction(UIAlertAction(title: "Try Again", style: .cancel) { _ in retryHandler?() })
-                self.tabBarController.activeNavigator.present(alert, animated: true)
-            }
-            if let presenter = visitable as? ErrorPresenter {
+                ErrorDetails.latest = "\(error.localizedDescription)\n\n\(details)"
                 presenter.presentError(error) { retryHandler?() }
             }
             return

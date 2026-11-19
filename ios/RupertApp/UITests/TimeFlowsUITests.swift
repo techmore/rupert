@@ -7,7 +7,7 @@ import XCTest
 ///   RUPERT_UI_EMAIL=sam.okafor@juniper-pine.example RUPERT_UI_PASSWORD=… RUPERT_UI_SHOTS=/abs/dir \
 ///   xcodebuild test -scheme RupertApp -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -only-testing:RupertAppUITests
 ///
-/// Without RUPERT_UI_EMAIL the test only checks that the app shows the Time tab and the sign-in page.
+/// Without RUPERT_UI_EMAIL the test only checks that the signed-out app shows the sign-in page.
 final class TimeFlowsUITests: XCTestCase {
     private var app: XCUIApplication!
     private var shotDir: String?
@@ -32,9 +32,6 @@ final class TimeFlowsUITests: XCTestCase {
             return true
         }
         let tabBar = app.tabBars.firstMatch
-        XCTAssertTrue(tabBar.waitForExistence(timeout: 20))
-        XCTAssertTrue(tabBar.buttons["Time"].exists, "Time is a tab")
-        XCTAssertFalse(tabBar.buttons["Search"].exists, "Search left the bar to make room for Time")
 
         // A previous run may have left the person signed in: sign out through the page first, which
         // also exercises the session watcher (tabs restart) and forgetting the push token.
@@ -46,17 +43,14 @@ final class TimeFlowsUITests: XCTestCase {
             signOut.tap()
             sleep(4)
         }
-        // Signed out: the Time tab shows My time with a Sign in button.
-        let signIn = app.webViews.links["Sign in"].firstMatch
-        XCTAssertTrue(signIn.waitForExistence(timeout: 30), "the signed-out Time page offers Sign in\n\(app.webViews.firstMatch.debugDescription.prefix(3000))")
-        // Signed out, every tab shows; signed in, only the ones the account can open (TabAccess).
-        XCTAssertTrue(tabBar.buttons["Home"].waitForExistence(timeout: 10))
-        shoot("time-signed-out")
+        // Signed out: the sign-in page is the only page and the tab bar is hidden. Signed in, the
+        // bar shows the tabs the account can open (TabAccess).
+        let signInPage = app.webViews.staticTexts["Sign in to continue."].firstMatch
+        XCTAssertTrue(signInPage.waitForExistence(timeout: 30), "signed out, the app shows the sign-in page\n\(app.webViews.firstMatch.debugDescription.prefix(3000))")
+        XCTAssertFalse(tabBar.exists && tabBar.isHittable, "signed out, there is no tab bar")
+        shoot("sign-in-page")
 
         guard let email = env["RUPERT_UI_EMAIL"], let password = env["RUPERT_UI_PASSWORD"] else { return }
-        signIn.tap()
-        sleep(3)
-        shoot("sign-in-page")
         let emailField = app.webViews.textFields.firstMatch
         if !emailField.waitForExistence(timeout: 5) {
             let toggle = app.webViews.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'mail and password'")).firstMatch
@@ -77,6 +71,9 @@ final class TimeFlowsUITests: XCTestCase {
         sleep(2)
         XCTAssertTrue(app.webViews.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Hi,'")).firstMatch.waitForExistence(timeout: 30),
                       "the Time tab lands on the staff home after sign-in")
+        XCTAssertTrue(tabBar.waitForExistence(timeout: 10), "signed in, the tab bar is back")
+        XCTAssertTrue(tabBar.buttons["Time"].exists, "Time is a tab")
+        XCTAssertFalse(tabBar.buttons["Search"].exists, "Search left the bar to make room for Time")
         shoot("time-home")
 
         // The staff nav pills are on every Time page. Timesheets sits past the right edge on a phone

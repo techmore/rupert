@@ -3,7 +3,8 @@ import UIKit
 
 /// The native tab bar, on whichever instance the app is pointed at. These replace the web top
 /// bar's search, Ask Rupert, Team chat and notification buttons, which Rupert hides inside the app
-/// (`.native-app` in application.css). Signed out, every tab shows Rupert's sign-in page.
+/// (`.native-app` in application.css). Signed out, the bar is hidden and Home's sign-in page is the
+/// only page (SceneController).
 ///
 /// Time comes first: for hourly staff the app is their clock, schedule, time off and pay
 /// (`/employee`, the staff workspace), and `/login` already lands staff accounts there. Search
@@ -37,8 +38,18 @@ extension HotwireTab {
         ]
     }
 
+    /// The tab that is Rupert's sign-in page while nobody is signed in.
+    static let signInTabID = "home"
+
     /// The tab a notification tap or a push deep link opens in.
     static let timeTabIndex = 0
+}
+
+/// Signed out there is one page and no tab bar (SceneController).
+enum SignedOut {
+    static func tabs(on base: URL) -> [HotwireTab] {
+        HotwireTab.every(on: base).filter { $0.id == HotwireTab.signInTabID }
+    }
 }
 
 /// Which tabs the signed-in account can open.
