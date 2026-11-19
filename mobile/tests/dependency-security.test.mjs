@@ -10,7 +10,6 @@ import { verifyBackports } from '../scripts/security-backports.mjs';
 const require = createRequire(import.meta.url);
 const braces = require('braces');
 const forge = require('node-forge');
-const { z } = require('zod');
 const expoCliRequire = createRequire(require.resolve('expo/package.json'));
 const expoCliRoot = dirname(expoCliRequire.resolve('@expo/cli/package.json'));
 
@@ -71,29 +70,49 @@ const atLeast = (version, minimum) => {
 const resolvedFrom = (consumer, name) => createRequire(consumer)(`${name}/package.json`).version;
 const consumers = {
   'node-forge': [require.resolve('@expo/code-signing-certificates/package.json'), join(expoCliRoot, 'package.json')],
-  glob: [require.resolve('@expo/config/package.json'), require.resolve('@expo/fingerprint/package.json'), join(expoCliRoot, 'package.json'),
-    expoCliRequire.resolve('@expo/metro-config/package.json')],
-  minimatch: [require.resolve('@expo/fingerprint/package.json'), require.resolve('glob/package.json')]
+  minimatch: [require.resolve('@expo/fingerprint/package.json')]
 };
+const lock = JSON.parse(readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8'));
+const lockedCopies = name => Object.entries(lock.packages).filter(([path]) => path === `node_modules/${name}` || path.endsWith(`/node_modules/${name}`));
+const lockedDependents = name => Object.entries(lock.packages).filter(([, entry]) => ['dependencies', 'optionalDependencies', 'peerDependencies']
+  .some(kind => entry[kind]?.[name])).map(([path]) => path);
 
-test('Expo build tooling resolves fixed node-forge, glob and minimatch releases', () => {
+test('Expo build tooling resolves fixed node-forge and minimatch releases', () => {
   // node-forge 1.4.1+ fixes GHSA-5x38/hqq3/8hrf/jc66/7wch/5cwg/525v/6wvx/4487/h6cr/4642; 1.4.2 adds the
-  // canonical DigestInfo check that supersedes the local GHSA-86w9 backport. glob 14.0.2 fixes
-  // GHSA-3g3m-2fjr-6pw4 and minimatch 11.0.1 fixes GHSA-g3hv-75wg-m249 (both forced by overrides).
-  for (const [name, minimum] of [['node-forge', '1.4.2'], ['glob', '14.0.2'], ['minimatch', '11.0.1']]) {
+  // canonical DigestInfo check that supersedes the local GHSA-86w9 backport. minimatch 11.0.1 fixes
+  // GHSA-g3hv-75wg-m249 (forced by overrides; @expo/fingerprint still declares ^10).
+  for (const [name, minimum] of [['node-forge', '1.4.2'], ['minimatch', '11.0.1']]) {
     for (const consumer of consumers[name]) {
       const version = resolvedFrom(consumer, name);
       assert.ok(atLeast(version, minimum), `${consumer} resolves ${name} ${version}, below ${minimum}`);
     }
+    for (const [path, entry] of lockedCopies(name)) assert.ok(atLeast(entry.version, minimum), `${path} locks ${name} ${entry.version}, below ${minimum}`);
   }
 });
 
-test('deepmerge never lets an own __proto__ key replace the merged prototype', () => {
-  const deepmerge = require('deepmerge');
+test('glob and zod left the Expo 58.0.25 tree; any copy that returns must be a fixed release', () => {
+  // Expo CLI 58.1.20 globs with tinyglobby and takes zod from its optional MCP host, so neither package is
+  // installed. The overrides in package.json stay as a guard: glob 14.0.2 fixes GHSA-3g3m-2fjr-6pw4 and
+  // zod 4.6.6 fixes GHSA-mrhx-c7xc-m3w5.
+  for (const [name, minimum] of [['glob', '14.0.2'], ['zod', '4.6.6']]) {
+    assert.deepEqual(lockedDependents(name), [], `${name} has a dependent again: restore its regression tests`);
+    for (const [path, entry] of lockedCopies(name)) assert.ok(atLeast(entry.version, minimum), `${path} locks ${name} ${entry.version}, below ${minimum}`);
+    assert.ok(atLeast(JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).overrides[name], minimum));
+  }
+});
+
+test('deepmerge is gone and the Expo config merge that replaced it ignores own __proto__ keys', () => {
+  // GHSA-gcqx-w48m-w2h4 has no fixed deepmerge release, so 4.3.1 carried a local backport. @expo/config
+  // 58.0.12 merges with its own mergeConfig instead and the package is no longer installed. If any package
+  // brings deepmerge back, restore the backport and its advisory allowance before accepting it.
+  assert.deepEqual(lockedCopies('deepmerge').map(([path]) => path), []);
+  assert.deepEqual(lockedDependents('deepmerge'), []);
+  assert.throws(() => require.resolve('deepmerge/package.json'), { code: 'MODULE_NOT_FOUND' });
+  assert.throws(() => createRequire(require.resolve('@expo/config/package.json')).resolve('deepmerge/package.json'), { code: 'MODULE_NOT_FOUND' });
+  const { mergeConfig } = require(join(dirname(require.resolve('@expo/config/package.json')), 'build/mergeConfig.js'));
   const poisonedTarget = JSON.parse('{"__proto__":{"injected":true},"a":1,"nested":{"x":1}}');
   const poisonedSource = JSON.parse('{"__proto__":{"injected":true},"b":2,"nested":{"__proto__":{"injected":true},"y":2}}');
-  for (const result of [deepmerge(poisonedTarget, {}), deepmerge({}, poisonedSource), deepmerge(poisonedTarget, poisonedSource),
-    deepmerge.all([poisonedTarget, poisonedSource, {}])]) {
+  for (const result of [mergeConfig(poisonedTarget, {}), mergeConfig({}, poisonedSource), mergeConfig(poisonedTarget, poisonedSource)]) {
     assert.equal(Object.getPrototypeOf(result), Object.prototype);
     assert.equal(result.injected, undefined);
     assert.equal(Object.getPrototypeOf(result.nested), Object.prototype);
@@ -101,77 +120,17 @@ test('deepmerge never lets an own __proto__ key replace the merged prototype', (
   }
   assert.equal(({}).injected, undefined);
   const symbol = Symbol('kept');
-  assert.deepEqual(deepmerge({ name: 'app', plugins: ['a'], ios: { bundleIdentifier: 'x' } }, { plugins: ['b'], ios: { buildNumber: '2' } }),
+  assert.deepEqual(mergeConfig({ name: 'app', plugins: ['a'], ios: { bundleIdentifier: 'x' } }, { plugins: ['b'], ios: { buildNumber: '2' } }),
     { name: 'app', plugins: ['a', 'b'], ios: { bundleIdentifier: 'x', buildNumber: '2' } });
-  assert.equal(deepmerge({}, { [symbol]: 1 })[symbol], 1);
+  assert.equal(mergeConfig({}, { [symbol]: 1 })[symbol], 1);
 });
 
-test('Expo glob and fingerprint matching still behave under glob 14 and minimatch 11', async () => {
-  const root = mkdtempSync(join(tmpdir(), 'rupert-glob-'));
-  try {
-    for (const file of ['App.tsx', 'src/a.ts', 'src/types.d.ts', 'node_modules/x/index.ts', 'ios/Pods/p.ts', 'android/build/out.ts']) {
-      mkdirSync(dirname(join(root, file)), { recursive: true });
-      writeFileSync(join(root, file), '');
-    }
-    const { everyMatchAsync } = require(join(expoCliRoot, 'build/src/utils/glob.js'));
-    const found = await everyMatchAsync('**/*.@(ts|tsx)', { cwd: root, signal: AbortSignal.timeout(5000),
-      ignore: ['**/@(Carthage|Pods|node_modules)/**', '**/*.d.ts', '@(ios|android|web|web-build|dist)/**'] });
-    assert.deepEqual([...found].sort(), ['App.tsx', 'src/a.ts']);
-    const { glob } = require('glob');
-    const controller = new AbortController();
-    controller.abort();
-    await assert.rejects(glob('**/*', { cwd: root, signal: controller.signal }));
-    const { isIgnoredPath } = require('@expo/fingerprint/build/utils/Path.js');
-    assert.equal(isIgnoredPath('android/build/out.ts', ['**/android/build/**/*']), true);
-    assert.equal(isIgnoredPath('src/a.ts', ['**/android/build/**/*']), false);
-    assert.equal(isIgnoredPath('ios/keep.txt', ['ios/**/*', '!ios/keep.txt']), false);
-    assert.equal(isIgnoredPath('.env', ['**/.env']), true);
-  } finally { rmSync(root, { recursive: true, force: true }); }
-});
-
-test('Expo CLI resolves the patched zod release, not the vulnerable 3.x line', () => {
-  const version = createRequire(join(expoCliRoot, 'package.json'))('zod/package.json').version;
-  assert.match(version, /^4\./);
-  const [minor, patch] = version.split('.').slice(1).map(Number);
-  assert.ok(minor > 6 || (minor === 6 && patch >= 6), `zod ${version} predates the GHSA-mrhx-c7xc-m3w5 fix`);
-});
-
-test('Expo CLI dev-tools plugin schemas still validate under the zod override', () => {
-  const { PluginSchema, DevToolsPluginOutputSchema } = require(join(expoCliRoot, 'build/src/start/server/DevToolsPlugin.schema.js'));
-  const { createMCPDevToolsExtensionSchema } = require(join(expoCliRoot, 'build/src/start/server/createMCPDevToolsExtensionSchema.js'));
-  const plugin = { packageName: 'p', packageRoot: '/p', bannerTitle: true, cliExtensions: { description: 'd', entryPoint: 'e.js',
-    commands: [{ name: 'run', title: 'Run', environments: ['cli', 'mcp'], parameters: [{ name: 'n', type: 'number' }] }] } };
-  assert.equal(PluginSchema.safeParse(plugin).success, true);
-  assert.equal(PluginSchema.safeParse({ packageName: '', packageRoot: '/p' }).success, false);
-  assert.equal(DevToolsPluginOutputSchema.safeParse([{ type: 'text', text: 't', level: 'info' }, { type: 'image', url: 'https://example.com/a.png' }]).success, true);
-  const bad = DevToolsPluginOutputSchema.safeParse([{ type: 'audio', url: 'not a url' }]);
-  assert.equal(bad.success, false);
-  assert.ok(bad.error.issues.length > 0);
-  const mcp = createMCPDevToolsExtensionSchema(plugin);
-  assert.equal(mcp.safeParse({ command: 'run', n: 2 }).success, true);
-  assert.equal(mcp.safeParse({ command: 'other' }).success, false);
-});
-
-test('oversized zod arrays and sets fail their size check before any element is parsed', () => {
-  let parsed = 0;
-  const element = z.string().refine(() => { parsed += 1; return false; });
-  const huge = Array(200000).fill('x');
-  for (const [schema, input] of [[z.array(element).max(3), huge], [z.array(element).length(3), huge],
-    [z.set(element).max(3), new Set(huge.map((_, i) => String(i)))], [z.set(element).size(3), new Set(huge.map((_, i) => String(i)))]]) {
-    const result = schema.safeParse(input);
-    assert.equal(result.success, false);
-    assert.equal(result.error.issues.length, 1);
-    assert.equal(result.error.issues[0].code, 'too_big');
-  }
-  assert.equal(parsed, 0);
-});
-
-test('zod still parses and reports normal arrays, maps and sets', () => {
-  assert.deepEqual(z.array(z.number()).max(3).parse([1, 2]), [1, 2]);
-  assert.equal(z.array(z.number()).max(3).safeParse([1, 'a']).error.issues[0].path[0], 1);
-  assert.equal(z.array(z.number()).min(2).max(3).safeParse([1, 2, 3, 4]).error.issues[0].code, 'too_big');
-  assert.equal(z.set(z.string()).max(2).parse(new Set(['a'])).size, 1);
-  assert.equal(z.map(z.string(), z.number()).parse(new Map([['a', 1]])).get('a'), 1);
+test('Expo fingerprint matching still behaves under minimatch 11', () => {
+  const { isIgnoredPath } = require('@expo/fingerprint/build/utils/Path.js');
+  assert.equal(isIgnoredPath('android/build/out.ts', ['**/android/build/**/*']), true);
+  assert.equal(isIgnoredPath('src/a.ts', ['**/android/build/**/*']), false);
+  assert.equal(isIgnoredPath('ios/keep.txt', ['ios/**/*', '!ios/keep.txt']), false);
+  assert.equal(isIgnoredPath('.env', ['**/.env']), true);
 });
 
 test('Xcode generates unique project identifiers without the retired UUID dependency', () => {
