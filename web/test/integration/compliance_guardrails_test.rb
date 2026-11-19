@@ -189,10 +189,10 @@ class ComplianceGuardrailsTest < ActionDispatch::IntegrationTest
 
   test 'a manager sets an override PIN only with their password' do
     sign_in @manager
-    patch compliance_override_pin_path, params: { current_password: 'wrong', pin: '2468', pin_confirmation: '2468' }
-    assert_not @manager.reload.valid_pos_override_pin?('2468')
-    patch compliance_override_pin_path, params: { current_password: 'password123', pin: '2468', pin_confirmation: '2468' }
-    assert @manager.reload.valid_pos_override_pin?('2468')
+    patch compliance_override_pin_path, params: { current_password: 'wrong', pin: '246810', pin_confirmation: '246810' }
+    assert_not @manager.reload.valid_pos_override_pin?('246810')
+    patch compliance_override_pin_path, params: { current_password: 'password123', pin: '246810', pin_confirmation: '246810' }
+    assert @manager.reload.valid_pos_override_pin?('246810')
     assert_equal 'override_pin_set', ComplianceEvent.last.action
     delete logout_path
     sign_in cashier

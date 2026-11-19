@@ -5,8 +5,11 @@ module Compliance
   # plus the 21+ ID confirmation, then the manager override when one is offered.
   # Every refusal and override is written to the compliance audit trail.
   class SaleGate
+    # Wrong PINs count against the signed-in person who typed them, not the manager they
+    # picked: five in 15 minutes, or ten in a day, stop that person asking for overrides.
     PIN_WINDOW = 15.minutes
     PIN_FAILURES = 5
+    PIN_DAY_FAILURES = 10
     REASON_RANGE = (8..500)
 
     Override = Data.define(:approver_id, :pin, :reason) do
@@ -79,16 +82,20 @@ module Compliance
 
     def self.refusal_for(approver, override)
       return ['not_approver', 'Choose a manager who can approve overrides.'] unless approver&.can_approve_pos_override? && approver.pos_override_pin_set?
-      return ['locked_out', "Too many wrong PINs for this manager. Try again in #{PIN_WINDOW.inspect}."] if locked_out?(approver)
+      return ['locked_out', 'Too many wrong PINs from this sign-in. Wait before asking for another override, or ask an owner.'] if locked_out?(approver)
       return ['reason_missing', "Give a reason of at least #{REASON_RANGE.min} characters."] unless REASON_RANGE.cover?(override.reason.length)
       return ['wrong_pin', 'That PIN is not right.'] unless approver.valid_pos_override_pin?(override.pin)
 
       nil
     end
 
-    def self.locked_out?(approver)
-      ComplianceEvent.where(action: 'override_refused', approver_id: approver.id).where('created_at >= ?', PIN_WINDOW.ago)
-        .count { |event| event.details['refusal'] == 'wrong_pin' } >= PIN_FAILURES
+    # Counted by who typed the PIN (Current.user), so one person's wrong guesses never lock a
+    # manager out for everyone else. With nobody signed in, by the manager as before.
+    def self.locked_out?(approver, actor: Current.user)
+      scope = ComplianceEvent.where(action: 'override_refused').where('created_at >= ?', 1.day.ago)
+      wrong = (actor ? scope.where(user_id: actor.id) : scope.where(approver_id: approver.id))
+        .select { |event| event.details['refusal'] == 'wrong_pin' }
+      wrong.count { |event| event.created_at >= PIN_WINDOW.ago } >= PIN_FAILURES || wrong.size >= PIN_DAY_FAILURES
     end
 
     # Managers who can approve at a register: active, override-capable, PIN set.

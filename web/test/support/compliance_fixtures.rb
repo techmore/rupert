@@ -34,7 +34,8 @@ module ComplianceFixtures
 
   def manager_with_pin(pin: '4321', email: "manager-#{SecureRandom.hex(3)}@example.com")
     user = User.create!(email: email, password: 'password123', role: 'manager', tenant_id: Current.tenant_id, name: 'Morgan Manager')
-    user.pos_override_pin = pin
+    # Shorter than six digits: a PIN from before the six-digit rule, which still verifies.
+    pin.length >= 6 ? user.pos_override_pin = pin : user.pos_override_pin_digest = BCrypt::Password.create(pin)
     user.save!
     user
   end
