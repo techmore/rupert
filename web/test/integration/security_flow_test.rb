@@ -107,7 +107,9 @@ class SecurityFlowTest < ActionDispatch::IntegrationTest
   test 'a reader cannot update settings or run syncs' do
     post tenant_settings_path, params: { business_name: 'Hacked', shop: 'm11u0i-sb.myshopify.com', embedded: '1' }
     assert_redirected_to(root_path)
-    assert_not_equal 'Hacked', TenantSettings.business_name
+    assert_nil Setting.for_tenant('tenant_business_name', @tenant.id), 'nothing was saved'
+    Current.tenant = @tenant
+    assert_equal 'Test Co', TenantSettings.business_name
 
     post syncs_path, params: { shop: 'm11u0i-sb.myshopify.com', embedded: '1' }
     assert_redirected_to(root_path)
