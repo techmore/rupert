@@ -34,17 +34,18 @@ final class PushRegistration: NSObject, UNUserNotificationCenterDelegate {
     func askIfNeeded(from controller: UIViewController) {
         guard SessionWatcher.shared.state == .signedIn else { return }
         let center = UNUserNotificationCenter.current()
-        center.getNotificationSettings { [weak self] settings in
-            guard let self else { return }
+        // The callback runs off the main thread; it takes the key by value and reaches the one
+        // shared registration on the main queue, rather than carrying `self` across threads.
+        center.getNotificationSettings { [askedKey] settings in
 #if DEBUG
-            NSLog("push: authorization status %d, asked %d", settings.authorizationStatus.rawValue, UserDefaults.standard.bool(forKey: self.askedKey) ? 1 : 0)
+            NSLog("push: authorization status %d, asked %d", settings.authorizationStatus.rawValue, UserDefaults.standard.bool(forKey: askedKey) ? 1 : 0)
 #endif
             switch settings.authorizationStatus {
             case .authorized, .provisional, .ephemeral:
                 DispatchQueue.main.async { UIApplication.shared.registerForRemoteNotifications() }
             case .notDetermined:
-                guard !UserDefaults.standard.bool(forKey: self.askedKey) else { return }
-                DispatchQueue.main.async { self.softAsk(from: controller) }
+                guard !UserDefaults.standard.bool(forKey: askedKey) else { return }
+                DispatchQueue.main.async { PushRegistration.shared.softAsk(from: controller) }
             case .denied:
                 break
             @unknown default:

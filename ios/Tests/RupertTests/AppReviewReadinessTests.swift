@@ -147,7 +147,7 @@ final class InfoPlistTests: XCTestCase {
         let info = try plist()
         let items = try XCTUnwrap(info["UIApplicationShortcutItems"] as? [[String: Any]])
         let types = items.compactMap { ($0["UIApplicationShortcutItemType"] as? String)?.components(separatedBy: ".").last }
-        let tabs = HotwireTab.all(on: URL(string: "https://pos.rupertpos.com")!).map(\.id)
+        let tabs = HotwireTab.every(on: URL(string: "https://pos.rupertpos.com")!).map(\.id)
         for type in types {
             XCTAssertTrue(tabs.contains(type), "quick action \(type) has no tab to open")
         }
@@ -158,7 +158,7 @@ final class InfoPlistTests: XCTestCase {
 /// The Time tab and push notifications (time & pay).
 final class TimeTabTests: XCTestCase {
     func testTimeIsTheFirstTabAndThereAreFive() {
-        let tabs = HotwireTab.all(on: URL(string: "https://pos.rupertpos.com")!)
+        let tabs = HotwireTab.all(on: URL(string: "https://pos.rupertpos.com")!, allowed: nil)
         XCTAssertEqual(tabs.count, 5, "iOS shows at most five tabs without a More tab")
         XCTAssertEqual(tabs.first?.id, "time")
         XCTAssertEqual(tabs.first?.url.path, "/employee")
