@@ -40,7 +40,7 @@ class TeamChatTelemetryTest < ActiveSupport::TestCase
     %w[private secret test-key Hello].each { |secret| assert_not_includes data, secret }
   end
 
-  test 'real SDK retry records failed and successful physical attempts without counting both as complete usage' do
+  test 'real SDK retry records failed and successful physical attempts and never reports a cost for the failed one' do
     token = @run.claim!
     recorder = TeamChat::TelemetryRecorder.new(@run, token)
     chat = team_chat_config.chat(session: 'test', instrumenter: recorder)
@@ -50,12 +50,33 @@ class TeamChatTelemetryTest < ActiveSupport::TestCase
     chat.add_message(role: :user, content: 'secret')
     chat.generate { |_chunk| }
     assert_equal %w[failed succeeded], rows('provider_attempt').pluck(:outcome)
+    # RubyLLM 2.2 reports an error status answered before any streamed chunk as zero usage
+    # (2.1 did so only for 4xx), so the token total is complete. Cost is never inferred.
+    assert_equal [0, 0], rows('provider_attempt').first.facts.values_at('input_tokens', 'output_tokens')
+    assert_equal 'unknown', rows('provider_attempt').first.facts['cost_source']
     summary = TeamChat::Telemetry.summary(@run)
-    assert_equal 60, summary['tokens']['input_tokens']['reported']
-    assert_not summary['tokens']['input_tokens']['complete']
+    assert_equal({ 'reported' => 60, 'complete' => true }, summary['tokens']['input_tokens'])
+    assert_nil summary['reported_cost_usd']
+    assert_not summary['cost_complete']
     assert_equal 1, summary['transport_retries']
     assert_equal 2, rows('generation').first.facts['attempts']
     assert_not_includes rows('inference').first.facts.to_json, 'private provider detail'
+  end
+
+  test 'real SDK retry after a request that may have run keeps usage unknown and the total incomplete' do
+    recorder = TeamChat::TelemetryRecorder.new(@run, @run.claim!)
+    chat = team_chat_config.chat(session: 'test', instrumenter: recorder)
+    stub_request(:post, "#{LLM_BASE}/chat/completions").to_raise(Faraday::TimeoutError).then.to_return(
+      status: 200, headers: { 'Content-Type' => 'text/event-stream' }, body: sse_for(text: 'Recovered'))
+    chat.add_message(role: :user, content: 'secret')
+    chat.generate { |_chunk| }
+    assert_equal %w[failed succeeded], rows('provider_attempt').pluck(:outcome)
+    assert_nil rows('provider_attempt').first.facts['input_tokens']
+    summary = TeamChat::Telemetry.summary(@run)
+    assert_equal 60, summary['tokens']['input_tokens']['reported']
+    assert_not summary['tokens']['input_tokens']['complete']
+    assert_not summary['cost_complete']
+    assert_equal 1, summary['transport_retries']
   end
 
   test 'reported zero cost is known while absent cost and absent tokens remain unknown' do
