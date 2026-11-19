@@ -62,7 +62,7 @@ assert.equal(checkout.submitTarget.value, 'Run demo A920 card sale');
 checkout.tenderTarget.value = 'cash';
 checkout.tenderChanged();
 assert.equal(checkout.a920FieldsTarget.hidden, true);
-checkout.statusTarget = {};
+checkout.statusTarget = { dataset: {} };
 checkout.resultTarget = element();
 checkout.urlValue = '/pos_checkouts';
 checkout.renderCheckout({ id: 1, reference: 'r1', status: 'paid', tender: 'card_a920', total_cents: 1166 });

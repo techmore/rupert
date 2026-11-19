@@ -74,7 +74,7 @@ own staff). Messaging and chat: **Yes**. Result: **13+**.
 2. **Camera barcode scanning** for inventory counts (VisionKit `DataScannerViewController`).
 3. **Face ID / Touch ID / passcode lock** (LocalAuthentication), with a cover in the app switcher.
 4. **Native App settings screen** (SwiftUI): lock, workspace, help, privacy, account deletion, version.
-5. **Home Screen quick actions**: Clock in, Team chat, Ask Rupert, Notifications.
+5. **Home Screen quick actions**: Clock in and Notifications for everyone; Team chat and Ask Rupert once an account that has those tabs (the review account does) has signed in.
 6. **Native tab bar** with its own back stack per tab, native sheets for forms, pull to refresh.
 7. **System Google sign-in sheet** (ASWebAuthenticationSession) with a PKCE code handoff.
 8. **Native top bar** that follows the page's colours in all five appearances.

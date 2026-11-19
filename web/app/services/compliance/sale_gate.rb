@@ -49,14 +49,35 @@ module Compliance
         raise OverrideRefused.new(result, "A manager cannot override this: #{result.blocking.reject(&:overridable).map(&:message).join(' ')}")
       end
 
-      approver = User.where(tenant_id: Current.tenant_id).find_by(id: override.approver_id)
-      refusal = refusal_for(approver, override)
+      approver, refusal = check_override(override)
       if refusal
         ComplianceEvent.record!('override_refused', approver: approver, reason: override.reason, details: audit.merge('refusal' => refusal.first), **context)
         raise OverrideRefused.new(result, refusal.last)
       end
       ComplianceEvent.record!('override_granted', approver: approver, reason: override.reason, details: audit, **context)
       approver
+    end
+
+    # A card refund started by someone who cannot approve overrides themselves: a manager
+    # picks their name and types their PIN, with the same lockout and audit trail as a
+    # blocked sale. Returns the approving manager; raises Pos::Error otherwise.
+    def self.approve_refund!(checkout, override:, amount_cents:)
+      context = { location_id: checkout.location_id, pos_checkout_id: checkout.id }
+      audit = { 'source' => 'refund', 'amount_cents' => amount_cents }
+      raise Pos::Error, 'A manager must approve this refund. Choose a manager and enter their override PIN.' unless override
+
+      approver, refusal = check_override(override)
+      if refusal
+        ComplianceEvent.record!('override_refused', subject: checkout, approver: approver, reason: override.reason, details: audit.merge('refusal' => refusal.first), **context)
+        raise Pos::Error, refusal.last
+      end
+      ComplianceEvent.record!('override_granted', subject: checkout, approver: approver, reason: override.reason, details: audit, **context)
+      approver
+    end
+
+    def self.check_override(override)
+      approver = User.where(tenant_id: Current.tenant_id).find_by(id: override.approver_id)
+      [approver, refusal_for(approver, override)]
     end
 
     def self.refusal_for(approver, override)

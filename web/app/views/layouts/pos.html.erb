@@ -21,7 +21,7 @@
     <%= javascript_importmap_tags %>
     <%= yield :head %>
   </head>
-  <body class="pos-body">
+  <body class="pos-body<%= ' native-app' if hotwire_native_app? %>">
     <%= yield %>
   </body>
 </html>

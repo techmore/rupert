@@ -21,6 +21,17 @@ A native iPhone and iPad app for Rupert, built on [Hotwire Native](https://nativ
 
 Search stays in every page's top bar (five tabs is iOS's limit before a "More" tab).
 
+**The bar shows the tabs an account can open.** Team Chat and Ask Rupert are for administrators
+(and people granted Rupert Chat); for everyone else those tabs only refused. Rupert lists the tabs
+an account can open in `<meta name="rupert-tabs">` (`ApplicationHelper#native_app_tabs`) and the app
+shows those (`TabAccess` in `Sources/Rupert/Tabs.swift`): a staff account gets Time and
+Notifications, a cashier or manager also Home. The pages still make their own permission checks;
+the list only removes dead ends. Signed out, or against a Rupert that sends no list, all five show.
+
+**Signing out.** The person button → **Sign out** ends the session on this iPhone (the session is
+the cookie, which the app deletes), stops this phone's notifications and shows this workspace's
+sign-in page. Each page also has its own Sign out at the bottom.
+
 **More than one workspace, or more than one person, on a phone.** The person button → **Switch workspace**
 signs out, tells Rupert to stop sending this phone's notifications, clears the web views' Rupert cookies and
 cached pages, and returns to the control plane's sign-in page. A push token belongs to one account at a time:
@@ -86,7 +97,7 @@ offline and uploads it. It never submits for review.
 
 ## Tests
 
-`Tests/RupertTests` covers the session watcher, the bottom inset, Rupert's own sites, the Time tab,
+`Tests/RupertTests` covers the session watcher, the tabs an account is shown, the bottom inset, Rupert's own sites, the Time tab,
 notification deep links and the Info.plist privacy keys. On a Mac:
 `xcodebuild test -scheme Rupert -destination 'platform=iOS Simulator,name=iPhone 18 Pro'`.
 App Review readiness and partner notes: `docs/ios/app-review-readiness.md`.
@@ -115,6 +126,12 @@ TEST_RUNNER_RUPERT_UI_SHOTS=/abs/dir xcodebuild test -scheme RupertApp -only-tes
   -destination 'platform=iOS Simulator,name=iPhone 18 Pro' CODE_SIGNING_ALLOWED=NO
 ```
 
+`EmployeeShiftUITests` (same variables, `-only-testing:RupertAppUITests/EmployeeShiftUITests`) signs in
+as a staff account and checks its two tabs, a cash sale on the register through to "Paid", and
+Sign out. It needs Rupert started with the made-up test register
+(`bin/rails server -c test/support/sim_register.ru -b 127.0.0.1 -p 3005`, development only). The
+script a person follows for the whole shift is `docs/ios/employee-test-script.md`.
+
 For TestFlight from a Mac: open `RupertApp.xcodeproj`, pick the team, Product → Archive. The
 entitlements file turns on push (`aps-environment`); the App ID needs the Push Notifications
 capability (checklist item 4). `ship.sh` on Linux remains the other path.
@@ -138,7 +155,8 @@ description, keywords, URLs), `review-notes.md` (notes and demo login for App Re
 Native parts beyond the web pages: camera barcode scanning on inventory counts
 (`BarcodeScanner.swift`, VisionKit), an optional Face ID lock (`AppLock.swift`), the App settings
 sheet behind the person button on each tab's first page (`AppSettings.swift`, SwiftUI) and Home
-Screen quick actions (`Info.plist`, `SceneController.swift`).
+Screen quick actions (Clock in and Notifications in `Info.plist`; Team Chat and Ask Rupert added
+by `QuickActions.swift` only for accounts that have those tabs).
 
 Inside the app Rupert offers no sign-up and no subscription purchase (App Store guideline 3.1.1):
 `hotwire_native_app?` hides them in `sessions/new` and the account menu, and `BillingController`
