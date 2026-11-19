@@ -87,7 +87,9 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
     private func showTabs(_ visible: Bool, animated: Bool) {
         signedIn = visible
         UserDefaults.standard.set(visible, forKey: Self.signedInKey)
-        if !visible, tabBarController.selectedIndex != 0 { select(0) }
+        // Home (/login) is the sign-in page; Time comes first in the bar, so find Home by its id.
+        let home = HotwireTab.all(on: Instance.current).firstIndex { $0.id == "home" } ?? 0
+        if !visible, tabBarController.selectedIndex != home { select(home) }
         if #available(iOS 18.0, *) {
             if tabBarController.isTabBarHidden == visible {
                 tabBarController.setTabBarHidden(!visible, animated: animated)
