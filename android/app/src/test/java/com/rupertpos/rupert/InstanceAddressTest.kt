@@ -14,7 +14,7 @@ class InstanceAddressTest {
     @Test fun `bare host names become https origins`() {
         assertEquals("https://pos.rupertpos.com", valid("pos.rupertpos.com"))
         assertEquals("https://pos.rupertpos.com", valid("  HTTPS://POS.RupertPOS.com/  "))
-        assertEquals("https://sonder.stoverparc.org", valid("https://sonder.stoverparc.org"))
+        assertEquals("https://shop.example.org", valid("https://shop.example.org"))
     }
 
     @Test fun `ports are kept unless they are the default`() {
