@@ -89,3 +89,9 @@ Rails.application.config.filter_parameters += [
   /\Afirst4\z/i, /\Abin\z/i, /\Achname\z/i, /\Aspin_?response\z/i, /\Aextdata\z/i, /\Acarddata\z/i, /\Acardinfo\z/i,
   /\AiposHPResponse\z/i
 ]
+
+# Dejavoo terminal profile numbers (TPN) identify one payment terminal. They arrive when an
+# extra terminal is added in POS setup ("terminal_tpn") and at the top level of a FEED
+# closed-batch posting ("tpn"); the main terminal's TPN is already inside "credentials".
+# Anchored so reconciliation names such as "tpnBatchNumber" still log.
+Rails.application.config.filter_parameters += [/\A(terminal_)?tpn\z/i]
