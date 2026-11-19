@@ -48,7 +48,7 @@ class PermissionsSummaryTest < ActionDispatch::IntegrationTest
 
     { 'manage_accounts' => %w[super_admin admin],
       'review_timesheets' => %w[super_admin admin manager shift_leader],
-      'approve_clock_corrections' => %w[super_admin admin],
+      'approve_clock_corrections' => %w[super_admin admin manager shift_leader],
       'see_payroll' => %w[super_admin admin],
       'review_receipts' => %w[super_admin admin manager] }.each do |ability, allowed_roles|
       User.roles.each_key do |role|
@@ -135,6 +135,17 @@ class PermissionsSummaryTest < ActionDispatch::IntegrationTest
     assert_empty stale, "RoleAccessGrid::PERMISSIONS describes permissions that no longer exist: #{stale.join(', ')}"
   end
 
+  test 'clock corrections follow the time clock rule when a business changes a role' do
+    # Payroll write alone is enough to review a correction (ClockCorrection.reviewer?).
+    RolePermission.create!(tenant_id: @tenant.id, role: 'reader', permission: 'payroll.write', enabled: true)
+    grid = RoleAccessGrid.new(tenant_id: @tenant.id)
+    reader = User.create!(email: 'grid-payroll-reader@example.com', password: 'password123', role: 'reader', tenant_id: @tenant.id)
+
+    assert ClockCorrection.reviewer?(reader)
+    assert grid.allowed?('reader', 'approve_clock_corrections')
+    assert_not grid.allowed?('cashier', 'approve_clock_corrections')
+  end
+
   test 'grid cells match User#can? for a role with no changes' do
     grid = RoleAccessGrid.new(tenant_id: @tenant.id)
     User.roles.each_key do |role|
@@ -146,6 +157,10 @@ class PermissionsSummaryTest < ActionDispatch::IntegrationTest
       end
       assert_equal user.can_review_timesheets?, grid.allowed?(role, 'review_timesheets')
       assert_equal user.can_manage_accounts?, grid.allowed?(role, 'manage_accounts')
+      # The same rules the time clock, register, receipts and time-off screens check.
+      assert_equal ClockCorrection.reviewer?(user), grid.allowed?(role, 'approve_clock_corrections'), "#{role} clock corrections"
+      assert_equal user.can_use_pos?, grid.allowed?(role, 'use_pos'), "#{role} POS"
+      assert_equal user.can_review_receipts?, grid.allowed?(role, 'review_receipts'), "#{role} receipts"
     end
   end
 end

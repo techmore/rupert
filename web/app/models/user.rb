@@ -181,13 +181,6 @@ class User < ActiveRecord::Base
     active? && can?('timesheets.read') && (can?('timesheets.review') || can?('timesheets.write'))
   end
 
-  # Clock corrections are reviewed by payroll writers today. Nobody reviews a
-  # change to their own shift (TimeClockService.review). This is the one rule
-  # the Permissions summary reads; the time clock should check it too.
-  def can_approve_clock_corrections?
-    active? && can?('payroll.write')
-  end
-
   # POS access does not grant sales history, reports or inventory management.
   def can_use_pos?
     active? && (can?('pos.use') || %w[sales.read sales.write inventory.read].all? { |permission| can?(permission) })
