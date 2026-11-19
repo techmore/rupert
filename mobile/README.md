@@ -2,6 +2,14 @@
 
 Native Expo/React Native client for a Rupert instance. The instance itself supplies the installable web app at `/employee`; there is no separate native-client web deployment.
 
+## Push notifications
+
+This Expo client does not register for push (no `expo-notifications` dependency, by choice: the
+staff API it uses is kill-switched in production). Time & pay notifications (schedule posted or
+changed, approvals, shift offers, forgotten clock-outs, break reminders) reach staff through the
+Rupert iPhone app (`ios/`, APNs) and the installed staff web app at `/employee` (Web Push, turned
+on from Settings → Notifications). The in-app bell shows every message regardless.
+
 ## Development and validation
 
 Use Node 24 and the committed lockfile:
@@ -48,9 +56,9 @@ After acceptance, share the approved native distribution links through the organ
 
 Use designated test accounts on an HTTPS staging instance. Test real iPhone and Android builds for login, revoked/expired sessions, cold starts, background/foreground, clock-in/out retries, draft creation, entries, import, submit, rejected-sheet correction, and sign-out. Reviewers use the web review workspace. Check poor connectivity: an unconfirmed mutation should be refreshed and verified before retrying. The UI never claims an offline entry was saved.
 
-The SDK 58.0.17 dependency tree removes the transitive UUID dependency through `xcode` 4.0.0, which uses Node's native UUID generator; the older scoped UUID override is no longer needed. The zod advisory (GHSA-mrhx-c7xc-m3w5) is fixed by an npm `overrides` entry that moves `@expo/cli`'s build-time zod to the patched 4.6.7 release. The remaining two underlying advisories have no published fixed npm version: `braces` 3.0.3 and `node-forge` 1.4.0 receive narrow, source-hashed backports during `npm ci`. Expo and React Native keep their supported versions. See [security backports](security/README.md) for provenance, regression coverage and removal instructions.
+The SDK 58.0.17 dependency tree removes the transitive UUID dependency through `xcode` 4.0.0, which uses Node's native UUID generator; the older scoped UUID override is no longer needed. The zod advisory (GHSA-mrhx-c7xc-m3w5) is fixed by an npm `overrides` entry that moves `@expo/cli`'s build-time zod to the patched 4.6.7 release. `node-forge` resolves the fixed 1.4.2 release, and `overrides` move Expo's build-time `glob` and `minimatch` to the fixed 14.0.3 and 11.0.3 releases. The remaining two underlying advisories have no published fixed npm version: `braces` 3.0.3 and `deepmerge` 4.3.1 receive narrow, source-hashed backports during `npm ci`. Expo and React Native keep their supported versions. See [security backports](security/README.md) for provenance, regression coverage and removal instructions.
 
-`npm run check` verifies the actual patched files and rejects any new/unexplained advisory. Raw `npm audit` still reports high findings (4 at the time of writing: `node-forge` and its dependents `@expo/code-signing-certificates`, `@expo/cli` and `expo`) because it identifies upstream versions; the report is retained in `dist/dependency-security.json` with the verified backports. These are not hidden findings or a claim that the registry audit is clean. Run the checks again immediately before signing, and complete real-device acceptance.
+`npm run check` verifies the actual patched files and rejects any new/unexplained advisory. Raw `npm audit` still reports the backported `braces` and `deepmerge` findings and their dependents because it identifies upstream versions; the report is retained in `dist/dependency-security.json` with the verified backports. These are not hidden findings or a claim that the registry audit is clean. Run the checks again immediately before signing, and complete real-device acceptance.
 
 See [staff timesheets](../docs/employee-timesheets.md) for account provisioning, web installation, server deployment, and the full API contract.
 
@@ -58,7 +66,7 @@ See [staff timesheets](../docs/employee-timesheets.md) for account provisioning,
 
 The supported SDK 58 patch and lockfile now use Expo **58.0.17**, with SDK-compatible TypeScript **6.0.3**. `npm run check` runs the online Expo compatibility check, TypeScript validation, staff boundaries, exploit regression tests, verified security backports and the fail-closed advisory gate. CI additionally runs Expo Doctor and exports **iOS and Android with Hermes bytecode** on x86-64 Ubuntu. Its `employee-native-js-exports-<commit>` artifact contains JavaScript/assets for verification; it is not an installable or signed app. Dependency checks remain enabled.
 
-All EAS profiles prefill the staff app with `https://herbalhealers.rupertpos.com`. The instance field stays editable, and this public URL contains no staff identity or credentials. For a separate staging build, change the selected profile's `EXPO_PUBLIC_RUPERT_URL` before building. The development profile uses the EAS `development` environment, preview uses `preview`, and store builds use `production`.
+No EAS profile prefills a workspace: one build serves every workspace, and staff type their own workspace's address once (it is remembered with the sign-in). A sign-in on another workspace's address is refused with a message that says to check the address. To build for a single workspace, set `EXPO_PUBLIC_RUPERT_URL` in the selected profile's `env`; the field stays editable and the public URL contains no staff identity or credentials. The development profile uses the EAS `development` environment, preview uses `preview`, and store builds use `production`.
 
 | Profile | iPhone / iPad | Android | Intended handoff |
 | --- | --- | --- | --- |

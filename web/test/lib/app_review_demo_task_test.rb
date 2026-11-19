@@ -82,9 +82,32 @@ class AppReviewDemoTaskTest < ActiveSupport::TestCase
     end
   end
 
+  test 'the Time tab has a worker with a PIN, punches, shifts, time off, tips and a timesheet to review' do
+    output = run_task('REVIEW_PASSWORD' => PASSWORD, 'REVIEW_WORKER_PASSWORD' => "#{PASSWORD}-worker", 'REVIEW_DEMO_RESET' => nil)
+    assert_not_includes output, "#{PASSWORD}-worker"
+    worker_user = User.find_by!(email: 'sam.okafor@juniper-pine.example')
+    assert_equal 'employee', worker_user.role
+    assert worker_user.authenticate("#{PASSWORD}-worker")
+    in_demo do
+      worker = People::Employee.find_by!(user_id: worker_user.id)
+      assert worker.pin_set?
+      assert worker.verify_pin(AppReviewDemo::WORKER_PIN)
+      assert worker.current_pay_rate.hourly_rate_cents.positive?
+      assert_operator ClockShift.where(employee_id: worker.id).count, :>=, 8
+      assert ClockShift.where(employee_id: worker.id).all? { |shift| shift.breaks.any? { |b| b.kind == 'meal' } }
+      assert People::ScheduledShift.published.where(employee_id: worker.id).exists?
+      assert People::ScheduledShift.open_shifts.exists?, 'an open shift to pick up'
+      assert_equal %w[approved requested].sort, People::LeaveRequest.where(employee_id: worker.id).pluck(:status).sort
+      assert TipAllocation.where(employee_id: worker.id, tip_method: 'pool').exists?
+      assert TipAllocation.where(employee_id: worker.id, tip_method: 'cash').exists?
+      assert_not TipAllocation.where(employee_id: People::Employee.where(user_id: User.where(role: 'admin').select(:id)).select(:id)).exists?, 'admins get no tip share'
+      assert People::Timesheet.where(employee_id: worker.id, status: 'submitted').exists?
+    end
+  end
+
   test 'running again adds nothing and keeps the password it is given' do
     run_task('REVIEW_PASSWORD' => PASSWORD, 'REVIEW_DEMO_RESET' => nil)
-    counts = -> { in_demo { [User.where(tenant_id: demo_tenant.id).count, Location.count, ShopifyVariant.count, InventoryLevel.count, Core::Order.count, Core::OrderLine.count, InventoryCountItem.count, Projects::Task.count, Notification.count, TeamChat::Message.count, TeamChat::Room.count] } }
+    counts = -> { in_demo { [User.where(tenant_id: demo_tenant.id).count, Location.count, ShopifyVariant.count, InventoryLevel.count, Core::Order.count, Core::OrderLine.count, InventoryCountItem.count, Projects::Task.count, Notification.count, TeamChat::Message.count, TeamChat::Room.count, ClockShift.count, ClockBreak.count, People::ScheduledShift.count, People::LeaveRequest.count, TipAllocation.count, People::Timesheet.count] } }
     before = counts.call
 
     run_task('REVIEW_PASSWORD' => "#{PASSWORD}-new", 'REVIEW_DEMO_RESET' => nil)

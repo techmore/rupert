@@ -1,0 +1,18 @@
+<% content_for :title, t('lms.badge.title') %>
+<article class="page-narrow space-y-6">
+  <%= page_header t('lms.badge.title'), subtitle: t('lms.badge.subtitle', course: @course.title), eyebrow: t('lms.title') do %>
+    <button type="button" class="btn-ghost" data-controller="print" data-action="print#print"><%= t('lms.badge.print') %></button>
+  <% end %>
+  <div class="lms-badge card card-pad">
+    <%= render 'lms/shared/badge_mark', small: false %>
+    <p class="lms-badge-title"><%= @course.badge_title.presence || @course.title %></p>
+    <p class="text-sm text-mocha"><%= @course.summary %></p>
+    <dl class="facts mt-4">
+      <div><dt><%= t('lms.badge.earned_by') %></dt><dd><%= Current.user.display_name %></dd></div>
+      <div><dt><%= t('lms.badge.on') %></dt><dd><%= l(@enrollment.completed_at, format: :long) %></dd></div>
+      <div><dt><%= t('lms.course.lessons') %></dt><dd><%= @course.lessons.size %></dd></div>
+    </dl>
+  </div>
+  <p class="text-xs text-taupe"><%= t('lms.badge.share_hint') %></p>
+  <p><%= link_to t('lms.lesson.back'), lms_course_path(@course), class: 'btn-ghost' %></p>
+</article>

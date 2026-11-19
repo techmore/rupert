@@ -1,0 +1,174 @@
+# Time, scheduling and pay: decisions and policy defaults
+
+Each entry: what was decided, why, and where it is configured. Owner decisions already on record
+(2026-10-25, `docs/employee-timesheets.md` "Pay rules") are kept and marked **owner**. Everything else
+is a default a senior engineer would pick for a small multi-store retailer in Eastern Time; the owner
+can change any of them at **Team → Settings → Time rules** (per store) without a deploy. Legal
+defaults are drawn from public federal (FLSA) and state summaries as of 2026 and are not legal advice.
+
+## Sources of truth
+
+| Thing | Source of truth | Why |
+| --- | --- | --- |
+| Who works here, names, pay rates, PINs | Rupert `People::Employee` | Square is a former payment provider; its Team API still lists people but has no passcode read endpoint. Square team member ids are kept in `EmployeeSourceIdentity` (`source: 'square'`) by the existing directory sync and used only to match history. |
+| Clock PIN | Rupert, set by the worker on first PIN clock-in (digest only) | Square's Team API does not expose passcodes. A worker with a Square passcode is told "Choose your Rupert PIN" once; managers can reset it. |
+| Punches | Rupert `ClockShift` + `ClockBreak` | Square timecards and C-Trax labor remain read-only history (never summed with Rupert punches). |
+| Planned shifts | Rupert `People::ScheduledShift` | Nothing else plans shifts. |
+| Card tips | Dejavoo FEED events and Authorize.net settled transactions, attributed into `TipAllocation` | The terminal is the capture point; the gateway settlement is the money. Both are kept; settlement wins on amount. |
+| Pay | Payroll provider (none yet) fed by `PayrollExport` | Rupert never moves money. |
+
+## Square and the POS
+
+Square is **not** the POS for card payments any more: Dejavoo SPIn terminals (Valmar merchant account,
+Authorize.net gateway for online/hosted) handle cards; `docs/ops/payment-integrations.md` lists Square as
+a former provider. Rupert's own cashier (`/ctrax_pos`) is the register. Square sync direction is one way,
+Square → Rupert, read only, for catalog, orders, loyalty and timecard history. No employee data is written
+to Square.
+
+## Pay rules (owner, 2026-10-25; unchanged)
+
+- Tips are shared evenly among everyone clocked in when the tip was left, administrators excluded.
+  If only administrators were clocked in the tip is **unassigned**, shown, never dropped.
+- Commission 1% of before-tax after-discount sales during punched-in hours; no commission for admins.
+- Weekly overtime off by default (threshold 40 h, 1.5× when turned on).
+- No punch rounding.
+- Pay period weekly Thursday–Wednesday until chosen at Settings → Pay rules.
+
+## Time rules defaults (`TimeRules`, per store)
+
+| Rule | Default | Why |
+| --- | --- | --- |
+| Rule preset | Federal (FLSA) | The stores' state is not recorded in the repo; the owner picks the state preset (CT, MA, NY, NJ, CA, OR, CO available) and the defaults below update. |
+| Meal break | Reminder after 6 h, 30 min, unpaid | Common retail practice and the MA/NY/CT rule; federal law requires none. A punched meal of 20 minutes or less counts as paid time (see "Short breaks are always paid"). |
+| Rest break | Every 4 h, 10 min, paid | FLSA: short breaks are paid time. |
+| Break reminders | On | Push/in-app nudge at the threshold; never auto-clocks anyone out. |
+| Daily overtime | Off | Only CA/AK/NV/CO have it; the CA/CO presets turn it on. |
+| Minors | Under 18; 8 h/day, 40 h/week, 7 AM–7 PM window | FLSA limits for under-16s, applied to all minors as a conservative default. The builder warns; it never blocks a manager. Date of birth is encrypted at rest already. |
+| Predictive scheduling | 14 days notice (warning), 10 h minimum rest between shifts | NY/OR/CA-city style fair-workweek rules are the direction of travel; a warning costs nothing where it does not apply. |
+| Punch rounding | None (owner) | Hours are the recorded seconds. |
+| Buddy-punch prevention | PIN + registered store device (or a signed-in session). No photo, no GPS. | Privacy-respecting and works at a counter: a manager registers the register browser/tablet once (`ClockDevice`), after which a PIN punch from it is trusted. A PIN from an unknown browser is refused with "Use the store register or sign in" before the digits are read, so the answer never says whether a PIN exists; a signed-in phone is only compared with its own person's PIN. Photo capture is listed as a later option, off. |
+| PIN | 4 digits, 5 tries then 10 min lockout | Fast at the counter; lockout stops guessing. |
+| Trades | Need manager approval; 2 h minimum notice; blocked when they would create overtime, double-booking, a minor rule breach or an unqualified position | Guardrails run when a taker accepts and again at approval (`checks_json`). |
+| Time off | 7 days notice requested (warning); blackout dates flagged, not blocked | Managers decide; the system informs. |
+| Sick accrual | Off (0 per hour) | Most state laws use 1 h per 30 h worked; the state presets set that. |
+| Vacation | 80 h/year grant; sick 40 h/year; carry-over cap 40 h | Matches the existing `LeaveBalance` defaults. The grant lands on **January 1** (the first `LeaveAccrualJob` run of the year), not the hire anniversary, so every balance resets on the same day as the leave year. On that run last year's unused vacation and sick hours carry over up to the cap; the excess is written to the ledger as a `carryover_cap` line so nothing disappears silently. Sick hours earned on hours worked are credited daily from paid clock hours since the last run (`employees.sick_accrued_through`). Every change is a `People::LeaveAccrual` line visible on the staff member's page. |
+
+| Tips | Pool, admins excluded, per store, cash tips declared by the worker at clock-out | Owner rule plus a declared-cash step so the record is complete for tax reporting. |
+
+## Card tip attribution (`Tips::Attribution`)
+
+Order of evidence for who earned a card tip, strongest first:
+
+1. **Checkout cashier**: the FEED event or Authorize.net transaction carries Rupert's checkout reference
+   (`external_reference_id` / `invoice_number` = `PosCheckout#reference`), whose `user_id` is the signed-in
+   cashier → their worker.
+2. **Terminal clerk id**: FEED `performedBy` matched to `employees.employee_number` (the same number
+   staff type on the terminal). Stored on the event as `performed_by`.
+3. **Time and register match**: the terminal (`tpn` → `PosTerminal` → register/store) and the transaction
+   time → the workers clocked in at that store at that moment.
+
+Under the owner's **pool** rule all three only decide *which store's* pool the tip joins; the split is
+among everyone clocked in at that store at that moment (admins excluded), in whole cents with the
+remainder going to the earliest clock-in. Under **direct** the cashier (1 or 2) keeps it and 3 is the
+fallback. When nobody eligible was clocked in the allocation is **unassigned** and listed for the manager.
+
+Settlement: `Tips::Reconciliation` matches allocations to Authorize.net settled transactions (by
+transaction id / invoice) and to Dejavoo batch close totals, marks them `settled`, and creates mirrored
+negative rows for refunds, voids and tip adjustments (`TipAdjust` on SPIn, `tip_amount` changes on
+settlement). A batch that settles after its pay period is locked lands in the next open period with
+status `carried`, so an exported payroll file never changes under the provider.
+
+## Payroll export
+
+Provider-agnostic CSV per employee per period with regular, overtime (weekly and daily), PTO, sick,
+holiday hours, card tips, cash tips, commission, bonuses, and the pay rate on record. Period lock
+(`PayPeriod`) refuses new or changed hours/tips inside a locked period; approved corrections after the
+lock become next-period adjustments. The file's SHA-256 is recorded on the period.
+
+## Roles and store scope
+
+`employee` (own records), `shift_leader` (review timesheets, approve trades/corrections for their stores,
+no pay), `manager` (schedule, time off, timesheets, tips reconciliation; no payroll), `admin` (payroll,
+rules, devices), `super_admin` (platform). Managers and shift leads can be limited to stores
+(`users.location_ids`); empty means all stores. Employees only ever see their own pay.
+
+## Time zones, DST, overnight
+
+Punches are stored in UTC. Each workspace has its own clock (`tenants.time_zone`, chosen at **Settings →
+Time rules**; blank keeps the instance default, Eastern): every web request, staff API request, kiosk
+request and time & pay job runs in it (`BusinessClock`, `Current.with_tenant`), so "today", the work week,
+the pay period and every displayed time are the business's. A store-level zone is read when a location
+has one, but no store can record one yet (one zone per workspace; see the 2026-11-10 audit). Overnight
+shifts keep one punch pair and split at the workspace's midnight only when hours are imported into a
+timesheet. DST: durations are computed from instants, so a shift across the fall-back night counts the
+real hour.
+
+## What is turned on (per workspace, 2026-11-10)
+
+**Settings → Time rules** lists a switch for each part of the time system (web clock, phone apps, register
+PIN, kiosk, breaks, scheduling, trades, time-off requests, tips and pay for staff, punch fixes by staff,
+self-submitted timesheets, missed clock-out reminders) and the punch logging options (device and register
+name, a detailed audit trail, the network address, how long the trail is kept). They live in the same
+`tenant_time_rules` setting as the rules (`TimeRules::FEATURES`, `TimeRules::LOGGING`) and apply to the
+whole workspace, never one store. Every default is what Rupert did before the switch existed; the audit
+trail and the network address are new and start off. Off means refused by the server
+(`TimeRules.require_feature!`), not only hidden. The full table is in
+[the multi-workspace audit](../audits/2026-11-10-time-multi-tenant-audit.md).
+
+## Timesheet hours are paid hours (2026-11-10)
+
+Importing clock shifts into a timesheet takes each day's **paid** hours: the punch inside that day less
+unpaid breaks (meals by default, per the store's break rules). Before this the import took gross hours
+while the Pay page, overtime checks and accrual took paid hours, so the payroll export disagreed with what
+the worker saw. Sheets approved before the change are not rewritten.
+
+## Short breaks are always paid (2026-11-11)
+
+A punched break of 20 minutes or less is paid time even when it was punched as a meal or the store marks that
+kind of break unpaid, because federal law (FLSA, 29 CFR 785.18 and 785.19) counts short breaks as work and only
+lets a real meal period, normally 30 minutes or more, go unpaid. It is a fixed floor, not a setting
+(`ClockBreak::SHORT_BREAK_PAID`), and it applies wherever paid hours are counted: the clock, the Pay page, the
+timesheet import and so the payroll export. Rupert never deducts a break automatically: only breaks someone
+actually punched (or a manager-approved correction recorded) come off. Sheets approved before the change are not
+rewritten, and Square timecards keep the paid or unpaid flag Square recorded for each break.
+
+## Retention, PII, offboarding
+
+Punches, allocations and corrections are kept for 4 years (FLSA 3 years, plus a year); nothing is
+auto-deleted by this work. Terminating a worker revokes app sessions and setup links, clears the PIN,
+unassigns future shifts (they become open shifts) and cancels live trades (`Offboarding`). Address and
+date of birth stay encrypted at rest (existing).
+
+## Accessibility and language
+
+All new screens: 44 px targets, Dynamic Type friendly (rem sizes), VoiceOver labels on icon buttons,
+contrast checked with `bin/check-palette-contrast`, dark mode via tokens. Spanish strings for the
+employee-facing clock, time-off and pay screens live in `config/locales/es.yml`; a worker's `locale`
+is set from their profile.
+
+## App Store (iPhone app 1.1.0)
+
+- **Time is the first tab.** Hourly staff open the app to clock in; `/employee` is the tab's root.
+  Search left the tab bar (five is iOS's limit before a "More" tab) and stays in every page's top bar.
+- **Push notifications are opt-in with a soft ask.** After the first signed-in page the app explains
+  the five kinds in its own words, then shows the system prompt. "Not now" is remembered; iOS
+  Settings owns the switch afterwards. Every kind can be muted at `/employee/notifications/settings`
+  (`User#notification_prefs`), which `TimeNotifier` honours for the bell and push alike.
+- **APNs and VAPID keys are platform secrets**, read from `/etc/rupert.env` only (never a
+  workspace's managed settings): one app bundle serves every workspace. Until they are set, the
+  bell carries every message and nothing is enqueued (`PushNotifier.configured?`).
+- **A push payload is data.** The app opens only the `url` field, and only when it resolves to a
+  Rupert host (`PushRegistration.url(in:)`); nothing else in the payload is acted on.
+- **Sign in with Apple is not added.** Guideline 4.8 applies to apps that use a third-party login
+  to *set up or authenticate the primary account*. Rupert accounts are created by the business
+  (email/password, Rupert's own system); Google is an alternative way to sign in to that same
+  account and sign-up is hidden in the app. Apple's stated exceptions ("exclusively uses your
+  company's own account setup and sign-in systems", enterprise accounts) cover this. If App Review
+  disagrees, the fallback is to add Sign in with Apple as a second alternative login rather than
+  argue twice; this is recorded in `ios/AppStore/checklist.md` item 19.
+- **Account deletion covers staff accounts.** The `employee` role could not reach
+  `/account/delete` before (allowlist); it can now, and deletion also removes push tokens and the
+  clock PIN while keeping the worker's hours for the business (FLSA retention).
+- **Session awareness in every layout.** The app watches `<meta name="rupert-session">` to restart
+  its tabs after a sign-in; the employee and POS layouts now carry it, so a sign-in on the Time tab
+  no longer leaves the other tabs on the sign-in page.

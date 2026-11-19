@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Accessibility audit of the staff (Time tab) pages with axe-core, at phone width, light and dark.
+# Fails on any serious or critical violation. Nothing is installed into the repo: Playwright and
+# axe-core go into a scratch folder ($A11Y_DIR, default a temp dir) with npm.
+#
+#   bin/check-a11y                                   # against http://127.0.0.1:3000 as the demo worker
+#   BASE=http://127.0.0.1:3005 EMAIL=… PASSWORD=… bin/check-a11y /employee /employee/schedule
+#
+# Needs a running Rails server with the review demo seeded (REVIEW_PASSWORD=… bin/rails rupert:app_review_demo)
+# unless EMAIL/PASSWORD point at another worker account.
+set -euo pipefail
+
+BASE=${BASE:-http://127.0.0.1:3000}
+EMAIL=${EMAIL:-sam.okafor@juniper-pine.example}
+PASSWORD=${PASSWORD:-${REVIEW_PASSWORD:-}}
+A11Y_DIR=${A11Y_DIR:-$(mktemp -d)}
+[ -n "$PASSWORD" ] || { echo "Set PASSWORD (or REVIEW_PASSWORD) for $EMAIL" >&2; exit 2; }
+
+PAGES=("$@")
+[ ${#PAGES[@]} -gt 0 ] || PAGES=(/employee /employee/schedule /employee/time-off /employee/pay /employee/notifications/settings /employee/devices /time_clock /notifications)
+
+if [ ! -d "$A11Y_DIR/node_modules/playwright" ]; then
+  (cd "$A11Y_DIR" && npm init -y >/dev/null && npm install --no-audit --no-fund playwright@1.58.0 axe-core@4.11.0 >/dev/null && npx playwright install chromium >/dev/null)
+fi
+
+cat >"$A11Y_DIR/audit.mjs" <<'EOF'
+import { chromium } from "playwright";
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+const require = createRequire(import.meta.url);
+const axeSource = readFileSync(require.resolve("axe-core/axe.min.js"), "utf8");
+const [base, email, password, ...pages] = process.argv.slice(2);
+const browser = await chromium.launch();
+let failures = 0;
+for (const scheme of ["light", "dark"]) {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, colorScheme: scheme });
+  const page = await ctx.newPage();
+  await page.goto(`${base}/login`, { waitUntil: "networkidle" });
+  await page.evaluate(() => document.querySelector("details.login-password")?.setAttribute("open", ""));
+  await page.fill("input[name=email]", email);
+  await page.fill("input[name=password]", password);
+  await Promise.all([page.waitForURL((u) => !u.pathname.startsWith("/login")), page.click("input[type=submit], button[type=submit]")]);
+  for (const path of pages) {
+    await page.goto(base + path, { waitUntil: "networkidle" });
+    await page.addScriptTag({ content: axeSource });
+    const result = await page.evaluate(async () => await window.axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa", "best-practice"] } }));
+    const bad = result.violations.filter((v) => ["serious", "critical"].includes(v.impact));
+    const minor = result.violations.length - bad.length;
+    console.log(`${scheme.padEnd(5)} ${path.padEnd(36)} ${bad.length} serious/critical, ${minor} other`);
+    for (const v of bad) {
+      failures++;
+      console.log(`  ${v.impact.toUpperCase()} ${v.id}: ${v.help} (${v.nodes.length} nodes)`);
+      for (const node of v.nodes.slice(0, 3)) console.log(`    ${node.target.join(" ")}`);
+    }
+  }
+  await ctx.close();
+}
+await browser.close();
+process.exit(failures ? 1 : 0);
+EOF
+cd "$A11Y_DIR" && node audit.mjs "$BASE" "$EMAIL" "$PASSWORD" "${PAGES[@]}"

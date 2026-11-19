@@ -24,8 +24,10 @@ import { fileURLToPath } from "node:url";
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || "playwright");
 
 const EMAIL = "appreview@rupertpos.com";
+// The hourly worker the Time tab screenshots sign in as (rupert:app_review_demo, REVIEW_WORKER_PASSWORD or the review password).
+const WORKER_EMAIL = "sam.okafor@juniper-pine.example";
 const ua = (device, os) =>
-  `Rupert iOS/1.0.0 (1); Hotwire Native iOS; Turbo Native iOS; Mozilla/5.0 (${device}; CPU ${os} 18_0 like Mac OS X) ` +
+  `Rupert iOS/1.1.0 (1); Hotwire Native iOS; Turbo Native iOS; Mozilla/5.0 (${device}; CPU ${os} 18_0 like Mac OS X) ` +
   "AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148";
 const ACCENT = "#0E6F72"; // AccentColor.colorset (light): the window tint, so the selected tab's colour.
 const INACTIVE = "#8E8E93"; // systemGray, unselected tab items.
@@ -42,15 +44,20 @@ const DEVICES = {
   "ipad-13": { width: 1032, height: 1376, scale: 2, status: 24, nav: 50, tabs: 0, uaDevice: "iPad", uaOs: "OS", floating: true },
 };
 
-const TABS = [["home", "Home"], ["chat", "Team Chat"], ["ask", "Ask Rupert"], ["inbox", "Notifications"], ["search", "Search"]];
+const TABS = [["time", "Time"], ["home", "Home"], ["chat", "Team Chat"], ["ask", "Ask Rupert"], ["inbox", "Notifications"]];
 
-// file stem, path ({count} is the draft count id), selected tab, devices, element to scroll to the top (optional)
+// file stem, path ({count} is the draft count id), selected tab, devices, element to scroll to the top (optional), account
+// (default the admin reviewer; "worker" is the hourly worker, whose Time tab is the first thing a staff member sees)
 const SCREENS = [
-  ["1-home", "/", "home", ["iphone-69", "ipad-13"]],
-  ["2-inventory", "/inventory", "home", ["iphone-69", "ipad-13"], ".stock-viewbar"],
-  ["3-scan-count", "/inventory_counts/{count}/scan", "home", ["iphone-69"], '[data-inventory-count-scanner-target="form"]'],
-  ["4-team-chat", "/chat", "chat", ["iphone-69", "ipad-13"]],
-  ["5-notifications", "/notifications", "inbox", ["iphone-69", "ipad-13"]],
+  ["1-time", "/employee", "time", ["iphone-69", "ipad-13"], null, "worker"],
+  ["2-schedule", "/employee/schedule", "time", ["iphone-69"], null, "worker"],
+  ["3-time-off", "/employee/time-off", "time", ["iphone-69"], null, "worker"],
+  ["4-pay", "/employee/pay", "time", ["iphone-69"], null, "worker"],
+  ["5-home", "/", "home", ["iphone-69", "ipad-13"]],
+  ["6-inventory", "/inventory", "home", ["iphone-69", "ipad-13"], ".stock-viewbar"],
+  ["7-scan-count", "/inventory_counts/{count}/scan", "home", ["iphone-69"], '[data-inventory-count-scanner-target="form"]'],
+  ["8-team-chat", "/chat", "chat", ["iphone-69", "ipad-13"]],
+  ["9-notifications", "/notifications", "inbox", ["iphone-69", "ipad-13"]],
 ];
 
 // Simple glyphs in the spirit of the SF Symbols the app uses (Tabs.swift), on a 28 x 28 grid.
@@ -61,6 +68,7 @@ const star = (x, y, r) => {
     `C${x - k} ${y + k} ${x - k} ${y + k} ${x - r} ${y}C${x - k} ${y - k} ${x - k} ${y - k} ${x} ${y - r}z" fill="currentColor"/>`;
 };
 const ICONS = {
+  time: `<circle cx="14" cy="14" r="11" ${line}/><path d="M14 7.5V14l4.3 2.6" ${line}/>`,
   home: `<path d="M3.5 13.2 14 4.3l10.5 8.9" ${line}/><path d="M6.8 11v11.2a1 1 0 0 0 1 1h4.2v-6.4h4v6.4h4.2a1 1 0 0 0 1-1V11" ${line}/>`,
   chat: `<path d="M4.5 4.5h11A2.5 2.5 0 0 1 18 7v5.5a2.5 2.5 0 0 1-2.5 2.5H10l-3.6 3.1V15H4.5A2.5 2.5 0 0 1 2 12.5V7a2.5 2.5 0 0 1 2.5-2.5z" ${line}/>` +
     `<path d="M20.8 9.5H23a2.5 2.5 0 0 1 2.5 2.5v5.5A2.5 2.5 0 0 1 23 20h-1v3.1L18.4 20H13a2.5 2.5 0 0 1-2.5-2.3" ${line}/>`,
@@ -168,7 +176,7 @@ function frameHtml(dev, png, info, selected, root) {
 
 const FORBIDDEN = ["localhost", "127.0.0.1", "Herbal Healers", "Exception", "Routing Error", "We're sorry", "Something went wrong"];
 
-async function capture(browser, name, dev, { baseUrl, password, countId, out }) {
+async function signedIn(browser, dev, baseUrl, email, password) {
   const viewport = { width: dev.width, height: dev.height - dev.status - dev.nav - dev.tabs };
   const context = await browser.newContext({
     viewport, deviceScaleFactor: dev.scale, isMobile: true, hasTouch: true, userAgent: ua(dev.uaDevice, dev.uaOs),
@@ -177,14 +185,23 @@ async function capture(browser, name, dev, { baseUrl, password, countId, out }) 
   await context.addInitScript(NATIVE_BRIDGE);
   const page = await context.newPage();
   await page.goto(`${baseUrl}/login`, { waitUntil: "networkidle" });
-  await page.fill('input[name="email"]', EMAIL);
+  await page.evaluate(() => document.querySelector("details.login-password")?.setAttribute("open", ""));
+  await page.fill('input[name="email"]', email);
   await page.fill('input[name="password"]', password);
   await Promise.all([page.waitForURL((url) => !url.pathname.startsWith("/login")), page.click('input[type="submit"][value="Sign in"]')]);
+  return { context, page };
+}
+
+async function capture(browser, name, dev, { baseUrl, password, workerPassword, countId, out }) {
+  const admin = await signedIn(browser, dev, baseUrl, EMAIL, password);
+  const worker = await signedIn(browser, dev, baseUrl, WORKER_EMAIL, workerPassword);
+  const context = admin.context;
 
   const framer = await browser.newContext({ viewport: { width: dev.width, height: dev.height }, deviceScaleFactor: dev.scale });
   const framePage = await framer.newPage();
-  for (const [stem, path, tab, devices, scrollTo] of SCREENS) {
+  for (const [stem, path, tab, devices, scrollTo, account] of SCREENS) {
     if (!devices.includes(name)) continue;
+    const page = account === "worker" ? worker.page : admin.page;
     await page.goto(baseUrl + path.replace("{count}", countId), { waitUntil: "networkidle" });
     await page.waitForTimeout(900); // charts and Stimulus controllers settle
     await page.evaluate((selector) => {
@@ -202,19 +219,21 @@ async function capture(browser, name, dev, { baseUrl, password, countId, out }) 
     if (!info.nativeApp) problems.push("body is not .native-app");
     if (problems.length) console.error(`warning: ${name}-${stem} (${page.url()}): ${problems.join(", ")}`);
     const png = await page.screenshot({ animations: "disabled", caret: "hide" });
-    const root = path === "/" || tab !== "home";
+    const root = path === "/" || path === "/employee" || tab !== "home";
     await framePage.setContent(frameHtml(dev, png, info, tab, root), { waitUntil: "load" });
     const target = join(out, `${name}-${stem}.png`);
     await framePage.screenshot({ path: target, animations: "disabled" });
     console.log(`${name}-${stem}.png: ${info.title}`);
   }
   await context.close();
+  await worker.context.close();
   await framer.close();
 }
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((pairs, arg, i, all) =>
   arg.startsWith("--") ? [...pairs, [arg.slice(2), all[i + 1]]] : pairs, []));
 const password = process.env.REVIEW_PASSWORD;
+const workerPassword = process.env.REVIEW_WORKER_PASSWORD || password;
 if (!password) { console.error("Set REVIEW_PASSWORD to the review account's password."); process.exit(1); }
 if (!args["count-id"]) { console.error("Pass --count-id <draft inventory count id>."); process.exit(1); }
 const out = args.out || dirname(fileURLToPath(import.meta.url));
@@ -222,7 +241,7 @@ mkdirSync(out, { recursive: true });
 const browser = await chromium.launch();
 try {
   for (const name of args.device ? [args.device] : Object.keys(DEVICES)) {
-    await capture(browser, name, DEVICES[name], { baseUrl: (args["base-url"] || "http://127.0.0.1:3990").replace(/\/$/, ""), password, countId: args["count-id"], out });
+    await capture(browser, name, DEVICES[name], { baseUrl: (args["base-url"] || "http://127.0.0.1:3990").replace(/\/$/, ""), password, workerPassword, countId: args["count-id"], out });
   }
 } finally {
   await browser.close();
