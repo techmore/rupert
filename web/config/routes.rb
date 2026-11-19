@@ -143,6 +143,12 @@ Rails.application.routes.draw do
   get '/refunds', to: 'public_pages#refunds', as: :refund_policy
   get '/security', to: 'public_pages#security', as: :security_statement
   get '/integrations', to: 'public_pages#integrations', as: :public_integrations
+  # Plain-text site maps for AI assistants (https://llmstxt.org); facts from WebMcp::PublicSite.
+  get '/llms.txt', to: 'public_pages#llms', as: :llms_txt, format: false
+  get '/llms-full.txt', to: 'public_pages#llms_full', as: :llms_full_txt, format: false
+  # WebMCP: tools the signed-in page offers to an in-browser AI assistant (docs/webmcp.md).
+  get '/webmcp/tools', to: 'web_mcp#index', as: :webmcp_tools
+  post '/webmcp/tools/:name', to: 'web_mcp#create', as: :webmcp_tool, constraints: { name: /[a-z][a-z0-9_]{0,63}/ }
   get '/account/delete', to: 'account_deletions#show', as: :delete_account
   delete '/account', to: 'account_deletions#destroy', as: :own_account
 

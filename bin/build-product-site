@@ -179,6 +179,14 @@ outputs['data/competitor-matrix.csv']=stream.getvalue()
 landing = (DOCS / 'index.html').read_text().replace('assets/landing.css', '/marketing/landing.css').replace('assets/marketing/', '/marketing/').replace('href="index.html"', 'href="/"')
 for filename in ['overview.html', 'roadmap.html']:
     landing = landing.replace('href="'+filename+'"', 'href="https://techmore.github.io/rupert/'+filename+'"')
+# Rails only (not GitHub Pages): the llms.txt link and WebMCP's read-only public tools (docs/webmcp.md).
+WEBMCP_HEAD = '''  <link rel="alternate" type="text/markdown" href="/llms.txt" title="Rupert for AI assistants">
+  <%# WebMCP: read-only facts for an AI assistant in the browser (docs/webmcp.md); does nothing without one. %>
+  <script type="application/json" id="rupert-webmcp"><%= json_escape(WebMcp::PublicSite.manifest.to_json).html_safe %></script>
+  <script type="module" src="<%= asset_path('lib/webmcp.js') %>"></script>
+</head>'''
+assert landing.count('</head>') == 1, 'docs/index.html must have exactly one </head>'
+landing = landing.replace('</head>', WEBMCP_HEAD)
 outputs['../web/app/views/landing/index.html.erb'] = landing
 outputs['../web/public/marketing/landing.css'] = (DOCS / 'assets/landing.css').read_text()
 # Landing images (logo, product screenshots) live in docs/assets/marketing and are served

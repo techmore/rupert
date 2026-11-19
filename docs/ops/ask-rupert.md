@@ -73,6 +73,7 @@ Counts live in `ask_rupert_usages` (counters only: person, time, provider, model
 
 ## Operating notes
 
+- Ask Rupert's `where_is` and `how_do_i` lookups are also offered to AI assistants in the browser through [WebMCP](../webmcp.md), from the same definitions.
 - Turn it off for a workspace with the checkbox on the usage page, or take **Rupert Chat** away from a role. The header button and its endpoints disappear for whoever lacks it.
 - Ask Rupert chats are private. For shared, group conversation with the `@rupert` assistant, use [team chat](team-chat.md).
 - If answers stop, check **System → Ask Rupert usage** for failed replies, then the opencode CLI and its key on the host (the AI-health page, when present, shows the provider state).

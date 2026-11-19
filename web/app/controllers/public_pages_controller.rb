@@ -7,6 +7,8 @@
 # inside the iPhone app. Keep prices and checkout links off them (App Store guideline 3.1.1).
 class PublicPagesController < ApplicationController
   skip_before_action :require_login
+  # The plain-text site maps read no workspace data, whoever is signed in.
+  skip_before_action :restrict_employee_workspace, only: %i[llms llms_full]
 
   # Business identity shown on these pages. Each value comes from the deployment's environment;
   # a blank value renders a visible "Owner to add" placeholder rather than an invented fact.
@@ -31,6 +33,16 @@ class PublicPagesController < ApplicationController
     @support_email = self.class.support_email
   end
 
+  # GET /llms.txt and /llms-full.txt — the public site for AI assistants (https://llmstxt.org).
+  # A private single-store node has no public site to describe.
+  def llms
+    render_llms(WebMcp::PublicSite.llms_txt)
+  end
+
+  def llms_full
+    render_llms(WebMcp::PublicSite.llms_full_txt)
+  end
+
   def self.support_email
     ENV['RUPERT_SUPPORT_EMAIL'].presence || 'sdolbec@rupertpos.com'
   end
@@ -41,5 +53,14 @@ class PublicPagesController < ApplicationController
     values.tap do |company|
       company[:security_email] ||= support_email
     end
+  end
+
+  private
+
+  def render_llms(text)
+    return head(:not_found) if WorkspaceNode.isolated?
+
+    expires_in 1.hour, public: true
+    render plain: text, content_type: 'text/markdown; charset=utf-8'
   end
 end
