@@ -653,7 +653,11 @@ explicit zero. Missing cost stays null/unknown. Catalog prices are deliberately 
 to local gateways, custom endpoints or subscriptions. Input, output, cache read/write and
 thinking tokens are separate nullable counters; thinking is not added again to output.
 A partially reported sum is labelled incomplete, not presented as a complete run total.
-Interrupted requests and missing CLI usage also make completeness false. No retrospective
+Interrupted requests and missing CLI usage also make completeness false. A failed attempt's
+token counts are whatever RubyLLM reports for it: zero when the request cannot have run (the
+connection was never made, or the endpoint answered with an error status before streaming
+anything; since RubyLLM 2.2 that includes 5xx as well as 4xx), unknown when it may have run
+(a timeout, or a failure after the first chunk). Cost is never inferred this way. No retrospective
 backfill guesses usage for runs created before this migration.
 
 Operator Rails console example (use the authorized tenant context):
