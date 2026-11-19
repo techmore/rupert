@@ -1,0 +1,51 @@
+name: Android app
+on:
+  # Feature-branch pushes are covered by the pull_request run for the same head.
+  push:
+    branches: [main]
+    paths: ['android/**', 'ios/Sources/Rupert/Resources/path-configuration.json', '.github/workflows/android.yml']
+  pull_request:
+    paths: ['android/**', 'ios/Sources/Rupert/Resources/path-configuration.json', '.github/workflows/android.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  build:
+    name: Android build, tests and lint
+    runs-on: ubuntu-latest
+    # Typically 6-10 minutes (most of it the first Gradle and Robolectric downloads).
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android
+    env:
+      # The Play build number; Play requires it to grow with every upload.
+      RUPERT_VERSION_CODE: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          # Pull requests read the cache that main writes; they never write it.
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - name: Unit and Robolectric tests, lint
+        run: ./gradlew --no-daemon testDebugUnitTest lintDebug
+      - name: Debug APK and unsigned release bundle
+        # No signing secrets in CI: the release bundle is signed by the owner (android/README.md).
+        run: ./gradlew --no-daemon assembleDebug bundleRelease
+      - name: Keep the APK, bundle and reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: rupert-android-${{ github.sha }}
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/bundle/release/*.aab
+            android/app/build/reports/
+          if-no-files-found: warn
+          retention-days: 14

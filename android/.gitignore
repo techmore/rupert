@@ -1,0 +1,15 @@
+.gradle/
+.kotlin/
+build/
+local.properties
+captures/
+*.iml
+.idea/
+.cxx/
+# Signing material never belongs in this public repository.
+*.jks
+*.keystore
+keystore.properties
+*.p12
+*.pem
+play-service-account*.json

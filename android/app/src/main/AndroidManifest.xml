@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- No runtime permissions: Rupert is a website in a native shell. The barcode scanner (Google code
+         scanner) and photo attachments (the camera app) need no camera permission here. Libraries add
+         install-time USE_BIOMETRIC (app lock) and ACCESS_NETWORK_STATE (Play services). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Deprecated since Android 9 (this app's minimum); androidx.biometric still declares it. -->
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" tools:node="remove" />
+
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
+    <!-- The browser for Google sign-in (Custom Tabs) and the apps that handle mailto:/tel: links. -->
+    <queries>
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+            <data android:scheme="tel" />
+        </intent>
+    </queries>
+
+    <application
+        android:name=".RupertApplication"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:usesCleartextTraffic="false"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Rupert"
+        android:enableOnBackInvokedCallback="true"
+        tools:targetApi="36">
+
+        <!-- The WebView sends no usage or crash metrics to Google. -->
+        <meta-data android:name="android.webkit.WebView.MetricsOptOut" android:value="true" />
+        <!-- Google Play services downloads the barcode scanner module ahead of first use. -->
+        <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="barcode_ui" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|density">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- The end of Google sign-in in the browser tab: rupert://auth/google?code=… -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="rupert" />
+                <data android:host="auth" />
+                <data android:path="/google" />
+            </intent-filter>
+
+            <!-- Rupert links open in the app once pos.rupertpos.com publishes this app's signing
+                 certificate in /.well-known/assetlinks.json (README: App Links). Sign-in and
+                 handoff paths are left out on purpose, so they always finish in the browser. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="pos.rupertpos.com" />
+                <data android:pathPrefix="/chat" />
+                <data android:pathPrefix="/notifications" />
+                <data android:pathPrefix="/tasks" />
+                <data android:pathPrefix="/inventory_counts" />
+                <data android:pathPrefix="/orders" />
+                <data android:pathPrefix="/timesheets" />
+                <data android:pathPrefix="/schedule" />
+                <data android:pathPrefix="/ask_rupert" />
+                <data android:pathPrefix="/search" />
+                <data android:pathPrefix="/workspace" />
+            </intent-filter>
+
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity>
+
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:label="@string/app_settings" />
+
+        <activity
+            android:name=".ServerActivity"
+            android:exported="false"
+            android:label="@string/server_title"
+            android:windowSoftInputMode="adjustResize" />
+    </application>
+</manifest>
