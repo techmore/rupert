@@ -82,6 +82,24 @@ class ClaimsTest(unittest.TestCase):
             self.assertEqual(self.claim(line), [], line)
 
 
+class BrandTest(unittest.TestCase):
+    def rules(self, line):
+        return [name for name, _ in audit.brand_hits(line)]
+
+    def test_wrong_names_ipad_and_partner_claims_are_found(self):
+        self.assertEqual(self.rules('Take cards with Apple Tap to Pay.'), ['tap-to-pay-name'])
+        self.assertEqual(self.rules('Rupert does not support Tap to Pay yet.'), ['tap-to-pay-name'])
+        self.assertEqual(self.rules('Accept Tap to Pay on iPhone today.'), ['tap-to-pay-availability'])
+        self.assertIn('tap-to-pay-ipad', self.rules('Take contactless payments on your iPad.'))
+        self.assertEqual(self.rules('Rupert is a certified Dejavoo partner.'), ['partner-claim'])
+        self.assertEqual(self.rules('Our checkout is approved by Apple.'), ['partner-claim'])
+
+    def test_planned_and_negated_wording_is_allowed(self):
+        for line in ['Tap to Pay on iPhone is planned and is not available yet.', 'Rupert is not a certified Dejavoo partner.',
+                     'Tap payments never work on an iPad.', 'Card payments are processed by Dejavoo (iPOSpays).']:
+            self.assertEqual(self.rules(line), [], line)
+
+
 class RepositoryTest(unittest.TestCase):
     def test_the_repository_passes_with_its_baseline(self):
         result = subprocess.run([sys.executable, str(SCRIPT), '--baseline', str(SCRIPT.parents[1] / '.github/release-audit-baseline.json')],

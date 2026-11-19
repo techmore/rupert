@@ -78,3 +78,20 @@ Rails.application.config.filter_parameters += [/\A(override_)?pin(_confirmation)
 # short name would otherwise hide unrelated fields ("company", "tracking").
 Rails.application.config.filter_parameters += %i[cardnumber cardcode cvc security_code expirationdate magstripe]
 Rails.application.config.filter_parameters += [/\Apan\z/i, /\Atrack[12]?(_?data)?\z/i]
+
+# Payment results from Dejavoo (SPIn, FEED, hosted page and the planned iPhone hand-off through
+# iPOSgo!). Rupert keeps only whitelisted fields (last four, approval code, RRN, batch, amounts,
+# brand, entry type); the rest must not reach a request log if a result is ever posted to Rupert.
+# "token" above already hides iPOSToken and cardToken. Whole result containers are hidden too.
+# See docs/compliance/dejavoo-tap-to-pay-compliance.md.
+Rails.application.config.filter_parameters += %i[acntfirst4 maskedpan cardholder emvdata iccdata signature]
+Rails.application.config.filter_parameters += [
+  /\Afirst4\z/i, /\Abin\z/i, /\Achname\z/i, /\Aspin_?response\z/i, /\Aextdata\z/i, /\Acarddata\z/i, /\Acardinfo\z/i,
+  /\AiposHPResponse\z/i
+]
+
+# Dejavoo terminal profile numbers (TPN) identify one payment terminal. They arrive when an
+# extra terminal is added in POS setup ("terminal_tpn") and at the top level of a FEED
+# closed-batch posting ("tpn"); the main terminal's TPN is already inside "credentials".
+# Anchored so reconciliation names such as "tpnBatchNumber" still log.
+Rails.application.config.filter_parameters += [/\A(terminal_)?tpn\z/i]
