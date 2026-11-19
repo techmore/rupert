@@ -1,6 +1,8 @@
 <%# The POS strip: store, stock read, register, customer screen, unfinished checkouts, then the
     cashier and the way out. No sales or report figures live here. POS-only staff (employee
-    role) sign out; everyone who can use the back office gets Exit POS. %>
+    role) sign out; everyone who can use the back office gets Exit POS.
+    On a phone the strip is two short rows: the store with Clock and More, then the register
+    and customer-screen pills. `pos-wide-only` controls move into More (`pos-phone-only`). %>
 <% pos_only = Current.user.employee? %>
 <header class="pos-topbar">
   <div class="pos-topbar-group pos-topbar-start">
@@ -17,7 +19,7 @@
 
   <% if @snapshot %>
     <div class="pos-topbar-group pos-topbar-status">
-      <span class="<%= stock_fresh ? 'pill-fern' : 'pill-clay' %>" title="Last stock pull: <%= retail_source_time(@snapshot.captured_at) %>"><%= stock_fresh ? 'Stock read current' : 'Stock read stale' %></span>
+      <span class="<%= stock_fresh ? 'pill-fern pos-pill-quiet' : 'pill-clay' %>" title="Last stock pull: <%= retail_source_time(@snapshot.captured_at) %>"><%= stock_fresh ? 'Stock read current' : 'Stock read stale' %></span>
       <% unless @display&.demo? %>
         <% if @registers.any? %>
           <span class="pill-fern" title="<%= @registers.map(&:name).join(', ') %>"><%= @registers.size == 1 ? "Register open · #{@registers.first.name}" : "#{@registers.size} registers open" %></span>
@@ -29,8 +31,8 @@
       <span class="pos-topbar-group" <%= tour_anchor('display') %>>
         <% if @display %>
           <span class="<%= @display.demo? ? 'pill-olive' : 'pill-fern' %>"><%= @display.demo? ? 'Demo customer screen' : 'Customer screen paired' %></span>
-          <%= link_to 'Open customer screen', customer_display_path(display_token: @display.display_token), target: '_blank', rel: 'noopener noreferrer', class: 'btn-ghost btn-sm' %>
-          <%= button_to 'Close', pos_display_path(@display), method: :delete, class: 'btn-ghost btn-sm', form_class: 'contents', aria: { label: 'Close customer screen' }, data: { turbo: false } %>
+          <%= link_to 'Open customer screen', customer_display_path(display_token: @display.display_token), target: '_blank', rel: 'noopener noreferrer', class: 'btn-ghost btn-sm pos-wide-only' %>
+          <%= button_to 'Close', pos_display_path(@display), method: :delete, class: 'btn-ghost btn-sm pos-wide-only', form_class: 'contents', aria: { label: 'Close customer screen' }, data: { turbo: false } %>
         <% else %>
           <%= button_to 'Pair customer screen', pos_displays_path(location_id: @snapshot.location_id), method: :post, class: 'btn-ghost btn-sm', form_class: 'contents', data: { turbo: false } %>
         <% end %>
@@ -54,6 +56,10 @@
       <summary class="btn-ghost btn-sm menu-trigger" aria-haspopup="menu">More<%= navigation_icon('chevron', css_class: 'nav-symbol menu-chevron') %></summary>
       <div class="menu-panel" role="menu">
         <% if @snapshot %>
+          <% if @display %>
+            <%= link_to 'Open customer screen', customer_display_path(display_token: @display.display_token), class: 'menu-item pos-phone-only', role: 'menuitem' %>
+            <%= button_to 'Close customer screen', pos_display_path(@display), method: :delete, class: 'menu-item pos-phone-only', role: 'menuitem', form_class: 'contents', data: { turbo: false } %>
+          <% end %>
           <%= button_to 'Demo both screens', pos_displays_path(location_id: @snapshot.location_id, demo: '1'), method: :post, class: 'menu-item', role: 'menuitem', form_class: 'contents', data: { turbo: false } %>
           <% if image_links && @missing_image_records&.any? %>
             <button type="button" class="menu-item" role="menuitem" data-action="pos-screen#openImages">Link website images · <%= @missing_image_records.size %> hidden</button>
@@ -63,6 +69,12 @@
         <% @open_events&.each do |event| %><%= link_to "Event register · #{event.name}", pos_event_register_path(event), class: 'menu-item', role: 'menuitem', data: { turbo: false } %><% end %>
         <% if retail_business_access?('settings.read') %><%= link_to 'C-Trax connection', pos_connection_path('ctrax'), class: 'menu-item', role: 'menuitem' %><% end %>
         <%= link_to 'Checkout lesson', learning_path('checkout'), class: 'menu-item', role: 'menuitem' %>
+        <% if pos_only %>
+          <%= link_to 'My time', employee_app_path, class: 'menu-item pos-phone-only', role: 'menuitem' %>
+          <%= button_to 'Sign out', logout_path, method: :delete, class: 'menu-item pos-phone-only', role: 'menuitem', form_class: 'contents' %>
+        <% else %>
+          <%= link_to 'Exit POS', navigation_start_path, class: 'menu-item pos-phone-only', role: 'menuitem', data: { turbo: false } %>
+        <% end %>
       </div>
     </details>
     <span class="pos-cashier" title="<%= navigation_signin_method %>">
@@ -77,10 +89,10 @@
             state: own_shift.nil? ? 'clocked_out' : own_shift.stale_open? ? 'stale' : TimeClockService.state_of(own_shift) %>
     <% end %>
     <% if pos_only %>
-      <%= link_to 'My time', employee_app_path, class: 'btn-ghost btn-sm' %>
-      <%= button_to 'Sign out', logout_path, method: :delete, class: 'btn-ghost btn-sm', form_class: 'contents' %>
+      <%= link_to 'My time', employee_app_path, class: 'btn-ghost btn-sm pos-wide-only' %>
+      <%= button_to 'Sign out', logout_path, method: :delete, class: 'btn-ghost btn-sm pos-wide-only', form_class: 'contents' %>
     <% else %>
-      <%= link_to 'Exit POS', navigation_start_path, class: 'btn-ghost btn-sm pos-exit', data: { turbo: false } %>
+      <%= link_to 'Exit POS', navigation_start_path, class: 'btn-ghost btn-sm pos-exit pos-wide-only', data: { turbo: false } %>
     <% end %>
   </div>
 </header>
