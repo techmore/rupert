@@ -46,6 +46,7 @@ Instance configuration (environment, not editable by workspace administrators):
 | --- | --- |
 | `OPENCODE_MODEL` | Cloud model id shown in the disclosure and recorded in usage. Default `deepseek-v4-flash`. |
 | `ASK_RUPERT_OPENCODE_BIN` / `ASK_RUPERT_OPENCODE_AGENT` | The CLI binary (default `opencode`) and its tool-less agent (default `chat`). The web and job processes must be able to run it. |
+| `RUPERT_MLX_LLM_URL`, `RUPERT_MLX_LLM_MODEL` | Experimental Apple-silicon MLX server for the local modes; wins over the gateway and Ollama only when set. See [local LLM backends](../ai/local-llm-backends.md). |
 | `OLLAMA_URL`, `ASK_RUPERT_LOCAL_MODEL` | Local model server and model name (Gemma 4 is the baseline being evaluated). Both must be set for the local modes to work. |
 | `ASK_RUPERT_RATE_LIMIT`, `ASK_RUPERT_DAILY_CAP`, `ASK_RUPERT_MODE` | Optional defaults for the limits and mode; a saved workspace setting wins. |
 
