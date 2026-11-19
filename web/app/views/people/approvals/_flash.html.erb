@@ -1,0 +1,4 @@
+<div id="approvals-flash">
+  <% if local_assigns[:notice].present? %><p role="status" class="flash flash-notice"><%= notice %></p><% end %>
+  <% if local_assigns[:alert].present? %><p role="alert" class="flash flash-alert"><%= alert %></p><% end %>
+</div>

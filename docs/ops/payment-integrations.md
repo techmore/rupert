@@ -12,52 +12,24 @@ The business described C-Trax POS with a PAX terminal and Valmar processing, and
 
 For gateway payment reconciliation, see the separate [Authorize.net read-only reporting connector](https://techmore.github.io/rupert/authorize-net-reporting.html). It adds transaction/batch imports with isolated encrypted credentials; existing provider checks below retain their narrower behavior. Reporting credentials do not enable checkout. The [C-Trax retail guide](https://github.com/techmore/rupert/blob/main/docs/ctrax-retail.md) documents implemented cash receipts, confirmed customer tips, source-derived tax and the optional Authorize.net hosted-card checkout. Since November 2, 2026 (F69), NMI checkout can run in production after a recorded owner sign-off, and Rupert voids and refunds gateway card payments from the receipt, enforces a per-processor approved-product list and compares settled batches with Rupert sales; see the [hemp payments admin guide](https://github.com/techmore/rupert/blob/main/docs/ops/hemp-payments-setup.md). PAX terminal execution remains unfinished, and live acceptance against the merchant's own account is still to be verified.
 
-## Deep Run Hemp: historical NMI checkout evidence
+## Connecting an existing NMI merchant account
 
-Email evidence reviewed October 16, 2026 establishes that Deep Run Hemp's separate WooCommerce store completed a card sale through NMI on July 23, 2026. This is historical store evidence; it does not establish a live Rupert connection or identify the gateway serving the separate Valmar account described above.
-
-| Date | Evidence | What it establishes |
-| --- | --- | --- |
-| June 16, 2026 | Andre's "Host my own store" email | General application guidance named business information, bank statements, product details and the website. It is not Next Stage's original underwriting checklist or proof of which documents were submitted. |
-| July 21, 2026 | Forwarded approval notice from Next Stage Payments underwriting | The merchant account was approved. NMI activation and an API key for the website developer were the next steps. |
-| July 22, 2026 | Forwarded NMI gateway setup message from Next Stage support, with technical guidance | The intended stack was DigitalOcean, WooCommerce and NMI, with the integration requirements below. |
-| July 23, 2026 | Matching "Deep Run Hemp Transaction Receipt" and "Your Deep Run Hemp order has been received!" emails | The gateway receipt reports a completed card sale, and the matching store confirmation explicitly names "Credit Card (NMI)". Together they demonstrate that NMI checkout was working for at least one sale on that date. |
-| October 14, 2026 | Andre's "Crypto gateway" email | Alternative crypto gateways were being explored. The email does not say NMI failed, was replaced or was disconnected. |
-
-Next Stage's July 22 setup guidance requested:
-
-| Requirement | July 22 guidance |
-| --- | --- |
-| Credentials | NMI API Key and Security Key obtained from the merchant dashboard for the developer's integration. Preserve the provider's historical wording; confirm the exact credential fields required by the chosen plugin rather than assuming two distinct keys are always necessary. |
-| Plugin | An installed and activated third-party NMI payment gateway plugin for WooCommerce. |
-| SSL | A valid SSL certificate on the DigitalOcean server. |
-| Caching | Cache exclusions for WooCommerce /cart/ and /checkout/ so checkout sessions can work. |
-| Server | Outbound HTTPS on port 443 and an active PHP cURL extension. |
-
-The broader email search found no Authorize.net setup tied to Deep Run Hemp and no original Next Stage application packet. March DashNex/Cloudflare access and purchase failures predate this WooCommerce evidence and should not be treated as a later NMI failure.
-
-**Status:** merchant approval confirmed; historical NMI store checkout demonstrated; current account health, bank settlement, refunds, tipping, terminal compatibility and Rupert integration remain unverified. Next Stage supplied the approval and integration support, but these emails do not identify the backend processor or acquiring bank. Preserve store orders, gateway transactions and processor deposits as related evidence, not additional sales to sum together.
-
-Before using this history for Rupert's payment work, confirm the merchant/business and account environment, approved integration access, current credentials and supported payment features. Match historical gateway activity to settlement evidence separately. Keep original emails, private source links, customer/order details, gateway identifiers and credentials outside public Git; this section deliberately records only the sanitized findings.
-
-## Connecting the existing Deep Run Hemp account to Rupert
-
-Investigation dated October 16, 2026: the historical NMI account is a candidate for Deep Run Hemp checkout in Rupert. Confirm its current status and approved scope with Next Stage before enabling production charges. The July sale does not authorize routing another business's sales through this account or demonstrate retail terminal support.
+Merchant-specific account history (approvals, emails, receipts and contacts) is kept in the owner's private records, not in this public guide. A past NMI sale on another website shows that an account once worked; it does not connect that account to Rupert, authorize routing another business's sales through it, or demonstrate retail terminal support. Confirm the account's current status and approved scope with the ISO that issued it before enabling production charges.
 
 | Required input | What to establish |
 | --- | --- |
-| Account and approval | Next Stage confirms the account is active, the merchant is Deep Run Hemp, the permitted products and currency, the intended Rupert checkout domain/channel, and any required website review or service activation. Confirm backend processor/acquiring arrangement and fees rather than assuming them. |
-| Application credentials | Create dedicated Rupert keys under the correct merchant user: a public tokenization key for browser card entry and a private payment API key for the server, with the permissions needed for the chosen integration. Keep WooCommerce's keys independent. Store the private key encrypted in tenant-scoped settings. |
+| Account and approval | The ISO confirms the account is active, which merchant it belongs to, the permitted products and currency, the intended Rupert checkout domain/channel, and any required website review or service activation. Confirm backend processor/acquiring arrangement and fees rather than assuming them. |
+| Application credentials | Create dedicated Rupert keys under the correct merchant user: a public tokenization key for browser card entry and a private payment API key for the server, with the permissions needed for the chosen integration. Keep any existing website's keys independent. Store the private key encrypted in tenant-scoped settings. |
 | Testing access | Obtain a separate NMI sandbox merchant and its matching keys. Confirm Payment Component/REST API access for this account; public examples and profile-query success do not prove payment permissions. |
 | Reconciliation access | Confirm the supported transaction lookup/reporting method and, if available, transaction webhooks with their signing key. Establish the processor/account to use if more than one is configured. |
 
 NMI currently recommends its [Payment Component](https://docs.nmi.com/docs/payment-component) with its REST API for new integrations, rather than starting with Collect.js. The public tokenization key is used in the browser; the private key remains server-side. See [frontend integration](https://docs.nmi.com/docs/integration-guide-implement-frontend), [API authentication and separate application keys](https://docs.nmi.com/reference/authentication), [payment examples](https://docs.nmi.com/docs/payment-code-examples) and [transaction/settlement webhooks](https://docs.nmi.com/reference/overview). Some published component examples contain template package names; verify the actual supported SDK/package and contract in sandbox before implementing them.
 
-**Production account boundary:** Rupert has a separate sandbox-only NMI checkout implementation; see [the sandbox guide](https://github.com/techmore/rupert/blob/main/docs/ops/nmi-sandbox-checkout.md). This does not connect or authorize the historical Deep Run Hemp production account. Warehouse checkout and the existing optional POS card path use Authorize.net. Entering an NMI key in Authorize.net fields cannot connect NMI.
+**Production account boundary:** Rupert has a separate sandbox-only NMI checkout implementation; see [the sandbox guide](https://github.com/techmore/rupert/blob/main/docs/ops/nmi-sandbox-checkout.md). This does not connect or authorize any merchant's production NMI account. Warehouse checkout and the existing optional POS card path use Authorize.net. Entering an NMI key in Authorize.net fields cannot connect NMI.
 
 The sandbox implementation now has explicit NMI provider/account selection, encrypted public/private key settings, Collect.js hosted tokenization, REST sale submission and Query API recovery. The server freezes the tax/tip total, persists an attempt before sending a payment and verifies the returned transaction, order reference, USD amount and successful sale action before producing a sandbox receipt. Requests run outside database locks; unresolved outcomes block another charge and reconcile through reads. Sandbox receipts deliberately create no canonical sales, register revenue or stock effects. Production remains blocked in the settings model, checkout preparation and adapter; adding keys cannot remove that boundary.
 
-Dedicated vendor-connected NMI sandbox acceptance is still pending credentials. Demonstrate approvals, declines, token reuse, double-clicks, concurrent submits, lost responses and recovery, tenant/account isolation and exact tax/tip totals, while verifying that sandbox tests create no live revenue or stock effects. Automated contract fixtures are already implemented; they do not establish tokenization-key compatibility, payment permissions or actual vendor acceptance. Refund/void operations need their own implementation and acceptance. HTTPS, required browser policy allowances and no checkout caching remain deployment requirements. After sandbox acceptance and Next Stage scope confirmation, a separately reviewed production implementation and an explicitly owner-authorized live acceptance sale would still be required, with independent capture/settlement and reversal verification. The July WooCommerce sale is not Rupert acceptance.
+Dedicated vendor-connected NMI sandbox acceptance is still pending credentials. Demonstrate approvals, declines, token reuse, double-clicks, concurrent submits, lost responses and recovery, tenant/account isolation and exact tax/tip totals, while verifying that sandbox tests create no live revenue or stock effects. Automated contract fixtures are already implemented; they do not establish tokenization-key compatibility, payment permissions or actual vendor acceptance. Refund/void operations need their own implementation and acceptance. HTTPS, required browser policy allowances and no checkout caching remain deployment requirements. After sandbox acceptance and the ISO's scope confirmation, a separately reviewed production implementation and an explicitly owner-authorized live acceptance sale would still be required, with independent capture/settlement and reversal verification. A past website sale is not Rupert acceptance.
 
 An NMI browser checkout is not an EMV/contactless PAX terminal integration. Confirm the terminal's installed application, processor and supported NMI device integration separately before promising card-present payments or rates.
 
@@ -79,7 +51,7 @@ See the [reviewed sales import and register report guide](https://techmore.githu
 
 ## Set up an account when ready
 
-[Open Rupert provider setup](https://herbalhealers.rupertpos.com/pos_connections). Sign in with your authorized Rupert account.
+Open **POS & payments → Provider setup** (`/pos_connections`) in your Rupert workspace. Sign in with your authorized Rupert account.
 
 Open **System → POS & payments** or **Connections → POS & payments**. Review the provider, record the merchant/store or terminal reference and select the actual account environment. A trial/test label does not create a sandbox; obtain the correct test credentials from the vendor. For Valmar, confirm which gateway serves the account before choosing an adapter. For Authorize.net and NMI, the saved gateway choice reveals its specific credential fields. Recording a gateway or checking it does not configure the existing warehouse checkout or enable charges.
 

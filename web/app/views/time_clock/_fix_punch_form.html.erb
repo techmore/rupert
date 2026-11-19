@@ -1,0 +1,20 @@
+<%# Fix a punch: proposed clock-in/out, the breaks as they were (editable; blank out a row to drop it) and
+    why. The original times and breaks stay on the correction; nothing changes until a reviewer approves. %>
+<%= form_with url: request_correction_time_clock_path(shift), scope: :clock_correction, data: { turbo: false }, class: 'entry-edit-form' do |form| %>
+  <div><%= form.label :proposed_started_at, t('time.clock.page.clock_in_label'), for: "in-#{shift.id}", class: 'field-label' %><%= form.datetime_local_field :proposed_started_at, id: "in-#{shift.id}", value: shift.started_at.in_time_zone.strftime('%Y-%m-%dT%H:%M:%S'), step: 1, required: true, class: 'input' %></div>
+  <div><%= form.label :proposed_ended_at, t('time.clock.page.clock_out_label'), for: "out-#{shift.id}", class: 'field-label' %><%= form.datetime_local_field :proposed_ended_at, id: "out-#{shift.id}", value: shift.ended_at.in_time_zone.strftime('%Y-%m-%dT%H:%M:%S'), step: 1, max: Time.current.strftime('%Y-%m-%dT%H:%M:%S'), required: true, class: 'input' %></div>
+  <fieldset class="fix-punch-breaks sm:col-span-2">
+    <legend class="field-label"><%= t('time.clock.page.breaks') %></legend>
+    <% rows = shift.breaks.sort_by(&:started_at).map { |b| [b.kind, b.started_at, b.ended_at] } + [['rest', nil, nil]] %>
+    <% rows.each_with_index do |(kind, started, ended), index| %>
+      <div class="fix-punch-break">
+        <div><label class="sr-only" for="bk-<%= shift.id %>-<%= index %>"><%= t('time.clock.page.break_kind') %></label><%= select_tag "clock_correction[proposed_breaks][#{index}][kind]", options_for_select([[t('time.clock.page.break_kind'), 'rest'], [t('time.clock.page.meal_kind'), 'meal']], kind), id: "bk-#{shift.id}-#{index}", class: 'select' %></div>
+        <div><label class="sr-only" for="bs-<%= shift.id %>-<%= index %>">Start</label><%= datetime_local_field_tag "clock_correction[proposed_breaks][#{index}][started_at]", started&.in_time_zone&.strftime('%Y-%m-%dT%H:%M'), id: "bs-#{shift.id}-#{index}", class: 'input', placeholder: t('time.clock.page.add_break') %></div>
+        <div><label class="sr-only" for="be-<%= shift.id %>-<%= index %>">End</label><%= datetime_local_field_tag "clock_correction[proposed_breaks][#{index}][ended_at]", ended&.in_time_zone&.strftime('%Y-%m-%dT%H:%M'), id: "be-#{shift.id}-#{index}", class: 'input' %></div>
+      </div>
+    <% end %>
+    <p class="text-xs text-mocha"><%= t('time.clock.page.add_break') %>: fill the empty row. <%= t('time.clock.page.remove_break') %>: clear its times.</p>
+  </fieldset>
+  <div class="sm:col-span-2"><%= form.label :reason, t('time.clock.page.why'), for: "reason-#{shift.id}", class: 'field-label' %><%= form.text_area :reason, id: "reason-#{shift.id}", required: true, maxlength: 1000, class: 'input', rows: 2, placeholder: t('time.clock.page.why_placeholder') %></div>
+  <div class="form-actions sm:col-span-2"><%= form.submit t('time.clock.page.send_fix'), class: 'btn-primary btn-sm', data: { turbo_submits_with: 'Sending…' } %></div>
+<% end %>

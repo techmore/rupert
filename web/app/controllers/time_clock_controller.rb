@@ -4,10 +4,12 @@ class TimeClockController < AuthenticatedController
   before_action -> { response.headers['Cache-Control'] = 'no-store' }
   before_action :active_context
   before_action :authorize_reviewer, only: %i[approve_correction reject_correction]
+  before_action :require_punch_channel, only: %i[clock_in clock_out start_break end_break]
+  before_action { Current.metadata[:punch_ip] = request.remote_ip }
   # Self-service punches: gated by active_context and scoped to Current.user's own shifts (TimeClockService
   # checks the shift owner). Correction reviews are gated by authorize_reviewer (ClockCorrection.reviewer?);
   # commissions still authorize against the module policy.
-  skip_after_action :verify_authorized, only: %i[index clock_in clock_out request_correction fix_clock_out approve_correction reject_correction]
+  skip_after_action :verify_authorized, only: %i[index clock_in clock_out start_break end_break request_correction fix_clock_out approve_correction reject_correction]
   rescue_from TimeClockService::Error, ActiveRecord::RecordInvalid, with: :clock_error
   rescue_from ActiveRecord::StatementInvalid, with: :database_error
 
@@ -34,18 +36,34 @@ class TimeClockController < AuthenticatedController
   end
 
   def clock_in
-    TimeClockService.clock_in(user: Current.user, request_token: params[:request_token].to_s)
-    redirect_to time_clock_path, notice: 'Clock-in recorded.'
+    shift = TimeClockService.clock_in(user: Current.user, request_token: params[:request_token].to_s, source: punch_source,
+      location_id: params[:location_id].presence)
+    redirect_to return_path, notice: t('time.clock.confirm.clocked_in', time: shift.started_at.in_time_zone.strftime('%-l:%M %p'))
   end
 
   def clock_out
-    TimeClockService.clock_out(user: Current.user, shift_id: params[:shift_id])
-    redirect_to time_clock_path, notice: 'Clock-out recorded.'
+    shift = TimeClockService.clock_out(user: Current.user, shift_id: params[:shift_id])
+    redirect_to return_path, notice: t('time.clock.confirm.clocked_out', time: shift.ended_at.in_time_zone.strftime('%-l:%M %p'), hours: format('%.1f', shift.paid_hours))
+  end
+
+  # Break / Meal on the signed-in person's own open shift.
+  def start_break
+    shift = ClockShift.open.find_by!(user_id: Current.user.id)
+    TimeClockService.start_break(shift: shift, kind: params[:kind])
+    key = params[:kind].to_s == 'meal' ? 'meal_started' : 'break_started'
+    redirect_to return_path, notice: t("time.clock.confirm.#{key}", time: Time.current.in_time_zone.strftime('%-l:%M %p'))
+  end
+
+  def end_break
+    shift = ClockShift.open.find_by!(user_id: Current.user.id)
+    TimeClockService.end_break(shift: shift)
+    redirect_to return_path, notice: t('time.clock.confirm.break_ended', time: Time.current.in_time_zone.strftime('%-l:%M %p'))
   end
 
   def request_correction
-    correction = TimeClockService.request_correction(user: Current.user, shift_id: params[:id],
-      attributes: params.require(:clock_correction).permit(:proposed_started_at, :proposed_ended_at, :reason).to_h.symbolize_keys)
+    attrs = params.require(:clock_correction).permit(:proposed_started_at, :proposed_ended_at, :reason, proposed_breaks: %i[kind started_at ended_at _destroy]).to_h.symbolize_keys
+    attrs[:proposed_breaks] = attrs[:proposed_breaks].values if attrs[:proposed_breaks].is_a?(Hash)
+    correction = TimeClockService.request_correction(user: Current.user, shift_id: params[:id], attributes: attrs)
     if correction.clock_shift.user_id == Current.user.id
       redirect_to time_clock_path, notice: 'Correction requested. Your shift stays unchanged until review.'
     else
@@ -76,6 +94,17 @@ class TimeClockController < AuthenticatedController
   end
 
   private
+
+  # Punches from the staff home go back there; everything else returns to the time clock.
+  def return_path
+    params[:return_to].to_s == 'home' ? employee_app_path : time_clock_path
+  end
+
+  # Where this punch comes from is decided by the server, never the form: the iPhone app's own
+  # browser is 'ios', everything else 'web'. Each has its own switch at Settings → Time rules.
+  def punch_source = hotwire_native_app? ? 'ios' : 'web'
+
+  def require_punch_channel = TimeClockService.require_channel!(punch_source)
 
   def active_context
     return if Current.user.active? && Current.tenant&.status == 'active'

@@ -2,9 +2,12 @@
 
 class ApplicationController < ActionController::Base
   layout :workspace_layout
+  rescue_from TimeRules::FeatureDisabled, with: :time_feature_disabled
   before_action :reject_preview_mutation
   before_action :enforce_workspace_hostname
   before_action :set_current_context
+  around_action :use_business_zone
+  around_action :switch_locale
   before_action :require_login
   before_action :identify_trace_session
   before_action :enforce_instance_support_access
@@ -37,8 +40,13 @@ class ApplicationController < ActionController::Base
     allowed = case controller_path
     when 'learning'
       %w[index show complete preferences welcome onboard].include?(action_name)
-    when 'sessions', 'oauth', 'employee_app', 'employee_workspace', 'employee_training', 'employee_preview', 'customer_displays', 'feedback_reports',
-      'next_things' # the Next thing to do bar: an employee sees only their own tasks there (NextThings)
+    when 'lms/courses', 'lms/lessons' # the Learning center: a staff account reads its own courses and answers its own quizzes
+      %w[index show badge quiz].include?(action_name)
+    when 'sessions', 'oauth', 'employee_app', 'employee_workspace', 'employee_pay', 'employee_training', 'employee_preview', 'customer_displays', 'feedback_reports',
+      'employee_trades', 'employee_availability', # time & pay: schedule
+      'next_things', # the Next thing to do bar: an employee sees only their own tasks there (NextThings)
+      'employee_notifications', 'native/push_devices', # time & pay: ios — own notification choices and push devices
+      'account_deletions' # App Store 5.1.1(v): every account, staff included, can delete itself from the app
       true
     when 'employee_access'
       %w[edit update].include?(action_name)
@@ -66,7 +74,9 @@ class ApplicationController < ActionController::Base
     when 'people/square_timesheets', 'people/ctrax_timesheets'
       %w[index show].include?(action_name)
     when 'time_clock'
-      %w[index clock_in clock_out request_correction fix_clock_out].include?(action_name)
+      %w[index clock_in clock_out request_correction fix_clock_out start_break end_break].include?(action_name)
+    when 'pin_clock' # time & pay: clock — the PIN pad; the service only accepts the signed-in person's own PIN here
+      true
     when 'point_of_sale', 'ctrax_pos'
       %w[index quote].include?(action_name)
     when 'pos_displays', 'pos_checkouts', 'pos_event_registers' # event register: the recorder checks the event's staff list
@@ -167,6 +177,50 @@ class ApplicationController < ActionController::Base
     else
       email.present? && email == user.email
     end
+  end
+
+  # Every request runs on the workspace's clock (Tenant#time_zone, else the instance default), so
+  # "today", week and pay-period boundaries and displayed times are the business's, not the server's.
+  def use_business_zone(&)
+    name = Current.tenant&.time_zone.presence
+    return yield unless name
+
+    Time.use_zone(BusinessClock.display_zone(name), &)
+  end
+
+  # A time feature an administrator turned off (Settings → Time rules).
+  def time_feature_disabled(error)
+    respond_to do |format|
+      format.html { redirect_to(Current.user&.employee? || controller_path.start_with?('employee_') ? employee_app_path : root_path, alert: error.message) }
+      format.any { render json: { ok: false, error: 'feature_disabled', feature: error.feature, message: error.message }, status: :forbidden }
+    end
+  end
+
+  def require_time_feature(*names)
+    names.each { |name| TimeRules.require_feature!(name) }
+  end
+
+  # Staff-facing pages render in the worker's language (People::Employee#locale, 'en' or 'es');
+  # management pages stay in English. The locale never comes from the request.
+  def switch_locale(&)
+    locale = Current.user && localized_controller? && I18n.available_locales.include?(worker_locale) ? worker_locale : I18n.default_locale
+    I18n.with_locale(locale, &)
+  end
+
+  # Only staff-facing controllers read the worker's language (one small query, cached in the session
+  # until the worker changes it); management and preview pages never touch the staff record for this.
+  LOCALIZED_CONTROLLERS = %w[employee_app employee_workspace employee_pay employee_training time_clock pin_clock employee_trades
+                             employee_notifications notifications].freeze
+
+  def localized_controller?
+    return false if params[:preview].present? || controller_path == 'employee_preview'
+
+    Current.user.employee? || LOCALIZED_CONTROLLERS.include?(controller_path) || controller_path.start_with?('api/v1/employee')
+  end
+
+  def worker_locale
+    @worker_locale ||= (session[:worker_locale].presence ||
+      session[:worker_locale] = (People::Employee.where(tenant_id: Current.tenant_id, user_id: Current.user&.id).pick(:locale).presence || 'en')).to_sym
   end
 
   def set_current_context

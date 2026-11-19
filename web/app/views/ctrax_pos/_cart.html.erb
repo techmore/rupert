@@ -21,7 +21,7 @@
   <% end %>
 
   <% if @display %>
-    <section class="pos-checkout" aria-labelledby="pos-checkout-title" data-controller="pos-checkout" data-pos-checkout-url-value="<%= pos_checkouts_path %>" data-pos-checkout-display-id-value="<%= @display.id %>" data-pos-checkout-demo-value="<%= demo %>">
+    <section class="pos-checkout" aria-labelledby="pos-checkout-title" data-controller="pos-checkout" data-pos-checkout-url-value="<%= pos_checkouts_path %>" data-pos-checkout-display-id-value="<%= @display.id %>" data-pos-checkout-demo-value="<%= demo %>" data-pos-checkout-terminal-value="<%= @pos_setting&.gateway_provider == 'dejavoo_spin' %>">
       <h3 id="pos-checkout-title" class="pos-checkout-title">Checkout<%= ' · Demo' if demo %></h3>
       <p class="pos-checkout-hint">The customer confirms their tip on their screen first. Prices and tax are checked again before payment.</p>
       <%= form_tag pos_checkouts_path, method: :post, class: 'pos-checkout-form', data: { action: 'submit->pos-checkout#submit', busy: false, turbo: false } do %>

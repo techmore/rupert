@@ -38,7 +38,7 @@ function EmployeeApp() {
     if (value) { const saved = JSON.parse(value) as Login; instanceOrigin(saved.origin); setOrigin(saved.origin); setLogin(saved); }
   }).catch(() => setMessage('Sign in to reconnect your staff account.')).finally(() => setReady(true)); }, []);
   async function clearSession() {
-    loginRef.current = null; setLogin(null); setSheets([]); setSheet(null); setShifts([]); setCreating(false); setCorrection(null); setPassword('');
+    loginRef.current = null; setLogin(null); setSheets([]); setSheet(null); setShifts([]); setCreating(false); setCorrection(null); setPassword(''); setName(''); setWorkspace('');
     await SecureStore.deleteItemAsync(storageKey);
   }
   async function api(path: string, method = 'GET', body?: unknown, credentials = loginRef.current) {
@@ -78,7 +78,7 @@ function EmployeeApp() {
       const response = await fetch(`${cleanOrigin}/api/v1/employee/session`, { method: 'POST', credentials: 'omit', redirect: 'error', signal: controller.signal,
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ email: email.trim(), password, device_name: `${Platform.OS === 'ios' ? 'iPhone / iPad' : 'Android'} app` }) });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || (response.status === 429 ? 'Too many attempts. Try again in 15 minutes.' : 'Check your email and password.'));
+      if (!response.ok) throw new Error(data.message || (response.status === 429 ? 'Too many attempts. Try again in 15 minutes.' : 'Check your email and password, and that the address is your own workspace.'));
       const credentials = { origin: cleanOrigin, token: data.token };
       await SecureStore.setItemAsync(storageKey, JSON.stringify(credentials), storageOptions);
       setPassword(''); setLogin(credentials);

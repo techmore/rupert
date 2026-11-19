@@ -1,0 +1,136 @@
+es:
+  date:
+    abbr_day_names: [dom, lun, mar, mié, jue, vie, sáb]
+    day_names: [domingo, lunes, martes, miércoles, jueves, viernes, sábado]
+    abbr_month_names: [~, ene, feb, mar, abr, may, jun, jul, ago, sep, oct, nov, dic]
+    month_names: [~, enero, febrero, marzo, abril, mayo, junio, julio, agosto, septiembre, octubre, noviembre, diciembre]
+    formats:
+      default: "%d/%m/%Y"
+      short: "%-d %b"
+      long: "%-d de %B de %Y"
+  time:
+    schedule:
+      title: Horario
+      subtitle: Tus turnos publicados, turnos abiertos que puedes tomar y tu equipo.
+      request_time_off: Pedir tiempo libre
+      my_trades: Mis cambios
+      subscribe: Agregar a mi calendario
+      previous_week: Semana anterior
+      next_week: Semana siguiente
+      planned_hours: "%{hours} horas planeadas"
+      this_week: Esta semana
+      back_to_this_week: Volver a esta semana
+      back_to_schedule: Volver al horario
+      view: Vista
+      mine: Mis turnos
+      team: Equipo
+      shifts_this_week: Turnos de esta semana
+      open_shift: Turno abierto
+      blackout: Fecha ocupada
+      no_shift: Sin turno planeado
+      footnote: "Los turnos publicados aún pueden cambiar; tu gerente te avisa cuando pasa. Las horas que trabajas vienen del reloj. Horas en %{zone}."
+      availability:
+        title: Disponibilidad
+        mine: Mi disponibilidad
+        subtitle: Dile a tu gerente cuándo no puedes trabajar. El planificador lo ve antes de asignar un turno.
+        empty: Aún no hay bloques. Agrega un día y hora en que esta persona no puede trabajar.
+        empty_self: Aún no marcaste nada. Agrega los días u horas en que no puedes trabajar.
+        all_day: Todo el día
+        day: Día
+        kind: Tipo
+        from: Desde
+        to: Hasta
+        note: Nota (opcional)
+        add: Agregar
+        remove: Quitar
+        saved: Disponibilidad guardada.
+        removed: Disponibilidad quitada.
+        kinds:
+          unavailable: No disponible
+          available: Disponible
+          preferred: Preferido
+      trades:
+        subtitle: Regala un turno, cámbialo con un compañero o toma uno abierto. Un gerente confirma la mayoría de los cambios.
+        offers: Disponibles para tomar
+        no_offers: Nada disponible por ahora
+        no_offers_hint: Cuando un compañero regale un turno o te ofrezca un cambio, aparece aquí.
+        mine: Mis solicitudes
+        none_yet: Aún no hay cambios
+        none_yet_hint: Abre tu horario y elige Cambiar este turno, o toma un turno abierto.
+        change_this_shift: Cambiar este turno
+        confirm_give: ¿Ofrecer este turno a tus compañeros? Sigue siendo tuyo hasta que alguien lo tome y un gerente confirme.
+        pick_shift: Elige el turno de un compañero…
+        take_it: Tomar este turno
+        agree_swap: Aceptar el cambio
+        cancel: Cancelar
+        you_picked_up: Tomaste este turno.
+        taken_by: "%{name} lo va a tomar."
+        waiting_for_taker: Esperando a que alguien lo tome.
+        from_name: "De %{name}."
+        for_shift: "por %{shift}"
+        swap_from: "%{name} ofrece cambiar por tu %{shift}."
+        give_from: "%{name} está regalando este turno."
+        accepted_done: "Listo. El turno es tuyo."
+        accepted_waiting: "Enviado a tu gerente para confirmar."
+        cancelled: Cambio cancelado.
+        sent:
+          give: Tu turno está disponible. Te avisamos cuando alguien lo tome.
+          swap: Cambio ofrecido. Te avisamos cuando tu compañero responda.
+          pickup: Enviado. Te avisamos cuando esté confirmado.
+        kinds:
+          give: Regalar
+          swap: Cambiar
+          pickup: Tomar
+        status:
+          open: Abierto
+          accepted: En espera
+          approved: Aprobado
+          denied: Rechazado
+          cancelled: Cancelado
+          expired: Vencido
+    time_off:
+      title: Tiempo libre
+      subtitle: Pide días libres y mira cuánto te queda.
+      request: Pedir tiempo libre
+      balances: Saldos
+      remaining_of: "quedan de %{total} h"
+      accrual_note: "El tiempo por enfermedad crece unas %{hours} h por cada 30 horas que trabajas."
+      type: Tipo
+      first_day: Primer día
+      last_day: Último día
+      more_options: Horas y nota
+      hours: Horas libres
+      hours_help: Déjalo vacío para usar tus turnos publicados de esos días (8 h por día de semana si no hay turnos).
+      note: Nota para tu gerente (opcional)
+      send: Pedir tiempo libre
+      sending: Enviando…
+      sent: Solicitud enviada. Tu gerente responderá aquí.
+      already_sent: Esa solicitud ya se envió.
+      cancelled: Solicitud cancelada.
+      reviewed_already: Pide a tu gerente cambiar el tiempo libre que ya fue revisado.
+      my_requests: Mis solicitudes
+      none_yet: Aún no hay solicitudes
+      none_yet_hint: Elige un tipo y tus días arriba.
+      cancel_request: Cancelar solicitud
+      ask_manager: Pregunta a tu gerente si estas fechas aprobadas necesitan cambiar.
+      notice_days: "Pide con al menos %{days} días de anticipación cuando puedas."
+      blackouts: Fechas ocupadas
+      previous_month: Mes anterior
+      next_month: Mes siguiente
+      calendar: Tu calendario
+      calendar_note: "Horas y tiempo libre por día. Los días vacíos no tienen registros; esto no es un horario de trabajo. Horas en %{zone}."
+      types:
+        vacation: Vacaciones
+        sick: Enfermedad
+        personal: Personal
+        unpaid: Sin pago
+      short:
+        vacation: Vac
+        sick: Enf
+        personal: Libre
+        unpaid: Libre
+      status:
+        requested: En espera
+        approved: Aprobado
+        denied: Rechazado
+        cancelled: Cancelado

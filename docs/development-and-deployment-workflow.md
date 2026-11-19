@@ -32,6 +32,13 @@ path-filtered and is not a required check. Treat current GitHub settings as the
 source of truth; see [issue #206](https://github.com/techmore/rupert/issues/206)
 for the protection history and test receipts.
 
+`CI (sqlite3)` is a gate job: the Rails suite runs as three parallel shards
+(`CI tests (n/3)`, split by `web/bin/test-shard`) beside `CI checks` (lint,
+migration checks, card-data and module tests). The gate always runs, fails
+unless every one of those jobs succeeded, merges the shards' coverage
+(`web/bin/merge-coverage-shards`) and enforces the coverage floors. Only its
+name is required, so branch protection and the SER8 deploy gate are unchanged.
+
 A read on 2026-10-25 confirmed `enforce_admins` is on. An administrator
 therefore cannot bypass the rules: a direct push to `main` was rejected with
 `GH006: Protected branch update failed` (tested 2026-10-20), and
@@ -53,8 +60,11 @@ like CI, run on pull requests and `main` pushes only. PR runs of CI, Security
 and Employee mobile cancel when the PR gets a newer head; `main` runs never
 cancel each other, so every integrated SHA gets its own result. The
 security workflow runs for pull requests, `main` pushes and its scheduled
-scans. Cancellation should supersede older runs for the same PR, not serialize
-unrelated work. Keep required check names stable and do not let path filters
+scans. The `iPhone app` workflow (`.github/workflows/ios.yml`) builds `ios/`
+for the iOS Simulator on a macOS runner, unsigned, and runs the Swift package's
+unit tests when `ios/**` or the workflow changes; it is advisory: not a required
+check and not read by the updater. Cancellation should supersede older runs for
+the same PR, not serialize unrelated work. Keep required check names stable and do not let path filters
 silently skip a required check.
 
 After a merge, verify the checks for the exact integrated `main` SHA. Preserve

@@ -46,7 +46,12 @@ class BackupKeysTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_equal 'no-store', response.headers['Cache-Control']
     assert_select '#backup-key[data-backup-key-state=missing]'
-    assert_select 'input[type=submit][value=?]', 'Create backup key'
+    assert_select '#backup-key[data-backup-health=off]', text: /Backups are off.*Nothing is being backed up/m
+    assert_select '#backup-key-create h2', 'Turn on backups'
+    assert_select 'form[data-action="submit->backup-status#watch"] input[type=submit][value=?]', 'Turn on backups'
+    assert_select '#backup-key-pending', false
+    get settings_backups_path(format: :json)
+    assert_equal '::off', response.parsed_body['signature']
 
     log = Rails.root.join('log/test.log')
     log_offset = log.exist? ? log.size : 0
@@ -146,7 +151,7 @@ class BackupKeysTest < ActionDispatch::IntegrationTest
     sign_in
     get settings_path
     assert_select 'a[href=?]', settings_backups_path
-    assert_match(/Server backups are not encrypted yet/, response.body)
+    assert_match(/Server backups are off/, response.body)
     get system_path
     assert_select '[data-backup-key-missing] a[href=?]', settings_backups_path
   end

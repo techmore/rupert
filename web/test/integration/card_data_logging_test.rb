@@ -43,7 +43,26 @@ class CardDataLoggingTest < ActionDispatch::IntegrationTest
     end
     assert lines.any?
     assert_no_card_data(ops_raw)
-    refute_includes ops_raw, '987'
+    # The CVC as a logged value; a bare "987" also matches counters such as
+    # "allocations":2987 and made this test flaky.
+    refute_match(/[":=\s]987(?!\d)|"987"/, ops_raw.gsub(/"(?:allocations|bytes|duration_ms|db_ms|user_id)":[\d.]+/, ''))
+  end
+
+  # Dejavoo result field names (SPIn, FEED and the planned iPhone hand-off through iPOSgo!).
+  # Rupert takes no such request today; this proves the names are already hidden if one arrives.
+  test 'Dejavoo payment result fields beyond the whitelist never reach the request log' do
+    sign_in(@admin)
+    capture_ops_log do
+      post locations_path, params: { AcntFirst4: '4111', First4: '4111', BIN: '411111', iPOSToken: 'CE268D77935FDBF3F9C7', cardToken: 'TOK-77935FDB',
+        maskedPan: '411111******1111', chName: 'DOE/JOHN Q', CardData: { Name: 'DOE/JOHN Q', ExpirationDate: '2512101' },
+        Spin_Response: { ExtData: { AcntFirst4: '4111', AcntLast4: '1111' }, iPOSToken: 'CE268D77935FDBF3F9C7' },
+        ExtData: { AcntFirst4: '4111' }, location: { name: '' } }
+    end
+    assert_no_card_data(ops_raw)
+    %w[CE268D77935FDBF3F9C7 TOK-77935FDB 411111 "4111"].each { |secret| refute_includes ops_raw, secret }
+    filter = ActiveSupport::ParameterFilter.new(Rails.application.config.filter_parameters)
+    kept = filter.filter('amount' => '13.40', 'rrn' => '400907500270', 'batch_number' => '121', 'card_last_four' => '1111', 'entry_type' => 'tap-on-phone')
+    assert_equal %w[13.40 400907500270 121 1111 tap-on-phone], kept.values, 'reconciliation fields still log'
   end
 
   test 'an exception carrying track data is logged and stored without it' do

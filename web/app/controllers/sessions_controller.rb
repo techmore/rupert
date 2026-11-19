@@ -60,6 +60,8 @@ class SessionsController < ApplicationController
 
   def destroy
     AccessLogger.record(source: 'logout', status: 'success', request: request, user: Current.user)
+    # Signing out of the iPhone app stops its notifications at once; the app registers again at the next sign-in.
+    PushDevice.disable_all_for(Current.user, 'signed out', platform: 'ios') if Current.user && hotwire_native_app?
     reset_session
     Current.user = nil
     redirect_to(login_path, notice: 'Signed out')
