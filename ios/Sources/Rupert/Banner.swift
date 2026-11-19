@@ -122,6 +122,11 @@ final class BannerWebViewController: HotwireWebViewController {
         if let title = navigationItem.title, title.hasSuffix(" · Rupert") {
             navigationItem.title = String(title.dropLast(" · Rupert".count))
         }
+        // The page shown right after Sign out appears while the tabs are being replaced, before
+        // it is its navigation stack's first page; it gets its App settings button here.
+        if navigationController?.viewControllers.first === self, presentingViewController == nil {
+            AppSettings.addButton(to: self)
+        }
         guard let webView = visitableView.webView else { return }
         // Sheets have their own title and Cancel; Rupert hides its menu bar and "Next" card in them.
         if presentingViewController != nil {
