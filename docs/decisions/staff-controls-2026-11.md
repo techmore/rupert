@@ -15,10 +15,10 @@ request yet; say which you want and they will be built the same way.
 
 | | Decision | Recommended | Pull request |
 |---|---|---|---|
-| a | Cashier refunds with no approval | A manager PIN for every cashier refund | DRAFT_A |
-| b | Custom tip up to $999,999.99 | Cap a custom tip at $20 or half the sale, whichever is more | DRAFT_B |
-| c | "Offline" event sales skip item blocks | Only when the block came after the sale | DRAFT_C |
-| d | Override PIN: four digits, anyone can lock a manager out | Six digits; wrong guesses count against the cashier | DRAFT_D |
+| a | Cashier refunds with no approval | A manager PIN for every cashier refund | [#672](https://github.com/techmore/rupert/pull/672) |
+| b | Custom tip up to $999,999.99 | Cap a custom tip at $500 | [#673](https://github.com/techmore/rupert/pull/673) |
+| c | "Offline" event sales skip item blocks | Only when the block came after the sale | [#674](https://github.com/techmore/rupert/pull/674) |
+| d | Override PIN: four digits, anyone can lock a manager out | Six digits; wrong guesses count against the cashier | [#675](https://github.com/techmore/rupert/pull/675) |
 | e | Managers cannot ring a sale | Let managers use the register | not built |
 | f | Any register user can run a demo sale | Limit demo mode to managers and owners | not built |
 | g | Clock-in at a store the worker is not assigned to | Refuse it, with a message | not built |
@@ -51,7 +51,7 @@ audit trail and the daily exception report.
 `Compliance::SaleGate.approve_refund!` (approver, PIN, reason, lockout; writes
 `override_granted` / `override_refused` with `source: refund`) before `Pos::CardReversal.call`.
 `web/app/views/pos_checkouts/show.html.erb`: add the manager list and PIN field to the refund
-form for those accounts. No migration. Pull request: DRAFT_A.
+form for those accounts. No migration. Pull request: [#672](https://github.com/techmore/rupert/pull/672).
 
 ---
 
@@ -70,14 +70,15 @@ shared to the cashier who rang it".
 **Risk.** A cashier can record a large tip the customer never gave and have it show as tips
 owed to them, and an honest slip of the finger (500 for 5.00) goes straight through.
 
-**Recommended.** A custom tip may be at most $20.00 or 50% of the sale before tax, whichever is
-more. Above that the customer screen says what the largest custom tip is. The 10/15/20% buttons
-and "No tip" are unchanged, and no sum is calculated differently.
+**Recommended.** A custom tip may be at most $500.00, whatever the sale. Above that the customer
+screen says what the largest custom tip is. The 10/15/20% buttons and "No tip" are unchanged,
+and no sum is calculated differently. (First proposed as $20 or half the sale; the owner asked
+for a more generous limit, because people do tip hundreds on a small order. A flat $500 still
+stops the six-figure entry; it does not stop 500 typed for 5.00.)
 
-**Code change.** `web/app/models/pos_display_session.rb#choose_tip!`: two constants
-(`CUSTOM_TIP_FLOOR_CENTS`, `CUSTOM_TIP_MAX_PERCENT`) and a `:too_large` answer for a custom
-amount above the cap. `web/app/controllers/customer_displays_controller.rb#tip`: turn
-`:too_large` into the message. No migration. Pull request: DRAFT_B.
+**Code change.** `web/app/models/pos_display_session.rb#choose_tip!`: one constant
+(`CUSTOM_TIP_MAX_CENTS`) and a `:too_large` answer for a custom amount above the cap. `web/app/controllers/customer_displays_controller.rb#tip`: turn
+`:too_large` into the message. No migration. Pull request: [#673](https://github.com/techmore/rupert/pull/673).
 
 ---
 
@@ -98,15 +99,18 @@ same sale marked offline and timed after the suspension is recorded and flagged"
 up only as a flagged line on the next day's exception report.
 
 **Recommended.** Keep the offline allowance only for its purpose: a block that appeared *after*
-the sale was made. If the item's approval, category and lab reports were last changed before the
-time the device gives, the item was already blocked when it was sold, and the sale is refused
-like an online one. The device keeps a refused sale in its "refused" list so the money can be
-dealt with by a manager.
+the sale was made. If the item (or, for a category or lab-report rule, its category or its
+certificates) was last changed before the time the device gives, the item was already blocked
+when it was sold, and the sale is refused like an online one. The device keeps a refused sale in
+its "refused" list so a manager can deal with the money. This narrows the gap rather than
+closing it: the time still comes from the device, so a seller who sends a made-up time from
+before the suspension is still recorded and flagged.
 
 **Code change.** `web/app/services/pos/event_sale_recorder.rb#record!`: the "record and flag"
-branch additionally requires that every blocking line's catalog item (or its category or
-certificates) has `updated_at` later than `occurred_at`; otherwise it goes through
-`Compliance::SaleGate.enforce!` as an online sale does. No migration. Pull request: DRAFT_C.
+branch additionally requires, for every blocking line, that the record behind the block has
+`updated_at` later than `occurred_at`; otherwise the sale goes through
+`Compliance::SaleGate.enforce!` as an online sale does. No migration. Pull request:
+[#674](https://github.com/techmore/rupert/pull/674).
 
 ---
 
@@ -125,13 +129,13 @@ cashier guessing five at a time can work through every four-digit PIN in about t
 **Recommended.** New PINs must be 6 to 8 digits (existing shorter PINs keep working until the
 manager next changes theirs; ask managers to do so). Wrong guesses count against the signed-in
 cashier who typed them: five in 15 minutes, or ten in a day, stop *that cashier* asking for
-overrides, and the manager's PIN keeps working for everyone else.
+overrides from any manager, and the manager's PIN keeps working for everyone else.
 
 **Code change.** `web/app/models/user.rb#pos_override_pin=`: require `\d{6,8}` for a new PIN.
 `web/app/services/compliance/sale_gate.rb#locked_out?`: count `override_refused` / `wrong_pin`
 rows by `user_id` (the cashier) instead of `approver_id`, plus a 24-hour count.
 `web/app/views/compliance/override_pins/edit.html.erb`: the wording. No migration. Pull
-request: DRAFT_D.
+request: [#675](https://github.com/techmore/rupert/pull/675).
 
 ---
 
