@@ -166,9 +166,9 @@ bin/dev
 
 Sign in at `http://localhost:3000/login` as `owner@test-bakery.example`, then:
 
-1. Open `/billing`. It shows the trial. Choose Monthly, tick the box, continue to Stripe, and pay with the test card `4242 4242 4242 4242`. Stripe sends you back to an `https://localhost` address that will not load locally; that is expected, and nothing depends on it. Reload `http://localhost:3000/billing`: once `stripe listen` shows the events delivered with status 200, the state is Trial (carried into Stripe) or Active.
+1. Open `/billing`. It shows the trial. Choose Monthly, tick the box, continue to Stripe, and pay with the successful-payment test card listed in [Stripe's testing guide](https://docs.stripe.com/testing) (card numbers are deliberately not written in this repository). Stripe sends you back to an `https://localhost` address that will not load locally; that is expected, and nothing depends on it. Reload `http://localhost:3000/billing`: once `stripe listen` shows the events delivered with status 200, the state is Trial (carried into Stripe) or Active.
 2. Replay an event: `stripe events resend <evt_id>`. The delivery returns 200 and nothing changes.
-3. Fail a payment: in the Stripe dashboard, replace the customer's card with `4000 0000 0000 0341` and advance a [test clock](https://docs.stripe.com/billing/testing/test-clocks) past the renewal, or run `stripe trigger invoice.payment_failed` for an unrelated event to see it ignored. `/billing` shows the failed payment and the date full use ends.
+3. Fail a payment: in the Stripe dashboard, replace the customer's card with the "attaches, then fails on charge" test card from the same guide and advance a [test clock](https://docs.stripe.com/billing/testing/test-clocks) past the renewal, or run `stripe trigger invoice.payment_failed` for an unrelated event to see it ignored. `/billing` shows the failed payment and the date full use ends.
 4. Cancel from Manage billing. The page says when the subscription ends. Cancel immediately in the dashboard to see read-only mode: pages open, exports download, saving anything is refused with an explanation.
 5. Subscribe again from `/billing`. The same Stripe customer is reused.
 6. As a platform administrator, open `/platform/billing` and try Mark exempt, Make billable and Comp a plan.
