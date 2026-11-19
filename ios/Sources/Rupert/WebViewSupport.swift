@@ -54,6 +54,7 @@ enum WebViewSupport {
         controller.addUserScript(WKUserScript(source: connectLateTurbo, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         BannerBridge.install(in: controller)
         BarcodeScanner.install(in: controller)
+        ReaderBridge.install(in: controller)
     }
 
     /// The diagnostics of the page in `webView`, as readable lines.
