@@ -3,3 +3,5 @@
 # Made-up webhook signing keys that sign test requests (F69).
 web/test/integration/pos_webhooks_test.rb:generic-api-key:9
 web/test/integration/pos_webhooks_test.rb:generic-api-key:10
+# Made-up iPOS Transact sandbox token used only in stubbed tests.
+web/test/services/ipos_transact_gateway_test.rb:generic-api-key:11

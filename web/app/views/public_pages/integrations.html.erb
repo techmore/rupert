@@ -1,6 +1,8 @@
 <%# Integrations: public. What Rupert connects to today, in the same terms as web/config/product_roadmap.json
     (Available / Partial / Planned). Keep it in step with the roadmap, and do not name a partner here
-    until there is a working, agreed integration. Never name customers.
+    until there is a working, agreed integration. Naming a provider is a statement of fact only: never
+    "certified", "approved" or "official partner", and no provider logos, without written permission
+    (bin/release-audit checks this; docs/compliance/dejavoo-tap-to-pay-compliance.md). Never name customers.
     OWNER REVIEW: Google Drive is marked Partial because the Google OAuth app was still in Testing
     (docs/ops/google-backup-verification.md); mark it Available once any workspace can connect. %>
 <% content_for :title, 'Integrations' %>
@@ -15,7 +17,8 @@
        ['Authorize.net', 'Partial', 'Card checkout through Authorize.net hosted card fields, plus read-only transaction reporting. Live use depends on the merchant’s own Authorize.net account and its approval.'],
        ['NMI', 'Partial', 'Card checkout through NMI hosted card fields, on test accounts only. Live charging is switched off.'],
        ['Processor deposit reports', 'Partial', 'Reads deposit reports from supported merchant portals to check them against the register.'],
-       ['Card terminals', 'Planned', 'Semi-integrated terminals, where the card is read on the terminal and Rupert receives only the result. Not available yet.']
+       ['Dejavoo terminals and payment page', 'Partial', 'Counter terminals (the card is read on the terminal and Rupert receives only the result) and Dejavoo’s hosted payment page, on Dejavoo’s test system only. Live payments are switched off until the merchant’s processor approves the account.'],
+       ['Card payments on a phone', 'Planned', 'Taking an in-person contactless payment on an iPhone through the payment provider’s own app. Not available yet, and it will not work on iPad.']
      ]],
      ['Books and files', [
        ['QuickBooks', 'Available', 'Imports QuickBooks data, and exports the ledger as QuickBooks IIF or CSV.'],
@@ -24,7 +27,7 @@
      ]]
    ] %>
 <div class="page-medium space-y-6">
-  <%= page_header 'Integrations', subtitle: 'What Rupert connects to today. Updated Nov 2, 2026.' %>
+  <%= page_header 'Integrations', subtitle: 'What Rupert connects to today. Updated Nov 17, 2026.' %>
 
   <section class="section-card">
     <%= section_heading 'How connections work' %>
@@ -52,7 +55,7 @@
 
   <section class="section-card">
     <%= section_heading 'Payments and security' %>
-    <p class="text-sm">Rupert never receives full card numbers. How card payments are kept out of Rupert’s servers: <%= link_to 'Security and data handling', security_statement_path(anchor: 'card-payments'), class: 'text-olive underline' %>. For a feature-by-feature list, see the <%= link_to 'product roadmap', 'https://techmore.github.io/rupert/roadmap.html', class: 'text-olive underline' %>.</p>
+    <p class="text-sm">Rupert never receives full card numbers. Providers are named only to say what Rupert connects to: Rupert is not endorsed by them, and the merchant’s own processor decides which businesses and products it accepts. How card payments are kept out of Rupert’s servers: <%= link_to 'Security and data handling', security_statement_path(anchor: 'card-payments'), class: 'text-olive underline' %>. For a feature-by-feature list, see the <%= link_to 'product roadmap', 'https://techmore.github.io/rupert/roadmap.html', class: 'text-olive underline' %>.</p>
   </section>
 
   <%= render 'public_pages/policy_links' %>

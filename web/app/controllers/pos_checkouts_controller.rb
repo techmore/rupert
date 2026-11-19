@@ -26,7 +26,28 @@ class PosCheckoutsController < AuthenticatedController
       checkout.terminal_card? ? Pos::Checkout.terminal_card!(checkout) : Pos::Checkout.cash!(checkout, received: params[:cash_received])
       PosInventoryJob.perform_later(checkout.id) unless checkout.demo?
     end
-    render json: checkout.receipt
+    send_to_terminal(checkout) if checkout.dejavoo_terminal?
+    render json: checkout.reload.receipt
+  end
+
+  # Sends (or, after a decline or cancel, re-sends) the sale to the store's
+  # Dejavoo terminal. Answers at once; the terminal wait runs in a job.
+  def terminal
+    checkout = checkout_scope.find(params[:id])
+    raise Pos::Error, 'This checkout does not use a payment terminal.' unless checkout.dejavoo_terminal?
+
+    send_to_terminal(checkout)
+    render json: checkout.reload.receipt
+  end
+
+  # Asks the terminal to stop waiting for the card. Nothing is charged twice:
+  # the waiting sale reports its own result.
+  def terminal_cancel
+    checkout = checkout_scope.find(params[:id])
+    raise Pos::Error, 'This checkout does not use a payment terminal.' unless checkout.dejavoo_terminal?
+
+    Pos::DejavooTerminalPayment.abort!(checkout)
+    render json: checkout.reload.receipt
   end
 
   def show
@@ -61,9 +82,10 @@ class PosCheckoutsController < AuthenticatedController
     message = case reversal.status
     when 'succeeded' then "#{reversal.kind == 'void' ? 'Voided' : 'Refunded'} #{format('%.2f', reversal.amount_cents / 100.0)} USD on the original card."
     when 'failed' then "Not reversed: #{reversal.failure_message}"
+    when 'submitting' then "Refund of #{format('%.2f', reversal.amount_cents / 100.0)} USD sent to the terminal. Ask the customer to tap or insert the card there, then recheck the refund status."
     else 'The gateway outcome is uncertain. Recheck before trying again; nothing new was sent.'
     end
-    redirect_to pos_checkout_path(checkout), (reversal.status == 'succeeded' ? :notice : :alert) => message
+    redirect_to pos_checkout_path(checkout), (%w[succeeded submitting].include?(reversal.status) ? :notice : :alert) => message
   rescue Pos::Error => e
     redirect_to pos_checkout_path(checkout), alert: e.message
   end
@@ -79,6 +101,11 @@ class PosCheckoutsController < AuthenticatedController
   end
 
   private
+
+  def send_to_terminal(checkout)
+    attempt = Pos::DejavooTerminalPayment.start!(checkout)
+    PosTerminalSaleJob.perform_later(attempt.id) if attempt
+  end
 
   def checkout_scope
     Current.user.admin? || Current.user.super_admin? ? PosCheckout.all : PosCheckout.where(user_id: Current.user.id)

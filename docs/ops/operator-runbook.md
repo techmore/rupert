@@ -48,7 +48,7 @@ Shopify sends `customers/data_request`, `customers/redact`, `shop/redact`, `app/
 | Chat, payroll, HR and 1099 columns | database | encrypted at rest since #421; run `CONFIRM=1 bin/rails ops:encrypt_sensitive_fields` once after upgrading ([encryption-at-rest.md](encryption-at-rest.md)) | — |
 | Square access token | Settings → env (`SQUARE_ACCESS_TOKEN`) | create a new token in the Square developer dashboard for the same environment, save, run a Square sync | — |
 | Google OAuth / Drive | Settings → Google sign-in and Drive sections | regenerate the client secret in Google Cloud, save; reconnect Drive (consent) | Drive refresh token must be re-issued |
-| Backup encryption key (age) | public half in `backup_encryption_keys`; private half only in the owner's recovery kit (password manager) | Settings → Backups → Create backup key, save the new kit, type its check code; keep the old kit until its backups age out (~35 days) | — |
+| Backup encryption key (age) | public half in `backup_encryption_keys`; private half only in the owner's recovery kit (password manager) | Settings → Backups → Replace the backup key (Make a new recovery kit), save the new kit, type its check code; keep the old kit until its backups age out (~35 days) | — |
 | `SENTRY_DSN` | `/etc/rupert.env` | replace, restart | — |
 
 Every rotation: take a full backup first (`systemctl start rupert-backup.service`), note the date in the Activity page or the operator log.

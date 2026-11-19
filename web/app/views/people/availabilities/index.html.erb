@@ -1,0 +1,15 @@
+<% content_for :title, 'Availability' %>
+<div class="page-medium space-y-6">
+  <%= page_header 'Availability', subtitle: 'When each person can work. The schedule builder flags shifts that land on an unavailable block.' %>
+  <section class="toolbar-band">
+    <%= form_with url: people_availabilities_path, method: :get, class: 'toolbar', aria: { label: 'Staff member' } do %>
+      <div class="toolbar-field"><%= label_tag :employee_id, 'Staff member', class: 'field-label' %><%= select_tag :employee_id, options_for_select(@employees.map { |e| [e.full_name, e.id] }, @employee&.id), class: 'select' %></div>
+      <div class="toolbar-actions"><%= submit_tag 'Apply', class: 'btn-ghost', name: nil %></div>
+    <% end %>
+  </section>
+  <% if @employee %>
+    <%= render 'people/availabilities/editor', blocks: @blocks, create_url: people_availabilities_path(employee_id: @employee.id), destroy_url: ->(block) { people_availability_path(block) }, self_service: false %>
+  <% else %>
+    <%= empty_state 'No active staff yet', hint: 'Add staff members under Team → Staff.' %>
+  <% end %>
+</div>

@@ -52,8 +52,12 @@ module People
     %i[approve deny cancel].each do |event|
       define_method(event) do
         authorize(:module, :leave_write?)
-        LeaveRequestWorkflow.change(@leave_request, event)
-        redirect_to people_leave_request_path(@leave_request), notice: 'Leave request updated.'
+        changed = LeaveRequestWorkflow.change(@leave_request, event, note: params[:note])
+        redirect_to people_leave_request_path(@leave_request), notice: changed ? 'Leave request updated.' : 'This request was already decided.'
+      rescue ActiveRecord::RecordInvalid => e
+        redirect_to people_leave_request_path(@leave_request), alert: e.record.errors.full_messages.to_sentence
+      rescue Pundit::NotAuthorizedError
+        redirect_to people_leave_request_path(@leave_request), alert: 'Another manager must decide your own time off.'
       end
     end
 

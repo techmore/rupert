@@ -1,3 +1,4 @@
+import WebKit
 import HotwireNative
 import UIKit
 
@@ -24,9 +25,13 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         AppSettings.openInApp = { [weak self] url in
             self?.tabBarController.activeNavigator.route(url)
         }
-        AppSettings.leaveWorkspace = { [weak self] in
-            self?.leaveWorkspace()
+        // A tapped notification opens its page in the Time tab.
+        PushRegistration.shared.openInApp = { [weak self] url in
+            guard let self else { return }
+            self.select(HotwireTab.timeTabIndex)
+            self.tabBarController.activeNavigator.route(url)
         }
+        PushRegistration.shared.flushPending()
         if let shortcut = connectionOptions.shortcutItem {
             _ = open(shortcut)
         }
@@ -37,10 +42,13 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         WorkspaceHandoff.shared.onOpened = { [weak self] origin, landing in
             self?.show(instance: origin, landing: landing)
         }
+        AppSettings.switchWorkspace = { [weak self] in self?.switchWorkspace() }
         SessionWatcher.shared.onState = { [weak self] state in
             self?.showTabs(state == .signedIn, animated: true)
         }
-        SessionWatcher.shared.onChange = { [weak self] _ in
+        SessionWatcher.shared.onChange = { [weak self] state in
+            // Signed out: Rupert must stop pushing to this phone.
+            if state == .signedOut { PushRegistration.shared.forget() }
             // The change is noticed while the old page is still finishing its visit; replacing the
             // tabs from inside that callback left the new Home tab without a visit in release builds.
             DispatchQueue.main.async { self?.restartTabs() }
@@ -102,17 +110,29 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         let index = tabBarController.selectedIndex
         tabBarController.load(HotwireTab.all(on: Instance.current))
         select(index)
+        // Just signed in: offer push notifications from the fresh page once it is on screen.
+        if SessionWatcher.shared.state == .signedIn {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+                guard let self, let top = self.tabBarController.selectedViewController else { return }
+                PushRegistration.shared.askIfNeeded(from: (top as? UINavigationController)?.topViewController ?? top)
+            }
+        }
     }
 
-    /// Back to the control plane's workspace list, to open another business. A workspace used to be
-    /// the app's home for good once opened; deleting the app was the only way back.
-    private func leaveWorkspace() {
-        Instance.setCurrent(Instance.controlPlane)
-        let tabs = HotwireTab.all(on: Instance.controlPlane)
-        tabBarController.load(tabs)
-        select(0)
-        if let home = tabs.first, let navigator = tabBarController.navigator(for: home) {
-            navigator.route(Instance.url("/workspace", on: Instance.controlPlane), options: VisitOptions(action: .replace))
+    /// Settings → Switch workspace: stop this phone's notifications, drop every Rupert cookie and
+    /// cached page the web views hold (the session on the workspace and on the control plane), and
+    /// start again on the control plane's sign-in page. Nothing of the last person is left on screen.
+    private func switchWorkspace() {
+        PushRegistration.shared.forget()
+        let store = WKWebsiteDataStore.default()
+        store.fetchDataRecords(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes()) { [weak self] records in
+            store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), for: records) {
+                Instance.leaveWorkspace()
+                SessionWatcher.shared.set(.signedOut)
+                guard let self else { return }
+                self.tabBarController.load(HotwireTab.all(on: Instance.current))
+                self.select(0)
+            }
         }
     }
 

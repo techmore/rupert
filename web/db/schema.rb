@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_10_100000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -615,6 +615,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.text "invoice_number"
+    t.datetime "tip_attributed_at"
     t.index ["tenant_id", "environment", "gateway_id", "source_transaction_id"], name: "idx_anet_transaction_source", unique: true
     t.index ["tenant_id"], name: "index_authorize_net_transactions_on_tenant_id"
   end
@@ -671,6 +672,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.index ["tenant_id", "document_id", "status"], name: "idx_bank_lines_document"
     t.index ["tenant_id", "fingerprint"], name: "idx_bank_lines_fingerprint", unique: true
     t.index ["tenant_id"], name: "index_bank_statement_lines_on_tenant_id"
+  end
+
+  create_table "blackout_dates", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "location_id"
+    t.date "starts_on", null: false
+    t.date "ends_on", null: false
+    t.string "reason", null: false
+    t.bigint "created_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "starts_on", "ends_on"], name: "index_blackout_dates_on_tenant_id_and_starts_on_and_ends_on"
   end
 
   create_table "book_approvals", force: :cascade do |t|
@@ -1128,6 +1141,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.index ["tenant_id", "started_at"], name: "index_chat_telemetry_on_tenant_id_and_started_at"
   end
 
+  create_table "clock_breaks", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "clock_shift_id", null: false
+    t.string "kind", default: "rest", null: false
+    t.boolean "paid", default: true, null: false
+    t.datetime "started_at", null: false
+    t.datetime "ended_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["clock_shift_id", "started_at"], name: "index_clock_breaks_on_clock_shift_id_and_started_at"
+    t.index ["tenant_id", "clock_shift_id"], name: "idx_clock_break_open", unique: true, where: "ended_at IS NULL"
+  end
+
   create_table "clock_corrections", force: :cascade do |t|
     t.string "tenant_id", null: false
     t.integer "clock_shift_id", null: false
@@ -1142,12 +1168,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.datetime "reviewed_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.text "original_breaks_json"
+    t.text "proposed_breaks_json"
+    t.text "review_note"
     t.index ["clock_shift_id"], name: "index_clock_corrections_on_clock_shift_id"
     t.index ["requested_by_id"], name: "index_clock_corrections_on_requested_by_id"
     t.index ["reviewed_by_id"], name: "index_clock_corrections_on_reviewed_by_id"
     t.index ["tenant_id", "status", "created_at"], name: "idx_clock_correction_review"
     t.check_constraint "proposed_ended_at > proposed_started_at", name: "clock_correction_positive_interval"
     t.check_constraint "status IN ('pending', 'approved', 'rejected')", name: "clock_correction_status"
+  end
+
+  create_table "clock_devices", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "location_id"
+    t.string "name", null: false
+    t.string "token_digest", null: false
+    t.bigint "registered_by_id"
+    t.datetime "last_seen_at"
+    t.datetime "revoked_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "token_digest"], name: "index_clock_devices_on_tenant_id_and_token_digest", unique: true
   end
 
   create_table "clock_shifts", force: :cascade do |t|
@@ -1163,7 +1205,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.integer "lock_version", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "location_id"
+    t.string "source", default: "web", null: false
+    t.string "device_label"
+    t.string "register_name"
+    t.bigint "scheduled_shift_id"
+    t.datetime "auto_closed_at"
     t.index ["employee_id"], name: "index_clock_shifts_on_employee_id"
+    t.index ["tenant_id", "location_id", "started_at"], name: "idx_clock_shift_location"
     t.index ["tenant_id", "request_token"], name: "idx_clock_shift_request", unique: true
     t.index ["tenant_id", "started_at", "ended_at"], name: "idx_clock_shift_window"
     t.index ["tenant_id", "user_id"], name: "idx_clock_one_open_shift", unique: true, where: "ended_at IS NULL AND user_id IS NOT NULL"
@@ -1432,6 +1481,45 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.index ["tenant_id"], name: "index_daily_reconciliation_reviews_on_tenant_id"
   end
 
+  create_table "dejavoo_feed_events", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.integer "pos_setting_id", null: false
+    t.string "feed_id", null: false
+    t.string "request_type", null: false
+    t.string "event_type", null: false
+    t.string "sub_event_type"
+    t.string "tpn"
+    t.string "transaction_id"
+    t.string "external_reference_id"
+    t.string "rrn"
+    t.string "original_rrn"
+    t.string "batch_number"
+    t.string "source_type"
+    t.string "card_label"
+    t.string "card_last_four"
+    t.string "approval_code"
+    t.string "host_response_code"
+    t.integer "amount_cents"
+    t.integer "tip_cents"
+    t.integer "settlement_count"
+    t.integer "settlement_cents"
+    t.string "occurred_on"
+    t.string "matched_kind"
+    t.bigint "matched_id"
+    t.datetime "received_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "performed_by"
+    t.string "terminal_id"
+    t.string "invoice_number"
+    t.string "device_model"
+    t.datetime "tip_attributed_at"
+    t.index ["pos_setting_id", "received_at"], name: "index_dejavoo_feed_events_on_pos_setting_id_and_received_at"
+    t.index ["pos_setting_id"], name: "index_dejavoo_feed_events_on_pos_setting_id"
+    t.index ["tenant_id", "external_reference_id"], name: "idx_on_tenant_id_external_reference_id_e26edee850"
+    t.index ["tenant_id", "feed_id"], name: "index_dejavoo_feed_events_on_tenant_id_and_feed_id", unique: true
+  end
+
   create_table "departments", force: :cascade do |t|
     t.string "code"
     t.datetime "created_at", null: false
@@ -1484,6 +1572,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.datetime "updated_at", null: false
     t.index ["tenant_id", "user_id"], name: "index_employee_app_sessions_on_tenant_id_and_user_id"
     t.index ["token_digest"], name: "index_employee_app_sessions_on_token_digest", unique: true
+  end
+
+  create_table "employee_availabilities", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "employee_id", null: false
+    t.integer "weekday", null: false
+    t.integer "start_minute", default: 0, null: false
+    t.integer "end_minute", default: 1440, null: false
+    t.string "kind", default: "unavailable", null: false
+    t.string "note"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "employee_id", "weekday"], name: "idx_availability_employee_day"
   end
 
   create_table "employee_source_identities", force: :cascade do |t|
@@ -1557,6 +1658,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.integer "merged_into_id"
     t.datetime "merged_at"
     t.text "merge_snapshot"
+    t.string "pin_digest"
+    t.datetime "pin_set_at"
+    t.integer "pin_failed_count", default: 0, null: false
+    t.datetime "pin_locked_until"
+    t.string "locale"
+    t.boolean "tip_eligible", default: true, null: false
+    t.text "location_ids_json"
+    t.datetime "sick_accrued_through"
+    t.integer "vacation_granted_for_year"
     t.index ["merged_into_id"], name: "index_employees_on_merged_into_id"
     t.index ["tenant_id", "department_id"], name: "index_employees_on_tenant_id_and_department_id"
     t.index ["tenant_id", "employee_number"], name: "index_employees_on_tenant_id_and_employee_number", unique: true
@@ -1889,6 +1999,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.index ["tenant_id", "name"], name: "index_kpis_on_tenant_id_and_name"
   end
 
+  create_table "leave_accruals", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "employee_id", null: false
+    t.string "leave_type", null: false
+    t.decimal "hours", precision: 7, scale: 2, null: false
+    t.string "reason", null: false
+    t.date "period_start"
+    t.date "period_end"
+    t.integer "year", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "employee_id", "leave_type", "year"], name: "idx_leave_accrual_employee_year"
+  end
+
   create_table "leave_balances", force: :cascade do |t|
     t.decimal "accrued_hours", precision: 6, scale: 2, default: "0.0", null: false
     t.datetime "created_at", null: false
@@ -1914,8 +2038,132 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.string "status", default: "requested", null: false
     t.string "tenant_id", null: false
     t.datetime "updated_at", null: false
+    t.text "review_note"
+    t.string "request_key"
     t.index ["tenant_id", "employee_id", "status"], name: "index_leave_requests_on_tenant_id_and_employee_id_and_status"
+    t.index ["tenant_id", "request_key"], name: "index_leave_requests_on_tenant_id_and_request_key", unique: true, where: "request_key IS NOT NULL"
     t.index ["tenant_id", "status"], name: "index_leave_requests_on_tenant_id_and_status"
+  end
+
+  create_table "lms_assignment_rules", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "course_id", null: false
+    t.string "role"
+    t.string "location_id"
+    t.boolean "required", default: false, null: false
+    t.integer "due_days"
+    t.bigint "created_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "course_id"], name: "index_lms_assignment_rules_on_tenant_id_and_course_id"
+  end
+
+  create_table "lms_courses", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "slug", null: false
+    t.string "title", null: false
+    t.string "summary"
+    t.text "description"
+    t.string "status", default: "draft", null: false
+    t.string "locale", default: "en", null: false
+    t.string "badge_title"
+    t.integer "position", default: 0, null: false
+    t.string "seed_key"
+    t.integer "seed_version"
+    t.datetime "edited_at"
+    t.bigint "created_by_id"
+    t.bigint "updated_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "seed_key"], name: "index_lms_courses_on_tenant_id_and_seed_key"
+    t.index ["tenant_id", "slug"], name: "index_lms_courses_on_tenant_id_and_slug", unique: true
+  end
+
+  create_table "lms_enrollments", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "course_id", null: false
+    t.bigint "user_id", null: false
+    t.string "source", default: "self", null: false
+    t.bigint "assignment_rule_id"
+    t.bigint "assigned_by_id"
+    t.boolean "required", default: false, null: false
+    t.date "due_on"
+    t.string "status", default: "assigned", null: false
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.bigint "current_lesson_id"
+    t.datetime "badge_awarded_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["course_id", "user_id"], name: "index_lms_enrollments_on_course_id_and_user_id", unique: true
+    t.index ["tenant_id", "user_id", "status"], name: "index_lms_enrollments_on_tenant_id_and_user_id_and_status"
+  end
+
+  create_table "lms_glossary_terms", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "course_id", null: false
+    t.string "key", null: false
+    t.string "term", null: false
+    t.text "definition", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["course_id", "key"], name: "index_lms_glossary_terms_on_course_id_and_key", unique: true
+  end
+
+  create_table "lms_lesson_progresses", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "enrollment_id", null: false
+    t.bigint "lesson_id", null: false
+    t.bigint "user_id", null: false
+    t.datetime "viewed_at"
+    t.datetime "passed_at"
+    t.integer "attempts", default: 0, null: false
+    t.integer "best_score", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["enrollment_id", "lesson_id"], name: "index_lms_lesson_progresses_on_enrollment_id_and_lesson_id", unique: true
+    t.index ["tenant_id", "user_id"], name: "index_lms_lesson_progresses_on_tenant_id_and_user_id"
+  end
+
+  create_table "lms_lessons", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "course_id", null: false
+    t.string "slug", null: false
+    t.string "title", null: false
+    t.string "summary"
+    t.integer "minutes", default: 3, null: false
+    t.integer "position", default: 0, null: false
+    t.text "body"
+    t.string "diagram"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["course_id", "slug"], name: "index_lms_lessons_on_course_id_and_slug", unique: true
+    t.index ["tenant_id", "course_id", "position"], name: "index_lms_lessons_on_tenant_id_and_course_id_and_position"
+  end
+
+  create_table "lms_questions", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "lesson_id", null: false
+    t.integer "position", default: 0, null: false
+    t.text "prompt", null: false
+    t.text "choices_json", null: false
+    t.integer "answer_index", default: 0, null: false
+    t.text "explanation"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["lesson_id", "position"], name: "index_lms_questions_on_lesson_id_and_position"
+  end
+
+  create_table "lms_quiz_attempts", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "lesson_progress_id", null: false
+    t.bigint "user_id", null: false
+    t.text "answers_json", null: false
+    t.integer "correct_count", default: 0, null: false
+    t.integer "total_count", default: 0, null: false
+    t.boolean "passed", default: false, null: false
+    t.datetime "created_at", null: false
+    t.index ["lesson_progress_id", "created_at"], name: "index_lms_quiz_attempts_on_lesson_progress_id_and_created_at"
   end
 
   create_table "marketing_campaigns", force: :cascade do |t|
@@ -2347,6 +2595,38 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.index ["tenant_id", "created_at", "id"], name: "idx_owner_checklists_timeline"
   end
 
+  create_table "pay_period_adjustments", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "pay_period_id", null: false
+    t.bigint "employee_id", null: false
+    t.string "kind", null: false
+    t.decimal "hours", precision: 7, scale: 2
+    t.integer "amount_cents"
+    t.text "note", null: false
+    t.bigint "created_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "employee_id"], name: "index_pay_period_adjustments_on_tenant_id_and_employee_id"
+    t.index ["tenant_id", "pay_period_id"], name: "index_pay_period_adjustments_on_tenant_id_and_pay_period_id"
+  end
+
+  create_table "pay_periods", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.date "starts_on", null: false
+    t.date "ends_on", null: false
+    t.string "status", default: "open", null: false
+    t.datetime "locked_at"
+    t.bigint "locked_by_id"
+    t.datetime "exported_at"
+    t.bigint "exported_by_id"
+    t.string "export_sha256"
+    t.text "totals_json"
+    t.text "note"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "starts_on"], name: "index_pay_periods_on_tenant_id_and_starts_on", unique: true
+  end
+
   create_table "pay_rates", force: :cascade do |t|
     t.integer "annual_salary_cents", default: 0, null: false
     t.datetime "created_at", null: false
@@ -2450,6 +2730,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.datetime "resolved_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "batch_number"
     t.index ["pos_checkout_id"], name: "index_pos_card_reversals_on_pos_checkout_id"
     t.index ["reference"], name: "index_pos_card_reversals_on_reference", unique: true
     t.check_constraint "amount_cents > 0", name: "pos_card_reversal_amount"
@@ -2488,6 +2769,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.integer "compliance_override_by_id"
     t.text "compliance_override_reason"
     t.text "compliance_issues_json"
+    t.bigint "pos_terminal_id"
     t.index ["order_id"], name: "index_pos_checkouts_on_order_id"
     t.index ["pos_display_session_id"], name: "index_pos_checkouts_on_pos_display_session_id"
     t.index ["pos_session_id"], name: "index_pos_checkouts_on_pos_session_id"
@@ -2637,6 +2919,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.string "card_last_four"
     t.string "auth_code"
     t.string "decline_reason"
+    t.string "batch_number"
+    t.string "payment_type"
     t.index ["invoice"], name: "index_pos_payment_attempts_on_invoice", unique: true
     t.index ["pos_checkout_id"], name: "index_pos_payment_attempts_on_pos_checkout_id"
     t.index ["tenant_id", "nonce_digest"], name: "index_pos_payment_attempts_on_tenant_id_and_nonce_digest", unique: true
@@ -2702,6 +2986,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.index ["pos_checkout_id", "variant_id"], name: "index_pos_stock_allocations_on_pos_checkout_id_and_variant_id", unique: true
     t.index ["pos_checkout_id"], name: "index_pos_stock_allocations_on_pos_checkout_id"
     t.index ["tenant_id", "location_id", "variant_id"], name: "idx_pos_stock_pool"
+  end
+
+  create_table "pos_terminals", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "location_id", null: false
+    t.string "name", null: false
+    t.string "register_name", null: false
+    t.text "credentials_json", null: false
+    t.datetime "verified_at"
+    t.datetime "retired_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "location_id"], name: "index_pos_terminals_on_tenant_id_and_location_id"
   end
 
   create_table "positions", force: :cascade do |t|
@@ -2873,6 +3170,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.index ["tenant_id", "submitted_by_id", "sha256"], name: "idx_purchase_receipts_duplicate_file", unique: true
   end
 
+  create_table "push_devices", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "user_id", null: false
+    t.string "platform", null: false
+    t.text "token", null: false
+    t.string "token_digest", null: false
+    t.string "environment"
+    t.string "app_version"
+    t.text "keys_json"
+    t.datetime "last_seen_at"
+    t.datetime "disabled_at"
+    t.string "failure_reason"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "token_digest"], name: "index_push_devices_on_tenant_id_and_token_digest", unique: true
+    t.index ["token_digest"], name: "idx_push_devices_token_digest"
+    t.index ["user_id", "platform"], name: "index_push_devices_on_user_id_and_platform"
+  end
+
   create_table "reconciliation_documents", force: :cascade do |t|
     t.string "tenant_id", null: false
     t.string "source", null: false
@@ -2997,9 +3313,47 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.index ["tenant_id", "role"], name: "index_role_permissions_on_tenant_id_and_role"
   end
 
+  create_table "schedule_publications", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "location_id"
+    t.date "week_start", null: false
+    t.datetime "published_at", null: false
+    t.bigint "published_by_id"
+    t.integer "shift_count", default: 0, null: false
+    t.text "notice_json"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "location_id", "week_start"], name: "idx_schedule_publication_week"
+  end
+
+  create_table "schedule_template_shifts", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "schedule_template_id", null: false
+    t.integer "weekday", null: false
+    t.integer "start_minute", null: false
+    t.integer "end_minute", null: false
+    t.bigint "employee_id"
+    t.bigint "position_id"
+    t.string "role_label"
+    t.integer "break_minutes", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["schedule_template_id"], name: "index_schedule_template_shifts_on_schedule_template_id"
+  end
+
+  create_table "schedule_templates", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.string "location_id"
+    t.string "name", null: false
+    t.bigint "created_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "name"], name: "index_schedule_templates_on_tenant_id_and_name", unique: true
+  end
+
   create_table "scheduled_shifts", force: :cascade do |t|
     t.string "tenant_id", null: false
-    t.integer "employee_id", null: false
+    t.integer "employee_id"
     t.datetime "starts_at", null: false
     t.datetime "ends_at", null: false
     t.string "role_label"
@@ -3007,8 +3361,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "location_id"
+    t.datetime "published_at"
+    t.bigint "position_id"
+    t.integer "break_minutes", default: 0, null: false
+    t.bigint "created_by_id"
+    t.datetime "last_changed_at"
+    t.datetime "cancelled_at"
     t.index ["employee_id", "starts_at"], name: "idx_scheduled_shift_employee"
     t.index ["employee_id"], name: "index_scheduled_shifts_on_employee_id"
+    t.index ["tenant_id", "employee_id", "published_at"], name: "idx_scheduled_shift_published"
     t.index ["tenant_id", "location_id", "starts_at"], name: "idx_scheduled_shift_location"
     t.index ["tenant_id", "starts_at"], name: "idx_scheduled_shift_window"
     t.check_constraint "ends_at > starts_at", name: "scheduled_shift_positive_interval"
@@ -3020,6 +3381,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.datetime "updated_at"
     t.string "value"
     t.index ["key", "tenant_id"], name: "index_settings_on_key_and_tenant_id", unique: true
+  end
+
+  create_table "shift_trades", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "scheduled_shift_id", null: false
+    t.string "kind", null: false
+    t.bigint "from_employee_id"
+    t.bigint "to_employee_id"
+    t.bigint "counter_shift_id"
+    t.string "status", default: "open", null: false
+    t.text "note"
+    t.bigint "requested_by_id"
+    t.datetime "accepted_at"
+    t.bigint "reviewed_by_id"
+    t.datetime "reviewed_at"
+    t.text "review_note"
+    t.text "checks_json"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["scheduled_shift_id", "status"], name: "index_shift_trades_on_scheduled_shift_id_and_status"
+    t.index ["tenant_id", "from_employee_id", "status"], name: "idx_shift_trade_from"
+    t.index ["tenant_id", "status"], name: "index_shift_trades_on_tenant_id_and_status"
+    t.index ["tenant_id", "to_employee_id", "status"], name: "idx_shift_trade_to"
   end
 
   create_table "shopify_stock_snapshots", force: :cascade do |t|
@@ -3774,6 +4158,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.string "subdomain", null: false
     t.datetime "updated_at", null: false
     t.string "referral_domain"
+    t.string "time_zone"
     t.index ["referral_domain"], name: "index_tenants_on_referral_domain"
     t.index ["subdomain"], name: "index_tenants_on_subdomain", unique: true
   end
@@ -3823,6 +4208,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.index ["assigned_reviewer_id"], name: "index_timesheets_on_assigned_reviewer_id"
     t.index ["tenant_id", "employee_id", "period_start"], name: "index_timesheets_on_tenant_id_and_employee_id_and_period_start", unique: true
     t.index ["tenant_id", "status"], name: "index_timesheets_on_tenant_id_and_status"
+  end
+
+  create_table "tip_allocations", force: :cascade do |t|
+    t.string "tenant_id", null: false
+    t.bigint "employee_id"
+    t.bigint "clock_shift_id"
+    t.string "location_id"
+    t.string "source_kind", null: false
+    t.bigint "source_id"
+    t.string "source_ref"
+    t.string "tip_method", null: false
+    t.string "status", default: "estimated", null: false
+    t.integer "amount_cents", null: false
+    t.integer "gross_tip_cents"
+    t.integer "share_count"
+    t.datetime "occurred_at", null: false
+    t.date "business_date", null: false
+    t.date "pay_period_start"
+    t.string "settlement_ref"
+    t.datetime "settled_at"
+    t.bigint "reverses_id"
+    t.string "evidence"
+    t.text "note"
+    t.bigint "created_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "employee_id", "business_date"], name: "idx_tip_alloc_employee_day"
+    t.index ["tenant_id", "pay_period_start"], name: "idx_tip_alloc_period"
+    t.index ["tenant_id", "source_kind", "source_id"], name: "idx_tip_alloc_source"
+    t.index ["tenant_id", "status"], name: "index_tip_allocations_on_tenant_id_and_status"
   end
 
   create_table "training_assignment_events", force: :cascade do |t|
@@ -3972,6 +4387,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.boolean "presence_hidden"
     t.string "pos_override_pin_digest"
     t.datetime "pos_override_pin_set_at"
+    t.text "location_ids_json"
+    t.text "notification_prefs_json"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["referral_domain"], name: "index_users_on_referral_domain"
     t.index ["shopify_user_id"], name: "index_users_on_shopify_user_id", unique: true
@@ -4049,6 +4466,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.datetime "resolved_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "provider", default: "authorize_net", null: false
+    t.text "hosted_url"
     t.index ["invoice_number"], name: "index_warehouse_payment_attempts_on_invoice_number", unique: true
     t.index ["nonce_digest"], name: "index_warehouse_payment_attempts_on_nonce_digest", unique: true
     t.index ["tenant_id", "warehouse_cart_id"], name: "idx_warehouse_attempts_tenant_cart"
