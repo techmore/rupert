@@ -57,7 +57,10 @@ class ShiftTradesTest < ActionDispatch::IntegrationTest
   end
 
   test 'pick up an open shift applies immediately when the store does not require approval' do
-    open_shift = People::ScheduledShift.create!(starts_at: (@day + 1).in_time_zone + 9.hours, ends_at: (@day + 1).in_time_zone + 13.hours, published_at: Time.current)
+    # A day in the same schedule week as @day: the day after, or the day before when @day is
+    # the week's last day (the page is opened on @day's week).
+    open_day = (@day + 1).beginning_of_week == @day.beginning_of_week ? @day + 1 : @day - 1
+    open_shift = People::ScheduledShift.create!(starts_at: open_day.in_time_zone + 9.hours, ends_at: open_day.in_time_zone + 13.hours, published_at: Time.current)
     TimeRules.save!({ 'trade_requires_approval' => '0' })
     sign_in(@sam_user)
     get employee_schedule_path(week: @day.beginning_of_week.iso8601)

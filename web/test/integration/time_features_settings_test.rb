@@ -377,6 +377,9 @@ class TimeFeaturesSettingsTest < ActionDispatch::IntegrationTest
     Current.tenant = @tenant
     assert_in_delta 5.5, shift.reload.paid_hours, 0.01, 'six hours less the unpaid half-hour meal'
 
+    # The shift was yesterday. On the first day of a pay period, the period that covers today
+    # does not include it, so the sheet opened here is given the week ending today.
+    People::Timesheet.stubs(:default_period_for).returns([Date.current - 6, Date.current])
     post employee_week_path
     Current.tenant = @tenant
     sheet = People::Timesheet.find_by!(employee_id: recruit.id)
