@@ -14,6 +14,8 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
     private func load(_ tabs: [HotwireTab]) {
         shownTabs = tabs
         tabBarController.load(tabs)
+        // The icon's quick actions offer Team Chat and Ask Rupert only to accounts with those tabs.
+        QuickActions.refresh()
     }
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
@@ -87,7 +89,7 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
         AppLock.shared.sceneDidBecomeActive()
     }
 
-    /// Home Screen quick actions (Info.plist UIApplicationShortcutItems): open that tab.
+    /// Home Screen quick actions (Info.plist for the ones everyone has, QuickActions for the rest): open that tab.
     func windowScene(_ windowScene: UIWindowScene, performActionFor shortcutItem: UIApplicationShortcutItem,
                      completionHandler: @escaping (Bool) -> Void) {
         completionHandler(open(shortcutItem))
@@ -96,8 +98,8 @@ final class SceneController: UIResponder, UIWindowSceneDelegate {
     private func open(_ shortcut: UIApplicationShortcutItem) -> Bool {
         // Signed out there is only the sign-in page; the app opens on it.
         guard signedIn else { return true }
-        let tab = shortcut.type.components(separatedBy: ".").last ?? ""
-        // A quick action for a tab this account does not have (Team Chat for staff) opens the first tab.
+        let tab = QuickActions.tabID(of: shortcut)
+        // A quick action for a tab this account does not have (one left from another account) opens the first tab.
         select(HotwireTab.all(on: Instance.current).firstIndex(where: { $0.id == tab }) ?? 0)
         return true
     }

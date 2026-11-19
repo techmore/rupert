@@ -11,7 +11,7 @@
   <%= javascript_importmap_tags %>
 </head>
 <body class="min-h-screen bg-haze text-ink">
-  <main class="page-narrow mx-auto space-y-6 p-6 sm:p-10" data-controller="customer-tip" data-customer-tip-state-url-value="<%= customer_display_state_path(display_token: @display.display_token) %>" data-customer-tip-config-url-value="<%= customer_payment_config_path(display_token: @display.display_token) %>" data-customer-tip-pay-url-value="<%= customer_pay_path(display_token: @display.display_token) %>" data-customer-tip-tip-url-value="<%= customer_display_tip_path(display_token: @display.display_token) %>">
+  <main class="page-narrow mx-auto space-y-6 p-6 sm:p-10" data-controller="customer-tip" data-customer-tip-state-url-value="<%= customer_display_state_path(display_token: @display.display_token) %>" data-customer-tip-config-url-value="<%= customer_payment_config_path(display_token: @display.display_token) %>" data-customer-tip-pay-url-value="<%= customer_pay_path(display_token: @display.display_token) %>" data-customer-tip-tip-url-value="<%= customer_display_tip_path(display_token: @display.display_token) %>" data-customer-tip-handover-value="<%= params[:handover] == '1' %>">
     <header class="page-header">
       <div class="page-header-main">
         <div class="flex items-center gap-2"><%= render "shared/rupert_face", size: 40 %><p class="eyebrow text-olive-deep">Rupert<%= ' · Demo' if @display.demo? %></p></div>

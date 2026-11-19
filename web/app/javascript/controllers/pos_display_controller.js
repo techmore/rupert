@@ -2,7 +2,8 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
   // tip, grandTotal and totalRow are the cart panel's Tip and Total rows (optional).
-  static targets = ["status", "total", "tip", "grandTotal", "totalRow"]
+  // handover is the phone-only "Hand to customer for tip" button: needed until they confirm.
+  static targets = ["status", "total", "tip", "grandTotal", "totalRow", "handover"]
   static values = { statusUrl: String }
   connect() { this.generation = 0; this.poll(); this.timer = setInterval(() => this.poll(), 2000) }
   disconnect() { clearInterval(this.timer); clearTimeout(this.timeout); this.abort?.abort() }
@@ -52,6 +53,7 @@ export default class extends Controller {
     if (this.hasTipTarget) this.tipTarget.textContent = tipCents == null ? "Customer chooses" : this.money(tipCents)
     if (this.hasGrandTotalTarget) this.grandTotalTarget.textContent = totalCents == null ? "" : this.money(totalCents)
     if (this.hasTotalRowTarget) this.totalRowTarget.toggleAttribute("data-confirmed", totalCents != null)
+    if (this.hasHandoverTarget) this.handoverTarget.toggleAttribute("data-confirmed", totalCents != null)
   }
   money(cents) { return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(cents / 100) }
 }
