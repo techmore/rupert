@@ -2217,7 +2217,7 @@ body.tour-active { overflow-x:hidden; }
    the product grid and the cart scroll on their own. Phones stack and scroll the page. */
 .pos-body { height:100dvh;overflow:hidden;background-color:var(--color-oat);background-image:none; }
 .pos-app { display:flex;flex-direction:column;height:100dvh;min-height:0; }
-.pos-topbar { display:flex;flex:none;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;padding:.5rem 1rem;border-bottom:1px solid var(--color-fog);background:var(--color-paper); }
+.pos-topbar { display:flex;flex:none;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;padding:calc(.5rem + env(safe-area-inset-top)) 1rem .5rem;border-bottom:1px solid var(--color-fog);background:var(--color-paper); }
 .pos-topbar-group { display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;min-width:0; }
 .pos-topbar-status { flex:1; }
 .pos-topbar-end { margin-left:auto; }
@@ -2345,12 +2345,18 @@ body.tour-active { overflow-x:hidden; }
 .pos-pay { width:100%; }
 .pos-checkout-status { font-size:.9rem;font-weight:600;color:var(--color-ink); }
 .pos-checkout-status:empty { display:none; }
+/* The outcome of a payment attempt: paid, refused or declined, or unresolved. */
+.pos-checkout-status[data-tone] { padding:.6rem .75rem;border:1px solid;border-radius:var(--radius-control); }
+.pos-checkout-status[data-tone="ok"] { border-color:var(--color-success-edge);background:var(--color-success-bg);color:var(--color-success); }
+.pos-checkout-status[data-tone="error"] { border-color:var(--color-danger-edge);background:var(--color-danger-bg);color:var(--color-danger); }
+.pos-checkout-status[data-tone="warn"] { border-color:var(--color-warn-edge);background:var(--color-warn-bg);color:var(--color-warn); }
 .pos-change { font-family:var(--font-display);font-size:1.75rem;font-weight:700;color:var(--color-fern); }
 .pos-checkout-result { display:grid;gap:.5rem; }
 .pos-checkout-actions { display:grid;grid-template-columns:1fr 1fr;gap:.5rem; }
 .pos-checkout-actions .btn-lg { width:100%;min-width:0; }
 .pos-pair-form { display:block; }
-.pos-cart-jump { display:none; }
+.pos-cart-jump,.pos-handover { display:none; }
+.pos-phone-only { display:none !important; }
 
 /* Confirm sheet (<dialog>): big photo, name, size, SKU, price, stock, sibling sizes, quantity. */
 .pos-sheet { width:min(56rem,calc(100vw - 2rem));max-height:calc(100dvh - 2rem);margin:auto;padding:0;overflow:auto;border:1px solid var(--color-fog);border-radius:var(--radius-card);background:var(--color-paper);color:var(--color-ink);box-shadow:0 20px 60px rgb(var(--shadow-ink)/0.3); }
@@ -2395,7 +2401,29 @@ body.tour-active { overflow-x:hidden; }
   .pos-grid-scroll,.pos-cart-form,.pos-checkout { overflow:visible; }
   .pos-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .pos-cashier { display:none; }
-  .pos-cart-jump { display:inline-flex;position:fixed;right:1rem;bottom:max(1rem,env(safe-area-inset-bottom));z-index:30; }
+  /* One-handed on a phone: a two-row strip (store, Clock, More; then the register and customer
+     screen pills), the rest of its controls in More, and the cart one thumb-reach away in a
+     bar above the home indicator and the app's tab bar (--native-bottom-inset). */
+  .pos-phone-only { display:flex !important; }
+  .pos-wide-only,.pos-pill-quiet,.pos-search-key { display:none !important; }
+  .pos-topbar { gap:.3rem .5rem;padding:calc(.35rem + env(safe-area-inset-top)) max(.75rem,env(safe-area-inset-right)) .4rem max(.75rem,env(safe-area-inset-left)); }
+  .pos-topbar-start { flex:1;flex-wrap:nowrap; }
+  .pos-title { min-width:0;font-size:1.1rem; }
+  .pos-store { overflow:hidden;text-overflow:ellipsis; }
+  .pos-topbar-end { flex-wrap:nowrap;margin-left:0; }
+  .pos-topbar-status { order:3;flex-basis:100%;gap:.35rem; }
+  .pos-topbar-status [class^="pill-"] { padding:.1rem .55rem;font-size:.72rem;white-space:nowrap; }
+  .native-app .pos-mark,.native-app .pos-title-label { display:none; }
+  .pos-main { padding:.6rem max(.75rem,env(safe-area-inset-right)) calc(5rem + max(env(safe-area-inset-bottom),var(--native-bottom-inset,0px))) max(.75rem,env(safe-area-inset-left)); }
+  .pos-search-input { min-height:3rem;padding-right:1rem;font-size:1.05rem; }
+  .pos-announce:empty { display:none; }
+  .pos-cart-jump { display:flex;position:fixed;left:max(.75rem,env(safe-area-inset-left));right:max(.75rem,env(safe-area-inset-right));bottom:calc(.5rem + max(env(safe-area-inset-bottom),var(--native-bottom-inset,0px)));z-index:30;justify-content:center;gap:.35rem;min-height:3.25rem;font-size:1rem;box-shadow:0 4px 16px rgb(var(--shadow-ink)/0.19); }
+  .pos-main:has(.pos-cart[data-step="checkout"]) + .pos-cart-jump { display:none; }
+  .pos-handover { display:inline-flex;width:100%;min-width:0; }
+  .pos-handover[data-confirmed],.pos-cart-foot:has(.pos-checkout-button:disabled) .pos-handover { display:none; }
+  .pos-cart-clear,.pos-line-remove,.pos-inline-link { min-height:44px; }
+  .pos-register-select { font-size:1rem; }
+  .pos-pay { min-height:3.75rem;font-size:1.1rem; }
   .pos-sheet-body { grid-template-columns:minmax(0,1fr); }
   .pos-sheet-media { max-height:40dvh;border-right:0;border-bottom:1px solid var(--color-fog); }
 }

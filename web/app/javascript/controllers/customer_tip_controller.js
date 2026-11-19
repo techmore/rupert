@@ -3,7 +3,8 @@ import { mountNmiFields } from "lib/nmi_fields"
 
 export default class extends Controller {
   static targets = ["items", "subtotal", "tax", "choices", "custom", "confirm", "status", "payment", "pay", "receipt", "nmiFields"]
-  static values = { stateUrl: String, tipUrl: String, configUrl: String, payUrl: String }
+  // handover: the cashier's own phone was handed over for the tip choice (one-phone checkout).
+  static values = { stateUrl: String, tipUrl: String, configUrl: String, payUrl: String, handover: Boolean }
   connect() {
     this.revision = null
     window.rupertPosPaymentResponse = response => this.cardResponse(response)
@@ -57,7 +58,7 @@ export default class extends Controller {
         if (this.configuredCheckout !== state.checkout.reference) await this.configurePayment(state.checkout)
         this.payTarget.disabled = this.submitting || this.tokenizing || !this.paymentReady
       } else {
-        this.statusTarget.textContent = state.confirmed ? `Your tip choice of ${this.money(state.tip_cents)} is confirmed. Waiting for the cashier.` : this.hasCart ? "Your tip choice stays private until you confirm." : "Waiting for the cashier’s cart…"
+        this.statusTarget.textContent = state.confirmed ? `Your tip choice of ${this.money(state.tip_cents)} is confirmed. ${this.handoverValue ? "Please hand the phone back to the cashier." : "Waiting for the cashier."}` : this.hasCart ? "Your tip choice stays private until you confirm." : "Waiting for the cashier’s cart…"
       }
     } catch (error) {
       this.connected = false; this.confirmTarget.disabled = true; this.payTarget.disabled = true

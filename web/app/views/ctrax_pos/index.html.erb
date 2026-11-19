@@ -6,7 +6,7 @@
 <% image_options = image_links ? @images.products.sort_by(&:title).map { |p| [p.title, p.id] } : [] %>
 <% stock_fresh = @snapshot.present? && @snapshot.captured_at >= 60.minutes.ago %>
 <% if @snapshot %>
-<div class="pos-app" data-controller="pos-cart pos-screen<%= ' pos-display' if @display %>" data-action="<%= 'pos-cart:changing->pos-display#pending pos-cart:checked->pos-display#checked' if @display %>" data-pos-cart-cart-key-value="<%= @cart_key %>" data-pos-cart-initial-quote-value="<%= (@quote || {}).to_json %>" data-pos-screen-stock-fresh-value="<%= stock_fresh %>" <% if @display %>data-pos-cart-clear-url-value="<%= clear_pos_display_path(@display) %>" data-pos-display-status-url-value="<%= pos_display_path(@display) %>"<% end %>>
+<div class="pos-app" data-controller="pos-cart pos-screen<%= ' pos-display' if @display %>" data-action="<%= 'pos-cart:changing->pos-display#pending pos-cart:checked->pos-display#checked pos-display:state->pos-screen#showOutcome' if @display %>" data-pos-cart-cart-key-value="<%= @cart_key %>" data-pos-cart-initial-quote-value="<%= (@quote || {}).to_json %>" data-pos-screen-stock-fresh-value="<%= stock_fresh %>" <% if @display %>data-pos-cart-paid-value="<%= @display.current_checkout&.status == 'paid' %>" data-pos-cart-clear-url-value="<%= clear_pos_display_path(@display) %>" data-pos-display-status-url-value="<%= pos_display_path(@display) %>"<% end %>>
 <% else %>
 <div class="pos-app">
 <% end %>
@@ -27,7 +27,7 @@
           <%= hidden_field_tag :category, @category, id: 'pos_search_category', data: { pos_screen_target: 'category' } %>
           <%= label_tag :pos_q, 'Search products', class: 'sr-only' %>
           <span class="pos-search-icon" aria-hidden="true"><%= navigation_icon('search') %></span>
-          <%= search_field_tag :q, @query, id: 'pos_q', class: 'pos-search-input', placeholder: 'Search or scan: name, SKU or barcode', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'off', spellcheck: false, autofocus: true, enterkeyhint: 'search', data: { pos_screen_target: 'search', action: 'input->pos-screen#typed keydown->pos-screen#searchKeydown' } %>
+          <%= search_field_tag :q, @query, id: 'pos_q', class: 'pos-search-input', placeholder: 'Search or scan: name, SKU or barcode', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'off', spellcheck: false, enterkeyhint: 'search', data: { pos_screen_target: 'search', action: 'input->pos-screen#typed keydown->pos-screen#searchKeydown' } %>
           <kbd class="pos-search-key" title="Press / to search">/</kbd>
           <noscript><%= submit_tag 'Apply', class: 'btn-ghost' %></noscript>
         <% end %>
@@ -36,7 +36,7 @@
       </section>
       <%= render 'cart' %>
     </main>
-    <a href="#retail-cart" class="btn-primary pos-cart-jump">Cart · <span data-pos-cart-target="count" aria-live="polite">0</span> items</a>
+    <a href="#retail-cart" class="btn-primary pos-cart-jump">Cart · <span data-pos-cart-target="count" aria-live="polite">0</span> <span data-pos-cart-target="unit">items</span><span data-pos-cart-target="jumpTotalPart" hidden> · <span class="retail-money" data-pos-cart-target="jumpTotal"></span></span></a>
 
     <dialog id="pos-item-dialog" class="pos-sheet" aria-labelledby="pos-item-title" data-pos-screen-target="itemDialog" data-action="close->pos-screen#itemClosed click->pos-screen#backdropClose">
       <div class="pos-sheet-body">

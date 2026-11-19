@@ -107,7 +107,8 @@ final class EmployeeShiftUITests: XCTestCase {
         }
         shoot("register")
         pair.tap()
-        XCTAssertTrue(web.links["Open customer screen"].firstMatch.waitForExistence(timeout: 15), "the customer screen is paired")
+        let handOver = web.links["Hand to customer for tip"].firstMatch
+        XCTAssertTrue(web.staticTexts["Customer screen paired"].firstMatch.waitForExistence(timeout: 15), "the customer screen is paired")
 
         let tile = web.buttons.matching(NSPredicate(format: "label CONTAINS ', $'")).firstMatch
         guard tile.waitForExistence(timeout: 10) else {
@@ -116,21 +117,29 @@ final class EmployeeShiftUITests: XCTestCase {
         }
         sleep(2) // the page has just reloaded with the paired screen
         let add = web.buttons["Add to cart"].firstMatch
-        // The reloaded register puts the cursor in Search, so the keyboard covers the products.
-        let keyboardDone = app.toolbars.buttons["Done"].firstMatch
-        if keyboardDone.waitForExistence(timeout: 3) { keyboardDone.tap() }
-        sleep(1)
+        // On a phone the register leaves the keyboard down until Search is tapped, so the
+        // products are in view and the strip above them is short.
+        XCTAssertFalse(app.keyboards.firstMatch.exists, "no keyboard over the products when the register opens")
+        XCTAssertTrue(tile.isHittable, "the first product is on screen without scrolling")
+        shoot("register-paired")
         tile.tap()
         _ = add.waitForExistence(timeout: 8)
         XCTAssertTrue(add.exists, "the item sheet")
         shoot("register-item")
         add.tap()
         XCTAssertTrue(web.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Cart 1 item'")).firstMatch.waitForExistence(timeout: 10), "one item in the cart")
+        XCTAssertFalse(app.keyboards.firstMatch.exists, "adding an item does not raise the keyboard")
         shoot("register-cart")
 
-        // The customer's side, on the same phone: opens as a page with Back.
-        scrollTo(web.links["Open customer screen"].firstMatch, down: true)
-        web.links["Open customer screen"].firstMatch.tap()
+        // The customer's side, on the same phone: the cart offers the hand-over, which opens as
+        // a page with Back.
+        let cartBar = web.links.matching(NSPredicate(format: "label BEGINSWITH 'Cart · 1 item'")).firstMatch
+        XCTAssertTrue(cartBar.waitForExistence(timeout: 5), "the cart bar shows the count and total")
+        cartBar.tap()
+        XCTAssertTrue(handOver.waitForExistence(timeout: 5), "the cart offers to hand the phone to the customer")
+        scrollTo(handOver, down: false)
+        shoot("register-hand-over")
+        handOver.tap()
         let noTip = web.staticTexts["No tip"].firstMatch
         XCTAssertTrue(noTip.waitForExistence(timeout: 15), "the customer screen offers a tip choice")
         sleep(3) // the customer screen polls for the cart
@@ -139,7 +148,7 @@ final class EmployeeShiftUITests: XCTestCase {
         let confirm = web.buttons["Confirm my choice"].firstMatch
         if confirm.waitForExistence(timeout: 5), confirm.isEnabled {
             confirm.tap()
-            sleep(2)
+            XCTAssertTrue(web.staticTexts.matching(NSPredicate(format: "label CONTAINS 'hand the phone back to the cashier'")).firstMatch.waitForExistence(timeout: 10), "the customer is told to hand the phone back")
             shoot("customer-confirmed")
         }
         app.navigationBars.buttons.firstMatch.tap()
@@ -162,6 +171,20 @@ final class EmployeeShiftUITests: XCTestCase {
         let exact = web.buttons["Exact"].firstMatch
         guard exact.waitForExistence(timeout: 10) else { return }
         scrollTo(exact, down: false)
+        // Too little cash is refused in words, in a box that stands out, and nothing is sold.
+        let cash = web.textFields["Cash received"].firstMatch
+        if cash.waitForExistence(timeout: 5) {
+            cash.tap()
+            cash.typeText("5")
+            let done = app.toolbars.buttons["Done"].firstMatch
+            if done.waitForExistence(timeout: 3) { done.tap() }
+            let short = web.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Complete cash sale'")).firstMatch
+            scrollTo(short, down: false)
+            short.tap()
+            XCTAssertTrue(web.staticTexts["Cash received is less than the total."].firstMatch.waitForExistence(timeout: 10), "too little cash is refused in words")
+            shoot("register-cash-refused")
+            scrollTo(exact, down: true)
+        }
         if exact.isHittable { exact.tap() }
         let complete = web.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Complete cash sale'")).firstMatch
         guard complete.waitForExistence(timeout: 5) else { return }
@@ -187,12 +210,18 @@ final class EmployeeShiftUITests: XCTestCase {
         scrollTo(newSale, down: false)
         shoot("register-cash-paid")
 
-        // New sale empties the cart for the next customer.
-        newSale.tap()
-        XCTAssertTrue(web.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Cart 0 items'")).firstMatch.waitForExistence(timeout: 10), "the cart is empty again")
-        shoot("register-new-sale")
-        // New sale puts the cursor back in Search; put the keyboard away so the tab bar is reachable.
-        if keyboardDone.waitForExistence(timeout: 3) { keyboardDone.tap() }
+        // The receipt is this sale's: paid, cash, the item.
+        receipt.tap()
+        XCTAssertTrue(web.staticTexts["Receipt"].firstMatch.waitForExistence(timeout: 15), "the receipt page")
+        XCTAssertTrue(web.staticTexts["Paid"].firstMatch.waitForExistence(timeout: 5), "the receipt says Paid")
+        shoot("receipt")
+        app.navigationBars.buttons.firstMatch.tap()
+
+        // Back on the register the paid cart is not offered again: it starts the next sale.
+        XCTAssertTrue(web.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Cart 0 items'")).firstMatch.waitForExistence(timeout: 15), "the paid cart is gone after the receipt")
+        XCTAssertTrue(web.staticTexts["The last sale is paid. Ready for the next one."].firstMatch.waitForExistence(timeout: 5), "the register says the last sale is paid")
+        XCTAssertFalse(app.keyboards.firstMatch.exists, "no keyboard over the tab bar")
+        shoot("register-next-sale")
     }
 
     private func signOutFromAppSettings() {

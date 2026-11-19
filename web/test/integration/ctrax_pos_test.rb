@@ -154,7 +154,7 @@ class CtraxPosTest < ActionDispatch::IntegrationTest
     assert_select 'header.pos-topbar h1', /POS/
     assert_select 'header.pos-topbar a[href=?]', root_path, text: 'Exit POS'
     assert_select 'header.pos-topbar button', text: 'Sign out', count: 0
-    assert_select 'input#pos_q[type=search][autofocus]'
+    assert_select 'input#pos_q[type=search][data-pos-screen-target=search]'
     assert_select 'dialog#pos-item-dialog button[type=submit]', 'Add to cart'
     assert_select '#retail-cart button[data-pos-cart-target=checkout]', 'Checkout'
   end
