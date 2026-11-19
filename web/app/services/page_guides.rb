@@ -9,6 +9,33 @@ class PageGuides
 
   GUIDES = {
     # Stock
+    'master_stock' => Guide.new(
+      key: 'master_stock', title: 'Rupert stock',
+      summary: 'Rupert’s own stock numbers per site. Count, receive, adjust and transfer here; platforms are not changed.',
+      sections: [
+        { heading: 'Start with a count', body: 'Rupert does not assume a starting quantity. The first entry for an item at a site is a count of what is on the shelf. Receiving, adjusting and transferring then change that number, and every change is kept in the ledger with who, why and when.' },
+        { heading: 'Scanning', body: 'Scan or type a SKU, barcode or exact platform item ID into Find. An exact code match is shown on its own; otherwise names are searched.' },
+        { heading: 'Platforms', body: 'Entries here do not change Shopify, C-Trax or Square stock. Push preview shows what Rupert would change on each platform once live pushing is approved.' }
+      ],
+      tips: ['A count replaces Rupert’s number with the counted total; use Adjust for a known change such as damage.', 'Transfers move units between two Rupert sites at once; count the item at the destination first.']
+    ),
+    'master_stock_ledger' => Guide.new(
+      key: 'master_stock_ledger', title: 'Rupert stock ledger',
+      summary: 'Every Rupert stock movement in order, with before and after quantities.',
+      sections: [
+        { heading: 'What you are seeing', body: 'Counts, receipts, adjustments and transfer pairs recorded in Rupert. Rows are never edited or deleted; correct a mistake with a new adjustment or count.' }
+      ],
+      tips: ['Filter by site, item or kind, then export CSV for a spreadsheet.']
+    ),
+    'master_stock_preview' => Guide.new(
+      key: 'master_stock_preview', title: 'Push preview',
+      summary: 'A dry run: what Rupert would change on each platform to match its own stock. Nothing is sent.',
+      sections: [
+        { heading: 'Reading a row', body: 'Each linked item shows the platform’s last stored quantity, Rupert’s quantity and the exact write Rupert would make, or why it would not push (stale read, unknown stock, no Rupert count, unverified C-Trax increase).' },
+        { heading: 'Before anything goes live', body: 'Live pushing needs owner approval and starts with one platform and one test item. Sales made on a platform after the last Rupert count are not yet applied to Rupert, so push right after counting.' }
+      ],
+      tips: ['Refresh platform stock first; reads older than an hour are blocked.', 'Shopify is set by on hand, the physical units including unfulfilled orders.']
+    ),
     'stock_requests' => Guide.new(
       key: 'stock_requests', title: 'Transfers and backorders',
       summary: 'Record a stock transfer between locations or a backorder for waiting demand, then confirm each physical step as it happens.',
@@ -794,6 +821,9 @@ class PageGuides
     ['/finance/ledger_export', 'ledger_export'],
     ['/purchasing/vendors', 'vendors'],
     ['/purchasing/purchase_orders', 'purchase_orders'],
+    ['/master_stock/movements', 'master_stock_ledger'],
+    ['/master_stock/push_preview', 'master_stock_preview'],
+    ['/master_stock', 'master_stock'],
     ['/stock_requests', 'stock_requests'],
     ['/stock_reservations', 'stock_reservations'],
     ['/bulk_materials', 'bulk_materials'],

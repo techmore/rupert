@@ -1,0 +1,54 @@
+<% content_for :title, 'Rupert stock setup' %>
+<div class="page-narrow space-y-5">
+  <%= page_header 'Rupert stock setup', subtitle: 'Sites, platform locations and the items Rupert tracks.', menu: [['Rupert stock', master_stock_items_path], ['Push preview', master_stock_push_preview_path]] %>
+  <% unless @can_setup %><p class="flash flash-alert" role="status">Changing setup needs inventory write and settings write permission.</p><% end %>
+
+  <section class="section-card space-y-4">
+    <%= section_heading 'Sites', hint: 'One site per shop or stockroom. Map each to the matching location on every platform it sells from.', level: :h2 %>
+    <% location_options = ->(platform, selected) { options_for_select((@locations[platform] || []).map { |l| [l.name, l.id] }, selected) } %>
+    <% @all_sites.each do |site| %>
+      <%= form_with model: site, url: master_stock_site_path(site), method: :patch, scope: :stock_site, class: 'card card-pad space-y-3' do |f| %>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div><%= f.label :name, 'Name', class: 'field-label' %><%= f.text_field :name, required: true, maxlength: 120, class: 'input', disabled: !@can_setup %></div>
+          <div><%= f.label :active, 'Status', class: 'field-label' %><%= f.select :active, [['Active', '1'], ['Inactive', '0']], { selected: site.active ? '1' : '0' }, class: 'input', disabled: !@can_setup %></div>
+          <% StockSite::PLATFORMS.each do |platform| %>
+            <div><%= f.label "#{platform}_location_id", "#{MasterStock.platform_label(platform)} location", class: 'field-label' %><%= f.select "#{platform}_location_id", location_options.call(platform, site.public_send("#{platform}_location_id")), { include_blank: 'Not used' }, class: 'input', disabled: !@can_setup %></div>
+          <% end %>
+        </div>
+        <% if @can_setup %><div class="form-actions"><%= f.submit 'Save site', class: 'btn-ghost' %></div><% end %>
+      <% end %>
+    <% end %>
+    <% if @can_setup %>
+      <%= form_with model: StockSite.new, url: master_stock_sites_path, scope: :stock_site, class: 'card card-pad space-y-3' do |f| %>
+        <p class="card-title">Add a site</p>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div><%= f.label :name, 'Name', class: 'field-label' %><%= f.text_field :name, required: true, maxlength: 120, class: 'input', placeholder: 'Main store' %></div>
+          <% StockSite::PLATFORMS.each do |platform| %>
+            <div><%= f.label "#{platform}_location_id", "#{MasterStock.platform_label(platform)} location", class: 'field-label' %><%= f.select "#{platform}_location_id", location_options.call(platform, nil), { include_blank: 'Not used' }, class: 'input' %></div>
+          <% end %>
+        </div>
+        <div class="form-actions"><%= f.submit 'Add site', class: 'btn-primary' %></div>
+      <% end %>
+    <% end %>
+  </section>
+
+  <% if @can_setup && @all_sites.any?(&:active) %>
+    <section class="section-card space-y-4">
+      <%= section_heading 'Start tracking items', hint: 'Creates a Rupert item for each platform item at the site that is not tracked yet, with an exact link. Nothing is matched by SKU or name.', level: :h2 %>
+      <% @all_sites.select(&:active).each do |site| %>
+        <% %w[ctrax shopify].each do |platform| %>
+          <% location_id = site.public_send("#{platform}_location_id") %>
+          <% next unless location_id %>
+          <% snapshot = @snapshots[platform][location_id] %>
+          <%= form_with url: master_stock_imports_path, class: 'card card-pad space-y-3', data: { turbo_confirm: "Start tracking every #{MasterStock.platform_label(platform)} item at #{site.name}?" } do %>
+            <%= hidden_field_tag :request_token, SecureRandom.hex(16) %><%= hidden_field_tag :site_id, site.id %><%= hidden_field_tag :platform, platform %>
+            <p class="card-title"><%= site.name %> from <%= MasterStock.platform_label(platform) %></p>
+            <p class="text-sm text-mocha"><%= snapshot ? "#{snapshot.records.size} items in the read from #{time_ago_in_words(snapshot.captured_at)} ago." : 'No stock read yet. Sync this platform’s stock first.' %><%= ' C-Trax items that carry a Shopify variant ID also get that exact Shopify link.' if platform == 'ctrax' && site.shopify_location_id %></p>
+            <label class="flex items-start gap-2 text-sm"><%= check_box_tag :seed_balances, '1', false, class: 'mt-1' %><span>Also record opening counts from this read (labelled as platform-seeded, not physical). Needs a read from the last hour; negative or unknown stock stays uncounted.</span></label>
+            <div class="form-actions"><%= submit_tag 'Start tracking', class: 'btn-primary', name: nil, disabled: snapshot.nil? %></div>
+          <% end %>
+        <% end %>
+      <% end %>
+    </section>
+  <% end %>
+</div>

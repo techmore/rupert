@@ -1,0 +1,4 @@
+<%# locals: (sites:, site:, path:, extra: {}) %>
+<% if sites.size > 1 %>
+  <%= page_tabs(sites.map { |s| [s.name, public_send(path, extra.merge(site_id: s.id)), s.id == site&.id] }, label: 'Site') %>
+<% end %>

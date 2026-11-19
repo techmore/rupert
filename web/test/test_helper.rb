@@ -12,6 +12,7 @@ require_relative 'support/upload_fixtures'
 require_relative 'support/performance_audit'
 require_relative 'support/sign_in_helper'
 require_relative 'support/workspace_helper'
+require_relative 'support/master_stock_helper'
 
 require 'minitest/autorun'
 require 'minitest/mock'
