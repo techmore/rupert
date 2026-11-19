@@ -83,6 +83,16 @@ class BusinessSettingsTest < ActionDispatch::IntegrationTest
     assert_select 'h2', /INV-B-1/
   end
 
+  test 'before a business name is saved, invoices show the workspace name' do
+    Current.tenant = @tenant
+    assert_nil Setting.for_tenant('tenant_business_name')
+    assert_equal @tenant.name, TenantSettings.business_name
+
+    get_page order_path(@order)
+    assert_response :success
+    assert_select 'p', /#{Regexp.escape(@tenant.name)}/
+  end
+
   test 'low stock threshold feeds the alert generator' do
     TenantSettings.set(:low_stock_threshold, 3)
     Current.tenant = @tenant
