@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_10_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_18_100000) do
   create_table "BackupLog", id: :string, force: :cascade do |t|
     t.string "driveFileId"
     t.string "driveUrl"
@@ -2668,6 +2668,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_100000) do
     t.string "status", default: "completed"
     t.string "tenant_id", null: false
     t.datetime "updated_at", null: false
+    t.string "entry_method"
     t.index ["tenant_id", "order_id"], name: "index_payments_on_tenant_id_and_order_id"
     t.index ["tenant_id", "paid_at"], name: "index_payments_on_tenant_id_and_paid_at"
   end
@@ -2921,6 +2922,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_100000) do
     t.string "decline_reason"
     t.string "batch_number"
     t.string "payment_type"
+    t.string "entry_method"
     t.index ["invoice"], name: "index_pos_payment_attempts_on_invoice", unique: true
     t.index ["pos_checkout_id"], name: "index_pos_payment_attempts_on_pos_checkout_id"
     t.index ["tenant_id", "nonce_digest"], name: "index_pos_payment_attempts_on_tenant_id_and_nonce_digest", unique: true

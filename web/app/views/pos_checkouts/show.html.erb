@@ -40,7 +40,7 @@
         <div class="flex justify-between gap-3"><dt>Merchant</dt><dd><%= [Current.tenant&.name, @checkout.location.name].compact.uniq.join(' · ') %></dd></div>
         <% if @checkout.paid_at %><div class="flex justify-between gap-3"><dt>Date</dt><dd><%= l(@checkout.paid_at, format: :long) %></dd></div><% end %>
         <div class="flex justify-between gap-3"><dt>Transaction</dt><dd>Sale · <%= ctrax_money(@checkout.total_cents) %></dd></div>
-        <div class="flex justify-between gap-3"><dt>Card</dt><dd><%= [card[:brand], card[:last_four] && "ending #{card[:last_four]}"].compact.join(' ').presence || 'Card' %></dd></div>
+        <div class="flex justify-between gap-3"><dt>Card</dt><dd><%= [[card[:brand], card[:last_four] && "ending #{card[:last_four]}"].compact.join(' ').presence || 'Card', PaymentEntryMethod.label(card[:entry_method])].compact.join(' · ') %></dd></div>
         <% if card[:auth_code] %><div class="flex justify-between gap-3"><dt>Approval code</dt><dd class="num"><%= card[:auth_code] %></dd></div><% end %>
         <div class="flex justify-between gap-3"><dt>Processed by</dt><dd><%= card[:processor] %><%= ' (sandbox)' if @checkout.environment == 'sandbox' %> · <span class="num"><%= card[:transaction_id] %></span></dd></div>
         <% if card[:refunded_cents].positive? %><div class="flex justify-between gap-3"><dt>Refunded</dt><dd class="num font-semibold"><%= ctrax_money(card[:refunded_cents]) %></dd></div><% end %>

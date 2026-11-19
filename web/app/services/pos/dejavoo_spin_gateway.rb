@@ -53,12 +53,16 @@ module Pos
 
     CARD_BRANDS = { 'Visa' => 'Visa', 'Mastercard' => 'Mastercard', 'Amex' => 'Amex', 'Discover' => 'Discover', 'JCB' => 'JCB' }.freeze
     ENTRY_TYPES = %w[Chip Swipe ChipContactless Contactless Manual].freeze
+    # The terminal's entry type as Rupert's short word (PaymentEntryMethod). Anything
+    # missing or not in ENTRY_TYPES is "unknown"; the raw value is never kept.
+    ENTRY_METHODS = { 'Contactless' => 'tap', 'ChipContactless' => 'tap', 'Chip' => 'chip', 'Swipe' => 'swipe', 'Manual' => 'keyed' }.freeze
 
     Response = Data.define(:status_code, :outcome, :reference_id, :payment_type, :transaction_type, :total_cents, :tip_cents,
       :fee_cents, :auth_code, :processor_reference, :batch_number, :card_brand, :card_last_four, :entry_type, :voided, :retry_after) do
       def approved? = outcome == 'approved'
       def charged? = %w[approved partial].include?(outcome)
       def no_charge? = %w[declined rejected unavailable].include?(outcome)
+      def entry_method = ENTRY_METHODS.fetch(entry_type, 'unknown')
     end
 
     attr_reader :setting, :version, :terminal

@@ -14,6 +14,7 @@ module Core
     validates :method, presence: true
     validates :amount_cents, numericality: { greater_than: 0 }
     validates :paid_at, presence: true
+    validates :entry_method, inclusion: { in: PaymentEntryMethod::VALUES }, allow_nil: true
 
     scope :completed, -> { where(status: 'completed') }
 

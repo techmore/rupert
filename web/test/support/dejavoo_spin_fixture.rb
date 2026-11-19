@@ -20,6 +20,7 @@ module DejavooSpinFixture
     @spin_total = '11.66'
     @spin_fee = '0'
     @spin_tip = '1.01'
+    @spin_entry_type = 'Contactless'
     @spin_transactions = {}
     stub_request(:post, %r{\A#{Regexp.escape(HOST)}/v2/}).to_return do |request|
       path = request.uri.path.delete_prefix('/spin/')
@@ -90,7 +91,8 @@ module DejavooSpinFixture
         BatchNumber: '7', TransactionNumber: '12', AuthCode: 'A1B2C3', PNReferenceId: '987654321', Voided: voided, RRN: '1234',
         Token: 'card-token-secret', IPosToken: 'ipos-token-secret', Signature: 'iVBORw0KGgo=',
         Amounts: { TotalAmount: BigDecimal(total).to_f, Amount: BigDecimal(total).to_f, TipAmount: BigDecimal(@spin_tip).to_f, FeeAmount: BigDecimal(@spin_fee).to_f, TaxAmount: 0.6 },
-        CardData: { CardType: 'Visa', EntryType: 'Contactless', Last4: '1111', First4: '4111', BIN: '411111', ExpirationDate: '1229', Name: 'PAT CARDHOLDER' },
+        # @spin_entry_type nil leaves EntryType out, as a terminal that does not report it would.
+        CardData: { CardType: 'Visa', EntryType: @spin_entry_type, Last4: '1111', First4: '4111', BIN: '411111', ExpirationDate: '1229', Name: 'PAT CARDHOLDER' }.compact,
         EMVData: { ApplicationName: 'VISA CREDIT', AID: 'A0000000031010', TVR: '0000000000' },
         Receipts: { Customer: 'CUSTOMER COPY 4111111111111111', Merchant: 'MERCHANT COPY' })
     end

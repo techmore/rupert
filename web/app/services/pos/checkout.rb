@@ -148,7 +148,8 @@ module Pos
       checkout
     end
 
-    def self.finalize!(checkout, transaction_id: nil)
+    # entry_method: how the card was presented (PaymentEntryMethod), when the gateway reports it.
+    def self.finalize!(checkout, transaction_id: nil, entry_method: nil)
       # Caller locks checkout. All durable local sale effects commit atomically.
       return checkout if checkout.paid?
       unless checkout.demo? || checkout.sandbox_payment?
@@ -163,7 +164,7 @@ module Pos
           order.order_lines.create!(source_line_id: line['variant_id'], source_variant_id: line['variant_id'], sku: line['sku'], name: line['title'], quantity: line['quantity'], unit_cents: (BigDecimal(line['unit_price']) * 100).to_i, line_cents: (BigDecimal(line['line_total']) * 100).to_i)
         end
         reference = transaction_id || "#{checkout.terminal_card? ? PosCheckout::TERMINAL_REFERENCE_PREFIX : 'cash'}-#{checkout.reference}"
-        order.payments.create!(method: checkout.payment_method, amount_cents: checkout.total_cents, status: 'completed', paid_at: Time.current, reference: reference) if checkout.total_cents.positive?
+        order.payments.create!(method: checkout.payment_method, amount_cents: checkout.total_cents, status: 'completed', paid_at: Time.current, reference: reference, entry_method: entry_method) if checkout.total_cents.positive?
         order.mark_paid!
         checkout.order = order
         column = checkout.payment_method == 'cash' ? :cash_sales_cents : :card_sales_cents
