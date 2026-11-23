@@ -77,7 +77,7 @@ GEM
       securerandom (>= 0.3)
       tzinfo (~> 2.0, >= 2.0.5)
       uri (>= 0.13.1)
-    addressable (2.9.2)
+    addressable (2.10.0)
       public_suffix (>= 2.0.2, < 8.0)
     apnotic (1.8.0)
       base64
@@ -92,7 +92,7 @@ GEM
     bindex (0.8.1)
     bip-schnorr (0.7.1)
       ecdsa_ext (~> 0.5.2)
-    bootsnap (1.26.1)
+    bootsnap (1.26.2)
       msgpack (~> 1.5)
     builder (3.3.0)
     caxlsx (4.5.0)
@@ -179,7 +179,7 @@ GEM
     groupdate (6.8.0)
       activesupport (>= 7.2)
     hash_diff (1.1.1)
-    hashdiff (1.2.1)
+    hashdiff (1.3.0)
     htmlentities (4.4.2)
     http-2 (1.3.0)
     httparty (0.24.3)
@@ -275,12 +275,12 @@ GEM
     openssl (4.0.2)
     os (1.1.4)
     ostruct (0.6.3)
-    pagy (43.8.2)
+    pagy (43.8.5)
       json
       uri
       yaml
     parallel (2.3.0)
-    parser (3.3.13.0)
+    parser (3.3.14.0)
       ast (~> 2.4.1)
       racc
     pdf-core (0.10.0)
@@ -304,7 +304,7 @@ GEM
     prism (2.1.0-x86_64-linux-musl)
     pstore (0.3.0)
     public_suffix (7.0.5)
-    puma (8.0.4)
+    puma (8.1.2)
       nio4r (~> 2.0)
     pundit (2.5.2)
       activesupport (>= 3.0.0)
@@ -352,7 +352,7 @@ GEM
       zeitwerk (~> 2.6)
     rainbow (3.1.1)
     rake (13.4.2)
-    ransack (6.1.0)
+    ransack (6.1.1)
       activerecord (>= 8.1)
       activesupport (>= 8.1)
       i18n
@@ -371,7 +371,7 @@ GEM
       redis-client (= 0.30.1)
     redis-client (0.30.1)
       connection_pool
-    regexp_parser (2.13.3)
+    regexp_parser (2.13.4)
     reline (0.7.0)
       io-console (~> 0.5)
     representable (3.3.1)
@@ -386,7 +386,7 @@ GEM
       chunky_png (~> 1.0)
       rqrcode_core (~> 2.0)
     rqrcode_core (2.1.0)
-    rubocop (1.92.2)
+    rubocop (1.92.3)
       json (>= 2.3)
       language_server-protocol (~> 3.17.0.2)
       lint_roller (~> 1.1.0)
@@ -397,15 +397,17 @@ GEM
       rubocop-ast (>= 1.49.0, < 2.0)
       ruby-progressbar (~> 1.7)
       unicode-display_width (>= 2.4.0, < 4.0)
-    rubocop-ast (1.51.0)
+    rubocop-ast (1.53.0)
+      ast (~> 2.4)
       parser (>= 3.3.7.2)
       prism (>= 1.7)
+      racc
     rubocop-shopify (3.1.0)
       lint_roller
       rubocop (~> 1.89)
     ruby-progressbar (1.13.0)
     ruby2_keywords (0.0.5)
-    ruby_llm (2.2.0)
+    ruby_llm (2.2.3)
       base64
       faraday (>= 1.10.0, != 2.0.0)
       faraday-multipart (>= 1)
@@ -419,10 +421,10 @@ GEM
     rubyzip (3.7.0)
     schematist (1.1.0)
     securerandom (0.4.1)
-    sentry-rails (7.2.0)
+    sentry-rails (7.3.0)
       railties (>= 5.2.0)
-      sentry-ruby (~> 7.2.0)
-    sentry-ruby (7.2.0)
+      sentry-ruby (~> 7.3.0)
+    sentry-ruby (7.3.0)
       bigdecimal
       concurrent-ruby (~> 1.0, >= 1.0.2)
       logger
@@ -516,7 +518,7 @@ GEM
     web-push (3.1.0)
       jwt (~> 3.0)
       openssl (>= 3.0)
-    webmock (3.34.0)
+    webmock (3.36.0)
       addressable (>= 2.8.0)
       crack (>= 0.3.2)
       hashdiff (>= 0.4.0, < 2.0.0)
@@ -560,7 +562,7 @@ DEPENDENCIES
   pagy (~> 43.8)
   prawn (~> 2.5)
   prawn-table (~> 0.2)
-  puma (~> 8.0)
+  puma (~> 8.1)
   pundit
   rack-attack (~> 6.7)
   rails (~> 8.1.3)
@@ -572,7 +574,7 @@ DEPENDENCIES
   rubocop-shopify
   ruby_llm (~> 2.2)
   sentry-rails (~> 7.1)
-  sentry-ruby (~> 7.2)
+  sentry-ruby (~> 7.3)
   shopify_app (~> 23.0)
   signet
   simplecov
@@ -602,7 +604,7 @@ CHECKSUMS
   activerecord (8.1.4.1) sha256=bd65599ca0b5d210937f835d42c7aff69d271741c75aab022730be6cbce67e87
   activestorage (8.1.4.1) sha256=0f4e2f114f3584723a80a2c089aacc6170e765a0b2c385c9782e26ed78f05c66
   activesupport (8.1.4.1) sha256=16ac4f341ca65c85a1fcdb8ac73f68891aae9e3c4a6f9c3a27daed8b00017ed7
-  addressable (2.9.2) sha256=9117c7e7d6ee07230e75ce41fb9401ae55354dc654fcd0e862ba41d539e9a610
+  addressable (2.10.0) sha256=5e13b9c001adf01dd65ad6e0d2a91d2bc07885c0ff2b83f48cbcd95e08d9de62
   apnotic (1.8.0) sha256=2638d2820d7a2ae94fc46cd38bdee47bb87d3823c13623d1d44393ba973002e9
   ast (2.4.3) sha256=954615157c1d6a382bc27d690d973195e79db7f55e9765ac7c481c60bdb4d383
   base64 (0.3.0) sha256=27337aeabad6ffae05c265c450490628ef3ebd4b67be58257393227588f5a97b
@@ -611,7 +613,7 @@ CHECKSUMS
   bigdecimal (3.3.1) sha256=eaa01e228be54c4f9f53bf3cc34fe3d5e845c31963e7fcc5bedb05a4e7d52218
   bindex (0.8.1) sha256=7b1ecc9dc539ed8bccfc8cb4d2732046227b09d6f37582ff12e50a5047ceb17e
   bip-schnorr (0.7.1) sha256=737f579966df7cffaf7bff0c05dd00e5f806b8f287a3bb4b7e2c4e6ce673c1a6
-  bootsnap (1.26.1) sha256=5b5bd90f8f13ea338627c1d56ffbe2ea25e743ac48c2afec1a9bea3a06a264e2
+  bootsnap (1.26.2) sha256=f0d749dcda6bf5e3d324bc7e126009b2127d2b83db74273d8ded3b4c8e322bb7
   builder (3.3.0) sha256=497918d2f9dca528fdca4b88d84e4ef4387256d984b8154e9d5d3fe5a9c8835f
   caxlsx (4.5.0) sha256=e3d98d859f148df05d5462086b5079b523f29c1766b569535f1d68629ce743ff
   caxlsx_rails (0.7.2) sha256=c7169c96a878a4548568f04742734c59826e3e473894867781796c2e13d1f52a
@@ -651,7 +653,7 @@ CHECKSUMS
   googleauth (1.17.6) sha256=d4fd30f99aeb28ae46ef521cf8ac50927a453b8c6600f8940437ac11ad90bdfc
   groupdate (6.8.0) sha256=16f90ea18ca981c38e41e592416480b28353aa5e5cc3e7cb13a68b8fb5d40510
   hash_diff (1.1.1) sha256=8b987e4cd5799c70b9b9761f75a75a3b89d47b91994da6b07c92b9b5352f04a3
-  hashdiff (1.2.1) sha256=9c079dbc513dfc8833ab59c0c2d8f230fa28499cc5efb4b8dd276cf931457cd1
+  hashdiff (1.3.0) sha256=0b6724b8f3fef3961acc09489b175698ce0b7fd22c9cc5aa559d280cc6b65649
   htmlentities (4.4.2) sha256=bbafbdf69f2eca9262be4efef7e43e6a1de54c95eb600f26984f71d2fe96c5c3
   http-2 (1.3.0) sha256=58fc8636c2b937b651853e9f6d9ada9fdaa8bf80b5a7d0333ce15653e5ca6ac1
   httparty (0.24.3) sha256=5c95cf29ca70d5bfd834e56140ddfca6e94166c3b870cde9c25d157cdb5a00d2
@@ -698,9 +700,9 @@ CHECKSUMS
   openssl (4.0.2) sha256=1037ad2868ae58df9ad917891c0c0f9815a1172f6846d4bcdd508e4c2ee747c2
   os (1.1.4) sha256=57816d6a334e7bd6aed048f4b0308226c5fb027433b67d90a9ab435f35108d3f
   ostruct (0.6.3) sha256=95a2ed4a4bd1d190784e666b47b2d3f078e4a9efda2fccf18f84ddc6538ed912
-  pagy (43.8.2) sha256=3c2b4621c4b5dc2023a8909a5cb7bf29b37ff1e3773a07c192782ae16f2716c6
+  pagy (43.8.5) sha256=ac428e2345af0456170c78a384be3208926f1bee2ebe667eaa3f15047eb94fe7
   parallel (2.3.0) sha256=f75a3e904101ce6a1ccb6b8dc800cbafd42166d83330192438dcf29395167a6f
-  parser (3.3.13.0) sha256=e02f9b63c2fe05b0c68f692ba4df89b3cb113b663964f75d988fbebfd6c3deca
+  parser (3.3.14.0) sha256=62f8f76af7b919425ee2d811880e9dcb8011ab40bfd59970dfb583141697e58f
   pdf-core (0.10.0) sha256=0a5d101e2063c01e3f941e1ee47cbb97f1adfc1395b58372f4f65f1300f3ce91
   pp (0.6.4) sha256=dfcb0fce700c41456265922884f9fe195d7fbb0674a3578e6c0f69588e82b570
   prawn (2.5.0) sha256=f4e20e3b4f30bf5b9ae37dad15eb421831594553aa930b2391b0fa0a99c43cb6
@@ -717,7 +719,7 @@ CHECKSUMS
   prism (2.1.0-x86_64-linux-musl) sha256=249f45981726923e259b927902246219fa25ad10a76f43849c9aee1a3d3ec5b8
   pstore (0.3.0) sha256=97888d57cdc8b99b3587dde5e1d01fc5ca4a9124dfeb2afb84e3dd982e78f829
   public_suffix (7.0.5) sha256=1a8bb08f1bbea19228d3bed6e5ed908d1cb4f7c2726d18bd9cadf60bc676f623
-  puma (8.0.4) sha256=5714e13df2d9b367d00f020d326c4de88b280efbd4c8b458686eb2bbe3961550
+  puma (8.1.2) sha256=3a6d9a34c9a4d0175eabd11b703939b5d43ebe08bc2534ac7dfd4df33a6ceedc
   pundit (2.5.2) sha256=e374152baa24f90b630428293faf4b4c5468fc3cc010165f7d8fcb44ce108bbd
   raabro (1.5.0) sha256=3f998a7bc84f9c84df3ab580634d2e0a5bda4f0841168d56035f529c9877440a
   racc (1.8.1) sha256=4a7f6929691dbec8b5209a0b373bc2614882b55fc5d2e447a21aaa691303d62f
@@ -732,13 +734,13 @@ CHECKSUMS
   railties (8.1.4.1) sha256=ff2ef4b5a62cbc89811f88be11c776e2ed71b14dd012eae6a494d37994aa9782
   rainbow (3.1.1) sha256=039491aa3a89f42efa1d6dec2fc4e62ede96eb6acd95e52f1ad581182b79bc6a
   rake (13.4.2) sha256=cb825b2bd5f1f8e91ca37bddb4b9aaf345551b4731da62949be002fa89283701
-  ransack (6.1.0) sha256=f94d70f3332282fd36f4a8e8e9ef9a946aafb2303b27a9e54d8c594419475f3d
+  ransack (6.1.1) sha256=ff39c2cf27e6fd9d55a3901743df53d0ce8c2a7e8a0b86cc1d20fcb51f413ff6
   rbs (4.2.0) sha256=51f7b886dcc05bc09e10b901daa6a81829f6adc03101d6ca9ea4aac6103e0674
   rdoc (8.1.0) sha256=befc37880a5cfd36dcb176c748b5fd5ee39dd3536a75e81824e4972ce230f60a
   redirect_safely (1.0.1) sha256=152cfb06d5ac901c354140eb9a1f4e7508875d1d7829a34e3890634c5c45fff4
   redis (6.0.0) sha256=de71c10edd106986b759ec7ecdd08b63b9c0ee7414a0d0c1da73d31ba2bccda6
   redis-client (0.30.1) sha256=5151bc5c7bbfe48623732cdae3b900d8a22dc691cc7cdfacfb351ac55116522d
-  regexp_parser (2.13.3) sha256=c9833eb62afc9706ebdc61b2b41226c0ae3b45a2783f80174cffcf126453db27
+  regexp_parser (2.13.4) sha256=1d0547814f57e6f00946957bd0ca201bc42f42cfb08eee89df60998aedcd8a3b
   reline (0.7.0) sha256=5b012d8e55dbf9d450f12bde2cf7d15ff546ae80b3f8f3b30e570d431815583d
   representable (3.3.1) sha256=8a5fc8eef99f598147eee0390f606386268b429a840419fcfd3f7a8ccc40f566
   request_store (1.7.0) sha256=e1b75d5346a315f452242a68c937ef8e48b215b9453a77a6c0acdca2934c88cb
@@ -746,17 +748,17 @@ CHECKSUMS
   rexml (3.4.4) sha256=19e0a2c3425dfbf2d4fc1189747bdb2f849b6c5e74180401b15734bc97b5d142
   rqrcode (3.2.0) sha256=64c1494ca6bb67d731330f38b50e3fd09eeab4f5dcd04b608e21218d1d0b9542
   rqrcode_core (2.1.0) sha256=f303b85df89c1b8fc5ee8dc19808c9dc4330e6329b660d99d4a8cbb36ca13051
-  rubocop (1.92.2) sha256=14fb31eed143a0dc6f78186c550c1715e81cd38f59d05d1165050e445c1f5382
-  rubocop-ast (1.51.0) sha256=0ec311e36b191b3872d909078a35274e962ae97dbce64be6812d145ca59acfcb
+  rubocop (1.92.3) sha256=fd77feac46e8e91c3a534f868a1702c59f5bf8173515fd00a3c6ce1198672ff6
+  rubocop-ast (1.53.0) sha256=027984d28485d6502ae4c72f9341080f54f538599f5dbb54f81875a4ddcad574
   rubocop-shopify (3.1.0) sha256=0345309997d5d9b544c13b967ca64e51437bd573bdc79a30f1e0e72956d85c29
   ruby-progressbar (1.13.0) sha256=80fc9c47a9b640d6834e0dc7b3c94c9df37f08cb072b7761e4a71e22cff29b33
   ruby2_keywords (0.0.5) sha256=ffd13740c573b7301cf7a2e61fc857b2a8e3d3aff32545d6f8300d8bae10e3ef
-  ruby_llm (2.2.0) sha256=ed5163c3aba02c514687e1e2c6b1dfe4e8f4402201ce6d53487cf29c2f3e1a05
+  ruby_llm (2.2.3) sha256=a3b1ceccebde2894ca99e8b4d00a6329604f8481c78e7236526648a744c428fd
   rubyzip (3.7.0) sha256=65c19294da75297a939006f3516deacc33185fbd721ff1954f7a231db6d3e121
   schematist (1.1.0) sha256=905d8f0286830926e77e0d631bee325ee741c4b99640bc99735593b40ba73e7b
   securerandom (0.4.1) sha256=cc5193d414a4341b6e225f0cb4446aceca8e50d5e1888743fac16987638ea0b1
-  sentry-rails (7.2.0) sha256=c3874fed94a68f3f60a917243b6e25414ff284455abd14e3351479a32807af79
-  sentry-ruby (7.2.0) sha256=2da448c2b7028a7691f31ae5c946830b8e694d0aec78ef2b9e5c7e1da9c3e01a
+  sentry-rails (7.3.0) sha256=2941ecc5b8f66ede5f7ff9e23d7f714d110675c20490a1be8162f35bf81b98ff
+  sentry-ruby (7.3.0) sha256=b097f082e6609c778ca3ac28fa61ce38af998040e042660ff7196fcdcad9f1a4
   shopify_api (16.3.0) sha256=60ead2c0d07a6d12b51d63c91ceefe4fa25130083d94c39bce48140022a715bc
   shopify_app (23.0.3) sha256=78fad2640934d46bb71417c7b9b6c31317a8369fe81dea1b579857565689fc45
   signet (0.22.2) sha256=9c6861bb599845ea0cb05ffadd3d64c7a3b07a29bdee0f5352bcbe87b7ade21d
@@ -799,7 +801,7 @@ CHECKSUMS
   useragent (0.16.11) sha256=700e6413ad4bb954bb63547fa098dddf7b0ebe75b40cc6f93b8d54255b173844
   web-console (4.3.0) sha256=e13b71301cdfc2093f155b5aa3a622db80b4672d1f2f713119cc7ec7ac6a6da4
   web-push (3.1.0) sha256=501ab00340c58fb70dabda59f28a86b3cccb0930c6f1f30721b2a5b24de7187d
-  webmock (3.34.0) sha256=72eed29dc8c00148d592acaedaaa6b869e2e397de57dfc8602b84aa834f46b33
+  webmock (3.36.0) sha256=1b9a5704f23ca67e6eab34edb1a019447a1a02c9a8401f473702ea19c5752000
   websocket-driver (0.8.2) sha256=97c556b019bf3410b4961002ac501621e9322d3f8a7bc02161a09301cc4c4146
   websocket-extensions (0.1.5) sha256=1c6ba63092cda343eb53fc657110c71c754c56484aad42578495227d717a8241
   yaml (0.4.0) sha256=240e69d1e6ce3584d6085978719a0faa6218ae426e034d8f9b02fb54d3471942

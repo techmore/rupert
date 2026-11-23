@@ -15,7 +15,7 @@ gem "sprockets-rails"
 gem "sqlite3", "~> 2.1"
 
 # Use the Puma web server [https://github.com/puma/puma]
-gem "puma", "~> 8.0"
+gem "puma", "~> 8.1"
 
 # Use JavaScript with ESM import maps [https://github.com/rails/importmap-rails]
 gem "importmap-rails"
@@ -90,7 +90,7 @@ gem "rack-attack", "~> 6.7"
 gem "strong_migrations", "~> 2.5"
 
 # Error tracking; inert unless SENTRY_DSN is set — config/initializers/sentry.rb
-gem "sentry-ruby", "~> 7.2"
+gem "sentry-ruby", "~> 7.3"
 gem "sentry-rails", "~> 7.1"
 
 # Use Sass to process CSS
